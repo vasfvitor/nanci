@@ -119,4 +119,3 @@ func (s *SQLiteStore) UpdateLastNSU(ctx context.Context, companyID string, nsu i
 
 	return nil
 }
-

@@ -7,11 +7,11 @@ import (
 // Company represents a company that syncs documents.
 type Company struct {
 	ID          string
-	CNPJ        string    // supports numeric (14 digits) and alphanumeric
-	CNPJRoot    string    // first 8 chars - groups branches
+	CNPJ        string // supports numeric (14 digits) and alphanumeric
+	CNPJRoot    string // first 8 chars - groups branches
 	Name        string
 	CertPath    string
-	Environment string    // "producao_restrita" | "producao"
+	Environment string // "producao_restrita" | "producao"
 	LastNSU     int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -19,30 +19,30 @@ type Company struct {
 
 // Document represents a synced fiscal document (NFS-e).
 type Document struct {
-	ID             string
-	CompanyID      string
-	ChaveAcesso    string
-	NSU            int64
-	Direction      string // "tomada" | "prestada" | "intermediario"
-	IssueDate      time.Time
-	Competence     string // "YYYY-MM"
-	PrestadorCNPJ  string
-	PrestadorName  string
-	TomadorCNPJ    string
-	TomadorName    string
-	ServiceValue   float64
-	ISSValue       float64
-	IRRFValue      float64
-	INSSValue      float64
-	PISValue       float64
-	COFINSValue    float64
-	CSLLValue      float64
-	Status         string // "normal" | "cancelada" | "substituida"
-	XMLPath        string
-	RawHash        string
-	ParseError     string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID            string
+	CompanyID     string
+	ChaveAcesso   string
+	NSU           int64
+	Direction     string // "tomada" | "prestada" | "intermediario"
+	IssueDate     time.Time
+	Competence    string // "YYYY-MM"
+	PrestadorCNPJ string
+	PrestadorName string
+	TomadorCNPJ   string
+	TomadorName   string
+	ServiceValue  float64
+	ISSValue      float64
+	IRRFValue     float64
+	INSSValue     float64
+	PISValue      float64
+	COFINSValue   float64
+	CSLLValue     float64
+	Status        string // "normal" | "cancelada" | "substituida"
+	XMLPath       string
+	RawHash       string
+	ParseError    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // CompanyStats provides aggregated information about a company's synchronization state.
@@ -77,4 +77,3 @@ type ProgressEvent struct {
 
 // ProgressFunc is a callback function to report progress.
 type ProgressFunc func(event ProgressEvent)
-

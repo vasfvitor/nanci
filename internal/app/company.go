@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )

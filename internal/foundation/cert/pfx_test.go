@@ -16,7 +16,7 @@ func TestLoadPKCS12_FileNotFound(t *testing.T) {
 func TestLoadPKCS12_InvalidData(t *testing.T) {
 	tempDir := t.TempDir()
 	invalidFile := filepath.Join(tempDir, "invalid.pfx")
-	
+
 	err := os.WriteFile(invalidFile, []byte("this is not a valid pfx"), 0644)
 	if err != nil {
 		t.Fatal(err)

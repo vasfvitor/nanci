@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"golang.org/x/term"
+
 	"github.com/vasfvitor/nanci/internal/app"
 )
 

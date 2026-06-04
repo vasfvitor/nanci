@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	BaseURLProduction          = "https://adn.nfse.gov.br"
+	BaseURLProduction           = "https://adn.nfse.gov.br"
 	BaseURLRestrictedProduction = "https://adn.producaorestrita.nfse.gov.br"
 
-	EnvProduction          = "producao"
+	EnvProduction           = "producao"
 	EnvRestrictedProduction = "producao_restrita"
 )
 

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/xuri/excelize/v2"
+
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/xuri/excelize/v2"
 )
 
 // GenerateXLSX creates an Excel spreadsheet from a list of documents and saves it to the specified path.

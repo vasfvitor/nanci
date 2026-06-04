@@ -124,5 +124,3 @@ func (s *SQLiteStore) GetCompanyStats(ctx context.Context, companyID string) (*C
 	// Not fully implemented, return empty for now
 	return &CompanyStats{}, nil
 }
-
-
