@@ -45,13 +45,13 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 		return fmt.Errorf("failed to create sync run: %w", err)
 	}
 
-	defer func() {
+	defer func() { //nolint:contextcheck
 		now := time.Now()
 		syncRun.FinishedAt = &now
 		if syncRun.Status == "running" { // if not marked as completed or failed
 			syncRun.Status = "interrupted"
 		}
-		s.store.UpdateSyncRun(context.Background(), syncRun) // Use background context to ensure it saves
+		_ = s.store.UpdateSyncRun(context.Background(), syncRun) // Use background context to ensure it saves
 	}()
 
 	currentNSU := company.LastNSU

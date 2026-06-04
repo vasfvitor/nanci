@@ -1,10 +1,11 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // Import modernc sqlite driver
 )
 
 // SQLiteStore implements the Store interface using SQLite.
@@ -24,7 +25,7 @@ func NewSQLiteStore(dbPath string, runMigrations bool) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("falha ao abrir banco sqlite: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(context.Background()); err != nil {
 		return nil, fmt.Errorf("falha ao conectar no banco sqlite: %w", err)
 	}
 

@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func TestLoadPKCS12_FileNotFound(t *testing.T) {
 	_, err := LoadPKCS12("non_existent_file.pfx", "password")
-	if err != ErrFileNotFound {
+	if !errors.Is(err, ErrFileNotFound) {
 		t.Errorf("expected ErrFileNotFound, got %v", err)
 	}
 }

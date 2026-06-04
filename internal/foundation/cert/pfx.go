@@ -26,7 +26,7 @@ func LoadPKCS12(path string, password string) (*tls.Certificate, error) {
 	// Decode the PFX file using the provided password
 	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(pfxData, password)
 	if err != nil {
-		if err == pkcs12.ErrIncorrectPassword {
+		if errors.Is(err, pkcs12.ErrIncorrectPassword) {
 			return nil, ErrInvalidPass
 		}
 		return nil, err

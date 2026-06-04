@@ -1,6 +1,7 @@
 package cnpj
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		actual := Validate(tt.input)
-		if actual != tt.expected {
+		if !errors.Is(actual, tt.expected) {
 			t.Errorf("Validate(%q) = %v; expected %v", tt.input, actual, tt.expected)
 		}
 	}

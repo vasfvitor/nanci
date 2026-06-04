@@ -123,11 +123,12 @@ func ParseXML(xmlData []byte, companyCNPJRoot string) (*Document, error) {
 	prestRoot := getRootSafely(doc.PrestadorCNPJ)
 	tomRoot := getRootSafely(doc.TomadorCNPJ)
 
-	if prestRoot == companyCNPJRoot {
+	switch companyCNPJRoot {
+	case prestRoot:
 		doc.Direction = "prestada"
-	} else if tomRoot == companyCNPJRoot {
+	case tomRoot:
 		doc.Direction = "tomada"
-	} else {
+	default:
 		doc.Direction = "intermediario"
 	}
 
