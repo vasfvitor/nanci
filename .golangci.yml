@@ -1,0 +1,91 @@
+version: "2"
+
+run:
+  tests: true
+  concurrency: 4
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+
+    # HTTP / context / resource safety
+    - bodyclose
+    - noctx
+    - contextcheck
+
+    # SQL / resource safety
+    - sqlclosecheck
+    - rowserrcheck
+
+    # Error correctness
+    - errorlint
+    - nilerr
+
+    # Security
+    - gosec
+
+    # Maintainability / DX
+    - revive
+    - gocritic
+    - unconvert
+    - misspell
+    - predeclared
+    - copyloopvar
+    - durationcheck
+    - makezero
+    - nolintlint
+
+    # slog consistency
+    - sloglint
+
+  settings:
+    misspell:
+      ignore-rules:
+        - adn
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (*database/sql.Tx).Rollback
+        - (*database/sql.Rows).Close
+        - (*os.File).Close
+        - (*compress/gzip.Reader).Close
+        - (*archive/zip.Writer).Close
+        - (*github.com/xuri/excelize/v2.File).Close
+        - (*github.com/xuri/excelize/v2.File).SetSheetName
+        - (*github.com/xuri/excelize/v2.File).SetCellValue
+        - (*github.com/xuri/excelize/v2.File).SetCellStyle
+        - (*github.com/xuri/excelize/v2.File).SetColWidth
+        - (*github.com/spf13/cobra.Command).MarkFlagRequired
+        - (github.com/vasfvitor/nanci/internal/store.Store).Close
+        - (*github.com/vasfvitor/nanci/internal/store.Store).Close
+        - (github.com/vasfvitor/nanci/internal/store.SQLiteStore).Close
+        - (*github.com/vasfvitor/nanci/internal/store.SQLiteStore).Close
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*text/tabwriter.Writer).Flush
+    gosec:
+      excludes:
+        - G104
+        - G301
+        - G304
+        - G306
+        - G404
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+        - name: package-comments
+          disabled: true
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/vasfvitor/nanci
