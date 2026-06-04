@@ -30,7 +30,12 @@ type XMLDocument struct {
 		} `xml:"toma"`
 		Valores struct {
 			ValorServico float64 `xml:"vServ"`
-			// Other values will be added in Marco 4
+			ISS          float64 `xml:"vISS"`
+			IRRF         float64 `xml:"vIRRF"`
+			INSS         float64 `xml:"vINSS"`
+			PIS          float64 `xml:"vPIS"`
+			COFINS       float64 `xml:"vCOFINS"`
+			CSLL         float64 `xml:"vCSLL"`
 		} `xml:"valores"`
 	} `xml:"infNFSe"`
 }
@@ -76,6 +81,12 @@ func ParseXML(xmlData []byte, companyCNPJRoot string) (*Document, error) {
 		TomadorCNPJ:   parsedXML.InfNFSe.Tomador.CNPJ,
 		TomadorName:   parsedXML.InfNFSe.Tomador.Nome,
 		ServiceValue:  parsedXML.InfNFSe.Valores.ValorServico,
+		ISSValue:      parsedXML.InfNFSe.Valores.ISS,
+		IRRFValue:     parsedXML.InfNFSe.Valores.IRRF,
+		INSSValue:     parsedXML.InfNFSe.Valores.INSS,
+		PISValue:      parsedXML.InfNFSe.Valores.PIS,
+		COFINSValue:   parsedXML.InfNFSe.Valores.COFINS,
+		CSLLValue:     parsedXML.InfNFSe.Valores.CSLL,
 		Status:        "normal",
 	}
 

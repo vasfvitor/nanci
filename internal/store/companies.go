@@ -120,9 +120,3 @@ func (s *SQLiteStore) UpdateLastNSU(ctx context.Context, companyID string, nsu i
 	return nil
 }
 
-// Stubs for the other Store interface methods that will be implemented later:
-func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nfse.Document, error) { return nil, nil }
-func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filter DocumentFilter) ([]nfse.Document, error) { return nil, nil }
-func (s *SQLiteStore) GetCompanyStats(ctx context.Context, companyID string) (*CompanyStats, error) { return nil, nil }
-func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error { return nil }
-func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) { return nil, nil }

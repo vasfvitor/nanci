@@ -1,0 +1,67 @@
+package report
+
+import (
+	"encoding/csv"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/nfse"
+)
+
+// GenerateCSV creates a CSV file from a list of documents and saves it to the specified path.
+func GenerateCSV(documents []nfse.Document, outPath string) error {
+	file, err := os.Create(outPath)
+	if err != nil {
+		return fmt.Errorf("failed to create csv file: %w", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write header
+	headers := []string{
+		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
+		"CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
+		"Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
+	}
+
+	if err := writer.Write(headers); err != nil {
+		return fmt.Errorf("failed to write csv header: %w", err)
+	}
+
+	// Write rows
+	for _, doc := range documents {
+		issueStr := ""
+		if !doc.IssueDate.IsZero() {
+			issueStr = doc.IssueDate.Format(time.DateOnly)
+		}
+
+		row := []string{
+			doc.Competence,
+			issueStr,
+			doc.ChaveAcesso,
+			doc.Direction,
+			cnpj.Format(doc.PrestadorCNPJ),
+			doc.PrestadorName,
+			cnpj.Format(doc.TomadorCNPJ),
+			doc.TomadorName,
+			fmt.Sprintf("%.2f", doc.ServiceValue),
+			fmt.Sprintf("%.2f", doc.ISSValue),
+			fmt.Sprintf("%.2f", doc.IRRFValue),
+			fmt.Sprintf("%.2f", doc.INSSValue),
+			fmt.Sprintf("%.2f", doc.PISValue),
+			fmt.Sprintf("%.2f", doc.COFINSValue),
+			fmt.Sprintf("%.2f", doc.CSLLValue),
+			doc.Status,
+		}
+
+		if err := writer.Write(row); err != nil {
+			return fmt.Errorf("failed to write csv row: %w", err)
+		}
+	}
+
+	return nil
+}
