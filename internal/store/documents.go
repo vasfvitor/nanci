@@ -125,6 +125,4 @@ func (s *SQLiteStore) GetCompanyStats(ctx context.Context, companyID string) (*C
 	return &CompanyStats{}, nil
 }
 
-// Stubs for events
-func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error { return nil }
-func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) { return nil, nil }
+

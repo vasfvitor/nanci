@@ -40,6 +40,17 @@ type XMLDocument struct {
 	} `xml:"infNFSe"`
 }
 
+// XMLEvent represents the basic structure of an NFS-e Event (like cancellation).
+type XMLEvent struct {
+	XMLName   xml.Name `xml:"pedCancNFSe"` // Assuming cancellation for now
+	InfPedido struct {
+		ChaveAcesso string `xml:"chNFSe"`
+		CodigoCanc  string `xml:"cMotivo"`
+	} `xml:"infPedidoCanc"`
+	// Note: there are other structures for the actual "retorno" but the payload usually contains the request or the full event.
+	// We'll simplify to extract just the ChaveAcesso if it exists.
+}
+
 // DecodeXMLPayload decodes the base64-gzipped payload into raw XML bytes.
 func DecodeXMLPayload(payloadBase64 string) ([]byte, string, error) {
 	// 1. Decode Base64
@@ -121,6 +132,40 @@ func ParseXML(xmlData []byte, companyCNPJRoot string) (*Document, error) {
 	}
 
 	return doc, nil
+}
+
+// ParseEvent extracts basic info from an Event XML.
+func ParseEvent(xmlData []byte) (*Event, error) {
+	// The event XML can be tricky because it wraps a signature and the payload.
+	// For now, we do a very naive string search or a loose unmarshal to find the ChaveAcesso.
+	// In a real scenario we'd have the exact struct. We'll use a loose approach.
+	var parsed XMLEvent
+	if err := xml.Unmarshal(xmlData, &parsed); err != nil {
+		return nil, fmt.Errorf("failed to parse event xml: %w", err)
+	}
+
+	// Fallback to substring search if unmarshal fails because of namespaces
+	strData := string(xmlData)
+	chaveAcesso := parsed.InfPedido.ChaveAcesso
+	if chaveAcesso == "" {
+		// Naive extraction
+		if start := strings.Index(strData, "<chNFSe>"); start != -1 {
+			if end := strings.Index(strData[start:], "</chNFSe>"); end != -1 {
+				chaveAcesso = strData[start+8 : start+end]
+			}
+		}
+	}
+
+	if chaveAcesso == "" {
+		return nil, fmt.Errorf("could not find chNFSe in event")
+	}
+
+	return &Event{
+		ChaveAcesso: chaveAcesso,
+		Type:        "cancelamento", // Assuming cancellation for now, can be improved
+		IssueDate:   time.Now(),     // Ideally extract from XML
+		Details:     "Evento sincronizado via NSU",
+	}, nil
 }
 
 func getRootSafely(cnpj string) string {

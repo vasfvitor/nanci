@@ -46,16 +46,11 @@ type Document struct {
 	UpdatedAt      time.Time
 }
 
-// Event represents a fiscal event for a document (e.g., cancellation).
-type Event struct {
-	ID           string
-	DocumentID   string
-	ChaveAcesso  string
-	EventType    string
-	EventDate    time.Time
-	Description  string
-	RawXMLPath   string
-	CreatedAt    time.Time
+// CompanyStats provides aggregated information about a company's synchronization state.
+type CompanyStats struct {
+	TotalDocuments int
+	TotalService   float64
+	LastSync       *time.Time
 }
 
 // SyncRun represents a synchronization execution for audit and control.

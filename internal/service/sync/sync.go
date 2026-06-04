@@ -3,6 +3,7 @@ package syncservice
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -88,8 +89,15 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 
 		// Process batch
 		for _, env := range resp.Docs {
-			// Process each document
-			if err := s.processDocument(ctx, company, env); err != nil {
+			var err error
+			// Check schema to decide if it's a document or an event
+			if strings.Contains(env.Schema, "procEvento") {
+				err = s.processEvent(ctx, company, env)
+			} else {
+				err = s.processDocument(ctx, company, env)
+			}
+
+			if err != nil {
 				totalErrors++
 				// We log or handle the error but continue to the next document
 				if progress != nil {
@@ -161,6 +169,32 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 	// 4. Save to DB
 	if err := s.store.SaveDocument(ctx, doc); err != nil {
 		return fmt.Errorf("db save failed: %w", err)
+	}
+
+	return nil
+}
+
+// processEvent handles decoding and saving an Event.
+func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
+	// 1. Decode Payload
+	rawXML, hashHex, err := nfse.DecodeXMLPayload(env.XMLGZipBase64)
+	if err != nil {
+		return fmt.Errorf("decode event failed: %w", err)
+	}
+
+	// 2. Parse XML
+	event, err := nfse.ParseEvent(rawXML)
+	if err != nil {
+		return fmt.Errorf("parse event failed: %w", err)
+	}
+
+	event.ID = uuid.NewString()
+	event.CompanyID = company.ID
+	event.RawHash = hashHex
+
+	// 3. Save to DB
+	if err := s.store.SaveEvent(ctx, event); err != nil {
+		return fmt.Errorf("db save event failed: %w", err)
 	}
 
 	return nil

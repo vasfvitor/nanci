@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
@@ -55,14 +56,36 @@ var exportCsvCmd = &cobra.Command{
 	},
 }
 
+var exportZipCmd = &cobra.Command{
+	Use:   "zip",
+	Short: "Exporta os arquivos físicos (.xml) em um arquivo compactado (.zip)",
+	Run: func(cmd *cobra.Command, args []string) {
+		app, docs := fetchExportDocsApp(cmd)
+		defer app.Close()
+
+		fmt.Printf("Gerando arquivo ZIP (%d arquivos esperados)...\n", len(docs))
+		if err := report.GenerateZIP(docs, app.DataDir, exportOut); err != nil {
+			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo ZIP: %v\n", err)
+			os.Exit(1)
+		}
+		
+		fmt.Printf("Arquivo ZIP gerado com sucesso: %s\n", exportOut)
+	},
+}
+
 // fetchExportDocs is a helper function to avoid duplicating the query logic
 func fetchExportDocs(cmd *cobra.Command) []nfse.Document {
-	app, err := initApp()
+	app, docs := fetchExportDocsApp(cmd)
+	app.Close()
+	return docs
+}
+
+func fetchExportDocsApp(cmd *cobra.Command) (*app.App, []nfse.Document) {
+	application, err := initApp()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Erro ao inicializar: %v\n", err)
 		os.Exit(1)
 	}
-	defer app.Close()
 
 	if err := cnpj.Validate(exportCNPJ); err != nil {
 		fmt.Fprintf(os.Stderr, "CNPJ inválido: %v\n", err)
@@ -72,7 +95,7 @@ func fetchExportDocs(cmd *cobra.Command) []nfse.Document {
 	cleanedCNPJ := cnpj.Clean(exportCNPJ)
 	ctx := cmd.Context()
 
-	company, err := app.Store.GetCompany(ctx, cleanedCNPJ)
+	company, err := application.Store.GetCompany(ctx, cleanedCNPJ)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Erro ao buscar empresa: %v\n", err)
 		os.Exit(1)
@@ -87,7 +110,7 @@ func fetchExportDocs(cmd *cobra.Command) []nfse.Document {
 		Direction:  exportDirection,
 	}
 
-	docs, err := app.Store.ListDocuments(ctx, company.ID, filter)
+	docs, err := application.Store.ListDocuments(ctx, company.ID, filter)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Erro ao buscar documentos: %v\n", err)
 		os.Exit(1)
@@ -98,13 +121,14 @@ func fetchExportDocs(cmd *cobra.Command) []nfse.Document {
 		os.Exit(0)
 	}
 
-	return docs
+	return application, docs
 }
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.AddCommand(exportXlsxCmd)
 	exportCmd.AddCommand(exportCsvCmd)
+	exportCmd.AddCommand(exportZipCmd)
 
 	// Flags for xlsx
 	exportXlsxCmd.Flags().StringVarP(&exportCNPJ, "cnpj", "c", "", "CNPJ da empresa")
