@@ -25,6 +25,8 @@ linters:
     # Error correctness
     - errorlint
     - nilerr
+    - nilnesserr
+    - nilnil
 
     # Security
     - gosec
@@ -47,34 +49,19 @@ linters:
     misspell:
       ignore-rules:
         - adn
+
     errcheck:
       exclude-functions:
-        - (io.Closer).Close
         - (*database/sql.Tx).Rollback
         - (*database/sql.Rows).Close
-        - (*os.File).Close
         - (*compress/gzip.Reader).Close
-        - (*archive/zip.Writer).Close
-        - (*github.com/xuri/excelize/v2.File).Close
-        - (*github.com/xuri/excelize/v2.File).SetSheetName
-        - (*github.com/xuri/excelize/v2.File).SetCellValue
-        - (*github.com/xuri/excelize/v2.File).SetCellStyle
-        - (*github.com/xuri/excelize/v2.File).SetColWidth
+
         - (*github.com/spf13/cobra.Command).MarkFlagRequired
-        - (github.com/vasfvitor/nanci/internal/store.Store).Close
-        - (*github.com/vasfvitor/nanci/internal/store.Store).Close
-        - (github.com/vasfvitor/nanci/internal/store.SQLiteStore).Close
-        - (*github.com/vasfvitor/nanci/internal/store.SQLiteStore).Close
-        - fmt.Fprintf
-        - fmt.Fprintln
-        - (*text/tabwriter.Writer).Flush
+
     gosec:
       excludes:
-        - G104
-        - G301
-        - G304
-        - G306
         - G404
+
     revive:
       rules:
         - name: unused-parameter
@@ -85,6 +72,7 @@ linters:
 formatters:
   enable:
     - goimports
+
   settings:
     goimports:
       local-prefixes:
