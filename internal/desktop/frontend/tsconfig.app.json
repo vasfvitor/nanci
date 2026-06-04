@@ -5,9 +5,9 @@
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "erasableSyntaxOnly": false,
     "noFallthroughCasesInSwitch": true,
-    // 
+    //
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
@@ -20,23 +20,11 @@
     "noEmit": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "lib": [
-      "ESNext",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "vite/client"
-    ],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
     "skipLibCheck": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.d.ts",
-    "src/**/*.tsx",
-    "src/**/*.vue",
-    "wailsjs/**/*.ts"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "wailsjs/**/*.ts"],
   "references": [
     {
       "path": "./tsconfig.node.json"
