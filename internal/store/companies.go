@@ -121,11 +121,8 @@ func (s *SQLiteStore) UpdateLastNSU(ctx context.Context, companyID string, nsu i
 }
 
 // Stubs for the other Store interface methods that will be implemented later:
-func (s *SQLiteStore) SaveDocument(ctx context.Context, doc *nfse.Document) error { return nil }
 func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nfse.Document, error) { return nil, nil }
 func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filter DocumentFilter) ([]nfse.Document, error) { return nil, nil }
 func (s *SQLiteStore) GetCompanyStats(ctx context.Context, companyID string) (*CompanyStats, error) { return nil, nil }
 func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error { return nil }
 func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) { return nil, nil }
-func (s *SQLiteStore) CreateSyncRun(ctx context.Context, run *nfse.SyncRun) error { return nil }
-func (s *SQLiteStore) UpdateSyncRun(ctx context.Context, run *nfse.SyncRun) error { return nil }
