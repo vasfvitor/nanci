@@ -70,12 +70,25 @@ Extraia os dados sincronizados em formatos portáteis.
 
 ## Estrutura do Projeto 
 
-- `cmd/nanci`: Ponto de entrada do CLI.
-- `internal/app/`: Lógica da aplicação, injeção de dependência e comandos do Cobra.
-- `internal/foundation/`: Código agnóstico à regra de negócios (logs, strings, paths, certificados, backoff retry).
-- `internal/nfse/`: Tipos de domínio e lógicas de núcleo empresarial (modelos de empresa e nota fiscal).
-- `internal/service/sync/`: O coração de orquestração do "Pull" de notas (coordena API, banco e disco).
-- `internal/store/`: Camada de persistência (SQLite) com as `migrations` (goose).
-- `internal/adn/`: Client HTTP configurado com mTLS para conversar especificamente com a API ADN do Governo.
-- `internal/report/`: Geradores de planilhas e arquivos.
-- `internal/files/`: Utilitários para a taxonomia e persistência de arquivos físicos.
+- `cmd/nanci`: Ponto de entrada do executável.
+- `internal/cli/`: Interface de Linha de Comando (Cobra) — gerencia flags, validações de entrada e formatação de saídas no terminal.
+- `internal/app/`: Lógica de aplicação (Use Cases) — coordena as operações principais de forma agnóstica à interface (CLI, Web, Desktop).
+- `internal/service/sync/`: O coração da sincronização de notas — orquestra chamadas à API, salvamento no banco e gravação de arquivos em disco.
+- `internal/nfse/`: Entidades de domínio (modelos de empresa e documento fiscal) e regras de negócio centrais (ex: parser XML).
+- `internal/adn/`: Client HTTP especializado configurado com mTLS para consumo da API ADN da Receita Federal.
+- `internal/store/`: Camada de persistência (SQLite) e gerenciamento de migrações estruturais (`goose`).
+- `internal/report/`: Construtores de exportação (planilhas `.xlsx`, relatórios `.csv` e arquivos compactados `.zip`).
+- `internal/files/`: Taxonomia e gravação segura de XMLs e payloads binários em disco.
+- `internal/foundation/`: Código base genérico (certificados digitais, manipulação de strings, logs, CNPJ validation).
+
+---
+
+## Desenvolvimento e Qualidade de Código
+
+- **`make fmt`**: Formata o código fonte localmente (`gofmt`) e organiza os imports (`goimports`).
+- **`make lint`**: Roda o `golangci-lint` (versão 2) verificando boas práticas, performance, e uso correto de recursos.
+- **`make vuln`**: Verifica vulnerabilidades na linguagem e nas dependências utilizando o scanner oficial da linguagem (`govulncheck`).
+- **`make security`**: Executa verificações de segurança (`gosec` para vulnerabilidades lógicas e `gitleaks` para detectar senhas/chaves vazadas no código).
+- **`make test`**: Roda a suíte completa de testes unitários.
+- **`make check`**: Atalho para rodar todos os passos juntos: `fmt`, `vuln`, `lint`, `test` e `security`. Recomendado rodar antes de todo commit.
+  
