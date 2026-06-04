@@ -1,4 +1,4 @@
-package commands
+package cli
 
 import (
 	"fmt"
@@ -10,10 +10,9 @@ import (
 
 var (
 	verbose bool
-	version = "dev"
 )
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd is the base command when nanci is called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "nanci",
 	Short: "CLI para sincronização de XMLs de NFS-e Nacional",
@@ -21,7 +20,7 @@ var rootCmd = &cobra.Command{
 usando certificado digital A1. Suporta extração de retenções e relatórios.`,
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
+// Execute runs the root command.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -30,11 +29,19 @@ func Execute() {
 }
 
 func init() {
-	// Global flags
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Habilita log detalhado (debug)")
 }
 
-// initApp is a utility for commands that need the App instance
-func initApp() (*app.App, error) {
-	return app.NewApp(verbose)
+// newApp is a helper for commands that need the App instance.
+// It also injects the terminal-based CredentialProvider.
+func newApp() (*app.App, error) {
+	application, err := app.NewApp(verbose)
+	if err != nil {
+		return nil, err
+	}
+	application.CredentialProvider = TerminalCredentialProvider{
+		In:  os.Stdin,
+		Out: os.Stderr,
+	}
+	return application, nil
 }

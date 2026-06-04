@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/vasfvitor/nanci/internal/app/commands"
+	"github.com/vasfvitor/nanci/internal/cli"
 )
 
 func main() {
-	commands.Execute()
+	cli.Execute()
 }

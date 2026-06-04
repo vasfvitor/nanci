@@ -1,7 +1,6 @@
 package nfse
 
 import (
-	"context"
 	"time"
 )
 
@@ -79,8 +78,3 @@ type ProgressEvent struct {
 // ProgressFunc is a callback function to report progress.
 type ProgressFunc func(event ProgressEvent)
 
-// CredentialProvider defines how to obtain certificate passwords.
-// Implemented differently in CLI and future UI.
-type CredentialProvider interface {
-	GetCertPassword(ctx context.Context, certPath string) ([]byte, error)
-}

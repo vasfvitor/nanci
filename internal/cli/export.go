@@ -1,4 +1,4 @@
-package commands
+package cli
 
 import (
 	"fmt"
@@ -6,10 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vasfvitor/nanci/internal/app"
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/report"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var (
@@ -27,101 +23,85 @@ var exportCmd = &cobra.Command{
 var exportXlsxCmd = &cobra.Command{
 	Use:   "xlsx",
 	Short: "Exporta os dados para uma planilha Excel (.xlsx)",
-	Run: func(cmd *cobra.Command, args []string) {
-		docs := fetchExportDocs(cmd)
-		
-		fmt.Printf("Gerando arquivo Excel (%d documentos)...\n", len(docs))
-		if err := report.GenerateXLSX(docs, exportOut); err != nil {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
+		if err != nil {
+			return fmt.Errorf("inicializar: %w", err)
+		}
+		defer application.Close()
+
+		input := app.ExportInput{
+			CNPJ:       exportCNPJ,
+			Competence: exportCompetence,
+			Direction:  exportDirection,
+			OutPath:    exportOut,
+		}
+
+		fmt.Println("Gerando arquivo Excel...")
+		if err := application.ExportXLSX(cmd.Context(), input); err != nil {
 			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo XLSX: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		fmt.Printf("Planilha gerada com sucesso: %s\n", exportOut)
+		return nil
 	},
 }
 
 var exportCsvCmd = &cobra.Command{
 	Use:   "csv",
 	Short: "Exporta os dados para um arquivo de texto separado por vírgulas (.csv)",
-	Run: func(cmd *cobra.Command, args []string) {
-		docs := fetchExportDocs(cmd)
-		
-		fmt.Printf("Gerando arquivo CSV (%d documentos)...\n", len(docs))
-		if err := report.GenerateCSV(docs, exportOut); err != nil {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
+		if err != nil {
+			return fmt.Errorf("inicializar: %w", err)
+		}
+		defer application.Close()
+
+		input := app.ExportInput{
+			CNPJ:       exportCNPJ,
+			Competence: exportCompetence,
+			Direction:  exportDirection,
+			OutPath:    exportOut,
+		}
+
+		fmt.Println("Gerando arquivo CSV...")
+		if err := application.ExportCSV(cmd.Context(), input); err != nil {
 			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo CSV: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		fmt.Printf("Arquivo CSV gerado com sucesso: %s\n", exportOut)
+		return nil
 	},
 }
 
 var exportZipCmd = &cobra.Command{
 	Use:   "zip",
 	Short: "Exporta os arquivos físicos (.xml) em um arquivo compactado (.zip)",
-	Run: func(cmd *cobra.Command, args []string) {
-		app, docs := fetchExportDocsApp(cmd)
-		defer app.Close()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
+		if err != nil {
+			return fmt.Errorf("inicializar: %w", err)
+		}
+		defer application.Close()
 
-		fmt.Printf("Gerando arquivo ZIP (%d arquivos esperados)...\n", len(docs))
-		if err := report.GenerateZIP(docs, app.DataDir, exportOut); err != nil {
+		input := app.ExportInput{
+			CNPJ:       exportCNPJ,
+			Competence: exportCompetence,
+			Direction:  exportDirection,
+			OutPath:    exportOut,
+		}
+
+		fmt.Println("Gerando arquivo ZIP...")
+		if err := application.ExportZIP(cmd.Context(), input); err != nil {
 			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo ZIP: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		fmt.Printf("Arquivo ZIP gerado com sucesso: %s\n", exportOut)
+		return nil
 	},
-}
-
-// fetchExportDocs is a helper function to avoid duplicating the query logic
-func fetchExportDocs(cmd *cobra.Command) []nfse.Document {
-	app, docs := fetchExportDocsApp(cmd)
-	app.Close()
-	return docs
-}
-
-func fetchExportDocsApp(cmd *cobra.Command) (*app.App, []nfse.Document) {
-	application, err := initApp()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Erro ao inicializar: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := cnpj.Validate(exportCNPJ); err != nil {
-		fmt.Fprintf(os.Stderr, "CNPJ inválido: %v\n", err)
-		os.Exit(1)
-	}
-
-	cleanedCNPJ := cnpj.Clean(exportCNPJ)
-	ctx := cmd.Context()
-
-	company, err := application.Store.GetCompany(ctx, cleanedCNPJ)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Erro ao buscar empresa: %v\n", err)
-		os.Exit(1)
-	}
-	if company == nil {
-		fmt.Fprintf(os.Stderr, "Empresa não encontrada para o CNPJ %s\n", cnpj.Format(cleanedCNPJ))
-		os.Exit(1)
-	}
-
-	filter := store.DocumentFilter{
-		Competence: exportCompetence,
-		Direction:  exportDirection,
-	}
-
-	docs, err := application.Store.ListDocuments(ctx, company.ID, filter)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Erro ao buscar documentos: %v\n", err)
-		os.Exit(1)
-	}
-
-	if len(docs) == 0 {
-		fmt.Println("Nenhum documento encontrado para exportar.")
-		os.Exit(0)
-	}
-
-	return application, docs
 }
 
 func init() {
@@ -143,4 +123,11 @@ func init() {
 	exportCsvCmd.Flags().StringVarP(&exportDirection, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
 	exportCsvCmd.Flags().StringVarP(&exportOut, "out", "o", "export.csv", "Caminho do arquivo de saída")
 	exportCsvCmd.MarkFlagRequired("cnpj")
+
+	// Flags for zip
+	exportZipCmd.Flags().StringVarP(&exportCNPJ, "cnpj", "c", "", "CNPJ da empresa")
+	exportZipCmd.Flags().StringVarP(&exportCompetence, "competencia", "m", "", "Competência (ex: 2026-06)")
+	exportZipCmd.Flags().StringVarP(&exportDirection, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
+	exportZipCmd.Flags().StringVarP(&exportOut, "out", "o", "export.zip", "Caminho do arquivo de saída")
+	exportZipCmd.MarkFlagRequired("cnpj")
 }

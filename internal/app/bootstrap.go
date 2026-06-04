@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -10,11 +11,26 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
+// CertPasswordRequest carries the context needed to ask for a certificate password.
+type CertPasswordRequest struct {
+	CompanyID string
+	CNPJ      string
+	CertPath  string
+}
+
+// CredentialProvider abstracts how certificate passwords are obtained.
+// The CLI implements this via terminal prompts; Wails will implement it via
+// a frontend dialog. internal/app must never import golang.org/x/term.
+type CredentialProvider interface {
+	GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error)
+}
+
 // App encapsulates the global dependencies of the application.
 type App struct {
-	Log     *slog.Logger
-	Store   store.Store
-	DataDir string
+	Log                *slog.Logger
+	Store              store.Store
+	DataDir            string
+	CredentialProvider CredentialProvider
 }
 
 // NewApp initializes the logger, resolves directories, and connects to the database.

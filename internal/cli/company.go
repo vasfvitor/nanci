@@ -1,14 +1,13 @@
-package commands
+package cli
 
 import (
 	"context"
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 var (
@@ -26,60 +25,40 @@ var companyCmd = &cobra.Command{
 var companyAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adiciona uma nova empresa",
-	Run: func(cmd *cobra.Command, args []string) {
-		app, err := initApp()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao inicializar: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer app.Close()
+		defer application.Close()
 
-		if err := cnpj.Validate(companyCNPJ); err != nil {
-			fmt.Fprintf(os.Stderr, "CNPJ inválido: %v\n", err)
+		if err := application.AddCompany(context.Background(), app.AddCompanyInput{
+			CNPJ:        companyCNPJ,
+			Name:        companyName,
+			CertPath:    companyCert,
+			Environment: companyEnv,
+		}); err != nil {
+			fmt.Fprintf(os.Stderr, "Erro ao adicionar empresa: %v\n", err)
 			os.Exit(1)
 		}
 
 		cleanedCNPJ := cnpj.Clean(companyCNPJ)
-		root, _ := cnpj.Root(cleanedCNPJ)
-
-		// Check if certificate file exists
-		if _, err := os.Stat(companyCert); os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Arquivo de certificado não encontrado: %s\n", companyCert)
-			os.Exit(1)
-		}
-
-		company := &nfse.Company{
-			ID:          uuid.NewString(),
-			CNPJ:        cleanedCNPJ,
-			CNPJRoot:    root,
-			Name:        companyName,
-			CertPath:    companyCert,
-			Environment: companyEnv,
-		}
-
-		ctx := context.Background()
-		if err := app.Store.CreateCompany(ctx, company); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao salvar empresa: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Empresa '%s' (%s) adicionada com sucesso.\n", company.Name, cnpj.Format(company.CNPJ))
+		fmt.Printf("Empresa '%s' (%s) adicionada com sucesso.\n", companyName, cnpj.Format(cleanedCNPJ))
+		return nil
 	},
 }
 
 var companyListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lista todas as empresas",
-	Run: func(cmd *cobra.Command, args []string) {
-		app, err := initApp()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao inicializar: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer app.Close()
+		defer application.Close()
 
-		ctx := context.Background()
-		companies, err := app.Store.ListCompanies(ctx)
+		companies, err := application.ListCompanies(context.Background())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Erro ao listar empresas: %v\n", err)
 			os.Exit(1)
@@ -87,7 +66,7 @@ var companyListCmd = &cobra.Command{
 
 		if len(companies) == 0 {
 			fmt.Println("Nenhuma empresa cadastrada.")
-			return
+			return nil
 		}
 
 		fmt.Printf("%-20s %-30s %-15s %s\n", "CNPJ", "Nome", "Ambiente", "Último NSU")
@@ -95,6 +74,7 @@ var companyListCmd = &cobra.Command{
 		for _, c := range companies {
 			fmt.Printf("%-20s %-30s %-15s %d\n", cnpj.Format(c.CNPJ), c.Name, c.Environment, c.LastNSU)
 		}
+		return nil
 	},
 }
 
