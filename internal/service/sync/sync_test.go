@@ -1,0 +1,392 @@
+package syncservice
+
+import (
+	"bytes"
+	"compress/gzip"
+	"context"
+	"database/sql"
+	"encoding/base64"
+	"fmt"
+	"path/filepath"
+	"testing"
+
+	_ "modernc.org/sqlite"
+
+	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
+)
+
+type fetchResult struct {
+	response *adn.DocumentResponse
+	err      error
+}
+
+type fakeFetcher struct {
+	results       []fetchResult
+	requestedNSUs []int64
+}
+
+func (f *fakeFetcher) FetchDocuments(_ context.Context, lastNSU int64) (*adn.DocumentResponse, error) {
+	f.requestedNSUs = append(f.requestedNSUs, lastNSU)
+	if len(f.results) == 0 {
+		return nil, fmt.Errorf("unexpected fetch for NSU %d", lastNSU)
+	}
+
+	result := f.results[0]
+	f.results = f.results[1:]
+	return result.response, result.err
+}
+
+func TestSyncAdvancesCheckpointToUltNSUOnEmptyBatch(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 10)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{UltNSU: 15, MaxNSU: 15, Docs: nil}},
+		},
+	}
+	svc.apiClient = fetcher
+
+	if err := svc.Sync(context.Background(), company, nil); err != nil {
+		t.Fatalf("Sync first run: %v", err)
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany after first run: %v", err)
+	}
+	if reloaded.LastNSU != 15 {
+		t.Fatalf("LastNSU after empty batch = %d, want 15", reloaded.LastNSU)
+	}
+
+	run := readLatestSyncRun(t, rawDB)
+	if run.Status != "completed" || run.ToNSU != 15 {
+		t.Fatalf("unexpected sync run after empty batch: %+v", run)
+	}
+
+	secondFetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{UltNSU: 15, MaxNSU: 15, Docs: nil}},
+		},
+	}
+	svc.apiClient = secondFetcher
+	if err := svc.Sync(context.Background(), reloaded, nil); err != nil {
+		t.Fatalf("Sync second run: %v", err)
+	}
+	if len(secondFetcher.requestedNSUs) != 1 || secondFetcher.requestedNSUs[0] != 15 {
+		t.Fatalf("second fetch requested NSUs = %v, want [15]", secondFetcher.requestedNSUs)
+	}
+}
+
+func TestSyncCommitsUltNSUEvenWhenLastEnvelopeIsLower(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 10)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{
+				UltNSU: 25,
+				MaxNSU: 25,
+				Docs: []adn.DocumentEnvelope{
+					makeDocumentEnvelope(11, "CHAVE-11", "11111111000111", "22222222000122"),
+					makeDocumentEnvelope(12, "CHAVE-12", "11111111000111", "22222222000122"),
+				},
+			}},
+		},
+	}
+	svc.apiClient = fetcher
+
+	if err := svc.Sync(context.Background(), company, nil); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany: %v", err)
+	}
+	if reloaded.LastNSU != 25 {
+		t.Fatalf("LastNSU = %d, want 25", reloaded.LastNSU)
+	}
+
+	run := readLatestSyncRun(t, rawDB)
+	if run.Status != "completed" || run.ToNSU != 25 || run.DocumentsFound != 2 {
+		t.Fatalf("unexpected sync run: %+v", run)
+	}
+}
+
+func TestSyncFailsWithoutAdvancingCheckpointWhenFirstItemFails(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 10)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{
+				UltNSU: 20,
+				MaxNSU: 20,
+				Docs: []adn.DocumentEnvelope{
+					{NSU: 11, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: "not-base64"},
+				},
+			}},
+		},
+	}
+	svc.apiClient = fetcher
+
+	err := svc.Sync(context.Background(), company, nil)
+	if err == nil {
+		t.Fatal("Sync error = nil, want failure")
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany: %v", err)
+	}
+	if reloaded.LastNSU != 10 {
+		t.Fatalf("LastNSU after first-item failure = %d, want 10", reloaded.LastNSU)
+	}
+
+	run := readLatestSyncRun(t, rawDB)
+	if run.Status != "failed" || run.ToNSU != 10 || run.ErrorsCount != 1 || run.DocumentsFound != 0 {
+		t.Fatalf("unexpected sync run: %+v", run)
+	}
+}
+
+func TestSyncFailsOnLaterItemAndRetriesFromLastCommittedNSU(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 9)
+
+	firstFetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{
+				UltNSU: 30,
+				MaxNSU: 30,
+				Docs: []adn.DocumentEnvelope{
+					makeDocumentEnvelope(10, "CHAVE-10", company.CNPJ, "22222222000122"),
+					{NSU: 11, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: "not-base64"},
+				},
+			}},
+		},
+	}
+	svc.apiClient = firstFetcher
+
+	err := svc.Sync(context.Background(), company, nil)
+	if err == nil {
+		t.Fatal("first Sync error = nil, want failure")
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany after failed run: %v", err)
+	}
+	if reloaded.LastNSU != 10 {
+		t.Fatalf("LastNSU after later-item failure = %d, want 10", reloaded.LastNSU)
+	}
+
+	firstRun := readLatestSyncRun(t, rawDB)
+	if firstRun.Status != "failed" || firstRun.ToNSU != 10 || firstRun.ErrorsCount != 1 || firstRun.DocumentsFound != 1 {
+		t.Fatalf("unexpected first sync run: %+v", firstRun)
+	}
+
+	secondFetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{
+				UltNSU: 30,
+				MaxNSU: 30,
+				Docs: []adn.DocumentEnvelope{
+					makeDocumentEnvelope(11, "CHAVE-11", company.CNPJ, "22222222000122"),
+				},
+			}},
+		},
+	}
+	svc.apiClient = secondFetcher
+	if err := svc.Sync(context.Background(), reloaded, nil); err != nil {
+		t.Fatalf("second Sync: %v", err)
+	}
+
+	if len(secondFetcher.requestedNSUs) != 1 || secondFetcher.requestedNSUs[0] != 10 {
+		t.Fatalf("second fetch requested NSUs = %v, want [10]", secondFetcher.requestedNSUs)
+	}
+
+	reloadedAgain, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany after retry: %v", err)
+	}
+	if reloadedAgain.LastNSU != 30 {
+		t.Fatalf("LastNSU after retry = %d, want 30", reloadedAgain.LastNSU)
+	}
+}
+
+func TestSyncDoesNotAdvanceCheckpointOnTransportError(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 12)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{err: fmt.Errorf("transport down")},
+		},
+	}
+	svc.apiClient = fetcher
+
+	err := svc.Sync(context.Background(), company, nil)
+	if err == nil {
+		t.Fatal("Sync error = nil, want failure")
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany: %v", err)
+	}
+	if reloaded.LastNSU != 12 {
+		t.Fatalf("LastNSU after transport error = %d, want 12", reloaded.LastNSU)
+	}
+
+	run := readLatestSyncRun(t, rawDB)
+	if run.Status != "failed" || run.ToNSU != 12 {
+		t.Fatalf("unexpected sync run: %+v", run)
+	}
+}
+
+func TestSyncMarksRunInterruptedOnContextCancellation(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 12)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{err: context.Canceled},
+		},
+	}
+	svc.apiClient = fetcher
+
+	err := svc.Sync(context.Background(), company, nil)
+	if err == nil {
+		t.Fatal("Sync error = nil, want context cancellation")
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany: %v", err)
+	}
+	if reloaded.LastNSU != 12 {
+		t.Fatalf("LastNSU after interruption = %d, want 12", reloaded.LastNSU)
+	}
+
+	run := readLatestSyncRun(t, rawDB)
+	if run.Status != "interrupted" || run.ToNSU != 12 {
+		t.Fatalf("unexpected sync run: %+v", run)
+	}
+}
+
+func TestSyncFailsOnProtocolRegressionWhenUltNSUGoesBackwards(t *testing.T) {
+	svc, company, sqliteStore, rawDB := setupSyncTest(t, 20)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{UltNSU: 19, MaxNSU: 25, Docs: nil}},
+		},
+	}
+	svc.apiClient = fetcher
+
+	err := svc.Sync(context.Background(), company, nil)
+	if err == nil {
+		t.Fatal("Sync error = nil, want protocol failure")
+	}
+
+	reloaded, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatalf("GetCompany: %v", err)
+	}
+	if reloaded.LastNSU != 20 {
+		t.Fatalf("LastNSU after protocol failure = %d, want 20", reloaded.LastNSU)
+	}
+
+	run := readLatestSyncRun(t, rawDB)
+	if run.Status != "failed" || run.ToNSU != 20 {
+		t.Fatalf("unexpected sync run: %+v", run)
+	}
+}
+
+type syncRunSnapshot struct {
+	Status         string
+	ToNSU          int64
+	DocumentsFound int
+	ErrorsCount    int
+}
+
+func setupSyncTest(t *testing.T, lastNSU int64) (*SyncService, *nfse.Company, *store.SQLiteStore, *sql.DB) {
+	t.Helper()
+
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "sync.db")
+
+	sqliteStore, err := store.NewSQLiteStore(dbPath, true)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = sqliteStore.Close()
+	})
+
+	rawDB, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = rawDB.Close()
+	})
+
+	company := &nfse.Company{
+		ID:          "company-1",
+		CNPJ:        "12345678000199",
+		CNPJRoot:    "12345678",
+		Name:        "Sync Test Co",
+		CertPath:    "cert.pfx",
+		Environment: "producao_restrita",
+		LastNSU:     lastNSU,
+	}
+	if err := sqliteStore.CreateCompany(context.Background(), company); err != nil {
+		t.Fatalf("CreateCompany: %v", err)
+	}
+
+	svc := NewSyncService(sqliteStore, &fakeFetcher{}, files.NewWriter(tempDir))
+	return svc, company, sqliteStore, rawDB
+}
+
+func readLatestSyncRun(t *testing.T, db *sql.DB) syncRunSnapshot {
+	t.Helper()
+
+	var run syncRunSnapshot
+	err := db.QueryRow(
+		`SELECT status, COALESCE(to_nsu, 0), documents_found, errors_count
+		 FROM sync_runs
+		 ORDER BY started_at DESC, id DESC
+		 LIMIT 1`,
+	).Scan(&run.Status, &run.ToNSU, &run.DocumentsFound, &run.ErrorsCount)
+	if err != nil {
+		t.Fatalf("readLatestSyncRun: %v", err)
+	}
+
+	return run
+}
+
+func makeDocumentEnvelope(nsu int64, chave, prestadorCNPJ, tomadorCNPJ string) adn.DocumentEnvelope {
+	xml := fmt.Sprintf(
+		`<NFSe><infNFSe><chNFSe>%s</chNFSe><dhEmi>2026-06-04T12:00:00Z</dhEmi><compNFSe>2026-06-01</compNFSe><prest><CNPJ>%s</CNPJ><xNome>Prestador</xNome></prest><toma><CNPJ>%s</CNPJ><xNome>Tomador</xNome></toma><valores><vServ>100.00</vServ><vISS>5.00</vISS></valores></infNFSe></NFSe>`,
+		chave,
+		prestadorCNPJ,
+		tomadorCNPJ,
+	)
+
+	return adn.DocumentEnvelope{
+		NSU:           nsu,
+		Schema:        "procNFSe_v1.00.xsd",
+		XMLGZipBase64: gzipBase64(tobytes(xml)),
+	}
+}
+
+func gzipBase64(data []byte) string {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	_, _ = gz.Write(data)
+	_ = gz.Close()
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
+}
+
+func tobytes(s string) []byte {
+	return []byte(s)
+}

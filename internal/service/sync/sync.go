@@ -2,6 +2,7 @@ package syncservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,12 +18,16 @@ import (
 // SyncService orchestrates the synchronization of documents from the ADN API.
 type SyncService struct {
 	store      store.Store
-	apiClient  *adn.Client
+	apiClient  documentFetcher
 	fileWriter *files.Writer
 }
 
+type documentFetcher interface {
+	FetchDocuments(ctx context.Context, lastNSU int64) (*adn.DocumentResponse, error)
+}
+
 // NewSyncService creates a new SyncService.
-func NewSyncService(store store.Store, apiClient *adn.Client, fileWriter *files.Writer) *SyncService {
+func NewSyncService(store store.Store, apiClient documentFetcher, fileWriter *files.Writer) *SyncService {
 	return &SyncService{
 		store:      store,
 		apiClient:  apiClient,
@@ -54,7 +59,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 		_ = s.store.UpdateSyncRun(context.Background(), syncRun) // Use background context to ensure it saves
 	}()
 
-	currentNSU := company.LastNSU
+	committedNSU := company.LastNSU
 	totalDocs := 0
 	totalErrors := 0
 
@@ -68,10 +73,29 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 		}
 
 		// Fetch documents batch
-		resp, err := s.apiClient.FetchDocuments(ctx, currentNSU)
+		requestedNSU := committedNSU
+		resp, err := s.apiClient.FetchDocuments(ctx, requestedNSU)
 		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				syncRun.Status = "interrupted"
+				syncRun.ToNSU = committedNSU
+				syncRun.DocumentsFound = totalDocs
+				syncRun.ErrorsCount = totalErrors
+				return err
+			}
 			syncRun.Status = "failed"
-			return fmt.Errorf("failed to fetch documents at NSU %d: %w", currentNSU, err)
+			syncRun.ToNSU = committedNSU
+			syncRun.DocumentsFound = totalDocs
+			syncRun.ErrorsCount = totalErrors
+			return fmt.Errorf("failed to fetch documents at NSU %d: %w", requestedNSU, err)
+		}
+
+		if resp.UltNSU < requestedNSU {
+			syncRun.Status = "failed"
+			syncRun.ToNSU = committedNSU
+			syncRun.DocumentsFound = totalDocs
+			syncRun.ErrorsCount = totalErrors
+			return fmt.Errorf("invalid ADN response: ultNSU %d is behind requested NSU %d", resp.UltNSU, requestedNSU)
 		}
 
 		docsInBatch := len(resp.Docs)
@@ -79,16 +103,17 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 		// Report progress
 		if progress != nil {
 			progress(nfse.ProgressEvent{
-				CurrentNSU:  currentNSU,
+				CurrentNSU:  committedNSU,
 				MaxNSU:      resp.MaxNSU,
 				DocsFound:   totalDocs,
 				DocsInBatch: docsInBatch,
 				Errors:      totalErrors,
-				Message:     fmt.Sprintf("Fetched %d documents. Target MaxNSU: %d", docsInBatch, resp.MaxNSU),
+				Message:     fmt.Sprintf("Fetched %d documents. ultNSU=%d MaxNSU=%d", docsInBatch, resp.UltNSU, resp.MaxNSU),
 			})
 		}
 
 		// Process batch
+		batchSuccessNSU := committedNSU
 		for _, env := range resp.Docs {
 			var err error
 			// Check schema to decide if it's a document or an event
@@ -100,39 +125,51 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 
 			if err != nil {
 				totalErrors++
-				// We log or handle the error but continue to the next document
 				if progress != nil {
 					progress(nfse.ProgressEvent{
-						CurrentNSU: env.NSU,
+						CurrentNSU: batchSuccessNSU,
+						MaxNSU:     resp.MaxNSU,
 						Errors:     totalErrors,
-						Message:    fmt.Sprintf("Error processing NSU %d: %v", env.NSU, err),
+						Message:    fmt.Sprintf("Error processing NSU %d after committed NSU %d: %v", env.NSU, batchSuccessNSU, err),
 					})
 				}
-			} else {
-				totalDocs++
+
+				if batchSuccessNSU > company.LastNSU {
+					if err := s.store.UpdateLastNSU(ctx, company.ID, batchSuccessNSU); err != nil {
+						return fmt.Errorf("failed to update company last NSU after item error: %w", err)
+					}
+					company.LastNSU = batchSuccessNSU
+				}
+
+				committedNSU = batchSuccessNSU
+				syncRun.ToNSU = committedNSU
+				syncRun.DocumentsFound = totalDocs
+				syncRun.ErrorsCount = totalErrors
+				syncRun.Status = "failed"
+				return fmt.Errorf("failed to process NSU %d: %w", env.NSU, err)
 			}
 
-			// Update NSU
-			if env.NSU > currentNSU {
-				currentNSU = env.NSU
+			totalDocs++
+			if env.NSU > batchSuccessNSU {
+				batchSuccessNSU = env.NSU
 			}
+		}
+
+		committedNSU = resp.UltNSU
+		if committedNSU > company.LastNSU {
+			if err := s.store.UpdateLastNSU(ctx, company.ID, committedNSU); err != nil {
+				return fmt.Errorf("failed to update company last NSU: %w", err)
+			}
+			company.LastNSU = committedNSU
 		}
 
 		// Update SyncRun stats
-		syncRun.ToNSU = currentNSU
+		syncRun.ToNSU = committedNSU
 		syncRun.DocumentsFound = totalDocs
 		syncRun.ErrorsCount = totalErrors
 
-		// Update Company LastNSU in DB
-		if currentNSU > company.LastNSU {
-			if err := s.store.UpdateLastNSU(ctx, company.ID, currentNSU); err != nil {
-				return fmt.Errorf("failed to update company last NSU: %w", err)
-			}
-			company.LastNSU = currentNSU
-		}
-
 		// Stop condition
-		if currentNSU >= resp.MaxNSU || docsInBatch == 0 {
+		if committedNSU >= resp.MaxNSU {
 			break
 		}
 	}
