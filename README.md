@@ -6,6 +6,7 @@
 - **Leitura Nativa de Certificados**: Autenticação mTLS lendo diretamente arquivos `.pfx` ou `.p12` de certificados A1, sem depender de ferramentas do SO.
 - **Persistência Local (SQLite)**: Banco de dados auto-contido para gerenciar contribuintes, reter histórico e indexar os documentos baixados.
 - **Modelo Canônico + Visão por Empresa**: Um mesmo `chave_acesso` pode ser associado a múltiplas empresas gerenciadas, preservando `company_role` e `visibility_reason` por empresa.
+- **Validação de CNPJ com DV**: CNPJs numéricos passam por validação de dígitos verificadores; CNPJ alfanumérico permanece bloqueado até suporte oficial fim a fim.
 - **Parser Avançado**: Descompacta o payload do governo (Base64 + GZip), extrai os dados essenciais e calcula o hash SHA-256 para integridade.
 - **Exportação Rica**:
   - Geração de planilhas Excel prontas para uso contábil (`.xlsx`) com formatação automática de moeda.
@@ -41,6 +42,8 @@ Cadastra uma empresa no banco ligando-a ao seu respectivo certificado digital A1
 ./nanci.exe company add --cnpj 12345678000199 --name "Minha Empresa" --cert "C:\Caminho\para\certificado.pfx"
 ```
 Você pode definir a variável de ambiente `NANCI_CERT_PASSWORD=sua-senha` para não precisar digitá-la interativamente nas execuções.
+
+Observação: nesta versão o cadastro aceita apenas CNPJ numérico clássico com dígitos verificadores válidos. O formato alfanumérico da RFB ainda não foi habilitado no produto.
 
 ### 3. Sincronizar (Pull)
 Conecta à Receita Federal e baixa todos os documentos novos disponíveis.
