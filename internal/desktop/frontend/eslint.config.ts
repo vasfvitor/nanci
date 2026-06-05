@@ -2,33 +2,41 @@ import js from '@eslint/js'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import pluginVue from 'eslint-plugin-vue'
-import json from '@eslint/json'
-import css from '@eslint/css'
+import prettier from 'eslint-config-prettier'
 import { defineConfig } from 'eslint/config'
 
 export default defineConfig([
   {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts,vue}'],
-    plugins: { js },
-    extends: ['js/recommended'],
-    languageOptions: { globals: globals.browser },
+    ignores: ['dist/**', 'node_modules/**', 'wailsjs/**', '*.tsbuildinfo', 'package.json.md5'],
   },
-  tseslint.configs.recommended,
-  pluginVue.configs['flat/essential'],
+
+  js.configs.recommended,
+
+  ...tseslint.configs.recommended,
+
+  ...pluginVue.configs['flat/essential'],
+
+  {
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts,vue}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.es2022,
+      },
+    },
+  },
+
   {
     files: ['**/*.vue'],
-    languageOptions: { parserOptions: { parser: tseslint.parser } },
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+      },
+    },
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
   },
-  {
-    files: ['**/*.json'],
-    plugins: { json },
-    language: 'json/json',
-    extends: ['json/recommended'],
-  },
-  {
-    files: ['**/*.css'],
-    plugins: { css },
-    language: 'css/css',
-    extends: ['css/recommended'],
-  },
+
+  prettier,
 ])
