@@ -13,9 +13,12 @@ import (
 
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest struct {
-	CompanyID string
-	CNPJ      string
-	CertPath  string
+	CompanyID       string
+	CompanyName     string
+	TargetCNPJ      string
+	CredentialID    string
+	CredentialLabel string
+	CertPath        string
 }
 
 // CredentialProvider abstracts how certificate passwords are obtained.

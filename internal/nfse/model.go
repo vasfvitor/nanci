@@ -6,15 +6,34 @@ import (
 
 // Company represents a company that syncs documents.
 type Company struct {
-	ID          string
-	CNPJ        string // supports numeric (14 digits) and alphanumeric
-	CNPJRoot    string // first 8 chars - groups branches
-	Name        string
-	CertPath    string
-	Environment string // "producao_restrita" | "producao"
-	LastNSU     int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                 string
+	CNPJ               string // supports numeric (14 digits) and alphanumeric
+	CNPJRoot           string // first 8 chars - groups branches
+	Name               string
+	CredentialID       string
+	CredentialLabel    string
+	CredentialCertPath string
+	Environment        string // derived from the assigned credential
+	LastNSU            int64
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// Credential represents a reusable mTLS credential that can be assigned to multiple companies.
+type Credential struct {
+	ID                string
+	Label             string
+	CertPath          string
+	Environment       string
+	OwnerCNPJ         string
+	OwnerCNPJRoot     string
+	FingerprintSHA256 string
+	SubjectName       string
+	NotBefore         *time.Time
+	NotAfter          *time.Time
+	InspectedAt       *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // Document represents a synced fiscal document (NFS-e).
@@ -75,15 +94,19 @@ type CompanyStats struct {
 
 // SyncRun represents a synchronization execution for audit and control.
 type SyncRun struct {
-	ID             string
-	CompanyID      string
-	StartedAt      time.Time
-	FinishedAt     *time.Time
-	FromNSU        int64
-	ToNSU          int64
-	DocumentsFound int
-	ErrorsCount    int
-	Status         string // "running" | "completed" | "failed" | "interrupted"
+	ID                string
+	CompanyID         string
+	CredentialID      string
+	CredentialCNPJ    string
+	ConsultationCNPJ  string
+	ConsultationBasis string // "exact_certificate_cnpj" | "same_root_certificate"
+	StartedAt         time.Time
+	FinishedAt        *time.Time
+	FromNSU           int64
+	ToNSU             int64
+	DocumentsFound    int
+	ErrorsCount       int
+	Status            string // "running" | "completed" | "failed" | "interrupted"
 }
 
 // ProgressEvent contains information about the progress of a long-running operation.

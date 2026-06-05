@@ -19,9 +19,30 @@
             </q-badge>
           </q-card-section>
 
-          <q-card-section> Último NSU: {{ company.LastNSU }} </q-card-section>
+          <q-card-section class="q-gutter-y-sm">
+            <div><strong>Último NSU:</strong> {{ company.LastNSU }}</div>
+            <div><strong>Credencial ativa:</strong> {{ company.CredentialLabel || 'Sem credencial' }}</div>
+
+            <q-select
+              v-model="selectedCredentials[company.CNPJ]"
+              :options="credentialOptions"
+              emit-value
+              map-options
+              label="Trocar credencial"
+              outlined
+              dense
+            />
+          </q-card-section>
 
           <q-card-actions align="right">
+            <q-btn
+              flat
+              color="secondary"
+              icon="link"
+              label="Salvar credencial"
+              @click="assignCredential(company.CNPJ)"
+              :disable="!selectedCredentials[company.CNPJ] || selectedCredentials[company.CNPJ] === company.CredentialID"
+            />
             <q-btn
               flat
               color="primary"
@@ -35,34 +56,61 @@
       </div>
     </div>
 
-    <!-- Empty State -->
     <div v-if="companies.length === 0" class="text-center q-pa-xl text-grey-6">
       <q-icon name="business" size="4rem" />
       <p class="text-h6 q-mt-md">Nenhuma empresa cadastrada</p>
     </div>
 
-    <AddCompanyDialog v-model="showAddDialog" @added="loadCompanies" />
+    <AddCompanyDialog v-model="showAddDialog" @added="reloadData" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ListCompanies, Pull } from '../../wailsjs/go/main/App'
-import { nfse } from '../../wailsjs/go/models'
+import { onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
+import { AssignCredentialToCompany, ListCompanies, ListCredentials, Pull } from '../../wailsjs/go/main/App'
+import { nfse } from '../../wailsjs/go/models'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 
 const $q = useQuasar()
 const companies = ref<nfse.Company[]>([])
 const showAddDialog = ref(false)
 const syncing = ref<string | null>(null)
+const credentialOptions = ref<{ label: string; value: string }[]>([])
+const selectedCredentials = ref<Record<string, string>>({})
+
+async function loadCredentials() {
+  const list = (await ListCredentials()) || []
+  credentialOptions.value = list.map((credential) => ({
+    label: `${credential.Label} (${credential.Environment})`,
+    value: credential.ID,
+  }))
+}
 
 async function loadCompanies() {
+  const list = (await ListCompanies()) || []
+  companies.value = list
+  selectedCredentials.value = Object.fromEntries(list.map((company) => [company.CNPJ, company.CredentialID]))
+}
+
+async function reloadData() {
   try {
-    const list = await ListCompanies()
-    companies.value = list || []
-  } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao listar empresas: ' + err })
+    await Promise.all([loadCredentials(), loadCompanies()])
+  } catch (err: any) {
+    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + err })
+  }
+}
+
+async function assignCredential(cnpj: string) {
+  try {
+    await AssignCredentialToCompany({
+      CompanyCNPJ: cnpj,
+      CredentialID: selectedCredentials.value[cnpj],
+    })
+    $q.notify({ type: 'positive', message: 'Credencial atribuída com sucesso.' })
+    await loadCompanies()
+  } catch (err: any) {
+    $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + err })
   }
 }
 
@@ -70,11 +118,12 @@ async function syncCompany(cnpj: string) {
   syncing.value = cnpj
   try {
     const result = await Pull({ CNPJ: cnpj })
+    const credentialCNPJ = result.CredentialCNPJ || 'pendente'
     $q.notify({
       type: 'positive',
-      message: `Sincronização concluída! Docs: ${result.DocumentsFound}, Erros: ${result.Errors}`,
+      message: `Sincronização concluída! Docs: ${result.DocumentsFound}, Base: ${result.ConsultationBasis}, Credencial: ${credentialCNPJ}`,
     })
-    await loadCompanies() // refresh last NSU
+    await loadCompanies()
   } catch (err: any) {
     if (String(err).includes('operação cancelada')) {
       $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
@@ -87,6 +136,6 @@ async function syncCompany(cnpj: string) {
 }
 
 onMounted(() => {
-  loadCompanies()
+  reloadData()
 })
 </script>

@@ -20,12 +20,15 @@ type PullInput struct {
 
 // PullResult summarises a completed sync run.
 type PullResult struct {
-	CompanyName    string
-	CNPJ           string
-	DocumentsFound int
-	EventsFound    int
-	Errors         int
-	Duration       time.Duration
+	CompanyName       string
+	CNPJ              string
+	CredentialLabel   string
+	CredentialCNPJ    string
+	ConsultationBasis string
+	DocumentsFound    int
+	EventsFound       int
+	Errors            int
+	Duration          time.Duration
 }
 
 // Pull synchronises fiscal documents for the given company from the ADN API.
@@ -46,29 +49,55 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	if company == nil {
 		return PullResult{}, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 	}
+	credential, err := a.Store.GetCredential(ctx, company.CredentialID)
+	if err != nil {
+		return PullResult{}, fmt.Errorf("buscar credencial: %w", err)
+	}
+	if credential == nil {
+		return PullResult{}, fmt.Errorf("credencial não encontrada para a empresa %s", company.Name)
+	}
 
 	// 2. Obtain certificate password via the injected provider
 	if a.CredentialProvider == nil {
 		return PullResult{}, fmt.Errorf("CredentialProvider não configurado")
 	}
 	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
-		CompanyID: company.ID,
-		CNPJ:      company.CNPJ,
-		CertPath:  company.CertPath,
+		CompanyID:       company.ID,
+		CompanyName:     company.Name,
+		TargetCNPJ:      company.CNPJ,
+		CredentialID:    credential.ID,
+		CredentialLabel: credential.Label,
+		CertPath:        credential.CertPath,
 	})
 	if err != nil {
 		return PullResult{}, fmt.Errorf("obter senha do certificado: %w", err)
 	}
 
 	// 3. Load TLS certificate
-	tlsCert, err := cert.LoadPKCS12(company.CertPath, pass)
+	tlsCert, inspection, err := cert.LoadPKCS12WithInspection(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
+	}
+	credential.OwnerCNPJ = inspection.OwnerCNPJ
+	credential.OwnerCNPJRoot = inspection.OwnerCNPJRoot
+	credential.FingerprintSHA256 = inspection.FingerprintSHA256
+	credential.SubjectName = inspection.SubjectName
+	credential.NotBefore = &inspection.NotBefore
+	credential.NotAfter = &inspection.NotAfter
+	now := time.Now().UTC()
+	credential.InspectedAt = &now
+	if err := a.Store.UpdateCredentialInspection(ctx, credential); err != nil {
+		return PullResult{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
+	}
+
+	consultationBasis, err := validateConsultationCompatibility(company, credential)
+	if err != nil {
+		return PullResult{}, err
 	}
 
 	// 4. Build ADN client
 	httpClient := adn.NewHTTPClient(tlsCert)
-	apiClient, err := adn.NewClient(httpClient, company.Environment)
+	apiClient, err := adn.NewClient(httpClient, credential.Environment)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
@@ -83,6 +112,9 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	var result PullResult
 	result.CompanyName = company.Name
 	result.CNPJ = company.CNPJ
+	result.CredentialLabel = credential.Label
+	result.CredentialCNPJ = credential.OwnerCNPJ
+	result.ConsultationBasis = consultationBasis
 
 	progress := func(event nfse.ProgressEvent) {
 		if event.Errors > result.Errors {
@@ -94,10 +126,26 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	start := time.Now()
-	if err := svc.Sync(ctx, company, progress); err != nil {
+	if err := svc.Sync(ctx, company, credential, consultationBasis, progress); err != nil {
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
 	result.Duration = time.Since(start)
 
 	return result, nil
+}
+
+func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (string, error) {
+	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
+		return "", fmt.Errorf("o certificado não expõe um CNPJ proprietário utilizável para consulta")
+	}
+	if credential.Environment == "" {
+		return "", fmt.Errorf("a credencial não possui ambiente configurado")
+	}
+	if company.CNPJRoot != credential.OwnerCNPJRoot {
+		return "", fmt.Errorf("a credencial pertence à raiz %s e não pode consultar a empresa %s", credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
+	}
+	if company.CNPJ == credential.OwnerCNPJ {
+		return "exact_certificate_cnpj", nil
+	}
+	return "same_root_certificate", nil
 }

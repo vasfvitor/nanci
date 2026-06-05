@@ -15,20 +15,18 @@ func TestSQLiteStore_CanonicalAndCompanyDocuments(t *testing.T) {
 	ctx := context.Background()
 
 	companyA := &nfse.Company{
-		ID:          "comp_a",
-		CNPJ:        "12345678000199",
-		CNPJRoot:    "12345678",
-		Name:        "Company A",
-		CertPath:    "a.pfx",
-		Environment: "producao_restrita",
+		ID:           "comp_a",
+		CNPJ:         "12345678000199",
+		CNPJRoot:     "12345678",
+		Name:         "Company A",
+		CredentialID: createTestCredential(t, store, "cred-a", "a.pfx", "producao_restrita"),
 	}
 	companyB := &nfse.Company{
-		ID:          "comp_b",
-		CNPJ:        "99887766000155",
-		CNPJRoot:    "99887766",
-		Name:        "Company B",
-		CertPath:    "b.pfx",
-		Environment: "producao_restrita",
+		ID:           "comp_b",
+		CNPJ:         "99887766000155",
+		CNPJRoot:     "99887766",
+		Name:         "Company B",
+		CredentialID: createTestCredential(t, store, "cred-b", "b.pfx", "producao_restrita"),
 	}
 
 	for _, company := range []*nfse.Company{companyA, companyB} {
@@ -144,12 +142,11 @@ func TestSQLiteStore_CompanyDocumentIdempotencyAndSameRootVisibility(t *testing.
 	ctx := context.Background()
 
 	company := &nfse.Company{
-		ID:          "comp_root",
-		CNPJ:        "12345678000270",
-		CNPJRoot:    "12345678",
-		Name:        "Branch Company",
-		CertPath:    "branch.pfx",
-		Environment: "producao_restrita",
+		ID:           "comp_root",
+		CNPJ:         "12345678000270",
+		CNPJRoot:     "12345678",
+		Name:         "Branch Company",
+		CredentialID: createTestCredential(t, store, "cred-branch", "branch.pfx", "producao_restrita"),
 	}
 	if err := store.CreateCompany(ctx, company); err != nil {
 		t.Fatalf("CreateCompany: %v", err)

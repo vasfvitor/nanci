@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -28,16 +29,16 @@ func setupTestStore(t *testing.T) *SQLiteStore {
 func TestSQLiteStore_CompanyCRUD(t *testing.T) {
 	store := setupTestStore(t)
 	ctx := context.Background()
+	credentialID := createTestCredential(t, store, "cred-1", "/tmp/cert.pfx", "producao_restrita")
 
 	// 1. Create Company
 	company := &nfse.Company{
-		ID:          "comp_123",
-		CNPJ:        "12345678000199",
-		CNPJRoot:    "12345678",
-		Name:        "Test Company",
-		CertPath:    "/tmp/cert.pfx",
-		Environment: "producao_restrita",
-		LastNSU:     0,
+		ID:           "comp_123",
+		CNPJ:         "12345678000199",
+		CNPJRoot:     "12345678",
+		Name:         "Test Company",
+		CredentialID: credentialID,
+		LastNSU:      0,
 	}
 
 	err := store.CreateCompany(ctx, company)
@@ -60,6 +61,9 @@ func TestSQLiteStore_CompanyCRUD(t *testing.T) {
 	if c.Name != "Test Company" {
 		t.Errorf("expected Name 'Test Company', got '%s'", c.Name)
 	}
+	if c.CredentialID != credentialID {
+		t.Fatalf("CredentialID = %q, want %q", c.CredentialID, credentialID)
+	}
 
 	// 3. List Companies
 	companies, err := store.ListCompanies(ctx)
@@ -80,4 +84,25 @@ func TestSQLiteStore_CompanyCRUD(t *testing.T) {
 	if c2.LastNSU != 150 {
 		t.Errorf("expected LastNSU 150, got %d", c2.LastNSU)
 	}
+}
+
+func createTestCredential(t *testing.T, store *SQLiteStore, id, certPath, environment string) string {
+	t.Helper()
+
+	now := time.Now().UTC()
+	credential := &nfse.Credential{
+		ID:            id,
+		Label:         id,
+		CertPath:      certPath,
+		Environment:   environment,
+		OwnerCNPJ:     "12345678000199",
+		OwnerCNPJRoot: "12345678",
+		NotBefore:     &now,
+		NotAfter:      &now,
+		InspectedAt:   &now,
+	}
+	if err := store.CreateCredential(context.Background(), credential); err != nil {
+		t.Fatalf("CreateCredential: %v", err)
+	}
+	return credential.ID
 }

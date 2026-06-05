@@ -116,6 +116,22 @@ func (a *App) AddCompany(input app.AddCompanyInput) error {
 	return a.core.AddCompany(a.ctx, input)
 }
 
+func (a *App) AddCredential(input app.AddCredentialInput) error {
+	return a.core.AddCredential(a.ctx, input)
+}
+
+func (a *App) ListCredentials() ([]nfse.Credential, error) {
+	return a.core.ListCredentials(a.ctx)
+}
+
+func (a *App) UpdateCredentialPath(input app.UpdateCredentialPathInput) error {
+	return a.core.UpdateCredentialPath(a.ctx, input)
+}
+
+func (a *App) AssignCredentialToCompany(input app.AssignCredentialInput) error {
+	return a.core.AssignCredentialToCompany(a.ctx, input)
+}
+
 func (a *App) ListCompanies() ([]nfse.Company, error) {
 	return a.core.ListCompanies(a.ctx)
 }

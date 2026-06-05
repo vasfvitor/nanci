@@ -3,6 +3,8 @@ export namespace app {
 	export class AddCompanyInput {
 	    CNPJ: string;
 	    Name: string;
+	    CredentialID: string;
+	    CredentialLabel: string;
 	    CertPath: string;
 	    Environment: string;
 	
@@ -14,8 +16,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CNPJ = source["CNPJ"];
 	        this.Name = source["Name"];
+	        this.CredentialID = source["CredentialID"];
+	        this.CredentialLabel = source["CredentialLabel"];
 	        this.CertPath = source["CertPath"];
 	        this.Environment = source["Environment"];
+	    }
+	}
+	export class AddCredentialInput {
+	    Label: string;
+	    CertPath: string;
+	    Environment: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddCredentialInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Label = source["Label"];
+	        this.CertPath = source["CertPath"];
+	        this.Environment = source["Environment"];
+	    }
+	}
+	export class AssignCredentialInput {
+	    CompanyCNPJ: string;
+	    CredentialID: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AssignCredentialInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyCNPJ = source["CompanyCNPJ"];
+	        this.CredentialID = source["CredentialID"];
 	    }
 	}
 	export class ExportInput {
@@ -67,6 +101,9 @@ export namespace app {
 	export class PullResult {
 	    CompanyName: string;
 	    CNPJ: string;
+	    CredentialLabel: string;
+	    CredentialCNPJ: string;
+	    ConsultationBasis: string;
 	    DocumentsFound: number;
 	    EventsFound: number;
 	    Errors: number;
@@ -80,6 +117,9 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CompanyName = source["CompanyName"];
 	        this.CNPJ = source["CNPJ"];
+	        this.CredentialLabel = source["CredentialLabel"];
+	        this.CredentialCNPJ = source["CredentialCNPJ"];
+	        this.ConsultationBasis = source["ConsultationBasis"];
 	        this.DocumentsFound = source["DocumentsFound"];
 	        this.EventsFound = source["EventsFound"];
 	        this.Errors = source["Errors"];
@@ -104,6 +144,20 @@ export namespace app {
 	        this.LastNSU = source["LastNSU"];
 	    }
 	}
+	export class UpdateCredentialPathInput {
+	    CredentialID: string;
+	    CertPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCredentialPathInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CredentialID = source["CredentialID"];
+	        this.CertPath = source["CertPath"];
+	    }
+	}
 
 }
 
@@ -114,7 +168,9 @@ export namespace nfse {
 	    CNPJ: string;
 	    CNPJRoot: string;
 	    Name: string;
-	    CertPath: string;
+	    CredentialID: string;
+	    CredentialLabel: string;
+	    CredentialCertPath: string;
 	    Environment: string;
 	    LastNSU: number;
 	    // Go type: time
@@ -132,9 +188,70 @@ export namespace nfse {
 	        this.CNPJ = source["CNPJ"];
 	        this.CNPJRoot = source["CNPJRoot"];
 	        this.Name = source["Name"];
-	        this.CertPath = source["CertPath"];
+	        this.CredentialID = source["CredentialID"];
+	        this.CredentialLabel = source["CredentialLabel"];
+	        this.CredentialCertPath = source["CredentialCertPath"];
 	        this.Environment = source["Environment"];
 	        this.LastNSU = source["LastNSU"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Credential {
+	    ID: string;
+	    Label: string;
+	    CertPath: string;
+	    Environment: string;
+	    OwnerCNPJ: string;
+	    OwnerCNPJRoot: string;
+	    FingerprintSHA256: string;
+	    SubjectName: string;
+	    // Go type: time
+	    NotBefore?: any;
+	    // Go type: time
+	    NotAfter?: any;
+	    // Go type: time
+	    InspectedAt?: any;
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Credential(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Label = source["Label"];
+	        this.CertPath = source["CertPath"];
+	        this.Environment = source["Environment"];
+	        this.OwnerCNPJ = source["OwnerCNPJ"];
+	        this.OwnerCNPJRoot = source["OwnerCNPJRoot"];
+	        this.FingerprintSHA256 = source["FingerprintSHA256"];
+	        this.SubjectName = source["SubjectName"];
+	        this.NotBefore = this.convertValues(source["NotBefore"], null);
+	        this.NotAfter = this.convertValues(source["NotAfter"], null);
+	        this.InspectedAt = this.convertValues(source["InspectedAt"], null);
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
 	    }

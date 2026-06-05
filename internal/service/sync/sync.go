@@ -23,7 +23,7 @@ type SyncService struct {
 }
 
 type documentFetcher interface {
-	FetchDocuments(ctx context.Context, lastNSU int64) (*adn.DocumentResponse, error)
+	FetchDocuments(ctx context.Context, req adn.DistributionRequest) (*adn.DocumentResponse, error)
 }
 
 // NewSyncService creates a new SyncService.
@@ -36,14 +36,18 @@ func NewSyncService(store store.Store, apiClient documentFetcher, fileWriter *fi
 }
 
 // Sync starts the synchronization process for a specific company.
-func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress nfse.ProgressFunc) error {
+func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error {
 	// Create SyncRun record
 	syncRun := &nfse.SyncRun{
-		ID:        uuid.NewString(),
-		CompanyID: company.ID,
-		StartedAt: time.Now(),
-		FromNSU:   company.LastNSU,
-		Status:    "running",
+		ID:                uuid.NewString(),
+		CompanyID:         company.ID,
+		CredentialID:      credential.ID,
+		CredentialCNPJ:    credential.OwnerCNPJ,
+		ConsultationCNPJ:  company.CNPJ,
+		ConsultationBasis: consultationBasis,
+		StartedAt:         time.Now(),
+		FromNSU:           company.LastNSU,
+		Status:            "running",
 	}
 
 	if err := s.store.CreateSyncRun(ctx, syncRun); err != nil {
@@ -74,7 +78,10 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 
 		// Fetch documents batch
 		requestedNSU := committedNSU
-		resp, err := s.apiClient.FetchDocuments(ctx, requestedNSU)
+		resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
+			LastNSU:          requestedNSU,
+			ConsultationCNPJ: company.CNPJ,
+		})
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				syncRun.Status = "interrupted"

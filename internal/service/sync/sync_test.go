@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -24,14 +25,14 @@ type fetchResult struct {
 }
 
 type fakeFetcher struct {
-	results       []fetchResult
-	requestedNSUs []int64
+	results  []fetchResult
+	requests []adn.DistributionRequest
 }
 
-func (f *fakeFetcher) FetchDocuments(_ context.Context, lastNSU int64) (*adn.DocumentResponse, error) {
-	f.requestedNSUs = append(f.requestedNSUs, lastNSU)
+func (f *fakeFetcher) FetchDocuments(_ context.Context, req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+	f.requests = append(f.requests, req)
 	if len(f.results) == 0 {
-		return nil, fmt.Errorf("unexpected fetch for NSU %d", lastNSU)
+		return nil, fmt.Errorf("unexpected fetch for NSU %d", req.LastNSU)
 	}
 
 	result := f.results[0]
@@ -49,7 +50,7 @@ func TestSyncAdvancesCheckpointToUltNSUOnEmptyBatch(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	if err := svc.Sync(context.Background(), company, nil); err != nil {
+	if err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil); err != nil {
 		t.Fatalf("Sync first run: %v", err)
 	}
 
@@ -72,11 +73,11 @@ func TestSyncAdvancesCheckpointToUltNSUOnEmptyBatch(t *testing.T) {
 		},
 	}
 	svc.apiClient = secondFetcher
-	if err := svc.Sync(context.Background(), reloaded, nil); err != nil {
+	if err := svc.Sync(context.Background(), reloaded, testCredential(), "exact_certificate_cnpj", nil); err != nil {
 		t.Fatalf("Sync second run: %v", err)
 	}
-	if len(secondFetcher.requestedNSUs) != 1 || secondFetcher.requestedNSUs[0] != 15 {
-		t.Fatalf("second fetch requested NSUs = %v, want [15]", secondFetcher.requestedNSUs)
+	if len(secondFetcher.requests) != 1 || secondFetcher.requests[0].LastNSU != 15 || secondFetcher.requests[0].ConsultationCNPJ != company.CNPJ {
+		t.Fatalf("second fetch requests = %+v, want consultation on company cnpj at nsu 15", secondFetcher.requests)
 	}
 }
 
@@ -97,7 +98,7 @@ func TestSyncCommitsUltNSUEvenWhenLastEnvelopeIsLower(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	if err := svc.Sync(context.Background(), company, nil); err != nil {
+	if err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
@@ -131,7 +132,7 @@ func TestSyncFailsWithoutAdvancingCheckpointWhenFirstItemFails(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	err := svc.Sync(context.Background(), company, nil)
+	err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil)
 	if err == nil {
 		t.Fatal("Sync error = nil, want failure")
 	}
@@ -167,7 +168,7 @@ func TestSyncFailsOnLaterItemAndRetriesFromLastCommittedNSU(t *testing.T) {
 	}
 	svc.apiClient = firstFetcher
 
-	err := svc.Sync(context.Background(), company, nil)
+	err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil)
 	if err == nil {
 		t.Fatal("first Sync error = nil, want failure")
 	}
@@ -197,12 +198,12 @@ func TestSyncFailsOnLaterItemAndRetriesFromLastCommittedNSU(t *testing.T) {
 		},
 	}
 	svc.apiClient = secondFetcher
-	if err := svc.Sync(context.Background(), reloaded, nil); err != nil {
+	if err := svc.Sync(context.Background(), reloaded, testCredential(), "exact_certificate_cnpj", nil); err != nil {
 		t.Fatalf("second Sync: %v", err)
 	}
 
-	if len(secondFetcher.requestedNSUs) != 1 || secondFetcher.requestedNSUs[0] != 10 {
-		t.Fatalf("second fetch requested NSUs = %v, want [10]", secondFetcher.requestedNSUs)
+	if len(secondFetcher.requests) != 1 || secondFetcher.requests[0].LastNSU != 10 || secondFetcher.requests[0].ConsultationCNPJ != company.CNPJ {
+		t.Fatalf("second fetch requests = %+v, want consultation on company cnpj at nsu 10", secondFetcher.requests)
 	}
 
 	reloadedAgain, err := sqliteStore.GetCompany(context.Background(), company.CNPJ)
@@ -224,7 +225,7 @@ func TestSyncDoesNotAdvanceCheckpointOnTransportError(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	err := svc.Sync(context.Background(), company, nil)
+	err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil)
 	if err == nil {
 		t.Fatal("Sync error = nil, want failure")
 	}
@@ -253,7 +254,7 @@ func TestSyncMarksRunInterruptedOnContextCancellation(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	err := svc.Sync(context.Background(), company, nil)
+	err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil)
 	if err == nil {
 		t.Fatal("Sync error = nil, want context cancellation")
 	}
@@ -282,7 +283,7 @@ func TestSyncFailsOnProtocolRegressionWhenUltNSUGoesBackwards(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	err := svc.Sync(context.Background(), company, nil)
+	err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil)
 	if err == nil {
 		t.Fatal("Sync error = nil, want protocol failure")
 	}
@@ -318,7 +319,7 @@ func TestSyncPersistsEventEnvelopeAndUpdatesDocumentStatus(t *testing.T) {
 	}
 	svc.apiClient = fetcher
 
-	if err := svc.Sync(context.Background(), company, nil); err != nil {
+	if err := svc.Sync(context.Background(), company, testCredential(), "exact_certificate_cnpj", nil); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
@@ -375,13 +376,16 @@ func setupSyncTest(t *testing.T, lastNSU int64) (*SyncService, *nfse.Company, *s
 	})
 
 	company := &nfse.Company{
-		ID:          "company-1",
-		CNPJ:        "12345678000199",
-		CNPJRoot:    "12345678",
-		Name:        "Sync Test Co",
-		CertPath:    "cert.pfx",
-		Environment: "producao_restrita",
-		LastNSU:     lastNSU,
+		ID:           "company-1",
+		CNPJ:         "12345678000199",
+		CNPJRoot:     "12345678",
+		Name:         "Sync Test Co",
+		CredentialID: "cred-1",
+		Environment:  "producao_restrita",
+		LastNSU:      lastNSU,
+	}
+	if err := sqliteStore.CreateCredential(context.Background(), testCredential()); err != nil {
+		t.Fatalf("CreateCredential: %v", err)
 	}
 	if err := sqliteStore.CreateCompany(context.Background(), company); err != nil {
 		t.Fatalf("CreateCompany: %v", err)
@@ -428,6 +432,23 @@ func makeEventEnvelope(nsu int64, xml string) adn.DocumentEnvelope {
 		NSU:           nsu,
 		Schema:        "procEventoNFSe_v1.00.xsd",
 		XMLGZipBase64: gzipBase64(tobytes(xml)),
+	}
+}
+
+func testCredential() *nfse.Credential {
+	now := time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC)
+	return &nfse.Credential{
+		ID:                "cred-1",
+		Label:             "Cred Test",
+		CertPath:          "cert.pfx",
+		Environment:       "producao_restrita",
+		OwnerCNPJ:         "12345678000199",
+		OwnerCNPJRoot:     "12345678",
+		FingerprintSHA256: "hash",
+		SubjectName:       "CN=Cred Test",
+		NotBefore:         &now,
+		NotAfter:          &now,
+		InspectedAt:       &now,
 	}
 }
 
