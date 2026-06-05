@@ -15,11 +15,9 @@ import (
 const (
 	BaseURLProduction           = "https://adn.nfse.gov.br"
 	BaseURLRestrictedProduction = "https://adn.producaorestrita.nfse.gov.br"
-	BaseURLHomologation         = "https://adn.homologacao.nfse.gov.br"
 
 	EnvProduction           = "producao"
 	EnvRestrictedProduction = "producao_restrita"
-	EnvHomologation         = "homologacao"
 )
 
 // Client is the main API client for the ADN web services.
@@ -36,8 +34,6 @@ func NewClient(httpClient *http.Client, env string) (*Client, error) {
 		baseURL = BaseURLProduction
 	case EnvRestrictedProduction:
 		baseURL = BaseURLRestrictedProduction
-	case EnvHomologation:
-		baseURL = BaseURLHomologation
 	default:
 		return nil, fmt.Errorf("invalid environment: %s", env)
 	}

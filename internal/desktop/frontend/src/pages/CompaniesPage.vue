@@ -12,7 +12,7 @@
             <div class="text-h6">{{ company.Name }}</div>
             <div class="text-subtitle2 text-grey-8">{{ company.CNPJ }}</div>
             <q-badge
-              :color="company.Environment === 'producao' ? 'positive' : company.Environment === 'homologacao' ? 'info' : 'warning'"
+              :color="company.Environment === 'producao' ? 'positive' : 'warning'"
               class="q-mt-sm"
             >
               {{ company.Environment }}

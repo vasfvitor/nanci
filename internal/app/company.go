@@ -18,7 +18,7 @@ type AddCompanyInput struct {
 	CredentialID    string
 	CredentialLabel string
 	CertPath        string
-	Environment     string // "producao" | "producao_restrita" | "homologacao"
+	Environment     string // "producao" | "producao_restrita"
 }
 
 // AddCompany registers a new company in the store.

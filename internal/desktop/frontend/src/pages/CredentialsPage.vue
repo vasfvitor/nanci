@@ -12,7 +12,7 @@
             <div class="text-h6">{{ credential.Label }}</div>
             <div class="text-caption text-grey-8">{{ credential.CertPath }}</div>
             <q-badge
-              :color="credential.Environment === 'producao' ? 'positive' : credential.Environment === 'homologacao' ? 'info' : 'warning'"
+              :color="credential.Environment === 'producao' ? 'positive' : 'warning'"
               class="q-mt-sm"
             >
               {{ credential.Environment }}

@@ -9,7 +9,7 @@
         <q-input v-model="form.Label" label="Rótulo" outlined dense />
         <q-select
           v-model="form.Environment"
-          :options="['producao', 'producao_restrita', 'homologacao']"
+          :options="['producao', 'producao_restrita']"
           label="Ambiente"
           outlined
           dense
