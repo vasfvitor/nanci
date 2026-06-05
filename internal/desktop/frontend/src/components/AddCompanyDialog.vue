@@ -11,7 +11,7 @@
 
         <q-select
           v-model="form.Environment"
-          :options="['producao', 'producao_restrita']"
+          :options="['producao', 'producao_restrita', 'homologacao']"
           label="Ambiente"
           outlined
           dense
