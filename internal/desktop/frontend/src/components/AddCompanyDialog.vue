@@ -6,7 +6,13 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none q-gutter-y-md">
-        <q-input v-model="form.CNPJ" label="CNPJ" outlined dense />
+        <q-input
+          v-model="form.CNPJ"
+          label="CNPJ"
+          hint="Use um CNPJ numérico com DV válido. CNPJ alfanumérico ainda não está liberado nesta versão."
+          outlined
+          dense
+        />
         <q-input v-model="form.Name" label="Nome / Razão Social" outlined dense />
 
         <q-option-group

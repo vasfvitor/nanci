@@ -7,7 +7,7 @@ import (
 // Company represents a company that syncs documents.
 type Company struct {
 	ID                 string
-	CNPJ               string // supports numeric (14 digits) and alphanumeric
+	CNPJ               string // stored as a 14-char identifier; current input policy accepts validated numeric CNPJ only
 	CNPJRoot           string // first 8 chars - groups branches
 	Name               string
 	CredentialID       string

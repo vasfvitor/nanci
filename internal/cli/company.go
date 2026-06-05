@@ -113,7 +113,7 @@ func init() {
 	companyCmd.AddCommand(companyListCmd)
 	companyCmd.AddCommand(companyAssignCredentialCmd)
 
-	companyAddCmd.Flags().StringVarP(&companyCNPJ, "cnpj", "c", "", "CNPJ da empresa (somente números ou formato RFB)")
+	companyAddCmd.Flags().StringVarP(&companyCNPJ, "cnpj", "c", "", "CNPJ da empresa (numérico com DV válido; alfanumérico ainda não suportado)")
 	companyAddCmd.Flags().StringVarP(&companyName, "name", "n", "", "Nome ou Razão Social")
 	companyAddCmd.Flags().StringVarP(&companyCert, "cert", "p", "", "Caminho para o certificado .pfx/.p12")
 	companyAddCmd.Flags().StringVar(&companyCredentialID, "credential-id", "", "ID de uma credencial existente")

@@ -12,7 +12,7 @@ func TestClean(t *testing.T) {
 	}{
 		{"12.345.678/0001-99", "12345678000199"},
 		{" 12.345.678/0001-99 ", "12345678000199"},
-		{"AB.CDE.FGH/IJKL-MN", "ABCDEFGHIJKLMN"},
+		{"ab.cde.fgh/ijkl-mn", "ABCDEFGHIJKLMN"},
 		{"12345678000199", "12345678000199"},
 	}
 
@@ -29,12 +29,14 @@ func TestValidate(t *testing.T) {
 		input    string
 		expected error
 	}{
-		{"12.345.678/0001-99", nil},
-		{"12345678000199", nil},
-		{"AB.CDE.FGH/IJKL-MN", nil}, // Alfanumérico válido
+		{"45.723.174/0001-10", nil},
+		{"45723174000110", nil},
+		{"12.345.678/0001-99", ErrInvalidCheckDigits},
+		{"11.111.111/1111-11", ErrInvalidCheckDigits},
+		{"AB.CDE.FGH/IJKL-MN", ErrAlphanumericUnsupported},
 		{"12.345.678/0001", ErrInvalidLength},
 		{"123456780001999", ErrInvalidLength},
-		{"12.345.678/0001-9@", ErrInvalidFormat}, // Caractere especial
+		{"12.345.678/0001-9@", ErrInvalidFormat},
 	}
 
 	for _, tt := range tests {
@@ -51,7 +53,7 @@ func TestRoot(t *testing.T) {
 		expected    string
 		expectError bool
 	}{
-		{"12.345.678/0001-99", "12345678", false},
+		{"45.723.174/0001-10", "45723174", false},
 		{"AB.CDE.FGH/IJKL-MN", "ABCDEFGH", false},
 		{"12.345.678/0001", "", true},
 	}
@@ -72,7 +74,7 @@ func TestFormat(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"12345678000199", "12.345.678/0001-99"},
+		{"45723174000110", "45.723.174/0001-10"},
 		{"ABCDEFGHIJKLMN", "AB.CDE.FGH/IJKL-MN"},
 		{"123", "123"}, // Retorna original se inválido
 	}
