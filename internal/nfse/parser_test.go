@@ -1,6 +1,9 @@
 package nfse
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -114,5 +117,99 @@ func TestParseEventParsesRFC3339Timestamp(t *testing.T) {
 	}
 	if !event.EventAt.Equal(time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC)) {
 		t.Fatalf("EventAt = %s", event.EventAt)
+	}
+}
+
+func TestParseXML(t *testing.T) {
+	tests := []struct {
+		filename      string
+		wantChave     string
+		wantTotalRet  float64
+		wantErrors    bool
+		wantWarning   bool
+		wantVersion   string
+	}{
+		{
+			filename:    "simple-prestada.xml",
+			wantChave:   "1122334455667788990011223344556677889900112244",
+			wantVersion: "1.0",
+		},
+		{
+			filename:    "simple-tomada.xml",
+			wantChave:   "9988776655443322110099887766554433221100998877",
+			wantVersion: "1.0",
+		},
+		{
+			filename:    "com-retencoes.xml",
+			wantChave:   "5555555555555555555555555555555555555555555555",
+			wantVersion: "1.01",
+			wantTotalRet: 1715.00, // 150(IRRF) + 1100(INSS) + 65(PIS) + 300(COFINS) + 100(CSLL)
+		},
+		{
+			filename:    "sem-retencoes.xml",
+			wantChave:   "4444444444444444444444444444444444444444444444",
+			wantVersion: "1.0",
+			wantWarning: true, // Missing tomador
+		},
+		{
+			filename:    "invalid.xml",
+			wantErrors:  true,
+		},
+		{
+			filename:    "ibscbs-extra-fields.xml",
+			wantChave:   "7777777777777777777777777777777777777777777777",
+			wantVersion: "1.01",
+			wantWarning: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			path := filepath.Join("testdata", tt.filename)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("Failed to read testdata %s: %v", tt.filename, err)
+			}
+
+			doc, err := ParseXML(data)
+			if tt.wantErrors {
+				if err == nil {
+					t.Fatalf("Expected error for %s, got nil", tt.filename)
+				}
+				return // we expected it to fail, so nothing else to check
+			}
+
+			if err != nil {
+				t.Fatalf("ParseXML failed for %s: %v", tt.filename, err)
+			}
+
+			if doc.ChaveAcesso != tt.wantChave {
+				t.Errorf("ChaveAcesso = %q, want %q", doc.ChaveAcesso, tt.wantChave)
+			}
+			if doc.LayoutVersion != tt.wantVersion {
+				t.Errorf("LayoutVersion = %q, want %q", doc.LayoutVersion, tt.wantVersion)
+			}
+			if doc.TotalRetentions != tt.wantTotalRet {
+				t.Errorf("TotalRetentions = %f, want %f", doc.TotalRetentions, tt.wantTotalRet)
+			}
+			
+			hasWarning := len(doc.ParseWarnings) > 0
+			if hasWarning && !tt.wantWarning {
+				// Only fail if we didn't explicitly want a warning and it's not the ISS warning
+				// since our simple fixtures have ISS and thus get a warning about ISS retention.
+				// Let's check if the only warning is the ISS one.
+				nonIssWarning := false
+				for _, w := range doc.ParseWarnings {
+					if !strings.Contains(w, "ISS presente") {
+						nonIssWarning = true
+					}
+				}
+				if nonIssWarning {
+					t.Errorf("Unexpected warnings for %s: %v", tt.filename, doc.ParseWarnings)
+				}
+			} else if !hasWarning && tt.wantWarning {
+				t.Errorf("Expected warnings for %s, got none", tt.filename)
+			}
+		})
 	}
 }

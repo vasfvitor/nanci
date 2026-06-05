@@ -1,0 +1,15 @@
+<envEvento>
+    <evento>
+        <infEvento>
+            <chNFSe>9988776655443322110099887766554433221100998877</chNFSe>
+            <dhEvento>2023-11-02T10:00:00Z</dhEvento>
+            <detEvento>
+                <eventoSubstituicao>
+                    <chNFSeSubst>88776655443322110099887766554433221100998877</chNFSeSubst>
+                    <cMotivo>2</cMotivo>
+                    <xJust>Substituicao devido a valores incorretos</xJust>
+                </eventoSubstituicao>
+            </detEvento>
+        </infEvento>
+    </evento>
+</envEvento>

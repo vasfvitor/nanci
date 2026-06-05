@@ -1,0 +1,15 @@
+<envEvento>
+    <evento>
+        <infEvento>
+            <chNFSe>1122334455667788990011223344556677889900112244</chNFSe>
+            <dhEvento>2023-10-26T08:00:00Z</dhEvento>
+            <tpEvento>101101</tpEvento>
+            <detEvento>
+                <pedCancNFSe>
+                    <cMotivo>1</cMotivo>
+                    <xJust>Cancelamento por erro de emissao</xJust>
+                </pedCancNFSe>
+            </detEvento>
+        </infEvento>
+    </evento>
+</envEvento>

@@ -9,40 +9,10 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 )
-
-// XMLDocument represents the basic structure of the NFS-e XML we care about right now.
-type XMLDocument struct {
-	XMLName xml.Name `xml:"NFSe"`
-	InfNFSe struct {
-		ChaveAcesso string `xml:"chNFSe"`
-		DataEmissao string `xml:"dhEmi"`
-		Competencia string `xml:"compNFSe"` // format usually YYYY-MM
-		Prestador   struct {
-			CNPJ string `xml:"CNPJ"`
-			Nome string `xml:"xNome"`
-		} `xml:"prest"`
-		Tomador struct {
-			CNPJ string `xml:"CNPJ"`
-			Nome string `xml:"xNome"`
-		} `xml:"toma"`
-		Intermediario struct {
-			CNPJ string `xml:"CNPJ"`
-			Nome string `xml:"xNome"`
-		} `xml:"interm"`
-		Valores struct {
-			ValorServico float64 `xml:"vServ"`
-			ISS          float64 `xml:"vISS"`
-			IRRF         float64 `xml:"vIRRF"`
-			INSS         float64 `xml:"vINSS"`
-			PIS          float64 `xml:"vPIS"`
-			COFINS       float64 `xml:"vCOFINS"`
-			CSLL         float64 `xml:"vCSLL"`
-		} `xml:"valores"`
-	} `xml:"infNFSe"`
-}
 
 // DecodeXMLPayload decodes the base64-gzipped payload into raw XML bytes.
 func DecodeXMLPayload(payloadBase64 string) ([]byte, string, error) {
@@ -71,47 +41,145 @@ func DecodeXMLPayload(payloadBase64 string) ([]byte, string, error) {
 	return xmlData, hashHex, nil
 }
 
-// ParseXML extracts the canonical document information from the raw XML bytes.
+// ParseXML extracts the canonical document information from the raw XML bytes using a tolerant tag parser.
 func ParseXML(xmlData []byte) (*Document, error) {
-	var parsedXML XMLDocument
-	if err := xml.Unmarshal(xmlData, &parsedXML); err != nil {
-		return nil, fmt.Errorf("failed to parse xml: %w", err)
-	}
-
 	doc := &Document{
-		ChaveAcesso:       parsedXML.InfNFSe.ChaveAcesso,
-		PrestadorCNPJ:     parsedXML.InfNFSe.Prestador.CNPJ,
-		PrestadorName:     parsedXML.InfNFSe.Prestador.Nome,
-		TomadorCNPJ:       parsedXML.InfNFSe.Tomador.CNPJ,
-		TomadorName:       parsedXML.InfNFSe.Tomador.Nome,
-		IntermediarioCNPJ: parsedXML.InfNFSe.Intermediario.CNPJ,
-		IntermediarioName: parsedXML.InfNFSe.Intermediario.Nome,
-		ServiceValue:      parsedXML.InfNFSe.Valores.ValorServico,
-		ISSValue:          parsedXML.InfNFSe.Valores.ISS,
-		IRRFValue:         parsedXML.InfNFSe.Valores.IRRF,
-		INSSValue:         parsedXML.InfNFSe.Valores.INSS,
-		PISValue:          parsedXML.InfNFSe.Valores.PIS,
-		COFINSValue:       parsedXML.InfNFSe.Valores.COFINS,
-		CSLLValue:         parsedXML.InfNFSe.Valores.CSLL,
-		Status:            "normal",
+		Status: "normal",
 	}
 
-	// Parse date
-	// dhEmi format usually is RFC3339 without timezone or with timezone: "2023-10-25T14:30:00-03:00"
-	if parsedXML.InfNFSe.DataEmissao != "" {
-		if t, err := time.Parse(time.RFC3339, parsedXML.InfNFSe.DataEmissao); err == nil {
-			doc.IssueDate = t
+	decoder := xml.NewDecoder(bytes.NewReader(xmlData))
+	
+	var contextStack []string
+	
+	inContext := func(parent string) bool {
+		if len(contextStack) == 0 {
+			return false
+		}
+		// Look back for the parent since there might be nested tags
+		for i := len(contextStack) - 1; i >= 0; i-- {
+			if contextStack[i] == parent {
+				return true
+			}
+		}
+		return false
+	}
+
+	var currentText string
+
+	for {
+		t, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse xml: %w", err)
+		}
+
+		switch se := t.(type) {
+		case xml.StartElement:
+			local := se.Name.Local
+			contextStack = append(contextStack, local)
+			currentText = "" // reset text
+
+			if local == "infNFSe" {
+				for _, attr := range se.Attr {
+					if attr.Name.Local == "versao" {
+						doc.LayoutVersion = attr.Value
+					}
+				}
+			}
+
+		case xml.EndElement:
+			local := se.Name.Local
+			
+			// Pop context
+			if len(contextStack) > 0 {
+				contextStack = contextStack[:len(contextStack)-1]
+			}
+			
+			val := strings.TrimSpace(currentText)
+			currentText = "" // clear after reading
+			
+			if val == "" {
+				continue
+			}
+
+			switch local {
+			case "chNFSe":
+				doc.ChaveAcesso = val
+			case "dhEmi":
+				if parsed, err := time.Parse(time.RFC3339, val); err == nil {
+					doc.IssueDate = parsed
+				} else {
+					doc.ParseWarnings = append(doc.ParseWarnings, fmt.Sprintf("invalid dhEmi format: %s", val))
+				}
+			case "compNFSe":
+				if len(val) >= 7 {
+					doc.Competence = val[:7]
+				} else {
+					doc.Competence = val
+				}
+			case "CNPJ":
+				if inContext("prest") {
+					doc.PrestadorCNPJ = val
+				} else if inContext("toma") {
+					doc.TomadorCNPJ = val
+				} else if inContext("interm") {
+					doc.IntermediarioCNPJ = val
+				}
+			case "xNome":
+				if inContext("prest") {
+					doc.PrestadorName = val
+				} else if inContext("toma") {
+					doc.TomadorName = val
+				} else if inContext("interm") {
+					doc.IntermediarioName = val
+				}
+			case "vServ":
+				doc.ServiceValue = parseFloat(val)
+			case "vISS":
+				doc.ISSValue = parseFloat(val)
+			case "vIRRF":
+				doc.IRRFValue = parseFloat(val)
+			case "vINSS":
+				doc.INSSValue = parseFloat(val)
+			case "vPIS":
+				doc.PISValue = parseFloat(val)
+			case "vCOFINS":
+				doc.COFINSValue = parseFloat(val)
+			case "vCSLL":
+				doc.CSLLValue = parseFloat(val)
+			}
+
+		case xml.CharData:
+			currentText += string(se)
 		}
 	}
 
-	// Normalize Competence to YYYY-MM
-	comp := parsedXML.InfNFSe.Competencia
-	if len(comp) >= 7 {
-		// Usually format is "2023-10-01" or "2023-10", we just need YYYY-MM
-		doc.Competence = comp[:7]
+	if doc.ChaveAcesso == "" {
+		return nil, fmt.Errorf("missing chave de acesso (chNFSe)")
+	}
+
+	doc.TotalRetentions = doc.IRRFValue + doc.INSSValue + doc.PISValue + doc.COFINSValue + doc.CSLLValue
+	if doc.ISSValue > 0 {
+		doc.ParseWarnings = append(doc.ParseWarnings, "ISS presente, mas nanci ainda não distingue ISS devido de retido")
+	}
+
+	if doc.Competence == "" {
+		doc.ParseWarnings = append(doc.ParseWarnings, "competência ausente")
+	}
+
+	if doc.PrestadorCNPJ == "" || doc.TomadorCNPJ == "" {
+		doc.ParseWarnings = append(doc.ParseWarnings, "prestador ou tomador ausente")
 	}
 
 	return doc, nil
+}
+
+func parseFloat(s string) float64 {
+	s = strings.ReplaceAll(s, ",", ".")
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
 }
 
 // ClassifyCompanyParticipation derives company-scoped role and visibility for a canonical document.

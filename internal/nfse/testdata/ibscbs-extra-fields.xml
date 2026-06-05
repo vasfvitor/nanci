@@ -1,0 +1,28 @@
+<NFSe>
+    <infNFSe versao="1.01">
+        <chNFSe>7777777777777777777777777777777777777777777777</chNFSe>
+        <dhEmi>2023-12-05T10:00:00Z</dhEmi>
+        <prest>
+            <CNPJ>77777777000177</CNPJ>
+        </prest>
+        <toma>
+            <CNPJ>88888888000188</CNPJ>
+        </toma>
+        <valores>
+            <vServ>2000.00</vServ>
+            <vISS>100.00</vISS>
+        </valores>
+        <tribNacional>
+            <IBS>
+                <vBC>2000.00</vBC>
+                <pIBS>1.20</pIBS>
+                <vIBS>24.00</vIBS>
+            </IBS>
+            <CBS>
+                <vBC>2000.00</vBC>
+                <pCBS>0.80</pCBS>
+                <vCBS>16.00</vCBS>
+            </CBS>
+        </tribNacional>
+    </infNFSe>
+</NFSe>

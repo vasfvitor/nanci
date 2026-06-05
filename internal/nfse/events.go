@@ -14,5 +14,6 @@ type Event struct {
 	Description             string
 	RawXMLPath              string
 	RawHash                 string
+	ParseWarnings           []string
 	CreatedAt               time.Time
 }

@@ -1,0 +1,12 @@
+<NFSe>
+    <infNFSe versao="1.0">
+        <chNFSe>4444444444444444444444444444444444444444444444</chNFSe>
+        <dhEmi>2023-01-15T12:00:00Z</dhEmi>
+        <prest>
+            <CNPJ>11111111000111</CNPJ>
+        </prest>
+        <valores>
+            <vServ>250.00</vServ>
+        </valores>
+    </infNFSe>
+</NFSe>
