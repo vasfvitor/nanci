@@ -44,17 +44,6 @@ type XMLDocument struct {
 	} `xml:"infNFSe"`
 }
 
-// XMLEvent represents the basic structure of an NFS-e Event (like cancellation).
-type XMLEvent struct {
-	XMLName   xml.Name `xml:"pedCancNFSe"` // Assuming cancellation for now
-	InfPedido struct {
-		ChaveAcesso string `xml:"chNFSe"`
-		CodigoCanc  string `xml:"cMotivo"`
-	} `xml:"infPedidoCanc"`
-	// Note: there are other structures for the actual "retorno" but the payload usually contains the request or the full event.
-	// We'll simplify to extract just the ChaveAcesso if it exists.
-}
-
 // DecodeXMLPayload decodes the base64-gzipped payload into raw XML bytes.
 func DecodeXMLPayload(payloadBase64 string) ([]byte, string, error) {
 	// 1. Decode Base64
@@ -150,36 +139,41 @@ func ClassifyCompanyParticipation(doc *Document, companyCNPJ string) CompanyPart
 
 // ParseEvent extracts basic info from an Event XML.
 func ParseEvent(xmlData []byte) (*Event, error) {
-	// The event XML can be tricky because it wraps a signature and the payload.
-	// For now, we do a very naive string search or a loose unmarshal to find the ChaveAcesso.
-	// In a real scenario we'd have the exact struct. We'll use a loose approach.
-	var parsed XMLEvent
-	if err := xml.Unmarshal(xmlData, &parsed); err != nil {
-		return nil, fmt.Errorf("failed to parse event xml: %w", err)
-	}
-
-	// Fallback to substring search if unmarshal fails because of namespaces
 	strData := string(xmlData)
-	chaveAcesso := parsed.InfPedido.ChaveAcesso
-	if chaveAcesso == "" {
-		// Naive extraction
-		if start := strings.Index(strData, "<chNFSe>"); start != -1 {
-			if end := strings.Index(strData[start:], "</chNFSe>"); end != -1 {
-				chaveAcesso = strData[start+8 : start+end]
-			}
-		}
-	}
-
+	chaveAcesso := firstTagValue(strData, "chNFSe")
 	if chaveAcesso == "" {
 		return nil, fmt.Errorf("could not find chNFSe in event")
 	}
 
-	return &Event{
+	event := &Event{
 		ChaveAcesso: chaveAcesso,
-		Type:        "cancelamento", // Assuming cancellation for now, can be improved
-		IssueDate:   time.Now(),     // Ideally extract from XML
-		Details:     "Evento sincronizado via NSU",
-	}, nil
+		Type:        classifyEventType(strData),
+		Description: "Evento sincronizado via NSU",
+	}
+
+	if ts := firstTagValue(strData, "dhEvento", "dhRegEvento", "dhProc", "dtHrEvento"); ts != "" {
+		if parsedTime, err := time.Parse(time.RFC3339, ts); err == nil {
+			event.EventAt = parsedTime
+			event.EventAtValid = true
+		}
+	}
+
+	event.ReplacementChaveAcesso = firstTagValue(
+		strData,
+		"chNFSeSubst",
+		"chNFSeSubstituta",
+		"chNFSeSubstituidora",
+		"chNFSeSubstituidaPor",
+	)
+	if event.ReplacementChaveAcesso != "" && event.Type == "unknown" {
+		event.Type = "substituicao"
+	}
+
+	if reason := firstTagValue(strData, "xMotivo", "cMotivo", "descEvento", "xJust"); reason != "" {
+		event.Description = reason
+	}
+
+	return event, nil
 }
 
 func getRootSafely(cnpj string) string {
@@ -195,4 +189,36 @@ func normalizeCNPJ(cnpj string) string {
 	cleaned = strings.ReplaceAll(cleaned, "/", "")
 	cleaned = strings.ReplaceAll(cleaned, "-", "")
 	return strings.TrimSpace(cleaned)
+}
+
+func classifyEventType(xmlText string) string {
+	lower := strings.ToLower(xmlText)
+	switch {
+	case strings.Contains(lower, "substitu"):
+		return "substituicao"
+	case strings.Contains(lower, "canc"):
+		return "cancelamento"
+	default:
+		return "unknown"
+	}
+}
+
+func firstTagValue(xmlText string, tags ...string) string {
+	for _, tag := range tags {
+		openTag := "<" + tag + ">"
+		start := strings.Index(xmlText, openTag)
+		if start == -1 {
+			continue
+		}
+		contentStart := start + len(openTag)
+		end := strings.Index(xmlText[contentStart:], "</"+tag+">")
+		if end == -1 {
+			continue
+		}
+		value := strings.TrimSpace(xmlText[contentStart : contentStart+end])
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

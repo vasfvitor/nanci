@@ -44,3 +44,29 @@ func (w *Writer) SaveXML(competence string, chaveAcesso string, data []byte) (st
 
 	return relPath, nil
 }
+
+// SaveEventXML saves raw event XML using a canonical path based on document access key and payload hash.
+func (w *Writer) SaveEventXML(chaveAcesso string, rawHash string, data []byte) (string, error) {
+	if chaveAcesso == "" {
+		chaveAcesso = "unknown"
+	}
+	if rawHash == "" {
+		return "", fmt.Errorf("raw hash is required for event xml storage")
+	}
+
+	relDir := filepath.Join("xml", "events", chaveAcesso)
+	fullDir := filepath.Join(w.baseDir, relDir)
+	if err := os.MkdirAll(fullDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create event directory: %w", err)
+	}
+
+	fileName := fmt.Sprintf("%s.xml", rawHash)
+	relPath := filepath.Join(relDir, fileName)
+	fullPath := filepath.Join(fullDir, fileName)
+
+	if err := os.WriteFile(fullPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write event xml file: %w", err)
+	}
+
+	return relPath, nil
+}

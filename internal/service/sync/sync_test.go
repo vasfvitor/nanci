@@ -301,6 +301,50 @@ func TestSyncFailsOnProtocolRegressionWhenUltNSUGoesBackwards(t *testing.T) {
 	}
 }
 
+func TestSyncPersistsEventEnvelopeAndUpdatesDocumentStatus(t *testing.T) {
+	svc, company, sqliteStore, _ := setupSyncTest(t, 0)
+
+	fetcher := &fakeFetcher{
+		results: []fetchResult{
+			{response: &adn.DocumentResponse{
+				UltNSU: 2,
+				MaxNSU: 2,
+				Docs: []adn.DocumentEnvelope{
+					makeDocumentEnvelope(1, "CHAVE-EVT", company.CNPJ, "22222222000122"),
+					makeEventEnvelope(2, `<pedCancNFSe><infPedidoCanc><chNFSe>CHAVE-EVT</chNFSe><cMotivo>Cancelada</cMotivo><dhEvento>2026-06-04T13:00:00Z</dhEvento></infPedidoCanc></pedCancNFSe>`),
+				},
+			}},
+		},
+	}
+	svc.apiClient = fetcher
+
+	if err := svc.Sync(context.Background(), company, nil); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	doc, err := sqliteStore.GetDocumentByChave(context.Background(), "CHAVE-EVT")
+	if err != nil {
+		t.Fatalf("GetDocumentByChave: %v", err)
+	}
+	if doc == nil {
+		t.Fatal("document not found after sync")
+	}
+	if doc.Status != "cancelada" {
+		t.Fatalf("Status = %q, want cancelada", doc.Status)
+	}
+
+	events, err := sqliteStore.ListEventsByDocument(context.Background(), doc.ID)
+	if err != nil {
+		t.Fatalf("ListEventsByDocument: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1", len(events))
+	}
+	if events[0].RawXMLPath == "" || events[0].Type != "cancelamento" {
+		t.Fatalf("unexpected event: %+v", events[0])
+	}
+}
+
 type syncRunSnapshot struct {
 	Status         string
 	ToNSU          int64
@@ -375,6 +419,14 @@ func makeDocumentEnvelope(nsu int64, chave, prestadorCNPJ, tomadorCNPJ string) a
 	return adn.DocumentEnvelope{
 		NSU:           nsu,
 		Schema:        "procNFSe_v1.00.xsd",
+		XMLGZipBase64: gzipBase64(tobytes(xml)),
+	}
+}
+
+func makeEventEnvelope(nsu int64, xml string) adn.DocumentEnvelope {
+	return adn.DocumentEnvelope{
+		NSU:           nsu,
+		Schema:        "procEventoNFSe_v1.00.xsd",
 		XMLGZipBase64: gzipBase64(tobytes(xml)),
 	}
 }

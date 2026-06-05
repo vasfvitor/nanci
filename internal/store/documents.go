@@ -62,8 +62,11 @@ func (s *SQLiteStore) UpsertDocument(ctx context.Context, doc *nfse.Document) er
 		doc.ServiceValue, doc.ISSValue, doc.IRRFValue, doc.INSSValue, doc.PISValue, doc.COFINSValue, doc.CSLLValue,
 		doc.Status, doc.XMLPath, doc.RawHash, nullableString(doc.ParseError), now, now,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return s.recomputeDocumentStatus(ctx, doc.ChaveAcesso)
 }
 
 // GetDocumentByChave retrieves a canonical document by its access key.

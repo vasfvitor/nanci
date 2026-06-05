@@ -1,6 +1,9 @@
 package nfse
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestClassifyCompanyParticipation(t *testing.T) {
 	doc := &Document{
@@ -31,5 +34,85 @@ func TestClassifyCompanyParticipation(t *testing.T) {
 				t.Fatalf("visibility = %q, want %q", got.VisibilityReason, tt.visibility)
 			}
 		})
+	}
+}
+
+func TestParseEvent(t *testing.T) {
+	tests := []struct {
+		name              string
+		xml               string
+		wantType          string
+		wantChave         string
+		wantReplacement   string
+		wantEventAt       bool
+		wantDescription   string
+	}{
+		{
+			name:            "cancelamento",
+			xml:             `<pedCancNFSe><infPedidoCanc><chNFSe>CHAVE-CANC</chNFSe><cMotivo>Erro emissao</cMotivo><dhEvento>2026-06-04T12:00:00Z</dhEvento></infPedidoCanc></pedCancNFSe>`,
+			wantType:        "cancelamento",
+			wantChave:       "CHAVE-CANC",
+			wantEventAt:     true,
+			wantDescription: "Erro emissao",
+		},
+		{
+			name:            "substituicao",
+			xml:             `<eventoSubstituicao><chNFSe>CHAVE-OLD</chNFSe><chNFSeSubst>CHAVE-NEW</chNFSeSubst><descEvento>Substituicao de nota</descEvento></eventoSubstituicao>`,
+			wantType:        "substituicao",
+			wantChave:       "CHAVE-OLD",
+			wantReplacement: "CHAVE-NEW",
+			wantDescription: "Substituicao de nota",
+		},
+		{
+			name:            "unknown",
+			xml:             `<eventoGenerico><chNFSe>CHAVE-UNK</chNFSe><xJust>Payload nao classificado</xJust></eventoGenerico>`,
+			wantType:        "unknown",
+			wantChave:       "CHAVE-UNK",
+			wantDescription: "Payload nao classificado",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event, err := ParseEvent([]byte(tt.xml))
+			if err != nil {
+				t.Fatalf("ParseEvent: %v", err)
+			}
+			if event.Type != tt.wantType {
+				t.Fatalf("Type = %q, want %q", event.Type, tt.wantType)
+			}
+			if event.ChaveAcesso != tt.wantChave {
+				t.Fatalf("ChaveAcesso = %q, want %q", event.ChaveAcesso, tt.wantChave)
+			}
+			if event.ReplacementChaveAcesso != tt.wantReplacement {
+				t.Fatalf("ReplacementChaveAcesso = %q, want %q", event.ReplacementChaveAcesso, tt.wantReplacement)
+			}
+			if event.EventAtValid != tt.wantEventAt {
+				t.Fatalf("EventAtValid = %v, want %v", event.EventAtValid, tt.wantEventAt)
+			}
+			if event.Description != tt.wantDescription {
+				t.Fatalf("Description = %q, want %q", event.Description, tt.wantDescription)
+			}
+		})
+	}
+}
+
+func TestParseEventRejectsMissingChave(t *testing.T) {
+	_, err := ParseEvent([]byte(`<eventoSemChave><descEvento>Sem chave</descEvento></eventoSemChave>`))
+	if err == nil {
+		t.Fatal("ParseEvent error = nil, want failure")
+	}
+}
+
+func TestParseEventParsesRFC3339Timestamp(t *testing.T) {
+	event, err := ParseEvent([]byte(`<pedCancNFSe><infPedidoCanc><chNFSe>CHAVE-TS</chNFSe><dhEvento>2026-06-04T12:00:00Z</dhEvento></infPedidoCanc></pedCancNFSe>`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+	if !event.EventAtValid {
+		t.Fatal("EventAtValid = false, want true")
+	}
+	if !event.EventAt.Equal(time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC)) {
+		t.Fatalf("EventAt = %s", event.EventAt)
 	}
 }

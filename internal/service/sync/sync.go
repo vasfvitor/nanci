@@ -238,7 +238,7 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 }
 
 // processEvent handles decoding and saving an Event.
-func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
+func (s *SyncService) processEvent(ctx context.Context, _ *nfse.Company, env adn.DocumentEnvelope) error {
 	// 1. Decode Payload
 	rawXML, hashHex, err := nfse.DecodeXMLPayload(env.XMLGZipBase64)
 	if err != nil {
@@ -252,8 +252,12 @@ func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, e
 	}
 
 	event.ID = uuid.NewString()
-	event.CompanyID = company.ID
 	event.RawHash = hashHex
+	relPath, err := s.fileWriter.SaveEventXML(event.ChaveAcesso, hashHex, rawXML)
+	if err != nil {
+		return fmt.Errorf("event file save failed: %w", err)
+	}
+	event.RawXMLPath = relPath
 
 	// 3. Save to DB
 	if err := s.store.SaveEvent(ctx, event); err != nil {
