@@ -31,6 +31,8 @@
             { label: 'Todos', value: '' },
             { label: 'Tomados', value: 'tomada' },
             { label: 'Prestados', value: 'prestada' },
+            { label: 'Intermediário', value: 'intermediario' },
+            { label: 'Sem papel fiscal', value: 'none' },
           ]"
           label="Direção"
           emit-value
@@ -69,7 +71,7 @@
     <q-table
       :rows="documents"
       :columns="columns"
-      row-key="ID"
+      row-key="RelationID"
       :loading="loading"
       no-data-label="Nenhum documento encontrado."
       flat
@@ -77,8 +79,22 @@
     >
       <template v-slot:body-cell-status="props">
         <q-td :props="props">
-          <q-badge :color="props.row.Status === 'NORMAL' ? 'positive' : 'negative'">
+          <q-badge :color="props.row.Status === 'normal' ? 'positive' : 'negative'">
             {{ props.row.Status }}
+          </q-badge>
+        </q-td>
+      </template>
+      <template v-slot:body-cell-companyRole="props">
+        <q-td :props="props">
+          <q-badge :color="roleColor(props.row.CompanyRole)" outline>
+            {{ roleLabel(props.row.CompanyRole) }}
+          </q-badge>
+        </q-td>
+      </template>
+      <template v-slot:body-cell-visibilityReason="props">
+        <q-td :props="props">
+          <q-badge :color="visibilityColor(props.row.VisibilityReason)" outline>
+            {{ visibilityLabel(props.row.VisibilityReason) }}
           </q-badge>
         </q-td>
       </template>
@@ -101,7 +117,7 @@ import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 const companyOptions = ref<{ label: string; value: string }[]>([])
-const documents = ref<nfse.Document[]>([])
+const documents = ref<nfse.CompanyDocument[]>([])
 const loading = ref(false)
 
 const filter = ref({
@@ -111,19 +127,95 @@ const filter = ref({
 })
 
 const columns = [
-  { name: 'nsu', label: 'NSU', field: 'NSU', sortable: true },
-  { name: 'numero', label: 'Número', field: 'Numero', sortable: true },
+  {
+    name: 'issueDate',
+    label: 'Emissão',
+    field: 'IssueDate',
+    sortable: true,
+    format: (val: string | Date | null) => formatDate(val),
+  },
   { name: 'competence', label: 'Competência', field: 'Competence', sortable: true },
-  { name: 'direction', label: 'Direção', field: 'Direction', sortable: true },
+  { name: 'chaveAcesso', label: 'Chave de Acesso', field: 'ChaveAcesso', sortable: true },
+  { name: 'companyRole', label: 'Direção', field: 'CompanyRole', sortable: true },
+  { name: 'visibilityReason', label: 'Visibilidade', field: 'VisibilityReason', sortable: true },
   { name: 'status', label: 'Status', field: 'Status', sortable: true },
+  { name: 'prestador', label: 'Prestador', field: 'PrestadorCNPJ', sortable: true },
+  { name: 'tomador', label: 'Tomador', field: 'TomadorCNPJ', sortable: true },
   {
     name: 'value',
     label: 'Valor (R$)',
-    field: 'ValorServicos',
+    field: 'ServiceValue',
     format: (val: number) => val.toFixed(2),
     sortable: true,
   },
 ]
+
+function formatDate(value: string | Date | null | undefined) {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('pt-BR')
+}
+
+function roleLabel(role: string) {
+  switch (role) {
+    case 'prestada':
+      return 'Prestada'
+    case 'tomada':
+      return 'Tomada'
+    case 'intermediario':
+      return 'Intermediário'
+    case 'none':
+      return 'Sem papel fiscal'
+    default:
+      return role || 'Desconhecido'
+  }
+}
+
+function roleColor(role: string) {
+  switch (role) {
+    case 'prestada':
+      return 'primary'
+    case 'tomada':
+      return 'secondary'
+    case 'intermediario':
+      return 'accent'
+    case 'none':
+      return 'grey-7'
+    default:
+      return 'grey-7'
+  }
+}
+
+function visibilityLabel(reason: string) {
+  switch (reason) {
+    case 'exact_prestador':
+      return 'Prestador exato'
+    case 'exact_tomador':
+      return 'Tomador exato'
+    case 'exact_intermediario':
+      return 'Intermediário exato'
+    case 'same_root_only':
+      return 'Mesmo raiz apenas'
+    case 'unknown':
+      return 'Desconhecida'
+    default:
+      return reason || 'Desconhecida'
+  }
+}
+
+function visibilityColor(reason: string) {
+  switch (reason) {
+    case 'exact_prestador':
+    case 'exact_tomador':
+    case 'exact_intermediario':
+      return 'positive'
+    case 'same_root_only':
+      return 'warning'
+    default:
+      return 'grey-7'
+  }
+}
 
 async function loadCompanies() {
   try {

@@ -2,15 +2,16 @@
 
 ## Funcionalidades
 
-- **Sincronização Resiliente**: Busca as Notas Fiscais de Serviço (NFS-e) por NSU de forma incremental. Se a conexão cair, ele retoma exatamente de onde parou.
+- **Sincronização Incremental**: Busca as Notas Fiscais de Serviço (NFS-e) por NSU de forma incremental, com checkpoint local por empresa.
 - **Leitura Nativa de Certificados**: Autenticação mTLS lendo diretamente arquivos `.pfx` ou `.p12` de certificados A1, sem depender de ferramentas do SO.
 - **Persistência Local (SQLite)**: Banco de dados auto-contido para gerenciar contribuintes, reter histórico e indexar os documentos baixados.
+- **Modelo Canônico + Visão por Empresa**: Um mesmo `chave_acesso` pode ser associado a múltiplas empresas gerenciadas, preservando `company_role` e `visibility_reason` por empresa.
 - **Parser Avançado**: Descompacta o payload do governo (Base64 + GZip), extrai os dados essenciais e calcula o hash SHA-256 para integridade.
 - **Exportação Rica**:
   - Geração de planilhas Excel prontas para uso contábil (`.xlsx`) com formatação automática de moeda.
   - Geração de tabelas CSV (`.csv`) para compatibilidade com ERPs e importadores legados.
   - Exportação em lote de arquivos físicos em `.zip`.
-- **Suporte a Eventos**: O parser detecta eventos (como notas canceladas ou substituições) enviados na mesma requisição e já atualiza o status do documento de volta para o banco.
+- **Suporte Inicial a Eventos**: O parser detecta eventos distribuídos e já persiste atualizações básicas de status, com o redesenho completo do ciclo de eventos ainda em andamento.
 
 ---
 
@@ -80,6 +81,31 @@ Extraia os dados sincronizados em formatos portáteis.
 - `internal/report/`: Construtores de exportação (planilhas `.xlsx`, relatórios `.csv` e arquivos compactados `.zip`).
 - `internal/files/`: Taxonomia e gravação segura de XMLs e payloads binários em disco.
 - `internal/foundation/`: Código base genérico (certificados digitais, manipulação de strings, logs, CNPJ validation).
+
+---
+
+## Modelo de Dados Atual
+
+O armazenamento local agora separa:
+
+- `documents`: documento canônico por `chave_acesso`
+- `company_documents`: participação da empresa naquele documento, com papel fiscal e motivo de visibilidade
+
+Isso evita conflito quando a mesma NFS-e é relevante para mais de uma empresa cadastrada localmente.
+
+Mais detalhes:
+
+- [docs/storage-model-and-reset-policy.md](docs/storage-model-and-reset-policy.md)
+
+## Política Atual de Migração
+
+O refactor de identidade de documentos foi implementado com política de reset local nesta fase.
+
+Em termos práticos:
+
+- instalações novas funcionam normalmente
+- bancos SQLite criados antes da separação entre `documents` e `company_documents` não têm migração in-place ainda
+- se você estiver com um banco antigo desta fase anterior, descarte o arquivo local e deixe a aplicação recriá-lo
 
 ---
 

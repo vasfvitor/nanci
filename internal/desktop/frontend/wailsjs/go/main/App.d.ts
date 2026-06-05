@@ -15,7 +15,7 @@ export function ExportZIP(arg1:app.ExportInput):Promise<void>;
 
 export function ListCompanies():Promise<Array<nfse.Company>>;
 
-export function ListDocuments(arg1:app.ListInput):Promise<Array<nfse.Document>>;
+export function ListDocuments(arg1:app.ListInput):Promise<Array<nfse.CompanyDocument>>;
 
 export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
 
