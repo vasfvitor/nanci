@@ -19,30 +19,51 @@ type Company struct {
 
 // Document represents a synced fiscal document (NFS-e).
 type Document struct {
-	ID            string
-	CompanyID     string
-	ChaveAcesso   string
-	NSU           int64
-	Direction     string // "tomada" | "prestada" | "intermediario"
-	IssueDate     time.Time
-	Competence    string // "YYYY-MM"
-	PrestadorCNPJ string
-	PrestadorName string
-	TomadorCNPJ   string
-	TomadorName   string
-	ServiceValue  float64
-	ISSValue      float64
-	IRRFValue     float64
-	INSSValue     float64
-	PISValue      float64
-	COFINSValue   float64
-	CSLLValue     float64
-	Status        string // "normal" | "cancelada" | "substituida"
-	XMLPath       string
-	RawHash       string
-	ParseError    string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                string
+	ChaveAcesso       string
+	IssueDate         time.Time
+	Competence        string // "YYYY-MM"
+	PrestadorCNPJ     string
+	PrestadorName     string
+	TomadorCNPJ       string
+	TomadorName       string
+	IntermediarioCNPJ string
+	IntermediarioName string
+	ServiceValue      float64
+	ISSValue          float64
+	IRRFValue         float64
+	INSSValue         float64
+	PISValue          float64
+	COFINSValue       float64
+	CSLLValue         float64
+	Status            string // "normal" | "cancelada" | "substituida"
+	XMLPath           string
+	RawHash           string
+	ParseError        string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// CompanyDocument represents the participation of one managed company in a canonical document.
+type CompanyDocument struct {
+	Document
+	RelationID        string
+	CompanyID         string
+	DocumentID        string
+	CompanyRole       string // "tomada" | "prestada" | "intermediario" | "none"
+	VisibilityReason  string // "exact_prestador" | "exact_tomador" | "exact_intermediario" | "same_root_only" | "unknown"
+	FirstSeenNSU      int64
+	LastSeenNSU       int64
+	FirstSeenNSUValid bool
+	LastSeenNSUValid  bool
+	FirstSyncedAt     time.Time
+	LastSyncedAt      time.Time
+}
+
+// CompanyParticipation contains company-scoped role and visibility classification for one document.
+type CompanyParticipation struct {
+	CompanyRole      string
+	VisibilityReason string
 }
 
 // CompanyStats provides aggregated information about a company's synchronization state.

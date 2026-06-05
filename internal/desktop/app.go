@@ -124,7 +124,7 @@ func (a *App) Pull(input app.PullInput) (app.PullResult, error) {
 	return a.core.Pull(a.ctx, input)
 }
 
-func (a *App) ListDocuments(input app.ListInput) ([]nfse.Document, error) {
+func (a *App) ListDocuments(input app.ListInput) ([]nfse.CompanyDocument, error) {
 	return a.core.ListDocuments(a.ctx, input)
 }
 

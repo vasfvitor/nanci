@@ -10,8 +10,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-// GenerateXLSX creates an Excel spreadsheet from a list of documents and saves it to the specified path.
-func GenerateXLSX(documents []nfse.Document, outPath string) error {
+// GenerateXLSX creates an Excel spreadsheet from a list of company-facing documents and saves it to the specified path.
+func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -24,7 +24,7 @@ func GenerateXLSX(documents []nfse.Document, outPath string) error {
 
 	// Set header
 	headers := []string{
-		"Competência", "Data Emissão", "Chave de Acesso", "Direção",
+		"Competência", "Data Emissão", "Chave de Acesso", "Direção", "Visibilidade",
 		"CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
 		"Valor Serviço (R$)", "ISS (R$)", "IRRF (R$)", "INSS (R$)",
 		"PIS (R$)", "COFINS (R$)", "CSLL (R$)", "Status",
@@ -55,22 +55,23 @@ func GenerateXLSX(documents []nfse.Document, outPath string) error {
 		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), doc.Competence)
 		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), issueStr)
 		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), doc.ChaveAcesso)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), doc.Direction)
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), cnpj.Format(doc.PrestadorCNPJ))
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), doc.PrestadorName)
-		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), cnpj.Format(doc.TomadorCNPJ))
-		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), doc.TomadorName)
-		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), doc.ServiceValue)
-		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), doc.ISSValue)
-		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), doc.IRRFValue)
-		f.SetCellValue(sheet, fmt.Sprintf("L%d", row), doc.INSSValue)
-		f.SetCellValue(sheet, fmt.Sprintf("M%d", row), doc.PISValue)
-		f.SetCellValue(sheet, fmt.Sprintf("N%d", row), doc.COFINSValue)
-		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), doc.CSLLValue)
-		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), doc.Status)
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), doc.CompanyRole)
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), doc.VisibilityReason)
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), cnpj.Format(doc.PrestadorCNPJ))
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), doc.PrestadorName)
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), cnpj.Format(doc.TomadorCNPJ))
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), doc.TomadorName)
+		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), doc.ServiceValue)
+		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), doc.ISSValue)
+		f.SetCellValue(sheet, fmt.Sprintf("L%d", row), doc.IRRFValue)
+		f.SetCellValue(sheet, fmt.Sprintf("M%d", row), doc.INSSValue)
+		f.SetCellValue(sheet, fmt.Sprintf("N%d", row), doc.PISValue)
+		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), doc.COFINSValue)
+		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), doc.CSLLValue)
+		f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), doc.Status)
 
-		// Apply money style to columns I to O
-		f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("O%d", row), moneyStyle)
+		// Apply money style to columns J to P
+		f.SetCellStyle(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("P%d", row), moneyStyle)
 	}
 
 	// Adjust column widths basic auto-fit approximation
@@ -79,9 +80,10 @@ func GenerateXLSX(documents []nfse.Document, outPath string) error {
 	f.SetColWidth(sheet, "C", "C", 45)
 	f.SetColWidth(sheet, "D", "D", 12)
 	f.SetColWidth(sheet, "E", "E", 20)
-	f.SetColWidth(sheet, "F", "F", 40)
-	f.SetColWidth(sheet, "G", "G", 20)
-	f.SetColWidth(sheet, "H", "H", 40)
+	f.SetColWidth(sheet, "F", "F", 20)
+	f.SetColWidth(sheet, "G", "G", 40)
+	f.SetColWidth(sheet, "H", "H", 20)
+	f.SetColWidth(sheet, "I", "I", 40)
 
 	if err := f.SaveAs(outPath); err != nil {
 		return fmt.Errorf("failed to save excel file: %w", err)

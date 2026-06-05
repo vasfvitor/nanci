@@ -16,8 +16,8 @@ type ListInput struct {
 	Direction  string // "tomada" | "prestada" | "intermediario", optional
 }
 
-// ListDocuments returns the fiscal documents matching the given filters.
-func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.Document, error) {
+// ListDocuments returns the company-facing fiscal documents matching the given filters.
+func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.CompanyDocument, error) {
 	if err := cnpj.Validate(input.CNPJ); err != nil {
 		return nil, fmt.Errorf("CNPJ inválido: %w", err)
 	}

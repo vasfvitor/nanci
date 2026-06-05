@@ -28,6 +28,10 @@ type XMLDocument struct {
 			CNPJ string `xml:"CNPJ"`
 			Nome string `xml:"xNome"`
 		} `xml:"toma"`
+		Intermediario struct {
+			CNPJ string `xml:"CNPJ"`
+			Nome string `xml:"xNome"`
+		} `xml:"interm"`
 		Valores struct {
 			ValorServico float64 `xml:"vServ"`
 			ISS          float64 `xml:"vISS"`
@@ -78,27 +82,29 @@ func DecodeXMLPayload(payloadBase64 string) ([]byte, string, error) {
 	return xmlData, hashHex, nil
 }
 
-// ParseXML extracts the basic information from the raw XML bytes.
-func ParseXML(xmlData []byte, companyCNPJRoot string) (*Document, error) {
+// ParseXML extracts the canonical document information from the raw XML bytes.
+func ParseXML(xmlData []byte) (*Document, error) {
 	var parsedXML XMLDocument
 	if err := xml.Unmarshal(xmlData, &parsedXML); err != nil {
 		return nil, fmt.Errorf("failed to parse xml: %w", err)
 	}
 
 	doc := &Document{
-		ChaveAcesso:   parsedXML.InfNFSe.ChaveAcesso,
-		PrestadorCNPJ: parsedXML.InfNFSe.Prestador.CNPJ,
-		PrestadorName: parsedXML.InfNFSe.Prestador.Nome,
-		TomadorCNPJ:   parsedXML.InfNFSe.Tomador.CNPJ,
-		TomadorName:   parsedXML.InfNFSe.Tomador.Nome,
-		ServiceValue:  parsedXML.InfNFSe.Valores.ValorServico,
-		ISSValue:      parsedXML.InfNFSe.Valores.ISS,
-		IRRFValue:     parsedXML.InfNFSe.Valores.IRRF,
-		INSSValue:     parsedXML.InfNFSe.Valores.INSS,
-		PISValue:      parsedXML.InfNFSe.Valores.PIS,
-		COFINSValue:   parsedXML.InfNFSe.Valores.COFINS,
-		CSLLValue:     parsedXML.InfNFSe.Valores.CSLL,
-		Status:        "normal",
+		ChaveAcesso:       parsedXML.InfNFSe.ChaveAcesso,
+		PrestadorCNPJ:     parsedXML.InfNFSe.Prestador.CNPJ,
+		PrestadorName:     parsedXML.InfNFSe.Prestador.Nome,
+		TomadorCNPJ:       parsedXML.InfNFSe.Tomador.CNPJ,
+		TomadorName:       parsedXML.InfNFSe.Tomador.Nome,
+		IntermediarioCNPJ: parsedXML.InfNFSe.Intermediario.CNPJ,
+		IntermediarioName: parsedXML.InfNFSe.Intermediario.Nome,
+		ServiceValue:      parsedXML.InfNFSe.Valores.ValorServico,
+		ISSValue:          parsedXML.InfNFSe.Valores.ISS,
+		IRRFValue:         parsedXML.InfNFSe.Valores.IRRF,
+		INSSValue:         parsedXML.InfNFSe.Valores.INSS,
+		PISValue:          parsedXML.InfNFSe.Valores.PIS,
+		COFINSValue:       parsedXML.InfNFSe.Valores.COFINS,
+		CSLLValue:         parsedXML.InfNFSe.Valores.CSLL,
+		Status:            "normal",
 	}
 
 	// Parse date
@@ -116,23 +122,30 @@ func ParseXML(xmlData []byte, companyCNPJRoot string) (*Document, error) {
 		doc.Competence = comp[:7]
 	}
 
-	// Determine Direction
-	// If the company's CNPJ root matches the Prestador, it's "prestada"
-	// If it matches Tomador, it's "tomada"
-	// Else "intermediario"
-	prestRoot := getRootSafely(doc.PrestadorCNPJ)
-	tomRoot := getRootSafely(doc.TomadorCNPJ)
+	return doc, nil
+}
 
-	switch companyCNPJRoot {
-	case prestRoot:
-		doc.Direction = "prestada"
-	case tomRoot:
-		doc.Direction = "tomada"
-	default:
-		doc.Direction = "intermediario"
+// ClassifyCompanyParticipation derives company-scoped role and visibility for a canonical document.
+func ClassifyCompanyParticipation(doc *Document, companyCNPJ string) CompanyParticipation {
+	companyCNPJ = normalizeCNPJ(companyCNPJ)
+
+	switch companyCNPJ {
+	case normalizeCNPJ(doc.PrestadorCNPJ):
+		return CompanyParticipation{CompanyRole: "prestada", VisibilityReason: "exact_prestador"}
+	case normalizeCNPJ(doc.TomadorCNPJ):
+		return CompanyParticipation{CompanyRole: "tomada", VisibilityReason: "exact_tomador"}
+	case normalizeCNPJ(doc.IntermediarioCNPJ):
+		return CompanyParticipation{CompanyRole: "intermediario", VisibilityReason: "exact_intermediario"}
 	}
 
-	return doc, nil
+	companyRoot := getRootSafely(companyCNPJ)
+	if companyRoot != "" && (companyRoot == getRootSafely(doc.PrestadorCNPJ) ||
+		companyRoot == getRootSafely(doc.TomadorCNPJ) ||
+		companyRoot == getRootSafely(doc.IntermediarioCNPJ)) {
+		return CompanyParticipation{CompanyRole: "none", VisibilityReason: "same_root_only"}
+	}
+
+	return CompanyParticipation{CompanyRole: "none", VisibilityReason: "unknown"}
 }
 
 // ParseEvent extracts basic info from an Event XML.
@@ -170,12 +183,16 @@ func ParseEvent(xmlData []byte) (*Event, error) {
 }
 
 func getRootSafely(cnpj string) string {
-	cleaned := strings.ReplaceAll(cnpj, ".", "")
-	cleaned = strings.ReplaceAll(cleaned, "/", "")
-	cleaned = strings.ReplaceAll(cleaned, "-", "")
-	cleaned = strings.TrimSpace(cleaned)
+	cleaned := normalizeCNPJ(cnpj)
 	if len(cleaned) == 14 {
 		return cleaned[:8]
 	}
 	return ""
+}
+
+func normalizeCNPJ(cnpj string) string {
+	cleaned := strings.ReplaceAll(cnpj, ".", "")
+	cleaned = strings.ReplaceAll(cleaned, "/", "")
+	cleaned = strings.ReplaceAll(cleaned, "-", "")
+	return strings.TrimSpace(cleaned)
 }

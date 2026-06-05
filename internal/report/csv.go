@@ -10,8 +10,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-// GenerateCSV creates a CSV file from a list of documents and saves it to the specified path.
-func GenerateCSV(documents []nfse.Document, outPath string) error {
+// GenerateCSV creates a CSV file from a list of company-facing documents and saves it to the specified path.
+func GenerateCSV(documents []nfse.CompanyDocument, outPath string) error {
 	file, err := os.Create(outPath)
 	if err != nil {
 		return fmt.Errorf("failed to create csv file: %w", err)
@@ -23,7 +23,7 @@ func GenerateCSV(documents []nfse.Document, outPath string) error {
 
 	// Write header
 	headers := []string{
-		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
+		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao", "Visibilidade",
 		"CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
 		"Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
 	}
@@ -43,7 +43,8 @@ func GenerateCSV(documents []nfse.Document, outPath string) error {
 			doc.Competence,
 			issueStr,
 			doc.ChaveAcesso,
-			doc.Direction,
+			doc.CompanyRole,
+			doc.VisibilityReason,
 			cnpj.Format(doc.PrestadorCNPJ),
 			doc.PrestadorName,
 			cnpj.Format(doc.TomadorCNPJ),

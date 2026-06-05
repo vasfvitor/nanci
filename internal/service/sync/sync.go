@@ -150,26 +150,51 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 	}
 
 	// 2. Parse XML
-	doc, err := nfse.ParseXML(rawXML, company.CNPJRoot)
+	doc, err := nfse.ParseXML(rawXML)
 	if err != nil {
 		return fmt.Errorf("parse failed: %w", err)
 	}
 
 	doc.ID = uuid.NewString()
-	doc.CompanyID = company.ID
-	doc.NSU = env.NSU
 	doc.RawHash = hashHex
 
-	// 3. Save file
-	relPath, err := s.fileWriter.SaveXML(company.CNPJ, doc.Competence, doc.Direction, doc.ChaveAcesso, rawXML)
+	// 3. Save canonical file
+	relPath, err := s.fileWriter.SaveXML(doc.Competence, doc.ChaveAcesso, rawXML)
 	if err != nil {
 		return fmt.Errorf("file save failed: %w", err)
 	}
 	doc.XMLPath = relPath
 
-	// 4. Save to DB
-	if err := s.store.SaveDocument(ctx, doc); err != nil {
+	// 4. Save canonical document
+	if err := s.store.UpsertDocument(ctx, doc); err != nil {
 		return fmt.Errorf("db save failed: %w", err)
+	}
+
+	canonicalDoc, err := s.store.GetDocumentByChave(ctx, doc.ChaveAcesso)
+	if err != nil {
+		return fmt.Errorf("db fetch canonical failed: %w", err)
+	}
+	if canonicalDoc == nil {
+		return fmt.Errorf("canonical document missing after upsert: %s", doc.ChaveAcesso)
+	}
+
+	participation := nfse.ClassifyCompanyParticipation(canonicalDoc, company.CNPJ)
+	companyDoc := &nfse.CompanyDocument{
+		Document:          *canonicalDoc,
+		RelationID:        uuid.NewString(),
+		CompanyID:         company.ID,
+		DocumentID:        canonicalDoc.ID,
+		CompanyRole:       participation.CompanyRole,
+		VisibilityReason:  participation.VisibilityReason,
+		FirstSeenNSU:      env.NSU,
+		LastSeenNSU:       env.NSU,
+		FirstSeenNSUValid: true,
+		LastSeenNSUValid:  true,
+	}
+
+	// 5. Save company relation
+	if err := s.store.UpsertCompanyDocument(ctx, companyDoc); err != nil {
+		return fmt.Errorf("db save company relation failed: %w", err)
 	}
 
 	return nil

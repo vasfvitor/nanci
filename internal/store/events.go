@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -15,17 +16,25 @@ func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error {
 	}
 	defer tx.Rollback()
 
+	doc, err := s.GetDocumentByChave(ctx, event.ChaveAcesso)
+	if err != nil {
+		return err
+	}
+	if doc == nil {
+		return fmt.Errorf("documento não encontrado para evento: %s", event.ChaveAcesso)
+	}
+
 	query := `
 		INSERT INTO events (
-			id, company_id, chave_acesso, event_type, issue_date, details, raw_hash, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			id, document_id, company_id, chave_acesso, event_type, event_date, description, raw_hash, created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(chave_acesso, event_type) DO NOTHING
 	`
 	now := time.Now().UTC().Format(time.RFC3339)
 	issueDate := event.IssueDate.UTC().Format(time.RFC3339)
 
 	res, err := tx.ExecContext(ctx, query,
-		event.ID, event.CompanyID, event.ChaveAcesso, event.Type, issueDate, event.Details, event.RawHash, now,
+		event.ID, doc.ID, event.CompanyID, event.ChaveAcesso, event.Type, issueDate, event.Details, event.RawHash, now,
 	)
 	if err != nil {
 		return err
@@ -34,8 +43,8 @@ func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error {
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected > 0 && event.Type == "cancelamento" {
 		// Update document status to canceled
-		updateDoc := `UPDATE documents SET status = 'cancelado', updated_at = ? WHERE chave_acesso = ? AND company_id = ?`
-		if _, err := tx.ExecContext(ctx, updateDoc, now, event.ChaveAcesso, event.CompanyID); err != nil {
+		updateDoc := `UPDATE documents SET status = 'cancelada', updated_at = ? WHERE chave_acesso = ?`
+		if _, err := tx.ExecContext(ctx, updateDoc, now, event.ChaveAcesso); err != nil {
 			return err
 		}
 	}

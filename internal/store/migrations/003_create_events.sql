@@ -3,15 +3,17 @@
 CREATE TABLE events (
     id            TEXT PRIMARY KEY,
     document_id   TEXT NOT NULL REFERENCES documents(id),
+    company_id    TEXT NOT NULL REFERENCES companies(id),
     chave_acesso  TEXT NOT NULL,
     event_type    TEXT,
     event_date    TEXT,
     description   TEXT,
-    raw_xml_path  TEXT,
+    raw_hash      TEXT,
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
 CREATE INDEX idx_events_document ON events(document_id);
+CREATE UNIQUE INDEX idx_events_unique_chave_type ON events(chave_acesso, event_type);
 -- +goose StatementEnd
 
 -- +goose Down

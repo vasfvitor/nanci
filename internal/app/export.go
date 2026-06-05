@@ -46,7 +46,7 @@ func (a *App) ExportZIP(ctx context.Context, input ExportInput) error {
 }
 
 // queryExportDocs validates input and returns the matching documents from the store.
-func (a *App) queryExportDocs(ctx context.Context, input ExportInput) ([]nfse.Document, error) {
+func (a *App) queryExportDocs(ctx context.Context, input ExportInput) ([]nfse.CompanyDocument, error) {
 	if err := cnpj.Validate(input.CNPJ); err != nil {
 		return nil, fmt.Errorf("CNPJ inválido: %w", err)
 	}

@@ -9,7 +9,7 @@ import (
 // DocumentFilter represents the available filters for listing documents.
 type DocumentFilter struct {
 	Competence string // Format YYYY-MM
-	Direction  string // "tomada" | "prestada" | "intermediario"
+	Direction  string // public compatibility term mapped to company_role
 	Status     string // "normal" | "cancelada" | "substituida"
 }
 
@@ -32,9 +32,10 @@ type Store interface {
 	UpdateLastNSU(ctx context.Context, companyID string, nsu int64) error
 
 	// Documents
-	SaveDocument(ctx context.Context, doc *nfse.Document) error
+	UpsertDocument(ctx context.Context, doc *nfse.Document) error
 	GetDocumentByChave(ctx context.Context, chave string) (*nfse.Document, error)
-	ListDocuments(ctx context.Context, companyID string, filter DocumentFilter) ([]nfse.Document, error)
+	UpsertCompanyDocument(ctx context.Context, doc *nfse.CompanyDocument) error
+	ListDocuments(ctx context.Context, companyID string, filter DocumentFilter) ([]nfse.CompanyDocument, error)
 	GetCompanyStats(ctx context.Context, companyID string) (*CompanyStats, error)
 
 	// Events

@@ -18,18 +18,15 @@ func NewWriter(baseDir string) *Writer {
 	}
 }
 
-// SaveXML saves the raw XML data to disk, organized by CNPJ, Competence, and Direction.
+// SaveXML saves the raw XML data to disk using one canonical file per document.
 // It returns the relative path to the saved file.
-func (w *Writer) SaveXML(cnpj string, competence string, direction string, chaveAcesso string, data []byte) (string, error) {
+func (w *Writer) SaveXML(competence string, chaveAcesso string, data []byte) (string, error) {
 	if competence == "" {
 		competence = "0000-00" // Fallback if competence is missing
 	}
-	if direction == "" {
-		direction = "desconhecido"
-	}
 
-	// Create directory structure: <baseDir>/xml/<cnpj>/<competence>/<direction>
-	relDir := filepath.Join("xml", cnpj, competence, direction)
+	// Create directory structure: <baseDir>/xml/<competence>
+	relDir := filepath.Join("xml", competence)
 	fullDir := filepath.Join(w.baseDir, relDir)
 
 	if err := os.MkdirAll(fullDir, 0755); err != nil {

@@ -10,9 +10,9 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-// GenerateZIP creates a ZIP archive containing the physical XML files for the given documents.
+// GenerateZIP creates a ZIP archive containing the physical XML files for the given company-facing documents.
 // baseDir is the root data directory where "xml/" is located.
-func GenerateZIP(documents []nfse.Document, baseDir string, outPath string) error {
+func GenerateZIP(documents []nfse.CompanyDocument, baseDir string, outPath string) error {
 	zipFile, err := os.Create(outPath)
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
@@ -36,7 +36,11 @@ func GenerateZIP(documents []nfse.Document, baseDir string, outPath string) erro
 		}
 
 		// The path inside the zip file
-		zipEntryPath := fmt.Sprintf("%s/%s/%s.xml", doc.Competence, doc.Direction, doc.ChaveAcesso)
+		roleFolder := doc.CompanyRole
+		if roleFolder == "" || roleFolder == "none" {
+			roleFolder = "sem-papel-fiscal"
+		}
+		zipEntryPath := fmt.Sprintf("%s/%s/%s.xml", doc.Competence, roleFolder, doc.ChaveAcesso)
 
 		writer, err := zipWriter.Create(zipEntryPath)
 		if err != nil {
