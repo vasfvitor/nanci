@@ -36,16 +36,19 @@ func TestSQLiteStore_CanonicalAndCompanyDocuments(t *testing.T) {
 	}
 
 	canonical := &nfse.Document{
-		ID:            uuid.NewString(),
-		ChaveAcesso:   "NFS123",
-		IssueDate:     time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC),
-		Competence:    "2026-06",
-		PrestadorCNPJ: companyA.CNPJ,
-		TomadorCNPJ:   companyB.CNPJ,
-		ServiceValue:  100,
-		Status:        "normal",
-		XMLPath:       "xml/2026-06/NFS123.xml",
-		RawHash:       "hash1",
+		ID:               uuid.NewString(),
+		ChaveAcesso:      "NFS123",
+		IssueDate:        time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC),
+		Competence:       "2026-06",
+		PrestadorCNPJ:    companyA.CNPJ,
+		TomadorCNPJ:      companyB.CNPJ,
+		ServiceValue:     100,
+		TotalRetentions:    15.50,
+		NFSeNumber:         "9999",
+		ServiceDescription: "Teste de descricao truncada",
+		Status:           "normal",
+		XMLPath:          "xml/2026-06/NFS123.xml",
+		RawHash:          "hash1",
 	}
 	if err := store.UpsertDocument(ctx, canonical); err != nil {
 		t.Fatalf("UpsertDocument: %v", err)
@@ -57,6 +60,15 @@ func TestSQLiteStore_CanonicalAndCompanyDocuments(t *testing.T) {
 	}
 	if savedCanonical == nil {
 		t.Fatal("canonical document not found")
+	}
+	if savedCanonical.NFSeNumber != "9999" {
+		t.Errorf("saved NFSeNumber = %q, want 9999", savedCanonical.NFSeNumber)
+	}
+	if savedCanonical.ServiceDescription != "Teste de descricao truncada" {
+		t.Errorf("saved ServiceDescription = %q, want 'Teste de descricao truncada'", savedCanonical.ServiceDescription)
+	}
+	if savedCanonical.TotalRetentions != 15.50 {
+		t.Errorf("saved TotalRetentions = %f, want 15.50", savedCanonical.TotalRetentions)
 	}
 
 	relationA := &nfse.CompanyDocument{

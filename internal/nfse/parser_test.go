@@ -128,6 +128,8 @@ func TestParseXML(t *testing.T) {
 		wantErrors    bool
 		wantWarning   bool
 		wantVersion   string
+		wantNumero    string
+		wantDesc      string
 	}{
 		{
 			filename:    "simple-prestada.xml",
@@ -140,9 +142,9 @@ func TestParseXML(t *testing.T) {
 			wantVersion: "1.0",
 		},
 		{
-			filename:    "com-retencoes.xml",
-			wantChave:   "5555555555555555555555555555555555555555555555",
-			wantVersion: "1.01",
+			filename:     "com-retencoes.xml",
+			wantChave:    "5555555555555555555555555555555555555555555555",
+			wantVersion:  "1.01",
 			wantTotalRet: 1715.00, // 150(IRRF) + 1100(INSS) + 65(PIS) + 300(COFINS) + 100(CSLL)
 		},
 		{
@@ -152,14 +154,21 @@ func TestParseXML(t *testing.T) {
 			wantWarning: true, // Missing tomador
 		},
 		{
-			filename:    "invalid.xml",
-			wantErrors:  true,
+			filename:   "invalid.xml",
+			wantErrors: true,
 		},
 		{
 			filename:    "ibscbs-extra-fields.xml",
 			wantChave:   "7777777777777777777777777777777777777777777777",
 			wantVersion: "1.01",
 			wantWarning: true,
+		},
+		{
+			filename:    "com-numero-descricao.xml",
+			wantChave:   "8888888888888888888888888888888888888888888888",
+			wantVersion: "1.0",
+			wantNumero:  "12345",
+			wantDesc:    "Serviços de desenvolvimento de software",
 		},
 	}
 
@@ -191,6 +200,12 @@ func TestParseXML(t *testing.T) {
 			}
 			if doc.TotalRetentions != tt.wantTotalRet {
 				t.Errorf("TotalRetentions = %f, want %f", doc.TotalRetentions, tt.wantTotalRet)
+			}
+			if tt.wantNumero != "" && doc.NFSeNumber != tt.wantNumero {
+				t.Errorf("NFSeNumber = %q, want %q", doc.NFSeNumber, tt.wantNumero)
+			}
+			if tt.wantDesc != "" && doc.ServiceDescription != tt.wantDesc {
+				t.Errorf("ServiceDescription = %q, want %q", doc.ServiceDescription, tt.wantDesc)
 			}
 			
 			hasWarning := len(doc.ParseWarnings) > 0

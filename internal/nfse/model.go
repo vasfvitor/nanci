@@ -63,6 +63,8 @@ type Document struct {
 	RawHash           string
 	ParseError        string
 	ParseWarnings     []string
+	NFSeNumber        string
+	ServiceDescription  string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

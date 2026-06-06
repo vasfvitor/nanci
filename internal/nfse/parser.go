@@ -149,6 +149,18 @@ func ParseXML(xmlData []byte) (*Document, error) {
 				doc.COFINSValue = parseFloat(val)
 			case "vCSLL":
 				doc.CSLLValue = parseFloat(val)
+			case "nNFSe", "numero":
+				if doc.NFSeNumber == "" {
+					doc.NFSeNumber = val
+				}
+			case "xDesc", "descTribNac", "Discriminacao", "discriminacao", "Descricao", "descricao":
+				if doc.ServiceDescription == "" {
+					if len(val) > 200 {
+						doc.ServiceDescription = val[:197] + "..."
+					} else {
+						doc.ServiceDescription = val
+					}
+				}
 			}
 
 		case xml.CharData:
