@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -31,11 +32,16 @@ func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error {
 	query := `
 		INSERT INTO events (
 			id, document_id, chave_acesso, event_type, event_at, replacement_chave_acesso,
-			description, raw_xml_path, raw_hash, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			description, raw_xml_path, raw_hash, parse_warnings, created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(raw_hash) DO NOTHING
 	`
 	now := time.Now().UTC().Format(time.RFC3339)
+
+	var warningsJSON []byte
+	if len(event.ParseWarnings) > 0 {
+		warningsJSON, _ = json.Marshal(event.ParseWarnings)
+	}
 
 	res, err := tx.ExecContext(ctx, query,
 		event.ID,
@@ -47,6 +53,7 @@ func (s *SQLiteStore) SaveEvent(ctx context.Context, event *nfse.Event) error {
 		nullableString(event.Description),
 		event.RawXMLPath,
 		event.RawHash,
+		nullableString(string(warningsJSON)),
 		now,
 	)
 	if err != nil {
@@ -70,7 +77,7 @@ func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([
 	query := `
 		SELECT
 			id, document_id, chave_acesso, event_type, event_at, replacement_chave_acesso,
-			description, raw_xml_path, raw_hash, created_at
+			description, raw_xml_path, raw_hash, parse_warnings, created_at
 		FROM events
 		WHERE document_id = ?
 		ORDER BY
@@ -90,7 +97,7 @@ func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([
 	for rows.Next() {
 		var event nfse.Event
 		var eventAt, createdAt sql.NullString
-		var replacementChave, description sql.NullString
+		var replacementChave, description, parseWarnings sql.NullString
 
 		if err := rows.Scan(
 			&event.ID,
@@ -102,6 +109,7 @@ func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([
 			&description,
 			&event.RawXMLPath,
 			&event.RawHash,
+			&parseWarnings,
 			&createdAt,
 		); err != nil {
 			return nil, err
@@ -119,6 +127,9 @@ func (s *SQLiteStore) ListEventsByDocument(ctx context.Context, docID string) ([
 		}
 		if description.Valid {
 			event.Description = description.String
+		}
+		if parseWarnings.Valid && parseWarnings.String != "" {
+			_ = json.Unmarshal([]byte(parseWarnings.String), &event.ParseWarnings)
 		}
 		if createdAt.Valid {
 			event.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -17,14 +18,14 @@ func (s *SQLiteStore) UpsertDocument(ctx context.Context, doc *nfse.Document) er
 			id, chave_acesso, issue_date, competence,
 			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
 			intermediario_cnpj, intermediario_name,
-			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value,
-			status, xml_path, raw_hash, parse_error, created_at, updated_at
+			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value, total_retentions,
+			status, layout_version, xml_path, raw_hash, parse_error, parse_warnings, created_at, updated_at
 		) VALUES (
 			?, ?, ?, ?,
 			?, ?, ?, ?,
 			?, ?,
-			?, ?, ?, ?, ?, ?, ?,
-			?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?
 		)
 		ON CONFLICT(chave_acesso) DO UPDATE SET
 			issue_date = excluded.issue_date,
@@ -42,10 +43,13 @@ func (s *SQLiteStore) UpsertDocument(ctx context.Context, doc *nfse.Document) er
 			pis_value = excluded.pis_value,
 			cofins_value = excluded.cofins_value,
 			csll_value = excluded.csll_value,
+			total_retentions = excluded.total_retentions,
 			status = excluded.status,
+			layout_version = excluded.layout_version,
 			xml_path = excluded.xml_path,
 			raw_hash = excluded.raw_hash,
 			parse_error = excluded.parse_error,
+			parse_warnings = excluded.parse_warnings,
 			updated_at = excluded.updated_at
 	`
 
@@ -54,13 +58,18 @@ func (s *SQLiteStore) UpsertDocument(ctx context.Context, doc *nfse.Document) er
 	if !doc.IssueDate.IsZero() {
 		issueDate = doc.IssueDate.UTC().Format(time.RFC3339)
 	}
+	
+	var warningsJSON []byte
+	if len(doc.ParseWarnings) > 0 {
+		warningsJSON, _ = json.Marshal(doc.ParseWarnings)
+	}
 
 	_, err := s.db.ExecContext(ctx, query,
 		doc.ID, doc.ChaveAcesso, issueDate, doc.Competence,
 		doc.PrestadorCNPJ, doc.PrestadorName, doc.TomadorCNPJ, doc.TomadorName,
 		doc.IntermediarioCNPJ, doc.IntermediarioName,
-		doc.ServiceValue, doc.ISSValue, doc.IRRFValue, doc.INSSValue, doc.PISValue, doc.COFINSValue, doc.CSLLValue,
-		doc.Status, doc.XMLPath, doc.RawHash, nullableString(doc.ParseError), now, now,
+		doc.ServiceValue, doc.ISSValue, doc.IRRFValue, doc.INSSValue, doc.PISValue, doc.COFINSValue, doc.CSLLValue, doc.TotalRetentions,
+		doc.Status, nullableString(doc.LayoutVersion), doc.XMLPath, doc.RawHash, nullableString(doc.ParseError), nullableString(string(warningsJSON)), now, now,
 	)
 	if err != nil {
 		return err
@@ -76,22 +85,22 @@ func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nf
 			id, chave_acesso, issue_date, competence,
 			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
 			intermediario_cnpj, intermediario_name,
-			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value,
-			status, xml_path, raw_hash, parse_error, created_at, updated_at
+			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value, total_retentions,
+			status, layout_version, xml_path, raw_hash, parse_error, parse_warnings, created_at, updated_at
 		FROM documents
 		WHERE chave_acesso = ?
 	`
 
 	var doc nfse.Document
 	var issueDate, createdAt, updatedAt string
-	var parseError sql.NullString
+	var parseError, layoutVersion, parseWarnings sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, chave).Scan(
 		&doc.ID, &doc.ChaveAcesso, &issueDate, &doc.Competence,
 		&doc.PrestadorCNPJ, &doc.PrestadorName, &doc.TomadorCNPJ, &doc.TomadorName,
 		&doc.IntermediarioCNPJ, &doc.IntermediarioName,
-		&doc.ServiceValue, &doc.ISSValue, &doc.IRRFValue, &doc.INSSValue, &doc.PISValue, &doc.COFINSValue, &doc.CSLLValue,
-		&doc.Status, &doc.XMLPath, &doc.RawHash, &parseError, &createdAt, &updatedAt,
+		&doc.ServiceValue, &doc.ISSValue, &doc.IRRFValue, &doc.INSSValue, &doc.PISValue, &doc.COFINSValue, &doc.CSLLValue, &doc.TotalRetentions,
+		&doc.Status, &layoutVersion, &doc.XMLPath, &doc.RawHash, &parseError, &parseWarnings, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -107,6 +116,12 @@ func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nf
 	doc.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 	if parseError.Valid {
 		doc.ParseError = parseError.String
+	}
+	if layoutVersion.Valid {
+		doc.LayoutVersion = layoutVersion.String
+	}
+	if parseWarnings.Valid && parseWarnings.String != "" {
+		_ = json.Unmarshal([]byte(parseWarnings.String), &doc.ParseWarnings)
 	}
 
 	return &doc, nil
@@ -162,8 +177,8 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 			d.id, d.chave_acesso, d.issue_date, d.competence,
 			d.prestador_cnpj, d.prestador_name, d.tomador_cnpj, d.tomador_name,
 			d.intermediario_cnpj, d.intermediario_name,
-			d.service_value, d.iss_value, d.irrf_value, d.inss_value, d.pis_value, d.cofins_value, d.csll_value,
-			d.status, d.xml_path, d.raw_hash, d.parse_error, d.created_at, d.updated_at,
+			d.service_value, d.iss_value, d.irrf_value, d.inss_value, d.pis_value, d.cofins_value, d.csll_value, d.total_retentions,
+			d.status, d.layout_version, d.xml_path, d.raw_hash, d.parse_error, d.parse_warnings, d.created_at, d.updated_at,
 			cd.id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at
 		FROM company_documents cd
@@ -197,7 +212,7 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 	for rows.Next() {
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
-		var parseError sql.NullString
+		var parseError, layoutVersion, parseWarnings sql.NullString
 		var firstSeenNSU, lastSeenNSU sql.NullInt64
 		var firstSyncedAt, lastSyncedAt string
 
@@ -205,8 +220,8 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 			&d.Document.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
 			&d.PrestadorCNPJ, &d.PrestadorName, &d.TomadorCNPJ, &d.TomadorName,
 			&d.IntermediarioCNPJ, &d.IntermediarioName,
-			&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue,
-			&d.Status, &d.XMLPath, &d.RawHash, &parseError, &createdAt, &updatedAt,
+			&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue, &d.TotalRetentions,
+			&d.Status, &layoutVersion, &d.XMLPath, &d.RawHash, &parseError, &parseWarnings, &createdAt, &updatedAt,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 			&firstSeenNSU, &lastSeenNSU, &firstSyncedAt, &lastSyncedAt,
 		); err != nil {
@@ -220,6 +235,12 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 		d.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 		if parseError.Valid {
 			d.ParseError = parseError.String
+		}
+		if layoutVersion.Valid {
+			d.LayoutVersion = layoutVersion.String
+		}
+		if parseWarnings.Valid && parseWarnings.String != "" {
+			_ = json.Unmarshal([]byte(parseWarnings.String), &d.ParseWarnings)
 		}
 		if firstSeenNSU.Valid {
 			d.FirstSeenNSU = firstSeenNSU.Int64

@@ -41,6 +41,7 @@ func TestSQLiteStore_EventSchemaMatchesLedgerContract(t *testing.T) {
 		"description",
 		"raw_xml_path",
 		"raw_hash",
+		"parse_warnings",
 		"created_at",
 	}
 	if len(columns) != len(want) {
