@@ -25,6 +25,7 @@ go.work.sum
 *.db-wal
 *.pfx
 *.p12
+!internal/foundation/cert/testdata/cert_a1_mock_70860312000150.pfx
 exports/
 xml/
 eventos/
@@ -32,3 +33,4 @@ eventos/
 **/.gocache-desktop/**
 **/.golangci-cache/**
 /vendor
+devdata/
