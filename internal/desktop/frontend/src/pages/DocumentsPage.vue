@@ -4,91 +4,100 @@
       <h5 class="q-my-none">Documentos Fiscais</h5>
     </div>
 
-    <q-card class="q-mb-md">
-      <q-card-section class="row q-col-gutter-sm items-center">
-        <q-select
-          class="col-12 col-md-3"
-          v-model="filter.CNPJ"
-          :options="companyOptions"
-          label="Empresa"
-          emit-value
-          map-options
-          outlined
-          dense
-        />
-        <q-input
-          class="col-12 col-md-3"
-          v-model="filter.Competence"
-          label="Competência (YYYY-MM)"
-          outlined
-          dense
-          clearable
-          mask="####-##"
-        >
-          <template v-slot:append>
-            <q-icon name="sym_r_event" class="cursor-pointer">
-              <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
-                <q-date
-                  v-model="filter.Competence"
-                  minimal
-                  mask="YYYY-MM"
-                  emit-immediately
-                  default-view="Months"
-                  years-in-month-view
-                  @update:model-value="onDateChange"
-                >
-                  <div class="row items-center justify-end">
-                    <q-btn v-close-popup label="Mês Atual" color="primary" flat @click="setToday" />
-                    <q-btn v-close-popup label="Fechar" color="primary" flat />
-                  </div>
-                </q-date>
-              </q-popup-proxy>
-            </q-icon>
-          </template>
-        </q-input>
-        <q-select
-          class="col-12 col-md-3"
-          v-model="filter.Direction"
-          :options="[
-            { label: 'Todos', value: '' },
-            { label: 'Tomados', value: 'tomada' },
-            { label: 'Prestados', value: 'prestada' },
-            { label: 'Intermediário', value: 'intermediario' },
-            { label: 'Sem papel fiscal', value: 'none' },
-          ]"
-          label="Direção"
-          emit-value
-          map-options
-          outlined
-          dense
-        />
-        <div class="col-12 col-md-3 row q-gutter-x-sm">
-          <q-btn
-            color="primary"
-            icon="search"
-            label="Buscar"
-            @click="search"
-            :disable="!filter.CNPJ"
-          />
-          <q-btn-dropdown color="secondary" label="Exportar" :disable="documents.length === 0">
-            <q-list>
-              <q-item clickable v-close-popup @click="exportData('csv')">
-                <q-item-section avatar><q-icon name="table_view" /></q-item-section>
-                <q-item-section><q-item-label>Exportar CSV</q-item-label></q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="exportData('xlsx')">
-                <q-item-section avatar><q-icon name="grid_on" /></q-item-section>
-                <q-item-section><q-item-label>Exportar XLSX</q-item-label></q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="exportData('zip')">
-                <q-item-section avatar><q-icon name="folder_zip" /></q-item-section>
-                <q-item-section><q-item-label>Exportar XMLs (ZIP)</q-item-label></q-item-section>
-              </q-item>
-            </q-list>
-          </q-btn-dropdown>
-        </div>
-      </q-card-section>
-    </q-card>
+    <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
+      <q-select
+        class="col-12 col-md-3"
+        v-model="filter.CNPJ"
+        :options="companyOptions"
+        label="Empresa"
+        emit-value
+        map-options
+        outlined
+        dense
+        options-dense
+      />
+      <q-input
+        class="col-12 col-md-2"
+        v-model="filter.Competence"
+        label="Competência"
+        outlined
+        dense
+        clearable
+        mask="####-##"
+      >
+        <template v-slot:append>
+          <q-icon name="sym_r_event" class="cursor-pointer">
+            <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
+              <q-date
+                v-model="filter.Competence"
+                minimal
+                mask="YYYY-MM"
+                emit-immediately
+                default-view="Months"
+                years-in-month-view
+                @update:model-value="onDateChange"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Mês Atual" color="primary" flat @click="setToday" />
+                  <q-btn v-close-popup label="Fechar" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
+      <q-select
+        class="col-12 col-md-2"
+        v-model="filter.Direction"
+        :options="[
+          { label: 'Todos', value: '' },
+          { label: 'Tomados', value: 'tomada' },
+          { label: 'Prestados', value: 'prestada' },
+          { label: 'Intermediário', value: 'intermediario' },
+          { label: 'Sem papel fiscal', value: 'none' },
+        ]"
+        label="Direção"
+        emit-value
+        map-options
+        outlined
+        dense
+        options-dense
+      />
+
+      <q-space />
+
+      <q-btn
+        color="primary"
+        icon="search"
+        label="Buscar"
+        @click="search"
+        :disable="!filter.CNPJ"
+        dense
+        flat
+      />
+      <q-btn-dropdown
+        color="secondary"
+        label="Exportar"
+        :disable="documents.length === 0"
+        dense
+        flat
+      >
+        <q-list dense>
+          <q-item clickable v-close-popup @click="exportData('csv')">
+            <q-item-section avatar><q-icon name="table_view" /></q-item-section>
+            <q-item-section><q-item-label>Exportar CSV</q-item-label></q-item-section>
+          </q-item>
+          <q-item clickable v-close-popup @click="exportData('xlsx')">
+            <q-item-section avatar><q-icon name="grid_on" /></q-item-section>
+            <q-item-section><q-item-label>Exportar XLSX</q-item-label></q-item-section>
+          </q-item>
+          <q-item clickable v-close-popup @click="exportData('zip')">
+            <q-item-section avatar><q-icon name="folder_zip" /></q-item-section>
+            <q-item-section><q-item-label>Exportar XMLs (ZIP)</q-item-label></q-item-section>
+          </q-item>
+        </q-list>
+      </q-btn-dropdown>
+    </div>
 
     <q-table
       :rows="documents"
@@ -98,6 +107,8 @@
       no-data-label="Nenhum documento encontrado."
       flat
       bordered
+      dense
+      class="full-height"
     >
       <template v-slot:body-cell-status="props">
         <q-td :props="props">

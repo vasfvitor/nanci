@@ -1,71 +1,97 @@
 <template>
   <q-page padding>
-    <div class="row items-center justify-between q-mb-md">
-      <h5 class="q-my-none">Empresas</h5>
-      <q-btn color="primary" icon="add" label="Adicionar" @click="showAddDialog = true" />
-    </div>
+    <q-table
+      title="Empresas"
+      :rows="companies"
+      :columns="columns"
+      row-key="ID"
+      flat
+      bordered
+      dense
+      :loading="false"
+      no-data-label="Nenhuma empresa cadastrada."
+    >
+      <template v-slot:top-right>
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Adicionar"
+          @click="showAddDialog = true"
+          dense
+          flat
+        />
+      </template>
 
-    <div class="row q-col-gutter-md">
-      <div v-for="company in companies" :key="company.ID" class="col-12 col-md-6 col-lg-4">
-        <q-card>
-          <q-card-section>
-            <div class="row items-center justify-between q-mb-sm">
-              <div class="text-h6 text-weight-bold">{{ company.Name }}</div>
-              <q-btn flat round icon="edit" color="primary" @click="openEditDialog(company)" />
-            </div>
-            <div class="text-subtitle2 text-grey">{{ company.CNPJ }}</div>
-            <q-badge
-              :color="company.Environment === 'producao' ? 'positive' : 'warning'"
-              :text-color="company.Environment === 'producao' ? 'white' : 'dark'"
-              class="q-mt-sm"
-            >
-              {{ company.Environment }}
-            </q-badge>
-          </q-card-section>
+      <template v-slot:body-cell-ambiente="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.row.Environment === 'producao' ? 'positive' : 'warning'"
+            :text-color="props.row.Environment === 'producao' ? 'white' : 'dark'"
+          >
+            {{ props.row.Environment }}
+          </q-badge>
+        </q-td>
+      </template>
 
-          <q-card-section class="q-gutter-y-sm">
-            <div><strong>Último NSU:</strong> {{ company.LastNSU }}</div>
+      <template v-slot:body-cell-credencial="props">
+        <q-td :props="props" style="width: 250px">
+          <q-select
+            v-model="selectedCredentials[props.row.CNPJ]"
+            :options="credentialOptions"
+            emit-value
+            map-options
+            label="Credencial"
+            outlined
+            dense
+            options-dense
+            @update:model-value="assignCredential(props.row.CNPJ)"
+          />
+        </q-td>
+      </template>
 
-            <q-select
-              v-model="selectedCredentials[company.CNPJ]"
-              :options="credentialOptions"
-              emit-value
-              map-options
-              label="Credencial"
-              outlined
-              dense
-              @update:model-value="assignCredential(company.CNPJ)"
-            />
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn
-              flat
-              color="primary"
-              icon="sync"
-              label="Sincronizar"
-              @click="syncCompany(company.CNPJ)"
-              :loading="syncing === company.CNPJ"
-            />
-          </q-card-actions>
-        </q-card>
-      </div>
-    </div>
-
-    <div v-if="companies.length === 0" class="text-center q-pa-xl text-grey">
-      <q-icon name="business" size="4rem" />
-      <p class="text-h6 q-mt-md">Nenhuma empresa cadastrada</p>
-    </div>
+      <template v-slot:body-cell-acoes="props">
+        <q-td :props="props" class="q-gutter-x-sm">
+          <q-btn
+            dense
+            flat
+            round
+            color="primary"
+            icon="sync"
+            @click="syncCompany(props.row.CNPJ)"
+            :loading="syncing === props.row.CNPJ"
+            title="Sincronizar"
+          />
+          <q-btn
+            dense
+            flat
+            round
+            color="grey-7"
+            icon="edit"
+            @click="openEditDialog(props.row)"
+            title="Editar"
+          />
+        </q-td>
+      </template>
+    </q-table>
 
     <AddCompanyDialog v-model="showAddDialog" @added="reloadData" />
-    <EditCompanyDialog v-model="showEditDialog" :companyData="selectedCompanyToEdit" @updated="reloadData" />
+    <EditCompanyDialog
+      v-model="showEditDialog"
+      :companyData="selectedCompanyToEdit"
+      @updated="reloadData"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
-import { AssignCredentialToCompany, ListCompanies, ListCredentials, Pull } from '../../wailsjs/go/main/App'
+import {
+  AssignCredentialToCompany,
+  ListCompanies,
+  ListCredentials,
+  Pull,
+} from '../../wailsjs/go/main/App'
 import { nfse } from '../../wailsjs/go/models'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
@@ -78,6 +104,15 @@ const credentialOptions = ref<{ label: string; value: string }[]>([])
 const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)
 const selectedCompanyToEdit = ref<nfse.Company | null>(null)
+
+const columns = [
+  { name: 'nome', label: 'Nome', field: 'Name', align: 'left', sortable: true },
+  { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true },
+  { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
+  { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
+  { name: 'credencial', label: 'Credencial', align: 'left' },
+  { name: 'acoes', label: 'Ações', align: 'right' },
+]
 
 function openEditDialog(company: nfse.Company) {
   selectedCompanyToEdit.value = company
@@ -95,7 +130,9 @@ async function loadCredentials() {
 async function loadCompanies() {
   const list = (await ListCompanies()) || []
   companies.value = list
-  selectedCredentials.value = Object.fromEntries(list.map((company) => [company.CNPJ, company.CredentialID]))
+  selectedCredentials.value = Object.fromEntries(
+    list.map((company) => [company.CNPJ, company.CredentialID])
+  )
 }
 
 async function reloadData() {

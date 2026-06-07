@@ -1,47 +1,85 @@
 <template>
   <q-page padding>
-    <div class="row items-center justify-between q-mb-md">
-      <h5 class="q-my-none">Credenciais</h5>
-      <q-btn color="primary" icon="vpn_key" label="Adicionar" @click="showAddDialog = true" />
-    </div>
+    <q-table
+      title="Credenciais"
+      :rows="credentials"
+      :columns="columns"
+      row-key="ID"
+      flat
+      bordered
+      dense
+      :loading="false"
+      no-data-label="Nenhuma credencial cadastrada."
+    >
+      <template v-slot:top-right>
+        <q-btn
+          color="primary"
+          icon="vpn_key"
+          label="Adicionar"
+          @click="showAddDialog = true"
+          dense
+          flat
+        />
+      </template>
 
-    <div class="row q-col-gutter-md">
-      <div v-for="credential in credentials" :key="credential.ID" class="col-12 col-md-6 col-lg-4">
-        <q-card>
-          <q-card-section>
-            <div class="row items-center justify-between q-mb-sm">
-              <div class="text-h6 text-weight-bold">{{ credential.Label }}</div>
-              <q-btn flat round icon="edit" color="primary" @click="openEditDialog(credential)" />
-            </div>
-            <div class="text-caption text-grey">{{ credential.CertPath }}</div>
-            <q-badge
-              :color="credential.Environment === 'producao' ? 'positive' : 'warning'"
-              :text-color="credential.Environment === 'producao' ? 'white' : 'dark'"
-              class="q-mt-sm"
-            >
-              {{ credential.Environment }}
-            </q-badge>
-          </q-card-section>
+      <template v-slot:body-cell-path="props">
+        <q-td :props="props">
+          <div class="ellipsis text-grey" style="max-width: 200px">
+            {{ props.row.CertPath }}
+            <q-tooltip>{{ props.row.CertPath }}</q-tooltip>
+          </div>
+        </q-td>
+      </template>
 
-          <q-card-section class="q-gutter-y-xs">
-            <div><strong>Proprietário:</strong> {{ ownerLabel(credential) }}</div>
-            <div><strong>Inspeção:</strong> {{ credential.InspectedAt ? 'Concluída' : 'Pendente' }}</div>
-          </q-card-section>
+      <template v-slot:body-cell-ambiente="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.row.Environment === 'producao' ? 'positive' : 'warning'"
+            :text-color="props.row.Environment === 'producao' ? 'white' : 'dark'"
+          >
+            {{ props.row.Environment }}
+          </q-badge>
+        </q-td>
+      </template>
 
-          <q-card-actions align="right">
-            <q-btn flat color="primary" icon="folder_open" label="Trocar arquivo" @click="changePath(credential.ID)" />
-          </q-card-actions>
-        </q-card>
-      </div>
-    </div>
+      <template v-slot:body-cell-inspecao="props">
+        <q-td :props="props">
+          <q-badge :color="props.row.InspectedAt ? 'positive' : 'grey'" outline>
+            {{ props.row.InspectedAt ? 'Concluída' : 'Pendente' }}
+          </q-badge>
+        </q-td>
+      </template>
 
-    <div v-if="credentials.length === 0" class="text-center q-pa-xl text-grey">
-      <q-icon name="vpn_key" size="4rem" />
-      <p class="text-h6 q-mt-md">Nenhuma credencial cadastrada</p>
-    </div>
+      <template v-slot:body-cell-acoes="props">
+        <q-td :props="props" class="q-gutter-x-sm">
+          <q-btn
+            dense
+            flat
+            round
+            color="primary"
+            icon="folder_open"
+            @click="changePath(props.row.ID)"
+            title="Trocar arquivo"
+          />
+          <q-btn
+            dense
+            flat
+            round
+            color="grey-7"
+            icon="edit"
+            @click="openEditDialog(props.row)"
+            title="Editar"
+          />
+        </q-td>
+      </template>
+    </q-table>
 
     <AddCredentialDialog v-model="showAddDialog" @added="loadCredentials" />
-    <EditCredentialDialog v-model="showEditDialog" :credentialData="selectedCredentialToEdit" @updated="loadCredentials" />
+    <EditCredentialDialog
+      v-model="showEditDialog"
+      :credentialData="selectedCredentialToEdit"
+      @updated="loadCredentials"
+    />
   </q-page>
 </template>
 
@@ -58,6 +96,21 @@ const credentials = ref<nfse.Credential[]>([])
 const showAddDialog = ref(false)
 const showEditDialog = ref(false)
 const selectedCredentialToEdit = ref<nfse.Credential | null>(null)
+
+const columns = [
+  { name: 'label', label: 'Nome', field: 'Label', align: 'left', sortable: true },
+  {
+    name: 'owner',
+    label: 'Proprietário',
+    field: (row: nfse.Credential) => ownerLabel(row),
+    align: 'left',
+    sortable: true,
+  },
+  { name: 'path', label: 'Arquivo PFX', field: 'CertPath', align: 'left' },
+  { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
+  { name: 'inspecao', label: 'Inspeção', align: 'center', sortable: true },
+  { name: 'acoes', label: 'Ações', align: 'right' },
+]
 
 function openEditDialog(credential: nfse.Credential) {
   selectedCredentialToEdit.value = credential
