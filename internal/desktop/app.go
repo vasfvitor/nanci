@@ -74,7 +74,11 @@ type wailsLogWriter struct {
 }
 
 func (w wailsLogWriter) Write(p []byte) (n int, err error) {
-	runtime.LogPrint(w.ctx, string(p))
+	msg := string(p)
+	runtime.LogPrint(w.ctx, msg)
+	if w.ctx != nil {
+		runtime.EventsEmit(w.ctx, "backend-log", msg)
+	}
 	return len(p), nil
 }
 
