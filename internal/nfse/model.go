@@ -49,24 +49,24 @@ type Document struct {
 	IntermediarioCNPJ string
 	IntermediarioName string
 	// TODO: review type float64 vs int64 (int64 in cents)
-	ServiceValue      float64
-	ISSValue          float64
-	IRRFValue         float64
-	INSSValue         float64
-	PISValue          float64
-	COFINSValue       float64
-	CSLLValue         float64
-	TotalRetentions   float64
-	Status            string // "normal" | "cancelada" | "substituida"
-	LayoutVersion     string
-	XMLPath           string
-	RawHash           string
-	ParseError        string
-	ParseWarnings     []string
-	NFSeNumber        string
-	ServiceDescription  string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ServiceValue       float64
+	ISSValue           float64
+	IRRFValue          float64
+	INSSValue          float64
+	PISValue           float64
+	COFINSValue        float64
+	CSLLValue          float64
+	TotalRetentions    float64
+	Status             string // "normal" | "cancelada" | "substituida"
+	LayoutVersion      string
+	XMLPath            string
+	RawHash            string
+	ParseError         string
+	ParseWarnings      []string
+	NFSeNumber         string
+	ServiceDescription string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // CompanyDocument represents the participation of one managed company in a canonical document.

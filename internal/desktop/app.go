@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction

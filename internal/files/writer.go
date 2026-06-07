@@ -29,7 +29,7 @@ func (w *Writer) SaveXML(competence string, chaveAcesso string, data []byte) (st
 	relDir := filepath.Join("xml", competence)
 	fullDir := filepath.Join(w.baseDir, relDir)
 
-	if err := os.MkdirAll(fullDir, 0755); err != nil {
+	if err := os.MkdirAll(fullDir, 0750); err != nil {
 		return "", fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -38,7 +38,7 @@ func (w *Writer) SaveXML(competence string, chaveAcesso string, data []byte) (st
 	fullPath := filepath.Join(fullDir, fileName)
 
 	// Save file
-	if err := os.WriteFile(fullPath, data, 0644); err != nil {
+	if err := os.WriteFile(fullPath, data, 0600); err != nil {
 		return "", fmt.Errorf("failed to write xml file: %w", err)
 	}
 
@@ -56,7 +56,7 @@ func (w *Writer) SaveEventXML(chaveAcesso string, rawHash string, data []byte) (
 
 	relDir := filepath.Join("xml", "events", chaveAcesso)
 	fullDir := filepath.Join(w.baseDir, relDir)
-	if err := os.MkdirAll(fullDir, 0755); err != nil {
+	if err := os.MkdirAll(fullDir, 0750); err != nil {
 		return "", fmt.Errorf("failed to create event directory: %w", err)
 	}
 
@@ -64,7 +64,7 @@ func (w *Writer) SaveEventXML(chaveAcesso string, rawHash string, data []byte) (
 	relPath := filepath.Join(relDir, fileName)
 	fullPath := filepath.Join(fullDir, fileName)
 
-	if err := os.WriteFile(fullPath, data, 0644); err != nil {
+	if err := os.WriteFile(fullPath, data, 0600); err != nil {
 		return "", fmt.Errorf("failed to write event xml file: %w", err)
 	}
 

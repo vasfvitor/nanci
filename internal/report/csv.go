@@ -11,12 +11,16 @@ import (
 )
 
 // GenerateCSV creates a CSV file from a list of company-facing documents and saves it to the specified path.
-func GenerateCSV(documents []nfse.CompanyDocument, outPath string) error {
+func GenerateCSV(documents []nfse.CompanyDocument, outPath string) (err error) {
 	file, err := os.Create(outPath)
 	if err != nil {
 		return fmt.Errorf("failed to create csv file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close csv file: %w", cerr)
+		}
+	}()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()

@@ -122,12 +122,8 @@ func extractOwnerCNPJ(certificate *x509.Certificate) (string, error) {
 	for _, name := range certificate.Subject.Names {
 		candidates = append(candidates, fmt.Sprint(name.Value))
 	}
-	for _, san := range certificate.DNSNames {
-		candidates = append(candidates, san)
-	}
-	for _, email := range certificate.EmailAddresses {
-		candidates = append(candidates, email)
-	}
+	candidates = append(candidates, certificate.DNSNames...)
+	candidates = append(candidates, certificate.EmailAddresses...)
 	for _, uri := range certificate.URIs {
 		candidates = append(candidates, uri.String())
 	}

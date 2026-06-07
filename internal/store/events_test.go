@@ -30,6 +30,9 @@ func TestSQLiteStore_EventSchemaMatchesLedgerContract(t *testing.T) {
 		}
 		columns = append(columns, name)
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows error: %v", err)
+	}
 
 	want := []string{
 		"id",
@@ -61,14 +64,14 @@ func TestSQLiteStore_SaveCancellationEventUpdatesStatusAndIsIdempotent(t *testin
 	doc := createCanonicalDocumentForEventTest(t, store, ctx, "NFS-CANC")
 
 	event := &nfse.Event{
-		ID:          uuid.NewString(),
-		ChaveAcesso: doc.ChaveAcesso,
-		Type:        "cancelamento",
-		EventAt:     time.Date(2026, 6, 4, 13, 0, 0, 0, time.UTC),
+		ID:           uuid.NewString(),
+		ChaveAcesso:  doc.ChaveAcesso,
+		Type:         "cancelamento",
+		EventAt:      time.Date(2026, 6, 4, 13, 0, 0, 0, time.UTC),
 		EventAtValid: true,
-		Description: "Cancelada pelo emitente",
-		RawXMLPath:  "xml/events/NFS-CANC/hash-canc.xml",
-		RawHash:     "hash-canc",
+		Description:  "Cancelada pelo emitente",
+		RawXMLPath:   "xml/events/NFS-CANC/hash-canc.xml",
+		RawHash:      "hash-canc",
 	}
 	if err := store.SaveEvent(ctx, event); err != nil {
 		t.Fatalf("SaveEvent first: %v", err)

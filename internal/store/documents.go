@@ -62,7 +62,7 @@ func (s *SQLiteStore) UpsertDocument(ctx context.Context, doc *nfse.Document) er
 	if !doc.IssueDate.IsZero() {
 		issueDate = doc.IssueDate.UTC().Format(time.RFC3339)
 	}
-	
+
 	var warningsJSON []byte
 	if len(doc.ParseWarnings) > 0 {
 		warningsJSON, _ = json.Marshal(doc.ParseWarnings)
@@ -111,7 +111,7 @@ func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nf
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to query document by chave: %w", err)
 	}
@@ -231,7 +231,7 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 		var firstSyncedAt, lastSyncedAt string
 
 		if err := rows.Scan(
-			&d.Document.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
+			&d.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
 			&d.PrestadorCNPJ, &d.PrestadorName, &d.TomadorCNPJ, &d.TomadorName,
 			&d.IntermediarioCNPJ, &d.IntermediarioName,
 			&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue, &d.TotalRetentions,

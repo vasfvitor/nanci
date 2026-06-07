@@ -36,19 +36,19 @@ func TestSQLiteStore_CanonicalAndCompanyDocuments(t *testing.T) {
 	}
 
 	canonical := &nfse.Document{
-		ID:               uuid.NewString(),
-		ChaveAcesso:      "NFS123",
-		IssueDate:        time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC),
-		Competence:       "2026-06",
-		PrestadorCNPJ:    companyA.CNPJ,
-		TomadorCNPJ:      companyB.CNPJ,
-		ServiceValue:     100,
+		ID:                 uuid.NewString(),
+		ChaveAcesso:        "NFS123",
+		IssueDate:          time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC),
+		Competence:         "2026-06",
+		PrestadorCNPJ:      companyA.CNPJ,
+		TomadorCNPJ:        companyB.CNPJ,
+		ServiceValue:       100,
 		TotalRetentions:    15.50,
 		NFSeNumber:         "9999",
 		ServiceDescription: "Teste de descricao truncada",
-		Status:           "normal",
-		XMLPath:          "xml/2026-06/NFS123.xml",
-		RawHash:          "hash1",
+		Status:             "normal",
+		XMLPath:            "xml/2026-06/NFS123.xml",
+		RawHash:            "hash1",
 	}
 	if err := store.UpsertDocument(ctx, canonical); err != nil {
 		t.Fatalf("UpsertDocument: %v", err)

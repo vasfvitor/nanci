@@ -2,9 +2,13 @@ package store
 
 import (
 	"context"
+	"errors"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
+
+// ErrNotFound indicates that the requested record does not exist.
+var ErrNotFound = errors.New("record not found")
 
 // DocumentFilter represents the available filters for listing documents.
 type DocumentFilter struct {

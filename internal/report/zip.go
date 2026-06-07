@@ -12,15 +12,23 @@ import (
 
 // GenerateZIP creates a ZIP archive containing the physical XML files for the given company-facing documents.
 // baseDir is the root data directory where "xml/" is located.
-func GenerateZIP(documents []nfse.CompanyDocument, baseDir string, outPath string) error {
+func GenerateZIP(documents []nfse.CompanyDocument, baseDir string, outPath string) (err error) {
 	zipFile, err := os.Create(outPath)
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
 	}
-	defer zipFile.Close()
+	defer func() {
+		if cerr := zipFile.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close zip file: %w", cerr)
+		}
+	}()
 
 	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
+	defer func() {
+		if cerr := zipWriter.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close zip writer: %w", cerr)
+		}
+	}()
 
 	for _, doc := range documents {
 		if doc.XMLPath == "" {
@@ -44,16 +52,16 @@ func GenerateZIP(documents []nfse.CompanyDocument, baseDir string, outPath strin
 
 		writer, err := zipWriter.Create(zipEntryPath)
 		if err != nil {
-			fileToZip.Close()
+			_ = fileToZip.Close()
 			return fmt.Errorf("failed to create zip entry for %s: %w", doc.ChaveAcesso, err)
 		}
 
 		if _, err := io.Copy(writer, fileToZip); err != nil {
-			fileToZip.Close()
+			_ = fileToZip.Close()
 			return fmt.Errorf("failed to write file %s to zip: %w", doc.ChaveAcesso, err)
 		}
 
-		fileToZip.Close()
+		_ = fileToZip.Close()
 	}
 
 	return nil

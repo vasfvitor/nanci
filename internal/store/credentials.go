@@ -50,7 +50,7 @@ func (s *SQLiteStore) GetCredential(ctx context.Context, id string) (*nfse.Crede
 	credential, err := scanCredential(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}

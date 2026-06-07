@@ -48,7 +48,7 @@ func (s *SQLiteStore) GetCompany(ctx context.Context, cnpj string) (*nfse.Compan
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil // Not found
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}

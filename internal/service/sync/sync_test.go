@@ -399,7 +399,7 @@ func readLatestSyncRun(t *testing.T, db *sql.DB) syncRunSnapshot {
 	t.Helper()
 
 	var run syncRunSnapshot
-	err := db.QueryRow(
+	err := db.QueryRowContext(context.Background(),
 		`SELECT status, COALESCE(to_nsu, 0), documents_found, errors_count
 		 FROM sync_runs
 		 ORDER BY started_at DESC, id DESC

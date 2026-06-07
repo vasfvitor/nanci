@@ -42,13 +42,13 @@ func TestClassifyCompanyParticipation(t *testing.T) {
 
 func TestParseEvent(t *testing.T) {
 	tests := []struct {
-		name              string
-		xml               string
-		wantType          string
-		wantChave         string
-		wantReplacement   string
-		wantEventAt       bool
-		wantDescription   string
+		name            string
+		xml             string
+		wantType        string
+		wantChave       string
+		wantReplacement string
+		wantEventAt     bool
+		wantDescription string
 	}{
 		{
 			name:            "cancelamento",
@@ -122,14 +122,14 @@ func TestParseEventParsesRFC3339Timestamp(t *testing.T) {
 
 func TestParseXML(t *testing.T) {
 	tests := []struct {
-		filename      string
-		wantChave     string
-		wantTotalRet  float64
-		wantErrors    bool
-		wantWarning   bool
-		wantVersion   string
-		wantNumero    string
-		wantDesc      string
+		filename     string
+		wantChave    string
+		wantTotalRet float64
+		wantErrors   bool
+		wantWarning  bool
+		wantVersion  string
+		wantNumero   string
+		wantDesc     string
 	}{
 		{
 			filename:    "simple-prestada.xml",
@@ -207,7 +207,7 @@ func TestParseXML(t *testing.T) {
 			if tt.wantDesc != "" && doc.ServiceDescription != tt.wantDesc {
 				t.Errorf("ServiceDescription = %q, want %q", doc.ServiceDescription, tt.wantDesc)
 			}
-			
+
 			hasWarning := len(doc.ParseWarnings) > 0
 			if hasWarning && !tt.wantWarning {
 				// Only fail if we didn't explicitly want a warning and it's not the ISS warning

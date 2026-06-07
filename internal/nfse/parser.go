@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -48,9 +49,9 @@ func ParseXML(xmlData []byte) (*Document, error) {
 	}
 
 	decoder := xml.NewDecoder(bytes.NewReader(xmlData))
-	
+
 	var contextStack []string
-	
+
 	inContext := func(parent string) bool {
 		if len(contextStack) == 0 {
 			return false
@@ -68,7 +69,7 @@ func ParseXML(xmlData []byte) (*Document, error) {
 
 	for {
 		t, err := decoder.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -91,15 +92,15 @@ func ParseXML(xmlData []byte) (*Document, error) {
 
 		case xml.EndElement:
 			local := se.Name.Local
-			
+
 			// Pop context
 			if len(contextStack) > 0 {
 				contextStack = contextStack[:len(contextStack)-1]
 			}
-			
+
 			val := strings.TrimSpace(currentText)
 			currentText = "" // clear after reading
-			
+
 			if val == "" {
 				continue
 			}
@@ -120,19 +121,21 @@ func ParseXML(xmlData []byte) (*Document, error) {
 					doc.Competence = val
 				}
 			case "CNPJ":
-				if inContext("prest") {
+				switch {
+				case inContext("prest"):
 					doc.PrestadorCNPJ = val
-				} else if inContext("toma") {
+				case inContext("toma"):
 					doc.TomadorCNPJ = val
-				} else if inContext("interm") {
+				case inContext("interm"): //nolint:misspell
 					doc.IntermediarioCNPJ = val
 				}
 			case "xNome":
-				if inContext("prest") {
+				switch {
+				case inContext("prest"):
 					doc.PrestadorName = val
-				} else if inContext("toma") {
+				case inContext("toma"):
 					doc.TomadorName = val
-				} else if inContext("interm") {
+				case inContext("interm"): //nolint:misspell
 					doc.IntermediarioName = val
 				}
 			case "vServ":

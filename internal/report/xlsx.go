@@ -47,21 +47,22 @@ func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
 	tomadas := []nfse.CompanyDocument{}
 
 	for _, doc := range documents {
-		if doc.CompanyRole == "prestada" {
+		switch doc.CompanyRole {
+		case "prestada":
 			emitidas = append(emitidas, doc)
-		} else if doc.CompanyRole == "tomada" {
+		case "tomada":
 			tomadas = append(tomadas, doc)
 		}
 	}
 
 	writeSheet := func(sheetName string, tableName string, docs []nfse.CompanyDocument, isEmitida bool) error {
-		f.NewSheet(sheetName)
+		_, _ = f.NewSheet(sheetName)
 
 		// Set headers
 		for col, header := range headers {
 			cell, _ := excelize.CoordinatesToCellName(col+1, 1)
-			f.SetCellValue(sheetName, cell, header)
-			f.SetCellStyle(sheetName, cell, cell, headerStyle)
+			_ = f.SetCellValue(sheetName, cell, header)
+			_ = f.SetCellStyle(sheetName, cell, cell, headerStyle)
 		}
 
 		// Populate rows
@@ -110,70 +111,114 @@ func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
 
 			for col, val := range rowValues {
 				cell, _ := excelize.CoordinatesToCellName(col+1, row)
-				f.SetCellValue(sheetName, cell, val)
+				_ = f.SetCellValue(sheetName, cell, val)
 			}
 
 			// Apply styles
-			f.SetCellStyle(sheetName, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row), centerStyle)
-			f.SetCellStyle(sheetName, fmt.Sprintf("P%d", row), fmt.Sprintf("P%d", row), centerStyle)
-			f.SetCellStyle(sheetName, fmt.Sprintf("G%d", row), fmt.Sprintf("O%d", row), moneyStyle)
+			_ = f.SetCellStyle(sheetName, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row), centerStyle)
+			_ = f.SetCellStyle(sheetName, fmt.Sprintf("P%d", row), fmt.Sprintf("P%d", row), centerStyle)
+			_ = f.SetCellStyle(sheetName, fmt.Sprintf("G%d", row), fmt.Sprintf("O%d", row), moneyStyle)
 		}
 
-		// Column widths
-		f.SetColWidth(sheetName, "A", "A", 12) // Data Emissao
-		f.SetColWidth(sheetName, "B", "B", 20) // CNPJ
-		f.SetColWidth(sheetName, "C", "C", 40) // Nome
-		f.SetColWidth(sheetName, "D", "D", 15) // Numero
-		f.SetColWidth(sheetName, "E", "E", 12) // Comp
-		f.SetColWidth(sheetName, "F", "F", 45) // Chave
-		f.SetColWidth(sheetName, "G", "O", 18) // Valores
-		f.SetColWidth(sheetName, "P", "P", 15) // Status
-		f.SetColWidth(sheetName, "Q", "Q", 45) // Descricao
-		f.SetColWidth(sheetName, "R", "R", 20) // Avisos
+		setColWidth := func(start, end string, width float64) error {
+			if err := f.SetColWidth(sheetName, start, end, width); err != nil {
+				return fmt.Errorf("failed to set width %s:%s on %s: %w", start, end, sheetName, err)
+			}
+			return nil
+		}
+
+		if err := setColWidth("A", "A", 12); err != nil {
+			return err
+		} // Data Emissao
+		if err := setColWidth("B", "B", 20); err != nil {
+			return err
+		} // CNPJ
+		if err := setColWidth("C", "C", 40); err != nil {
+			return err
+		} // Nome
+		if err := setColWidth("D", "D", 15); err != nil {
+			return err
+		} // Numero
+		if err := setColWidth("E", "E", 12); err != nil {
+			return err
+		} // Comp
+		if err := setColWidth("F", "F", 45); err != nil {
+			return err
+		} // Chave
+		if err := setColWidth("G", "O", 18); err != nil {
+			return err
+		} // Valores
+		if err := setColWidth("P", "P", 15); err != nil {
+			return err
+		} // Status
+		if err := setColWidth("Q", "Q", 45); err != nil {
+			return err
+		} // Descricao
+		if err := setColWidth("R", "R", 20); err != nil {
+			return err
+		} // Avisos
 
 		numRows := len(docs)
 		if numRows > 0 {
 			lastCell, _ := excelize.CoordinatesToCellName(len(headers), numRows+1)
-			_ = f.AddTable(sheetName, &excelize.Table{
+			if err := f.AddTable(sheetName, &excelize.Table{
 				Range:     fmt.Sprintf("A1:%s", lastCell),
 				Name:      tableName,
 				StyleName: "TableStyleLight15",
-			})
+			}); err != nil {
+				return fmt.Errorf("failed to add table: %w", err)
+			}
 
-			// Conditional formatting for CANCELADA
-			formatID, _ := f.NewConditionalStyle(&excelize.Style{
+			cancelledFormatID, err := f.NewConditionalStyle(&excelize.Style{
 				Font: &excelize.Font{Color: "#C00000"},
 			})
-			_ = f.SetConditionalFormat(sheetName, fmt.Sprintf("A2:%s", lastCell), []excelize.ConditionalFormatOptions{
+			if err != nil {
+				return fmt.Errorf("failed to create cancelled conditional style: %w", err)
+			}
+
+			substitutedFormatID, err := f.NewConditionalStyle(&excelize.Style{
+				Font: &excelize.Font{Color: "#666666", Italic: true},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create substituted conditional style: %w", err)
+			}
+
+			dataRange := fmt.Sprintf("A2:%s", lastCell)
+			err = f.SetConditionalFormat(sheetName, dataRange, []excelize.ConditionalFormatOptions{
 				{
-					Type:     "cell",
-					Criteria: "==",
-					Value:    `"cancelada"`,
-					Format:   &formatID,
+					Type:     "formula",
+					Criteria: `=$P2="cancelada"`,
+					Format:   &cancelledFormatID,
 				},
 				{
-					Type:     "cell",
-					Criteria: "==",
-					Value:    `"substituida"`,
-					Format:   &formatID,
+					Type:     "formula",
+					Criteria: `=$P2="substituida"`,
+					Format:   &substitutedFormatID,
 				},
 			})
+			if err != nil {
+				return fmt.Errorf("failed to set conditional format on %s: %w", sheetName, err)
+			}
 		}
 		return nil
 	}
 
 	if len(emitidas) > 0 {
-		_ = writeSheet("NFSe Emitidas", "EmitidasTable", emitidas, true)
+		if err := writeSheet("NFSe Emitidas", "EmitidasTable", emitidas, true); err != nil {
+			return err
+		}
 	}
 	if len(tomadas) > 0 {
-		_ = writeSheet("NFSe Tomadas", "TomadasTable", tomadas, false)
+		if err := writeSheet("NFSe Tomadas", "TomadasTable", tomadas, false); err != nil {
+			return err
+		}
 	}
 
-	f.DeleteSheet("Sheet1")
+	_ = f.DeleteSheet("Sheet1")
 
 	// If neither, just create an empty sheet
 	if len(emitidas) == 0 && len(tomadas) == 0 {
-		f.NewSheet("Documentos")
+		_, _ = f.NewSheet("Documentos")
 	}
 
 	if err := f.SaveAs(outPath); err != nil {
