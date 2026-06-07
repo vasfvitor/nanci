@@ -4,93 +4,160 @@ on:
   workflow_dispatch:
     inputs:
       draft:
-        description: 'Create as draft release'
+        description: Create as draft release
         required: false
         type: boolean
         default: true
 
-jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write     
-      attestations: write 
+permissions:
+  contents: read
 
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Install cross-compilation dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mingw-w64 nsis
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.1'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: '10.33.0'
-
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+        uses: actions/checkout@v6
 
       - name: Read release version
-        id: release
+        id: version
         shell: bash
         run: |
-          version="$(node -p "require('./internal/desktop/wails.json').info.productVersion")"
+          version=$(jq -r .info.productVersion internal/desktop/wails.json)
+
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "Invalid Wails productVersion: $version" >&2
             exit 1
           fi
+
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-      - name: Build Desktop App (Wails)
+      - name: Check release tag does not exist
+        shell: bash
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Release tag already exists: $tag" >&2
+            exit 1
+          fi
+
+  build-desktop:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Install cross-compilation dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mingw-w64 nsis
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.7'
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: '10.33.0'
+
+      - name: Install Wails CLI
+        shell: bash
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Build Desktop App
         working-directory: ./internal/desktop
-        # -nsis builds the Windows installer
-        # -m builds without console (production mode)
         env:
-          GOFLAGS: "-trimpath"
-        run: wails build -platform windows/amd64 -nsis -m
-
-      - name: Build CLI App
+          GOFLAGS: -trimpath
+        shell: bash
         run: |
-          mkdir -p build
-          GOOS=windows GOARCH=amd64 go build -trimpath -o build/nanci.exe ./cmd/nanci
+          wails build -platform windows/amd64 -nsis -m
+          test -s build/bin/nanci-desktop-amd64-installer.exe
 
-      - name: Generate Checksums (SHA-256)
+      - name: Upload Desktop Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nanci-desktop-windows-amd64-installer
+          path: internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-release:
+    needs:
+      - prepare
+      - build-desktop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+    steps:
+      - name: Download Desktop Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nanci-desktop-windows-amd64-installer
+          path: artifacts/desktop
+
+      - name: Stage Release Assets
+        shell: bash
         run: |
-          sha256sum internal/desktop/build/bin/nanci-desktop-amd64-installer.exe > checksums.txt
-          sha256sum build/nanci.exe >> checksums.txt
+          mkdir -p release
+
+          cp artifacts/desktop/nanci-desktop-amd64-installer.exe \
+            release/nanci-desktop-windows-amd64-installer.exe
+
+          test -s release/nanci-desktop-windows-amd64-installer.exe
+
+          cd release
+          sha256sum \
+            nanci-desktop-windows-amd64-installer.exe \
+            > nanci-checksums.txt
+
+          cat nanci-checksums.txt
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
-            internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
-            build/nanci.exe
-            checksums.txt
+            release/nanci-desktop-windows-amd64-installer.exe
+            release/nanci-checksums.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.release.outputs.tag }}
-          name: Release ${{ steps.release.outputs.tag }}
-          draft: ${{ github.event.inputs.draft }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Release ${{ needs.prepare.outputs.tag }}
+          draft: ${{ inputs.draft }}
+          target_commitish: ${{ github.sha }}
+          fail_on_unmatched_files: true
+          body: |
+            ## Download
+
+            - `nanci-desktop-windows-amd64-installer.exe`
+
+            SHA-256 checksum:
+
+            - `nanci-checksums.txt`
           files: |
-            internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
-            build/nanci.exe
-            checksums.txt
+            release/nanci-desktop-windows-amd64-installer.exe
+            release/nanci-checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
