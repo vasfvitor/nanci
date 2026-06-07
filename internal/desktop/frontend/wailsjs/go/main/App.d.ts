@@ -13,6 +13,8 @@ export function CancelCertPassword(arg1:string):Promise<void>;
 
 export function ExportCSV(arg1:app.ExportInput):Promise<void>;
 
+export function ExportLogs():Promise<string>;
+
 export function ExportXLSX(arg1:app.ExportInput):Promise<void>;
 
 export function ExportZIP(arg1:app.ExportInput):Promise<void>;

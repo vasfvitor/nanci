@@ -8,8 +8,10 @@
   "frontend:dev:serverUrl": "auto",
   "info": {
     "companyName": "Nanci",
-    "productName": "Nanci",
-    "productVersion": "1.0.0"
+    "productName": "Nanci Desktop",
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 Nanci. Todos os direitos reservados.",
+    "comments": "Ferramenta Desktop para sincronização NFSe."
   },
   "author": {
     "name": "Ayres Vitor",

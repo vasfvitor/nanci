@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -68,13 +68,32 @@ func NewApp() *App {
 	}
 }
 
+type wailsLogWriter struct {
+	ctx context.Context
+}
+
+func (w wailsLogWriter) Write(p []byte) (n int, err error) {
+	runtime.LogPrint(w.ctx, string(p))
+	return len(p), nil
+}
+
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	verbose := os.Getenv("NANCI_VERBOSE") == "1"
-	log := logger.New(verbose)
+	
+	level := slog.LevelInfo
+	if verbose {
+		level = slog.LevelDebug
+	}
+
+	wWriter := wailsLogWriter{ctx: ctx}
+	handler := slog.NewTextHandler(wWriter, &slog.HandlerOptions{
+		Level: level,
+	})
+	log := slog.New(handler)
 
 	dataDir, err := paths.DataDir()
 	if err != nil {
@@ -221,4 +240,40 @@ func (a *App) ExportXLSX(input app.ExportInput) error {
 
 func (a *App) ExportZIP(input app.ExportInput) error {
 	return a.core.ExportZIP(a.ctx, input)
+}
+
+func (a *App) ExportLogs() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get config dir: %w", err)
+	}
+	logFile := filepath.Join(configDir, "Nanci", "app.log")
+
+	if _, err := os.Stat(logFile); os.IsNotExist(err) {
+		return "", fmt.Errorf("arquivo de log não encontrado")
+	}
+
+	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Exportar Logs",
+		DefaultFilename: "nanci_debug_logs.txt",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Arquivos de Texto (*.txt)", Pattern: "*.txt"},
+			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
+		},
+	})
+	if err != nil || savePath == "" {
+		return "", err
+	}
+
+	input, err := os.ReadFile(logFile)
+	if err != nil {
+		return "", err
+	}
+	
+	err = os.WriteFile(savePath, input, 0644)
+	if err != nil {
+		return "", err
+	}
+
+	return savePath, nil
 }

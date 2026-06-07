@@ -22,6 +22,10 @@ export function ExportCSV(arg1) {
   return window['go']['main']['App']['ExportCSV'](arg1);
 }
 
+export function ExportLogs() {
+  return window['go']['main']['App']['ExportLogs']();
+}
+
 export function ExportXLSX(arg1) {
   return window['go']['main']['App']['ExportXLSX'](arg1);
 }

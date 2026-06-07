@@ -38,6 +38,7 @@
             <q-item-label>Credenciais</q-item-label>
           </q-item-section>
         </q-item>
+
       </q-list>
     </q-drawer>
 
@@ -48,11 +49,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import { EventsOn } from '../../wailsjs/runtime/runtime'
 
+const $q = useQuasar()
 const leftDrawerOpen = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
+
+onMounted(() => {
+  EventsOn('notify-success', (msg: string) => {
+    $q.notify({ type: 'positive', message: msg })
+  })
+  
+  EventsOn('notify-error', (msg: string) => {
+    $q.notify({ type: 'negative', message: msg })
+  })
+})
 </script>
