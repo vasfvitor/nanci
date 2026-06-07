@@ -25,28 +25,20 @@
 
           <q-card-section class="q-gutter-y-sm">
             <div><strong>Último NSU:</strong> {{ company.LastNSU }}</div>
-            <div><strong>Credencial ativa:</strong> {{ company.CredentialLabel || 'Sem credencial' }}</div>
 
             <q-select
               v-model="selectedCredentials[company.CNPJ]"
               :options="credentialOptions"
               emit-value
               map-options
-              label="Trocar credencial"
+              label="Credencial"
               outlined
               dense
+              @update:model-value="assignCredential(company.CNPJ)"
             />
           </q-card-section>
 
           <q-card-actions align="right">
-            <q-btn
-              flat
-              color="secondary"
-              icon="link"
-              label="Salvar credencial"
-              @click="assignCredential(company.CNPJ)"
-              :disable="!selectedCredentials[company.CNPJ] || selectedCredentials[company.CNPJ] === company.CredentialID"
-            />
             <q-btn
               flat
               color="primary"
