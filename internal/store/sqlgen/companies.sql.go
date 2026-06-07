@@ -161,3 +161,26 @@ func (q *Queries) UpdateCompanyNSU(ctx context.Context, arg UpdateCompanyNSUPara
 	_, err := q.db.ExecContext(ctx, updateCompanyNSU, arg.LastNsu, arg.UpdatedAt, arg.ID)
 	return err
 }
+
+const updateCompany = `-- name: UpdateCompany :exec
+UPDATE companies
+SET name = ?, environment = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateCompanyParams struct {
+	Name        string
+	Environment string
+	UpdatedAt   string
+	ID          string
+}
+
+func (q *Queries) UpdateCompany(ctx context.Context, arg UpdateCompanyParams) error {
+	_, err := q.db.ExecContext(ctx, updateCompany,
+		arg.Name,
+		arg.Environment,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}

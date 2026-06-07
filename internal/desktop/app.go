@@ -210,6 +210,14 @@ func (a *App) UpdateCredentialPath(input app.UpdateCredentialPathInput) error {
 	return a.core.UpdateCredentialPath(a.ctx, input)
 }
 
+func (a *App) UpdateCredentialData(input app.UpdateCredentialDataInput) error {
+	return a.core.UpdateCredentialData(a.ctx, input)
+}
+
+func (a *App) UpdateCompany(input app.UpdateCompanyInput) error {
+	return a.core.UpdateCompany(a.ctx, input)
+}
+
 func (a *App) AssignCredentialToCompany(input app.AssignCredentialInput) error {
 	return a.core.AssignCredentialToCompany(a.ctx, input)
 }

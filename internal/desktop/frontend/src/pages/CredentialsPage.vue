@@ -9,7 +9,10 @@
       <div v-for="credential in credentials" :key="credential.ID" class="col-12 col-md-6 col-lg-4">
         <q-card>
           <q-card-section>
-            <div class="text-h6">{{ credential.Label }}</div>
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-h6 text-weight-bold text-dark">{{ credential.Label }}</div>
+              <q-btn flat round icon="edit" color="primary" @click="openEditDialog(credential)" />
+            </div>
             <div class="text-caption text-grey-8">{{ credential.CertPath }}</div>
             <q-badge
               :color="credential.Environment === 'producao' ? 'positive' : 'warning'"
@@ -37,6 +40,7 @@
     </div>
 
     <AddCredentialDialog v-model="showAddDialog" @added="loadCredentials" />
+    <EditCredentialDialog v-model="showEditDialog" :credentialData="selectedCredentialToEdit" @updated="loadCredentials" />
   </q-page>
 </template>
 
@@ -46,10 +50,18 @@ import { useQuasar } from 'quasar'
 import { ListCredentials, SelectCertificate, UpdateCredentialPath } from '../../wailsjs/go/main/App'
 import { nfse } from '../../wailsjs/go/models'
 import AddCredentialDialog from '../components/AddCredentialDialog.vue'
+import EditCredentialDialog from '../components/EditCredentialDialog.vue'
 
 const $q = useQuasar()
 const credentials = ref<nfse.Credential[]>([])
 const showAddDialog = ref(false)
+const showEditDialog = ref(false)
+const selectedCredentialToEdit = ref<nfse.Credential | null>(null)
+
+function openEditDialog(credential: nfse.Credential) {
+  selectedCredentialToEdit.value = credential
+  showEditDialog.value = true
+}
 
 function ownerLabel(credential: nfse.Credential) {
   return credential.OwnerCNPJ || 'Pendente de inspeção'

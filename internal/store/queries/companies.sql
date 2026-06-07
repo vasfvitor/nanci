@@ -36,3 +36,8 @@ WHERE companies.id = sqlc.arg(company_id)
 UPDATE companies
 SET last_nsu = ?, updated_at = ?
 WHERE id = ?;
+
+-- name: UpdateCompany :exec
+UPDATE companies
+SET name = ?, environment = ?, updated_at = ?
+WHERE id = ?;

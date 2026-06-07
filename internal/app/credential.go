@@ -73,3 +73,31 @@ func (a *App) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPa
 	}
 	return nil
 }
+
+// UpdateCredentialDataInput carries data to update a credential's label and environment.
+type UpdateCredentialDataInput struct {
+	CredentialID string
+	Label        string
+	Environment  string // "producao" | "producao_restrita"
+}
+
+// UpdateCredentialData updates the label and environment of an existing credential.
+func (a *App) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
+	cred, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	if err != nil || cred == nil {
+		return fmt.Errorf("credencial não encontrada: %w", err)
+	}
+
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return fmt.Errorf("ambiente inválido: %w", err)
+	}
+
+	cred.Label = input.Label
+	cred.Environment = environment
+
+	if err := a.CredentialRepo.UpdateCredential(ctx, cred); err != nil {
+		return fmt.Errorf("atualizar credencial: %w", err)
+	}
+	return nil
+}

@@ -135,3 +135,34 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 	}
 	return credential, nil
 }
+
+// UpdateCompanyInput carries data to update a company
+type UpdateCompanyInput struct {
+	CNPJ        string
+	Name        string
+	Environment string // "producao" | "producao_restrita"
+}
+
+// UpdateCompany updates the name and environment of an existing company.
+func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
+	cleanedCNPJ := cnpj.Clean(input.CNPJ)
+
+	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	if err != nil {
+		return fmt.Errorf("buscar empresa: %w", err)
+	}
+	if company == nil {
+		return fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+	}
+
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return fmt.Errorf("ambiente inválido: %w", err)
+	}
+
+	if err := a.CompanyRepo.UpdateCompany(ctx, company.ID, input.Name, environment); err != nil {
+		return fmt.Errorf("atualizar empresa: %w", err)
+	}
+
+	return nil
+}

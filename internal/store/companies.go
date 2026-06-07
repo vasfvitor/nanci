@@ -113,3 +113,17 @@ func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID nfse
 	}
 	return nil
 }
+
+func (r *CompanyRepository) UpdateCompany(ctx context.Context, id nfse.CompanyID, name string, environment nfse.Environment) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	err := r.queries.UpdateCompany(ctx, sqlgen.UpdateCompanyParams{
+		Name:        name,
+		Environment: string(environment),
+		UpdatedAt:   now,
+		ID:          string(id),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}

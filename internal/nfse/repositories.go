@@ -9,6 +9,7 @@ type CompanyRepository interface {
 	CompanyByCNPJ(ctx context.Context, cnpjVal string) (*Company, error)
 	ListCompanies(ctx context.Context) ([]Company, error)
 	AssignCredential(ctx context.Context, id CompanyID, credID CredentialID) error
+	UpdateCompany(ctx context.Context, id CompanyID, name string, environment Environment) error
 }
 
 type CredentialRepository interface {

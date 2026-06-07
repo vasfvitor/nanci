@@ -66,6 +66,14 @@ export function SubmitCertPassword(arg1, arg2) {
   return window['go']['main']['App']['SubmitCertPassword'](arg1, arg2);
 }
 
+export function UpdateCompany(arg1) {
+  return window['go']['main']['App']['UpdateCompany'](arg1);
+}
+
+export function UpdateCredentialData(arg1) {
+  return window['go']['main']['App']['UpdateCredentialData'](arg1);
+}
+
 export function UpdateCredentialPath(arg1) {
   return window['go']['main']['App']['UpdateCredentialPath'](arg1);
 }

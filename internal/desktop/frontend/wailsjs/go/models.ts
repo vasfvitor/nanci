@@ -144,6 +144,38 @@ export namespace app {
 	        this.LastNSU = source["LastNSU"];
 	    }
 	}
+	export class UpdateCompanyInput {
+	    CNPJ: string;
+	    Name: string;
+	    Environment: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCompanyInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Name = source["Name"];
+	        this.Environment = source["Environment"];
+	    }
+	}
+	export class UpdateCredentialDataInput {
+	    CredentialID: string;
+	    Label: string;
+	    Environment: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCredentialDataInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CredentialID = source["CredentialID"];
+	        this.Label = source["Label"];
+	        this.Environment = source["Environment"];
+	    }
+	}
 	export class UpdateCredentialPathInput {
 	    CredentialID: string;
 	    CertPath: string;

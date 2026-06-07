@@ -9,7 +9,10 @@
       <div v-for="company in companies" :key="company.ID" class="col-12 col-md-6 col-lg-4">
         <q-card>
           <q-card-section>
-            <div class="text-h6">{{ company.Name }}</div>
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-h6 text-weight-bold text-dark">{{ company.Name }}</div>
+              <q-btn flat round icon="edit" color="primary" @click="openEditDialog(company)" />
+            </div>
             <div class="text-subtitle2 text-grey-8">{{ company.CNPJ }}</div>
             <q-badge
               :color="company.Environment === 'producao' ? 'positive' : 'warning'"
@@ -62,6 +65,7 @@
     </div>
 
     <AddCompanyDialog v-model="showAddDialog" @added="reloadData" />
+    <EditCompanyDialog v-model="showEditDialog" :companyData="selectedCompanyToEdit" @updated="reloadData" />
   </q-page>
 </template>
 
@@ -71,6 +75,7 @@ import { useQuasar } from 'quasar'
 import { AssignCredentialToCompany, ListCompanies, ListCredentials, Pull } from '../../wailsjs/go/main/App'
 import { nfse } from '../../wailsjs/go/models'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
+import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 
 const $q = useQuasar()
 const companies = ref<nfse.Company[]>([])
@@ -78,6 +83,13 @@ const showAddDialog = ref(false)
 const syncing = ref<string | null>(null)
 const credentialOptions = ref<{ label: string; value: string }[]>([])
 const selectedCredentials = ref<Record<string, string>>({})
+const showEditDialog = ref(false)
+const selectedCompanyToEdit = ref<nfse.Company | null>(null)
+
+function openEditDialog(company: nfse.Company) {
+  selectedCompanyToEdit.value = company
+  showEditDialog.value = true
+}
 
 async function loadCredentials() {
   const list = (await ListCredentials()) || []
