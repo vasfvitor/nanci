@@ -75,8 +75,8 @@ async function selectCert() {
         form.value.Label = path.split(/[\\/]/).pop() || path
       }
     }
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + String(err) })
   }
 }
 
@@ -93,8 +93,8 @@ async function submit() {
     emit('added')
     isOpen.value = false
     form.value = { Label: '', CertPath: '', Environment: 'producao_restrita' }
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + String(err) })
   } finally {
     loading.value = false
   }

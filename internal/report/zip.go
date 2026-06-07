@@ -10,7 +10,7 @@ import (
 
 // GenerateZIP creates a ZIP archive containing the physical XML files for the given documents.
 func GenerateZIP(documents []ReportRow, xmlStore files.XMLStore, outPath string) (err error) {
-	zipFile, err := os.Create(outPath)
+	zipFile, err := os.Create(outPath) // #nosec G304 -- destination is explicitly selected by the local user.
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
 	}

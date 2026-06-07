@@ -43,16 +43,16 @@ type StartRunParams struct {
 }
 
 type ApplyDocumentParams struct {
-	Document         Document
-	Participation    CompanyParticipation
-	CompanyID        CompanyID
-	NSU              int64
+	Document      Document
+	Participation CompanyParticipation
+	CompanyID     CompanyID
+	NSU           int64
 }
 
 type ApplyEventParams struct {
-	Event            Event
-	CompanyID        CompanyID
-	NSU              int64
+	Event     Event
+	CompanyID CompanyID
+	NSU       int64
 }
 
 type AdvanceCheckpointParams struct {

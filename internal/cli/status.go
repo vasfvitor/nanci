@@ -36,5 +36,5 @@ var statusCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(statusCmd)
 	statusCmd.Flags().StringVarP(&statusCNPJ, "cnpj", "c", "", "CNPJ da empresa")
-	statusCmd.MarkFlagRequired("cnpj")
+	_ = statusCmd.MarkFlagRequired("cnpj")
 }

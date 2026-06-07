@@ -116,11 +116,11 @@ func init() {
 	companyAddCmd.Flags().StringVar(&companyCredentialLabel, "credential-label", "", "Rótulo da nova credencial quando criada inline")
 	companyAddCmd.Flags().StringVarP(&companyEnv, "env", "e", "producao_restrita", "Ambiente: producao ou producao_restrita")
 
-	companyAddCmd.MarkFlagRequired("cnpj")
-	companyAddCmd.MarkFlagRequired("name")
+	_ = companyAddCmd.MarkFlagRequired("cnpj")
+	_ = companyAddCmd.MarkFlagRequired("name")
 
 	companyAssignCredentialCmd.Flags().StringVarP(&companyCNPJ, "cnpj", "c", "", "CNPJ da empresa")
 	companyAssignCredentialCmd.Flags().StringVar(&assignCredentialID, "credential-id", "", "ID da credencial")
-	companyAssignCredentialCmd.MarkFlagRequired("cnpj")
-	companyAssignCredentialCmd.MarkFlagRequired("credential-id")
+	_ = companyAssignCredentialCmd.MarkFlagRequired("cnpj")
+	_ = companyAssignCredentialCmd.MarkFlagRequired("credential-id")
 }

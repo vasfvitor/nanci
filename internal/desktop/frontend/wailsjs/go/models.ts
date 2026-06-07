@@ -160,6 +160,7 @@ export namespace app {
 	}
 
 }
+
 export namespace nfse {
 	
 	export class Company {
@@ -238,7 +239,6 @@ export namespace nfse {
 	    LayoutVersion: string;
 	    XMLPath: string;
 	    RawHash: string;
-	    ParseError: string;
 	    ParseWarnings: string[];
 	    NFSeNumber: string;
 	    ServiceDescription: string;
@@ -288,7 +288,6 @@ export namespace nfse {
 	        this.LayoutVersion = source["LayoutVersion"];
 	        this.XMLPath = source["XMLPath"];
 	        this.RawHash = source["RawHash"];
-	        this.ParseError = source["ParseError"];
 	        this.ParseWarnings = source["ParseWarnings"];
 	        this.NFSeNumber = source["NFSeNumber"];
 	        this.ServiceDescription = source["ServiceDescription"];

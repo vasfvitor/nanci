@@ -20,7 +20,7 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 	doc.UpdatedAt = doc.CreatedAt
 
 	decoder := xml.NewDecoder(bytes.NewReader(data))
-	
+
 	// Fast track to reject obviously invalid XML before reading tokens
 	if len(bytes.TrimSpace(data)) == 0 {
 		return doc, nil, errors.New("empty xml document")
@@ -59,12 +59,12 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 		case xml.EndElement:
 			val := strings.TrimSpace(currentText.String())
 			currentPath := strings.Join(pathStack, "/")
-			
+
 			// Pop stack
 			if len(pathStack) > 0 {
 				pathStack = pathStack[:len(pathStack)-1]
 			}
-			
+
 			if val == "" {
 				continue
 			}
@@ -72,7 +72,8 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 			// We match specific paths starting with either NFS-e or generic tags since
 			// the wrapper tags might vary depending on whether this came from an event or a direct fetch.
 			// To be resilient to wrappers, we check suffixes.
-			
+
+			//nolint:gocritic // A flat suffix dispatch keeps XML field mappings readable.
 			if strings.HasSuffix(currentPath, "/chNFSe") {
 				parsed, err := ParseAccessKey(val)
 				if err != nil {
@@ -101,37 +102,51 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 				doc.TomadorCNPJ = val
 			} else if strings.HasSuffix(currentPath, "/toma/xNome") {
 				doc.TomadorName = val
-			} else if strings.HasSuffix(currentPath, "/interm/CNPJ") || strings.HasSuffix(currentPath, "/interm/CPF") {
+			} else if strings.HasSuffix(currentPath, "/interm/CNPJ") || strings.HasSuffix(currentPath, "/interm/CPF") { //nolint:misspell // Official XML tag.
 				doc.IntermediarioCNPJ = val
-			} else if strings.HasSuffix(currentPath, "/interm/xNome") {
+			} else if strings.HasSuffix(currentPath, "/interm/xNome") { //nolint:misspell // Official XML tag.
 				doc.IntermediarioName = val
 			} else if strings.HasSuffix(currentPath, "/vServ") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vServ: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vServ: %w", err)
+				}
 				doc.ServiceValue = m
 			} else if strings.HasSuffix(currentPath, "/vISS") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vISS: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vISS: %w", err)
+				}
 				doc.ISSValue = m
 			} else if strings.HasSuffix(currentPath, "/vIRRF") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vIRRF: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vIRRF: %w", err)
+				}
 				doc.IRRFValue = m
 			} else if strings.HasSuffix(currentPath, "/vINSS") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vINSS: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vINSS: %w", err)
+				}
 				doc.INSSValue = m
 			} else if strings.HasSuffix(currentPath, "/vPIS") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vPIS: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vPIS: %w", err)
+				}
 				doc.PISValue = m
 			} else if strings.HasSuffix(currentPath, "/vCOFINS") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vCOFINS: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vCOFINS: %w", err)
+				}
 				doc.COFINSValue = m
 			} else if strings.HasSuffix(currentPath, "/vCSLL") {
 				m, err := ParseMoney(val)
-				if err != nil { return doc, nil, fmt.Errorf("vCSLL: %w", err) }
+				if err != nil {
+					return doc, nil, fmt.Errorf("vCSLL: %w", err)
+				}
 				doc.CSLLValue = m
 			} else if strings.HasSuffix(currentPath, "/xDescServ") {
 				if doc.ServiceDescription != "" {
@@ -140,7 +155,7 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 					doc.ServiceDescription = val
 				}
 			}
-			
+
 			// Reset text builder for next element
 			currentText.Reset()
 		}

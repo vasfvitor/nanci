@@ -26,9 +26,13 @@ func (p TerminalCredentialProvider) GetCertPassword(ctx context.Context, req app
 	}
 
 	// 2. Prompt interactively
-	fmt.Fprintf(p.Out, "Digite a senha do certificado '%s' (%s) para consultar %s: ", req.CredentialLabel, req.CertPath, req.TargetCNPJ)
+	if _, err := fmt.Fprintf(p.Out, "Digite a senha do certificado '%s' (%s) para consultar %s: ", req.CredentialLabel, req.CertPath, req.TargetCNPJ); err != nil {
+		return "", fmt.Errorf("falha ao exibir prompt da senha: %w", err)
+	}
 	bytePassword, err := term.ReadPassword(int(p.In.Fd()))
-	fmt.Fprintln(p.Out) // newline after the silent input
+	if _, newlineErr := fmt.Fprintln(p.Out); newlineErr != nil && err == nil {
+		return "", fmt.Errorf("falha ao finalizar prompt da senha: %w", newlineErr)
+	}
 	if err != nil {
 		return "", fmt.Errorf("falha ao ler a senha: %w", err)
 	}

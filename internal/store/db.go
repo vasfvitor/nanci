@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
@@ -25,17 +26,26 @@ func OpenDB(dbPath string, runMigrations bool) (*sql.DB, error) {
 	}
 
 	if err := db.PingContext(context.Background()); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("falha ao conectar no banco sqlite: %w", err)
 	}
 
 	if runMigrations {
-		provider, err := goose.NewProvider(goose.DialectSQLite3, db, embedMigrationsV2)
+		migrations, err := fs.Sub(embedMigrationsV2, "migrations_v2")
 		if err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("falha ao carregar migrations: %w", err)
+		}
+
+		provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+		if err != nil {
+			_ = db.Close()
 			return nil, fmt.Errorf("falha ao configurar migrations: %w", err)
 		}
 
 		_, err = provider.Up(context.Background())
 		if err != nil {
+			_ = db.Close()
 			return nil, fmt.Errorf("falha ao rodar migrations: %w", err)
 		}
 	}

@@ -25,13 +25,16 @@ func NewCompanyRepository(db *sql.DB) *CompanyRepository {
 func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) error {
 	now := time.Now().UTC()
 	err := r.queries.CreateCompany(ctx, sqlgen.CreateCompanyParams{
-		ID:          string(c.ID),
-		Cnpj:        c.CNPJ,
-		CnpjRoot:    c.CNPJRoot,
-		Name:        c.Name,
-		Environment: string(c.Environment),
-		CreatedAt:   now.Format(time.RFC3339),
-		UpdatedAt:   now.Format(time.RFC3339),
+		ID:                 string(c.ID),
+		Cnpj:               c.CNPJ,
+		CnpjRoot:           c.CNPJRoot,
+		Name:               c.Name,
+		CredentialID:       sql.NullString{String: string(c.CredentialID), Valid: c.CredentialID != ""},
+		CredentialLabel:    sql.NullString{String: c.CredentialLabel, Valid: c.CredentialLabel != ""},
+		CredentialCertPath: sql.NullString{String: c.CredentialCertPath, Valid: c.CredentialCertPath != ""},
+		Environment:        string(c.Environment),
+		CreatedAt:          now.Format(time.RFC3339),
+		UpdatedAt:          now.Format(time.RFC3339),
 	})
 	if err != nil {
 		return err
@@ -97,15 +100,16 @@ func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, 
 
 func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID nfse.CompanyID, credID nfse.CredentialID) error {
 	now := time.Now().UTC().Format(time.RFC3339)
-	err := r.queries.AssignCredentialToCompany(ctx, sqlgen.AssignCredentialToCompanyParams{
-		CredentialID:       sql.NullString{String: string(credID), Valid: true},
-		CredentialLabel:    sql.NullString{String: "Label pending", Valid: true}, // Would usually fetch label here, simplified for now
-		CredentialCertPath: sql.NullString{String: "", Valid: true},
-		UpdatedAt:          now,
-		ID:                 string(companyID),
+	affected, err := r.queries.AssignCredentialToCompany(ctx, sqlgen.AssignCredentialToCompanyParams{
+		CredentialID: sql.NullString{String: string(credID), Valid: credID != ""},
+		UpdatedAt:    now,
+		CompanyID:    string(companyID),
 	})
 	if err != nil {
 		return err
+	}
+	if affected == 0 {
+		return ErrNotFound
 	}
 	return nil
 }

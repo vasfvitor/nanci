@@ -1,3 +1,5 @@
+-- +goose Up
+
 CREATE TABLE companies (
     id TEXT PRIMARY KEY,
     cnpj TEXT NOT NULL UNIQUE,

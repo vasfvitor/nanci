@@ -28,17 +28,20 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 	root, _ := cnpj.Root(cleanedCNPJ)
 
-	credentialID, err := a.resolveCredentialForCompany(ctx, input)
+	credential, err := a.resolveCredentialForCompany(ctx, input)
 	if err != nil {
 		return err
 	}
 
 	company := &nfse.Company{
-		ID:           nfse.CompanyID(nfse.GenerateID()),
-		CNPJ:         cleanedCNPJ,
-		CNPJRoot:     root,
-		Name:         input.Name,
-		CredentialID: nfse.CredentialID(credentialID),
+		ID:                 nfse.CompanyID(nfse.GenerateID()),
+		CNPJ:               cleanedCNPJ,
+		CNPJRoot:           root,
+		Name:               input.Name,
+		CredentialID:       credential.ID,
+		CredentialLabel:    credential.Label,
+		CredentialCertPath: credential.CertPath,
+		Environment:        credential.Environment,
 	}
 
 	if err := a.CompanyRepo.CreateCompany(ctx, company); err != nil {
@@ -90,27 +93,34 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 	return nil
 }
 
-func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (string, error) {
+func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
 	if input.CredentialID != "" {
 		credential, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
 		if err != nil {
-			return "", fmt.Errorf("buscar credencial: %w", err)
+			return nil, fmt.Errorf("buscar credencial: %w", err)
 		}
 		if credential == nil {
-			return "", fmt.Errorf("credencial não encontrada")
+			return nil, fmt.Errorf("credencial não encontrada")
 		}
-		return string(credential.ID), nil
+		return credential, nil
 	}
 
 	if _, err := os.Stat(input.CertPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("arquivo de certificado não encontrado: %s", input.CertPath)
+		return nil, fmt.Errorf("arquivo de certificado não encontrado: %s", input.CertPath)
+	} else if err != nil {
+		return nil, fmt.Errorf("verificar certificado: %w", err)
+	}
+
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return nil, fmt.Errorf("ambiente inválido: %w", err)
 	}
 
 	credential := &nfse.Credential{
 		ID:          nfse.CredentialID(nfse.GenerateID()),
 		Label:       input.CredentialLabel,
 		CertPath:    input.CertPath,
-		Environment: nfse.Environment(input.Environment),
+		Environment: environment,
 	}
 	if credential.Label == "" {
 		if input.Name != "" {
@@ -121,7 +131,7 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 	}
 
 	if err := a.CredentialRepo.CreateCredential(ctx, credential); err != nil {
-		return "", fmt.Errorf("salvar credencial: %w", err)
+		return nil, fmt.Errorf("salvar credencial: %w", err)
 	}
-	return string(credential.ID), nil
+	return credential, nil
 }

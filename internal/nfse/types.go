@@ -40,7 +40,7 @@ func ParseMoney(value string) (Money, error) {
 	centsStr := integerPart + fractionalPart
 	cents, err := strconv.ParseInt(centsStr, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %v", ErrMoneyOverflow, err)
+		return 0, fmt.Errorf("%w: %w", ErrMoneyOverflow, err)
 	}
 
 	return Money(cents), nil
@@ -174,7 +174,6 @@ func (e DocumentStatus) String() string {
 	return string(e)
 }
 
-
 const (
 	CompanyRoleTomada        CompanyRole = "tomada"
 	CompanyRolePrestada      CompanyRole = "prestada"
@@ -182,9 +181,9 @@ const (
 )
 
 const (
-	DocumentStatusNormal       DocumentStatus = "normal"
-	DocumentStatusCancelada    DocumentStatus = "cancelada"
-	DocumentStatusSubstituida  DocumentStatus = "substituida"
+	DocumentStatusNormal      DocumentStatus = "normal"
+	DocumentStatusCancelada   DocumentStatus = "cancelada"
+	DocumentStatusSubstituida DocumentStatus = "substituida"
 )
 
 func ParseCompanyRole(val string) (CompanyRole, error) {
@@ -199,7 +198,6 @@ func (e CompanyRole) String() string {
 	return string(e)
 }
 
-
 func ParseVisibilityReason(val string) (VisibilityReason, error) {
 	return VisibilityReason(val), nil // TODO: Add valid constants later
 }
@@ -211,7 +209,6 @@ func (e VisibilityReason) Valid() bool {
 func (e VisibilityReason) String() string {
 	return string(e)
 }
-
 
 func ParseEventType(val string) (EventType, error) {
 	return EventType(val), nil // TODO: Add valid constants later
@@ -225,7 +222,6 @@ func (e EventType) String() string {
 	return string(e)
 }
 
-
 func ParseSyncStatus(val string) (SyncStatus, error) {
 	return SyncStatus(val), nil // TODO: Add valid constants later
 }
@@ -238,7 +234,6 @@ func (e SyncStatus) String() string {
 	return string(e)
 }
 
-
 func ParseConsultationBasis(val string) (ConsultationBasis, error) {
 	return ConsultationBasis(val), nil // TODO: Add valid constants later
 }
@@ -250,4 +245,3 @@ func (e ConsultationBasis) Valid() bool {
 func (e ConsultationBasis) String() string {
 	return string(e)
 }
-

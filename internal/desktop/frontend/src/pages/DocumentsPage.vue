@@ -276,8 +276,8 @@ async function exportData(format: 'csv' | 'xlsx' | 'zip') {
     else if (format === 'zip') await ExportZIP(req)
 
     $q.notify({ type: 'positive', message: `Exportado com sucesso para ${outPath}` })
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao exportar: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao exportar: ' + String(err) })
   }
 }
 

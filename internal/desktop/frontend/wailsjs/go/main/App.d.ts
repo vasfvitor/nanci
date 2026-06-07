@@ -31,6 +31,6 @@ export function SelectExportDirectory():Promise<string>;
 
 export function Status(arg1:string):Promise<app.StatusResult>;
 
-export function SubmitCertPassword(arg1:string, arg2:string):Promise<void>;
+export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateCredentialPath(arg1:app.UpdateCredentialPathInput):Promise<void>;

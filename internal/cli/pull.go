@@ -41,5 +41,5 @@ var pullCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(pullCmd)
 	pullCmd.Flags().StringVarP(&pullCNPJ, "cnpj", "c", "", "CNPJ da empresa para sincronizar")
-	pullCmd.MarkFlagRequired("cnpj")
+	_ = pullCmd.MarkFlagRequired("cnpj")
 }

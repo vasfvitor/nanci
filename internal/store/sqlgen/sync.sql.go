@@ -63,6 +63,17 @@ func (q *Queries) FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) er
 	return err
 }
 
+const getDocumentIDByAccessKey = `-- name: GetDocumentIDByAccessKey :one
+SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1
+`
+
+func (q *Queries) GetDocumentIDByAccessKey(ctx context.Context, chaveAcesso string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getDocumentIDByAccessKey, chaveAcesso)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertEvent = `-- name: InsertEvent :exec
 INSERT INTO events (
     id, document_id, chave_acesso, type, event_at, event_at_valid,
@@ -105,89 +116,37 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 	return err
 }
 
-const listCompanyDocuments = `-- name: ListCompanyDocuments :many
-SELECT d.id, d.chave_acesso, d.issue_date, d.competence, d.prestador_cnpj, d.prestador_name, d.tomador_cnpj, d.tomador_name, d.intermediario_cnpj, d.intermediario_name, d.service_value, d.iss_value, d.irrf_value, d.inss_value, d.pis_value, d.cofins_value, d.csll_value, d.total_retentions, d.status, d.layout_version, d.xml_path, d.raw_hash, d.parse_warnings, d.nfse_number, d.service_description, d.created_at, d.updated_at, cd.company_role, cd.visibility_reason 
-FROM documents d
-JOIN company_documents cd ON d.id = cd.document_id
-WHERE cd.company_id = ?
-ORDER BY d.issue_date DESC
+const linkEventsToDocument = `-- name: LinkEventsToDocument :exec
+UPDATE events SET document_id = ? WHERE chave_acesso = ? AND document_id IS NULL
 `
 
-type ListCompanyDocumentsRow struct {
-	ID                 string
-	ChaveAcesso        string
-	IssueDate          string
-	Competence         string
-	PrestadorCnpj      string
-	PrestadorName      string
-	TomadorCnpj        string
-	TomadorName        string
-	IntermediarioCnpj  string
-	IntermediarioName  string
-	ServiceValue       int64
-	IssValue           int64
-	IrrfValue          int64
-	InssValue          int64
-	PisValue           int64
-	CofinsValue        int64
-	CsllValue          int64
-	TotalRetentions    int64
-	Status             string
-	LayoutVersion      string
-	XmlPath            string
-	RawHash            string
-	ParseWarnings      sql.NullString
-	NfseNumber         string
-	ServiceDescription string
-	CreatedAt          string
-	UpdatedAt          string
-	CompanyRole        string
-	VisibilityReason   string
+type LinkEventsToDocumentParams struct {
+	DocumentID  sql.NullString
+	ChaveAcesso string
 }
 
-func (q *Queries) ListCompanyDocuments(ctx context.Context, companyID string) ([]ListCompanyDocumentsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCompanyDocuments, companyID)
+func (q *Queries) LinkEventsToDocument(ctx context.Context, arg LinkEventsToDocumentParams) error {
+	_, err := q.db.ExecContext(ctx, linkEventsToDocument, arg.DocumentID, arg.ChaveAcesso)
+	return err
+}
+
+const listEventTypesByAccessKey = `-- name: ListEventTypesByAccessKey :many
+SELECT type FROM events WHERE chave_acesso = ?
+`
+
+func (q *Queries) ListEventTypesByAccessKey(ctx context.Context, chaveAcesso string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listEventTypesByAccessKey, chaveAcesso)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCompanyDocumentsRow
+	var items []string
 	for rows.Next() {
-		var i ListCompanyDocumentsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ChaveAcesso,
-			&i.IssueDate,
-			&i.Competence,
-			&i.PrestadorCnpj,
-			&i.PrestadorName,
-			&i.TomadorCnpj,
-			&i.TomadorName,
-			&i.IntermediarioCnpj,
-			&i.IntermediarioName,
-			&i.ServiceValue,
-			&i.IssValue,
-			&i.IrrfValue,
-			&i.InssValue,
-			&i.PisValue,
-			&i.CofinsValue,
-			&i.CsllValue,
-			&i.TotalRetentions,
-			&i.Status,
-			&i.LayoutVersion,
-			&i.XmlPath,
-			&i.RawHash,
-			&i.ParseWarnings,
-			&i.NfseNumber,
-			&i.ServiceDescription,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.CompanyRole,
-			&i.VisibilityReason,
-		); err != nil {
+		var type_ string
+		if err := rows.Scan(&type_); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, type_)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -196,6 +155,21 @@ func (q *Queries) ListCompanyDocuments(ctx context.Context, companyID string) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateDocumentStatusByAccessKey = `-- name: UpdateDocumentStatusByAccessKey :exec
+UPDATE documents SET status = ?, updated_at = ? WHERE chave_acesso = ?
+`
+
+type UpdateDocumentStatusByAccessKeyParams struct {
+	Status      string
+	UpdatedAt   string
+	ChaveAcesso string
+}
+
+func (q *Queries) UpdateDocumentStatusByAccessKey(ctx context.Context, arg UpdateDocumentStatusByAccessKeyParams) error {
+	_, err := q.db.ExecContext(ctx, updateDocumentStatusByAccessKey, arg.Status, arg.UpdatedAt, arg.ChaveAcesso)
+	return err
 }
 
 const updateSyncRunProgress = `-- name: UpdateSyncRunProgress :exec
@@ -228,8 +202,20 @@ INSERT INTO company_documents (
     first_synced_at, last_synced_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_id, document_id) DO UPDATE SET
-    last_seen_nsu = excluded.last_seen_nsu,
-    last_seen_nsu_valid = excluded.last_seen_nsu_valid,
+    company_role = excluded.company_role,
+    visibility_reason = excluded.visibility_reason,
+    first_seen_nsu = CASE
+        WHEN company_documents.first_seen_nsu_valid = 0 THEN excluded.first_seen_nsu
+        WHEN excluded.first_seen_nsu_valid = 0 THEN company_documents.first_seen_nsu
+        ELSE MIN(company_documents.first_seen_nsu, excluded.first_seen_nsu)
+    END,
+    first_seen_nsu_valid = MAX(company_documents.first_seen_nsu_valid, excluded.first_seen_nsu_valid),
+    last_seen_nsu = CASE
+        WHEN company_documents.last_seen_nsu_valid = 0 THEN excluded.last_seen_nsu
+        WHEN excluded.last_seen_nsu_valid = 0 THEN company_documents.last_seen_nsu
+        ELSE MAX(company_documents.last_seen_nsu, excluded.last_seen_nsu)
+    END,
+    last_seen_nsu_valid = MAX(company_documents.last_seen_nsu_valid, excluded.last_seen_nsu_valid),
     last_synced_at = excluded.last_synced_at
 `
 
@@ -264,7 +250,7 @@ func (q *Queries) UpsertCompanyDocument(ctx context.Context, arg UpsertCompanyDo
 	return err
 }
 
-const upsertDocument = `-- name: UpsertDocument :exec
+const upsertDocument = `-- name: UpsertDocument :one
 INSERT INTO documents (
     id, chave_acesso, issue_date, competence,
     prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
@@ -274,8 +260,31 @@ INSERT INTO documents (
     nfse_number, service_description, created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(chave_acesso) DO UPDATE SET
+    issue_date = excluded.issue_date,
+    competence = excluded.competence,
+    prestador_cnpj = excluded.prestador_cnpj,
+    prestador_name = excluded.prestador_name,
+    tomador_cnpj = excluded.tomador_cnpj,
+    tomador_name = excluded.tomador_name,
+    intermediario_cnpj = excluded.intermediario_cnpj,
+    intermediario_name = excluded.intermediario_name,
+    service_value = excluded.service_value,
+    iss_value = excluded.iss_value,
+    irrf_value = excluded.irrf_value,
+    inss_value = excluded.inss_value,
+    pis_value = excluded.pis_value,
+    cofins_value = excluded.cofins_value,
+    csll_value = excluded.csll_value,
+    total_retentions = excluded.total_retentions,
     status = excluded.status,
+    layout_version = excluded.layout_version,
+    xml_path = excluded.xml_path,
+    raw_hash = excluded.raw_hash,
+    parse_warnings = excluded.parse_warnings,
+    nfse_number = excluded.nfse_number,
+    service_description = excluded.service_description,
     updated_at = excluded.updated_at
+RETURNING id
 `
 
 type UpsertDocumentParams struct {
@@ -308,8 +317,8 @@ type UpsertDocumentParams struct {
 	UpdatedAt          string
 }
 
-func (q *Queries) UpsertDocument(ctx context.Context, arg UpsertDocumentParams) error {
-	_, err := q.db.ExecContext(ctx, upsertDocument,
+func (q *Queries) UpsertDocument(ctx context.Context, arg UpsertDocumentParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, upsertDocument,
 		arg.ID,
 		arg.ChaveAcesso,
 		arg.IssueDate,
@@ -338,5 +347,7 @@ func (q *Queries) UpsertDocument(ctx context.Context, arg UpsertDocumentParams) 
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }

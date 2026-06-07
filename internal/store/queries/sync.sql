@@ -14,7 +14,7 @@ UPDATE sync_runs
 SET finished_at = ?, status = ?
 WHERE id = ?;
 
--- name: UpsertDocument :exec
+-- name: UpsertDocument :one
 INSERT INTO documents (
     id, chave_acesso, issue_date, competence,
     prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
@@ -24,8 +24,31 @@ INSERT INTO documents (
     nfse_number, service_description, created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(chave_acesso) DO UPDATE SET
+    issue_date = excluded.issue_date,
+    competence = excluded.competence,
+    prestador_cnpj = excluded.prestador_cnpj,
+    prestador_name = excluded.prestador_name,
+    tomador_cnpj = excluded.tomador_cnpj,
+    tomador_name = excluded.tomador_name,
+    intermediario_cnpj = excluded.intermediario_cnpj,
+    intermediario_name = excluded.intermediario_name,
+    service_value = excluded.service_value,
+    iss_value = excluded.iss_value,
+    irrf_value = excluded.irrf_value,
+    inss_value = excluded.inss_value,
+    pis_value = excluded.pis_value,
+    cofins_value = excluded.cofins_value,
+    csll_value = excluded.csll_value,
+    total_retentions = excluded.total_retentions,
     status = excluded.status,
-    updated_at = excluded.updated_at;
+    layout_version = excluded.layout_version,
+    xml_path = excluded.xml_path,
+    raw_hash = excluded.raw_hash,
+    parse_warnings = excluded.parse_warnings,
+    nfse_number = excluded.nfse_number,
+    service_description = excluded.service_description,
+    updated_at = excluded.updated_at
+RETURNING id;
 
 -- name: UpsertCompanyDocument :exec
 INSERT INTO company_documents (
@@ -34,8 +57,20 @@ INSERT INTO company_documents (
     first_synced_at, last_synced_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_id, document_id) DO UPDATE SET
-    last_seen_nsu = excluded.last_seen_nsu,
-    last_seen_nsu_valid = excluded.last_seen_nsu_valid,
+    company_role = excluded.company_role,
+    visibility_reason = excluded.visibility_reason,
+    first_seen_nsu = CASE
+        WHEN company_documents.first_seen_nsu_valid = 0 THEN excluded.first_seen_nsu
+        WHEN excluded.first_seen_nsu_valid = 0 THEN company_documents.first_seen_nsu
+        ELSE MIN(company_documents.first_seen_nsu, excluded.first_seen_nsu)
+    END,
+    first_seen_nsu_valid = MAX(company_documents.first_seen_nsu_valid, excluded.first_seen_nsu_valid),
+    last_seen_nsu = CASE
+        WHEN company_documents.last_seen_nsu_valid = 0 THEN excluded.last_seen_nsu
+        WHEN excluded.last_seen_nsu_valid = 0 THEN company_documents.last_seen_nsu
+        ELSE MAX(company_documents.last_seen_nsu, excluded.last_seen_nsu)
+    END,
+    last_seen_nsu_valid = MAX(company_documents.last_seen_nsu_valid, excluded.last_seen_nsu_valid),
     last_synced_at = excluded.last_synced_at;
 
 -- name: InsertEvent :exec
@@ -46,9 +81,14 @@ INSERT INTO events (
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(raw_hash) DO NOTHING;
 
--- name: ListCompanyDocuments :many
-SELECT d.*, cd.company_role, cd.visibility_reason 
-FROM documents d
-JOIN company_documents cd ON d.id = cd.document_id
-WHERE cd.company_id = ?
-ORDER BY d.issue_date DESC;
+-- name: GetDocumentIDByAccessKey :one
+SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1;
+
+-- name: LinkEventsToDocument :exec
+UPDATE events SET document_id = ? WHERE chave_acesso = ? AND document_id IS NULL;
+
+-- name: ListEventTypesByAccessKey :many
+SELECT type FROM events WHERE chave_acesso = ?;
+
+-- name: UpdateDocumentStatusByAccessKey :exec
+UPDATE documents SET status = ?, updated_at = ? WHERE chave_acesso = ?;

@@ -11,7 +11,7 @@ import (
 
 // GenerateCSV creates a CSV file from a list of company-facing documents and saves it to the specified path.
 func GenerateCSV(documents []ReportRow, outPath string) (err error) {
-	file, err := os.Create(outPath)
+	file, err := os.Create(outPath) // #nosec G304 -- destination is explicitly selected by the local user.
 	if err != nil {
 		return fmt.Errorf("failed to create csv file: %w", err)
 	}

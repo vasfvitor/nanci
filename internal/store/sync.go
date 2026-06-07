@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -66,8 +68,12 @@ func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDoc
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	// 1. Upsert Document
-	err = q.UpsertDocument(ctx, sqlgen.UpsertDocumentParams{
+	parseWarnings, err := json.Marshal(params.Document.ParseWarnings)
+	if err != nil {
+		return err
+	}
+
+	canonicalDocumentID, err := q.UpsertDocument(ctx, sqlgen.UpsertDocumentParams{
 		ID:                 string(params.Document.ID),
 		ChaveAcesso:        string(params.Document.ChaveAcesso),
 		IssueDate:          params.Document.IssueDate.Format(time.RFC3339),
@@ -90,7 +96,7 @@ func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDoc
 		LayoutVersion:      params.Document.LayoutVersion,
 		XmlPath:            params.Document.XMLPath,
 		RawHash:            params.Document.RawHash,
-		ParseWarnings:      sql.NullString{String: "[]", Valid: true},
+		ParseWarnings:      sql.NullString{String: string(parseWarnings), Valid: true},
 		NfseNumber:         params.Document.NFSeNumber,
 		ServiceDescription: params.Document.ServiceDescription,
 		CreatedAt:          now,
@@ -100,25 +106,34 @@ func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDoc
 		return err
 	}
 
-	// 2. Upsert CompanyDocument Relation
 	err = q.UpsertCompanyDocument(ctx, sqlgen.UpsertCompanyDocumentParams{
-		RelationID:         string(nfse.GenerateID()),
-		CompanyID:          string(params.CompanyID),
-		DocumentID:         string(params.Document.ID),
-		CompanyRole:        string(params.Participation.CompanyRole),
-		VisibilityReason:   string(params.Participation.VisibilityReason),
-		FirstSeenNsu:       params.NSU,
-		LastSeenNsu:        params.NSU,
-		FirstSeenNsuValid:  1,
-		LastSeenNsuValid:   1,
-		FirstSyncedAt:      now,
-		LastSyncedAt:       now,
+		RelationID:        nfse.GenerateID(),
+		CompanyID:         string(params.CompanyID),
+		DocumentID:        canonicalDocumentID,
+		CompanyRole:       string(params.Participation.CompanyRole),
+		VisibilityReason:  string(params.Participation.VisibilityReason),
+		FirstSeenNsu:      params.NSU,
+		LastSeenNsu:       params.NSU,
+		FirstSeenNsuValid: 1,
+		LastSeenNsuValid:  1,
+		FirstSyncedAt:     now,
+		LastSyncedAt:      now,
 	})
 	if err != nil {
 		return err
 	}
 
-	// Wait, we need to update company NSU? The plan says AdvanceCheckpoint does that.
+	if err := q.LinkEventsToDocument(ctx, sqlgen.LinkEventsToDocumentParams{
+		DocumentID:  sql.NullString{String: canonicalDocumentID, Valid: true},
+		ChaveAcesso: string(params.Document.ChaveAcesso),
+	}); err != nil {
+		return err
+	}
+
+	if err := recomputeDocumentStatus(ctx, q, string(params.Document.ChaveAcesso), now); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -133,16 +148,26 @@ func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventP
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	var valid int64 = 0
+	documentID, err := q.GetDocumentIDByAccessKey(ctx, string(params.Event.ChaveAcesso))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	var valid int64
 	var eventAt sql.NullString
 	if params.Event.EventAtValid {
 		valid = 1
 		eventAt = sql.NullString{String: params.Event.EventAt.Format(time.RFC3339), Valid: true}
 	}
 
+	parseWarnings, err := json.Marshal(params.Event.ParseWarnings)
+	if err != nil {
+		return err
+	}
+
 	err = q.InsertEvent(ctx, sqlgen.InsertEventParams{
-		ID:                     string(params.Event.ID),
-		DocumentID:             sql.NullString{String: string(params.Event.DocumentID), Valid: params.Event.DocumentID != ""},
+		ID:                     params.Event.ID,
+		DocumentID:             sql.NullString{String: documentID, Valid: documentID != ""},
 		ChaveAcesso:            string(params.Event.ChaveAcesso),
 		Type:                   string(params.Event.Type),
 		EventAt:                eventAt,
@@ -151,41 +176,31 @@ func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventP
 		Description:            params.Event.Description,
 		RawXmlPath:             params.Event.RawXMLPath,
 		RawHash:                params.Event.RawHash,
-		ParseWarnings:          sql.NullString{String: "[]", Valid: true},
+		ParseWarnings:          sql.NullString{String: string(parseWarnings), Valid: true},
 		CreatedAt:              now,
 	})
 	if err != nil {
 		return err
 	}
 
-	if err := recomputeDocumentStatusTx(ctx, tx, string(params.Event.ChaveAcesso)); err != nil {
+	if err := recomputeDocumentStatus(ctx, q, string(params.Event.ChaveAcesso), now); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func recomputeDocumentStatusTx(ctx context.Context, tx *sql.Tx, chaveAcesso string) error {
-	query := `
-		SELECT event_type
-		FROM events
-		WHERE chave_acesso = ?
-	`
-	rows, err := tx.QueryContext(ctx, query, chaveAcesso)
+func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso, updatedAt string) error {
+	eventTypes, err := q.ListEventTypesByAccessKey(ctx, chaveAcesso)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	status := "normal"
+	status := nfse.DocumentStatusNormal
 	hasCancellation := false
 	hasSubstitution := false
 
-	for rows.Next() {
-		var eventType string
-		if err := rows.Scan(&eventType); err != nil {
-			return err
-		}
+	for _, eventType := range eventTypes {
 		switch eventType {
 		case "substituicao":
 			hasSubstitution = true
@@ -193,25 +208,19 @@ func recomputeDocumentStatusTx(ctx context.Context, tx *sql.Tx, chaveAcesso stri
 			hasCancellation = true
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
 
 	switch {
 	case hasSubstitution:
-		status = "substituida"
+		status = nfse.DocumentStatusSubstituida
 	case hasCancellation:
-		status = "cancelada"
+		status = nfse.DocumentStatusCancelada
 	}
 
-	_, err = tx.ExecContext(
-		ctx,
-		`UPDATE documents SET status = ?, updated_at = ? WHERE chave_acesso = ?`,
-		status,
-		time.Now().UTC().Format(time.RFC3339),
-		chaveAcesso,
-	)
-	return err
+	return q.UpdateDocumentStatusByAccessKey(ctx, sqlgen.UpdateDocumentStatusByAccessKeyParams{
+		Status:      string(status),
+		UpdatedAt:   updatedAt,
+		ChaveAcesso: chaveAcesso,
+	})
 }
 
 func (r *SyncRepository) AdvanceCheckpoint(ctx context.Context, params nfse.AdvanceCheckpointParams) error {

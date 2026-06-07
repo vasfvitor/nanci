@@ -20,7 +20,7 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 	ev.CreatedAt = time.Now().UTC()
 
 	decoder := xml.NewDecoder(bytes.NewReader(data))
-	
+
 	if len(bytes.TrimSpace(data)) == 0 {
 		return ev, nil, errors.New("empty xml event")
 	}
@@ -46,6 +46,7 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 			pathStack = append(pathStack, local)
 			currentText.Reset()
 
+			//nolint:staticcheck // The grouped aliases are official schema variants.
 			if local == "infPedCanc" || local == "infCanc" || local == "infPedidoCanc" {
 				isCancelamento = true
 			} else if local == "infSubst" || local == "Substituicao" || local == "substituicao" {
@@ -58,16 +59,17 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 		case xml.EndElement:
 			val := strings.TrimSpace(currentText.String())
 			currentPath := strings.Join(pathStack, "/")
-			
+
 			if len(pathStack) > 0 {
 				pathStack = pathStack[:len(pathStack)-1]
 			}
-			
+
 			if val == "" {
 				continue
 			}
 
 			// We use suffix matching for paths
+			//nolint:gocritic // A flat suffix dispatch keeps XML field mappings readable.
 			if strings.HasSuffix(currentPath, "/chNFSe") || strings.HasSuffix(currentPath, "/chNFSePed") {
 				parsed, err := ParseAccessKey(val)
 				if err != nil {
@@ -92,6 +94,7 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 	}
 
 	// Classify event type
+	//nolint:gocritic // Precedence is clearer as an ordered classification.
 	if isCancelamento {
 		ev.Type = EventType("cancelamento")
 	} else if isSubstituicao || ev.ReplacementChaveAcesso != "" {

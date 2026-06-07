@@ -53,7 +53,7 @@ func (b *BlobStore) Get(hash string) ([]byte, error) {
 	}
 
 	fullPath := filepath.Join(b.blobsDir, hash+".xml")
-	data, err := os.ReadFile(fullPath)
+	data, err := os.ReadFile(fullPath) // #nosec G304 -- fullPath is rooted in the configured blob directory.
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, ErrFileNotFound

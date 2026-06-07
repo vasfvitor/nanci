@@ -117,8 +117,8 @@ async function loadCredentials() {
     if (credentialOptions.value.length > 0 && !form.value.CredentialID) {
       form.value.CredentialID = credentialOptions.value[0].value
     }
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar credenciais: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao carregar credenciais: ' + String(err) })
   }
 }
 
@@ -131,8 +131,8 @@ async function selectCert() {
         form.value.CredentialLabel = path.split(/[\\/]/).pop() || path
       }
     }
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + String(err) })
   }
 }
 
@@ -171,8 +171,8 @@ async function submit() {
       CertPath: '',
       Environment: 'producao_restrita',
     }
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + String(err) })
   } finally {
     loading.value = false
   }

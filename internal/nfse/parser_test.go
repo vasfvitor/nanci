@@ -1,8 +1,8 @@
-﻿package nfse
+package nfse
 
 import (
-"os"
-"path/filepath"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -56,7 +56,7 @@ func TestParseEventXML(t *testing.T) {
 			if string(event.ChaveAcesso) != tt.wantChave {
 				t.Fatalf("ChaveAcesso = %q, want %q", event.ChaveAcesso, tt.wantChave)
 			}
-			if string(event.ReplacementChaveAcesso) != tt.wantReplacement {
+			if event.ReplacementChaveAcesso != tt.wantReplacement {
 				t.Fatalf("ReplacementChaveAcesso = %q, want %q", event.ReplacementChaveAcesso, tt.wantReplacement)
 			}
 			if event.EventAtValid != tt.wantEventAt {
@@ -143,7 +143,7 @@ func TestParseXML(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
 			path := filepath.Join("testdata", tt.filename)
-			data, err := os.ReadFile(path)
+			data, err := os.ReadFile(path) // #nosec G304 -- fixed testdata path.
 			if err != nil {
 				t.Fatalf("Failed to read testdata %s: %v", tt.filename, err)
 			}

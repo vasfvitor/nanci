@@ -96,8 +96,8 @@ async function loadCompanies() {
 async function reloadData() {
   try {
     await Promise.all([loadCredentials(), loadCompanies()])
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + String(err) })
   }
 }
 
@@ -109,8 +109,8 @@ async function assignCredential(cnpj: string) {
     })
     $q.notify({ type: 'positive', message: 'Credencial atribuída com sucesso.' })
     await loadCompanies()
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + String(err) })
   }
 }
 
@@ -124,11 +124,11 @@ async function syncCompany(cnpj: string) {
       message: `Sincronização concluída! Docs: ${result.DocumentsFound}, Base: ${result.ConsultationBasis}, Credencial: ${credentialCNPJ}`,
     })
     await loadCompanies()
-  } catch (err: any) {
+  } catch (err) {
     if (String(err).includes('operação cancelada')) {
       $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
     } else {
-      $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + err })
+      $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + String(err) })
     }
   } finally {
     syncing.value = null

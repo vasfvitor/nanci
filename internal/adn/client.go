@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sethvargo/go-retry"
+
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -54,6 +55,10 @@ type Client struct {
 }
 
 func NewClient(cfg ClientConfig) (*Client, error) {
+	if cfg.Retry.MaxRetries < 0 {
+		return nil, fmt.Errorf("max retries must not be negative")
+	}
+
 	var baseURLStr string
 	switch cfg.Environment {
 	case nfse.EnvironmentProduction:
@@ -71,7 +76,7 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 
 	// Clone the default transport to preserve proxy/dial settings
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	
+
 	var tlsConfig *tls.Config
 	if cfg.Certificate != nil {
 		tlsConfig = &tls.Config{
@@ -128,7 +133,9 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 			}
 			return retry.RetryableError(fmt.Errorf("transport error: %w", err))
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 			if dest != nil {
@@ -144,7 +151,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		// Read error response body bounded
 		errBodyReader := io.LimitReader(resp.Body, MaxErrorBodyBytes)
 		errBodyBytes, _ := io.ReadAll(errBodyReader)
-		
+
 		apiErr := &APIError{
 			Method:     method,
 			URL:        u,

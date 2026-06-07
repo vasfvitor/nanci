@@ -62,7 +62,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, fmt.Errorf("CredentialProvider não configurado")
 	}
 	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
-		RequestID:       string(nfse.GenerateID()),
+		RequestID:       nfse.GenerateID(),
 		CompanyID:       string(company.ID),
 		CompanyName:     company.Name,
 		TargetCNPJ:      company.CNPJ,

@@ -58,8 +58,8 @@ function ownerLabel(credential: nfse.Credential) {
 async function loadCredentials() {
   try {
     credentials.value = (await ListCredentials()) || []
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao listar credenciais: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao listar credenciais: ' + String(err) })
   }
 }
 
@@ -70,8 +70,8 @@ async function changePath(credentialID: string) {
     await UpdateCredentialPath({ CredentialID: credentialID, CertPath: path })
     $q.notify({ type: 'positive', message: 'Caminho da credencial atualizado.' })
     await loadCredentials()
-  } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Erro ao atualizar credencial: ' + err })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar credencial: ' + String(err) })
   }
 }
 

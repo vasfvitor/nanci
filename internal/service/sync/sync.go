@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -49,9 +50,9 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		return fmt.Errorf("failed to create sync run: %w", err)
 	}
 
-	defer func() { //nolint:contextcheck
+	defer func() {
 		if syncRun.Status == "running" { // if not marked as completed or failed
-			_ = s.store.FinishRun(context.Background(), nfse.FinishRunParams{
+			_ = s.finishRun(ctx, nfse.FinishRunParams{
 				RunID:  syncRun.ID,
 				Status: "interrupted",
 			})
@@ -80,14 +81,14 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				syncRun.Status = "interrupted"
-				_ = s.store.FinishRun(context.Background(), nfse.FinishRunParams{
+				_ = s.finishRun(ctx, nfse.FinishRunParams{
 					RunID:  syncRun.ID,
 					Status: "interrupted",
 				})
 				return err
 			}
 			syncRun.Status = "failed"
-			_ = s.store.FinishRun(context.Background(), nfse.FinishRunParams{
+			_ = s.finishRun(ctx, nfse.FinishRunParams{
 				RunID:    syncRun.ID,
 				Status:   "failed",
 				ErrorMsg: err.Error(),
@@ -97,7 +98,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 		if resp.UltNSU < requestedNSU {
 			syncRun.Status = "failed"
-			_ = s.store.FinishRun(context.Background(), nfse.FinishRunParams{
+			_ = s.finishRun(ctx, nfse.FinishRunParams{
 				RunID:    syncRun.ID,
 				Status:   "failed",
 				ErrorMsg: fmt.Sprintf("invalid ADN response: ultNSU %d is behind requested NSU %d", resp.UltNSU, requestedNSU),
@@ -152,9 +153,8 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 					company.LastNSU = batchSuccessNSU
 				}
 
-				committedNSU = batchSuccessNSU
 				syncRun.Status = "failed"
-				_ = s.store.FinishRun(context.Background(), nfse.FinishRunParams{
+				_ = s.finishRun(ctx, nfse.FinishRunParams{
 					RunID:    syncRun.ID,
 					Status:   "failed",
 					ErrorMsg: err.Error(),
@@ -187,11 +187,17 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	}
 
 	syncRun.Status = "completed"
-	_ = s.store.FinishRun(context.Background(), nfse.FinishRunParams{
+	_ = s.finishRun(ctx, nfse.FinishRunParams{
 		RunID:  syncRun.ID,
 		Status: "completed",
 	})
 	return nil
+}
+
+func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams) error {
+	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	return s.store.FinishRun(finishCtx, params)
 }
 
 // processDocument handles the decoding, parsing, and saving of a single document.
@@ -222,7 +228,7 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 	doc.XMLPath = doc.RawHash + ".xml"
 
 	participation := nfse.ClassifyCompanyParticipation(&doc, company.CNPJ)
-	
+
 	// 4. Apply document (Save document + relation)
 	if err := s.store.ApplyDocument(ctx, nfse.ApplyDocumentParams{
 		Document:      doc,

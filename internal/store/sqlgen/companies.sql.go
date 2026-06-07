@@ -10,48 +10,61 @@ import (
 	"database/sql"
 )
 
-const assignCredentialToCompany = `-- name: AssignCredentialToCompany :exec
+const assignCredentialToCompany = `-- name: AssignCredentialToCompany :execrows
 UPDATE companies
-SET credential_id = ?,
-    credential_label = ?,
-    credential_cert_path = ?,
-    updated_at = ?
-WHERE id = ?
+SET credential_id = ?1,
+    credential_label = (
+        SELECT label FROM credentials
+        WHERE credentials.id = ?1
+    ),
+    credential_cert_path = (
+        SELECT cert_path FROM credentials
+        WHERE credentials.id = ?1
+    ),
+    environment = (
+        SELECT environment FROM credentials
+        WHERE credentials.id = ?1
+    ),
+    updated_at = ?2
+WHERE companies.id = ?3
+  AND EXISTS (
+      SELECT 1 FROM credentials
+      WHERE credentials.id = ?1
+  )
 `
 
 type AssignCredentialToCompanyParams struct {
-	CredentialID       sql.NullString
-	CredentialLabel    sql.NullString
-	CredentialCertPath sql.NullString
-	UpdatedAt          string
-	ID                 string
+	CredentialID sql.NullString
+	UpdatedAt    string
+	CompanyID    string
 }
 
-func (q *Queries) AssignCredentialToCompany(ctx context.Context, arg AssignCredentialToCompanyParams) error {
-	_, err := q.db.ExecContext(ctx, assignCredentialToCompany,
-		arg.CredentialID,
-		arg.CredentialLabel,
-		arg.CredentialCertPath,
-		arg.UpdatedAt,
-		arg.ID,
-	)
-	return err
+func (q *Queries) AssignCredentialToCompany(ctx context.Context, arg AssignCredentialToCompanyParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, assignCredentialToCompany, arg.CredentialID, arg.UpdatedAt, arg.CompanyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const createCompany = `-- name: CreateCompany :exec
 INSERT INTO companies (
-    id, cnpj, cnpj_root, name, environment, last_nsu, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+    id, cnpj, cnpj_root, name, credential_id, credential_label,
+    credential_cert_path, environment, last_nsu, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 `
 
 type CreateCompanyParams struct {
-	ID          string
-	Cnpj        string
-	CnpjRoot    string
-	Name        string
-	Environment string
-	CreatedAt   string
-	UpdatedAt   string
+	ID                 string
+	Cnpj               string
+	CnpjRoot           string
+	Name               string
+	CredentialID       sql.NullString
+	CredentialLabel    sql.NullString
+	CredentialCertPath sql.NullString
+	Environment        string
+	CreatedAt          string
+	UpdatedAt          string
 }
 
 func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) error {
@@ -60,6 +73,9 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 		arg.Cnpj,
 		arg.CnpjRoot,
 		arg.Name,
+		arg.CredentialID,
+		arg.CredentialLabel,
+		arg.CredentialCertPath,
 		arg.Environment,
 		arg.CreatedAt,
 		arg.UpdatedAt,

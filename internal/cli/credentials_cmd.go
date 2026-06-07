@@ -108,10 +108,10 @@ func init() {
 	credentialAddCmd.Flags().StringVar(&credentialLabel, "label", "", "Rótulo da credencial")
 	credentialAddCmd.Flags().StringVar(&credentialPath, "cert", "", "Caminho do certificado .pfx/.p12")
 	credentialAddCmd.Flags().StringVar(&credentialEnv, "env", "producao_restrita", "Ambiente: producao ou producao_restrita")
-	credentialAddCmd.MarkFlagRequired("cert")
+	_ = credentialAddCmd.MarkFlagRequired("cert")
 
 	credentialUpdatePathCmd.Flags().StringVar(&credentialID, "credential-id", "", "ID da credencial")
 	credentialUpdatePathCmd.Flags().StringVar(&credentialPath, "cert", "", "Novo caminho do certificado .pfx/.p12")
-	credentialUpdatePathCmd.MarkFlagRequired("credential-id")
-	credentialUpdatePathCmd.MarkFlagRequired("cert")
+	_ = credentialUpdatePathCmd.MarkFlagRequired("credential-id")
+	_ = credentialUpdatePathCmd.MarkFlagRequired("cert")
 }

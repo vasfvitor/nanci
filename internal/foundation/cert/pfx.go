@@ -35,7 +35,7 @@ type LoadedCertificate struct {
 
 // LoadPKCS12 reads a .pfx or .p12 file, parses it into a tls.Certificate, and extracts inspection metadata.
 func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
-	pfxData, err := os.ReadFile(path)
+	pfxData, err := os.ReadFile(path) // #nosec G304 -- path is explicitly selected by the local user.
 	if err != nil {
 		if os.IsNotExist(err) {
 			return LoadedCertificate{}, ErrFileNotFound

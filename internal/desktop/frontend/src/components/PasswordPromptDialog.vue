@@ -26,12 +26,20 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { SubmitCertPassword, CancelCertPassword } from '../../wailsjs/go/main/App'
 
-const requests = ref<any[]>([])
+interface CertPasswordRequest {
+  RequestID: string
+  CompanyName: string
+  TargetCNPJ: string
+  CredentialLabel: string
+  CertPath: string
+}
+
+const requests = ref<CertPasswordRequest[]>([])
 const password = ref('')
 const isOpen = computed(() => requests.value.length > 0)
 const requestData = computed(() => requests.value[0])
 
-function handleRequest(req: any) {
+function handleRequest(req: CertPasswordRequest) {
   requests.value.push(req)
 }
 

@@ -129,8 +129,7 @@ func (q *Queries) ListCredentials(ctx context.Context) ([]Credential, error) {
 }
 
 const updateCredential = `-- name: UpdateCredential :exec
-UPDATE credentials
-SET
+UPDATE credentials SET
     label = ?,
     cert_path = ?,
     environment = ?,

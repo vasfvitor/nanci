@@ -112,19 +112,19 @@ func init() {
 	exportXlsxCmd.Flags().StringVarP(&exportCompetence, "competencia", "m", "", "Competência (ex: 2026-06)")
 	exportXlsxCmd.Flags().StringVarP(&exportDirection, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
 	exportXlsxCmd.Flags().StringVarP(&exportOut, "out", "o", "export.xlsx", "Caminho do arquivo de saída")
-	exportXlsxCmd.MarkFlagRequired("cnpj")
+	_ = exportXlsxCmd.MarkFlagRequired("cnpj")
 
 	// Flags for csv
 	exportCsvCmd.Flags().StringVarP(&exportCNPJ, "cnpj", "c", "", "CNPJ da empresa")
 	exportCsvCmd.Flags().StringVarP(&exportCompetence, "competencia", "m", "", "Competência (ex: 2026-06)")
 	exportCsvCmd.Flags().StringVarP(&exportDirection, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
 	exportCsvCmd.Flags().StringVarP(&exportOut, "out", "o", "export.csv", "Caminho do arquivo de saída")
-	exportCsvCmd.MarkFlagRequired("cnpj")
+	_ = exportCsvCmd.MarkFlagRequired("cnpj")
 
 	// Flags for zip
 	exportZipCmd.Flags().StringVarP(&exportCNPJ, "cnpj", "c", "", "CNPJ da empresa")
 	exportZipCmd.Flags().StringVarP(&exportCompetence, "competencia", "m", "", "Competência (ex: 2026-06)")
 	exportZipCmd.Flags().StringVarP(&exportDirection, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
 	exportZipCmd.Flags().StringVarP(&exportOut, "out", "o", "export.zip", "Caminho do arquivo de saída")
-	exportZipCmd.MarkFlagRequired("cnpj")
+	_ = exportZipCmd.MarkFlagRequired("cnpj")
 }

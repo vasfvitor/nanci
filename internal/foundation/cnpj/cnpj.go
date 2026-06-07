@@ -3,6 +3,7 @@ package cnpj
 import (
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -90,7 +91,7 @@ func isValidNumericCNPJ(cleaned string) bool {
 		return false
 	}
 	first := calculateCheckDigit(cleaned[:12], firstCheckDigitWeights)
-	second := calculateCheckDigit(cleaned[:12]+string(rune('0'+first)), secondCheckDigitWeights)
+	second := calculateCheckDigit(cleaned[:12]+strconv.Itoa(first), secondCheckDigitWeights)
 	return int(cleaned[12]-'0') == first && int(cleaned[13]-'0') == second
 }
 

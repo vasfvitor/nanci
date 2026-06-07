@@ -32,23 +32,23 @@ func (s *DocumentRepository) GetDocumentByChave(ctx context.Context, chave strin
 			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
 			intermediario_cnpj, intermediario_name,
 			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value, total_retentions,
-			status, layout_version, xml_path, raw_hash, parse_error, parse_warnings, created_at, updated_at,
-			nfse_number, service_description
+			status, layout_version, xml_path, raw_hash, parse_warnings,
+			nfse_number, service_description, created_at, updated_at
 		FROM documents
 		WHERE chave_acesso = ?
 	`
 
 	var doc nfse.Document
 	var issueDate, createdAt, updatedAt string
-	var layoutVersion, parseWarnings, numero, descricao sql.NullString
+	var parseWarnings sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, chave).Scan(
 		&doc.ID, &doc.ChaveAcesso, &issueDate, &doc.Competence,
 		&doc.PrestadorCNPJ, &doc.PrestadorName, &doc.TomadorCNPJ, &doc.TomadorName,
 		&doc.IntermediarioCNPJ, &doc.IntermediarioName,
 		&doc.ServiceValue, &doc.ISSValue, &doc.IRRFValue, &doc.INSSValue, &doc.PISValue, &doc.COFINSValue, &doc.CSLLValue, &doc.TotalRetentions,
-		&doc.Status, &layoutVersion, &doc.XMLPath, &doc.RawHash, &parseWarnings, &createdAt, &updatedAt,
-		&numero, &descricao,
+		&doc.Status, &doc.LayoutVersion, &doc.XMLPath, &doc.RawHash, &parseWarnings,
+		&doc.NFSeNumber, &doc.ServiceDescription, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -57,68 +57,23 @@ func (s *DocumentRepository) GetDocumentByChave(ctx context.Context, chave strin
 		return nil, fmt.Errorf("failed to query document by chave: %w", err)
 	}
 
-	if issueDate != "" {
-		doc.IssueDate, _ = time.Parse(time.RFC3339, issueDate)
+	doc.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
+	if err != nil {
+		return nil, err
 	}
-	doc.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	doc.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-	if layoutVersion.Valid {
-		doc.LayoutVersion = layoutVersion.String
+	doc.CreatedAt, err = parseRequiredTime("document created_at", createdAt)
+	if err != nil {
+		return nil, err
 	}
-	if parseWarnings.Valid && parseWarnings.String != "" {
-		_ = json.Unmarshal([]byte(parseWarnings.String), &doc.ParseWarnings)
+	doc.UpdatedAt, err = parseRequiredTime("document updated_at", updatedAt)
+	if err != nil {
+		return nil, err
 	}
-	if numero.Valid {
-		doc.NFSeNumber = numero.String
-	}
-	if descricao.Valid {
-		doc.ServiceDescription = descricao.String
+	if err := decodeWarnings(parseWarnings, &doc.ParseWarnings); err != nil {
+		return nil, fmt.Errorf("document parse_warnings: %w", err)
 	}
 
 	return &doc, nil
-}
-
-// UpsertCompanyDocument inserts or updates a company-document relation.
-func (s *DocumentRepository) UpsertCompanyDocument(ctx context.Context, doc *nfse.CompanyDocument) error {
-	query := `
-		INSERT INTO company_documents (
-			id, company_id, document_id, company_role, visibility_reason,
-			first_seen_nsu, last_seen_nsu, first_synced_at, last_synced_at, created_at, updated_at
-		) VALUES (
-			?, ?, ?, ?, ?,
-			?, ?, ?, ?, ?, ?
-		)
-		ON CONFLICT(company_id, document_id) DO UPDATE SET
-			company_role = excluded.company_role,
-			visibility_reason = excluded.visibility_reason,
-			first_seen_nsu = CASE
-				WHEN company_documents.first_seen_nsu IS NULL THEN excluded.first_seen_nsu
-				WHEN excluded.first_seen_nsu IS NULL THEN company_documents.first_seen_nsu
-				WHEN excluded.first_seen_nsu < company_documents.first_seen_nsu THEN excluded.first_seen_nsu
-				ELSE company_documents.first_seen_nsu
-			END,
-			last_seen_nsu = CASE
-				WHEN company_documents.last_seen_nsu IS NULL THEN excluded.last_seen_nsu
-				WHEN excluded.last_seen_nsu IS NULL THEN company_documents.last_seen_nsu
-				WHEN excluded.last_seen_nsu > company_documents.last_seen_nsu THEN excluded.last_seen_nsu
-				ELSE company_documents.last_seen_nsu
-			END,
-			first_synced_at = COALESCE(company_documents.first_synced_at, excluded.first_synced_at),
-			last_synced_at = excluded.last_synced_at,
-			updated_at = excluded.updated_at
-	`
-
-	now := time.Now().UTC()
-	nowStr := now.Format(time.RFC3339)
-
-	_, err := s.db.ExecContext(ctx, query,
-		doc.RelationID, doc.CompanyID, doc.DocumentID, doc.CompanyRole, doc.VisibilityReason,
-		nullableInt64(doc.FirstSeenNSU, doc.FirstSeenNSUValid),
-		nullableInt64(doc.LastSeenNSU, doc.LastSeenNSUValid),
-		nowStr, nowStr, nowStr, nowStr,
-	)
-
-	return err
 }
 
 // ListCompanyDocuments retrieves company-facing documents based on the provided filters.
@@ -129,10 +84,12 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			d.prestador_cnpj, d.prestador_name, d.tomador_cnpj, d.tomador_name,
 			d.intermediario_cnpj, d.intermediario_name,
 			d.service_value, d.iss_value, d.irrf_value, d.inss_value, d.pis_value, d.cofins_value, d.csll_value, d.total_retentions,
-			d.status, d.layout_version, d.xml_path, d.raw_hash, d.parse_error, d.parse_warnings, d.created_at, d.updated_at,
+			d.status, d.layout_version, d.xml_path, d.raw_hash, d.parse_warnings, d.created_at, d.updated_at,
 			d.nfse_number, d.service_description,
-			cd.id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
-			cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at
+			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
+			cd.first_seen_nsu, cd.last_seen_nsu,
+			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
+			cd.first_synced_at, cd.last_synced_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		WHERE cd.company_id = ?
@@ -151,8 +108,20 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		query += " AND d.status = ?"
 		args = append(args, filter.Status)
 	}
+	if filter.FromNSU != nil {
+		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		args = append(args, *filter.FromNSU)
+	}
+	if filter.ToNSU != nil {
+		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		args = append(args, *filter.ToNSU)
+	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
+	if filter.Limit != nil && *filter.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, *filter.Limit)
+	}
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -164,8 +133,8 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 	for rows.Next() {
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
-		var layoutVersion, parseWarnings, numero, descricao sql.NullString
-		var firstSeenNSU, lastSeenNSU sql.NullInt64
+		var parseWarnings sql.NullString
+		var firstSeenValid, lastSeenValid int64
 		var firstSyncedAt, lastSyncedAt string
 
 		if err := rows.Scan(
@@ -173,44 +142,39 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			&d.PrestadorCNPJ, &d.PrestadorName, &d.TomadorCNPJ, &d.TomadorName,
 			&d.IntermediarioCNPJ, &d.IntermediarioName,
 			&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue, &d.TotalRetentions,
-			&d.Status, &layoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
-			&numero, &descricao,
+			&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
+			&d.NFSeNumber, &d.ServiceDescription,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-			&firstSeenNSU, &lastSeenNSU, &firstSyncedAt, &lastSyncedAt,
+			&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
+			&firstSyncedAt, &lastSyncedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		if issueDate != "" {
-			d.IssueDate, _ = time.Parse(time.RFC3339, issueDate)
+		d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
+		if err != nil {
+			return nil, err
 		}
-		d.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		d.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if layoutVersion.Valid {
-			d.LayoutVersion = layoutVersion.String
+		d.CreatedAt, err = parseRequiredTime("document created_at", createdAt)
+		if err != nil {
+			return nil, err
 		}
-		if parseWarnings.Valid && parseWarnings.String != "" {
-			_ = json.Unmarshal([]byte(parseWarnings.String), &d.ParseWarnings)
+		d.UpdatedAt, err = parseRequiredTime("document updated_at", updatedAt)
+		if err != nil {
+			return nil, err
 		}
-		if numero.Valid {
-			d.NFSeNumber = numero.String
+		if err := decodeWarnings(parseWarnings, &d.ParseWarnings); err != nil {
+			return nil, fmt.Errorf("document parse_warnings: %w", err)
 		}
-		if descricao.Valid {
-			d.ServiceDescription = descricao.String
+		d.FirstSeenNSUValid = firstSeenValid != 0
+		d.LastSeenNSUValid = lastSeenValid != 0
+		d.FirstSyncedAt, err = parseRequiredTime("company document first_synced_at", firstSyncedAt)
+		if err != nil {
+			return nil, err
 		}
-		if firstSeenNSU.Valid {
-			d.FirstSeenNSU = firstSeenNSU.Int64
-			d.FirstSeenNSUValid = true
-		}
-		if lastSeenNSU.Valid {
-			d.LastSeenNSU = lastSeenNSU.Int64
-			d.LastSeenNSUValid = true
-		}
-		if firstSyncedAt != "" {
-			d.FirstSyncedAt, _ = time.Parse(time.RFC3339, firstSyncedAt)
-		}
-		if lastSyncedAt != "" {
-			d.LastSyncedAt, _ = time.Parse(time.RFC3339, lastSyncedAt)
+		d.LastSyncedAt, err = parseRequiredTime("company document last_synced_at", lastSyncedAt)
+		if err != nil {
+			return nil, err
 		}
 
 		docs = append(docs, d)
@@ -226,7 +190,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) {
 	query := `
 		SELECT
-			id, document_id, chave_acesso, event_type, event_at, replacement_chave_acesso,
+			id, document_id, chave_acesso, type, event_at, event_at_valid, replacement_chave_acesso,
 			description, raw_xml_path, raw_hash, parse_warnings, created_at
 		FROM events
 		WHERE document_id = ?
@@ -246,17 +210,19 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	var events []nfse.Event
 	for rows.Next() {
 		var event nfse.Event
-		var eventAt, createdAt sql.NullString
-		var replacementChave, description, parseWarnings sql.NullString
+		var documentID, eventAt, parseWarnings sql.NullString
+		var eventAtValid int64
+		var createdAt string
 
 		if err := rows.Scan(
 			&event.ID,
-			&event.DocumentID,
+			&documentID,
 			&event.ChaveAcesso,
 			&event.Type,
 			&eventAt,
-			&replacementChave,
-			&description,
+			&eventAtValid,
+			&event.ReplacementChaveAcesso,
+			&event.Description,
 			&event.RawXMLPath,
 			&event.RawHash,
 			&parseWarnings,
@@ -265,24 +231,25 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 			return nil, err
 		}
 
-		if eventAt.Valid {
-			parsed, err := time.Parse(time.RFC3339, eventAt.String)
-			if err == nil {
-				event.EventAt = parsed
-				event.EventAtValid = true
+		if documentID.Valid {
+			event.DocumentID = nfse.DocumentID(documentID.String)
+		}
+		if eventAtValid != 0 {
+			if !eventAt.Valid {
+				return nil, errors.New("event event_at is required when event_at_valid is set")
 			}
+			event.EventAt, err = parseRequiredTime("event event_at", eventAt.String)
+			if err != nil {
+				return nil, err
+			}
+			event.EventAtValid = true
 		}
-		if replacementChave.Valid {
-			event.ReplacementChaveAcesso = replacementChave.String
+		if err := decodeWarnings(parseWarnings, &event.ParseWarnings); err != nil {
+			return nil, fmt.Errorf("event parse_warnings: %w", err)
 		}
-		if description.Valid {
-			event.Description = description.String
-		}
-		if parseWarnings.Valid && parseWarnings.String != "" {
-			_ = json.Unmarshal([]byte(parseWarnings.String), &event.ParseWarnings)
-		}
-		if createdAt.Valid {
-			event.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)
+		event.CreatedAt, err = parseRequiredTime("event created_at", createdAt)
+		if err != nil {
+			return nil, err
 		}
 
 		events = append(events, event)
@@ -295,18 +262,17 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	return events, nil
 }
 
-
-
-func nullableString(value string) interface{} {
-	if value == "" {
-		return nil
+func parseRequiredTime(field, value string) (time.Time, error) {
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%s: %w", field, err)
 	}
-	return value
+	return parsed, nil
 }
 
-func nullableInt64(value int64, valid bool) interface{} {
-	if !valid {
+func decodeWarnings(value sql.NullString, dst *[]string) error {
+	if !value.Valid || value.String == "" {
 		return nil
 	}
-	return value
+	return json.Unmarshal([]byte(value.String), dst)
 }

@@ -31,7 +31,7 @@ func DecodePayload(payloadBase64 string, limits PayloadLimits) (DecodedPayload, 
 	// A base64 string length gives a direct upper bound on decoded bytes: (len * 3) / 4
 	estimatedDecodedSize := int64(len(payloadBase64)) * 3 / 4
 	if estimatedDecodedSize > limits.CompressedBytes {
-		return DecodedPayload{}, fmt.Errorf("%w: compressed payload estimated at %d bytes (limit %d)", 
+		return DecodedPayload{}, fmt.Errorf("%w: compressed payload estimated at %d bytes (limit %d)",
 			ErrPayloadTooLarge, estimatedDecodedSize, limits.CompressedBytes)
 	}
 
@@ -41,7 +41,7 @@ func DecodePayload(payloadBase64 string, limits PayloadLimits) (DecodedPayload, 
 	}
 
 	if int64(len(gzippedData)) > limits.CompressedBytes {
-		return DecodedPayload{}, fmt.Errorf("%w: compressed payload is %d bytes (limit %d)", 
+		return DecodedPayload{}, fmt.Errorf("%w: compressed payload is %d bytes (limit %d)",
 			ErrPayloadTooLarge, len(gzippedData), limits.CompressedBytes)
 	}
 
@@ -53,14 +53,14 @@ func DecodePayload(payloadBase64 string, limits PayloadLimits) (DecodedPayload, 
 	defer gzipReader.Close()
 
 	limitedReader := io.LimitReader(gzipReader, limits.UncompressedBytes+1) // +1 to detect overflow
-	
+
 	xmlData, err := io.ReadAll(limitedReader)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return DecodedPayload{}, fmt.Errorf("failed to read uncompressed xml: %w", err)
 	}
 
 	if int64(len(xmlData)) > limits.UncompressedBytes {
-		return DecodedPayload{}, fmt.Errorf("%w: uncompressed payload exceeded limit of %d bytes", 
+		return DecodedPayload{}, fmt.Errorf("%w: uncompressed payload exceeded limit of %d bytes",
 			ErrPayloadTooLarge, limits.UncompressedBytes)
 	}
 

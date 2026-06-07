@@ -62,19 +62,20 @@ func newApp() (*app.App, error) {
 		return nil, fmt.Errorf("falha ao inicializar banco de dados v2: %w", err)
 	}
 
-	application := &app.App{
-		Log:            log,
-		DB:             db,
-		CompanyRepo:    store.NewCompanyRepository(db),
-		CredentialRepo: store.NewCredentialRepository(db),
-		SyncRepo:       store.NewSyncRepository(db),
-		XMLStore:       files.NewBlobStore(dataDir),
-		DataDir:        dataDir,
-	}
-
-	application.CredentialProvider = TerminalCredentialProvider{
-		In:  os.Stdin,
-		Out: os.Stderr,
+	application, err := app.New(app.Dependencies{
+		Log:                log,
+		DB:                 db,
+		CompanyRepo:        store.NewCompanyRepository(db),
+		CredentialRepo:     store.NewCredentialRepository(db),
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentReader:     store.NewDocumentRepository(db),
+		XMLStore:           files.NewBlobStore(dataDir),
+		DataDir:            dataDir,
+		CredentialProvider: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
+	})
+	if err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("configurar aplicação: %w", err)
 	}
 	return application, nil
 }

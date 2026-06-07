@@ -12,7 +12,7 @@ import (
 func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 	baseDir := t.TempDir()
 	store := files.NewBlobStore(baseDir)
-	
+
 	err := store.Store("hash123", []byte("<NFSe/>"))
 	if err != nil {
 		t.Fatalf("Store: %v", err)
@@ -38,7 +38,11 @@ func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenReader: %v", err)
 	}
-	defer archive.Close()
+	defer func() {
+		if err := archive.Close(); err != nil {
+			t.Errorf("close archive: %v", err)
+		}
+	}()
 
 	if len(archive.File) != 1 {
 		t.Fatalf("expected 1 zip entry, got %d", len(archive.File))

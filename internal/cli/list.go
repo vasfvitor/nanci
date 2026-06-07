@@ -74,5 +74,5 @@ func init() {
 	listCmd.Flags().StringVarP(&listCNPJ, "cnpj", "c", "", "CNPJ da empresa")
 	listCmd.Flags().StringVarP(&listCompetence, "competencia", "m", "", "Filtrar por competência (ex: 2026-06)")
 	listCmd.Flags().StringVarP(&listDirection, "direcao", "d", "", "Filtrar por direção (tomada, prestada, intermediario)")
-	listCmd.MarkFlagRequired("cnpj")
+	_ = listCmd.MarkFlagRequired("cnpj")
 }

@@ -95,22 +95,27 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	coreApp := &app.App{
+	coreApp, err := app.New(app.Dependencies{
 		Log:            log,
 		DB:             db,
 		CompanyRepo:    store.NewCompanyRepository(db),
 		CredentialRepo: store.NewCredentialRepository(db),
 		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: store.NewDocumentRepository(db),
 		XMLStore:       files.NewBlobStore(dataDir),
 		DataDir:        dataDir,
+		CredentialProvider: WailsCredentialProvider{
+			ctx:           ctx,
+			passwordChans: a.passwordChans,
+			mu:            &a.mu,
+		},
+	})
+	if err != nil {
+		_ = db.Close()
+		fmt.Printf("failed to configure app: %v\n", err)
+		return
 	}
 
-	// Inject the Wails-specific credential provider
-	coreApp.CredentialProvider = WailsCredentialProvider{
-		ctx:           ctx,
-		passwordChans: a.passwordChans,
-		mu:            &a.mu,
-	}
 	a.core = coreApp
 }
 
