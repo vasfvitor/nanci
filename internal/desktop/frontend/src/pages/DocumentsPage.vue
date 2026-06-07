@@ -216,9 +216,9 @@ function roleColor(role: string) {
     case 'intermediario':
       return 'accent'
     case 'none':
-      return 'grey-7'
+      return 'grey'
     default:
-      return 'grey-7'
+      return 'grey'
   }
 }
 
@@ -248,7 +248,7 @@ function visibilityColor(reason: string) {
     case 'same_root_only':
       return 'warning'
     default:
-      return 'grey-7'
+      return 'grey'
   }
 }
 

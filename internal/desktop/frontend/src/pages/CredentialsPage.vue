@@ -10,12 +10,13 @@
         <q-card>
           <q-card-section>
             <div class="row items-center justify-between q-mb-sm">
-              <div class="text-h6 text-weight-bold text-dark">{{ credential.Label }}</div>
+              <div class="text-h6 text-weight-bold">{{ credential.Label }}</div>
               <q-btn flat round icon="edit" color="primary" @click="openEditDialog(credential)" />
             </div>
-            <div class="text-caption text-grey-8">{{ credential.CertPath }}</div>
+            <div class="text-caption text-grey">{{ credential.CertPath }}</div>
             <q-badge
               :color="credential.Environment === 'producao' ? 'positive' : 'warning'"
+              :text-color="credential.Environment === 'producao' ? 'white' : 'dark'"
               class="q-mt-sm"
             >
               {{ credential.Environment }}
@@ -34,7 +35,7 @@
       </div>
     </div>
 
-    <div v-if="credentials.length === 0" class="text-center q-pa-xl text-grey-6">
+    <div v-if="credentials.length === 0" class="text-center q-pa-xl text-grey">
       <q-icon name="vpn_key" size="4rem" />
       <p class="text-h6 q-mt-md">Nenhuma credencial cadastrada</p>
     </div>

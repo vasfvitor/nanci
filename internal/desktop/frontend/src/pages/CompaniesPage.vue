@@ -10,12 +10,13 @@
         <q-card>
           <q-card-section>
             <div class="row items-center justify-between q-mb-sm">
-              <div class="text-h6 text-weight-bold text-dark">{{ company.Name }}</div>
+              <div class="text-h6 text-weight-bold">{{ company.Name }}</div>
               <q-btn flat round icon="edit" color="primary" @click="openEditDialog(company)" />
             </div>
-            <div class="text-subtitle2 text-grey-8">{{ company.CNPJ }}</div>
+            <div class="text-subtitle2 text-grey">{{ company.CNPJ }}</div>
             <q-badge
               :color="company.Environment === 'producao' ? 'positive' : 'warning'"
+              :text-color="company.Environment === 'producao' ? 'white' : 'dark'"
               class="q-mt-sm"
             >
               {{ company.Environment }}
@@ -59,7 +60,7 @@
       </div>
     </div>
 
-    <div v-if="companies.length === 0" class="text-center q-pa-xl text-grey-6">
+    <div v-if="companies.length === 0" class="text-center q-pa-xl text-grey">
       <q-icon name="business" size="4rem" />
       <p class="text-h6 q-mt-md">Nenhuma empresa cadastrada</p>
     </div>
