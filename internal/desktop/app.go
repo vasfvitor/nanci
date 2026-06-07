@@ -131,10 +131,12 @@ func (a *App) startup(ctx context.Context) {
 		DocumentReader: store.NewDocumentRepository(db),
 		XMLStore:       files.NewBlobStore(dataDir),
 		DataDir:        dataDir,
-		CredentialProvider: WailsCredentialProvider{
-			ctx:           ctx,
-			passwordChans: a.passwordChans,
-			mu:            &a.mu,
+		CredentialProvider: app.KeyringCredentialProvider{
+			Fallback: WailsCredentialProvider{
+				ctx:           ctx,
+				passwordChans: a.passwordChans,
+				mu:            &a.mu,
+			},
 		},
 	})
 	if err != nil {

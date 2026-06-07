@@ -77,7 +77,9 @@ func newApp() (*app.App, error) {
 		DocumentReader:     store.NewDocumentRepository(db),
 		XMLStore:           files.NewBlobStore(dataDir),
 		DataDir:            dataDir,
-		CredentialProvider: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
+		CredentialProvider: app.KeyringCredentialProvider{
+			Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
+		},
 	})
 	if err != nil {
 		_ = db.Close()
