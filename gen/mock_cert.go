@@ -16,7 +16,7 @@ const (
 	password     = "mockdata"
 	validityDays = 365
 
-	outputDirName = "internal/testdata/certs"
+	outputDirName = "internal/foundation/cert/testdata"
 	pfxFileName   = "cert_a1_mock_70860312000150.pfx"
 )
 

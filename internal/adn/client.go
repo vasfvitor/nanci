@@ -43,11 +43,12 @@ type RetryConfig struct {
 }
 
 type ClientConfig struct {
-	Environment nfse.Environment
-	HTTPClient  *http.Client
-	Certificate *tls.Certificate
-	Retry       RetryConfig
-	Log         *slog.Logger
+	Environment     nfse.Environment
+	BaseURLOverride string
+	HTTPClient      *http.Client
+	Certificate     *tls.Certificate
+	Retry           RetryConfig
+	Log             *slog.Logger
 }
 
 type Client struct {
@@ -63,13 +64,17 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	}
 
 	var baseURLStr string
-	switch cfg.Environment {
-	case nfse.EnvironmentProduction:
-		baseURLStr = BaseURLProduction
-	case nfse.EnvironmentRestricted:
-		baseURLStr = BaseURLRestrictedProduction
-	default:
-		return nil, fmt.Errorf("invalid environment: %s", cfg.Environment)
+	if cfg.BaseURLOverride != "" {
+		baseURLStr = cfg.BaseURLOverride
+	} else {
+		switch cfg.Environment {
+		case nfse.EnvironmentProduction:
+			baseURLStr = BaseURLProduction
+		case nfse.EnvironmentRestricted:
+			baseURLStr = BaseURLRestrictedProduction
+		default:
+			return nil, fmt.Errorf("invalid environment: %s", cfg.Environment)
+		}
 	}
 
 	u, err := url.Parse(baseURLStr)
