@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -40,8 +39,7 @@ var exportXlsxCmd = &cobra.Command{
 
 		fmt.Println("Gerando arquivo Excel...")
 		if err := application.ExportXLSX(cmd.Context(), input); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo XLSX: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao gerar arquivo XLSX: %w", err)
 		}
 
 		fmt.Printf("Planilha gerada com sucesso: %s\n", exportOut)
@@ -68,8 +66,7 @@ var exportCsvCmd = &cobra.Command{
 
 		fmt.Println("Gerando arquivo CSV...")
 		if err := application.ExportCSV(cmd.Context(), input); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo CSV: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao gerar arquivo CSV: %w", err)
 		}
 
 		fmt.Printf("Arquivo CSV gerado com sucesso: %s\n", exportOut)
@@ -96,8 +93,7 @@ var exportZipCmd = &cobra.Command{
 
 		fmt.Println("Gerando arquivo ZIP...")
 		if err := application.ExportZIP(cmd.Context(), input); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao gerar arquivo ZIP: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao gerar arquivo ZIP: %w", err)
 		}
 
 		fmt.Printf("Arquivo ZIP gerado com sucesso: %s\n", exportOut)

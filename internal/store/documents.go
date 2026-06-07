@@ -9,82 +9,23 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
-// UpsertDocument inserts or updates a canonical document identified by chave_acesso.
-func (s *SQLiteStore) UpsertDocument(ctx context.Context, doc *nfse.Document) error {
-	query := `
-		INSERT INTO documents (
-			id, chave_acesso, issue_date, competence,
-			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
-			intermediario_cnpj, intermediario_name,
-			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value, total_retentions,
-			status, layout_version, xml_path, raw_hash, parse_error, parse_warnings, created_at, updated_at,
-			nfse_number, service_description
-		) VALUES (
-			?, ?, ?, ?,
-			?, ?, ?, ?,
-			?, ?,
-			?, ?, ?, ?, ?, ?, ?, ?,
-			?, ?, ?, ?, ?, ?, ?, ?,
-			?, ?
-		)
-		ON CONFLICT(chave_acesso) DO UPDATE SET
-			issue_date = excluded.issue_date,
-			competence = excluded.competence,
-			prestador_cnpj = excluded.prestador_cnpj,
-			prestador_name = excluded.prestador_name,
-			tomador_cnpj = excluded.tomador_cnpj,
-			tomador_name = excluded.tomador_name,
-			intermediario_cnpj = excluded.intermediario_cnpj,
-			intermediario_name = excluded.intermediario_name,
-			service_value = excluded.service_value,
-			iss_value = excluded.iss_value,
-			irrf_value = excluded.irrf_value,
-			inss_value = excluded.inss_value,
-			pis_value = excluded.pis_value,
-			cofins_value = excluded.cofins_value,
-			csll_value = excluded.csll_value,
-			total_retentions = excluded.total_retentions,
-			status = excluded.status,
-			layout_version = excluded.layout_version,
-			xml_path = excluded.xml_path,
-			raw_hash = excluded.raw_hash,
-			parse_error = excluded.parse_error,
-			parse_warnings = excluded.parse_warnings,
-			updated_at = excluded.updated_at,
-			nfse_number = excluded.nfse_number,
-			service_description = excluded.service_description
-	`
+type DocumentRepository struct {
+	db      *sql.DB
+	queries *sqlgen.Queries
+}
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	var issueDate string
-	if !doc.IssueDate.IsZero() {
-		issueDate = doc.IssueDate.UTC().Format(time.RFC3339)
+func NewDocumentRepository(db *sql.DB) *DocumentRepository {
+	return &DocumentRepository{
+		db:      db,
+		queries: sqlgen.New(db),
 	}
-
-	var warningsJSON []byte
-	if len(doc.ParseWarnings) > 0 {
-		warningsJSON, _ = json.Marshal(doc.ParseWarnings)
-	}
-
-	_, err := s.db.ExecContext(ctx, query,
-		doc.ID, doc.ChaveAcesso, issueDate, doc.Competence,
-		doc.PrestadorCNPJ, doc.PrestadorName, doc.TomadorCNPJ, doc.TomadorName,
-		doc.IntermediarioCNPJ, doc.IntermediarioName,
-		doc.ServiceValue, doc.ISSValue, doc.IRRFValue, doc.INSSValue, doc.PISValue, doc.COFINSValue, doc.CSLLValue, doc.TotalRetentions,
-		doc.Status, nullableString(doc.LayoutVersion), doc.XMLPath, doc.RawHash, nullableString(doc.ParseError), nullableString(string(warningsJSON)), now, now,
-		nullableString(doc.NFSeNumber), nullableString(doc.ServiceDescription),
-	)
-	if err != nil {
-		return err
-	}
-
-	return s.recomputeDocumentStatus(ctx, doc.ChaveAcesso)
 }
 
 // GetDocumentByChave retrieves a canonical document by its access key.
-func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nfse.Document, error) {
+func (s *DocumentRepository) GetDocumentByChave(ctx context.Context, chave string) (*nfse.Document, error) {
 	query := `
 		SELECT
 			id, chave_acesso, issue_date, competence,
@@ -99,14 +40,14 @@ func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nf
 
 	var doc nfse.Document
 	var issueDate, createdAt, updatedAt string
-	var parseError, layoutVersion, parseWarnings, numero, descricao sql.NullString
+	var layoutVersion, parseWarnings, numero, descricao sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, chave).Scan(
 		&doc.ID, &doc.ChaveAcesso, &issueDate, &doc.Competence,
 		&doc.PrestadorCNPJ, &doc.PrestadorName, &doc.TomadorCNPJ, &doc.TomadorName,
 		&doc.IntermediarioCNPJ, &doc.IntermediarioName,
 		&doc.ServiceValue, &doc.ISSValue, &doc.IRRFValue, &doc.INSSValue, &doc.PISValue, &doc.COFINSValue, &doc.CSLLValue, &doc.TotalRetentions,
-		&doc.Status, &layoutVersion, &doc.XMLPath, &doc.RawHash, &parseError, &parseWarnings, &createdAt, &updatedAt,
+		&doc.Status, &layoutVersion, &doc.XMLPath, &doc.RawHash, &parseWarnings, &createdAt, &updatedAt,
 		&numero, &descricao,
 	)
 	if err != nil {
@@ -121,9 +62,6 @@ func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nf
 	}
 	doc.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	doc.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-	if parseError.Valid {
-		doc.ParseError = parseError.String
-	}
 	if layoutVersion.Valid {
 		doc.LayoutVersion = layoutVersion.String
 	}
@@ -141,7 +79,7 @@ func (s *SQLiteStore) GetDocumentByChave(ctx context.Context, chave string) (*nf
 }
 
 // UpsertCompanyDocument inserts or updates a company-document relation.
-func (s *SQLiteStore) UpsertCompanyDocument(ctx context.Context, doc *nfse.CompanyDocument) error {
+func (s *DocumentRepository) UpsertCompanyDocument(ctx context.Context, doc *nfse.CompanyDocument) error {
 	query := `
 		INSERT INTO company_documents (
 			id, company_id, document_id, company_role, visibility_reason,
@@ -183,8 +121,8 @@ func (s *SQLiteStore) UpsertCompanyDocument(ctx context.Context, doc *nfse.Compa
 	return err
 }
 
-// ListDocuments retrieves company-facing documents based on the provided filters.
-func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filter DocumentFilter) ([]nfse.CompanyDocument, error) {
+// ListCompanyDocuments retrieves company-facing documents based on the provided filters.
+func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
 	query := `
 		SELECT
 			d.id, d.chave_acesso, d.issue_date, d.competence,
@@ -199,7 +137,7 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 		INNER JOIN documents d ON d.id = cd.document_id
 		WHERE cd.company_id = ?
 	`
-	args := []interface{}{companyID}
+	args := []interface{}{string(companyID)}
 
 	if filter.Competence != "" {
 		query += " AND d.competence = ?"
@@ -226,7 +164,7 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 	for rows.Next() {
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
-		var parseError, layoutVersion, parseWarnings, numero, descricao sql.NullString
+		var layoutVersion, parseWarnings, numero, descricao sql.NullString
 		var firstSeenNSU, lastSeenNSU sql.NullInt64
 		var firstSyncedAt, lastSyncedAt string
 
@@ -235,7 +173,7 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 			&d.PrestadorCNPJ, &d.PrestadorName, &d.TomadorCNPJ, &d.TomadorName,
 			&d.IntermediarioCNPJ, &d.IntermediarioName,
 			&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue, &d.TotalRetentions,
-			&d.Status, &layoutVersion, &d.XMLPath, &d.RawHash, &parseError, &parseWarnings, &createdAt, &updatedAt,
+			&d.Status, &layoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 			&numero, &descricao,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 			&firstSeenNSU, &lastSeenNSU, &firstSyncedAt, &lastSyncedAt,
@@ -248,9 +186,6 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 		}
 		d.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		d.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if parseError.Valid {
-			d.ParseError = parseError.String
-		}
 		if layoutVersion.Valid {
 			d.LayoutVersion = layoutVersion.String
 		}
@@ -288,31 +223,79 @@ func (s *SQLiteStore) ListDocuments(ctx context.Context, companyID string, filte
 	return docs, nil
 }
 
-// GetCompanyStats returns aggregated statistics for a company.
-func (s *SQLiteStore) GetCompanyStats(ctx context.Context, companyID string) (*CompanyStats, error) {
+func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) {
 	query := `
 		SELECT
-			COUNT(*),
-			COALESCE(SUM(CASE WHEN company_role = 'tomada' THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN company_role = 'prestada' THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN d.status = 'cancelada' THEN 1 ELSE 0 END), 0)
-		FROM company_documents cd
-		INNER JOIN documents d ON d.id = cd.document_id
-		WHERE cd.company_id = ?
+			id, document_id, chave_acesso, event_type, event_at, replacement_chave_acesso,
+			description, raw_xml_path, raw_hash, parse_warnings, created_at
+		FROM events
+		WHERE document_id = ?
+		ORDER BY
+			CASE WHEN event_at IS NULL THEN 1 ELSE 0 END,
+			event_at ASC,
+			created_at ASC,
+			id ASC
 	`
 
-	stats := &CompanyStats{}
-	if err := s.db.QueryRowContext(ctx, query, companyID).Scan(
-		&stats.TotalDocuments,
-		&stats.TotalTomadas,
-		&stats.TotalPrestadas,
-		&stats.TotalCanceled,
-	); err != nil {
+	rows, err := s.db.QueryContext(ctx, query, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []nfse.Event
+	for rows.Next() {
+		var event nfse.Event
+		var eventAt, createdAt sql.NullString
+		var replacementChave, description, parseWarnings sql.NullString
+
+		if err := rows.Scan(
+			&event.ID,
+			&event.DocumentID,
+			&event.ChaveAcesso,
+			&event.Type,
+			&eventAt,
+			&replacementChave,
+			&description,
+			&event.RawXMLPath,
+			&event.RawHash,
+			&parseWarnings,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if eventAt.Valid {
+			parsed, err := time.Parse(time.RFC3339, eventAt.String)
+			if err == nil {
+				event.EventAt = parsed
+				event.EventAtValid = true
+			}
+		}
+		if replacementChave.Valid {
+			event.ReplacementChaveAcesso = replacementChave.String
+		}
+		if description.Valid {
+			event.Description = description.String
+		}
+		if parseWarnings.Valid && parseWarnings.String != "" {
+			_ = json.Unmarshal([]byte(parseWarnings.String), &event.ParseWarnings)
+		}
+		if createdAt.Valid {
+			event.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)
+		}
+
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return stats, nil
+	return events, nil
 }
+
+
 
 func nullableString(value string) interface{} {
 	if value == "" {

@@ -1,6 +1,6 @@
 <NFSe>
     <infNFSe versao="1.0">
-        <chNFSe>8888888888888888888888888888888888888888888888</chNFSe>
+        <chNFSe>88888888888888888888888888888888888888888888888888</chNFSe>
         <nNFSe>12345</nNFSe>
         <dhEmi>2023-10-25T14:30:00-03:00</dhEmi>
         <compNFSe>2023-10</compNFSe>
@@ -13,7 +13,7 @@
             <xNome>Synthetic Tomador SA</xNome>
         </toma>
         <serv>
-            <xDesc>Serviços de desenvolvimento de software</xDesc>
+            <xDescServ>Serviços de desenvolvimento de software</xDescServ>
         </serv>
         <valores>
             <vServ>1000.50</vServ>

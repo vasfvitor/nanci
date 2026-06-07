@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
-
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -36,16 +34,16 @@ func (a *App) AddCredential(ctx context.Context, input AddCredentialInput) error
 	}
 
 	credential := &nfse.Credential{
-		ID:          uuid.NewString(),
+		ID:          nfse.CredentialID(nfse.GenerateID()),
 		Label:       input.Label,
 		CertPath:    input.CertPath,
-		Environment: input.Environment,
+		Environment: nfse.Environment(input.Environment),
 	}
 	if credential.Label == "" {
 		credential.Label = input.CertPath
 	}
 
-	if err := a.Store.CreateCredential(ctx, credential); err != nil {
+	if err := a.CredentialRepo.CreateCredential(ctx, credential); err != nil {
 		return fmt.Errorf("salvar credencial: %w", err)
 	}
 	return nil
@@ -53,7 +51,7 @@ func (a *App) AddCredential(ctx context.Context, input AddCredentialInput) error
 
 // ListCredentials returns all reusable credentials.
 func (a *App) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
-	credentials, err := a.Store.ListCredentials(ctx)
+	credentials, err := a.CredentialRepo.ListCredentials(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar credenciais: %w", err)
 	}
@@ -65,7 +63,12 @@ func (a *App) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPa
 	if _, err := os.Stat(input.CertPath); os.IsNotExist(err) {
 		return fmt.Errorf("arquivo de certificado não encontrado: %s", input.CertPath)
 	}
-	if err := a.Store.UpdateCredentialPath(ctx, input.CredentialID, input.CertPath); err != nil {
+	cred, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	if err != nil || cred == nil {
+		return fmt.Errorf("credencial não encontrada: %w", err)
+	}
+	cred.CertPath = input.CertPath
+	if err := a.CredentialRepo.UpdateCredential(ctx, cred); err != nil {
 		return fmt.Errorf("atualizar credencial: %w", err)
 	}
 	return nil

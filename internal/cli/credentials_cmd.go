@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -38,8 +37,7 @@ var credentialAddCmd = &cobra.Command{
 			CertPath:    credentialPath,
 			Environment: credentialEnv,
 		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao adicionar credencial: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao adicionar credencial: %w", err)
 		}
 		fmt.Println("Credencial adicionada com sucesso.")
 		return nil
@@ -58,8 +56,7 @@ var credentialListCmd = &cobra.Command{
 
 		credentials, err := application.ListCredentials(context.Background())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao listar credenciais: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao listar credenciais: %w", err)
 		}
 		if len(credentials) == 0 {
 			fmt.Println("Nenhuma credencial cadastrada.")
@@ -95,8 +92,7 @@ var credentialUpdatePathCmd = &cobra.Command{
 			CredentialID: credentialID,
 			CertPath:     credentialPath,
 		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao atualizar credencial: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao atualizar credencial: %w", err)
 		}
 		fmt.Println("Caminho da credencial atualizado com sucesso.")
 		return nil

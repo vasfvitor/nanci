@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // ExportInput is shared by all export formats.
@@ -24,7 +24,7 @@ func (a *App) ExportCSV(ctx context.Context, input ExportInput) error {
 	if err != nil {
 		return err
 	}
-	return report.GenerateCSV(docs, input.OutPath)
+	return report.GenerateCSV(report.BuildRows(docs), input.OutPath)
 }
 
 // ExportXLSX writes an Excel report for the matching documents to input.OutPath.
@@ -33,7 +33,7 @@ func (a *App) ExportXLSX(ctx context.Context, input ExportInput) error {
 	if err != nil {
 		return err
 	}
-	return report.GenerateXLSX(docs, input.OutPath)
+	return report.GenerateXLSX(report.BuildRows(docs), input.OutPath)
 }
 
 // ExportZIP packs the raw XML files for the matching documents into input.OutPath.
@@ -42,7 +42,7 @@ func (a *App) ExportZIP(ctx context.Context, input ExportInput) error {
 	if err != nil {
 		return err
 	}
-	return report.GenerateZIP(docs, a.DataDir, input.OutPath)
+	return report.GenerateZIP(report.BuildRows(docs), files.NewBlobStore(a.DataDir), input.OutPath)
 }
 
 // queryExportDocs validates input and returns the matching documents from the store.
@@ -53,7 +53,7 @@ func (a *App) queryExportDocs(ctx context.Context, input ExportInput) ([]nfse.Co
 
 	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 
-	company, err := a.Store.GetCompany(ctx, cleanedCNPJ)
+	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return nil, fmt.Errorf("buscar empresa: %w", err)
 	}
@@ -61,12 +61,12 @@ func (a *App) queryExportDocs(ctx context.Context, input ExportInput) ([]nfse.Co
 		return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 	}
 
-	filter := store.DocumentFilter{
+	filter := nfse.DocumentFilter{
 		Competence: input.Competence,
 		Direction:  input.Direction,
 	}
 
-	docs, err := a.Store.ListDocuments(ctx, company.ID, filter)
+	docs, err := a.DocumentReader.ListCompanyDocuments(ctx, company.ID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("listar documentos: %w", err)
 	}

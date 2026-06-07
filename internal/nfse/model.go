@@ -6,14 +6,14 @@ import (
 
 // Company represents a company that syncs documents.
 type Company struct {
-	ID                 string
+	ID                 CompanyID
 	CNPJ               string // stored as a 14-char identifier; current input policy accepts validated numeric CNPJ only
 	CNPJRoot           string // first 8 chars - groups branches
 	Name               string
-	CredentialID       string
+	CredentialID       CredentialID
 	CredentialLabel    string
 	CredentialCertPath string
-	Environment        string // derived from the assigned credential
+	Environment        Environment // derived from the assigned credential
 	LastNSU            int64
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
@@ -21,10 +21,10 @@ type Company struct {
 
 // Credential represents a reusable mTLS credential that can be assigned to multiple companies.
 type Credential struct {
-	ID                string
+	ID                CredentialID
 	Label             string
 	CertPath          string
-	Environment       string
+	Environment       Environment
 	OwnerCNPJ         string
 	OwnerCNPJRoot     string
 	FingerprintSHA256 string
@@ -38,30 +38,28 @@ type Credential struct {
 
 // Document represents a synced fiscal document (NFS-e).
 type Document struct {
-	ID                string
-	ChaveAcesso       string
-	IssueDate         time.Time
-	Competence        string // "YYYY-MM"
-	PrestadorCNPJ     string
-	PrestadorName     string
-	TomadorCNPJ       string
-	TomadorName       string
-	IntermediarioCNPJ string
-	IntermediarioName string
-	// TODO: review type float64 vs int64 (int64 in cents)
-	ServiceValue       float64
-	ISSValue           float64
-	IRRFValue          float64
-	INSSValue          float64
-	PISValue           float64
-	COFINSValue        float64
-	CSLLValue          float64
-	TotalRetentions    float64
-	Status             string // "normal" | "cancelada" | "substituida"
+	ID                 DocumentID
+	ChaveAcesso        AccessKey
+	IssueDate          time.Time
+	Competence         string // "YYYY-MM"
+	PrestadorCNPJ      string
+	PrestadorName      string
+	TomadorCNPJ        string
+	TomadorName        string
+	IntermediarioCNPJ  string
+	IntermediarioName  string
+	ServiceValue       Money
+	ISSValue           Money
+	IRRFValue          Money
+	INSSValue          Money
+	PISValue           Money
+	COFINSValue        Money
+	CSLLValue          Money
+	TotalRetentions    Money
+	Status             DocumentStatus // "normal" | "cancelada" | "substituida"
 	LayoutVersion      string
 	XMLPath            string
 	RawHash            string
-	ParseError         string
 	ParseWarnings      []string
 	NFSeNumber         string
 	ServiceDescription string
@@ -73,10 +71,10 @@ type Document struct {
 type CompanyDocument struct {
 	Document
 	RelationID        string
-	CompanyID         string
-	DocumentID        string
-	CompanyRole       string // "tomada" | "prestada" | "intermediario" | "none"
-	VisibilityReason  string // "exact_prestador" | "exact_tomador" | "exact_intermediario" | "same_root_only" | "unknown"
+	CompanyID         CompanyID
+	DocumentID        DocumentID
+	CompanyRole       CompanyRole      // "tomada" | "prestada" | "intermediario" | "none"
+	VisibilityReason  VisibilityReason // "exact_prestador" | "exact_tomador" | "exact_intermediario" | "same_root_only" | "unknown"
 	FirstSeenNSU      int64
 	LastSeenNSU       int64
 	FirstSeenNSUValid bool
@@ -87,32 +85,25 @@ type CompanyDocument struct {
 
 // CompanyParticipation contains company-scoped role and visibility classification for one document.
 type CompanyParticipation struct {
-	CompanyRole      string
-	VisibilityReason string
-}
-
-// CompanyStats provides aggregated information about a company's synchronization state.
-type CompanyStats struct {
-	TotalDocuments int
-	TotalService   float64
-	LastSync       *time.Time
+	CompanyRole      CompanyRole
+	VisibilityReason VisibilityReason
 }
 
 // SyncRun represents a synchronization execution for audit and control.
 type SyncRun struct {
-	ID                string
-	CompanyID         string
-	CredentialID      string
+	ID                SyncRunID
+	CompanyID         CompanyID
+	CredentialID      CredentialID
 	CredentialCNPJ    string
 	ConsultationCNPJ  string
-	ConsultationBasis string // "exact_certificate_cnpj" | "same_root_certificate"
+	ConsultationBasis ConsultationBasis // "exact_certificate_cnpj" | "same_root_certificate"
 	StartedAt         time.Time
 	FinishedAt        *time.Time
 	FromNSU           int64
 	ToNSU             int64
 	DocumentsFound    int
 	ErrorsCount       int
-	Status            string // "running" | "completed" | "failed" | "interrupted"
+	Status            SyncStatus // "running" | "completed" | "failed" | "interrupted"
 }
 
 // ProgressEvent contains information about the progress of a long-running operation.

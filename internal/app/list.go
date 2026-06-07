@@ -6,7 +6,6 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // ListInput defines the filters for listing documents.
@@ -24,7 +23,7 @@ func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.Compan
 
 	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 
-	company, err := a.Store.GetCompany(ctx, cleanedCNPJ)
+	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return nil, fmt.Errorf("buscar empresa: %w", err)
 	}
@@ -32,12 +31,12 @@ func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.Compan
 		return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 	}
 
-	filter := store.DocumentFilter{
+	filter := nfse.DocumentFilter{
 		Competence: input.Competence,
 		Direction:  input.Direction,
 	}
 
-	docs, err := a.Store.ListDocuments(ctx, company.ID, filter)
+	docs, err := a.DocumentReader.ListCompanyDocuments(ctx, company.ID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("listar documentos: %w", err)
 	}

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -23,8 +22,7 @@ var statusCmd = &cobra.Command{
 
 		result, err := application.Status(cmd.Context(), statusCNPJ)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro: %w", err)
 		}
 
 		fmt.Printf("Status para: %s (%s)\n", result.CompanyName, cnpj.Format(result.CNPJ))

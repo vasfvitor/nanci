@@ -6,9 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -30,23 +28,33 @@ type Inspection struct {
 	NotAfter          time.Time
 }
 
-// LoadPKCS12 reads a .pfx or .p12 file and parses it into a tls.Certificate.
-func LoadPKCS12(path string, password string) (*tls.Certificate, error) {
+type LoadedCertificate struct {
+	TLS        tls.Certificate
+	Inspection Inspection
+}
+
+// LoadPKCS12 reads a .pfx or .p12 file, parses it into a tls.Certificate, and extracts inspection metadata.
+func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
 	pfxData, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrFileNotFound
+			return LoadedCertificate{}, ErrFileNotFound
 		}
-		return nil, err
+		return LoadedCertificate{}, err
 	}
 
 	// Decode the PFX file using the provided password
 	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(pfxData, password)
 	if err != nil {
 		if errors.Is(err, pkcs12.ErrIncorrectPassword) {
-			return nil, ErrInvalidPass
+			return LoadedCertificate{}, ErrInvalidPass
 		}
-		return nil, err
+		return LoadedCertificate{}, err
+	}
+
+	ownerCNPJ, err := extractOwnerCNPJ(certificate)
+	if err != nil {
+		return LoadedCertificate{}, err
 	}
 
 	// Construct the tls.Certificate
@@ -55,51 +63,13 @@ func LoadPKCS12(path string, password string) (*tls.Certificate, error) {
 		Leaf:       certificate,
 	}
 
-	// The first certificate in the Certificate block is the leaf certificate,
-	// followed by any intermediate CAs that were included in the PFX.
-	tlsCert.Certificate = append(tlsCert.Certificate, certificate.Raw)
-	for _, ca := range caCerts {
-		tlsCert.Certificate = append(tlsCert.Certificate, ca.Raw)
-	}
-
-	return &tlsCert, nil
-}
-
-// LoadPKCS12WithInspection reads a PKCS#12 file and returns the TLS certificate plus
-// metadata derived from the leaf certificate for same-root validation and auditing.
-func LoadPKCS12WithInspection(path string, password string) (*tls.Certificate, *Inspection, error) {
-	pfxData, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil, ErrFileNotFound
-		}
-		return nil, nil, err
-	}
-
-	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(pfxData, password)
-	if err != nil {
-		if errors.Is(err, pkcs12.ErrIncorrectPassword) {
-			return nil, nil, ErrInvalidPass
-		}
-		return nil, nil, err
-	}
-
-	ownerCNPJ, err := extractOwnerCNPJ(certificate)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	tlsCert := tls.Certificate{
-		PrivateKey: privateKey,
-		Leaf:       certificate,
-	}
 	tlsCert.Certificate = append(tlsCert.Certificate, certificate.Raw)
 	for _, ca := range caCerts {
 		tlsCert.Certificate = append(tlsCert.Certificate, ca.Raw)
 	}
 
 	sum := sha256.Sum256(certificate.Raw)
-	inspection := &Inspection{
+	inspection := Inspection{
 		OwnerCNPJ:         ownerCNPJ,
 		OwnerCNPJRoot:     ownerCNPJ[:8],
 		FingerprintSHA256: hex.EncodeToString(sum[:]),
@@ -108,32 +78,26 @@ func LoadPKCS12WithInspection(path string, password string) (*tls.Certificate, *
 		NotAfter:          certificate.NotAfter.UTC(),
 	}
 
-	return &tlsCert, inspection, nil
+	return LoadedCertificate{
+		TLS:        tlsCert,
+		Inspection: inspection,
+	}, nil
 }
 
 func extractOwnerCNPJ(certificate *x509.Certificate) (string, error) {
-	candidates := []string{
-		certificate.Subject.String(),
-		certificate.Issuer.String(),
-		certificate.Subject.CommonName,
-		certificate.Subject.SerialNumber,
-	}
+	// ICP-Brasil CNPJ OID: 2.16.76.1.3.3
+	oidCNPJ := []int{2, 16, 76, 1, 3, 3}
 
 	for _, name := range certificate.Subject.Names {
-		candidates = append(candidates, fmt.Sprint(name.Value))
-	}
-	candidates = append(candidates, certificate.DNSNames...)
-	candidates = append(candidates, certificate.EmailAddresses...)
-	for _, uri := range certificate.URIs {
-		candidates = append(candidates, uri.String())
-	}
-
-	re := regexp.MustCompile(`[A-Za-z0-9./-]{14,18}`)
-	for _, candidate := range candidates {
-		for _, match := range re.FindAllString(candidate, -1) {
-			cleaned := normalizeCNPJToken(match)
-			if len(cleaned) == 14 {
-				return cleaned, nil
+		if name.Type.Equal(oidCNPJ) {
+			val, ok := name.Value.(string)
+			if ok && len(val) >= 14 {
+				// The CNPJ in the OID is 14 digits long, sometimes prefixed/suffixed depending on exact issuer format, but generally exact.
+				// We normalize it and extract just the numbers.
+				normalized := normalizeCNPJToken(val)
+				if len(normalized) == 14 {
+					return normalized, nil
+				}
 			}
 		}
 	}

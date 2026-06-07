@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
-
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -36,14 +34,14 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	}
 
 	company := &nfse.Company{
-		ID:           uuid.NewString(),
+		ID:           nfse.CompanyID(nfse.GenerateID()),
 		CNPJ:         cleanedCNPJ,
 		CNPJRoot:     root,
 		Name:         input.Name,
-		CredentialID: credentialID,
+		CredentialID: nfse.CredentialID(credentialID),
 	}
 
-	if err := a.Store.CreateCompany(ctx, company); err != nil {
+	if err := a.CompanyRepo.CreateCompany(ctx, company); err != nil {
 		return fmt.Errorf("salvar empresa: %w", err)
 	}
 
@@ -52,7 +50,7 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 
 // ListCompanies returns all registered companies.
 func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
-	companies, err := a.Store.ListCompanies(ctx)
+	companies, err := a.CompanyRepo.ListCompanies(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar empresas: %w", err)
 	}
@@ -66,7 +64,7 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 	}
 	cleanedCNPJ := cnpj.Clean(input.CompanyCNPJ)
 
-	company, err := a.Store.GetCompany(ctx, cleanedCNPJ)
+	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return fmt.Errorf("buscar empresa: %w", err)
 	}
@@ -74,7 +72,7 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 		return fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 	}
 
-	credential, err := a.Store.GetCredential(ctx, input.CredentialID)
+	credential, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
 	if err != nil {
 		return fmt.Errorf("buscar credencial: %w", err)
 	}
@@ -86,7 +84,7 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 		return fmt.Errorf("a credencial informada não pertence à mesma raiz do CNPJ da empresa")
 	}
 
-	if err := a.Store.AssignCredentialToCompany(ctx, company.ID, credential.ID); err != nil {
+	if err := a.CompanyRepo.AssignCredential(ctx, company.ID, credential.ID); err != nil {
 		return fmt.Errorf("atribuir credencial: %w", err)
 	}
 	return nil
@@ -94,14 +92,14 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 
 func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (string, error) {
 	if input.CredentialID != "" {
-		credential, err := a.Store.GetCredential(ctx, input.CredentialID)
+		credential, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
 		if err != nil {
 			return "", fmt.Errorf("buscar credencial: %w", err)
 		}
 		if credential == nil {
 			return "", fmt.Errorf("credencial não encontrada")
 		}
-		return credential.ID, nil
+		return string(credential.ID), nil
 	}
 
 	if _, err := os.Stat(input.CertPath); os.IsNotExist(err) {
@@ -109,10 +107,10 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 	}
 
 	credential := &nfse.Credential{
-		ID:          uuid.NewString(),
+		ID:          nfse.CredentialID(nfse.GenerateID()),
 		Label:       input.CredentialLabel,
 		CertPath:    input.CertPath,
-		Environment: input.Environment,
+		Environment: nfse.Environment(input.Environment),
 	}
 	if credential.Label == "" {
 		if input.Name != "" {
@@ -122,8 +120,8 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 		}
 	}
 
-	if err := a.Store.CreateCredential(ctx, credential); err != nil {
+	if err := a.CredentialRepo.CreateCredential(ctx, credential); err != nil {
 		return "", fmt.Errorf("salvar credencial: %w", err)
 	}
-	return credential.ID, nil
+	return string(credential.ID), nil
 }

@@ -22,28 +22,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { SubmitCertPassword, CancelCertPassword } from '../../wailsjs/go/main/App'
 
-const isOpen = ref(false)
+const requests = ref<any[]>([])
 const password = ref('')
-const requestData = ref<any>(null)
+const isOpen = computed(() => requests.value.length > 0)
+const requestData = computed(() => requests.value[0])
 
 function handleRequest(req: any) {
-  requestData.value = req
-  password.value = ''
-  isOpen.value = true
+  requests.value.push(req)
 }
 
 async function onSubmit() {
-  await SubmitCertPassword(password.value)
-  isOpen.value = false
+  if (requests.value.length > 0) {
+    const req = requests.value[0]
+    await SubmitCertPassword(req.RequestID, password.value)
+    password.value = ''
+    requests.value.shift()
+  }
 }
 
 async function onCancel() {
-  await CancelCertPassword()
-  isOpen.value = false
+  if (requests.value.length > 0) {
+    const req = requests.value[0]
+    await CancelCertPassword(req.RequestID)
+    password.value = ''
+    requests.value.shift()
+  }
 }
 
 onMounted(() => {

@@ -33,8 +33,7 @@ var listCmd = &cobra.Command{
 			Direction:  listDirection,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro: %w", err)
 		}
 
 		if len(docs) == 0 {
@@ -58,9 +57,9 @@ var listCmd = &cobra.Command{
 				d.VisibilityReason,
 				cnpj.Format(d.PrestadorCNPJ),
 				cnpj.Format(d.TomadorCNPJ),
-				d.ServiceValue,
-				d.ISSValue,
-				d.IRRFValue,
+				float64(d.ServiceValue)/100.0,
+				float64(d.ISSValue)/100.0,
+				float64(d.IRRFValue)/100.0,
 			)
 		}
 

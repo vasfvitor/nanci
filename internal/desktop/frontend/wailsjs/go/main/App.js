@@ -14,8 +14,8 @@ export function AssignCredentialToCompany(arg1) {
   return window['go']['main']['App']['AssignCredentialToCompany'](arg1);
 }
 
-export function CancelCertPassword() {
-  return window['go']['main']['App']['CancelCertPassword']();
+export function CancelCertPassword(arg1) {
+  return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
 export function ExportCSV(arg1) {
@@ -58,8 +58,8 @@ export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
 }
 
-export function SubmitCertPassword(arg1) {
-  return window['go']['main']['App']['SubmitCertPassword'](arg1);
+export function SubmitCertPassword(arg1, arg2) {
+  return window['go']['main']['App']['SubmitCertPassword'](arg1, arg2);
 }
 
 export function UpdateCredentialPath(arg1) {

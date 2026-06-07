@@ -4,27 +4,46 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/logger"
+	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
 type WailsCredentialProvider struct {
-	ctx          context.Context
-	passwordChan chan string
+	ctx           context.Context
+	passwordChans map[string]chan string
+	mu            *sync.Mutex
 }
 
 // GetCertPassword asks the frontend for the certificate password and blocks until one is provided
 func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
+	ch := make(chan string, 1)
+
+	p.mu.Lock()
+	p.passwordChans[req.RequestID] = ch
+	p.mu.Unlock()
+
+	defer func() {
+		p.mu.Lock()
+		delete(p.passwordChans, req.RequestID)
+		p.mu.Unlock()
+	}()
+
 	// Notify the frontend to show the password dialog
 	runtime.EventsEmit(p.ctx, "request-cert-password", req)
 
 	// Block until the password is submitted by the frontend
 	select {
-	case pass := <-p.passwordChan:
+	case pass := <-ch:
 		if pass == "" {
 			return "", fmt.Errorf("operação cancelada pelo usuário")
 		}
@@ -36,15 +55,16 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 
 // App struct
 type App struct {
-	ctx          context.Context
-	core         *app.App
-	passwordChan chan string
+	ctx           context.Context
+	core          *app.App
+	passwordChans map[string]chan string
+	mu            sync.Mutex
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		passwordChan: make(chan string),
+		passwordChans: make(map[string]chan string),
 	}
 }
 
@@ -54,16 +74,42 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	verbose := os.Getenv("NANCI_VERBOSE") == "1"
-	coreApp, err := app.NewApp(verbose)
+	log := logger.New(verbose)
+
+	dataDir, err := paths.DataDir()
 	if err != nil {
-		fmt.Printf("failed to initialize core app: %v\n", err)
+		fmt.Printf("failed to resolve data dir: %v\n", err)
 		return
+	}
+
+	if err := paths.EnsureDir(dataDir); err != nil {
+		fmt.Printf("failed to create data dir: %v\n", err)
+		return
+	}
+
+	dbPath := filepath.Join(dataDir, "nanci-v2.db")
+
+	db, err := store.OpenDB(dbPath, true)
+	if err != nil {
+		fmt.Printf("failed to initialize db: %v\n", err)
+		return
+	}
+
+	coreApp := &app.App{
+		Log:            log,
+		DB:             db,
+		CompanyRepo:    store.NewCompanyRepository(db),
+		CredentialRepo: store.NewCredentialRepository(db),
+		SyncRepo:       store.NewSyncRepository(db),
+		XMLStore:       files.NewBlobStore(dataDir),
+		DataDir:        dataDir,
 	}
 
 	// Inject the Wails-specific credential provider
 	coreApp.CredentialProvider = WailsCredentialProvider{
-		ctx:          ctx,
-		passwordChan: a.passwordChan,
+		ctx:           ctx,
+		passwordChans: a.passwordChans,
+		mu:            &a.mu,
 	}
 	a.core = coreApp
 }
@@ -77,19 +123,30 @@ func (a *App) shutdown(ctx context.Context) {
 // --- Auth & Credentials ---
 
 // SubmitCertPassword receives the password from the frontend dialog and unblocks GetCertPassword
-func (a *App) SubmitCertPassword(password string) {
-	// Non-blocking send in case it's called multiple times or nobody is listening
-	select {
-	case a.passwordChan <- password:
-	default:
+func (a *App) SubmitCertPassword(reqID string, password string) {
+	a.mu.Lock()
+	ch, ok := a.passwordChans[reqID]
+	a.mu.Unlock()
+
+	if ok {
+		select {
+		case ch <- password:
+		default:
+		}
 	}
 }
 
 // CancelCertPassword receives a cancellation from the frontend and unblocks GetCertPassword
-func (a *App) CancelCertPassword() {
-	select {
-	case a.passwordChan <- "":
-	default:
+func (a *App) CancelCertPassword(reqID string) {
+	a.mu.Lock()
+	ch, ok := a.passwordChans[reqID]
+	a.mu.Unlock()
+
+	if ok {
+		select {
+		case ch <- "":
+		default:
+		}
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 // GenerateXLSX creates a rich Excel spreadsheet with separated "Emitidas" and "Tomadas" sheets.
-func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
+func GenerateXLSX(rows []ReportRow, outPath string) error {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -43,19 +43,19 @@ func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
 		return fmt.Errorf("failed to create style: %w", err)
 	}
 
-	emitidas := []nfse.CompanyDocument{}
-	tomadas := []nfse.CompanyDocument{}
+	emitidas := []ReportRow{}
+	tomadas := []ReportRow{}
 
-	for _, doc := range documents {
-		switch doc.CompanyRole {
-		case "prestada":
-			emitidas = append(emitidas, doc)
-		case "tomada":
-			tomadas = append(tomadas, doc)
+	for _, r := range rows {
+		switch r.CompanyRole {
+		case nfse.CompanyRolePrestada:
+			emitidas = append(emitidas, r)
+		case nfse.CompanyRoleTomada:
+			tomadas = append(tomadas, r)
 		}
 	}
 
-	writeSheet := func(sheetName string, tableName string, docs []nfse.CompanyDocument, isEmitida bool) error {
+	writeSheet := func(sheetName string, tableName string, docs []ReportRow, isEmitida bool) error {
 		_, _ = f.NewSheet(sheetName)
 
 		// Set headers
@@ -74,24 +74,15 @@ func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
 				issueStr = doc.IssueDate.Format(time.DateOnly)
 			}
 
-			docContraparte := doc.PrestadorCNPJ
-			nomeContraparte := doc.PrestadorName
-			if isEmitida {
-				docContraparte = doc.TomadorCNPJ
-				nomeContraparte = doc.TomadorName
-			}
-
-			valorLiquido := doc.ServiceValue - doc.TotalRetentions
-
 			warnings := ""
-			if len(doc.ParseWarnings) > 0 {
-				warnings = fmt.Sprintf("%d avisos", len(doc.ParseWarnings))
+			if doc.WarningsCount > 0 {
+				warnings = fmt.Sprintf("%d avisos", doc.WarningsCount)
 			}
 
 			rowValues := []interface{}{
 				issueStr,
-				cnpj.Format(docContraparte),
-				nomeContraparte,
+				cnpj.Format(doc.CounterpartyCNPJ),
+				doc.CounterpartyName,
 				doc.NFSeNumber,
 				doc.Competence,
 				doc.ChaveAcesso,
@@ -103,9 +94,9 @@ func GenerateXLSX(documents []nfse.CompanyDocument, outPath string) error {
 				doc.COFINSValue,
 				doc.CSLLValue,
 				doc.TotalRetentions,
-				valorLiquido,
-				doc.Status,
-				doc.ServiceDescription,
+				doc.EstimatedNetValue,
+				string(doc.Status),
+				doc.Description,
 				warnings,
 			}
 

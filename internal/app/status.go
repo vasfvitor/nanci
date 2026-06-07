@@ -23,7 +23,7 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 
 	cleanedCNPJ := cnpj.Clean(rawCNPJ)
 
-	company, err := a.Store.GetCompany(ctx, cleanedCNPJ)
+	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("buscar empresa: %w", err)
 	}
@@ -34,7 +34,7 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 	return StatusResult{
 		CompanyName: company.Name,
 		CNPJ:        company.CNPJ,
-		Environment: company.Environment,
+		Environment: string(company.Environment),
 		LastNSU:     company.LastNSU,
 	}, nil
 }

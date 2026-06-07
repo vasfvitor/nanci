@@ -42,14 +42,14 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 
 	// 1. Resolve company
-	company, err := a.Store.GetCompany(ctx, cleanedCNPJ)
+	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("buscar empresa: %w", err)
 	}
 	if company == nil {
 		return PullResult{}, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 	}
-	credential, err := a.Store.GetCredential(ctx, company.CredentialID)
+	credential, err := a.CredentialRepo.CredentialByID(ctx, company.CredentialID)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("buscar credencial: %w", err)
 	}
@@ -62,10 +62,11 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, fmt.Errorf("CredentialProvider não configurado")
 	}
 	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
-		CompanyID:       company.ID,
+		RequestID:       string(nfse.GenerateID()),
+		CompanyID:       string(company.ID),
 		CompanyName:     company.Name,
 		TargetCNPJ:      company.CNPJ,
-		CredentialID:    credential.ID,
+		CredentialID:    string(credential.ID),
 		CredentialLabel: credential.Label,
 		CertPath:        credential.CertPath,
 	})
@@ -74,10 +75,12 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 3. Load TLS certificate
-	tlsCert, inspection, err := cert.LoadPKCS12WithInspection(credential.CertPath, pass)
+	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
 	}
+	tlsCert := loadedCert.TLS
+	inspection := loadedCert.Inspection
 	credential.OwnerCNPJ = inspection.OwnerCNPJ
 	credential.OwnerCNPJRoot = inspection.OwnerCNPJRoot
 	credential.FingerprintSHA256 = inspection.FingerprintSHA256
@@ -86,7 +89,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	credential.NotAfter = &inspection.NotAfter
 	now := time.Now().UTC()
 	credential.InspectedAt = &now
-	if err := a.Store.UpdateCredentialInspection(ctx, credential); err != nil {
+	if err := a.CredentialRepo.UpdateCredential(ctx, credential); err != nil {
 		return PullResult{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
 	}
 
@@ -96,17 +99,19 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 4. Build ADN client
-	httpClient := adn.NewHTTPClient(tlsCert)
-	apiClient, err := adn.NewClient(httpClient, credential.Environment)
+	apiClient, err := adn.NewClient(adn.ClientConfig{
+		Environment: credential.Environment,
+		Certificate: &tlsCert,
+	})
 	if err != nil {
 		return PullResult{}, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
 
 	// 5. Build file writer
-	fileWriter := files.NewWriter(a.DataDir)
+	fileWriter := files.NewBlobStore(a.DataDir)
 
 	// 6. Build sync service
-	svc := syncservice.NewSyncService(a.Store, apiClient, fileWriter)
+	svc := syncservice.NewSyncService(a.SyncRepo, apiClient, fileWriter)
 
 	// 7. Run sync, collecting progress into result counters
 	var result PullResult

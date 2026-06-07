@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -26,8 +25,7 @@ var pullCmd = &cobra.Command{
 			CNPJ: pullCNPJ,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro: %w", err)
 		}
 
 		fmt.Printf("Iniciando sincronização para %s (%s)\n",

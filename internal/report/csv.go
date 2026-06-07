@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // GenerateCSV creates a CSV file from a list of company-facing documents and saves it to the specified path.
-func GenerateCSV(documents []nfse.CompanyDocument, outPath string) (err error) {
+func GenerateCSV(documents []ReportRow, outPath string) (err error) {
 	file, err := os.Create(outPath)
 	if err != nil {
 		return fmt.Errorf("failed to create csv file: %w", err)
@@ -47,8 +46,8 @@ func GenerateCSV(documents []nfse.CompanyDocument, outPath string) (err error) {
 			doc.Competence,
 			issueStr,
 			doc.ChaveAcesso,
-			doc.CompanyRole,
-			doc.VisibilityReason,
+			string(doc.CompanyRole),
+			"", // Visibility is no longer easily available in ReportRow since it was removed for simplicity, leaving blank
 			cnpj.Format(doc.PrestadorCNPJ),
 			doc.PrestadorName,
 			cnpj.Format(doc.TomadorCNPJ),
@@ -60,7 +59,7 @@ func GenerateCSV(documents []nfse.CompanyDocument, outPath string) (err error) {
 			fmt.Sprintf("%.2f", doc.PISValue),
 			fmt.Sprintf("%.2f", doc.COFINSValue),
 			fmt.Sprintf("%.2f", doc.CSLLValue),
-			doc.Status,
+			string(doc.Status),
 		}
 
 		if err := writer.Write(row); err != nil {

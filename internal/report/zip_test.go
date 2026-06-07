@@ -2,22 +2,20 @@ package report
 
 import (
 	"archive/zip"
-	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 	baseDir := t.TempDir()
-	xmlRelPath := filepath.Join("xml", "2026-06", "NFSZIP.xml")
-	xmlFullPath := filepath.Join(baseDir, xmlRelPath)
-	if err := os.MkdirAll(filepath.Dir(xmlFullPath), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	if err := os.WriteFile(xmlFullPath, []byte("<NFSe/>"), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	store := files.NewBlobStore(baseDir)
+	
+	err := store.Store("hash123", []byte("<NFSe/>"))
+	if err != nil {
+		t.Fatalf("Store: %v", err)
 	}
 
 	outPath := filepath.Join(baseDir, "docs.zip")
@@ -26,13 +24,13 @@ func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 			Document: nfse.Document{
 				ChaveAcesso: "NFSZIP",
 				Competence:  "2026-06",
-				XMLPath:     xmlRelPath,
+				RawHash:     "hash123",
 			},
 			CompanyRole: "none",
 		},
 	}
 
-	if err := GenerateZIP(documents, baseDir, outPath); err != nil {
+	if err := GenerateZIP(BuildRows(documents), store, outPath); err != nil {
 		t.Fatalf("GenerateZIP: %v", err)
 	}
 

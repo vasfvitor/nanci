@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -44,8 +43,7 @@ var companyAddCmd = &cobra.Command{
 			CertPath:        companyCert,
 			Environment:     companyEnv,
 		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao adicionar empresa: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao adicionar empresa: %w", err)
 		}
 
 		cleanedCNPJ := cnpj.Clean(companyCNPJ)
@@ -66,8 +64,7 @@ var companyListCmd = &cobra.Command{
 
 		companies, err := application.ListCompanies(context.Background())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao listar empresas: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao listar empresas: %w", err)
 		}
 
 		if len(companies) == 0 {
@@ -98,8 +95,7 @@ var companyAssignCredentialCmd = &cobra.Command{
 			CompanyCNPJ:  companyCNPJ,
 			CredentialID: assignCredentialID,
 		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao atribuir credencial: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao atribuir credencial: %w", err)
 		}
 
 		fmt.Println("Credencial atribuída com sucesso.")

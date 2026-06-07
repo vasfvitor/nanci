@@ -27,16 +27,15 @@ type DistributionRequest struct {
 }
 
 // FetchDocuments retrieves a batch of documents starting from a specific NSU.
-// The endpoint is typically /DFe/{NSU} or similar depending on the exact swagger spec.
 func (c *Client) FetchDocuments(ctx context.Context, req DistributionRequest) (*DocumentResponse, error) {
-	// Format the endpoint path. Assuming /DFe/{NSU} based on previous research.
 	path := fmt.Sprintf("/DFe/%d", req.LastNSU)
 	if req.ConsultationCNPJ != "" {
 		path = path + "?cnpjConsulta=" + url.QueryEscape(req.ConsultationCNPJ)
 	}
 
 	var response DocumentResponse
-	if err := c.Request(ctx, "GET", path, nil, &response); err != nil {
+	// bodyProvider is nil for GET request
+	if err := c.request(ctx, "GET", path, nil, &response); err != nil {
 		return nil, err
 	}
 
