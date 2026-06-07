@@ -385,3 +385,4 @@ export namespace nfse {
 	}
 
 }
+
