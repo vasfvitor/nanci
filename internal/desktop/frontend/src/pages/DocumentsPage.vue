@@ -23,7 +23,29 @@
           outlined
           dense
           clearable
-        />
+          mask="####-##"
+        >
+          <template v-slot:append>
+            <q-icon name="sym_r_event" class="cursor-pointer">
+              <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
+                <q-date
+                  v-model="filter.Competence"
+                  minimal
+                  mask="YYYY-MM"
+                  emit-immediately
+                  default-view="Months"
+                  years-in-month-view
+                  @update:model-value="onDateChange"
+                >
+                  <div class="row items-center justify-end">
+                    <q-btn v-close-popup label="Mês Atual" color="primary" flat @click="setToday" />
+                    <q-btn v-close-popup label="Fechar" color="primary" flat />
+                  </div>
+                </q-date>
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
         <q-select
           class="col-12 col-md-3"
           v-model="filter.Direction"
@@ -113,7 +135,7 @@ import {
   SelectExportDirectory,
 } from '../../wailsjs/go/main/App'
 import { nfse, app } from '../../wailsjs/go/models'
-import { useQuasar } from 'quasar'
+import { useQuasar, date } from 'quasar'
 
 const $q = useQuasar()
 const companyOptions = ref<{ label: string; value: string }[]>([])
@@ -125,6 +147,19 @@ const filter = ref({
   Competence: '',
   Direction: '',
 })
+
+const datePopup = ref<any>(null)
+
+function onDateChange(_val: string, reason: string, _details: any) {
+  if (reason === 'month') {
+    datePopup.value?.hide()
+  }
+}
+
+function setToday() {
+  filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
+  datePopup.value?.hide()
+}
 
 const columns = [
   {
