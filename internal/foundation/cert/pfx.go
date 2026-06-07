@@ -52,6 +52,10 @@ func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
 		return LoadedCertificate{}, err
 	}
 
+	if privateKey == nil {
+		return LoadedCertificate{}, errors.New("certificado não possui chave privada (necessário para mTLS)")
+	}
+
 	ownerCNPJ, err := extractOwnerCNPJ(certificate)
 	if err != nil {
 		return LoadedCertificate{}, err

@@ -83,15 +83,20 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	var tlsConfig *tls.Config
 	if cfg.Certificate != nil {
 		tlsConfig = &tls.Config{
-			Certificates: []tls.Certificate{*cfg.Certificate},
-			MinVersion:   tls.VersionTLS12,
+			GetClientCertificate: func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+				return cfg.Certificate, nil
+			},
+			MinVersion:    tls.VersionTLS12,
+			Renegotiation: tls.RenegotiateFreelyAsClient,
 		}
 	} else {
 		tlsConfig = &tls.Config{
-			MinVersion: tls.VersionTLS12,
+			MinVersion:    tls.VersionTLS12,
+			Renegotiation: tls.RenegotiateFreelyAsClient,
 		}
 	}
 	transport.TLSClientConfig = tlsConfig
+	transport.ForceAttemptHTTP2 = false
 
 	client := cfg.HTTPClient
 	if client == nil {
@@ -99,9 +104,22 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	}
 	client.Transport = transport
 
-	b := retry.NewExponential(cfg.Retry.Initial)
-	b = retry.WithMaxRetries(uint64(cfg.Retry.MaxRetries), b)
-	b = retry.WithCappedDuration(cfg.Retry.MaxDelay, b)
+	initial := cfg.Retry.Initial
+	if initial <= 0 {
+		initial = 1 * time.Second
+	}
+	maxDelay := cfg.Retry.MaxDelay
+	if maxDelay <= 0 {
+		maxDelay = 30 * time.Second
+	}
+	maxRetries := cfg.Retry.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = 3
+	}
+
+	b := retry.NewExponential(initial)
+	b = retry.WithMaxRetries(uint64(maxRetries), b)
+	b = retry.WithCappedDuration(maxDelay, b)
 	b = retry.WithJitterPercent(20, b)
 
 	return &Client{
@@ -113,7 +131,11 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 }
 
 func (c *Client) request(ctx context.Context, method, path string, bodyProvider func() io.Reader, dest interface{}) error {
-	u := c.baseURL.ResolveReference(&url.URL{Path: path}).String()
+	rel, err := url.Parse(path)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err) // Not retryable
+	}
+	u := c.baseURL.ResolveReference(rel).String()
 
 	return retry.Do(ctx, c.backoff, func(ctx context.Context) error {
 		start := time.Now()
