@@ -1,0 +1,19 @@
+<NFSe>
+    <infNFSe versao="1.0">
+        <chNFSe>11223344556677889900112233445566778899001122441111</chNFSe>
+        <dhEmi>2023-10-25T14:30:00-03:00</dhEmi>
+        <compNFSe>2023-10</compNFSe>
+        <prest>
+            <CNPJ>12345678000199</CNPJ>
+            <xNome>Synthetic Prestador LTDA</xNome>
+        </prest>
+        <toma>
+            <CNPJ>99887766000155</CNPJ>
+            <xNome>Synthetic Tomador SA</xNome>
+        </toma>
+        <valores>
+            <vServ>1000.50</vServ>
+            <vISS>50.00</vISS>
+        </valores>
+    </infNFSe>
+</NFSe>

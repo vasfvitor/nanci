@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -26,8 +25,7 @@ var pullCmd = &cobra.Command{
 			CNPJ: pullCNPJ,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro: %w", err)
 		}
 
 		fmt.Printf("Iniciando sincronização para %s (%s)\n",
@@ -43,5 +41,5 @@ var pullCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(pullCmd)
 	pullCmd.Flags().StringVarP(&pullCNPJ, "cnpj", "c", "", "CNPJ da empresa para sincronizar")
-	pullCmd.MarkFlagRequired("cnpj")
+	_ = pullCmd.MarkFlagRequired("cnpj")
 }

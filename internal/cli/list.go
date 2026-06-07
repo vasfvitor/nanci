@@ -33,8 +33,7 @@ var listCmd = &cobra.Command{
 			Direction:  listDirection,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro: %w", err)
 		}
 
 		if len(docs) == 0 {
@@ -43,27 +42,28 @@ var listCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "EMISSÃO\tCHAVE DE ACESSO\tDIREÇÃO\tPRESTADOR\tTOMADOR\tVALOR (R$)\tISS\tIRRF")
-		fmt.Fprintln(w, "-------\t---------------\t-------\t---------\t-------\t----------\t---\t----")
+		_, _ = fmt.Fprintln(w, "EMISSÃO\tCHAVE DE ACESSO\tDIREÇÃO\tVISIBILIDADE\tPRESTADOR\tTOMADOR\tVALOR (R$)\tISS\tIRRF")
+		_, _ = fmt.Fprintln(w, "-------\t---------------\t-------\t------------\t---------\t-------\t----------\t---\t----")
 
 		for _, d := range docs {
 			issueStr := ""
 			if !d.IssueDate.IsZero() {
 				issueStr = d.IssueDate.Format("2006-01-02")
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\n",
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\n",
 				issueStr,
 				d.ChaveAcesso,
-				d.Direction,
+				d.CompanyRole,
+				d.VisibilityReason,
 				cnpj.Format(d.PrestadorCNPJ),
 				cnpj.Format(d.TomadorCNPJ),
-				d.ServiceValue,
-				d.ISSValue,
-				d.IRRFValue,
+				float64(d.ServiceValue)/100.0,
+				float64(d.ISSValue)/100.0,
+				float64(d.IRRFValue)/100.0,
 			)
 		}
 
-		w.Flush()
+		_ = w.Flush()
 		fmt.Printf("\nTotal de %d documento(s) listado(s).\n", len(docs))
 		return nil
 	},
@@ -74,5 +74,5 @@ func init() {
 	listCmd.Flags().StringVarP(&listCNPJ, "cnpj", "c", "", "CNPJ da empresa")
 	listCmd.Flags().StringVarP(&listCompetence, "competencia", "m", "", "Filtrar por competência (ex: 2026-06)")
 	listCmd.Flags().StringVarP(&listDirection, "direcao", "d", "", "Filtrar por direção (tomada, prestada, intermediario)")
-	listCmd.MarkFlagRequired("cnpj")
+	_ = listCmd.MarkFlagRequired("cnpj")
 }

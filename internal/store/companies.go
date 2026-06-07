@@ -7,115 +7,109 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
-// CreateCompany inserts a new company into the database.
-func (s *SQLiteStore) CreateCompany(ctx context.Context, c *nfse.Company) error {
-	query := `
-		INSERT INTO companies (id, cnpj, cnpj_root, name, cert_path, environment, last_nsu, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-	now := time.Now().UTC().Format(time.RFC3339)
+type CompanyRepository struct {
+	db      *sql.DB
+	queries *sqlgen.Queries
+}
 
-	_, err := s.db.ExecContext(ctx, query,
-		c.ID, c.CNPJ, c.CNPJRoot, c.Name, c.CertPath, c.Environment, c.LastNSU, now, now,
-	)
+func NewCompanyRepository(db *sql.DB) *CompanyRepository {
+	return &CompanyRepository{
+		db:      db,
+		queries: sqlgen.New(db),
+	}
+}
+
+func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) error {
+	now := time.Now().UTC()
+	err := r.queries.CreateCompany(ctx, sqlgen.CreateCompanyParams{
+		ID:                 string(c.ID),
+		Cnpj:               c.CNPJ,
+		CnpjRoot:           c.CNPJRoot,
+		Name:               c.Name,
+		CredentialID:       sql.NullString{String: string(c.CredentialID), Valid: c.CredentialID != ""},
+		CredentialLabel:    sql.NullString{String: c.CredentialLabel, Valid: c.CredentialLabel != ""},
+		CredentialCertPath: sql.NullString{String: c.CredentialCertPath, Valid: c.CredentialCertPath != ""},
+		Environment:        string(c.Environment),
+		CreatedAt:          now.Format(time.RFC3339),
+		UpdatedAt:          now.Format(time.RFC3339),
+	})
 	if err != nil {
 		return err
 	}
 
-	c.CreatedAt, _ = time.Parse(time.RFC3339, now)
-	c.UpdatedAt = c.CreatedAt
+	c.CreatedAt = now
+	c.UpdatedAt = now
 	return nil
 }
 
-// GetCompany retrieves a company by its CNPJ.
-func (s *SQLiteStore) GetCompany(ctx context.Context, cnpj string) (*nfse.Company, error) {
-	query := `
-		SELECT id, cnpj, cnpj_root, name, cert_path, environment, last_nsu, created_at, updated_at
-		FROM companies
-		WHERE cnpj = ?
-	`
-	row := s.db.QueryRowContext(ctx, query, cnpj)
-
-	var c nfse.Company
-	var createdAt, updatedAt string
-
-	err := row.Scan(
-		&c.ID, &c.CNPJ, &c.CNPJRoot, &c.Name, &c.CertPath, &c.Environment, &c.LastNSU, &createdAt, &updatedAt,
-	)
+func (r *CompanyRepository) CompanyByCNPJ(ctx context.Context, cnpjVal string) (*nfse.Company, error) {
+	row, err := r.queries.GetCompanyByCNPJ(ctx, cnpjVal)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil // Not found
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
 
-	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	c := &nfse.Company{
+		ID:                 nfse.CompanyID(row.ID),
+		CNPJ:               row.Cnpj,
+		CNPJRoot:           row.CnpjRoot,
+		Name:               row.Name,
+		CredentialID:       nfse.CredentialID(row.CredentialID.String),
+		CredentialLabel:    row.CredentialLabel.String,
+		CredentialCertPath: row.CredentialCertPath.String,
+		Environment:        nfse.Environment(row.Environment),
+		LastNSU:            row.LastNsu,
+	}
+	c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
+	c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
 
-	return &c, nil
+	return c, nil
 }
 
-// ListCompanies returns all registered companies.
-func (s *SQLiteStore) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
-	query := `
-		SELECT id, cnpj, cnpj_root, name, cert_path, environment, last_nsu, created_at, updated_at
-		FROM companies
-		ORDER BY name ASC
-	`
-	rows, err := s.db.QueryContext(ctx, query)
+func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+	rows, err := r.queries.ListCompanies(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var companies []nfse.Company
-	for rows.Next() {
-		var c nfse.Company
-		var createdAt, updatedAt string
-
-		if err := rows.Scan(
-			&c.ID, &c.CNPJ, &c.CNPJRoot, &c.Name, &c.CertPath, &c.Environment, &c.LastNSU, &createdAt, &updatedAt,
-		); err != nil {
-			return nil, err
+	companies := make([]nfse.Company, 0, len(rows))
+	for _, row := range rows {
+		c := nfse.Company{
+			ID:                 nfse.CompanyID(row.ID),
+			CNPJ:               row.Cnpj,
+			CNPJRoot:           row.CnpjRoot,
+			Name:               row.Name,
+			CredentialID:       nfse.CredentialID(row.CredentialID.String),
+			CredentialLabel:    row.CredentialLabel.String,
+			CredentialCertPath: row.CredentialCertPath.String,
+			Environment:        nfse.Environment(row.Environment),
+			LastNSU:            row.LastNsu,
 		}
-
-		c.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-
+		c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
+		c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
 		companies = append(companies, c)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return companies, nil
 }
 
-// UpdateLastNSU updates the last processed NSU for a company.
-func (s *SQLiteStore) UpdateLastNSU(ctx context.Context, companyID string, nsu int64) error {
-	query := `
-		UPDATE companies
-		SET last_nsu = ?, updated_at = ?
-		WHERE id = ?
-	`
+func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID nfse.CompanyID, credID nfse.CredentialID) error {
 	now := time.Now().UTC().Format(time.RFC3339)
-
-	res, err := s.db.ExecContext(ctx, query, nsu, now, companyID)
+	affected, err := r.queries.AssignCredentialToCompany(ctx, sqlgen.AssignCredentialToCompanyParams{
+		CredentialID: sql.NullString{String: string(credID), Valid: credID != ""},
+		UpdatedAt:    now,
+		CompanyID:    string(companyID),
+	})
 	if err != nil {
 		return err
 	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
+	if affected == 0 {
+		return ErrNotFound
 	}
-
-	if rowsAffected == 0 {
-		return errors.New("empresa não encontrada para atualização")
-	}
-
 	return nil
 }

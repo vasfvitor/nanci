@@ -2,6 +2,7 @@ package syncservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -11,50 +12,54 @@ import (
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // SyncService orchestrates the synchronization of documents from the ADN API.
 type SyncService struct {
-	store      store.Store
-	apiClient  *adn.Client
-	fileWriter *files.Writer
+	store      nfse.SyncRepository
+	apiClient  documentFetcher
+	fileWriter files.XMLStore
+}
+
+type documentFetcher interface {
+	FetchDocuments(ctx context.Context, req adn.DistributionRequest) (*adn.DocumentResponse, error)
 }
 
 // NewSyncService creates a new SyncService.
-func NewSyncService(store store.Store, apiClient *adn.Client, fileWriter *files.Writer) *SyncService {
+func NewSyncService(syncRepo nfse.SyncRepository, adnClient documentFetcher, xmlStore files.XMLStore) *SyncService {
 	return &SyncService{
-		store:      store,
-		apiClient:  apiClient,
-		fileWriter: fileWriter,
+		store:      syncRepo,
+		apiClient:  adnClient,
+		fileWriter: xmlStore,
 	}
 }
 
 // Sync starts the synchronization process for a specific company.
-func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress nfse.ProgressFunc) error {
+func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error {
 	// Create SyncRun record
-	syncRun := &nfse.SyncRun{
-		ID:        uuid.NewString(),
-		CompanyID: company.ID,
-		StartedAt: time.Now(),
-		FromNSU:   company.LastNSU,
-		Status:    "running",
-	}
-
-	if err := s.store.CreateSyncRun(ctx, syncRun); err != nil {
+	syncRun, err := s.store.StartRun(ctx, nfse.StartRunParams{
+		CompanyID:         company.ID,
+		CredentialID:      credential.ID,
+		CredentialCNPJ:    credential.OwnerCNPJ,
+		ConsultationCNPJ:  company.CNPJ,
+		ConsultationBasis: nfse.ConsultationBasis(consultationBasis),
+		FromNSU:           company.LastNSU,
+		ToNSU:             company.LastNSU, // Initial
+	})
+	if err != nil {
 		return fmt.Errorf("failed to create sync run: %w", err)
 	}
 
-	defer func() { //nolint:contextcheck
-		now := time.Now()
-		syncRun.FinishedAt = &now
+	defer func() {
 		if syncRun.Status == "running" { // if not marked as completed or failed
-			syncRun.Status = "interrupted"
+			_ = s.finishRun(ctx, nfse.FinishRunParams{
+				RunID:  syncRun.ID,
+				Status: "interrupted",
+			})
 		}
-		_ = s.store.UpdateSyncRun(context.Background(), syncRun) // Use background context to ensure it saves
 	}()
 
-	currentNSU := company.LastNSU
+	committedNSU := company.LastNSU
 	totalDocs := 0
 	totalErrors := 0
 
@@ -68,10 +73,37 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 		}
 
 		// Fetch documents batch
-		resp, err := s.apiClient.FetchDocuments(ctx, currentNSU)
+		requestedNSU := committedNSU
+		resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
+			LastNSU:          requestedNSU,
+			ConsultationCNPJ: company.CNPJ,
+		})
 		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				syncRun.Status = "interrupted"
+				_ = s.finishRun(ctx, nfse.FinishRunParams{
+					RunID:  syncRun.ID,
+					Status: "interrupted",
+				})
+				return err
+			}
 			syncRun.Status = "failed"
-			return fmt.Errorf("failed to fetch documents at NSU %d: %w", currentNSU, err)
+			_ = s.finishRun(ctx, nfse.FinishRunParams{
+				RunID:    syncRun.ID,
+				Status:   "failed",
+				ErrorMsg: err.Error(),
+			})
+			return fmt.Errorf("failed to fetch documents at NSU %d: %w", requestedNSU, err)
+		}
+
+		if resp.UltNSU < requestedNSU {
+			syncRun.Status = "failed"
+			_ = s.finishRun(ctx, nfse.FinishRunParams{
+				RunID:    syncRun.ID,
+				Status:   "failed",
+				ErrorMsg: fmt.Sprintf("invalid ADN response: ultNSU %d is behind requested NSU %d", resp.UltNSU, requestedNSU),
+			})
+			return fmt.Errorf("invalid ADN response: ultNSU %d is behind requested NSU %d", resp.UltNSU, requestedNSU)
 		}
 
 		docsInBatch := len(resp.Docs)
@@ -79,16 +111,17 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 		// Report progress
 		if progress != nil {
 			progress(nfse.ProgressEvent{
-				CurrentNSU:  currentNSU,
+				CurrentNSU:  committedNSU,
 				MaxNSU:      resp.MaxNSU,
 				DocsFound:   totalDocs,
 				DocsInBatch: docsInBatch,
 				Errors:      totalErrors,
-				Message:     fmt.Sprintf("Fetched %d documents. Target MaxNSU: %d", docsInBatch, resp.MaxNSU),
+				Message:     fmt.Sprintf("Fetched %d documents. ultNSU=%d MaxNSU=%d", docsInBatch, resp.UltNSU, resp.MaxNSU),
 			})
 		}
 
 		// Process batch
+		batchSuccessNSU := committedNSU
 		for _, env := range resp.Docs {
 			var err error
 			// Check schema to decide if it's a document or an event
@@ -100,76 +133,110 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, progress 
 
 			if err != nil {
 				totalErrors++
-				// We log or handle the error but continue to the next document
 				if progress != nil {
 					progress(nfse.ProgressEvent{
-						CurrentNSU: env.NSU,
+						CurrentNSU: batchSuccessNSU,
+						MaxNSU:     resp.MaxNSU,
 						Errors:     totalErrors,
-						Message:    fmt.Sprintf("Error processing NSU %d: %v", env.NSU, err),
+						Message:    fmt.Sprintf("Error processing NSU %d after committed NSU %d: %v", env.NSU, batchSuccessNSU, err),
 					})
 				}
-			} else {
-				totalDocs++
+
+				if batchSuccessNSU > company.LastNSU {
+					if err := s.store.AdvanceCheckpoint(ctx, nfse.AdvanceCheckpointParams{
+						CompanyID: company.ID,
+						RunID:     syncRun.ID,
+						LastNSU:   batchSuccessNSU,
+					}); err != nil {
+						return fmt.Errorf("failed to update company last NSU after item error: %w", err)
+					}
+					company.LastNSU = batchSuccessNSU
+				}
+
+				syncRun.Status = "failed"
+				_ = s.finishRun(ctx, nfse.FinishRunParams{
+					RunID:    syncRun.ID,
+					Status:   "failed",
+					ErrorMsg: err.Error(),
+				})
+				return fmt.Errorf("failed to process NSU %d: %w", env.NSU, err)
 			}
 
-			// Update NSU
-			if env.NSU > currentNSU {
-				currentNSU = env.NSU
+			totalDocs++
+			if env.NSU > batchSuccessNSU {
+				batchSuccessNSU = env.NSU
 			}
 		}
 
-		// Update SyncRun stats
-		syncRun.ToNSU = currentNSU
-		syncRun.DocumentsFound = totalDocs
-		syncRun.ErrorsCount = totalErrors
-
-		// Update Company LastNSU in DB
-		if currentNSU > company.LastNSU {
-			if err := s.store.UpdateLastNSU(ctx, company.ID, currentNSU); err != nil {
+		committedNSU = resp.UltNSU
+		if committedNSU > company.LastNSU {
+			if err := s.store.AdvanceCheckpoint(ctx, nfse.AdvanceCheckpointParams{
+				CompanyID: company.ID,
+				RunID:     syncRun.ID,
+				LastNSU:   committedNSU,
+			}); err != nil {
 				return fmt.Errorf("failed to update company last NSU: %w", err)
 			}
-			company.LastNSU = currentNSU
+			company.LastNSU = committedNSU
 		}
 
 		// Stop condition
-		if currentNSU >= resp.MaxNSU || docsInBatch == 0 {
+		if committedNSU >= resp.MaxNSU {
 			break
 		}
 	}
 
 	syncRun.Status = "completed"
+	_ = s.finishRun(ctx, nfse.FinishRunParams{
+		RunID:  syncRun.ID,
+		Status: "completed",
+	})
 	return nil
+}
+
+func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams) error {
+	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	return s.store.FinishRun(finishCtx, params)
 }
 
 // processDocument handles the decoding, parsing, and saving of a single document.
 func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
 	// 1. Decode Payload
-	rawXML, hashHex, err := nfse.DecodeXMLPayload(env.XMLGZipBase64)
+	payload, err := nfse.DecodePayload(env.XMLGZipBase64, nfse.PayloadLimits{
+		CompressedBytes:   5 * 1024 * 1024,
+		UncompressedBytes: 20 * 1024 * 1024,
+	})
 	if err != nil {
 		return fmt.Errorf("decode failed: %w", err)
 	}
 
 	// 2. Parse XML
-	doc, err := nfse.ParseXML(rawXML, company.CNPJRoot)
+	doc, _, err := nfse.ParseDocumentXML(payload.XML)
 	if err != nil {
 		return fmt.Errorf("parse failed: %w", err)
 	}
 
-	doc.ID = uuid.NewString()
-	doc.CompanyID = company.ID
-	doc.NSU = env.NSU
-	doc.RawHash = hashHex
+	doc.ID = nfse.DocumentID(uuid.NewString())
+	doc.RawHash = payload.SHA256
 
-	// 3. Save file
-	relPath, err := s.fileWriter.SaveXML(company.CNPJ, doc.Competence, doc.Direction, doc.ChaveAcesso, rawXML)
+	// 3. Save canonical file
+	err = s.fileWriter.Store(doc.RawHash, payload.XML)
 	if err != nil {
 		return fmt.Errorf("file save failed: %w", err)
 	}
-	doc.XMLPath = relPath
+	doc.XMLPath = doc.RawHash + ".xml"
 
-	// 4. Save to DB
-	if err := s.store.SaveDocument(ctx, doc); err != nil {
-		return fmt.Errorf("db save failed: %w", err)
+	participation := nfse.ClassifyCompanyParticipation(&doc, company.CNPJ)
+
+	// 4. Apply document (Save document + relation)
+	if err := s.store.ApplyDocument(ctx, nfse.ApplyDocumentParams{
+		Document:      doc,
+		Participation: participation,
+		CompanyID:     company.ID,
+		NSU:           env.NSU,
+	}); err != nil {
+		return fmt.Errorf("db apply document failed: %w", err)
 	}
 
 	return nil
@@ -178,24 +245,36 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 // processEvent handles decoding and saving an Event.
 func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
 	// 1. Decode Payload
-	rawXML, hashHex, err := nfse.DecodeXMLPayload(env.XMLGZipBase64)
+	payload, err := nfse.DecodePayload(env.XMLGZipBase64, nfse.PayloadLimits{
+		CompressedBytes:   5 * 1024 * 1024,
+		UncompressedBytes: 20 * 1024 * 1024,
+	})
 	if err != nil {
 		return fmt.Errorf("decode event failed: %w", err)
 	}
 
 	// 2. Parse XML
-	event, err := nfse.ParseEvent(rawXML)
+	ev, _, err := nfse.ParseEventXML(payload.XML)
 	if err != nil {
 		return fmt.Errorf("parse event failed: %w", err)
 	}
 
-	event.ID = uuid.NewString()
-	event.CompanyID = company.ID
-	event.RawHash = hashHex
+	ev.ID = nfse.GenerateID()
+	ev.RawHash = payload.SHA256
 
-	// 3. Save to DB
-	if err := s.store.SaveEvent(ctx, event); err != nil {
-		return fmt.Errorf("db save event failed: %w", err)
+	err = s.fileWriter.Store(ev.RawHash, payload.XML)
+	if err != nil {
+		return fmt.Errorf("event file save failed: %w", err)
+	}
+	ev.RawXMLPath = ev.RawHash + ".xml"
+
+	// 3. Apply event
+	if err := s.store.ApplyEvent(ctx, nfse.ApplyEventParams{
+		Event:     ev,
+		CompanyID: company.ID,
+		NSU:       env.NSU,
+	}); err != nil {
+		return fmt.Errorf("db apply event failed: %w", err)
 	}
 
 	return nil

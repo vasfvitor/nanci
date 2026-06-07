@@ -1,12 +1,18 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/logger"
+	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var (
@@ -19,14 +25,16 @@ var rootCmd = &cobra.Command{
 	Short: "CLI para sincronização de XMLs de NFS-e Nacional",
 	Long: `nanci (nfse-sync) sincroniza documentos fiscais da API ADN (NFS-e Nacional)
 usando certificado digital A1. Suporta extração de retenções e relatórios.`,
+	SilenceUsage: true,
 }
 
 // Execute runs the root command.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+func Execute(ctx context.Context) int {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func init() {
@@ -36,13 +44,38 @@ func init() {
 // newApp is a helper for commands that need the App instance.
 // It also injects the terminal-based CredentialProvider.
 func newApp() (*app.App, error) {
-	application, err := app.NewApp(verbose)
+	log := logger.New(verbose)
+
+	dataDir, err := paths.DataDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("falha ao resolver diretório de dados: %w", err)
 	}
-	application.CredentialProvider = TerminalCredentialProvider{
-		In:  os.Stdin,
-		Out: os.Stderr,
+
+	if err := paths.EnsureDir(dataDir); err != nil {
+		return nil, fmt.Errorf("falha ao criar diretório de dados: %w", err)
+	}
+
+	dbPath := filepath.Join(dataDir, "nanci-v2.db")
+
+	db, err := store.OpenDB(dbPath, true)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao inicializar banco de dados v2: %w", err)
+	}
+
+	application, err := app.New(app.Dependencies{
+		Log:                log,
+		DB:                 db,
+		CompanyRepo:        store.NewCompanyRepository(db),
+		CredentialRepo:     store.NewCredentialRepository(db),
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentReader:     store.NewDocumentRepository(db),
+		XMLStore:           files.NewBlobStore(dataDir),
+		DataDir:            dataDir,
+		CredentialProvider: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
+	})
+	if err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("configurar aplicação: %w", err)
 	}
 	return application, nil
 }

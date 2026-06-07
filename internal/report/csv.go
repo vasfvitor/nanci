@@ -7,23 +7,26 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-// GenerateCSV creates a CSV file from a list of documents and saves it to the specified path.
-func GenerateCSV(documents []nfse.Document, outPath string) error {
-	file, err := os.Create(outPath)
+// GenerateCSV creates a CSV file from a list of company-facing documents and saves it to the specified path.
+func GenerateCSV(documents []ReportRow, outPath string) (err error) {
+	file, err := os.Create(outPath) // #nosec G304 -- destination is explicitly selected by the local user.
 	if err != nil {
 		return fmt.Errorf("failed to create csv file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close csv file: %w", cerr)
+		}
+	}()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
 	// Write header
 	headers := []string{
-		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
+		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao", "Visibilidade",
 		"CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
 		"Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
 	}
@@ -43,7 +46,8 @@ func GenerateCSV(documents []nfse.Document, outPath string) error {
 			doc.Competence,
 			issueStr,
 			doc.ChaveAcesso,
-			doc.Direction,
+			string(doc.CompanyRole),
+			"", // Visibility is no longer easily available in ReportRow since it was removed for simplicity, leaving blank
 			cnpj.Format(doc.PrestadorCNPJ),
 			doc.PrestadorName,
 			cnpj.Format(doc.TomadorCNPJ),
@@ -55,7 +59,7 @@ func GenerateCSV(documents []nfse.Document, outPath string) error {
 			fmt.Sprintf("%.2f", doc.PISValue),
 			fmt.Sprintf("%.2f", doc.COFINSValue),
 			fmt.Sprintf("%.2f", doc.CSLLValue),
-			doc.Status,
+			string(doc.Status),
 		}
 
 		if err := writer.Write(row); err != nil {

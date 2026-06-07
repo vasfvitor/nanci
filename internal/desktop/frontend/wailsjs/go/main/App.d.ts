@@ -5,7 +5,11 @@ import {nfse} from '../models';
 
 export function AddCompany(arg1:app.AddCompanyInput):Promise<void>;
 
-export function CancelCertPassword():Promise<void>;
+export function AddCredential(arg1:app.AddCredentialInput):Promise<void>;
+
+export function AssignCredentialToCompany(arg1:app.AssignCredentialInput):Promise<void>;
+
+export function CancelCertPassword(arg1:string):Promise<void>;
 
 export function ExportCSV(arg1:app.ExportInput):Promise<void>;
 
@@ -15,7 +19,9 @@ export function ExportZIP(arg1:app.ExportInput):Promise<void>;
 
 export function ListCompanies():Promise<Array<nfse.Company>>;
 
-export function ListDocuments(arg1:app.ListInput):Promise<Array<nfse.Document>>;
+export function ListCredentials():Promise<Array<nfse.Credential>>;
+
+export function ListDocuments(arg1:app.ListInput):Promise<Array<nfse.CompanyDocument>>;
 
 export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
 
@@ -25,4 +31,6 @@ export function SelectExportDirectory():Promise<string>;
 
 export function Status(arg1:string):Promise<app.StatusResult>;
 
-export function SubmitCertPassword(arg1:string):Promise<void>;
+export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateCredentialPath(arg1:app.UpdateCredentialPathInput):Promise<void>;

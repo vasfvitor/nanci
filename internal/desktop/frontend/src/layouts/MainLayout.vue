@@ -29,6 +29,15 @@
             <q-item-label>Documentos</q-item-label>
           </q-item-section>
         </q-item>
+
+        <q-item clickable v-ripple to="/credentials" exact>
+          <q-item-section avatar>
+            <q-icon name="vpn_key" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Credenciais</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 

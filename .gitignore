@@ -28,3 +28,6 @@ go.work.sum
 exports/
 xml/
 eventos/
+**/.gocache/**
+**/.gocache-desktop/**
+**/.golangci-cache/**

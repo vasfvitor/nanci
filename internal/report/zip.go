@@ -3,53 +3,56 @@ package report
 import (
 	"archive/zip"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/files"
 )
 
 // GenerateZIP creates a ZIP archive containing the physical XML files for the given documents.
-// baseDir is the root data directory where "xml/" is located.
-func GenerateZIP(documents []nfse.Document, baseDir string, outPath string) error {
-	zipFile, err := os.Create(outPath)
+func GenerateZIP(documents []ReportRow, xmlStore files.XMLStore, outPath string) (err error) {
+	zipFile, err := os.Create(outPath) // #nosec G304 -- destination is explicitly selected by the local user.
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
 	}
-	defer zipFile.Close()
+	defer func() {
+		if cerr := zipFile.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close zip file: %w", cerr)
+		}
+	}()
 
 	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
+	defer func() {
+		if cerr := zipWriter.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close zip writer: %w", cerr)
+		}
+	}()
 
 	for _, doc := range documents {
-		if doc.XMLPath == "" {
+		if doc.RawHash == "" {
 			continue // Skip if no physical file was registered
 		}
 
-		fullPath := filepath.Join(baseDir, doc.XMLPath)
-		fileToZip, err := os.Open(fullPath)
+		data, err := xmlStore.Get(doc.RawHash)
 		if err != nil {
-			// Instead of failing the entire process, we log/print or skip
 			fmt.Printf("[Aviso] Arquivo XML não encontrado para chave %s: %v\n", doc.ChaveAcesso, err)
 			continue
 		}
 
 		// The path inside the zip file
-		zipEntryPath := fmt.Sprintf("%s/%s/%s.xml", doc.Competence, doc.Direction, doc.ChaveAcesso)
+		roleFolder := string(doc.CompanyRole)
+		if roleFolder == "" || roleFolder == "none" {
+			roleFolder = "sem-papel-fiscal"
+		}
+		zipEntryPath := fmt.Sprintf("%s/%s/%s.xml", doc.Competence, roleFolder, doc.ChaveAcesso)
 
 		writer, err := zipWriter.Create(zipEntryPath)
 		if err != nil {
-			fileToZip.Close()
 			return fmt.Errorf("failed to create zip entry for %s: %w", doc.ChaveAcesso, err)
 		}
 
-		if _, err := io.Copy(writer, fileToZip); err != nil {
-			fileToZip.Close()
+		if _, err := writer.Write(data); err != nil {
 			return fmt.Errorf("failed to write file %s to zip: %w", doc.ChaveAcesso, err)
 		}
-
-		fileToZip.Close()
 	}
 
 	return nil

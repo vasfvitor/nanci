@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -13,8 +12,7 @@ var initCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		application, err := newApp()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao inicializar: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("erro ao inicializar: %w", err)
 		}
 		defer application.Close()
 

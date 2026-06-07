@@ -6,8 +6,16 @@ export function AddCompany(arg1) {
   return window['go']['main']['App']['AddCompany'](arg1);
 }
 
-export function CancelCertPassword() {
-  return window['go']['main']['App']['CancelCertPassword']();
+export function AddCredential(arg1) {
+  return window['go']['main']['App']['AddCredential'](arg1);
+}
+
+export function AssignCredentialToCompany(arg1) {
+  return window['go']['main']['App']['AssignCredentialToCompany'](arg1);
+}
+
+export function CancelCertPassword(arg1) {
+  return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
 export function ExportCSV(arg1) {
@@ -24,6 +32,10 @@ export function ExportZIP(arg1) {
 
 export function ListCompanies() {
   return window['go']['main']['App']['ListCompanies']();
+}
+
+export function ListCredentials() {
+  return window['go']['main']['App']['ListCredentials']();
 }
 
 export function ListDocuments(arg1) {
@@ -46,6 +58,10 @@ export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
 }
 
-export function SubmitCertPassword(arg1) {
-  return window['go']['main']['App']['SubmitCertPassword'](arg1);
+export function SubmitCertPassword(arg1, arg2) {
+  return window['go']['main']['App']['SubmitCertPassword'](arg1, arg2);
+}
+
+export function UpdateCredentialPath(arg1) {
+  return window['go']['main']['App']['UpdateCredentialPath'](arg1);
 }

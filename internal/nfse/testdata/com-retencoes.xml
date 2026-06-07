@@ -1,0 +1,24 @@
+<nfse:NFSe xmlns:nfse="http://www.sped.fazenda.gov.br/nfse">
+    <infNFSe versao="1.01">
+        <chNFSe>55555555555555555555555555555555555555555555555555</chNFSe>
+        <dhEmi>2023-12-05T10:00:00Z</dhEmi>
+        <compNFSe>2023-12-01</compNFSe>
+        <prest>
+            <CNPJ>55555555000100</CNPJ>
+            <xNome>Prestador com Retencoes</xNome>
+        </prest>
+        <toma>
+            <CNPJ>66666666000111</CNPJ>
+            <xNome>Tomador Retentor</xNome>
+        </toma>
+        <valores>
+            <vServ>10000.00</vServ>
+            <vISS>500.00</vISS>
+            <vIRRF>150.00</vIRRF>
+            <vINSS>1100.00</vINSS>
+            <vPIS>65.00</vPIS>
+            <vCOFINS>300.00</vCOFINS>
+            <vCSLL>100.00</vCSLL>
+        </valores>
+    </infNFSe>
+</nfse:NFSe>
