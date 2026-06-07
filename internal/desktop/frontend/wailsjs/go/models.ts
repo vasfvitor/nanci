@@ -160,7 +160,6 @@ export namespace app {
 	}
 
 }
-
 export namespace nfse {
 	
 	export class Company {
@@ -195,6 +194,117 @@ export namespace nfse {
 	        this.LastNSU = source["LastNSU"];
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CompanyDocument {
+	    ID: string;
+	    ChaveAcesso: string;
+	    // Go type: time
+	    IssueDate: any;
+	    Competence: string;
+	    PrestadorCNPJ: string;
+	    PrestadorName: string;
+	    TomadorCNPJ: string;
+	    TomadorName: string;
+	    IntermediarioCNPJ: string;
+	    IntermediarioName: string;
+	    ServiceValue: number;
+	    ISSValue: number;
+	    IRRFValue: number;
+	    INSSValue: number;
+	    PISValue: number;
+	    COFINSValue: number;
+	    CSLLValue: number;
+	    TotalRetentions: number;
+	    Status: string;
+	    LayoutVersion: string;
+	    XMLPath: string;
+	    RawHash: string;
+	    ParseError: string;
+	    ParseWarnings: string[];
+	    NFSeNumber: string;
+	    ServiceDescription: string;
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    RelationID: string;
+	    CompanyID: string;
+	    DocumentID: string;
+	    CompanyRole: string;
+	    VisibilityReason: string;
+	    FirstSeenNSU: number;
+	    LastSeenNSU: number;
+	    FirstSeenNSUValid: boolean;
+	    LastSeenNSUValid: boolean;
+	    // Go type: time
+	    FirstSyncedAt: any;
+	    // Go type: time
+	    LastSyncedAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new CompanyDocument(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.IssueDate = this.convertValues(source["IssueDate"], null);
+	        this.Competence = source["Competence"];
+	        this.PrestadorCNPJ = source["PrestadorCNPJ"];
+	        this.PrestadorName = source["PrestadorName"];
+	        this.TomadorCNPJ = source["TomadorCNPJ"];
+	        this.TomadorName = source["TomadorName"];
+	        this.IntermediarioCNPJ = source["IntermediarioCNPJ"];
+	        this.IntermediarioName = source["IntermediarioName"];
+	        this.ServiceValue = source["ServiceValue"];
+	        this.ISSValue = source["ISSValue"];
+	        this.IRRFValue = source["IRRFValue"];
+	        this.INSSValue = source["INSSValue"];
+	        this.PISValue = source["PISValue"];
+	        this.COFINSValue = source["COFINSValue"];
+	        this.CSLLValue = source["CSLLValue"];
+	        this.TotalRetentions = source["TotalRetentions"];
+	        this.Status = source["Status"];
+	        this.LayoutVersion = source["LayoutVersion"];
+	        this.XMLPath = source["XMLPath"];
+	        this.RawHash = source["RawHash"];
+	        this.ParseError = source["ParseError"];
+	        this.ParseWarnings = source["ParseWarnings"];
+	        this.NFSeNumber = source["NFSeNumber"];
+	        this.ServiceDescription = source["ServiceDescription"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.RelationID = source["RelationID"];
+	        this.CompanyID = source["CompanyID"];
+	        this.DocumentID = source["DocumentID"];
+	        this.CompanyRole = source["CompanyRole"];
+	        this.VisibilityReason = source["VisibilityReason"];
+	        this.FirstSeenNSU = source["FirstSeenNSU"];
+	        this.LastSeenNSU = source["LastSeenNSU"];
+	        this.FirstSeenNSUValid = source["FirstSeenNSUValid"];
+	        this.LastSeenNSUValid = source["LastSeenNSUValid"];
+	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
+	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -254,184 +364,6 @@ export namespace nfse {
 	        this.InspectedAt = this.convertValues(source["InspectedAt"], null);
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class Document {
-	    ID: string;
-	    ChaveAcesso: string;
-	    // Go type: time
-	    IssueDate: any;
-	    Competence: string;
-	    PrestadorCNPJ: string;
-	    PrestadorName: string;
-	    TomadorCNPJ: string;
-	    TomadorName: string;
-	    IntermediarioCNPJ: string;
-	    IntermediarioName: string;
-	    ServiceValue: number;
-	    ISSValue: number;
-	    IRRFValue: number;
-	    INSSValue: number;
-	    PISValue: number;
-	    COFINSValue: number;
-	    CSLLValue: number;
-	    Status: string;
-	    XMLPath: string;
-	    RawHash: string;
-	    ParseError: string;
-	    // Go type: time
-	    CreatedAt: any;
-	    // Go type: time
-	    UpdatedAt: any;
-	
-	    static createFrom(source: any = {}) {
-	        return new Document(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
-	        this.ChaveAcesso = source["ChaveAcesso"];
-	        this.IssueDate = this.convertValues(source["IssueDate"], null);
-	        this.Competence = source["Competence"];
-	        this.PrestadorCNPJ = source["PrestadorCNPJ"];
-	        this.PrestadorName = source["PrestadorName"];
-	        this.TomadorCNPJ = source["TomadorCNPJ"];
-	        this.TomadorName = source["TomadorName"];
-	        this.IntermediarioCNPJ = source["IntermediarioCNPJ"];
-	        this.IntermediarioName = source["IntermediarioName"];
-	        this.ServiceValue = source["ServiceValue"];
-	        this.ISSValue = source["ISSValue"];
-	        this.IRRFValue = source["IRRFValue"];
-	        this.INSSValue = source["INSSValue"];
-	        this.PISValue = source["PISValue"];
-	        this.COFINSValue = source["COFINSValue"];
-	        this.CSLLValue = source["CSLLValue"];
-	        this.Status = source["Status"];
-	        this.XMLPath = source["XMLPath"];
-	        this.RawHash = source["RawHash"];
-	        this.ParseError = source["ParseError"];
-	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
-	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class CompanyDocument {
-	    ID: string;
-	    ChaveAcesso: string;
-	    // Go type: time
-	    IssueDate: any;
-	    Competence: string;
-	    PrestadorCNPJ: string;
-	    PrestadorName: string;
-	    TomadorCNPJ: string;
-	    TomadorName: string;
-	    IntermediarioCNPJ: string;
-	    IntermediarioName: string;
-	    ServiceValue: number;
-	    ISSValue: number;
-	    IRRFValue: number;
-	    INSSValue: number;
-	    PISValue: number;
-	    COFINSValue: number;
-	    CSLLValue: number;
-	    Status: string;
-	    XMLPath: string;
-	    RawHash: string;
-	    ParseError: string;
-	    // Go type: time
-	    CreatedAt: any;
-	    // Go type: time
-	    UpdatedAt: any;
-	    RelationID: string;
-	    CompanyID: string;
-	    DocumentID: string;
-	    CompanyRole: string;
-	    VisibilityReason: string;
-	    FirstSeenNSU: number;
-	    LastSeenNSU: number;
-	    FirstSeenNSUValid: boolean;
-	    LastSeenNSUValid: boolean;
-	    // Go type: time
-	    FirstSyncedAt: any;
-	    // Go type: time
-	    LastSyncedAt: any;
-	
-	    static createFrom(source: any = {}) {
-	        return new CompanyDocument(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
-	        this.ChaveAcesso = source["ChaveAcesso"];
-	        this.IssueDate = this.convertValues(source["IssueDate"], null);
-	        this.Competence = source["Competence"];
-	        this.PrestadorCNPJ = source["PrestadorCNPJ"];
-	        this.PrestadorName = source["PrestadorName"];
-	        this.TomadorCNPJ = source["TomadorCNPJ"];
-	        this.TomadorName = source["TomadorName"];
-	        this.IntermediarioCNPJ = source["IntermediarioCNPJ"];
-	        this.IntermediarioName = source["IntermediarioName"];
-	        this.ServiceValue = source["ServiceValue"];
-	        this.ISSValue = source["ISSValue"];
-	        this.IRRFValue = source["IRRFValue"];
-	        this.INSSValue = source["INSSValue"];
-	        this.PISValue = source["PISValue"];
-	        this.COFINSValue = source["COFINSValue"];
-	        this.CSLLValue = source["CSLLValue"];
-	        this.Status = source["Status"];
-	        this.XMLPath = source["XMLPath"];
-	        this.RawHash = source["RawHash"];
-	        this.ParseError = source["ParseError"];
-	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
-	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
-	        this.RelationID = source["RelationID"];
-	        this.CompanyID = source["CompanyID"];
-	        this.DocumentID = source["DocumentID"];
-	        this.CompanyRole = source["CompanyRole"];
-	        this.VisibilityReason = source["VisibilityReason"];
-	        this.FirstSeenNSU = source["FirstSeenNSU"];
-	        this.LastSeenNSU = source["LastSeenNSU"];
-	        this.FirstSeenNSUValid = source["FirstSeenNSUValid"];
-	        this.LastSeenNSUValid = source["LastSeenNSUValid"];
-	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
-	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

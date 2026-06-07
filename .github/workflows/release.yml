@@ -3,9 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., v1.0.0)'
-        required: true
       draft:
         description: 'Create as draft release'
         required: false
@@ -17,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write     
+      attestations: write 
 
     steps:
       - name: Checkout Code
@@ -30,7 +29,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.25.1'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,31 +39,58 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: '9'
+          version: '10.33.0'
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Read release version
+        id: release
+        shell: bash
+        run: |
+          version="$(node -p "require('./internal/desktop/wails.json').info.productVersion")"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid Wails productVersion: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
       - name: Build Desktop App (Wails)
         working-directory: ./internal/desktop
         # -nsis builds the Windows installer
         # -m builds without console (production mode)
+        env:
+          GOFLAGS: "-trimpath"
         run: wails build -platform windows/amd64 -nsis -m
 
       - name: Build CLI App
-        # Building the standalone CLI to root build/ dir
         run: |
           mkdir -p build
-          GOOS=windows GOARCH=amd64 go build -o build/nanci.exe ./cmd/nanci
+          GOOS=windows GOARCH=amd64 go build -trimpath -o build/nanci.exe ./cmd/nanci
+
+      - name: Generate Checksums (SHA-256)
+        run: |
+          sha256sum internal/desktop/build/bin/nanci-desktop-amd64-installer.exe > checksums.txt
+          sha256sum build/nanci.exe >> checksums.txt
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
+            build/nanci.exe
+            checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: Release ${{ github.event.inputs.version }}
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: Release ${{ steps.release.outputs.tag }}
           draft: ${{ github.event.inputs.draft }}
           files: |
             internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
             build/nanci.exe
+            checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

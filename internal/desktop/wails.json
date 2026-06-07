@@ -6,6 +6,11 @@
   "frontend:build": "pnpm run build",
   "frontend:dev:watcher": "pnpm run dev",
   "frontend:dev:serverUrl": "auto",
+  "info": {
+    "companyName": "Nanci",
+    "productName": "Nanci",
+    "productVersion": "1.0.0"
+  },
   "author": {
     "name": "Ayres Vitor",
     "email": "gitkey@virtuaires.com.br"
