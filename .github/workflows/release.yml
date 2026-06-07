@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       draft:
@@ -30,15 +33,17 @@ jobs:
         id: version
         shell: bash
         run: |
-          version=$(jq -r .info.productVersion internal/desktop/wails.json)
-
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid Wails productVersion: $version" >&2
-            exit 1
+          # If triggered by a tag push, extract it. Otherwise fallback to a default or input.
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="v0.0.0-dev"
           fi
-
+          
+          version="${tag#v}"
+          
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Check release tag does not exist
         shell: bash
@@ -89,7 +94,18 @@ jobs:
           GOFLAGS: -trimpath
         shell: bash
         run: |
-          wails build -platform windows/amd64 -nsis -m
+          VERSION="${{ needs.prepare.outputs.version }}"
+          COMMIT="${GITHUB_SHA::7}"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          
+          echo "Patching wails.json with version $VERSION..."
+          jq --arg v "$VERSION" '.info.productVersion = $v' wails.json > wails.tmp.json
+          mv wails.tmp.json wails.json
+          
+          echo "Building Wails app..."
+          wails build -platform windows/amd64 -nsis -m \
+            -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$VERSION' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$COMMIT' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$DATE'"
+            
           test -s build/bin/nanci-desktop-amd64-installer.exe
 
       - name: Upload Desktop Artifact
