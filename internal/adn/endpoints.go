@@ -28,10 +28,15 @@ type DistributionRequest struct {
 
 // FetchDocuments retrieves a batch of documents starting from a specific NSU.
 func (c *Client) FetchDocuments(ctx context.Context, req DistributionRequest) (*DocumentResponse, error) {
-	path := fmt.Sprintf("/DFe/%d", req.LastNSU)
-	if req.ConsultationCNPJ != "" {
-		path = path + "?cnpjConsulta=" + url.QueryEscape(req.ConsultationCNPJ)
+	rel := &url.URL{
+		Path: fmt.Sprintf("/DFe/%d", req.LastNSU),
 	}
+	if req.ConsultationCNPJ != "" {
+		q := rel.Query()
+		q.Set("cnpjConsulta", req.ConsultationCNPJ)
+		rel.RawQuery = q.Encode()
+	}
+	path := rel.String()
 
 	var response DocumentResponse
 	// bodyProvider is nil for GET request
