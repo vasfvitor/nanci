@@ -1,0 +1,10 @@
+minimumReleaseAge: 10080
+strictPeerDependencies: true
+autoInstallPeers: false
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+saveWorkspaceProtocol: rolling
+preferFrozenLockfile: true
+
+allowBuilds:
+  esbuild: false
