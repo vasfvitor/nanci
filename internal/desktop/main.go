@@ -64,7 +64,7 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:  "Nanci",
 		Menu:   AppMenu,
-		Width:  1024,
+		Width:  1280,
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
