@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"log/slog"
+
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -19,6 +21,7 @@ type SyncService struct {
 	store      nfse.SyncRepository
 	apiClient  documentFetcher
 	fileWriter files.XMLStore
+	log        *slog.Logger
 }
 
 type documentFetcher interface {
@@ -26,16 +29,21 @@ type documentFetcher interface {
 }
 
 // NewSyncService creates a new SyncService.
-func NewSyncService(syncRepo nfse.SyncRepository, adnClient documentFetcher, xmlStore files.XMLStore) *SyncService {
+func NewSyncService(syncRepo nfse.SyncRepository, adnClient documentFetcher, xmlStore files.XMLStore, log *slog.Logger) *SyncService {
 	return &SyncService{
 		store:      syncRepo,
 		apiClient:  adnClient,
 		fileWriter: xmlStore,
+		log:        log,
 	}
 }
 
 // Sync starts the synchronization process for a specific company.
 func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error {
+	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
+		slog.String("cnpj", string(company.CNPJ)),
+		slog.Int64("from_nsu", company.LastNSU))
+
 	// Create SyncRun record
 	syncRun, err := s.store.StartRun(ctx, nfse.StartRunParams{
 		CompanyID:         company.ID,
@@ -74,6 +82,8 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 		// Fetch documents batch
 		requestedNSU := committedNSU
+		s.log.InfoContext(ctx, "Buscando lote de documentos", slog.Int64("requested_nsu", requestedNSU))
+
 		resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
 			LastNSU:          requestedNSU,
 			ConsultationCNPJ: company.CNPJ,
@@ -107,6 +117,10 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		}
 
 		docsInBatch := len(resp.Docs)
+		s.log.DebugContext(ctx, "Lote recebido",
+			slog.Int("docs_in_batch", docsInBatch),
+			slog.Int64("ult_nsu", resp.UltNSU),
+			slog.Int64("max_nsu", resp.MaxNSU))
 
 		// Report progress
 		if progress != nil {
@@ -202,12 +216,15 @@ func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams
 
 // processDocument handles the decoding, parsing, and saving of a single document.
 func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
+	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", env.NSU))
+	
 	// 1. Decode Payload
 	payload, err := nfse.DecodePayload(env.XMLGZipBase64, nfse.PayloadLimits{
 		CompressedBytes:   5 * 1024 * 1024,
 		UncompressedBytes: 20 * 1024 * 1024,
 	})
 	if err != nil {
+		s.log.ErrorContext(ctx, "Falha ao decodificar payload do documento", slog.Int64("nsu", env.NSU), slog.String("erro", err.Error()))
 		return fmt.Errorf("decode failed: %w", err)
 	}
 
@@ -244,12 +261,15 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 
 // processEvent handles decoding and saving an Event.
 func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
+	s.log.Log(ctx, slog.Level(-8), "Processando evento", slog.Int64("nsu", env.NSU))
+	
 	// 1. Decode Payload
 	payload, err := nfse.DecodePayload(env.XMLGZipBase64, nfse.PayloadLimits{
 		CompressedBytes:   5 * 1024 * 1024,
 		UncompressedBytes: 20 * 1024 * 1024,
 	})
 	if err != nil {
+		s.log.ErrorContext(ctx, "Falha ao decodificar payload do evento", slog.Int64("nsu", env.NSU), slog.String("erro", err.Error()))
 		return fmt.Errorf("decode event failed: %w", err)
 	}
 

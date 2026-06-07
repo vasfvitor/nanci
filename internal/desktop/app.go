@@ -12,6 +12,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/files"
+	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -83,9 +84,12 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	verbose := os.Getenv("NANCI_VERBOSE") == "1"
+	trace := os.Getenv("NANCI_TRACE") == "1"
 	
 	level := slog.LevelInfo
-	if verbose {
+	if trace {
+		level = logpkg.LevelTrace
+	} else if verbose {
 		level = slog.LevelDebug
 	}
 

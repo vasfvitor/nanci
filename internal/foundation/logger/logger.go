@@ -5,10 +5,15 @@ import (
 	"os"
 )
 
+// LevelTrace defines a custom log level for tracing.
+const LevelTrace = slog.Level(-8)
+
 // New creates a new slog.Logger configured for the CLI.
-func New(verbose bool) *slog.Logger {
+func New(verbose bool, trace bool) *slog.Logger {
 	level := slog.LevelInfo
-	if verbose {
+	if trace {
+		level = LevelTrace
+	} else if verbose {
 		level = slog.LevelDebug
 	}
 

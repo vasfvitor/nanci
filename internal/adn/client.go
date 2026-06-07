@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"log/slog"
 
 	"github.com/sethvargo/go-retry"
 
@@ -46,12 +47,14 @@ type ClientConfig struct {
 	HTTPClient  *http.Client
 	Certificate *tls.Certificate
 	Retry       RetryConfig
+	Log         *slog.Logger
 }
 
 type Client struct {
 	baseURL    *url.URL
 	httpClient *http.Client
 	backoff    retry.Backoff
+	log        *slog.Logger
 }
 
 func NewClient(cfg ClientConfig) (*Client, error) {
@@ -105,6 +108,7 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 		baseURL:    u,
 		httpClient: client,
 		backoff:    b,
+		log:        cfg.Log,
 	}, nil
 }
 
@@ -112,6 +116,11 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 	u := c.baseURL.ResolveReference(&url.URL{Path: path}).String()
 
 	return retry.Do(ctx, c.backoff, func(ctx context.Context) error {
+		start := time.Now()
+		if c.log != nil {
+			c.log.Log(ctx, slog.Level(-8), "ADN API Request", slog.String("method", method), slog.String("path", path))
+		}
+		
 		var reqBody io.Reader
 		if bodyProvider != nil {
 			reqBody = bodyProvider()
@@ -138,6 +147,9 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		}()
 
 		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+			if c.log != nil {
+				c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.Duration("latency", time.Since(start)))
+			}
 			if dest != nil {
 				lr := io.LimitReader(resp.Body, MaxJSONResponseBytes+1)
 				if err := json.NewDecoder(lr).Decode(dest); err != nil {
@@ -151,6 +163,10 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		// Read error response body bounded
 		errBodyReader := io.LimitReader(resp.Body, MaxErrorBodyBytes)
 		errBodyBytes, _ := io.ReadAll(errBodyReader)
+		
+		if c.log != nil {
+			c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
+		}
 
 		apiErr := &APIError{
 			Method:     method,

@@ -17,6 +17,7 @@ import (
 
 var (
 	verbose bool
+	trace   bool
 )
 
 // rootCmd is the base command when nanci is called without any subcommands.
@@ -39,12 +40,17 @@ func Execute(ctx context.Context) int {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Habilita log detalhado (debug)")
+	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Habilita log de rastreamento extremo (trace)")
 }
 
 // newApp is a helper for commands that need the App instance.
 // It also injects the terminal-based CredentialProvider.
 func newApp() (*app.App, error) {
-	log := logger.New(verbose)
+	// If env var is set, it overrides the flag
+	if os.Getenv("NANCI_TRACE") == "1" {
+		trace = true
+	}
+	log := logger.New(verbose, trace)
 
 	dataDir, err := paths.DataDir()
 	if err != nil {

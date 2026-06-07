@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
@@ -41,6 +42,8 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 
+	a.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
+
 	// 1. Resolve company
 	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
@@ -75,6 +78,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 3. Load TLS certificate
+	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
 	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
@@ -111,7 +115,8 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	fileWriter := files.NewBlobStore(a.DataDir)
 
 	// 6. Build sync service
-	svc := syncservice.NewSyncService(a.SyncRepo, apiClient, fileWriter)
+	a.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
+	svc := syncservice.NewSyncService(a.SyncRepo, apiClient, fileWriter, a.Log)
 
 	// 7. Run sync, collecting progress into result counters
 	var result PullResult
@@ -132,9 +137,16 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	start := time.Now()
 	if err := svc.Sync(ctx, company, credential, consultationBasis, progress); err != nil {
+		a.Log.ErrorContext(ctx, "Sincronização finalizada com erro", slog.String("error", err.Error()))
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
 	result.Duration = time.Since(start)
+
+	a.Log.InfoContext(ctx, "Sincronização concluída com sucesso",
+		slog.Int("docs_found", result.DocumentsFound),
+		slog.Int("errors", result.Errors),
+		slog.Duration("duration", result.Duration),
+	)
 
 	return result, nil
 }
