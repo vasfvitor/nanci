@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 )
 
 //go:embed build/appicon.png
@@ -54,13 +57,12 @@ func main() {
 		runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
 			Type:    runtime.InfoDialog,
 			Title:   "Sobre o Nanci Desktop",
-			Message: "Nanci Desktop v1.0.0\nSistema de sincronização de notas fiscais (NFSe).",
+			Message: fmt.Sprintf("Nanci Desktop %s\nCommit: %s\n\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version, buildinfo.Commit),
 		})
 	})
 
-	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "nanci-desktop",
+		Title:  "Nanci",
 		Menu:   AppMenu,
 		Width:  1024,
 		Height: 768,
@@ -73,7 +75,7 @@ func main() {
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
 				Title:   "Nanci Desktop",
-				Message: "© 2026 Nanci. Todos os direitos reservados.\nSistema de sincronização de notas fiscais (NFSe).",
+				Message: fmt.Sprintf("© 2026 Nanci. Todos os direitos reservados.\nVersão: %s\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version),
 				Icon:    icon,
 			},
 		},
