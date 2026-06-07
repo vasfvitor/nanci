@@ -31,3 +31,4 @@ eventos/
 **/.gocache/**
 **/.gocache-desktop/**
 **/.golangci-cache/**
+/vendor
