@@ -6,7 +6,7 @@ Ela permite cadastrar empresas, sincronizar notas via certificado A1, manter o p
 
 Baixe o instalador mais recente na página de **Releases** do GitHub.
 
-Para usar o aplicativo desktop, **não é necessário instalar Go, Node.js, pnpm ou Wails**.
+Para usar o aplicativo desktop, basta instalar o aplicativo compilado **não é necessário instalar Go, Node.js, pnpm ou Wails**.
 
 ---
 
