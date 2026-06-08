@@ -1,0 +1,114 @@
+{
+  "folders": [
+    {
+      "name": "Go (Nanci Root / CLI)",
+      "path": "."
+    },
+    {
+      "name": "Wails",
+      "path": "internal/desktop"
+    },
+    {
+      "name": "Frontend",
+      "path": "internal/desktop/frontend"
+    }
+  ],
+  "settings": {
+    "go.useLanguageServer": true
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "pnpm install",
+        "type": "shell",
+        "command": "pnpm",
+        "args": ["install"],
+        "options": {
+          "cwd": "${workspaceFolder:Frontend}"
+        },
+        "presentation": {
+          "clear": true,
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "pnpm run build",
+        "type": "shell",
+        "command": "pnpm",
+        "args": ["run", "build"],
+        "options": {
+          "cwd": "${workspaceFolder:Frontend}"
+        },
+        "presentation": {
+          "clear": true,
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "build wails",
+        "type": "shell",
+        "options": {
+          "cwd": "${workspaceFolder:Wails}"
+        },
+        "command": "go",
+        "args": [
+          "build",
+          "-tags",
+          "dev",
+          "-gcflags",
+          "all=-N -l",
+          "-o",
+          "build/bin/nanci-desktop.exe"
+        ],
+        "dependsOn": ["pnpm install", "pnpm run build"],
+        "problemMatcher": ["$go"]
+      },
+      {
+        "label": "build cli",
+        "type": "shell",
+        "options": {
+          "cwd": "${workspaceFolder:Go (Nanci Root / CLI)}"
+        },
+        "command": "go",
+        "args": [
+          "build",
+          "-gcflags",
+          "all=-N -l",
+          "-o",
+          "bin/nanci.exe",
+          "./cmd/nanci"
+        ],
+        "problemMatcher": ["$go"]
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Wails: Debug nanci-desktop",
+        "type": "go",
+        "request": "launch",
+        "mode": "exec",
+        "program": "${workspaceFolder:Wails (Backend)}/build/bin/nanci-desktop.exe",
+        "preLaunchTask": "build wails",
+        "cwd": "${workspaceFolder:Wails (Backend)}",
+        "env": {}
+      },
+      {
+        "name": "Go: Debug CLI",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${workspaceFolder:Go (Nanci Root / CLI)}/cmd/nanci",
+        "cwd": "${workspaceFolder:Go (Nanci Root / CLI)}",
+        "args": []
+      }
+    ]
+  }
+}
