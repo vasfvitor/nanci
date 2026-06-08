@@ -20,7 +20,7 @@ myApp.use(Quasar, {
     Dialog,
   },
   config: {
-    dark: 'auto'
+    dark: 'auto',
   },
   lang: quasarLang,
   iconSet: quasarIconSet,
