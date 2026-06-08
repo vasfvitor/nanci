@@ -85,7 +85,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
 import {
   AssignCredentialToCompany,
   ListCompanies,
@@ -105,7 +105,7 @@ const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)
 const selectedCompanyToEdit = ref<nfse.Company | null>(null)
 
-const columns = [
+const columns: QTableColumn[] = [
   { name: 'nome', label: 'Nome', field: 'Name', align: 'left', sortable: true },
   { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },

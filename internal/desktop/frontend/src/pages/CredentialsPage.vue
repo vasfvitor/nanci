@@ -85,7 +85,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
 import { ListCredentials, SelectCertificate, UpdateCredentialPath } from '../../wailsjs/go/main/App'
 import { nfse } from '../../wailsjs/go/models'
 import AddCredentialDialog from '../components/AddCredentialDialog.vue'
@@ -97,7 +97,7 @@ const showAddDialog = ref(false)
 const showEditDialog = ref(false)
 const selectedCredentialToEdit = ref<nfse.Credential | null>(null)
 
-const columns = [
+const columns: QTableColumn[] = [
   { name: 'label', label: 'Nome', field: 'Label', align: 'left', sortable: true },
   {
     name: 'owner',
