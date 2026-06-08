@@ -8,9 +8,9 @@
           round
           icon="menu"
           aria-label="Menu"
-          @click="toggleLeftDrawer"
           class="q-mr-sm"
           style="--wails-draggable: no-drag"
+          @click="toggleLeftDrawer"
         />
         <div class="text-weight-bold">Nanci</div>
         <q-space />
@@ -18,25 +18,25 @@
           dense
           flat
           icon="terminal"
-          @click="toggleConsole"
           title="Console"
           style="--wails-draggable: no-drag"
+          @click="toggleConsole"
         />
-        <q-btn dense flat icon="minimize" @click="minimise" style="--wails-draggable: no-drag" />
+        <q-btn dense flat icon="minimize" style="--wails-draggable: no-drag" @click="minimise" />
         <q-btn
           dense
           flat
           icon="crop_square"
-          @click="toggleMaximise"
           style="--wails-draggable: no-drag"
+          @click="toggleMaximise"
         />
-        <q-btn dense flat icon="close" @click="closeApp" style="--wails-draggable: no-drag" />
+        <q-btn dense flat icon="close" style="--wails-draggable: no-drag" @click="closeApp" />
       </q-bar>
     </q-header>
 
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-list class="q-py-md">
-        <q-item clickable v-ripple to="/" exact dense active-class="text-primary">
+        <q-item v-ripple clickable to="/" exact dense active-class="text-primary">
           <q-item-section avatar>
             <q-icon name="business" size="sm" />
           </q-item-section>
@@ -45,7 +45,7 @@
           </q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple to="/documents" exact dense active-class="text-primary">
+        <q-item v-ripple clickable to="/documents" exact dense active-class="text-primary">
           <q-item-section avatar>
             <q-icon name="description" size="sm" />
           </q-item-section>
@@ -54,7 +54,7 @@
           </q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple to="/credentials" exact dense active-class="text-primary">
+        <q-item v-ripple clickable to="/credentials" exact dense active-class="text-primary">
           <q-item-section avatar>
             <q-icon name="vpn_key" size="sm" />
           </q-item-section>
@@ -76,15 +76,15 @@
       <div class="column full-height">
         <q-toolbar class="bg-grey-9 text-white dense">
           <q-toolbar-title class="text-subtitle1">Console</q-toolbar-title>
-          <q-btn flat round dense icon="content_copy" @click="copyLogs" title="Copiar logs">
+          <q-btn flat round dense icon="content_copy" title="Copiar logs" @click="copyLogs">
             <q-tooltip>Copiar logs</q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="delete" @click="clearLogs" title="Limpar logs">
+          <q-btn flat round dense icon="delete" title="Limpar logs" @click="clearLogs">
             <q-tooltip>Limpar logs</q-tooltip>
           </q-btn>
           <q-btn flat round dense icon="close" @click="consoleOpen = false" />
         </q-toolbar>
-        <q-scroll-area class="col q-pa-sm" ref="logScrollArea">
+        <q-scroll-area ref="logScrollArea" class="col q-pa-sm">
           <pre
             style="
               white-space: pre-wrap;

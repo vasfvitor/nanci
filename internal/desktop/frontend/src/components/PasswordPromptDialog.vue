@@ -10,7 +10,7 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none">
-        <q-input dense v-model="password" autofocus type="password" @keyup.enter="onSubmit" />
+        <q-input v-model="password" dense autofocus type="password" @keyup.enter="onSubmit" />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -46,7 +46,9 @@ function handleRequest(req: CertPasswordRequest) {
 async function onSubmit() {
   if (requests.value.length > 0) {
     const req = requests.value[0]
-    await SubmitCertPassword(req.RequestID, password.value)
+    if (req) {
+      await SubmitCertPassword(req.RequestID, password.value)
+    }
     password.value = ''
     requests.value.shift()
   }
@@ -55,7 +57,9 @@ async function onSubmit() {
 async function onCancel() {
   if (requests.value.length > 0) {
     const req = requests.value[0]
-    await CancelCertPassword(req.RequestID)
+    if (req) {
+      await CancelCertPassword(req.RequestID)
+    }
     password.value = ''
     requests.value.shift()
   }

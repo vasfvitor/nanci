@@ -28,8 +28,8 @@
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancelar" color="primary" v-close-popup />
-        <q-btn flat label="Salvar" color="primary" @click="submit" :loading="loading" />
+        <q-btn v-close-popup flat label="Cancelar" color="primary" />
+        <q-btn flat label="Salvar" color="primary" :loading="loading" @click="submit" />
       </q-card-actions>
     </q-card>
   </q-dialog>

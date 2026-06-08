@@ -12,9 +12,9 @@ export default defineConfig([
 
   js.configs.recommended,
 
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.strict,
 
-  ...pluginVue.configs['flat/essential'],
+  ...pluginVue.configs['flat/recommended'],
 
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,vue}'],
@@ -23,6 +23,11 @@ export default defineConfig([
         ...globals.browser,
         ...globals.es2022,
       },
+    },
+    rules: {
+      'no-console': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      'no-useless-assignment': 'off',
     },
   },
 

@@ -6,8 +6,8 @@
 
     <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
       <q-select
-        class="col-12 col-md-3"
         v-model="filter.CNPJ"
+        class="col-12 col-md-3"
         :options="companyOptions"
         label="Empresa"
         emit-value
@@ -17,15 +17,15 @@
         options-dense
       />
       <q-input
-        class="col-12 col-md-2"
         v-model="filter.Competence"
+        class="col-12 col-md-2"
         label="Competência"
         outlined
         dense
         clearable
         mask="####-##"
       >
-        <template v-slot:append>
+        <template #append>
           <q-icon name="sym_r_event" class="cursor-pointer">
             <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
               <q-date
@@ -47,8 +47,8 @@
         </template>
       </q-input>
       <q-select
-        class="col-12 col-md-2"
         v-model="filter.Direction"
+        class="col-12 col-md-2"
         :options="[
           { label: 'Todos', value: '' },
           { label: 'Tomados', value: 'tomada' },
@@ -70,10 +70,10 @@
         color="primary"
         icon="search"
         label="Buscar"
-        @click="search"
         :disable="!filter.CNPJ"
         dense
         flat
+        @click="search"
       />
       <q-btn-dropdown
         color="secondary"
@@ -83,15 +83,15 @@
         flat
       >
         <q-list dense>
-          <q-item clickable v-close-popup @click="exportData('csv')">
+          <q-item v-close-popup clickable @click="exportData('csv')">
             <q-item-section avatar><q-icon name="table_view" /></q-item-section>
             <q-item-section><q-item-label>Exportar CSV</q-item-label></q-item-section>
           </q-item>
-          <q-item clickable v-close-popup @click="exportData('xlsx')">
+          <q-item v-close-popup clickable @click="exportData('xlsx')">
             <q-item-section avatar><q-icon name="grid_on" /></q-item-section>
             <q-item-section><q-item-label>Exportar XLSX</q-item-label></q-item-section>
           </q-item>
-          <q-item clickable v-close-popup @click="exportData('zip')">
+          <q-item v-close-popup clickable @click="exportData('zip')">
             <q-item-section avatar><q-icon name="folder_zip" /></q-item-section>
             <q-item-section><q-item-label>Exportar XMLs (ZIP)</q-item-label></q-item-section>
           </q-item>
@@ -110,21 +110,21 @@
       dense
       class="full-height"
     >
-      <template v-slot:body-cell-status="props">
+      <template #body-cell-status="props">
         <q-td :props="props">
           <q-badge :color="props.row.Status === 'normal' ? 'positive' : 'negative'">
             {{ props.row.Status }}
           </q-badge>
         </q-td>
       </template>
-      <template v-slot:body-cell-companyRole="props">
+      <template #body-cell-companyRole="props">
         <q-td :props="props">
           <q-badge :color="roleColor(props.row.CompanyRole)" outline>
             {{ roleLabel(props.row.CompanyRole) }}
           </q-badge>
         </q-td>
       </template>
-      <template v-slot:body-cell-visibilityReason="props">
+      <template #body-cell-visibilityReason="props">
         <q-td :props="props">
           <q-badge :color="visibilityColor(props.row.VisibilityReason)" outline>
             {{ visibilityLabel(props.row.VisibilityReason) }}
@@ -159,9 +159,9 @@ const filter = ref({
   Direction: '',
 })
 
-const datePopup = ref<any>(null)
+const datePopup = ref<{ hide: () => void } | null>(null)
 
-function onDateChange(_val: string, reason: string, _details: any) {
+function onDateChange(_val: string, reason: string, _details: unknown) {
   if (reason === 'month') {
     datePopup.value?.hide()
   }
@@ -271,11 +271,14 @@ async function loadCompanies() {
       value: c.CNPJ,
     }))
     if (companyOptions.value.length > 0) {
-      filter.value.CNPJ = companyOptions.value[0].value
-      search()
+      const firstOption = companyOptions.value[0]
+      if (firstOption) {
+        filter.value.CNPJ = firstOption.value
+        search()
+      }
     }
   } catch (err) {
-    console.error(err)
+    $q.notify({ type: 'negative', message: String(err) })
   }
 }
 

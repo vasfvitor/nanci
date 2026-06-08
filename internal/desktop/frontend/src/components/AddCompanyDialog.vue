@@ -59,8 +59,8 @@
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancelar" color="primary" v-close-popup />
-        <q-btn flat label="Salvar" color="primary" @click="submit" :loading="loading" />
+        <q-btn v-close-popup flat label="Cancelar" color="primary" />
+        <q-btn flat label="Salvar" color="primary" :loading="loading" @click="submit" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -115,7 +115,10 @@ async function loadCredentials() {
     }))
     credentialMode.value = credentialOptions.value.length > 0 ? 'existing' : 'new'
     if (credentialOptions.value.length > 0 && !form.value.CredentialID) {
-      form.value.CredentialID = credentialOptions.value[0].value
+      const firstOpt = credentialOptions.value[0]
+      if (firstOpt) {
+        form.value.CredentialID = firstOpt.value
+      }
     }
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar credenciais: ' + String(err) })

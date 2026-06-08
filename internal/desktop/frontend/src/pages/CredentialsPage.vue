@@ -11,18 +11,18 @@
       :loading="false"
       no-data-label="Nenhuma credencial cadastrada."
     >
-      <template v-slot:top-right>
+      <template #top-right>
         <q-btn
           color="primary"
           icon="vpn_key"
           label="Adicionar"
-          @click="showAddDialog = true"
           dense
           flat
+          @click="showAddDialog = true"
         />
       </template>
 
-      <template v-slot:body-cell-path="props">
+      <template #body-cell-path="props">
         <q-td :props="props">
           <div class="ellipsis text-grey" style="max-width: 200px">
             {{ props.row.CertPath }}
@@ -31,7 +31,7 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-ambiente="props">
+      <template #body-cell-ambiente="props">
         <q-td :props="props">
           <q-badge
             :color="props.row.Environment === 'producao' ? 'positive' : 'warning'"
@@ -42,7 +42,7 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-inspecao="props">
+      <template #body-cell-inspecao="props">
         <q-td :props="props">
           <q-badge :color="props.row.InspectedAt ? 'positive' : 'grey'" outline>
             {{ props.row.InspectedAt ? 'Concluída' : 'Pendente' }}
@@ -50,7 +50,7 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-acoes="props">
+      <template #body-cell-acoes="props">
         <q-td :props="props" class="q-gutter-x-sm">
           <q-btn
             dense
@@ -58,8 +58,8 @@
             round
             color="primary"
             icon="folder_open"
-            @click="changePath(props.row.ID)"
             title="Trocar arquivo"
+            @click="changePath(props.row.ID)"
           />
           <q-btn
             dense
@@ -67,8 +67,8 @@
             round
             color="grey-7"
             icon="edit"
-            @click="openEditDialog(props.row)"
             title="Editar"
+            @click="openEditDialog(props.row)"
           />
         </q-td>
       </template>
@@ -77,7 +77,7 @@
     <AddCredentialDialog v-model="showAddDialog" @added="loadCredentials" />
     <EditCredentialDialog
       v-model="showEditDialog"
-      :credentialData="selectedCredentialToEdit"
+      :credential-data="selectedCredentialToEdit"
       @updated="loadCredentials"
     />
   </q-page>
@@ -108,8 +108,8 @@ const columns: QTableColumn[] = [
   },
   { name: 'path', label: 'Arquivo PFX', field: 'CertPath', align: 'left' },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
-  { name: 'inspecao', label: 'Inspeção', align: 'center', sortable: true },
-  { name: 'acoes', label: 'Ações', align: 'right' },
+  { name: 'inspecao', label: 'Inspeção', field: () => '', align: 'center', sortable: true },
+  { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
 
 function openEditDialog(credential: nfse.Credential) {

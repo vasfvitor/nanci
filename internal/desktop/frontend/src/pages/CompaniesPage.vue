@@ -11,18 +11,18 @@
       :loading="false"
       no-data-label="Nenhuma empresa cadastrada."
     >
-      <template v-slot:top-right>
+      <template #top-right>
         <q-btn
           color="primary"
           icon="add"
           label="Adicionar"
-          @click="showAddDialog = true"
           dense
           flat
+          @click="showAddDialog = true"
         />
       </template>
 
-      <template v-slot:body-cell-ambiente="props">
+      <template #body-cell-ambiente="props">
         <q-td :props="props">
           <q-badge
             :color="props.row.Environment === 'producao' ? 'positive' : 'warning'"
@@ -33,7 +33,7 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-credencial="props">
+      <template #body-cell-credencial="props">
         <q-td :props="props" style="width: 250px">
           <q-select
             v-model="selectedCredentials[props.row.CNPJ]"
@@ -49,7 +49,7 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-acoes="props">
+      <template #body-cell-acoes="props">
         <q-td :props="props" class="q-gutter-x-sm">
           <q-btn
             dense
@@ -57,9 +57,9 @@
             round
             color="primary"
             icon="sync"
-            @click="syncCompany(props.row.CNPJ)"
             :loading="syncing === props.row.CNPJ"
             title="Sincronizar"
+            @click="syncCompany(props.row.CNPJ)"
           />
           <q-btn
             dense
@@ -67,8 +67,8 @@
             round
             color="grey-7"
             icon="edit"
-            @click="openEditDialog(props.row)"
             title="Editar"
+            @click="openEditDialog(props.row)"
           />
         </q-td>
       </template>
@@ -77,7 +77,7 @@
     <AddCompanyDialog v-model="showAddDialog" @added="reloadData" />
     <EditCompanyDialog
       v-model="showEditDialog"
-      :companyData="selectedCompanyToEdit"
+      :company-data="selectedCompanyToEdit"
       @updated="reloadData"
     />
   </q-page>
@@ -110,8 +110,8 @@ const columns: QTableColumn[] = [
   { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
-  { name: 'credencial', label: 'Credencial', align: 'left' },
-  { name: 'acoes', label: 'Ações', align: 'right' },
+  { name: 'credencial', label: 'Credencial', field: () => '', align: 'left' },
+  { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
 
 function openEditDialog(company: nfse.Company) {
@@ -145,9 +145,12 @@ async function reloadData() {
 
 async function assignCredential(cnpj: string) {
   try {
+    const credId = selectedCredentials.value[cnpj]
+    if (!credId) return
+
     await AssignCredentialToCompany({
       CompanyCNPJ: cnpj,
-      CredentialID: selectedCredentials.value[cnpj],
+      CredentialID: credId,
     })
     $q.notify({ type: 'positive', message: 'Credencial atribuída com sucesso.' })
     await loadCompanies()
