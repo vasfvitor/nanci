@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoadPKCS12_FileNotFound(t *testing.T) {
-	_, err := LoadPKCS12("non_existent_file.pfx", "password")
+	_, err := LoadPKCS12("non_existent_file.pfx", []byte("password"))
 	if !errors.Is(err, ErrFileNotFound) {
 		t.Errorf("expected ErrFileNotFound, got %v", err)
 	}
@@ -23,7 +23,7 @@ func TestLoadPKCS12_InvalidData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = LoadPKCS12(invalidFile, "password")
+	_, err = LoadPKCS12(invalidFile, []byte("password"))
 	if err == nil {
 		t.Error("expected error for invalid PFX data, got nil")
 	}
@@ -35,7 +35,7 @@ func TestLoadPKCS12_ValidMockCert(t *testing.T) {
 		t.Skip("Mock cert not found, skipping. Run 'go run gen/mock_cert.go' to generate it.")
 	}
 
-	loaded, err := LoadPKCS12(mockPfxPath, "mockdata")
+	loaded, err := LoadPKCS12(mockPfxPath, []byte("mockdata"))
 	if err != nil {
 		t.Fatalf("LoadPKCS12 failed on valid mock cert: %v", err)
 	}

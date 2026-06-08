@@ -76,6 +76,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	if err != nil {
 		return PullResult{}, fmt.Errorf("obter senha do certificado: %w", err)
 	}
+	defer cert.ZeroBytes(pass)
 
 	// 3. Load TLS certificate
 	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))

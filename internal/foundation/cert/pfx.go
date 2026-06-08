@@ -33,8 +33,18 @@ type LoadedCertificate struct {
 	Inspection Inspection
 }
 
+// ZeroBytes overwrites the slice with zeros to clear sensitive data from RAM.
+func ZeroBytes(b []byte) {
+	if b == nil {
+		return
+	}
+	for i := range b {
+		b[i] = 0
+	}
+}
+
 // LoadPKCS12 reads a .pfx or .p12 file, parses it into a tls.Certificate, and extracts inspection metadata.
-func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
+func LoadPKCS12(path string, password []byte) (LoadedCertificate, error) {
 	pfxData, err := os.ReadFile(path) // #nosec G304 -- path is explicitly selected by the local user.
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -43,8 +53,10 @@ func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
 		return LoadedCertificate{}, err
 	}
 
-	// Decode the PFX file using the provided password
-	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(pfxData, password)
+	// Decode the PFX file using the provided password.
+	// pkcs12.DecodeChain requires a string, so we convert it temporarily.
+	passStr := string(password)
+	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(pfxData, passStr)
 	if err != nil {
 		if errors.Is(err, pkcs12.ErrIncorrectPassword) {
 			return LoadedCertificate{}, ErrInvalidPass

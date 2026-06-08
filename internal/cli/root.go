@@ -79,6 +79,7 @@ func newApp() (*app.App, error) {
 		DataDir:            dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
+			Log:      log,
 		},
 	})
 	if err != nil {

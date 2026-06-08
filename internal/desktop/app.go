@@ -12,6 +12,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -21,13 +22,13 @@ import (
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
 type WailsCredentialProvider struct {
 	ctx           context.Context
-	passwordChans map[string]chan string
+	passwordChans map[string]chan []byte
 	mu            *sync.Mutex
 }
 
 // GetCertPassword asks the frontend for the certificate password and blocks until one is provided
-func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
-	ch := make(chan string, 1)
+func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) ([]byte, error) {
+	ch := make(chan []byte, 1)
 
 	p.mu.Lock()
 	p.passwordChans[req.RequestID] = ch
@@ -45,12 +46,12 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 	// Block until the password is submitted by the frontend
 	select {
 	case pass := <-ch:
-		if pass == "" {
-			return "", fmt.Errorf("operação cancelada pelo usuário")
+		if len(pass) == 0 {
+			return nil, fmt.Errorf("operação cancelada pelo usuário")
 		}
 		return pass, nil
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
@@ -58,14 +59,14 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 type App struct {
 	ctx           context.Context
 	core          *app.App
-	passwordChans map[string]chan string
+	passwordChans map[string]chan []byte
 	mu            sync.Mutex
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		passwordChans: make(map[string]chan string),
+		passwordChans: make(map[string]chan []byte),
 	}
 }
 
@@ -137,6 +138,7 @@ func (a *App) startup(ctx context.Context) {
 				passwordChans: a.passwordChans,
 				mu:            &a.mu,
 			},
+			Log: log,
 		},
 	})
 	if err != nil {
@@ -163,9 +165,11 @@ func (a *App) SubmitCertPassword(reqID string, password string) {
 	a.mu.Unlock()
 
 	if ok {
+		passBytes := []byte(password)
 		select {
-		case ch <- password:
+		case ch <- passBytes:
 		default:
+			cert.ZeroBytes(passBytes)
 		}
 	}
 }

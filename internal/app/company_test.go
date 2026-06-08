@@ -14,8 +14,8 @@ import (
 
 type credentialProviderStub struct{}
 
-func (credentialProviderStub) GetCertPassword(context.Context, app.CertPasswordRequest) (string, error) {
-	return "secret", nil
+func (credentialProviderStub) GetCertPassword(context.Context, app.CertPasswordRequest) ([]byte, error) {
+	return []byte("secret"), nil
 }
 
 func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {

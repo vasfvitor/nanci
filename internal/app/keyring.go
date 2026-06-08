@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/zalando/go-keyring"
 
@@ -18,37 +19,47 @@ const keyringService = "nanci_certs"
 // and, upon success, saves the new password to the keyring.
 type KeyringCredentialProvider struct {
 	Fallback CredentialProvider
+	Log      *slog.Logger
 }
 
 // GetCertPassword implements CredentialProvider.
-func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error) {
+func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req CertPasswordRequest) ([]byte, error) {
 	// 1. Try to get the password from the OS keyring
-	pass, err := keyring.Get(keyringService, req.CredentialID)
-	if err == nil && pass != "" {
+	passStr, err := keyring.Get(keyringService, req.CredentialID)
+	if err == nil && passStr != "" {
+		passBytes := []byte(passStr)
 		// Verify if the retrieved password actually works for this certificate
-		if _, err := cert.LoadPKCS12(req.CertPath, pass); err == nil {
+		if _, err := cert.LoadPKCS12(req.CertPath, passBytes); err == nil {
 			// Password is valid
-			return pass, nil
+			return passBytes, nil
 		}
 		// If it's invalid, we ignore the error and fall back to the user prompt
+		cert.ZeroBytes(passBytes)
 	}
 
 	// 2. Fall back to the wrapped provider (CLI or Wails)
-	pass, err = p.Fallback.GetCertPassword(ctx, req)
+	passBytes, err := p.Fallback.GetCertPassword(ctx, req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 3. Verify the user-provided password before saving it
-	if _, err := cert.LoadPKCS12(req.CertPath, pass); err != nil {
+	if _, err := cert.LoadPKCS12(req.CertPath, passBytes); err != nil {
+		cert.ZeroBytes(passBytes)
 		if errors.Is(err, cert.ErrInvalidPass) {
-			return "", fmt.Errorf("senha inválida para o certificado")
+			return nil, fmt.Errorf("senha inválida para o certificado")
 		}
-		return "", fmt.Errorf("erro ao verificar senha: %w", err)
+		return nil, fmt.Errorf("erro ao verificar senha: %w", err)
 	}
 
 	// 4. Save the valid password to the keyring for future use
-	_ = keyring.Set(keyringService, req.CredentialID, pass) // We ignore the error as it's not fatal
+	errSet := keyring.Set(keyringService, req.CredentialID, string(passBytes))
+	if errSet != nil && p.Log != nil {
+		p.Log.WarnContext(ctx, "Falha ao gravar senha no chaveiro nativo do S.O.",
+			slog.String("credential_id", req.CredentialID),
+			slog.String("cert_path", req.CertPath),
+			slog.String("error", errSet.Error()))
+	}
 
-	return pass, nil
+	return passBytes, nil
 }

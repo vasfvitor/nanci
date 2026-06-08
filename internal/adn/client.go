@@ -192,7 +192,15 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		errBodyBytes, _ := io.ReadAll(errBodyReader)
 		
 		if c.log != nil {
-			c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
+			if c.log.Enabled(ctx, slog.LevelDebug) {
+				c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
+			} else {
+				truncatedBody := string(errBodyBytes)
+				if len(truncatedBody) > 100 {
+					truncatedBody = truncatedBody[:100] + "... [truncated]"
+				}
+				c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", truncatedBody), slog.Duration("latency", time.Since(start)))
+			}
 		}
 
 		apiErr := &APIError{

@@ -25,7 +25,7 @@ type CertPasswordRequest struct {
 // The CLI implements this via terminal prompts; Wails will implement it via
 // a frontend dialog. internal/app must never import golang.org/x/term.
 type CredentialProvider interface {
-	GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error)
+	GetCertPassword(ctx context.Context, req CertPasswordRequest) ([]byte, error)
 }
 
 // App encapsulates the global dependencies of the application.
