@@ -34,3 +34,9 @@ security:
 	$(GITLEAKS) detect --source .
 
 check: fmt vuln lint test security
+
+seeddev:
+	go run ./cmd/seeddev
+
+mockcert:
+	go run ./cmd/mockcert

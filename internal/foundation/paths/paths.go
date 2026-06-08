@@ -9,6 +9,10 @@ import (
 // In normal environments, it uses os.UserConfigDir() (or LocalAppData).
 // If an error occurs or if specified, it may return a fallback.
 func DataDir() (string, error) {
+	if envDir := os.Getenv("NANCI_DATA_DIR"); envDir != "" {
+		return envDir, nil
+	}
+
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		// Fallback if unable to get the OS config dir
