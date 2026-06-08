@@ -26,7 +26,7 @@
         mask="####-##"
       >
         <template #append>
-          <q-icon name="sym_r_event" class="cursor-pointer">
+          <q-icon name="event" class="cursor-pointer">
             <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
               <q-date
                 v-model="filter.Competence"
@@ -161,7 +161,7 @@ const filter = ref({
 
 const datePopup = ref<{ hide: () => void } | null>(null)
 
-function onDateChange(_val: string, reason: string, _details: unknown) {
+function onDateChange(_val: string, reason: string) {
   if (reason === 'month') {
     datePopup.value?.hide()
   }
