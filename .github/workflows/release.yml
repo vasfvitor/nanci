@@ -5,12 +5,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      draft:
-        description: Create as draft release
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -25,6 +19,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
+      is_release: ${{ steps.version.outputs.is_release }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -33,27 +28,56 @@ jobs:
         id: version
         shell: bash
         run: |
-          # If triggered by a tag push, extract it. Otherwise fallback to a default or input.
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             tag="${GITHUB_REF_NAME}"
+            is_release="true"
           else
             tag="v0.0.0-dev"
+            is_release="false"
           fi
-          
+
           version="${tag#v}"
-          
+
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
 
-      - name: Check release tag does not exist
+      - name: Validate SemVer and compare with previous
+        if: steps.version.outputs.is_release == 'true'
         shell: bash
         run: |
           tag="${{ steps.version.outputs.tag }}"
 
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-            echo "Release tag already exists: $tag" >&2
+          if ! [[ "$tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Tag '$tag' is not a valid strict semver. Expected format: vX.Y.Z"
             exit 1
           fi
+
+          prev_tag=$(
+            git ls-remote --tags --refs origin \
+              | awk -F '/' '{print $3}' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              | grep -v "^${tag}$" \
+              | sort -V \
+              | tail -n 1
+          )
+
+          if [ -z "$prev_tag" ]; then
+            echo "No previous valid semver tags found. Proceeding as first release."
+            exit 0
+          fi
+
+          echo "Previous highest version: $prev_tag"
+          echo "Current version: $tag"
+
+          highest=$(printf "%s\n%s\n" "$prev_tag" "$tag" | sort -V | tail -n 1)
+
+          if [ "$highest" != "$tag" ]; then
+            echo "::error::New version ($tag) must be greater than previous highest version ($prev_tag)."
+            exit 1
+          fi
+
+          echo "Validation passed: $tag is greater than $prev_tag."
 
   build-desktop:
     needs: prepare
@@ -94,18 +118,18 @@ jobs:
           GOFLAGS: -trimpath
         shell: bash
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          COMMIT="${GITHUB_SHA::7}"
-          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          
-          echo "Patching wails.json with version $VERSION..."
-          jq --arg v "$VERSION" '.info.productVersion = $v' wails.json > wails.tmp.json
+          version="${{ needs.prepare.outputs.version }}"
+          commit="${GITHUB_SHA::7}"
+          date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          echo "Patching wails.json with version $version..."
+          jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.tmp.json
           mv wails.tmp.json wails.json
-          
+
           echo "Building Wails app..."
           wails build -platform windows/amd64 -nsis -m \
-            -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$VERSION' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$COMMIT' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$DATE'"
-            
+            -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
+
           test -s build/bin/nanci-desktop-amd64-installer.exe
 
       - name: Upload Desktop Artifact
@@ -114,9 +138,10 @@ jobs:
           name: nanci-desktop-windows-amd64-installer
           path: internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   publish-release:
+    if: needs.prepare.outputs.is_release == 'true'
     needs:
       - prepare
       - build-desktop
@@ -137,15 +162,15 @@ jobs:
         run: |
           mkdir -p release
 
-          cp artifacts/desktop/nanci-desktop-amd64-installer.exe \
-            release/nanci-desktop-windows-amd64-installer.exe
+          tag="${{ needs.prepare.outputs.tag }}"
 
-          test -s release/nanci-desktop-windows-amd64-installer.exe
+          cp artifacts/desktop/nanci-desktop-amd64-installer.exe \
+            "release/nanci-desktop-windows-amd64-${tag}-installer.exe"
+
+          test -s "release/nanci-desktop-windows-amd64-${tag}-installer.exe"
 
           cd release
-          sha256sum \
-            nanci-desktop-windows-amd64-installer.exe \
-            > nanci-checksums.txt
+          sha256sum * > nanci-checksums.txt
 
           cat nanci-checksums.txt
 
@@ -153,7 +178,7 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
-            release/nanci-desktop-windows-amd64-installer.exe
+            release/*.exe
             release/nanci-checksums.txt
 
       - name: Create GitHub Release
@@ -161,19 +186,19 @@ jobs:
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Release ${{ needs.prepare.outputs.tag }}
-          draft: ${{ inputs.draft }}
+          draft: false
           target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true
           body: |
             ## Download
 
-            - `nanci-desktop-windows-amd64-installer.exe`
+            - `nanci-desktop-windows-amd64-${{ needs.prepare.outputs.tag }}-installer.exe`
 
             SHA-256 checksum:
 
             - `nanci-checksums.txt`
           files: |
-            release/nanci-desktop-windows-amd64-installer.exe
+            release/*.exe
             release/nanci-checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
