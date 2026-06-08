@@ -12,7 +12,7 @@
           class="q-mr-sm"
           style="--wails-draggable: no-drag"
         />
-        <div class="text-weight-bold">Nanci Desktop</div>
+        <div class="text-weight-bold">Nanci</div>
         <q-space />
         <q-btn
           dense

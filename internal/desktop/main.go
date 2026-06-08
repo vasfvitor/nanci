@@ -56,8 +56,8 @@ func main() {
 	HelpMenu.AddText("Sobre", nil, func(_ *menu.CallbackData) {
 		runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
 			Type:    runtime.InfoDialog,
-			Title:   "Sobre o Nanci Desktop",
-			Message: fmt.Sprintf("Nanci Desktop %s\nCommit: %s\n\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version, buildinfo.Commit),
+			Title:   "Sobre o Nanci",
+			Message: fmt.Sprintf("Nanci %s\nCommit: %s\n\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version, buildinfo.Commit),
 		})
 	})
 
@@ -77,7 +77,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
-				Title:   "Nanci Desktop",
+				Title:   "Nanci",
 				Message: fmt.Sprintf("© 2026 Nanci. Todos os direitos reservados.\nVersão: %s\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version),
 				Icon:    icon,
 			},
