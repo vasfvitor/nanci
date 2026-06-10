@@ -130,3 +130,40 @@ func TestClient_Retries(t *testing.T) {
 		t.Errorf("expected ultNSU 10, got %d", resp.UltNSU)
 	}
 }
+
+func TestClient_FetchDocuments_WithContribuintesBasePath(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/contribuintes/DFe/0", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(DocumentResponse{
+			UltNSU: 0,
+			MaxNSU: 0,
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(ClientConfig{
+		Environment:     nfse.EnvironmentRestricted,
+		BaseURLOverride: server.URL + "/contribuintes",
+		Retry: RetryConfig{
+			MaxRetries: 0,
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if _, err := client.FetchDocuments(ctx, DistributionRequest{LastNSU: 0}); err != nil {
+		t.Fatalf("FetchDocuments failed: %v", err)
+	}
+}

@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
-	"log/slog"
 
 	"github.com/sethvargo/go-retry"
 
@@ -17,8 +18,8 @@ import (
 )
 
 const (
-	BaseURLProduction           = "https://adn.nfse.gov.br"
-	BaseURLRestrictedProduction = "https://adn.producaorestrita.nfse.gov.br"
+	BaseURLProduction           = "https://adn.nfse.gov.br/contribuintes"
+	BaseURLRestrictedProduction = "https://adn.producaorestrita.nfse.gov.br/contribuintes"
 
 	MaxJSONResponseBytes = 20 * 1024 * 1024 // 20 MiB
 	MaxErrorBodyBytes    = 64 * 1024        // 64 KiB
@@ -30,6 +31,16 @@ type APIError struct {
 	StatusCode int
 	Body       string
 	Retryable  bool
+}
+
+type responseError struct {
+	Codigo string `json:"Codigo"`
+}
+
+type noDocumentsResponse struct {
+	StatusProcessamento string          `json:"StatusProcessamento"`
+	LoteDFe             []json.RawMessage `json:"LoteDFe"`
+	Erros               []responseError `json:"Erros"`
 }
 
 func (e *APIError) Error() string {
@@ -80,6 +91,11 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	u, err := url.Parse(baseURLStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
+	}
+	if u.Path == "" {
+		u.Path = "/"
+	} else if !strings.HasSuffix(u.Path, "/") {
+		u.Path += "/"
 	}
 
 	// Clone the default transport to preserve proxy/dial settings
@@ -147,7 +163,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		if c.log != nil {
 			c.log.Log(ctx, slog.Level(-8), "ADN API Request", slog.String("method", method), slog.String("path", path))
 		}
-		
+
 		var reqBody io.Reader
 		if bodyProvider != nil {
 			reqBody = bodyProvider()
@@ -190,7 +206,20 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		// Read error response body bounded
 		errBodyReader := io.LimitReader(resp.Body, MaxErrorBodyBytes)
 		errBodyBytes, _ := io.ReadAll(errBodyReader)
-		
+
+		if resp.StatusCode == http.StatusNotFound && dest != nil {
+			handled, err := tryDecodeNoDocumentsResponse(errBodyBytes, dest)
+			if err != nil {
+				return err
+			}
+			if handled {
+				if c.log != nil {
+					c.log.DebugContext(ctx, "ADN API empty result", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode))
+				}
+				return nil
+			}
+		}
+
 		if c.log != nil {
 			c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
 		}
@@ -212,6 +241,29 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 		apiErr.Retryable = false
 		return apiErr // Not retryable
 	})
+}
+
+func tryDecodeNoDocumentsResponse(body []byte, dest interface{}) (bool, error) {
+	var response noDocumentsResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return false, nil
+	}
+	if response.StatusProcessamento != "NENHUM_DOCUMENTO_LOCALIZADO" {
+		return false, nil
+	}
+	if len(response.Erros) != 1 || response.Erros[0].Codigo != "E2220" {
+		return false, nil
+	}
+
+	documentResponse, ok := dest.(*DocumentResponse)
+	if !ok {
+		return false, nil
+	}
+
+	documentResponse.UltNSU = 0
+	documentResponse.MaxNSU = 0
+	documentResponse.Docs = nil
+	return true, nil
 }
 
 func isRetryableStatus(status int) bool {

@@ -61,3 +61,5 @@ require (
 )
 
 replace github.com/vasfvitor/nanci => ../../
+
+replace software.sslmate.com/src/go-pkcs12 => ../thirdparty/go-pkcs12

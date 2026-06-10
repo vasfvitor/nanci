@@ -2,6 +2,8 @@ module github.com/vasfvitor/nanci
 
 go 1.25.7
 
+replace software.sslmate.com/src/go-pkcs12 => ./internal/thirdparty/go-pkcs12
+
 require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
