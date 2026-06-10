@@ -34,3 +34,4 @@ eventos/
 **/.golangci-cache/**
 /vendor
 devdata/
+/.gocache-review
