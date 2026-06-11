@@ -38,9 +38,9 @@ type responseError struct {
 }
 
 type noDocumentsResponse struct {
-	StatusProcessamento string          `json:"StatusProcessamento"`
+	StatusProcessamento string            `json:"StatusProcessamento"`
 	LoteDFe             []json.RawMessage `json:"LoteDFe"`
-	Erros               []responseError `json:"Erros"`
+	Erros               []responseError   `json:"Erros"`
 }
 
 func (e *APIError) Error() string {

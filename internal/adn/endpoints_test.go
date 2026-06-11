@@ -167,3 +167,78 @@ func TestClient_FetchDocuments_WithContribuintesBasePath(t *testing.T) {
 		t.Fatalf("FetchDocuments failed: %v", err)
 	}
 }
+
+func TestClient_FetchDocuments_NoDocumentsResponseIsEmptyBatch(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/contribuintes/DFe/0", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"StatusProcessamento": "NENHUM_DOCUMENTO_LOCALIZADO",
+			"LoteDFe":             []any{},
+			"Alertas":             []any{},
+			"Erros": []map[string]any{
+				{"Codigo": "E2220", "Descricao": "Nenhum documento localizado"},
+			},
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(ClientConfig{
+		Environment:     nfse.EnvironmentRestricted,
+		BaseURLOverride: server.URL + "/contribuintes",
+		Retry: RetryConfig{
+			MaxRetries: 0,
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	resp, err := client.FetchDocuments(ctx, DistributionRequest{LastNSU: 0})
+	if err != nil {
+		t.Fatalf("FetchDocuments failed: %v", err)
+	}
+	if resp.UltNSU != 0 {
+		t.Errorf("expected ultNSU 0, got %d", resp.UltNSU)
+	}
+	if resp.MaxNSU != 0 {
+		t.Errorf("expected maxNSU 0, got %d", resp.MaxNSU)
+	}
+	if len(resp.Docs) != 0 {
+		t.Errorf("expected 0 docs, got %d", len(resp.Docs))
+	}
+}
+
+func TestClient_FetchDocuments_Unexpected404RemainsError(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/contribuintes/DFe/0", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not here", http.StatusNotFound)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(ClientConfig{
+		Environment:     nfse.EnvironmentRestricted,
+		BaseURLOverride: server.URL + "/contribuintes",
+		Retry: RetryConfig{
+			MaxRetries: 0,
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if _, err := client.FetchDocuments(ctx, DistributionRequest{LastNSU: 0}); err == nil {
+		t.Fatal("expected FetchDocuments to fail on unexpected 404")
+	}
+}
