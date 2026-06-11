@@ -83,8 +83,18 @@
   </q-page>
 </template>
 
+<style scoped>
+:deep(.q-table) {
+  table-layout: fixed;
+}
+:deep(.q-table td) {
+  white-space: normal !important;
+  word-break: break-word;
+}
+</style>
+
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, shallowRef } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import {
   AssignCredentialToCompany,
@@ -97,7 +107,7 @@ import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 
 const $q = useQuasar()
-const companies = ref<nfse.Company[]>([])
+const companies = shallowRef<nfse.Company[]>([])
 const showAddDialog = ref(false)
 const syncing = ref<string | null>(null)
 const credentialOptions = ref<{ label: string; value: string }[]>([])

@@ -135,8 +135,18 @@
   </q-page>
 </template>
 
+<style scoped>
+:deep(.q-table) {
+  table-layout: fixed;
+}
+:deep(.q-table td) {
+  white-space: normal !important;
+  word-break: break-word;
+}
+</style>
+
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, shallowRef, onMounted } from 'vue'
 import {
   ListCompanies,
   ListDocuments,
@@ -150,7 +160,7 @@ import { useQuasar, date } from 'quasar'
 
 const $q = useQuasar()
 const companyOptions = ref<{ label: string; value: string }[]>([])
-const documents = ref<nfse.CompanyDocument[]>([])
+const documents = shallowRef<nfse.CompanyDocument[]>([])
 const loading = ref(false)
 
 const filter = ref({
