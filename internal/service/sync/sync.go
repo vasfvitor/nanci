@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -138,8 +137,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		batchSuccessNSU := committedNSU
 		for _, env := range resp.Docs {
 			var err error
-			// Check schema to decide if it's a document or an event
-			if strings.Contains(env.Schema, "procEvento") {
+			if env.IsEvent() {
 				err = s.processEvent(ctx, company, env)
 			} else {
 				err = s.processDocument(ctx, company, env)
@@ -217,9 +215,9 @@ func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams
 // processDocument handles the decoding, parsing, and saving of a single document.
 func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
 	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", env.NSU))
-	
+
 	// 1. Decode Payload
-	payload, err := nfse.DecodePayload(env.XMLGZipBase64, nfse.PayloadLimits{
+	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
 		CompressedBytes:   5 * 1024 * 1024,
 		UncompressedBytes: 20 * 1024 * 1024,
 	})
@@ -262,9 +260,9 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 // processEvent handles decoding and saving an Event.
 func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope) error {
 	s.log.Log(ctx, slog.Level(-8), "Processando evento", slog.Int64("nsu", env.NSU))
-	
+
 	// 1. Decode Payload
-	payload, err := nfse.DecodePayload(env.XMLGZipBase64, nfse.PayloadLimits{
+	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
 		CompressedBytes:   5 * 1024 * 1024,
 		UncompressedBytes: 20 * 1024 * 1024,
 	})

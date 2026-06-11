@@ -1,7 +1,10 @@
 package syncservice
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"errors"
 	"log/slog"
 	"testing"
@@ -12,11 +15,11 @@ import (
 )
 
 type mockSyncRepo struct {
-	startRunParams    []nfse.StartRunParams
-	advanceParams     []nfse.AdvanceCheckpointParams
-	finishRunParams   []nfse.FinishRunParams
-	applyDocParams    []nfse.ApplyDocumentParams
-	applyEventParams  []nfse.ApplyEventParams
+	startRunParams   []nfse.StartRunParams
+	advanceParams    []nfse.AdvanceCheckpointParams
+	finishRunParams  []nfse.FinishRunParams
+	applyDocParams   []nfse.ApplyDocumentParams
+	applyEventParams []nfse.ApplyEventParams
 }
 
 func (m *mockSyncRepo) StartRun(ctx context.Context, p nfse.StartRunParams) (nfse.SyncRun, error) {
@@ -45,7 +48,7 @@ func (m *mockSyncRepo) ApplyEvent(ctx context.Context, p nfse.ApplyEventParams) 
 }
 
 type mockFetcher struct {
-	requests []adn.DistributionRequest
+	requests  []adn.DistributionRequest
 	responses []func() (*adn.DocumentResponse, error)
 	callCount int
 }
@@ -98,9 +101,9 @@ func TestSyncService_Loop(t *testing.T) {
 	svc := NewSyncService(repo, fetcher, xmlStore, logger)
 
 	company := &nfse.Company{
-		ID:       "comp-1",
-		CNPJ:     "12345678901234",
-		LastNSU:  0,
+		ID:      "comp-1",
+		CNPJ:    "12345678901234",
+		LastNSU: 0,
 	}
 	credential := &nfse.Credential{
 		ID:        "cred-1",
@@ -146,9 +149,9 @@ func TestSyncService_Failure(t *testing.T) {
 	svc := NewSyncService(repo, fetcher, xmlStore, slog.Default())
 
 	company := &nfse.Company{
-		ID:       "comp-1",
-		CNPJ:     "12345678901234",
-		LastNSU:  0,
+		ID:      "comp-1",
+		CNPJ:    "12345678901234",
+		LastNSU: 0,
 	}
 	credential := &nfse.Credential{
 		ID:        "cred-1",
@@ -166,4 +169,93 @@ func TestSyncService_Failure(t *testing.T) {
 	if repo.finishRunParams[0].Status != "failed" {
 		t.Errorf("expected status failed, got %s", repo.finishRunParams[0].Status)
 	}
+}
+
+func TestSyncService_ProcessesEventFromTipoEventoMetadata(t *testing.T) {
+	repo := &mockSyncRepo{}
+	fetcher := &mockFetcher{
+		responses: []func() (*adn.DocumentResponse, error){
+			func() (*adn.DocumentResponse, error) {
+				return &adn.DocumentResponse{
+					UltNSU: 1,
+					MaxNSU: 1,
+					Docs: []adn.DocumentEnvelope{
+						{
+							NSU:           1,
+							Schema:        "procNFSe_v1.00.xsd",
+							XMLGZipBase64: mustEncodeGzipBase64(t, `<pedCancNFSe><infPedidoCanc><chNFSe>12345678901234567890123456789012345678901234567890</chNFSe><cMotivo>Erro emissao</cMotivo><dhEvento>2026-06-04T12:00:00Z</dhEvento></infPedidoCanc></pedCancNFSe>`),
+							EventType:     "CANCELAMENTO",
+						},
+					},
+				}, nil
+			},
+		},
+	}
+	xmlStore := &mockXMLStore{}
+
+	svc := NewSyncService(repo, fetcher, xmlStore, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", LastNSU: 0}
+	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
+
+	if err := svc.Sync(context.Background(), company, credential, "exact", nil); err != nil {
+		t.Fatalf("expected sync success, got %v", err)
+	}
+
+	if len(repo.applyEventParams) != 1 {
+		t.Fatalf("expected 1 event to be applied, got %d", len(repo.applyEventParams))
+	}
+	if len(repo.applyDocParams) != 0 {
+		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocParams))
+	}
+}
+
+func TestSyncService_FallsBackToSchemaWhenMetadataMissing(t *testing.T) {
+	repo := &mockSyncRepo{}
+	fetcher := &mockFetcher{
+		responses: []func() (*adn.DocumentResponse, error){
+			func() (*adn.DocumentResponse, error) {
+				return &adn.DocumentResponse{
+					UltNSU: 2,
+					MaxNSU: 2,
+					Docs: []adn.DocumentEnvelope{
+						{
+							NSU:           2,
+							Schema:        "procEventoNFSe_v1.00.xsd",
+							XMLGZipBase64: mustEncodeGzipBase64(t, `<pedCancNFSe><infPedidoCanc><chNFSe>12345678901234567890123456789012345678901234567890</chNFSe><cMotivo>Erro emissao</cMotivo><dhEvento>2026-06-04T12:00:00Z</dhEvento></infPedidoCanc></pedCancNFSe>`),
+						},
+					},
+				}, nil
+			},
+		},
+	}
+	xmlStore := &mockXMLStore{}
+
+	svc := NewSyncService(repo, fetcher, xmlStore, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", LastNSU: 0}
+	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
+
+	if err := svc.Sync(context.Background(), company, credential, "exact", nil); err != nil {
+		t.Fatalf("expected sync success, got %v", err)
+	}
+
+	if len(repo.applyEventParams) != 1 {
+		t.Fatalf("expected 1 event to be applied, got %d", len(repo.applyEventParams))
+	}
+	if len(repo.applyDocParams) != 0 {
+		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocParams))
+	}
+}
+
+func mustEncodeGzipBase64(t *testing.T, xml string) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := zw.Write([]byte(xml)); err != nil {
+		t.Fatalf("failed to gzip xml: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("failed to close gzip writer: %v", err)
+	}
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }

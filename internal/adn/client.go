@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +33,7 @@ type APIError struct {
 	StatusCode int
 	Body       string
 	Retryable  bool
+	RetryAfter time.Duration
 }
 
 type responseError struct {
@@ -65,7 +68,7 @@ type ClientConfig struct {
 type Client struct {
 	baseURL    *url.URL
 	httpClient *http.Client
-	backoff    retry.Backoff
+	retry      RetryConfig
 	log        *slog.Logger
 }
 
@@ -138,16 +141,15 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 		maxRetries = 3
 	}
 
-	b := retry.NewExponential(initial)
-	b = retry.WithMaxRetries(uint64(maxRetries), b)
-	b = retry.WithCappedDuration(maxDelay, b)
-	b = retry.WithJitterPercent(20, b)
-
 	return &Client{
 		baseURL:    u,
 		httpClient: client,
-		backoff:    b,
-		log:        cfg.Log,
+		retry: RetryConfig{
+			MaxRetries: maxRetries,
+			Initial:    initial,
+			MaxDelay:   maxDelay,
+		},
+		log: cfg.Log,
 	}, nil
 }
 
@@ -158,7 +160,8 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 	}
 	u := c.baseURL.ResolveReference(rel).String()
 
-	return retry.Do(ctx, c.backoff, func(ctx context.Context) error {
+	backoff := c.newBackoff()
+	for {
 		start := time.Now()
 		if c.log != nil {
 			c.log.Log(ctx, slog.Level(-8), "ADN API Request", slog.String("method", method), slog.String("path", path))
@@ -171,7 +174,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 
 		req, err := http.NewRequestWithContext(ctx, method, u, reqBody)
 		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err) // Not retryable
+			return fmt.Errorf("failed to create request: %w", err)
 		}
 
 		req.Header.Set("Content-Type", "application/json")
@@ -179,68 +182,115 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
-			// Transport error - retryable if context is active
 			if ctx.Err() != nil {
-				return err // Context canceled
-			}
-			return retry.RetryableError(fmt.Errorf("transport error: %w", err))
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-			if c.log != nil {
-				c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.Duration("latency", time.Since(start)))
-			}
-			if dest != nil {
-				lr := io.LimitReader(resp.Body, MaxJSONResponseBytes+1)
-				if err := json.NewDecoder(lr).Decode(dest); err != nil {
-					// JSON decode error - not retryable
-					return fmt.Errorf("failed to decode json response: %w", err)
-				}
-			}
-			return nil
-		}
-
-		// Read error response body bounded
-		errBodyReader := io.LimitReader(resp.Body, MaxErrorBodyBytes)
-		errBodyBytes, _ := io.ReadAll(errBodyReader)
-
-		if resp.StatusCode == http.StatusNotFound && dest != nil {
-			handled, err := tryDecodeNoDocumentsResponse(errBodyBytes, dest)
-			if err != nil {
 				return err
 			}
-			if handled {
+			if retryErr := c.waitForRetry(ctx, backoff, &APIError{
+				Method:    method,
+				URL:       u,
+				Body:      fmt.Sprintf("transport error: %v", err),
+				Retryable: true,
+			}); retryErr != nil {
+				return retryErr
+			}
+			continue
+		}
+
+		err = func() error {
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+
+			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 				if c.log != nil {
-					c.log.DebugContext(ctx, "ADN API empty result", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode))
+					c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.Duration("latency", time.Since(start)))
+				}
+				if dest != nil {
+					lr := io.LimitReader(resp.Body, MaxJSONResponseBytes+1)
+					if err := json.NewDecoder(lr).Decode(dest); err != nil {
+						return fmt.Errorf("failed to decode json response: %w", err)
+					}
 				}
 				return nil
 			}
+
+			errBodyReader := io.LimitReader(resp.Body, MaxErrorBodyBytes)
+			errBodyBytes, _ := io.ReadAll(errBodyReader)
+
+			if resp.StatusCode == http.StatusNotFound && dest != nil {
+				handled, err := tryDecodeNoDocumentsResponse(errBodyBytes, dest)
+				if err != nil {
+					return c.newAPIError(method, u, resp.StatusCode, err.Error(), false, 0)
+				}
+				if handled {
+					if c.log != nil {
+						c.log.DebugContext(ctx, "ADN API empty result", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode))
+					}
+					return nil
+				}
+				if explicit404 := classifyUnexpected404Body(errBodyBytes); explicit404 != "" {
+					return c.newAPIError(method, u, resp.StatusCode, explicit404, false, 0)
+				}
+			}
+
+			if c.log != nil {
+				c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
+			}
+
+			retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"), c.retry.MaxDelay)
+			return c.newAPIError(method, u, resp.StatusCode, string(errBodyBytes), isRetryableStatus(resp.StatusCode), retryAfter)
+		}()
+		if err == nil {
+			return nil
 		}
 
-		if c.log != nil {
-			c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.Retryable {
+			if retryErr := c.waitForRetry(ctx, backoff, apiErr); retryErr != nil {
+				return retryErr
+			}
+			continue
 		}
+		return err
+	}
+}
 
-		apiErr := &APIError{
-			Method:     method,
-			URL:        u,
-			StatusCode: resp.StatusCode,
-			Body:       string(errBodyBytes),
-		}
+func (c *Client) newBackoff() retry.Backoff {
+	b := retry.NewExponential(c.retry.Initial)
+	b = retry.WithMaxRetries(uint64(c.retry.MaxRetries), b)
+	b = retry.WithCappedDuration(c.retry.MaxDelay, b)
+	b = retry.WithJitterPercent(20, b)
+	return b
+}
 
-		// Handle Retry-After logic if we want, go-retry doesn't inherently parse the header.
-		// We'll let go-retry handle backoff, but determine retryability
-		if isRetryableStatus(resp.StatusCode) {
-			apiErr.Retryable = true
-			return retry.RetryableError(apiErr)
-		}
+func (c *Client) waitForRetry(ctx context.Context, backoff retry.Backoff, apiErr *APIError) error {
+	delay, stop := backoff.Next()
+	if stop {
+		return apiErr
+	}
+	if apiErr.RetryAfter > 0 {
+		delay = apiErr.RetryAfter
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
 
-		apiErr.Retryable = false
-		return apiErr // Not retryable
-	})
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func (c *Client) newAPIError(method, url string, statusCode int, body string, retryable bool, retryAfter time.Duration) *APIError {
+	return &APIError{
+		Method:     method,
+		URL:        url,
+		StatusCode: statusCode,
+		Body:       body,
+		Retryable:  retryable,
+		RetryAfter: retryAfter,
+	}
 }
 
 func tryDecodeNoDocumentsResponse(body []byte, dest interface{}) (bool, error) {
@@ -264,6 +314,47 @@ func tryDecodeNoDocumentsResponse(body []byte, dest interface{}) (bool, error) {
 	documentResponse.MaxNSU = 0
 	documentResponse.Docs = nil
 	return true, nil
+}
+
+func classifyUnexpected404Body(body []byte) string {
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return "unexpected 404 from ADN route: empty response body"
+	}
+	if strings.HasPrefix(trimmed, "<") {
+		return fmt.Sprintf("unexpected 404 from ADN route: non-ADN HTML response: %s", trimmed)
+	}
+
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return fmt.Sprintf("unexpected 404 from ADN route: non-ADN payload: %s", trimmed)
+	}
+	if _, ok := payload["StatusProcessamento"]; ok {
+		return ""
+	}
+	if _, ok := payload["LoteDFe"]; ok {
+		return ""
+	}
+	if _, ok := payload["Erros"]; ok {
+		return ""
+	}
+	return fmt.Sprintf("unexpected 404 from ADN route: payload does not match ADN envelope: %s", trimmed)
+}
+
+func parseRetryAfter(raw string, maxDelay time.Duration) time.Duration {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+	seconds, err := strconv.Atoi(raw)
+	if err != nil || seconds < 0 {
+		return 0
+	}
+	delay := time.Duration(seconds) * time.Second
+	if maxDelay > 0 && delay > maxDelay {
+		return maxDelay
+	}
+	return delay
 }
 
 func isRetryableStatus(status int) bool {
