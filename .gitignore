@@ -35,3 +35,4 @@ eventos/
 /vendor
 devdata/
 /.gocache-review
+.env.local
