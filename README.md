@@ -80,6 +80,14 @@ Para informar a senha do certificado sem digitar no prompt:
 NANCI_CERT_PASSWORD=senha
 ```
 
+Ou use um arquivo `.env.local` não versionado na raiz do projeto:
+
+```dotenv
+NANCI_CERT_PASSWORD=senha
+```
+
+Variáveis reais do ambiente continuam tendo prioridade sobre `.env.local`.
+
 Sincronizar notas:
 
 ```bash

@@ -10,6 +10,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -46,6 +47,10 @@ func init() {
 // newApp is a helper for commands that need the App instance.
 // It also injects the terminal-based CredentialProvider.
 func newApp() (*app.App, error) {
+	if err := envfile.LoadLocal(); err != nil {
+		return nil, fmt.Errorf("falha ao carregar .env.local: %w", err)
+	}
+
 	// If env var is set, it overrides the flag
 	if os.Getenv("NANCI_TRACE") == "1" {
 		trace = true
@@ -69,14 +74,14 @@ func newApp() (*app.App, error) {
 	}
 
 	application, err := app.New(app.Dependencies{
-		Log:                log,
-		DB:                 db,
-		CompanyRepo:        store.NewCompanyRepository(db),
-		CredentialRepo:     store.NewCredentialRepository(db),
-		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     store.NewDocumentRepository(db),
-		XMLStore:           files.NewBlobStore(dataDir),
-		DataDir:            dataDir,
+		Log:            log,
+		DB:             db,
+		CompanyRepo:    store.NewCompanyRepository(db),
+		CredentialRepo: store.NewCredentialRepository(db),
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: store.NewDocumentRepository(db),
+		XMLStore:       files.NewBlobStore(dataDir),
+		DataDir:        dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
 		},

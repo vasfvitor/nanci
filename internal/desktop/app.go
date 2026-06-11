@@ -12,6 +12,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -87,9 +88,14 @@ func (w wailsLogWriter) Write(p []byte) (n int, err error) {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
+	if err := envfile.LoadLocal(); err != nil {
+		fmt.Printf("failed to load .env.local: %v\n", err)
+		return
+	}
+
 	verbose := os.Getenv("NANCI_VERBOSE") == "1"
 	trace := os.Getenv("NANCI_TRACE") == "1"
-	
+
 	level := slog.LevelInfo
 	if trace {
 		level = logpkg.LevelTrace
@@ -287,7 +293,7 @@ func (a *App) ExportLogs() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	err = os.WriteFile(savePath, input, 0644)
 	if err != nil {
 		return "", err
