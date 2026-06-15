@@ -76,6 +76,15 @@
       <div class="column full-height">
         <q-toolbar class="bg-grey-9 text-white dense">
           <q-toolbar-title class="text-subtitle1">Console</q-toolbar-title>
+          <q-toggle
+            v-model="debugEnabled"
+            color="secondary"
+            label="Debug"
+            left-label
+            dense
+            @update:model-value="onDebugToggle"
+            class="q-mr-sm"
+          />
           <q-btn flat round dense icon="content_copy" title="Copiar logs" @click="copyLogs">
             <q-tooltip>Copiar logs</q-tooltip>
           </q-btn>
@@ -84,17 +93,19 @@
           </q-btn>
           <q-btn flat round dense icon="close" @click="consoleOpen = false" />
         </q-toolbar>
-        <q-scroll-area ref="logScrollArea" class="col q-pa-sm">
-          <pre
-            style="
-              white-space: pre-wrap;
-              font-size: 12px;
-              font-family: monospace;
-              margin: 0;
-              word-break: break-all;
-            "
-            >{{ logs.join('') }}</pre
+        <q-scroll-area ref="logScrollArea" class="col q-pa-sm bg-black">
+          <div v-if="parsedLogs.length === 0" class="text-grey-6 text-center q-mt-md">Nenhum log disponível</div>
+          <div
+            v-for="(log, idx) in parsedLogs"
+            :key="idx"
+            class="q-mb-xs"
+            style="font-size: 13px; font-family: 'Fira Code', monospace; word-break: break-all;"
           >
+            <span class="text-grey-6 q-mr-sm">[{{ log.time }}]</span>
+            <span :class="getLevelColor(log.level)" class="text-weight-bold q-mr-sm">{{ log.level }}</span>
+            <span class="text-white q-mr-sm">{{ log.msg }}</span>
+            <span v-if="log.extras" class="text-grey-5">{{ log.extras }}</span>
+          </div>
         </q-scroll-area>
       </div>
     </q-drawer>
@@ -113,8 +124,19 @@ import { EventsOn, WindowMinimise, WindowToggleMaximise, Quit } from '../../wail
 const $q = useQuasar()
 const leftDrawerOpen = ref(false)
 const consoleOpen = ref(false)
+const debugEnabled = ref(false)
 const logs = ref<string[]>([])
+const parsedLogs = ref<Array<{time: string, level: string, msg: string, extras: string}>>([])
 const logScrollArea = ref<HTMLElement | null>(null)
+
+function getLevelColor(level: string) {
+  const lvl = level.toUpperCase()
+  if (lvl.includes('INFO')) return 'text-blue-4'
+  if (lvl.includes('WARN')) return 'text-orange-4'
+  if (lvl.includes('ERROR')) return 'text-red-4'
+  if (lvl.includes('DEBUG')) return 'text-purple-4'
+  return 'text-green-4'
+}
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -122,6 +144,15 @@ function toggleLeftDrawer() {
 
 function toggleConsole() {
   consoleOpen.value = !consoleOpen.value
+}
+
+function onDebugToggle(val: boolean) {
+  // Use ts-ignore just in case Wails bindings haven't caught up, it will be mapped globally on window.go.main.App
+  // @ts-ignore
+  if (window.go && window.go.main && window.go.main.App && window.go.main.App.ToggleDebug) {
+    // @ts-ignore
+    window.go.main.App.ToggleDebug(val)
+  }
 }
 
 function minimise() {
@@ -138,6 +169,7 @@ function closeApp() {
 
 function clearLogs() {
   logs.value = []
+  parsedLogs.value = []
 }
 
 async function copyLogs() {
@@ -160,9 +192,38 @@ onMounted(() => {
 
   EventsOn('backend-log', (msg: string) => {
     logs.value.push(msg)
-    // Limit log size to prevent memory issues (e.g. max 1000 lines/chunks)
-    if (logs.value.length > 2000) {
-      logs.value.splice(0, logs.value.length - 2000)
+    
+    // Parse the slog TextHandler format: time=... level=... msg="..." extras
+    const line = msg.trim()
+    let timeStr = ''
+    let levelStr = 'INFO'
+    let msgStr = line
+    let extrasStr = ''
+
+    const timeMatch = line.match(/time=([^\s]+)/)
+    const levelMatch = line.match(/level=([^\s]+)/)
+    const msgMatch = line.match(/msg="([^"]+)"/)
+    
+    if (timeMatch) timeStr = timeMatch[1].substring(11, 19) // Extract HH:mm:ss from ISO string
+    if (levelMatch) levelStr = levelMatch[1]
+    
+    if (msgMatch) {
+      msgStr = msgMatch[1]
+      // Everything after the message is considered 'extras'
+      const afterMsg = line.substring(msgMatch.index! + msgMatch[0].length)
+      extrasStr = afterMsg.trim()
+    }
+
+    parsedLogs.value.push({
+      time: timeStr || new Date().toLocaleTimeString(),
+      level: levelStr,
+      msg: msgStr,
+      extras: extrasStr
+    })
+
+    if (parsedLogs.value.length > 500) {
+      parsedLogs.value.splice(0, parsedLogs.value.length - 500)
+      logs.value.splice(0, logs.value.length - 500)
     }
 
     // Scroll to bottom

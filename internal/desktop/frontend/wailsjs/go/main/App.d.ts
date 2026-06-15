@@ -35,6 +35,8 @@ export function Status(arg1:string):Promise<app.StatusResult>;
 
 export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
 
+export function ToggleDebug(arg1:boolean):Promise<void>;
+
 export function UpdateCompany(arg1:app.UpdateCompanyInput):Promise<void>;
 
 export function UpdateCredentialData(arg1:app.UpdateCredentialDataInput):Promise<void>;

@@ -82,7 +82,15 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 		// Fetch documents batch
 		requestedNSU := committedNSU
-		s.log.InfoContext(ctx, "Buscando lote de documentos", slog.Int64("requested_nsu", requestedNSU))
+		
+		isThrottled := emptyConsecutive > 0 && emptyConsecutive%50 != 0
+		if !isThrottled {
+			if emptyConsecutive > 0 {
+				s.log.InfoContext(ctx, "Varrendo NSUs vazios...", slog.Int64("requested_nsu", requestedNSU), slog.Int("empty_streak", emptyConsecutive))
+			} else {
+				s.log.InfoContext(ctx, "Buscando lote de documentos", slog.Int64("requested_nsu", requestedNSU))
+			}
+		}
 
 		resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
 			LastNSU:          requestedNSU,
@@ -107,10 +115,12 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		}
 
 		docsInBatch := len(resp.Docs)
-		s.log.DebugContext(ctx, "Lote recebido",
-			slog.Int("docs_in_batch", docsInBatch),
-			slog.Int64("ult_nsu", resp.UltNSU),
-			slog.Int64("max_nsu", resp.MaxNSU))
+		if docsInBatch > 0 || !isThrottled {
+			s.log.DebugContext(ctx, "Lote recebido",
+				slog.Int("docs_in_batch", docsInBatch),
+				slog.Int64("ult_nsu", resp.UltNSU),
+				slog.Int64("max_nsu", resp.MaxNSU))
+		}
 
 		// Report progress
 		if progress != nil {

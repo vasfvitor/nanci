@@ -61,12 +61,14 @@ type App struct {
 	core          *app.App
 	passwordChans map[string]chan string
 	mu            sync.Mutex
+	logLevel      *slog.LevelVar
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
 		passwordChans: make(map[string]chan string),
+		logLevel:      new(slog.LevelVar),
 	}
 }
 
@@ -96,16 +98,17 @@ func (a *App) startup(ctx context.Context) {
 	verbose := os.Getenv("NANCI_VERBOSE") == "1"
 	trace := os.Getenv("NANCI_TRACE") == "1"
 
-	level := slog.LevelInfo
 	if trace {
-		level = logpkg.LevelTrace
+		a.logLevel.Set(logpkg.LevelTrace)
 	} else if verbose {
-		level = slog.LevelDebug
+		a.logLevel.Set(slog.LevelDebug)
+	} else {
+		a.logLevel.Set(slog.LevelInfo)
 	}
 
 	wWriter := wailsLogWriter{ctx: ctx}
 	handler := slog.NewTextHandler(wWriter, &slog.HandlerOptions{
-		Level: level,
+		Level: a.logLevel,
 	})
 	log := slog.New(handler)
 
@@ -209,6 +212,14 @@ func (a *App) SelectExportDirectory() (string, error) {
 }
 
 // --- Core API Exposure ---
+
+func (a *App) ToggleDebug(enable bool) {
+	if enable {
+		a.logLevel.Set(slog.LevelDebug)
+	} else {
+		a.logLevel.Set(slog.LevelInfo)
+	}
+}
 
 func (a *App) AddCompany(input app.AddCompanyInput) error {
 	return a.core.AddCompany(a.ctx, input)
