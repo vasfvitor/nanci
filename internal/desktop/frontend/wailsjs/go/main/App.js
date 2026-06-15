@@ -70,6 +70,10 @@ export function SelectExportDirectory() {
   return window['go']['main']['App']['SelectExportDirectory']();
 }
 
+export function SetLogLevel(arg1) {
+  return window['go']['main']['App']['SetLogLevel'](arg1);
+}
+
 export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
 }

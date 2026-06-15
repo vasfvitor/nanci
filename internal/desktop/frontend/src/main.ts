@@ -10,10 +10,12 @@ import 'quasar/src/css/index.sass'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
+import { useAppStore } from './stores/app'
 
 const myApp = createApp(App)
+const pinia = createPinia()
 
-myApp.use(createPinia())
+myApp.use(pinia)
 myApp.use(router)
 
 myApp.use(Quasar, {
@@ -27,5 +29,7 @@ myApp.use(Quasar, {
   lang: quasarLang,
   iconSet: quasarIconSet,
 })
+
+useAppStore(pinia).initLogListeners()
 
 myApp.mount('#app')

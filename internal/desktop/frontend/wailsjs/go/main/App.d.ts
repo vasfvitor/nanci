@@ -37,6 +37,8 @@ export function SelectCertificate():Promise<string>;
 
 export function SelectExportDirectory():Promise<string>;
 
+export function SetLogLevel(arg1:string):Promise<void>;
+
 export function Status(arg1:string):Promise<app.StatusResult>;
 
 export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;

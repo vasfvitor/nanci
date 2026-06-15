@@ -87,14 +87,20 @@
       <div class="column full-height">
         <q-toolbar class="bg-grey-9 text-white dense">
           <q-toolbar-title class="text-subtitle1">Console</q-toolbar-title>
-          <q-toggle
-            v-model="debugEnabled"
-            color="secondary"
-            label="Debug"
-            left-label
+          <q-select
+            v-model="logFilterLevel"
+            :options="logLevelOptions"
+            emit-value
+            map-options
+            label="Nível"
+            outlined
             dense
-            @update:model-value="onDebugToggle"
+            options-dense
             class="q-mr-sm"
+            dark
+            bg-color="grey-8"
+            style="min-width: 150px"
+            @update:model-value="onLogLevelChange"
           />
           <q-btn flat round dense icon="content_copy" title="Copiar logs" @click="copyLogs">
             <q-tooltip>Copiar logs</q-tooltip>
@@ -105,17 +111,17 @@
           <q-btn flat round dense icon="close" @click="consoleOpen = false" />
         </q-toolbar>
         <q-scroll-area ref="logScrollArea" class="col q-pa-sm bg-black">
-          <div v-if="parsedLogs.length === 0" class="text-grey-6 text-center q-mt-md">Nenhum log disponível</div>
+          <div v-if="filteredLogEntries.length === 0" class="text-grey-6 text-center q-mt-md">Nenhum log disponível</div>
           <div
-            v-for="(log, idx) in parsedLogs"
+            v-for="(log, idx) in filteredLogEntries"
             :key="idx"
             class="q-mb-xs"
             style="font-size: 13px; font-family: 'Fira Code', monospace; word-break: break-all;"
           >
-            <span class="text-grey-6 q-mr-sm">[{{ log.time }}]</span>
+            <span class="text-grey-6 q-mr-sm">[{{ formatTime(log.time) }}]</span>
             <span :class="getLevelColor(log.level)" class="text-weight-bold q-mr-sm">{{ log.level }}</span>
             <span class="text-white q-mr-sm">{{ log.msg }}</span>
-            <span v-if="log.extras" class="text-grey-5">{{ log.extras }}</span>
+            <span v-if="log.attrs" class="text-grey-5">{{ log.attrs }}</span>
           </div>
         </q-scroll-area>
       </div>
@@ -129,7 +135,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { EventsOn, WindowMinimise, WindowToggleMaximise, Quit } from '../../wailsjs/runtime/runtime'
 import { useAppStore } from '../stores/app'
@@ -137,11 +143,14 @@ import { useAppStore } from '../stores/app'
 const $q = useQuasar()
 const appStore = useAppStore()
 const leftDrawerOpen = ref(false)
-const consoleOpen = ref(false)
-const { debugEnabled } = storeToRefs(appStore)
-const logs = ref<string[]>([])
-const parsedLogs = ref<Array<{time: string, level: string, msg: string, extras: string}>>([])
+const { consoleOpen, logFilterLevel, filteredLogEntries, filteredLogsText } = storeToRefs(appStore)
 const logScrollArea = ref<HTMLElement | null>(null)
+const logLevelOptions = [
+  { label: 'Info', value: 'info' },
+  { label: 'Warn', value: 'warn' },
+  { label: 'Debug', value: 'debug' },
+  { label: 'Trace', value: 'trace' },
+]
 
 function getLevelColor(level: string) {
   const lvl = level.toUpperCase()
@@ -160,13 +169,8 @@ function toggleConsole() {
   consoleOpen.value = !consoleOpen.value
 }
 
-function onDebugToggle(val: boolean) {
-  // Use ts-ignore just in case Wails bindings haven't caught up, it will be mapped globally on window.go.main.App
-  // @ts-ignore
-  if (window.go && window.go.main && window.go.main.App && window.go.main.App.ToggleDebug) {
-    // @ts-ignore
-    window.go.main.App.ToggleDebug(val)
-  }
+async function onLogLevelChange(level: 'info' | 'warn' | 'debug' | 'trace') {
+  await appStore.setLogFilter(level)
 }
 
 function minimise() {
@@ -182,17 +186,32 @@ function closeApp() {
 }
 
 function clearLogs() {
-  logs.value = []
-  parsedLogs.value = []
+  appStore.clearLogs()
 }
 
 async function copyLogs() {
   try {
-    await navigator.clipboard.writeText(logs.value.join(''))
+    await navigator.clipboard.writeText(filteredLogsText.value)
     $q.notify({ type: 'positive', message: 'Logs copiados para a área de transferência.' })
   } catch {
     $q.notify({ type: 'negative', message: 'Erro ao copiar logs.' })
   }
+}
+
+function formatTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString('pt-BR')
+}
+
+function scrollLogsToBottom() {
+  if (!consoleOpen.value) return
+  nextTick(() => {
+    if (logScrollArea.value) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(logScrollArea.value as any).setScrollPercentage('vertical', 1.0)
+    }
+  })
 }
 
 onMounted(() => {
@@ -203,52 +222,12 @@ onMounted(() => {
   EventsOn('notify-error', (msg: string) => {
     $q.notify({ type: 'negative', message: msg })
   })
+})
 
-  EventsOn('backend-log', (msg: string) => {
-    logs.value.push(msg)
-    
-    // Parse the slog TextHandler format: time=... level=... msg="..." extras
-    const line = msg.trim()
-    let timeStr = ''
-    let levelStr = 'INFO'
-    let msgStr = line
-    let extrasStr = ''
-
-    const timeMatch = line.match(/time=([^\s]+)/)
-    const levelMatch = line.match(/level=([^\s]+)/)
-    const msgMatch = line.match(/msg="([^"]+)"/)
-    
-    if (timeMatch && timeMatch[1]) timeStr = timeMatch[1].substring(11, 19) // Extract HH:mm:ss from ISO string
-    if (levelMatch && levelMatch[1]) levelStr = levelMatch[1]
-    
-    if (msgMatch && msgMatch[1]) {
-      msgStr = msgMatch[1]
-      // Everything after the message is considered 'extras'
-      const afterMsg = line.substring(msgMatch.index! + msgMatch[0].length)
-      extrasStr = afterMsg.trim()
-    }
-
-    parsedLogs.value.push({
-      time: timeStr || new Date().toLocaleTimeString(),
-      level: levelStr,
-      msg: msgStr,
-      extras: extrasStr
-    })
-
-    if (parsedLogs.value.length > 500) {
-      parsedLogs.value.splice(0, parsedLogs.value.length - 500)
-      logs.value.splice(0, logs.value.length - 500)
-    }
-
-    // Scroll to bottom
-    if (consoleOpen.value) {
-      nextTick(() => {
-        if (logScrollArea.value) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ;(logScrollArea.value as any).setScrollPercentage('vertical', 1.0)
-        }
-      })
-    }
-  })
+watch(() => filteredLogEntries.value.length, scrollLogsToBottom)
+watch(consoleOpen, (open) => {
+  if (open) {
+    scrollLogsToBottom()
+  }
 })
 </script>

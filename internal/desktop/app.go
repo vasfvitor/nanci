@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"fmt"
 	"log/slog"
@@ -11,7 +12,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/vasfvitor/nanci/internal/app"
-	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -58,6 +58,8 @@ type App struct {
 	passwordChans map[string]chan string
 	mu            sync.Mutex
 	logLevel      *slog.LevelVar
+	logWriter     *rotatingFileWriter
+	logPath       string
 }
 
 // NewApp creates a new App application struct
@@ -66,19 +68,6 @@ func NewApp() *App {
 		passwordChans: make(map[string]chan string),
 		logLevel:      new(slog.LevelVar),
 	}
-}
-
-type wailsLogWriter struct {
-	ctx context.Context
-}
-
-func (w wailsLogWriter) Write(p []byte) (n int, err error) {
-	msg := string(p)
-	runtime.LogPrint(w.ctx, msg)
-	if w.ctx != nil {
-		runtime.EventsEmit(w.ctx, "backend-log", msg)
-	}
-	return len(p), nil
 }
 
 // startup is called when the app starts. The context is saved
@@ -91,22 +80,22 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	verbose := os.Getenv("NANCI_VERBOSE") == "1"
 	trace := os.Getenv("NANCI_TRACE") == "1"
+	a.logLevel.Set(resolveDesktopBaseLevel(trace))
 
-	if trace {
-		a.logLevel.Set(logpkg.LevelTrace)
-	} else if verbose {
-		a.logLevel.Set(slog.LevelDebug)
-	} else {
-		a.logLevel.Set(slog.LevelInfo)
+	logDir, err := desktopLogDir()
+	if err != nil {
+		fmt.Printf("failed to configure desktop log dir: %v\n", err)
+		return
 	}
+	a.logPath = filepath.Join(logDir, desktopLogFileName)
 
-	wWriter := wailsLogWriter{ctx: ctx}
-	handler := slog.NewTextHandler(wWriter, &slog.HandlerOptions{
-		Level: a.logLevel,
-	})
-	log := slog.New(handler)
+	log, writer, err := newDesktopLogger(ctx, a.logLevel, a.logPath)
+	if err != nil {
+		fmt.Printf("failed to configure desktop logger: %v\n", err)
+		return
+	}
+	a.logWriter = writer
 
 	coreApp, err := app.NewRuntime(app.RuntimeOptions{
 		Log: log,
@@ -130,6 +119,9 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown(ctx context.Context) {
 	if a.core != nil {
 		a.core.Close()
+	}
+	if a.logWriter != nil {
+		_ = a.logWriter.Close()
 	}
 }
 
@@ -186,9 +178,17 @@ func (a *App) SelectExportDirectory() (string, error) {
 func (a *App) ToggleDebug(enable bool) {
 	if enable {
 		a.logLevel.Set(slog.LevelDebug)
-	} else {
-		a.logLevel.Set(slog.LevelInfo)
+		return
 	}
+	a.logLevel.Set(slog.LevelDebug)
+}
+
+func (a *App) SetLogLevel(level string) {
+	if level == "trace" {
+		a.logLevel.Set(resolveDesktopBaseLevel(true))
+		return
+	}
+	a.logLevel.Set(resolveDesktopBaseLevel(false))
 }
 
 func (a *App) AddCompany(input app.AddCompanyInput) error {
@@ -260,21 +260,15 @@ func (a *App) ExportZIP(input app.ExportInput) error {
 }
 
 func (a *App) ExportLogs() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get config dir: %w", err)
-	}
-	logFile := filepath.Join(configDir, "Nanci", "app.log")
-
-	if _, err := os.Stat(logFile); os.IsNotExist(err) {
-		return "", fmt.Errorf("arquivo de log não encontrado")
+	if a.logPath == "" {
+		return "", fmt.Errorf("logger de desktop não configurado")
 	}
 
 	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "Exportar Logs",
-		DefaultFilename: "nanci_debug_logs.txt",
+		DefaultFilename: "nanci_desktop_logs.zip",
 		Filters: []runtime.FileFilter{
-			{DisplayName: "Arquivos de Texto (*.txt)", Pattern: "*.txt"},
+			{DisplayName: "Arquivos ZIP (*.zip)", Pattern: "*.zip"},
 			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
 		},
 	})
@@ -282,15 +276,52 @@ func (a *App) ExportLogs() (string, error) {
 		return "", err
 	}
 
-	input, err := os.ReadFile(logFile)
+	return savePath, exportRotatedLogs(savePath, a.logPath)
+}
+
+func exportRotatedLogs(savePath string, basePath string) error {
+	file, err := os.Create(savePath)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("criar arquivo de exportação: %w", err)
+	}
+	defer file.Close()
+
+	archive := zip.NewWriter(file)
+
+	added := 0
+	for _, path := range collectRotatedLogPaths(basePath, logFileMaxBackups) {
+		info, err := os.Stat(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("stat log %s: %w", path, err)
+		}
+		if info.Size() == 0 {
+			continue
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("ler log %s: %w", path, err)
+		}
+
+		entry, err := archive.Create(filepath.Base(path))
+		if err != nil {
+			return fmt.Errorf("criar entrada zip %s: %w", path, err)
+		}
+		if _, err := entry.Write(content); err != nil {
+			return fmt.Errorf("escrever entrada zip %s: %w", path, err)
+		}
+		added++
 	}
 
-	err = os.WriteFile(savePath, input, 0o644)
-	if err != nil {
-		return "", err
+	if added == 0 {
+		return fmt.Errorf("arquivo de log não encontrado")
 	}
 
-	return savePath, nil
+	if err := archive.Close(); err != nil {
+		return fmt.Errorf("fechar zip: %w", err)
+	}
+	return nil
 }

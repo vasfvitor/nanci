@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/wailsapp/wails/v2"
@@ -27,11 +26,9 @@ var assets embed.FS
 
 func main() {
 	// Setup file logger
-	configDir, _ := os.UserConfigDir()
-	logDir := filepath.Join(configDir, "Nanci")
-	_ = os.MkdirAll(logDir, 0o755)
-	logFile := filepath.Join(logDir, "app.log")
-	fileLogger := logger.NewFileLogger(logFile)
+	logDir, _ := desktopLogDir()
+	wailsLogPath := filepath.Join(logDir, wailsLogFileName)
+	fileLogger := logger.NewFileLogger(wailsLogPath)
 
 	// Create an instance of the app structure
 	app := NewApp()
@@ -73,7 +70,7 @@ func main() {
 			Assets: assets,
 		},
 		Logger:           fileLogger,
-		LogLevel:         logger.DEBUG,
+		LogLevel:         logger.WARNING,
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
