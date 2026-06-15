@@ -16,15 +16,27 @@
         dense
         options-dense
       />
-      <q-input
-        v-model="filter.Competence"
-        class="col-12 col-md-2"
-        label="Competência"
-        outlined
-        dense
-        clearable
-        mask="####-##"
-      >
+      <div class="col-12 col-md-3">
+        <div class="row no-wrap items-center q-gutter-xs">
+          <q-btn
+            color="grey-7"
+            icon="chevron_left"
+            dense
+            flat
+            round
+            :disable="!filter.Competence"
+            title="Competência anterior"
+            @click="shiftCompetence(-1)"
+          />
+          <q-input
+            v-model="filter.Competence"
+            class="col"
+            label="Competência"
+            outlined
+            dense
+            clearable
+            mask="####-##"
+          >
         <template #append>
           <q-icon name="event" class="cursor-pointer">
             <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
@@ -45,7 +57,19 @@
             </q-popup-proxy>
           </q-icon>
         </template>
-      </q-input>
+          </q-input>
+          <q-btn
+            color="grey-7"
+            icon="chevron_right"
+            dense
+            flat
+            round
+            :disable="!filter.Competence"
+            title="Próxima competência"
+            @click="shiftCompetence(1)"
+          />
+        </div>
+      </div>
       <q-select
         v-model="filter.Direction"
         class="col-12 col-md-2"
@@ -147,6 +171,7 @@
 
 <script setup lang="ts">
 import { ref, shallowRef, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   ListCompanies,
   ListDocuments,
@@ -159,6 +184,7 @@ import { nfse, app } from '../../wailsjs/go/models'
 import { useQuasar, date } from 'quasar'
 
 const $q = useQuasar()
+const route = useRoute()
 const companyOptions = ref<{ label: string; value: string }[]>([])
 const documents = shallowRef<nfse.CompanyDocument[]>([])
 const loading = ref(false)
@@ -182,6 +208,18 @@ function setToday() {
   datePopup.value?.hide()
 }
 
+function shiftCompetence(monthDelta: number) {
+  if (!filter.value.Competence) {
+    filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
+  }
+  const [yearText, monthText] = filter.value.Competence.split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  if (!year || !month) return
+  const next = new Date(year, month - 1 + monthDelta, 1)
+  filter.value.Competence = date.formatDate(next, 'YYYY-MM')
+}
+
 const columns = [
   {
     name: 'issueDate',
@@ -201,7 +239,7 @@ const columns = [
     name: 'value',
     label: 'Valor (R$)',
     field: 'ServiceValue',
-    format: (val: number) => val.toFixed(2),
+    format: (val: number) => formatCurrency(val),
     sortable: true,
   },
 ]
@@ -211,6 +249,14 @@ function formatDate(value: string | Date | null | undefined) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleDateString('pt-BR')
+}
+
+function formatCurrency(value: number | null | undefined) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'R$ 0,00'
+  return (value / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
 }
 
 function roleLabel(role: string) {
@@ -281,11 +327,17 @@ async function loadCompanies() {
       value: c.CNPJ,
     }))
     if (companyOptions.value.length > 0) {
-      const firstOption = companyOptions.value[0]
-      if (firstOption) {
-        filter.value.CNPJ = firstOption.value
-        search()
+      const cnpjFromRoute = String(route.query['cnpj'] || '')
+      const matchingOption = companyOptions.value.find((option) => option.value === cnpjFromRoute)
+      const selectedOption = matchingOption || companyOptions.value[0]
+      if (selectedOption) {
+        filter.value.CNPJ = selectedOption.value
       }
+      const competenceFromRoute = String(route.query['competence'] || '')
+      if (competenceFromRoute) {
+        filter.value.Competence = competenceFromRoute
+      }
+      search()
     }
   } catch (err) {
     $q.notify({ type: 'negative', message: String(err) })

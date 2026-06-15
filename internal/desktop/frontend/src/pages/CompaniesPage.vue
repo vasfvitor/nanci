@@ -67,6 +67,15 @@
             dense
             flat
             round
+            color="secondary"
+            icon="description"
+            title="Ver documentos"
+            @click="openDocuments(props.row.CNPJ)"
+          />
+          <q-btn
+            dense
+            flat
+            round
             color="primary"
             icon="sync"
             :loading="syncing === props.row.CNPJ"
@@ -119,6 +128,7 @@
 import { storeToRefs } from 'pinia'
 import { onMounted, ref, shallowRef } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
+import { useRouter } from 'vue-router'
 import {
   AssignCredentialToCompany,
   ListCompanies,
@@ -132,6 +142,7 @@ import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useAppStore } from '../stores/app'
 
 const $q = useQuasar()
+const router = useRouter()
 const appStore = useAppStore()
 const { debugEnabled } = storeToRefs(appStore)
 const companies = shallowRef<nfse.Company[]>([])
@@ -156,6 +167,10 @@ const columns: QTableColumn[] = [
 function openEditDialog(company: nfse.Company) {
   selectedCompanyToEdit.value = company
   showEditDialog.value = true
+}
+
+function openDocuments(cnpj: string) {
+  router.push({ path: '/documents', query: { cnpj } })
 }
 
 async function loadCredentials() {
