@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -400,6 +401,13 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 
 	doc, _, err := nfse.ParseDocumentXML(payload.XML)
 	if err != nil {
+		s.log.ErrorContext(ctx, "Falha ao interpretar XML de documento",
+			slog.Int64("nsu", env.NSU),
+			slog.String("schema", env.Schema),
+			slog.String("tipo_documento", env.DocumentType),
+			slog.String("tipo_evento", env.EventType),
+			slog.String("xml_preview", xmlPreview(payload.XML)),
+			slog.String("erro", err.Error()))
 		return fmt.Errorf("parse failed: %w", err)
 	}
 
@@ -439,6 +447,13 @@ func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, e
 
 	ev, _, err := nfse.ParseEventXML(payload.XML)
 	if err != nil {
+		s.log.ErrorContext(ctx, "Falha ao interpretar XML de evento",
+			slog.Int64("nsu", env.NSU),
+			slog.String("schema", env.Schema),
+			slog.String("tipo_documento", env.DocumentType),
+			slog.String("tipo_evento", env.EventType),
+			slog.String("xml_preview", xmlPreview(payload.XML)),
+			slog.String("erro", err.Error()))
 		return fmt.Errorf("parse event failed: %w", err)
 	}
 
@@ -466,4 +481,16 @@ func maxInt64(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+func xmlPreview(data []byte) string {
+	preview := strings.TrimSpace(string(data))
+	preview = strings.ReplaceAll(preview, "\r", " ")
+	preview = strings.ReplaceAll(preview, "\n", " ")
+	preview = strings.ReplaceAll(preview, "\t", " ")
+	preview = strings.Join(strings.Fields(preview), " ")
+	if len(preview) > 400 {
+		return preview[:400] + "...(truncated)"
+	}
+	return preview
 }
