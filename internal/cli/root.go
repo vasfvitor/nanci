@@ -4,16 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
-	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
-	"github.com/vasfvitor/nanci/internal/foundation/paths"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var (
@@ -47,8 +42,8 @@ func init() {
 // newApp is a helper for commands that need the App instance.
 // It also injects the terminal-based CredentialProvider.
 func newApp() (*app.App, error) {
-	if err := envfile.LoadLocal(); err != nil {
-		return nil, fmt.Errorf("falha ao carregar .env.local: %w", err)
+	if err := app.LoadRuntimeEnv(); err != nil {
+		return nil, fmt.Errorf("falha ao carregar runtime: %w", err)
 	}
 
 	// If env var is set, it overrides the flag
@@ -57,37 +52,14 @@ func newApp() (*app.App, error) {
 	}
 	log := logger.New(verbose, trace)
 
-	dataDir, err := paths.DataDir()
-	if err != nil {
-		return nil, fmt.Errorf("falha ao resolver diretório de dados: %w", err)
-	}
-
-	if err := paths.EnsureDir(dataDir); err != nil {
-		return nil, fmt.Errorf("falha ao criar diretório de dados: %w", err)
-	}
-
-	dbPath := filepath.Join(dataDir, "nanci-v2.db")
-
-	db, err := store.OpenDB(dbPath, true)
-	if err != nil {
-		return nil, fmt.Errorf("falha ao inicializar banco de dados v2: %w", err)
-	}
-
-	application, err := app.New(app.Dependencies{
-		Log:            log,
-		DB:             db,
-		CompanyRepo:    store.NewCompanyRepository(db),
-		CredentialRepo: store.NewCredentialRepository(db),
-		SyncRepo:       store.NewSyncRepository(db),
-		DocumentReader: store.NewDocumentRepository(db),
-		XMLStore:       files.NewBlobStore(dataDir),
-		DataDir:        dataDir,
+	application, err := app.NewRuntime(app.RuntimeOptions{
+		Log: log,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
 		},
+		RunMigrations: true,
 	})
 	if err != nil {
-		_ = db.Close()
 		return nil, fmt.Errorf("configurar aplicação: %w", err)
 	}
 	return application, nil

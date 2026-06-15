@@ -56,13 +56,15 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		return fmt.Errorf("failed to create sync run: %w", err)
 	}
 
+	finalStatus := nfse.SyncStatus("completed")
+	finalErrorMsg := ""
+	var syncErr error
 	defer func() {
-		if syncRun.Status == "running" { // if not marked as completed or failed
-			_ = s.finishRun(ctx, nfse.FinishRunParams{
-				RunID:  syncRun.ID,
-				Status: "interrupted",
-			})
-		}
+		_ = s.finishRun(ctx, nfse.FinishRunParams{
+			RunID:    syncRun.ID,
+			Status:   finalStatus,
+			ErrorMsg: finalErrorMsg,
+		})
 	}()
 
 	committedNSU := company.LastNSU
@@ -75,14 +77,15 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		// Respect context cancellation
 		select {
 		case <-ctx.Done():
-			syncRun.Status = "interrupted"
-			return ctx.Err()
+			finalStatus = "interrupted"
+			syncErr = ctx.Err()
+			return syncErr
 		default:
 		}
 
 		// Fetch documents batch
 		requestedNSU := committedNSU
-		
+
 		isThrottled := emptyConsecutive > 0 && emptyConsecutive%50 != 0
 		if !isThrottled {
 			if emptyConsecutive > 0 {
@@ -98,20 +101,14 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		})
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				syncRun.Status = "interrupted"
-				_ = s.finishRun(ctx, nfse.FinishRunParams{
-					RunID:  syncRun.ID,
-					Status: "interrupted",
-				})
-				return err
+				finalStatus = "interrupted"
+				syncErr = err
+				return syncErr
 			}
-			syncRun.Status = "failed"
-			_ = s.finishRun(ctx, nfse.FinishRunParams{
-				RunID:    syncRun.ID,
-				Status:   "failed",
-				ErrorMsg: err.Error(),
-			})
-			return fmt.Errorf("failed to fetch documents at NSU %d: %w", requestedNSU, err)
+			finalStatus = "failed"
+			finalErrorMsg = err.Error()
+			syncErr = fmt.Errorf("failed to fetch documents at NSU %d: %w", requestedNSU, err)
+			return syncErr
 		}
 
 		docsInBatch := len(resp.Docs)
@@ -155,24 +152,17 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 					})
 				}
 
-				if batchSuccessNSU > company.LastNSU {
-					if err := s.store.AdvanceCheckpoint(ctx, nfse.AdvanceCheckpointParams{
-						CompanyID: company.ID,
-						RunID:     syncRun.ID,
-						LastNSU:   batchSuccessNSU,
-					}); err != nil {
-						return fmt.Errorf("failed to update company last NSU after item error: %w", err)
-					}
-					company.LastNSU = batchSuccessNSU
+				if err := s.advanceCheckpoint(ctx, company, syncRun.ID, batchSuccessNSU); err != nil {
+					finalStatus = "failed"
+					finalErrorMsg = err.Error()
+					syncErr = fmt.Errorf("failed to update company last NSU after item error: %w", err)
+					return syncErr
 				}
 
-				syncRun.Status = "failed"
-				_ = s.finishRun(ctx, nfse.FinishRunParams{
-					RunID:    syncRun.ID,
-					Status:   "failed",
-					ErrorMsg: err.Error(),
-				})
-				return fmt.Errorf("failed to process NSU %d: %w", env.NSU, err)
+				finalStatus = "failed"
+				finalErrorMsg = err.Error()
+				syncErr = fmt.Errorf("failed to process NSU %d: %w", env.NSU, err)
+				return syncErr
 			}
 
 			totalDocs++
@@ -181,37 +171,22 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 			}
 		}
 
+		committedNSU = nextNSU(requestedNSU, resp.UltNSU, batchSuccessNSU, docsInBatch == 0)
 		if docsInBatch == 0 {
 			emptyConsecutive++
 			if emptyConsecutive >= maxEmptyConsecutive {
 				s.log.InfoContext(ctx, "Atingiu limite de NSUs vazios consecutivos, interrompendo varredura", slog.Int("max_empty", maxEmptyConsecutive))
 				break
 			}
-			// If ADN didn't advance ultNSU for an empty response, we must advance it manually
-			if resp.UltNSU <= requestedNSU {
-				committedNSU = requestedNSU + 1
-			} else {
-				committedNSU = resp.UltNSU
-			}
 		} else {
 			emptyConsecutive = 0
-			// For non-empty batches, strictly follow the API's returned ultNSU
-			if resp.UltNSU > batchSuccessNSU {
-				committedNSU = resp.UltNSU
-			} else {
-				committedNSU = batchSuccessNSU
-			}
 		}
 
-		if committedNSU > company.LastNSU {
-			if err := s.store.AdvanceCheckpoint(ctx, nfse.AdvanceCheckpointParams{
-				CompanyID: company.ID,
-				RunID:     syncRun.ID,
-				LastNSU:   committedNSU,
-			}); err != nil {
-				return fmt.Errorf("failed to update company last NSU: %w", err)
-			}
-			company.LastNSU = committedNSU
+		if err := s.advanceCheckpoint(ctx, company, syncRun.ID, committedNSU); err != nil {
+			finalStatus = "failed"
+			finalErrorMsg = err.Error()
+			syncErr = fmt.Errorf("failed to update company last NSU: %w", err)
+			return syncErr
 		}
 
 		// Stop condition
@@ -220,11 +195,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		}
 	}
 
-	syncRun.Status = "completed"
-	_ = s.finishRun(ctx, nfse.FinishRunParams{
-		RunID:  syncRun.ID,
-		Status: "completed",
-	})
 	return nil
 }
 
@@ -232,6 +202,34 @@ func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams
 	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	return s.store.FinishRun(finishCtx, params)
+}
+
+func (s *SyncService) advanceCheckpoint(ctx context.Context, company *nfse.Company, runID nfse.SyncRunID, lastNSU int64) error {
+	if lastNSU <= company.LastNSU {
+		return nil
+	}
+	if err := s.store.AdvanceCheckpoint(ctx, nfse.AdvanceCheckpointParams{
+		CompanyID: company.ID,
+		RunID:     runID,
+		LastNSU:   lastNSU,
+	}); err != nil {
+		return err
+	}
+	company.LastNSU = lastNSU
+	return nil
+}
+
+func nextNSU(requestedNSU, apiUltNSU, batchSuccessNSU int64, emptyBatch bool) int64 {
+	if emptyBatch {
+		if apiUltNSU <= requestedNSU {
+			return requestedNSU + 1
+		}
+		return apiUltNSU
+	}
+	if apiUltNSU > batchSuccessNSU {
+		return apiUltNSU
+	}
+	return batchSuccessNSU
 }
 
 // processDocument handles the decoding, parsing, and saving of a single document.

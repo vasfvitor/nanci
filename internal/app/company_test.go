@@ -1,9 +1,14 @@
 package app_test
 
 import (
+	"archive/zip"
 	"context"
+	"errors"
+	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/app"
@@ -18,8 +23,8 @@ func (credentialProviderStub) GetCertPassword(context.Context, app.CertPasswordR
 	return "secret", nil
 }
 
-func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
-	t.Parallel()
+func newTestApp(t *testing.T) (*app.App, *store.CompanyRepository, *store.CredentialRepository, string) {
+	t.Helper()
 
 	dataDir := t.TempDir()
 	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
@@ -29,20 +34,8 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
-	credential := &nfse.Credential{
-		ID:            "credential-1",
-		Label:         "Certificate",
-		CertPath:      `C:\certs\company.pfx`,
-		Environment:   nfse.EnvironmentRestricted,
-		OwnerCNPJ:     "11222333000181",
-		OwnerCNPJRoot: "11222333",
-	}
-	if err := credentialRepo.CreateCredential(context.Background(), credential); err != nil {
-		t.Fatal(err)
-	}
-
 	application, err := app.New(app.Dependencies{
-		Log:                slog.Default(),
+		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
 		DB:                 db,
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
@@ -59,7 +52,26 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 		application.Close()
 	})
 
-	err = application.AddCompany(context.Background(), app.AddCompanyInput{
+	return application, companyRepo, credentialRepo, dataDir
+}
+
+func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
+	t.Parallel()
+
+	application, companyRepo, credentialRepo, _ := newTestApp(t)
+	credential := &nfse.Credential{
+		ID:            "credential-1",
+		Label:         "Certificate",
+		CertPath:      `C:\certs\company.pfx`,
+		Environment:   nfse.EnvironmentRestricted,
+		OwnerCNPJ:     "11222333000181",
+		OwnerCNPJRoot: "11222333",
+	}
+	if err := credentialRepo.CreateCredential(context.Background(), credential); err != nil {
+		t.Fatal(err)
+	}
+
+	err := application.AddCompany(context.Background(), app.AddCompanyInput{
 		CNPJ:         "11222333000181",
 		Name:         "Company",
 		CredentialID: string(credential.ID),
@@ -87,6 +99,159 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 	}
 }
 
+func TestNewRuntimeBuildsProductionDependencies(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	application, err := app.NewRuntime(app.RuntimeOptions{
+		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
+		CredentialProvider: credentialProviderStub{},
+		DataDir:            dataDir,
+		RunMigrations:      true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		application.Close()
+	})
+
+	if application.DataDir != dataDir {
+		t.Fatalf("DataDir = %q, want %q", application.DataDir, dataDir)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "nanci-v2.db")); err != nil {
+		t.Fatalf("expected runtime database to exist: %v", err)
+	}
+	if err := application.AddCredential(context.Background(), app.AddCredentialInput{
+		Label:       "Credential",
+		CertPath:    writeTempCertFile(t),
+		Environment: "producao",
+	}); err != nil {
+		t.Fatalf("expected runtime app to persist credential: %v", err)
+	}
+}
+
+func TestAddCredentialRejectsInvalidEnvironment(t *testing.T) {
+	t.Parallel()
+
+	application, _, _, _ := newTestApp(t)
+
+	err := application.AddCredential(context.Background(), app.AddCredentialInput{
+		Label:       "Credential",
+		CertPath:    writeTempCertFile(t),
+		Environment: "sandbox",
+	})
+	if err == nil {
+		t.Fatal("expected invalid environment error")
+	}
+	if !strings.Contains(err.Error(), "ambiente inválido") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestStatusReturnsCompanyNotFound(t *testing.T) {
+	t.Parallel()
+
+	application, _, _, _ := newTestApp(t)
+
+	_, err := application.Status(context.Background(), "11222333000181")
+	if err == nil {
+		t.Fatal("expected company not found error")
+	}
+	if !strings.Contains(err.Error(), "empresa não encontrada") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateCredentialPathReturnsCredentialNotFound(t *testing.T) {
+	t.Parallel()
+
+	application, _, _, _ := newTestApp(t)
+
+	err := application.UpdateCredentialPath(context.Background(), app.UpdateCredentialPathInput{
+		CredentialID: "missing",
+		CertPath:     writeTempCertFile(t),
+	})
+	if err == nil {
+		t.Fatal("expected credential not found error")
+	}
+	if !strings.Contains(err.Error(), "credencial não encontrada") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xmlStore := &stubXMLStore{
+		data: map[string][]byte{
+			"hash-1": []byte("<NFSe>stub</NFSe>"),
+		},
+	}
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		DB:             db,
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+				CompanyRole: "prestada",
+			},
+		}},
+		XMLStore:           xmlStore,
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		application.Close()
+	})
+
+	outPath := filepath.Join(t.TempDir(), "docs.zip")
+	if err := application.ExportZIP(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(xmlStore.getCalls) != 1 || xmlStore.getCalls[0] != "hash-1" {
+		t.Fatalf("expected injected XMLStore to be used, got calls %v", xmlStore.getCalls)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	if len(reader.File) != 1 {
+		t.Fatalf("expected 1 zip entry, got %d", len(reader.File))
+	}
+	rc, err := reader.File[0].Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rc.Close()
+
+	content, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "<NFSe>stub</NFSe>" {
+		t.Fatalf("zip content = %q", string(content))
+	}
+}
+
 func TestNewRejectsMissingDocumentReader(t *testing.T) {
 	t.Parallel()
 
@@ -110,4 +275,71 @@ func TestNewRejectsMissingDocumentReader(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected missing document reader error")
 	}
+}
+
+func writeTempCertFile(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "cert.pfx")
+	if err := os.WriteFile(path, []byte("stub"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+type stubXMLStore struct {
+	data     map[string][]byte
+	getCalls []string
+}
+
+func (s *stubXMLStore) Store(hash string, data []byte) error {
+	if s.data == nil {
+		s.data = make(map[string][]byte)
+	}
+	s.data[hash] = data
+	return nil
+}
+
+func (s *stubXMLStore) Get(hash string) ([]byte, error) {
+	s.getCalls = append(s.getCalls, hash)
+	data, ok := s.data[hash]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return data, nil
+}
+
+type stubCompanyRepo struct {
+	company *nfse.Company
+}
+
+func (s *stubCompanyRepo) CreateCompany(context.Context, *nfse.Company) error { return nil }
+func (s *stubCompanyRepo) CompanyByCNPJ(context.Context, string) (*nfse.Company, error) {
+	return s.company, nil
+}
+func (s *stubCompanyRepo) ListCompanies(context.Context) ([]nfse.Company, error) { return nil, nil }
+func (s *stubCompanyRepo) AssignCredential(context.Context, nfse.CompanyID, nfse.CredentialID) error {
+	return nil
+}
+func (s *stubCompanyRepo) UpdateCompany(context.Context, nfse.CompanyID, string, nfse.Environment) error {
+	return nil
+}
+
+type stubCredentialRepo struct{}
+
+func (stubCredentialRepo) CreateCredential(context.Context, *nfse.Credential) error { return nil }
+func (stubCredentialRepo) CredentialByID(context.Context, nfse.CredentialID) (*nfse.Credential, error) {
+	return nil, store.ErrNotFound
+}
+func (stubCredentialRepo) ListCredentials(context.Context) ([]nfse.Credential, error) {
+	return nil, nil
+}
+func (stubCredentialRepo) DeleteCredential(context.Context, nfse.CredentialID) error { return nil }
+func (stubCredentialRepo) UpdateCredential(context.Context, *nfse.Credential) error  { return nil }
+
+type stubDocumentReader struct {
+	docs []nfse.CompanyDocument
+}
+
+func (s *stubDocumentReader) ListCompanyDocuments(context.Context, nfse.CompanyID, nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
+	return s.docs, nil
 }

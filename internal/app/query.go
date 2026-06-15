@@ -7,9 +7,11 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
+
+var loadPKCS12 = cert.LoadPKCS12
+var newADNClient = adn.NewClient
 
 type QueryNFSeInput struct {
 	CNPJ        string
@@ -49,19 +51,18 @@ func (a *App) queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, p
 }
 
 func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn.Client, error) {
-	cleanedCNPJ := cnpj.Clean(companyCNPJ)
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
-	if err != nil || company == nil {
-		return nil, fmt.Errorf("empresa não encontrada: %v", err)
+	company, err := a.companyByCNPJ(ctx, companyCNPJ)
+	if err != nil {
+		return nil, err
 	}
 
-	credential, err := a.CredentialRepo.CredentialByID(ctx, company.CredentialID)
-	if err != nil || credential == nil {
-		return nil, fmt.Errorf("credencial não encontrada")
+	credential, err := a.credentialByID(ctx, company.CredentialID)
+	if err != nil {
+		return nil, err
 	}
 
-	if a.CredentialProvider == nil {
-		return nil, fmt.Errorf("CredentialProvider não configurado")
+	if err := validateCertificatePath(credential.CertPath); err != nil {
+		return nil, err
 	}
 
 	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
@@ -77,13 +78,13 @@ func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn
 		return nil, fmt.Errorf("senha do certificado: %w", err)
 	}
 
-	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
+	loadedCert, err := loadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return nil, fmt.Errorf("carregar certificado: %w", err)
 	}
 
 	tlsCert := loadedCert.TLS
-	apiClient, err := adn.NewClient(adn.ClientConfig{
+	apiClient, err := newADNClient(adn.ClientConfig{
 		Environment: company.Environment,
 		Certificate: &tlsCert,
 		Log:         a.Log,

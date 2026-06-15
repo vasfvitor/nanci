@@ -3,8 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 )
 
 // StatusResult holds the display-ready information about a company's sync state.
@@ -19,18 +17,9 @@ type StatusResult struct {
 
 // Status returns the current synchronisation state of the given company.
 func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
-	if err := cnpj.Validate(rawCNPJ); err != nil {
-		return StatusResult{}, fmt.Errorf("CNPJ inválido: %w", err)
-	}
-
-	cleanedCNPJ := cnpj.Clean(rawCNPJ)
-
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := a.companyByCNPJ(ctx, rawCNPJ)
 	if err != nil {
-		return StatusResult{}, fmt.Errorf("buscar empresa: %w", err)
-	}
-	if company == nil {
-		return StatusResult{}, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+		return StatusResult{}, err
 	}
 
 	var totalEmitidas, totalTomadas int64

@@ -8,11 +8,18 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	syncservice "github.com/vasfvitor/nanci/internal/service/sync"
 )
+
+type syncRunner interface {
+	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error
+}
+
+var newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
+	return syncservice.NewSyncService(repo, client, xmlStore, log)
+}
 
 // PullInput is the input for the Pull use case.
 type PullInput struct {
@@ -36,33 +43,26 @@ type PullResult struct {
 // It resolves the certificate password via App.CredentialProvider so that
 // neither the CLI nor Wails need to wire cert loading themselves.
 func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
-	if err := cnpj.Validate(input.CNPJ); err != nil {
-		return PullResult{}, fmt.Errorf("CNPJ inválido: %w", err)
+	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	if err != nil {
+		return PullResult{}, err
 	}
-
-	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 
 	a.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
 
 	// 1. Resolve company
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := a.companyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
-		return PullResult{}, fmt.Errorf("buscar empresa: %w", err)
+		return PullResult{}, err
 	}
-	if company == nil {
-		return PullResult{}, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
-	}
-	credential, err := a.CredentialRepo.CredentialByID(ctx, company.CredentialID)
+	credential, err := a.credentialByID(ctx, company.CredentialID)
 	if err != nil {
-		return PullResult{}, fmt.Errorf("buscar credencial: %w", err)
-	}
-	if credential == nil {
-		return PullResult{}, fmt.Errorf("credencial não encontrada para a empresa %s", company.Name)
+		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}
 
 	// 2. Obtain certificate password via the injected provider
-	if a.CredentialProvider == nil {
-		return PullResult{}, fmt.Errorf("CredentialProvider não configurado")
+	if err := validateCertificatePath(credential.CertPath); err != nil {
+		return PullResult{}, err
 	}
 	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
 		RequestID:       nfse.GenerateID(),
@@ -79,7 +79,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	// 3. Load TLS certificate
 	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
-	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
+	loadedCert, err := loadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
 	}
@@ -103,7 +103,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 4. Build ADN client
-	apiClient, err := adn.NewClient(adn.ClientConfig{
+	apiClient, err := newADNClient(adn.ClientConfig{
 		Environment: company.Environment,
 		Certificate: &tlsCert,
 	})
@@ -111,14 +111,11 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
 
-	// 5. Build file writer
-	fileWriter := files.NewBlobStore(a.DataDir)
-
-	// 6. Build sync service
+	// 5. Build sync service
 	a.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
-	svc := syncservice.NewSyncService(a.SyncRepo, apiClient, fileWriter, a.Log)
+	svc := newSyncRunner(a.SyncRepo, apiClient, a.XMLStore, a.Log)
 
-	// 7. Run sync, collecting progress into result counters
+	// 6. Run sync, collecting progress into result counters
 	var result PullResult
 	result.CompanyName = company.Name
 	result.CNPJ = company.CNPJ

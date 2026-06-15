@@ -11,12 +11,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/vasfvitor/nanci/internal/app"
-	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
-	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
@@ -90,8 +86,8 @@ func (w wailsLogWriter) Write(p []byte) (n int, err error) {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	if err := envfile.LoadLocal(); err != nil {
-		fmt.Printf("failed to load .env.local: %v\n", err)
+	if err := app.LoadRuntimeEnv(); err != nil {
+		fmt.Printf("failed to load runtime env: %v\n", err)
 		return
 	}
 
@@ -112,34 +108,8 @@ func (a *App) startup(ctx context.Context) {
 	})
 	log := slog.New(handler)
 
-	dataDir, err := paths.DataDir()
-	if err != nil {
-		fmt.Printf("failed to resolve data dir: %v\n", err)
-		return
-	}
-
-	if err := paths.EnsureDir(dataDir); err != nil {
-		fmt.Printf("failed to create data dir: %v\n", err)
-		return
-	}
-
-	dbPath := filepath.Join(dataDir, "nanci-v2.db")
-
-	db, err := store.OpenDB(dbPath, true)
-	if err != nil {
-		fmt.Printf("failed to initialize db: %v\n", err)
-		return
-	}
-
-	coreApp, err := app.New(app.Dependencies{
-		Log:            log,
-		DB:             db,
-		CompanyRepo:    store.NewCompanyRepository(db),
-		CredentialRepo: store.NewCredentialRepository(db),
-		SyncRepo:       store.NewSyncRepository(db),
-		DocumentReader: store.NewDocumentRepository(db),
-		XMLStore:       files.NewBlobStore(dataDir),
-		DataDir:        dataDir,
+	coreApp, err := app.NewRuntime(app.RuntimeOptions{
+		Log: log,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: WailsCredentialProvider{
 				ctx:           ctx,
@@ -147,9 +117,9 @@ func (a *App) startup(ctx context.Context) {
 				mu:            &a.mu,
 			},
 		},
+		RunMigrations: true,
 	})
 	if err != nil {
-		_ = db.Close()
 		fmt.Printf("failed to configure app: %v\n", err)
 		return
 	}

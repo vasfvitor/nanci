@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
 )
@@ -42,7 +40,7 @@ func (a *App) ExportZIP(ctx context.Context, input ExportInput) error {
 	if err != nil {
 		return err
 	}
-	return report.GenerateZIP(report.BuildRows(docs), files.NewBlobStore(a.DataDir), input.OutPath)
+	return report.GenerateZIP(report.BuildRows(docs), a.XMLStore, input.OutPath)
 }
 
 // queryExportDocs validates input and returns the matching documents from the store.
@@ -51,18 +49,9 @@ func (a *App) queryExportDocs(ctx context.Context, input ExportInput) ([]nfse.Co
 		return nil, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	if err := cnpj.Validate(input.CNPJ); err != nil {
-		return nil, fmt.Errorf("CNPJ inválido: %w", err)
-	}
-
-	cleanedCNPJ := cnpj.Clean(input.CNPJ)
-
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := a.companyByCNPJ(ctx, input.CNPJ)
 	if err != nil {
-		return nil, fmt.Errorf("buscar empresa: %w", err)
-	}
-	if company == nil {
-		return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+		return nil, err
 	}
 
 	filter := nfse.DocumentFilter{

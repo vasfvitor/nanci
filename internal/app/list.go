@@ -3,8 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -17,18 +15,9 @@ type ListInput struct {
 
 // ListDocuments returns the company-facing fiscal documents matching the given filters.
 func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.CompanyDocument, error) {
-	if err := cnpj.Validate(input.CNPJ); err != nil {
-		return nil, fmt.Errorf("CNPJ inválido: %w", err)
-	}
-
-	cleanedCNPJ := cnpj.Clean(input.CNPJ)
-
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := a.companyByCNPJ(ctx, input.CNPJ)
 	if err != nil {
-		return nil, fmt.Errorf("buscar empresa: %w", err)
-	}
-	if company == nil {
-		return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+		return nil, err
 	}
 
 	filter := nfse.DocumentFilter{

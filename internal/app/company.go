@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -21,11 +20,10 @@ type AddCompanyInput struct {
 
 // AddCompany registers a new company in the store.
 func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
-	if err := cnpj.Validate(input.CNPJ); err != nil {
-		return fmt.Errorf("CNPJ inválido: %w", err)
+	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	if err != nil {
+		return err
 	}
-
-	cleanedCNPJ := cnpj.Clean(input.CNPJ)
 	root, _ := cnpj.Root(cleanedCNPJ)
 
 	credential, err := a.resolveCredentialForCompany(ctx, input)
@@ -62,25 +60,14 @@ func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 
 // AssignCredentialToCompany changes the active credential for an existing company.
 func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredentialInput) error {
-	if err := cnpj.Validate(input.CompanyCNPJ); err != nil {
-		return fmt.Errorf("CNPJ inválido: %w", err)
-	}
-	cleanedCNPJ := cnpj.Clean(input.CompanyCNPJ)
-
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := a.companyByCNPJ(ctx, input.CompanyCNPJ)
 	if err != nil {
-		return fmt.Errorf("buscar empresa: %w", err)
-	}
-	if company == nil {
-		return fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+		return err
 	}
 
-	credential, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	credential, err := a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
 	if err != nil {
-		return fmt.Errorf("buscar credencial: %w", err)
-	}
-	if credential == nil {
-		return fmt.Errorf("credencial não encontrada")
+		return err
 	}
 
 	if company.CNPJRoot != "" && credential.OwnerCNPJRoot != "" && company.CNPJRoot != credential.OwnerCNPJRoot {
@@ -95,25 +82,16 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 
 func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
 	if input.CredentialID != "" {
-		credential, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
-		if err != nil {
-			return nil, fmt.Errorf("buscar credencial: %w", err)
-		}
-		if credential == nil {
-			return nil, fmt.Errorf("credencial não encontrada")
-		}
-		return credential, nil
+		return a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
 	}
 
-	if _, err := os.Stat(input.CertPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("arquivo de certificado não encontrado: %s", input.CertPath)
-	} else if err != nil {
-		return nil, fmt.Errorf("verificar certificado: %w", err)
+	if err := validateCertificatePath(input.CertPath); err != nil {
+		return nil, err
 	}
 
-	environment, err := nfse.ParseEnvironment(input.Environment)
+	environment, err := parseEnvironment(input.Environment)
 	if err != nil {
-		return nil, fmt.Errorf("ambiente inválido: %w", err)
+		return nil, err
 	}
 
 	credential := &nfse.Credential{
@@ -145,19 +123,14 @@ type UpdateCompanyInput struct {
 
 // UpdateCompany updates the name and environment of an existing company.
 func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
-	cleanedCNPJ := cnpj.Clean(input.CNPJ)
-
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := a.companyByCNPJ(ctx, input.CNPJ)
 	if err != nil {
-		return fmt.Errorf("buscar empresa: %w", err)
-	}
-	if company == nil {
-		return fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+		return err
 	}
 
-	environment, err := nfse.ParseEnvironment(input.Environment)
+	environment, err := parseEnvironment(input.Environment)
 	if err != nil {
-		return fmt.Errorf("ambiente inválido: %w", err)
+		return err
 	}
 
 	if err := a.CompanyRepo.UpdateCompany(ctx, company.ID, input.Name, environment); err != nil {

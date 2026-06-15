@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -29,15 +28,19 @@ type AssignCredentialInput struct {
 
 // AddCredential registers a reusable credential record.
 func (a *App) AddCredential(ctx context.Context, input AddCredentialInput) error {
-	if _, err := os.Stat(input.CertPath); os.IsNotExist(err) {
-		return fmt.Errorf("arquivo de certificado não encontrado: %s", input.CertPath)
+	if err := validateCertificatePath(input.CertPath); err != nil {
+		return err
+	}
+	environment, err := parseEnvironment(input.Environment)
+	if err != nil {
+		return err
 	}
 
 	credential := &nfse.Credential{
 		ID:          nfse.CredentialID(nfse.GenerateID()),
 		Label:       input.Label,
 		CertPath:    input.CertPath,
-		Environment: nfse.Environment(input.Environment),
+		Environment: environment,
 	}
 	if credential.Label == "" {
 		credential.Label = input.CertPath
@@ -60,12 +63,12 @@ func (a *App) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
 
 // UpdateCredentialPath updates the PKCS#12 path of an existing credential.
 func (a *App) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPathInput) error {
-	if _, err := os.Stat(input.CertPath); os.IsNotExist(err) {
-		return fmt.Errorf("arquivo de certificado não encontrado: %s", input.CertPath)
+	if err := validateCertificatePath(input.CertPath); err != nil {
+		return err
 	}
-	cred, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
-	if err != nil || cred == nil {
-		return fmt.Errorf("credencial não encontrada: %w", err)
+	cred, err := a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	if err != nil {
+		return err
 	}
 	cred.CertPath = input.CertPath
 	if err := a.CredentialRepo.UpdateCredential(ctx, cred); err != nil {
@@ -83,14 +86,14 @@ type UpdateCredentialDataInput struct {
 
 // UpdateCredentialData updates the label and environment of an existing credential.
 func (a *App) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
-	cred, err := a.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
-	if err != nil || cred == nil {
-		return fmt.Errorf("credencial não encontrada: %w", err)
+	cred, err := a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	if err != nil {
+		return err
 	}
 
-	environment, err := nfse.ParseEnvironment(input.Environment)
+	environment, err := parseEnvironment(input.Environment)
 	if err != nil {
-		return fmt.Errorf("ambiente inválido: %w", err)
+		return err
 	}
 
 	cred.Label = input.Label
