@@ -69,6 +69,8 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	committedNSU := company.LastNSU
 	totalDocs := 0
 	totalErrors := 0
+	emptyConsecutive := 0
+	const maxEmptyConsecutive = 50
 
 	for {
 		// Respect context cancellation
@@ -103,16 +105,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 				ErrorMsg: err.Error(),
 			})
 			return fmt.Errorf("failed to fetch documents at NSU %d: %w", requestedNSU, err)
-		}
-
-		if resp.UltNSU < requestedNSU {
-			syncRun.Status = "failed"
-			_ = s.finishRun(ctx, nfse.FinishRunParams{
-				RunID:    syncRun.ID,
-				Status:   "failed",
-				ErrorMsg: fmt.Sprintf("invalid ADN response: ultNSU %d is behind requested NSU %d", resp.UltNSU, requestedNSU),
-			})
-			return fmt.Errorf("invalid ADN response: ultNSU %d is behind requested NSU %d", resp.UltNSU, requestedNSU)
 		}
 
 		docsInBatch := len(resp.Docs)
@@ -180,7 +172,28 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 			}
 		}
 
-		committedNSU = resp.UltNSU
+		if docsInBatch == 0 {
+			emptyConsecutive++
+			if emptyConsecutive >= maxEmptyConsecutive {
+				s.log.InfoContext(ctx, "Atingiu limite de NSUs vazios consecutivos, interrompendo varredura", slog.Int("max_empty", maxEmptyConsecutive))
+				break
+			}
+			// If ADN didn't advance ultNSU for an empty response, we must advance it manually
+			if resp.UltNSU <= requestedNSU {
+				committedNSU = requestedNSU + 1
+			} else {
+				committedNSU = resp.UltNSU
+			}
+		} else {
+			emptyConsecutive = 0
+			// For non-empty batches, strictly follow the API's returned ultNSU
+			if resp.UltNSU > batchSuccessNSU {
+				committedNSU = resp.UltNSU
+			} else {
+				committedNSU = batchSuccessNSU
+			}
+		}
+
 		if committedNSU > company.LastNSU {
 			if err := s.store.AdvanceCheckpoint(ctx, nfse.AdvanceCheckpointParams{
 				CompanyID: company.ID,
@@ -193,7 +206,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		}
 
 		// Stop condition
-		if committedNSU >= resp.MaxNSU {
+		if committedNSU >= resp.MaxNSU && resp.MaxNSU > 0 {
 			break
 		}
 	}
