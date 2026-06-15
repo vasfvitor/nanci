@@ -28,7 +28,9 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("Status para: %s (%s)\n", result.CompanyName, cnpj.Format(result.CNPJ))
 		fmt.Printf("Ambiente: %s\n", result.Environment)
 		fmt.Printf("Último NSU processado: %d\n", result.LastNSU)
-		fmt.Println("\nMais estatísticas serão implementadas em breve...")
+		fmt.Println("\nEstatísticas de Documentos:")
+		fmt.Printf("  Notas Emitidas (Prestadas): %d\n", result.TotalEmitidas)
+		fmt.Printf("  Notas Tomadas: %d\n", result.TotalTomadas)
 		return nil
 	},
 }

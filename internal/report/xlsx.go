@@ -14,9 +14,7 @@ import (
 func GenerateXLSX(rows []ReportRow, outPath string) error {
 	f := excelize.NewFile()
 	defer func() {
-		if err := f.Close(); err != nil {
-			fmt.Println(err)
-		}
+		_ = f.Close()
 	}()
 
 	headers := []string{

@@ -124,7 +124,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	result.CNPJ = company.CNPJ
 	result.CredentialLabel = credential.Label
 	result.CredentialCNPJ = credential.OwnerCNPJ
-	result.ConsultationBasis = consultationBasis
+	result.ConsultationBasis = string(consultationBasis)
 
 	progress := func(event nfse.ProgressEvent) {
 		if event.Errors > result.Errors {
@@ -136,7 +136,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	start := time.Now()
-	if err := svc.Sync(ctx, company, credential, consultationBasis, progress); err != nil {
+	if err := svc.Sync(ctx, company, credential, string(consultationBasis), progress); err != nil {
 		a.Log.ErrorContext(ctx, "Sincronização finalizada com erro", slog.String("error", err.Error()))
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
@@ -151,7 +151,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	return result, nil
 }
 
-func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (string, error) {
+func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
 		return "", fmt.Errorf("o certificado não expõe um CNPJ proprietário utilizável para consulta")
 	}
@@ -162,7 +162,7 @@ func validateConsultationCompatibility(company *nfse.Company, credential *nfse.C
 		return "", fmt.Errorf("a credencial pertence à raiz %s e não pode consultar a empresa %s", credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
 	}
 	if company.CNPJ == credential.OwnerCNPJ {
-		return "exact_certificate_cnpj", nil
+		return nfse.ConsultationBasisExactCertificateCNPJ, nil
 	}
-	return "same_root_certificate", nil
+	return nfse.ConsultationBasisSameRootCertificate, nil
 }

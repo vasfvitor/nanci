@@ -163,11 +163,20 @@ const (
 )
 
 func ParseDocumentStatus(val string) (DocumentStatus, error) {
-	return DocumentStatus(val), nil // TODO: Add valid constants later
+	status := DocumentStatus(val)
+	if !status.Valid() {
+		return "", fmt.Errorf("invalid document status: %s", val)
+	}
+	return status, nil
 }
 
 func (e DocumentStatus) Valid() bool {
-	return true // TODO
+	switch e {
+	case DocumentStatusNormal, DocumentStatusCancelada, DocumentStatusSubstituida:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e DocumentStatus) String() string {
@@ -187,35 +196,76 @@ const (
 )
 
 func ParseCompanyRole(val string) (CompanyRole, error) {
-	return CompanyRole(val), nil // TODO: Add valid constants later
+	role := CompanyRole(val)
+	if !role.Valid() {
+		return "", fmt.Errorf("invalid company role: %s", val)
+	}
+	return role, nil
 }
 
 func (e CompanyRole) Valid() bool {
-	return true // TODO
+	switch e {
+	case CompanyRoleTomada, CompanyRolePrestada, CompanyRoleIntermediario:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e CompanyRole) String() string {
 	return string(e)
 }
 
+const (
+	VisibilityReasonExactPrestador     VisibilityReason = "exact_prestador"
+	VisibilityReasonExactTomador       VisibilityReason = "exact_tomador"
+	VisibilityReasonExactIntermediario VisibilityReason = "exact_intermediario"
+	VisibilityReasonSameRootOnly       VisibilityReason = "same_root_only"
+	VisibilityReasonUnknown            VisibilityReason = "unknown"
+)
+
 func ParseVisibilityReason(val string) (VisibilityReason, error) {
-	return VisibilityReason(val), nil // TODO: Add valid constants later
+	reason := VisibilityReason(val)
+	if !reason.Valid() {
+		return "", fmt.Errorf("invalid visibility reason: %s", val)
+	}
+	return reason, nil
 }
 
 func (e VisibilityReason) Valid() bool {
-	return true // TODO
+	switch e {
+	case VisibilityReasonExactPrestador, VisibilityReasonExactTomador, VisibilityReasonExactIntermediario, VisibilityReasonSameRootOnly, VisibilityReasonUnknown:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e VisibilityReason) String() string {
 	return string(e)
 }
 
+const (
+	EventTypeCancelamento EventType = "cancelamento"
+	EventTypeSubstituicao EventType = "substituicao"
+	EventTypeUnknown      EventType = "unknown"
+)
+
 func ParseEventType(val string) (EventType, error) {
-	return EventType(val), nil // TODO: Add valid constants later
+	evtType := EventType(val)
+	if !evtType.Valid() {
+		return "", fmt.Errorf("invalid event type: %s", val)
+	}
+	return evtType, nil
 }
 
 func (e EventType) Valid() bool {
-	return true // TODO
+	switch e {
+	case EventTypeCancelamento, EventTypeSubstituicao, EventTypeUnknown:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e EventType) String() string {
@@ -223,23 +273,46 @@ func (e EventType) String() string {
 }
 
 func ParseSyncStatus(val string) (SyncStatus, error) {
-	return SyncStatus(val), nil // TODO: Add valid constants later
+	status := SyncStatus(val)
+	if !status.Valid() {
+		return "", fmt.Errorf("invalid sync status: %s", val)
+	}
+	return status, nil
 }
 
 func (e SyncStatus) Valid() bool {
-	return true // TODO
+	switch e {
+	case SyncStatusRunning, SyncStatusCompleted, SyncStatusFailed:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e SyncStatus) String() string {
 	return string(e)
 }
 
+const (
+	ConsultationBasisExactCertificateCNPJ ConsultationBasis = "exact_certificate_cnpj"
+	ConsultationBasisSameRootCertificate  ConsultationBasis = "same_root_certificate"
+)
+
 func ParseConsultationBasis(val string) (ConsultationBasis, error) {
-	return ConsultationBasis(val), nil // TODO: Add valid constants later
+	basis := ConsultationBasis(val)
+	if !basis.Valid() {
+		return "", fmt.Errorf("invalid consultation basis: %s", val)
+	}
+	return basis, nil
 }
 
 func (e ConsultationBasis) Valid() bool {
-	return true // TODO
+	switch e {
+	case ConsultationBasisExactCertificateCNPJ, ConsultationBasisSameRootCertificate:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e ConsultationBasis) String() string {

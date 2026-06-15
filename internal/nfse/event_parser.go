@@ -16,7 +16,7 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 	var ev Event
 	var warnings []string
 
-	ev.Type = EventType("unknown") // Default to unknown
+	ev.Type = EventTypeUnknown
 	ev.CreatedAt = time.Now().UTC()
 
 	decoder := xml.NewDecoder(bytes.NewReader(data))
@@ -96,9 +96,9 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 	// Classify event type
 	//nolint:gocritic // Precedence is clearer as an ordered classification.
 	if isCancelamento {
-		ev.Type = EventType("cancelamento")
+		ev.Type = EventTypeCancelamento
 	} else if isSubstituicao || ev.ReplacementChaveAcesso != "" {
-		ev.Type = EventType("substituicao")
+		ev.Type = EventTypeSubstituicao
 	} else {
 		warnings = append(warnings, "unsupported or unknown event structure")
 	}

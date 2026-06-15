@@ -30,18 +30,12 @@ func TestExtractOwnerCNPJFromSubject(t *testing.T) {
 }
 
 func TestExtractOwnerCNPJFromSubjectAltNameOtherName(t *testing.T) {
-	value, err := asn1.MarshalWithParams("45.723.174/0001-10", "utf8")
-	if err != nil {
-		t.Fatal(err)
-	}
 	otherName, err := asn1.MarshalWithParams(struct {
 		TypeID asn1.ObjectIdentifier
-		Value  asn1.RawValue `asn1:"tag:0,explicit"`
+		Value  string `asn1:"tag:0,explicit,utf8"`
 	}{
 		TypeID: oidCNPJ,
-		Value: asn1.RawValue{
-			FullBytes: value,
-		},
+		Value:  "45.723.174/0001-10",
 	}, "tag:0")
 	if err != nil {
 		t.Fatal(err)

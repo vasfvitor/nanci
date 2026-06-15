@@ -131,6 +131,8 @@ export namespace app {
 	    CNPJ: string;
 	    Environment: string;
 	    LastNSU: number;
+	    TotalEmitidas: number;
+	    TotalTomadas: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new StatusResult(source);
@@ -142,6 +144,8 @@ export namespace app {
 	        this.CNPJ = source["CNPJ"];
 	        this.Environment = source["Environment"];
 	        this.LastNSU = source["LastNSU"];
+	        this.TotalEmitidas = source["TotalEmitidas"];
+	        this.TotalTomadas = source["TotalTomadas"];
 	    }
 	}
 	export class UpdateCompanyInput {
