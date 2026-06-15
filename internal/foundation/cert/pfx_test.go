@@ -71,7 +71,7 @@ func TestLoadPKCS12_InvalidData(t *testing.T) {
 	tempDir := t.TempDir()
 	invalidFile := filepath.Join(tempDir, "invalid.pfx")
 
-	err := os.WriteFile(invalidFile, []byte("this is not a valid pfx"), 0600)
+	err := os.WriteFile(invalidFile, []byte("this is not a valid pfx"), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 	}
 
 	berFile := filepath.Join(t.TempDir(), "mock_ber.pfx")
-	if err := os.WriteFile(berFile, berData, 0600); err != nil {
+	if err := os.WriteFile(berFile, berData, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,7 +150,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 	tampered := bytes.Clone(berData)
 	tampered[tamperOffset] ^= 0x01
 	tamperedFile := filepath.Join(t.TempDir(), "mock_ber_tampered.pfx")
-	if err := os.WriteFile(tamperedFile, tampered, 0600); err != nil {
+	if err := os.WriteFile(tamperedFile, tampered, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LoadPKCS12(tamperedFile, "mockdata"); !errors.Is(err, ErrInvalidPass) {

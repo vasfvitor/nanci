@@ -60,7 +60,8 @@ func UpsertCredential(ctx context.Context, db *sql.DB, c nfse.Credential) error 
 			inspected_at = excluded.inspected_at,
 			updated_at = excluded.updated_at;
 	`
-	_, err := db.ExecContext(ctx, query,
+	_, err := db.ExecContext(
+		ctx, query,
 		c.ID, c.Label, c.CertPath, string(c.Environment), c.OwnerCNPJ, c.OwnerCNPJRoot,
 		c.FingerprintSHA256, c.SubjectName, c.NotBefore, c.NotAfter, c.InspectedAt,
 	)
@@ -82,7 +83,8 @@ func UpsertCompany(ctx context.Context, db *sql.DB, c nfse.Company) error {
 			last_nsu = excluded.last_nsu,
 			updated_at = excluded.updated_at;
 	`
-	_, err := db.ExecContext(ctx, query,
+	_, err := db.ExecContext(
+		ctx, query,
 		c.ID, c.CNPJ, c.CNPJRoot, c.Name, c.CredentialID, string(c.Environment), c.LastNSU,
 	)
 	return err
@@ -127,7 +129,8 @@ func UpsertDocument(ctx context.Context, db *sql.DB, d nfse.Document) error {
 			updated_at = excluded.updated_at;
 	`
 	// parse_warnings omitted for seed mock simplicity
-	_, err := db.ExecContext(ctx, query,
+	_, err := db.ExecContext(
+		ctx, query,
 		d.ID, d.ChaveAcesso, d.IssueDate.Format("2006-01-02T15:04:05Z07:00"), d.Competence,
 		d.PrestadorCNPJ, d.PrestadorName, d.TomadorCNPJ, d.TomadorName,
 		d.IntermediarioCNPJ, d.IntermediarioName,
@@ -160,7 +163,8 @@ func UpsertCompanyDocument(ctx context.Context, db *sql.DB, cd nfse.CompanyDocum
 		lastSeenValid = 1
 	}
 
-	_, err := db.ExecContext(ctx, query,
+	_, err := db.ExecContext(
+		ctx, query,
 		cd.RelationID, cd.CompanyID, cd.DocumentID, string(cd.CompanyRole), string(cd.VisibilityReason),
 		cd.FirstSeenNSU, cd.LastSeenNSU, firstSeenValid, lastSeenValid,
 	)

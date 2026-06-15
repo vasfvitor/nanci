@@ -33,13 +33,13 @@ func (b *BlobStore) Store(hash string, data []byte) error {
 		return errors.New("hash cannot be empty")
 	}
 
-	if err := os.MkdirAll(b.blobsDir, 0750); err != nil {
+	if err := os.MkdirAll(b.blobsDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create blobs directory: %w", err)
 	}
 
 	fullPath := filepath.Join(b.blobsDir, hash+".xml")
 
-	if err := os.WriteFile(fullPath, data, 0600); err != nil {
+	if err := os.WriteFile(fullPath, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write blob file: %w", err)
 	}
 

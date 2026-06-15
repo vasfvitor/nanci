@@ -354,7 +354,6 @@ func ToPEM(pfxData []byte, password string) ([]*pem.Block, error) {
 	}
 
 	bags, encodedPassword, err := getSafeContents(pfxData, encodedPassword, 2, 2)
-
 	if err != nil {
 		return nil, err
 	}
@@ -697,7 +696,7 @@ func (enc *Encoder) Encode(privateKey interface{}, certificate *x509.Certificate
 	var pfx pfxPdu
 	pfx.Version = 3
 
-	var certFingerprint = sha1.Sum(certificate.Raw)
+	certFingerprint := sha1.Sum(certificate.Raw)
 	var localKeyIdAttr pkcs12Attribute
 	localKeyIdAttr.Id = oidLocalKeyID
 	localKeyIdAttr.Value.Class = 0

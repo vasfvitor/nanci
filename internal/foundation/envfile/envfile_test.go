@@ -21,7 +21,7 @@ func TestLoadLocalLoadsCurrentDirectoryFile(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, fileName)
-	if err := os.WriteFile(path, []byte("NANCI_CERT_PASSWORD=from-file\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("NANCI_CERT_PASSWORD=from-file\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -50,7 +50,7 @@ func TestLoadLocalDoesNotOverrideExistingEnv(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, fileName)
-	if err := os.WriteFile(path, []byte("NANCI_CERT_PASSWORD=from-file\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("NANCI_CERT_PASSWORD=from-file\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

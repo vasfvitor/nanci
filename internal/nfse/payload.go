@@ -21,9 +21,7 @@ type DecodedPayload struct {
 	SHA256 string
 }
 
-var (
-	ErrPayloadTooLarge = errors.New("payload exceeds configured size limits")
-)
+var ErrPayloadTooLarge = errors.New("payload exceeds configured size limits")
 
 // DecodePayload decodes the base64-gzipped payload into raw XML bytes, respecting size limits.
 func DecodePayload(payloadBase64 string, limits PayloadLimits) (DecodedPayload, error) {

@@ -142,7 +142,8 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 	result.Duration = time.Since(start)
 
-	a.Log.InfoContext(ctx, "Sincronização concluída com sucesso",
+	a.Log.InfoContext(
+		ctx, "Sincronização concluída com sucesso",
 		slog.Int("docs_found", result.DocumentsFound),
 		slog.Int("errors", result.Errors),
 		slog.Duration("duration", result.Duration),

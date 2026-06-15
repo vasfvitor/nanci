@@ -50,7 +50,8 @@ var listCmd = &cobra.Command{
 			if !d.IssueDate.IsZero() {
 				issueStr = d.IssueDate.Format("2006-01-02")
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\n",
+			_, _ = fmt.Fprintf(
+				w, "%s\t%s\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\n",
 				issueStr,
 				d.ChaveAcesso,
 				d.CompanyRole,

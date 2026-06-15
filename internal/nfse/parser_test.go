@@ -68,6 +68,7 @@ func TestParseEventXML(t *testing.T) {
 		})
 	}
 }
+
 func TestParseEventRejectsMissingChave(t *testing.T) {
 	_, _, err := ParseEventXML([]byte(`<eventoSemChave><descEvento>Sem chave</descEvento></eventoSemChave>`))
 	if err == nil {

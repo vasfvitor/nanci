@@ -9,8 +9,8 @@ import (
 
 // StatusResult holds the display-ready information about a company's sync state.
 type StatusResult struct {
-	CompanyName string
-	CNPJ        string
+	CompanyName   string
+	CNPJ          string
 	Environment   string
 	LastNSU       int64
 	TotalEmitidas int64
@@ -52,11 +52,16 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 		if err := rows.Scan(&role, &count); err != nil {
 			return StatusResult{}, fmt.Errorf("ler contagem: %w", err)
 		}
-		if role == "prestada" {
+		switch role {
+		case "prestada":
 			totalEmitidas = count
-		} else if role == "tomada" {
+		case "tomada":
 			totalTomadas = count
 		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return StatusResult{}, fmt.Errorf("erro iterando contagem de documentos: %w", err)
 	}
 
 	return StatusResult{

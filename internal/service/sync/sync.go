@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
-
-	"log/slog"
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
@@ -40,7 +39,7 @@ func NewSyncService(syncRepo nfse.SyncRepository, adnClient documentFetcher, xml
 // Sync starts the synchronization process for a specific company.
 func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error {
 	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
-		slog.String("cnpj", string(company.CNPJ)),
+		slog.String("cnpj", company.CNPJ),
 		slog.Int64("from_nsu", company.LastNSU))
 
 	// Create SyncRun record
@@ -70,7 +69,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	totalDocs := 0
 	totalErrors := 0
 	emptyConsecutive := 0
-	const maxEmptyConsecutive = 50
+	const maxEmptyConsecutive = 500
 
 	for {
 		// Respect context cancellation

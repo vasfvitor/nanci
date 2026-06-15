@@ -117,10 +117,12 @@ func ParseAccessKey(key string) (AccessKey, error) {
 	return AccessKey(key), nil
 }
 
-type DocumentID string
-type CompanyID string
-type CredentialID string
-type SyncRunID string
+type (
+	DocumentID   string
+	CompanyID    string
+	CredentialID string
+	SyncRunID    string
+)
 
 // --- Enums ---
 
@@ -149,12 +151,14 @@ func (e Environment) String() string {
 	return string(e)
 }
 
-type DocumentStatus string
-type CompanyRole string
-type VisibilityReason string
-type EventType string
-type SyncStatus string
-type ConsultationBasis string
+type (
+	DocumentStatus    string
+	CompanyRole       string
+	VisibilityReason  string
+	EventType         string
+	SyncStatus        string
+	ConsultationBasis string
+)
 
 const (
 	SyncStatusRunning   SyncStatus = "running"

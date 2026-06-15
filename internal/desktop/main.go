@@ -29,7 +29,7 @@ func main() {
 	// Setup file logger
 	configDir, _ := os.UserConfigDir()
 	logDir := filepath.Join(configDir, "Nanci")
-	_ = os.MkdirAll(logDir, 0755)
+	_ = os.MkdirAll(logDir, 0o755)
 	logFile := filepath.Join(logDir, "app.log")
 	fileLogger := logger.NewFileLogger(logFile)
 
@@ -62,13 +62,13 @@ func main() {
 	})
 
 	err := wails.Run(&options.App{
-		Title:  "Nanci",
-		Menu:   AppMenu,
-		Width:  1280,
-		Height: 768,
-		Frameless: true,
+		Title:           "Nanci",
+		Menu:            AppMenu,
+		Width:           1280,
+		Height:          768,
+		Frameless:       true,
 		CSSDragProperty: "--wails-draggable",
-		CSSDragValue: "drag",
+		CSSDragValue:    "drag",
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -91,17 +91,16 @@ func main() {
 			},
 		},
 		Windows: &windows.Options{
-			Theme: windows.SystemDefault,
-			BackdropType: windows.Mica,
+			Theme:             windows.SystemDefault,
+			BackdropType:      windows.Mica,
 			DisableWindowIcon: false,
 		},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		OnStartup:  app.startup,
+		OnShutdown: app.shutdown,
 		Bind: []interface{}{
 			app,
 		},
 	})
-
 	if err != nil {
 		println("Error:", err.Error())
 	}

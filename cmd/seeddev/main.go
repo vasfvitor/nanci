@@ -67,7 +67,7 @@ func main() {
 			if err := copyFile(src, dst); err != nil {
 				fatalf("copy xml: %v", err)
 			}
-			
+
 			// Process and insert
 			if err := seedXML(ctx, db, dst, "dev-company-70860312000150"); err != nil {
 				fatalf("seed xml %s: %v", f, err)
@@ -92,7 +92,7 @@ func seedXML(ctx context.Context, db *sql.DB, xmlPath, companyID string) error {
 	doc.ID = nfse.DocumentID("doc-" + doc.ChaveAcesso)
 	doc.XMLPath = xmlPath
 	doc.RawHash = "hash-" + string(doc.ChaveAcesso)
-	
+
 	if err := seed.UpsertDocument(ctx, db, doc); err != nil {
 		return err
 	}
@@ -105,11 +105,11 @@ func seedXML(ctx context.Context, db *sql.DB, xmlPath, companyID string) error {
 	}
 
 	cd := nfse.CompanyDocument{
-		Document:   doc,
-		RelationID: fmt.Sprintf("%s-%s", companyID, doc.ID),
-		CompanyID:  nfse.CompanyID(companyID),
-		DocumentID: doc.ID,
-		CompanyRole: role,
+		Document:         doc,
+		RelationID:       fmt.Sprintf("%s-%s", companyID, doc.ID),
+		CompanyID:        nfse.CompanyID(companyID),
+		DocumentID:       doc.ID,
+		CompanyRole:      role,
 		VisibilityReason: nfse.VisibilityReason("unknown"),
 	}
 

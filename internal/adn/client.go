@@ -202,12 +202,18 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 			}()
 
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+				bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, MaxJSONResponseBytes+1))
+				
 				if c.log != nil {
-					c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.Duration("latency", time.Since(start)))
+					// Quick sanitization to hide giant XML chunks in logs
+					logBody := string(bodyBytes)
+					if len(logBody) > 2000 {
+						logBody = logBody[:2000] + "... (truncated)"
+					}
+					c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("url", u), slog.Int("status", resp.StatusCode), slog.String("body", logBody), slog.Duration("latency", time.Since(start)))
 				}
 				if dest != nil {
-					lr := io.LimitReader(resp.Body, MaxJSONResponseBytes+1)
-					if err := json.NewDecoder(lr).Decode(dest); err != nil {
+					if err := json.Unmarshal(bodyBytes, dest); err != nil {
 						return fmt.Errorf("failed to decode json response: %w", err)
 					}
 				}
@@ -295,7 +301,8 @@ func (c *Client) newAPIError(method, url string, statusCode int, body string, re
 
 func tryDecodeNoDocumentsResponse(body []byte, dest interface{}) (bool, error) {
 	var response noDocumentsResponse
-	if err := json.Unmarshal(body, &response); err != nil {
+	_ = json.Unmarshal(body, &response)
+	if response.StatusProcessamento == "" {
 		return false, nil
 	}
 	if response.StatusProcessamento != "NENHUM_DOCUMENTO_LOCALIZADO" {

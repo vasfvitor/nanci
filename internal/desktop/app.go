@@ -294,7 +294,7 @@ func (a *App) ExportLogs() (string, error) {
 		return "", err
 	}
 
-	err = os.WriteFile(savePath, input, 0644)
+	err = os.WriteFile(savePath, input, 0o644)
 	if err != nil {
 		return "", err
 	}
