@@ -84,7 +84,7 @@ onMounted(async () => {
   }
 })
 
-function createValue(val: string, done: (item: any, mode: 'add' | 'add-unique' | 'toggle') => void) {
+function createValue(val: string, done: (item: unknown, mode: 'add' | 'add-unique' | 'toggle') => void) {
   if (val.length > 0) {
     done(val, 'add-unique')
   }
@@ -103,7 +103,7 @@ const highlightedResult = computed(() => {
   if (!appStore.queryResult) return ''
   let jsonStr = appStore.queryResult
   jsonStr = jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+  return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, (match) => {
     let cls = 'json-string'
     if (/^"/.test(match)) {
       if (/:$/.test(match)) {
@@ -127,8 +127,8 @@ async function runQuery() {
   appStore.queryResult = ''
 
   try {
-    // We use ts-ignore dynamically calling the Wails backend since bindings might not be generated yet
-    // @ts-ignore
+    // We use ts-expect-error dynamically calling the Wails backend since bindings might not be generated yet
+    // @ts-expect-error window.go is not typed
     const wailsApp = window.go.main.App
     
     let res = ''
@@ -144,7 +144,7 @@ async function runQuery() {
       })
     }
     appStore.queryResult = res
-  } catch (err: any) {
+  } catch (err: unknown) {
     $q.notify({ type: 'negative', message: 'Erro na consulta: ' + String(err) })
   } finally {
     loading.value = false

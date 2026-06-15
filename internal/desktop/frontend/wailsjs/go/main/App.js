@@ -46,6 +46,10 @@ export function ListDocuments(arg1) {
   return window['go']['main']['App']['ListDocuments'](arg1);
 }
 
+export function ListEventsForDocument(arg1) {
+  return window['go']['main']['App']['ListEventsForDocument'](arg1);
+}
+
 export function Pull(arg1) {
   return window['go']['main']['App']['Pull'](arg1);
 }

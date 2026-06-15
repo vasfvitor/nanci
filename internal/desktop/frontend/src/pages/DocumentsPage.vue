@@ -141,6 +141,23 @@
           </q-badge>
         </q-td>
       </template>
+      <template #body-cell-chaveAcesso="props">
+        <q-td :props="props" class="q-gutter-x-sm">
+          <span :title="props.row.ChaveAcesso" class="cursor-pointer" @click="copyChave(props.row.ChaveAcesso)">
+            {{ formatChave(props.row.ChaveAcesso) }}
+          </span>
+          <q-btn
+            dense
+            flat
+            round
+            size="sm"
+            color="grey-7"
+            icon="content_copy"
+            title="Copiar Chave Completa"
+            @click="copyChave(props.row.ChaveAcesso)"
+          />
+        </q-td>
+      </template>
       <template #body-cell-companyRole="props">
         <q-td :props="props">
           <q-badge :color="roleColor(props.row.CompanyRole)" outline>
@@ -155,7 +172,26 @@
           </q-badge>
         </q-td>
       </template>
+      <template #body-cell-actions="props">
+        <q-td :props="props" class="q-gutter-x-sm">
+          <q-btn
+            v-if="props.row.Status === 'cancelada' || props.row.Status === 'substituida'"
+            dense
+            flat
+            round
+            color="warning"
+            icon="history"
+            title="Ver Eventos"
+            @click="openEventsDialog(props.row.DocumentID)"
+          />
+        </q-td>
+      </template>
     </q-table>
+
+    <DocumentEventsDialog
+      v-model="showEventsDialog"
+      :document-id="selectedDocumentId"
+    />
   </q-page>
 </template>
 
@@ -172,6 +208,7 @@ import {
 } from '../../wailsjs/go/main/App'
 import { nfse, app } from '../../wailsjs/go/models'
 import { useQuasar, date } from 'quasar'
+import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -184,6 +221,14 @@ const filter = ref({
   Competence: '',
   Direction: '',
 })
+
+const showEventsDialog = ref(false)
+const selectedDocumentId = ref('')
+
+function openEventsDialog(docId: string) {
+  selectedDocumentId.value = docId
+  showEventsDialog.value = true
+}
 
 const datePopup = ref<{ hide: () => void } | null>(null)
 
@@ -216,9 +261,10 @@ const columns = [
     label: 'Emissão',
     field: 'IssueDate',
     sortable: true,
+    classes: 'text-no-wrap',
     format: (val: string | Date | null) => formatDate(val),
   },
-  { name: 'competence', label: 'Competência', field: 'Competence', sortable: true },
+  { name: 'competence', label: 'Competência', field: 'Competence', sortable: true, classes: 'text-no-wrap' },
   { name: 'chaveAcesso', label: 'Chave de Acesso', field: 'ChaveAcesso', sortable: true },
   { name: 'companyRole', label: 'Direção', field: 'CompanyRole', sortable: true },
   { name: 'visibilityReason', label: 'Visibilidade', field: 'VisibilityReason', sortable: true },
@@ -232,6 +278,7 @@ const columns = [
     format: (val: number) => formatCurrency(val),
     sortable: true,
   },
+  { name: 'actions', label: 'Ações', field: () => '', align: 'right' as const },
 ]
 
 function formatDate(value: string | Date | null | undefined) {
@@ -239,6 +286,22 @@ function formatDate(value: string | Date | null | undefined) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleDateString('pt-BR')
+}
+
+function formatChave(chave: string) {
+  if (!chave) return ''
+  // Remove possible 'NFS' prefix
+  const clean = chave.replace(/^NFS/i, '')
+  if (clean.length > 10) {
+    return '...' + clean.slice(-10)
+  }
+  return clean
+}
+
+async function copyChave(chave: string) {
+  if (!chave) return
+  await navigator.clipboard.writeText(chave)
+  $q.notify({ type: 'positive', message: 'Chave copiada!', timeout: 1000 })
 }
 
 function formatCurrency(value: number | null | undefined) {

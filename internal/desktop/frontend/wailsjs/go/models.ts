@@ -50,6 +50,28 @@ export namespace app {
 	        this.CredentialID = source["CredentialID"];
 	    }
 	}
+	export class EventView {
+	    ID: string;
+	    Type: string;
+	    EventAt: string;
+	    ReplacementChaveAcesso: string;
+	    Description: string;
+	    RawXMLPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EventView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Type = source["Type"];
+	        this.EventAt = source["EventAt"];
+	        this.ReplacementChaveAcesso = source["ReplacementChaveAcesso"];
+	        this.Description = source["Description"];
+	        this.RawXMLPath = source["RawXMLPath"];
+	    }
+	}
 	export class ExportInput {
 	    CNPJ: string;
 	    Competence: string;

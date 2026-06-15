@@ -25,6 +25,8 @@ export function ListCredentials():Promise<Array<nfse.Credential>>;
 
 export function ListDocuments(arg1:app.ListInput):Promise<Array<nfse.CompanyDocument>>;
 
+export function ListEventsForDocument(arg1:string):Promise<Array<app.EventView>>;
+
 export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
 
 export function QueryNFSe(arg1:app.QueryNFSeInput):Promise<string>;

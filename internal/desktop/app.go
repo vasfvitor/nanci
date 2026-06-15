@@ -243,6 +243,10 @@ func (a *App) ListDocuments(input app.ListInput) ([]nfse.CompanyDocument, error)
 	return a.core.ListDocuments(a.ctx, input)
 }
 
+func (a *App) ListEventsForDocument(documentID string) ([]app.EventView, error) {
+	return a.core.ListEventsForDocument(a.ctx, documentID)
+}
+
 func (a *App) Status(cnpj string) (app.StatusResult, error) {
 	return a.core.Status(a.ctx, cnpj)
 }
