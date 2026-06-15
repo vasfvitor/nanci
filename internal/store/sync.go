@@ -27,6 +27,10 @@ func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParam
 	now := time.Now().UTC()
 	runID := nfse.SyncRunID(nfse.GenerateID())
 
+	// Clean up any dangling sync runs from hard-killed processes (like Wails hot reload)
+	// We do a raw query since there's no pre-generated query for this specific cleanup yet
+	_, _ = r.db.ExecContext(ctx, "UPDATE sync_runs SET status = 'interrupted', finished_at = ? WHERE company_id = ? AND status = 'running'", now.Format(time.RFC3339), string(params.CompanyID))
+
 	err := r.queries.CreateSyncRun(ctx, sqlgen.CreateSyncRunParams{
 		ID:                string(runID),
 		CompanyID:         string(params.CompanyID),
