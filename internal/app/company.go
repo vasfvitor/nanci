@@ -31,6 +31,11 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		return err
 	}
 
+	environment, err := parseEnvironment(input.Environment)
+	if err != nil {
+		return err
+	}
+
 	company := &nfse.Company{
 		ID:                 nfse.CompanyID(nfse.GenerateID()),
 		CNPJ:               cleanedCNPJ,
@@ -39,7 +44,7 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		CredentialID:       credential.ID,
 		CredentialLabel:    credential.Label,
 		CredentialCertPath: credential.CertPath,
-		Environment:        credential.Environment,
+		Environment:        environment,
 	}
 
 	if err := a.CompanyRepo.CreateCompany(ctx, company); err != nil {
@@ -54,6 +59,25 @@ func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 	companies, err := a.CompanyRepo.ListCompanies(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar empresas: %w", err)
+	}
+	for i := range companies {
+		snapshot, snapErr := a.SyncRepo.LatestSyncSnapshot(ctx, companies[i].ID, companies[i].Environment, companies[i].CNPJ)
+		if snapErr != nil {
+			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
+		}
+		if snapshot.State != nil {
+			companies[i].LastNSU = snapshot.State.LastCheckedNSU
+			companies[i].LastFoundNSU = snapshot.State.LastFoundNSU
+			companies[i].LastFoundNSUValid = snapshot.State.LastFoundNSUValid
+			companies[i].LastSyncAt = snapshot.State.LastSuccessAt
+		}
+		if snapshot.Run != nil {
+			companies[i].LastRunStatus = snapshot.Run.Status
+			companies[i].LastRunStopReason = snapshot.Run.StopReason
+			if snapshot.Run.FinishedAt != nil {
+				companies[i].LastSyncAt = snapshot.Run.FinishedAt
+			}
+		}
 	}
 	return companies, nil
 }
@@ -89,16 +113,14 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 		return nil, err
 	}
 
-	environment, err := parseEnvironment(input.Environment)
-	if err != nil {
+	if err := validateCertificatePath(input.CertPath); err != nil {
 		return nil, err
 	}
 
 	credential := &nfse.Credential{
-		ID:          nfse.CredentialID(nfse.GenerateID()),
-		Label:       input.CredentialLabel,
-		CertPath:    input.CertPath,
-		Environment: environment,
+		ID:       nfse.CredentialID(nfse.GenerateID()),
+		Label:    input.CredentialLabel,
+		CertPath: input.CertPath,
 	}
 	if credential.Label == "" {
 		if input.Name != "" {

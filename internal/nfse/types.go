@@ -158,12 +158,15 @@ type (
 	EventType         string
 	SyncStatus        string
 	ConsultationBasis string
+	SyncMode          string
+	SyncStopReason    string
 )
 
 const (
-	SyncStatusRunning   SyncStatus = "running"
-	SyncStatusCompleted SyncStatus = "completed"
-	SyncStatusFailed    SyncStatus = "failed"
+	SyncStatusRunning     SyncStatus = "running"
+	SyncStatusCompleted   SyncStatus = "completed"
+	SyncStatusFailed      SyncStatus = "failed"
+	SyncStatusInterrupted SyncStatus = "interrupted"
 )
 
 func ParseDocumentStatus(val string) (DocumentStatus, error) {
@@ -286,7 +289,7 @@ func ParseSyncStatus(val string) (SyncStatus, error) {
 
 func (e SyncStatus) Valid() bool {
 	switch e {
-	case SyncStatusRunning, SyncStatusCompleted, SyncStatusFailed:
+	case SyncStatusRunning, SyncStatusCompleted, SyncStatusFailed, SyncStatusInterrupted:
 		return true
 	default:
 		return false
@@ -321,4 +324,58 @@ func (e ConsultationBasis) Valid() bool {
 
 func (e ConsultationBasis) String() string {
 	return string(e)
+}
+
+const (
+	SyncModeNormal     SyncMode = "normal"
+	SyncModeFirstSetup SyncMode = "first_setup"
+)
+
+func ParseSyncMode(val string) (SyncMode, error) {
+	mode := SyncMode(val)
+	if !mode.Valid() {
+		return "", fmt.Errorf("invalid sync mode: %s", val)
+	}
+	return mode, nil
+}
+
+func (m SyncMode) Valid() bool {
+	switch m {
+	case SyncModeNormal, SyncModeFirstSetup:
+		return true
+	default:
+		return false
+	}
+}
+
+func (m SyncMode) String() string {
+	return string(m)
+}
+
+const (
+	SyncStopReasonEmptyLimit      SyncStopReason = "empty_limit"
+	SyncStopReasonContextCanceled SyncStopReason = "context_canceled"
+	SyncStopReasonFetchError      SyncStopReason = "fetch_error"
+	SyncStopReasonProcessError    SyncStopReason = "process_error"
+)
+
+func ParseSyncStopReason(val string) (SyncStopReason, error) {
+	reason := SyncStopReason(val)
+	if !reason.Valid() {
+		return "", fmt.Errorf("invalid sync stop reason: %s", val)
+	}
+	return reason, nil
+}
+
+func (r SyncStopReason) Valid() bool {
+	switch r {
+	case SyncStopReasonEmptyLimit, SyncStopReasonContextCanceled, SyncStopReasonFetchError, SyncStopReasonProcessError:
+		return true
+	default:
+		return false
+	}
+}
+
+func (r SyncStopReason) String() string {
+	return string(r)
 }

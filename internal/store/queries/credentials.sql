@@ -6,10 +6,10 @@ SELECT * FROM credentials ORDER BY label ASC;
 
 -- name: CreateCredential :exec
 INSERT INTO credentials (
-    id, label, cert_path, environment, owner_cnpj, owner_cnpj_root, 
+    id, label, cert_path, owner_cnpj, owner_cnpj_root, 
     fingerprint_sha256, subject_name, not_before, not_after, inspected_at,
     created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeleteCredential :exec
 DELETE FROM credentials WHERE id = ?;
@@ -18,7 +18,6 @@ DELETE FROM credentials WHERE id = ?;
 UPDATE credentials SET
     label = ?,
     cert_path = ?,
-    environment = ?,
     owner_cnpj = ?,
     owner_cnpj_root = ?,
     fingerprint_sha256 = ?,

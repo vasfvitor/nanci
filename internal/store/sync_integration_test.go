@@ -17,11 +17,11 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	credentials := NewCredentialRepository(db)
 	companies := NewCompanyRepository(db)
 
-	first := testCredential("credential-1", nfse.EnvironmentRestricted)
+	first := testCredential("credential-1")
 	if err := credentials.CreateCredential(context.Background(), first); err != nil {
 		t.Fatal(err)
 	}
-	company := testCompany("company-1", "11222333000181", first)
+	company := testCompany("company-1", "11222333000181", nfse.EnvironmentRestricted, first)
 	if err := companies.CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
@@ -30,9 +30,9 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertCompanyCredential(t, stored, first)
+	assertCompanyCredential(t, stored, first, nfse.EnvironmentRestricted)
 
-	second := testCredential("credential-2", nfse.EnvironmentProduction)
+	second := testCredential("credential-2")
 	second.Label = "Production certificate"
 	second.CertPath = `C:\certs\production.pfx`
 	if err := credentials.CreateCredential(context.Background(), second); err != nil {
@@ -46,7 +46,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertCompanyCredential(t, stored, second)
+	assertCompanyCredential(t, stored, second, nfse.EnvironmentRestricted)
 }
 
 func TestDocumentUpsertUsesCanonicalIDAndListsRelations(t *testing.T) {
@@ -181,18 +181,17 @@ func openTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func testCredential(id string, environment nfse.Environment) *nfse.Credential {
+func testCredential(id string) *nfse.Credential {
 	return &nfse.Credential{
 		ID:            nfse.CredentialID(id),
 		Label:         "Certificate",
 		CertPath:      `C:\certs\company.pfx`,
-		Environment:   environment,
 		OwnerCNPJ:     "11222333000181",
 		OwnerCNPJRoot: "11222333",
 	}
 }
 
-func testCompany(id, cnpj string, credential *nfse.Credential) *nfse.Company {
+func testCompany(id, cnpj string, env nfse.Environment, credential *nfse.Credential) *nfse.Company {
 	return &nfse.Company{
 		ID:                 nfse.CompanyID(id),
 		CNPJ:               cnpj,
@@ -201,18 +200,18 @@ func testCompany(id, cnpj string, credential *nfse.Credential) *nfse.Company {
 		CredentialID:       credential.ID,
 		CredentialLabel:    credential.Label,
 		CredentialCertPath: credential.CertPath,
-		Environment:        credential.Environment,
+		Environment:        env,
 	}
 }
 
 func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *nfse.Company {
 	t.Helper()
 
-	credential := testCredential("credential-"+id, nfse.EnvironmentRestricted)
+	credential := testCredential("credential-" + id)
 	if err := NewCredentialRepository(db).CreateCredential(context.Background(), credential); err != nil {
 		t.Fatal(err)
 	}
-	company := testCompany(id, cnpj, credential)
+	company := testCompany(id, cnpj, nfse.EnvironmentRestricted, credential)
 	if err := NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
@@ -266,12 +265,12 @@ func applyEvent(t *testing.T, repo *SyncRepository, event nfse.Event, companyID 
 	}
 }
 
-func assertCompanyCredential(t *testing.T, company *nfse.Company, credential *nfse.Credential) {
+func assertCompanyCredential(t *testing.T, company *nfse.Company, credential *nfse.Credential, expectedEnv nfse.Environment) {
 	t.Helper()
 	if company.CredentialID != credential.ID ||
 		company.CredentialLabel != credential.Label ||
 		company.CredentialCertPath != credential.CertPath ||
-		company.Environment != credential.Environment {
+		company.Environment != expectedEnv {
 		t.Fatalf("company credential metadata = %#v, want %#v", company, credential)
 	}
 }

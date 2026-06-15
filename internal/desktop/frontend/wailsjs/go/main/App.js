@@ -58,6 +58,10 @@ export function QueryNFSeEvents(arg1) {
   return window['go']['main']['App']['QueryNFSeEvents'](arg1);
 }
 
+export function ResetSyncState(arg1) {
+  return window['go']['main']['App']['ResetSyncState'](arg1);
+}
+
 export function SelectCertificate() {
   return window['go']['main']['App']['SelectCertificate']();
 }

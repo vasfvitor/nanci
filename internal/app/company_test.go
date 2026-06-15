@@ -63,7 +63,6 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 		ID:            "credential-1",
 		Label:         "Certificate",
 		CertPath:      `C:\certs\company.pfx`,
-		Environment:   nfse.EnvironmentRestricted,
 		OwnerCNPJ:     "11222333000181",
 		OwnerCNPJRoot: "11222333",
 	}
@@ -94,8 +93,8 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 	if company.CredentialCertPath != credential.CertPath {
 		t.Fatalf("credential path = %q, want %q", company.CredentialCertPath, credential.CertPath)
 	}
-	if company.Environment != credential.Environment {
-		t.Fatalf("environment = %q, want credential environment %q", company.Environment, credential.Environment)
+	if company.Environment != nfse.EnvironmentProduction {
+		t.Fatalf("environment = %q, want %q", company.Environment, nfse.EnvironmentProduction)
 	}
 }
 
@@ -123,29 +122,10 @@ func TestNewRuntimeBuildsProductionDependencies(t *testing.T) {
 		t.Fatalf("expected runtime database to exist: %v", err)
 	}
 	if err := application.AddCredential(context.Background(), app.AddCredentialInput{
-		Label:       "Credential",
-		CertPath:    writeTempCertFile(t),
-		Environment: "producao",
+		Label:    "Credential",
+		CertPath: writeTempCertFile(t),
 	}); err != nil {
 		t.Fatalf("expected runtime app to persist credential: %v", err)
-	}
-}
-
-func TestAddCredentialRejectsInvalidEnvironment(t *testing.T) {
-	t.Parallel()
-
-	application, _, _, _ := newTestApp(t)
-
-	err := application.AddCredential(context.Background(), app.AddCredentialInput{
-		Label:       "Credential",
-		CertPath:    writeTempCertFile(t),
-		Environment: "sandbox",
-	})
-	if err == nil {
-		t.Fatal("expected invalid environment error")
-	}
-	if !strings.Contains(err.Error(), "ambiente inválido") {
-		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -160,6 +140,86 @@ func TestStatusReturnsCompanyNotFound(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "empresa não encontrada") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
+	t.Parallel()
+
+	application, companyRepo, credentialRepo, _ := newTestApp(t)
+	credential := &nfse.Credential{
+		ID:            "credential-1",
+		Label:         "Certificate",
+		CertPath:      `C:\certs\company.pfx`,
+		OwnerCNPJ:     "11222333000181",
+		OwnerCNPJRoot: "11222333",
+	}
+	if err := credentialRepo.CreateCredential(context.Background(), credential); err != nil {
+		t.Fatal(err)
+	}
+	company := &nfse.Company{
+		ID:                 "company-1",
+		CNPJ:               "11222333000181",
+		CNPJRoot:           "11222333",
+		Name:               "Company",
+		CredentialID:       credential.ID,
+		CredentialLabel:    credential.Label,
+		CredentialCertPath: credential.CertPath,
+		Environment:        nfse.EnvironmentProduction,
+	}
+	if err := companyRepo.CreateCompany(context.Background(), company); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := application.SyncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
+		CompanyID:        company.ID,
+		Environment:      company.Environment,
+		ConsultationCNPJ: company.CNPJ,
+		LegacyLastNSU:    42,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := application.SyncRepo.PersistProgress(context.Background(), nfse.PersistSyncProgressParams{
+		CompanyID:             company.ID,
+		RunID:                 "run-1",
+		Environment:           company.Environment,
+		ConsultationCNPJ:      company.CNPJ,
+		LastCheckedNSU:        42,
+		LastFoundNSU:          29,
+		LastFoundNSUValid:     true,
+		LastEmptyStreak:       3,
+		CheckedCount:          1,
+		DocumentsFound:        1,
+		EmptyCount:            0,
+		ConsecutiveEmptyCount: 0,
+		ErrorsCount:           0,
+		MarkSuccess:           true,
+	}); err == nil {
+		// PersistProgress requires an existing run; ignore and seed directly below.
+	}
+	if _, err := application.DB.ExecContext(context.Background(), `
+		UPDATE companies SET last_nsu = 42 WHERE id = ?;
+		UPDATE sync_state SET last_checked_nsu = 42, last_found_nsu = 29, last_empty_streak = 3 WHERE company_id = ?;
+	`, string(company.ID), string(company.ID)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := application.ResetSyncState(context.Background(), app.ResetSyncInput{CNPJ: company.CNPJ}); err != nil {
+		t.Fatal(err)
+	}
+
+	stored, err := companyRepo.CompanyByCNPJ(context.Background(), company.CNPJ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.LastNSU != 0 {
+		t.Fatalf("LastNSU = %d, want 0", stored.LastNSU)
+	}
+	snapshot, err := application.SyncRepo.LatestSyncSnapshot(context.Background(), company.ID, company.Environment, company.CNPJ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.State != nil {
+		t.Fatal("expected sync_state to be removed")
 	}
 }
 

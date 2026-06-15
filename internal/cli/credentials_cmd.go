@@ -13,7 +13,6 @@ import (
 var (
 	credentialLabel string
 	credentialPath  string
-	credentialEnv   string
 	credentialID    string
 )
 
@@ -33,9 +32,8 @@ var credentialAddCmd = &cobra.Command{
 		defer application.Close()
 
 		if err := application.AddCredential(context.Background(), app.AddCredentialInput{
-			Label:       credentialLabel,
-			CertPath:    credentialPath,
-			Environment: credentialEnv,
+			Label:    credentialLabel,
+			CertPath: credentialPath,
 		}); err != nil {
 			return fmt.Errorf("erro ao adicionar credencial: %w", err)
 		}
@@ -63,7 +61,7 @@ var credentialListCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("%-36s %-18s %-15s %-20s %s\n", "ID", "Rótulo", "Ambiente", "CNPJ Proprietário", "Certificado")
+		fmt.Printf("%-36s %-18s %-20s %s\n", "ID", "Rótulo", "CNPJ Proprietário", "Certificado")
 		fmt.Println("----------------------------------------------------------------------------------------------------------------")
 		for _, credential := range credentials {
 			owner := credential.OwnerCNPJ
@@ -72,7 +70,7 @@ var credentialListCmd = &cobra.Command{
 			} else {
 				owner = cnpj.Format(owner)
 			}
-			fmt.Printf("%-36s %-18s %-15s %-20s %s\n", credential.ID, credential.Label, credential.Environment, owner, credential.CertPath)
+			fmt.Printf("%-36s %-18s %-20s %s\n", credential.ID, credential.Label, owner, credential.CertPath)
 		}
 		return nil
 	},
@@ -107,7 +105,6 @@ func init() {
 
 	credentialAddCmd.Flags().StringVar(&credentialLabel, "label", "", "Rótulo da credencial")
 	credentialAddCmd.Flags().StringVar(&credentialPath, "cert", "", "Caminho do certificado .pfx/.p12")
-	credentialAddCmd.Flags().StringVar(&credentialEnv, "env", "producao_restrita", "Ambiente: producao ou producao_restrita")
 	_ = credentialAddCmd.MarkFlagRequired("cert")
 
 	credentialUpdatePathCmd.Flags().StringVar(&credentialID, "credential-id", "", "ID da credencial")

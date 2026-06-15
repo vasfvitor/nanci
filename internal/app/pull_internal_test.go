@@ -18,11 +18,11 @@ import (
 )
 
 type syncRunnerStub struct {
-	sync func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.ProgressFunc) error
+	sync func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error
 }
 
-func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error {
-	return s.sync(ctx, company, credential, consultationBasis, progress)
+func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
+	return s.sync(ctx, company, credential, consultationBasis, mode, progress)
 }
 
 type providerStub struct{}
@@ -66,10 +66,9 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	credential := &nfse.Credential{
-		ID:          "credential-1",
-		Label:       "Credential",
-		CertPath:    certPath,
-		Environment: nfse.EnvironmentProduction,
+		ID:       "credential-1",
+		Label:    "Credential",
+		CertPath: certPath,
 	}
 	if err := credentialRepo.CreateCredential(context.Background(), credential); err != nil {
 		t.Fatal(err)
@@ -125,7 +124,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
 		receivedStore = store
 		return syncRunnerStub{
-			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error {
+			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
 				if progress != nil {
 					progress(nfse.ProgressEvent{DocsFound: 1})
 				}

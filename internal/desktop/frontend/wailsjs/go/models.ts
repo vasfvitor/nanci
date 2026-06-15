@@ -25,7 +25,6 @@ export namespace app {
 	export class AddCredentialInput {
 	    Label: string;
 	    CertPath: string;
-	    Environment: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AddCredentialInput(source);
@@ -35,7 +34,6 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Label = source["Label"];
 	        this.CertPath = source["CertPath"];
-	        this.Environment = source["Environment"];
 	    }
 	}
 	export class AssignCredentialInput {
@@ -88,6 +86,7 @@ export namespace app {
 	}
 	export class PullInput {
 	    CNPJ: string;
+	    Mode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PullInput(source);
@@ -96,6 +95,7 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CNPJ = source["CNPJ"];
+	        this.Mode = source["Mode"];
 	    }
 	}
 	export class PullResult {
@@ -104,6 +104,12 @@ export namespace app {
 	    CredentialLabel: string;
 	    CredentialCNPJ: string;
 	    ConsultationBasis: string;
+	    Status: string;
+	    StopReason: string;
+	    LastCheckedNSU: number;
+	    LastFoundNSU: number;
+	    LastFoundNSUValid: boolean;
+	    EmptyStreak: number;
 	    DocumentsFound: number;
 	    EventsFound: number;
 	    Errors: number;
@@ -120,6 +126,12 @@ export namespace app {
 	        this.CredentialLabel = source["CredentialLabel"];
 	        this.CredentialCNPJ = source["CredentialCNPJ"];
 	        this.ConsultationBasis = source["ConsultationBasis"];
+	        this.Status = source["Status"];
+	        this.StopReason = source["StopReason"];
+	        this.LastCheckedNSU = source["LastCheckedNSU"];
+	        this.LastFoundNSU = source["LastFoundNSU"];
+	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
+	        this.EmptyStreak = source["EmptyStreak"];
 	        this.DocumentsFound = source["DocumentsFound"];
 	        this.EventsFound = source["EventsFound"];
 	        this.Errors = source["Errors"];
@@ -140,11 +152,33 @@ export namespace app {
 	        this.ChaveAcesso = source["ChaveAcesso"];
 	    }
 	}
+	export class ResetSyncInput {
+	    CNPJ: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResetSyncInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	    }
+	}
 	export class StatusResult {
 	    CompanyName: string;
 	    CNPJ: string;
 	    Environment: string;
-	    LastNSU: number;
+	    ConsultationCNPJ: string;
+	    CredentialCNPJ: string;
+	    // Go type: time
+	    CredentialNotAfter?: any;
+	    LastCheckedNSU: number;
+	    LastFoundNSU: number;
+	    LastFoundNSUValid: boolean;
+	    // Go type: time
+	    LastSyncAt?: any;
+	    LastRunStatus: string;
+	    LastRunStopReason: string;
 	    TotalEmitidas: number;
 	    TotalTomadas: number;
 	
@@ -157,10 +191,36 @@ export namespace app {
 	        this.CompanyName = source["CompanyName"];
 	        this.CNPJ = source["CNPJ"];
 	        this.Environment = source["Environment"];
-	        this.LastNSU = source["LastNSU"];
+	        this.ConsultationCNPJ = source["ConsultationCNPJ"];
+	        this.CredentialCNPJ = source["CredentialCNPJ"];
+	        this.CredentialNotAfter = this.convertValues(source["CredentialNotAfter"], null);
+	        this.LastCheckedNSU = source["LastCheckedNSU"];
+	        this.LastFoundNSU = source["LastFoundNSU"];
+	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
+	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
+	        this.LastRunStatus = source["LastRunStatus"];
+	        this.LastRunStopReason = source["LastRunStopReason"];
 	        this.TotalEmitidas = source["TotalEmitidas"];
 	        this.TotalTomadas = source["TotalTomadas"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class UpdateCompanyInput {
 	    CNPJ: string;
@@ -181,7 +241,6 @@ export namespace app {
 	export class UpdateCredentialDataInput {
 	    CredentialID: string;
 	    Label: string;
-	    Environment: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateCredentialDataInput(source);
@@ -191,7 +250,6 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CredentialID = source["CredentialID"];
 	        this.Label = source["Label"];
-	        this.Environment = source["Environment"];
 	    }
 	}
 	export class UpdateCredentialPathInput {
@@ -223,6 +281,12 @@ export namespace nfse {
 	    CredentialCertPath: string;
 	    Environment: string;
 	    LastNSU: number;
+	    LastFoundNSU: number;
+	    LastFoundNSUValid: boolean;
+	    // Go type: time
+	    LastSyncAt?: any;
+	    LastRunStatus: string;
+	    LastRunStopReason: string;
 	    // Go type: time
 	    CreatedAt: any;
 	    // Go type: time
@@ -243,6 +307,11 @@ export namespace nfse {
 	        this.CredentialCertPath = source["CredentialCertPath"];
 	        this.Environment = source["Environment"];
 	        this.LastNSU = source["LastNSU"];
+	        this.LastFoundNSU = source["LastFoundNSU"];
+	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
+	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
+	        this.LastRunStatus = source["LastRunStatus"];
+	        this.LastRunStopReason = source["LastRunStopReason"];
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
 	    }
@@ -378,7 +447,6 @@ export namespace nfse {
 	    ID: string;
 	    Label: string;
 	    CertPath: string;
-	    Environment: string;
 	    OwnerCNPJ: string;
 	    OwnerCNPJRoot: string;
 	    FingerprintSHA256: string;
@@ -403,7 +471,6 @@ export namespace nfse {
 	        this.ID = source["ID"];
 	        this.Label = source["Label"];
 	        this.CertPath = source["CertPath"];
-	        this.Environment = source["Environment"];
 	        this.OwnerCNPJ = source["OwnerCNPJ"];
 	        this.OwnerCNPJRoot = source["OwnerCNPJRoot"];
 	        this.FingerprintSHA256 = source["FingerprintSHA256"];

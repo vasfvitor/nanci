@@ -7,13 +7,7 @@
 
       <q-card-section class="q-pt-none q-gutter-y-md">
         <q-input v-model="form.Label" label="Rótulo" outlined dense />
-        <q-select
-          v-model="form.Environment"
-          :options="['producao', 'producao_restrita']"
-          label="Ambiente"
-          outlined
-          dense
-        />
+
         <div class="row items-center q-gutter-x-sm">
           <q-input
             v-model="form.CertPath"
@@ -52,7 +46,6 @@ const loading = ref(false)
 const form = ref({
   Label: '',
   CertPath: '',
-  Environment: 'producao_restrita',
 })
 
 watch(
@@ -92,7 +85,7 @@ async function submit() {
     $q.notify({ type: 'positive', message: 'Credencial adicionada com sucesso!' })
     emit('added')
     isOpen.value = false
-    form.value = { Label: '', CertPath: '', Environment: 'producao_restrita' }
+    form.value = { Label: '', CertPath: '' }
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + String(err) })
   } finally {

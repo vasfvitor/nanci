@@ -18,7 +18,6 @@ CREATE TABLE credentials (
     id TEXT PRIMARY KEY,
     label TEXT NOT NULL,
     cert_path TEXT NOT NULL,
-    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     owner_cnpj TEXT NOT NULL,
     owner_cnpj_root TEXT NOT NULL,
     fingerprint_sha256 TEXT NOT NULL,

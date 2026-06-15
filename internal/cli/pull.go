@@ -31,8 +31,16 @@ var pullCmd = &cobra.Command{
 		fmt.Printf("Iniciando sincronização para %s (%s)\n",
 			result.CompanyName, cnpj.Format(result.CNPJ))
 		fmt.Printf("Sincronização concluída em %v\n", result.Duration.Round(1e6))
-		fmt.Printf("Documentos encontrados: %d | Erros: %d\n",
-			result.DocumentsFound, result.Errors)
+		fmt.Printf("Status: %s", result.Status)
+		if result.StopReason != "" {
+			fmt.Printf(" (%s)", result.StopReason)
+		}
+		fmt.Println()
+		fmt.Printf("Último NSU consultado: %d\n", result.LastCheckedNSU)
+		if result.LastFoundNSUValid {
+			fmt.Printf("Último NSU com documento: %d\n", result.LastFoundNSU)
+		}
+		fmt.Printf("Documentos encontrados: %d | Erros: %d\n", result.DocumentsFound, result.Errors)
 
 		return nil
 	},

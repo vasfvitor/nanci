@@ -27,7 +27,23 @@ var statusCmd = &cobra.Command{
 
 		fmt.Printf("Status para: %s (%s)\n", result.CompanyName, cnpj.Format(result.CNPJ))
 		fmt.Printf("Ambiente: %s\n", result.Environment)
-		fmt.Printf("Último NSU processado: %d\n", result.LastNSU)
+		fmt.Printf("CNPJ consultado: %s\n", cnpj.Format(result.ConsultationCNPJ))
+		fmt.Printf("Último NSU consultado: %d\n", result.LastCheckedNSU)
+		if result.LastFoundNSUValid {
+			fmt.Printf("Último NSU com documento: %d\n", result.LastFoundNSU)
+		} else {
+			fmt.Printf("Último NSU com documento: -\n")
+		}
+		if result.LastSyncAt != nil {
+			fmt.Printf("Última sincronização: %s\n", result.LastSyncAt.Format("2006-01-02 15:04:05"))
+		}
+		if result.LastRunStatus != "" {
+			fmt.Printf("Última execução: %s", result.LastRunStatus)
+			if result.LastRunStopReason != "" {
+				fmt.Printf(" (%s)", result.LastRunStopReason)
+			}
+			fmt.Println()
+		}
 		fmt.Println("\nEstatísticas de Documentos:")
 		fmt.Printf("  Notas Emitidas (Prestadas): %d\n", result.TotalEmitidas)
 		fmt.Printf("  Notas Tomadas: %d\n", result.TotalTomadas)

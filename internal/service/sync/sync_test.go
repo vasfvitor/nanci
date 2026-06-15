@@ -8,29 +8,42 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 type mockSyncRepo struct {
+	state            *nfse.SyncState
 	startRunParams   []nfse.StartRunParams
-	advanceParams    []nfse.AdvanceCheckpointParams
+	persistParams    []nfse.PersistSyncProgressParams
 	finishRunParams  []nfse.FinishRunParams
 	applyDocParams   []nfse.ApplyDocumentParams
 	applyEventParams []nfse.ApplyEventParams
-	applyDocumentErr func(nfse.ApplyDocumentParams) error
-	applyEventErr    func(nfse.ApplyEventParams) error
+}
+
+func (m *mockSyncRepo) GetOrCreateState(context.Context, nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
+	if m.state == nil {
+		m.state = &nfse.SyncState{}
+	}
+	stateCopy := *m.state
+	return &stateCopy, nil
 }
 
 func (m *mockSyncRepo) StartRun(ctx context.Context, p nfse.StartRunParams) (nfse.SyncRun, error) {
 	m.startRunParams = append(m.startRunParams, p)
-	return nfse.SyncRun{ID: "run-1", Status: "running"}, nil
+	return nfse.SyncRun{ID: "run-1", Status: nfse.SyncStatusRunning}, nil
 }
 
-func (m *mockSyncRepo) AdvanceCheckpoint(ctx context.Context, p nfse.AdvanceCheckpointParams) error {
-	m.advanceParams = append(m.advanceParams, p)
+func (m *mockSyncRepo) PersistProgress(ctx context.Context, p nfse.PersistSyncProgressParams) error {
+	m.persistParams = append(m.persistParams, p)
+	if m.state == nil {
+		m.state = &nfse.SyncState{}
+	}
+	m.state.LastCheckedNSU = p.LastCheckedNSU
+	m.state.LastFoundNSU = p.LastFoundNSU
+	m.state.LastFoundNSUValid = p.LastFoundNSUValid
+	m.state.LastEmptyStreak = p.LastEmptyStreak
 	return nil
 }
 
@@ -41,34 +54,33 @@ func (m *mockSyncRepo) FinishRun(ctx context.Context, p nfse.FinishRunParams) er
 
 func (m *mockSyncRepo) ApplyDocument(ctx context.Context, p nfse.ApplyDocumentParams) error {
 	m.applyDocParams = append(m.applyDocParams, p)
-	if m.applyDocumentErr != nil {
-		return m.applyDocumentErr(p)
-	}
 	return nil
 }
 
 func (m *mockSyncRepo) ApplyEvent(ctx context.Context, p nfse.ApplyEventParams) error {
 	m.applyEventParams = append(m.applyEventParams, p)
-	if m.applyEventErr != nil {
-		return m.applyEventErr(p)
-	}
+	return nil
+}
+
+func (m *mockSyncRepo) LatestSyncSnapshot(context.Context, nfse.CompanyID, nfse.Environment, string) (nfse.SyncSnapshot, error) {
+	return nfse.SyncSnapshot{}, nil
+}
+
+func (m *mockSyncRepo) ResetSyncState(context.Context, nfse.ResetSyncStateParams) error {
 	return nil
 }
 
 type mockFetcher struct {
-	requests  []adn.DistributionRequest
-	responses []func() (*adn.DocumentResponse, error)
-	callCount int
+	handler  func(adn.DistributionRequest) (*adn.DocumentResponse, error)
+	requests []adn.DistributionRequest
 }
 
 func (m *mockFetcher) FetchDocuments(ctx context.Context, req adn.DistributionRequest) (*adn.DocumentResponse, error) {
 	m.requests = append(m.requests, req)
-	if m.callCount < len(m.responses) {
-		resp, err := m.responses[m.callCount]()
-		m.callCount++
-		return resp, err
+	if m.handler != nil {
+		return m.handler(req)
 	}
-	return nil, errors.New("unexpected call")
+	return &adn.DocumentResponse{}, nil
 }
 
 type mockXMLStore struct {
@@ -90,153 +102,160 @@ func (m *mockXMLStore) Get(hash string) ([]byte, error) {
 	return nil, errors.New("not found")
 }
 
-func TestSyncService_Loop(t *testing.T) {
-	repo := &mockSyncRepo{}
-	fetcher := &mockFetcher{
-		responses: []func() (*adn.DocumentResponse, error){
-			func() (*adn.DocumentResponse, error) {
-				return &adn.DocumentResponse{
-					UltNSU: 10,
-					MaxNSU: 10,
-					Docs:   nil,
-				}, nil
-			},
+func TestSyncServiceSuccessFinishesOnceAsCompleted(t *testing.T) {
+	repo := &mockSyncRepo{
+		state: &nfse.SyncState{
+			CompanyID:        "comp-1",
+			Environment:      nfse.EnvironmentProduction,
+			ConsultationCNPJ: "12345678901234",
 		},
 	}
-	xmlStore := &mockXMLStore{}
-	logger := slog.Default()
-
-	svc := NewSyncService(repo, fetcher, xmlStore, logger)
-
-	company := &nfse.Company{
-		ID:      "comp-1",
-		CNPJ:    "12345678901234",
-		LastNSU: 0,
-	}
-	credential := &nfse.Credential{
-		ID:        "cred-1",
-		OwnerCNPJ: "12345678901234",
+	fetcher := &mockFetcher{
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			return &adn.DocumentResponse{}, nil
+		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	originalDelay := syncRequestDelay
+	syncRequestDelay = 0
+	defer func() { syncRequestDelay = originalDelay }()
 
-	err := svc.Sync(ctx, company, credential, "exact", nil)
-	if err != nil {
+	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
+	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
+
+	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
 	}
 
-	if len(fetcher.requests) != 1 {
-		t.Errorf("expected 1 fetch call, got %d", len(fetcher.requests))
+	if len(fetcher.requests) != normalEmptyLimit {
+		t.Fatalf("expected %d fetches, got %d", normalEmptyLimit, len(fetcher.requests))
 	}
-	if len(repo.advanceParams) != 1 {
-		t.Errorf("expected 1 advance call, got %d", len(repo.advanceParams))
+	if got := repo.persistParams[len(repo.persistParams)-1].LastCheckedNSU; got != int64(normalEmptyLimit) {
+		t.Fatalf("last checked nsu = %d, want %d", got, normalEmptyLimit)
 	}
-	if repo.advanceParams[0].LastNSU != 10 {
-		t.Errorf("expected advance NSU 10, got %d", repo.advanceParams[0].LastNSU)
-	}
-	assertSingleFinishRun(t, repo, "completed")
+	assertSingleFinishRun(t, repo, nfse.SyncStatusCompleted, nfse.SyncStopReasonEmptyLimit)
 }
 
-func TestSyncService_Failure(t *testing.T) {
-	repo := &mockSyncRepo{}
-	fetcher := &mockFetcher{
-		responses: []func() (*adn.DocumentResponse, error){
-			func() (*adn.DocumentResponse, error) {
-				return nil, errors.New("api error")
-			},
+func TestSyncServiceFetchFailureFinishesOnceAsFailed(t *testing.T) {
+	repo := &mockSyncRepo{
+		state: &nfse.SyncState{
+			CompanyID:        "comp-1",
+			Environment:      nfse.EnvironmentProduction,
+			ConsultationCNPJ: "12345678901234",
 		},
 	}
-	xmlStore := &mockXMLStore{}
-
-	svc := NewSyncService(repo, fetcher, xmlStore, slog.Default())
-
-	company := &nfse.Company{
-		ID:      "comp-1",
-		CNPJ:    "12345678901234",
-		LastNSU: 0,
-	}
-	credential := &nfse.Credential{
-		ID:        "cred-1",
-		OwnerCNPJ: "12345678901234",
+	fetcher := &mockFetcher{
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			return nil, errors.New("api error")
+		},
 	}
 
-	err := svc.Sync(context.Background(), company, credential, "exact", nil)
+	originalDelay := syncRequestDelay
+	syncRequestDelay = 0
+	defer func() { syncRequestDelay = originalDelay }()
+
+	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
+	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
+
+	err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
 	if err == nil {
 		t.Fatal("expected sync failure, got nil")
 	}
 
-	assertSingleFinishRun(t, repo, "failed")
+	assertSingleFinishRun(t, repo, nfse.SyncStatusFailed, nfse.SyncStopReasonFetchError)
 }
 
-func TestSyncService_CancellationFinishesOnceAsInterrupted(t *testing.T) {
-	repo := &mockSyncRepo{}
+func TestSyncServiceCancellationFinishesOnceAsInterrupted(t *testing.T) {
+	repo := &mockSyncRepo{
+		state: &nfse.SyncState{
+			CompanyID:        "comp-1",
+			Environment:      nfse.EnvironmentProduction,
+			ConsultationCNPJ: "12345678901234",
+		},
+	}
 	fetcher := &mockFetcher{}
-	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
 
-	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", LastNSU: 0}
+	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
 	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := svc.Sync(ctx, company, credential, "exact", nil)
+	err := svc.Sync(ctx, company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context.Canceled, got %v", err)
 	}
 
-	assertSingleFinishRun(t, repo, "interrupted")
+	assertSingleFinishRun(t, repo, nfse.SyncStatusInterrupted, nfse.SyncStopReasonContextCanceled)
 }
 
-func TestSyncService_ProcessingFailureAdvancesCheckpointBeforeFailing(t *testing.T) {
-	repo := &mockSyncRepo{}
-	repo.applyDocumentErr = func(p nfse.ApplyDocumentParams) error {
-		if p.NSU == 2 {
-			return errors.New("apply failed")
-		}
-		return nil
+func TestSyncServiceProcessingFailurePersistsConsultedCheckpointBeforeFailing(t *testing.T) {
+	repo := &mockSyncRepo{
+		state: &nfse.SyncState{
+			CompanyID:        "comp-1",
+			Environment:      nfse.EnvironmentProduction,
+			ConsultationCNPJ: "12345678901234",
+		},
 	}
 	fetcher := &mockFetcher{
-		responses: []func() (*adn.DocumentResponse, error){
-			func() (*adn.DocumentResponse, error) {
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			switch req.LastNSU {
+			case 1:
 				return &adn.DocumentResponse{
-					UltNSU: 2,
-					MaxNSU: 2,
 					Docs: []adn.DocumentEnvelope{
 						{NSU: 1, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, validDocumentXML)},
-						{NSU: 2, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, validDocumentXML)},
 					},
 				}, nil
-			},
+			case 2:
+				return &adn.DocumentResponse{
+					Docs: []adn.DocumentEnvelope{
+						{NSU: 2, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, "<NFSe>")},
+					},
+				}, nil
+			default:
+				return &adn.DocumentResponse{}, nil
+			}
 		},
 	}
 
-	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
-	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678000100", LastNSU: 0}
-	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678000100"}
+	originalDelay := syncRequestDelay
+	syncRequestDelay = 0
+	defer func() { syncRequestDelay = originalDelay }()
 
-	err := svc.Sync(context.Background(), company, credential, "exact", nil)
+	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
+	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
+
+	err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
 	if err == nil {
 		t.Fatal("expected sync failure, got nil")
 	}
 
-	if len(repo.advanceParams) != 1 {
-		t.Fatalf("expected exactly 1 checkpoint advance, got %d", len(repo.advanceParams))
+	if len(repo.persistParams) < 2 {
+		t.Fatalf("expected at least 2 progress writes, got %d", len(repo.persistParams))
 	}
-	if repo.advanceParams[0].LastNSU != 1 {
-		t.Fatalf("expected checkpoint at NSU 1, got %d", repo.advanceParams[0].LastNSU)
+	last := repo.persistParams[len(repo.persistParams)-1]
+	if last.LastCheckedNSU != 2 {
+		t.Fatalf("last persisted checkpoint = %d, want 2", last.LastCheckedNSU)
 	}
-	assertSingleFinishRun(t, repo, "failed")
+	assertSingleFinishRun(t, repo, nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError)
 }
 
-func TestSyncService_ProcessesEventFromTipoEventoMetadata(t *testing.T) {
-	repo := &mockSyncRepo{}
+func TestSyncServiceProcessesEventFromTipoEventoMetadata(t *testing.T) {
+	repo := &mockSyncRepo{
+		state: &nfse.SyncState{
+			CompanyID:        "comp-1",
+			Environment:      nfse.EnvironmentProduction,
+			ConsultationCNPJ: "12345678901234",
+		},
+	}
 	fetcher := &mockFetcher{
-		responses: []func() (*adn.DocumentResponse, error){
-			func() (*adn.DocumentResponse, error) {
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			if req.LastNSU == 1 {
 				return &adn.DocumentResponse{
-					UltNSU: 1,
-					MaxNSU: 1,
 					Docs: []adn.DocumentEnvelope{
 						{
 							NSU:           1,
@@ -246,97 +265,41 @@ func TestSyncService_ProcessesEventFromTipoEventoMetadata(t *testing.T) {
 						},
 					},
 				}, nil
-			},
-		},
-	}
-	xmlStore := &mockXMLStore{}
-
-	svc := NewSyncService(repo, fetcher, xmlStore, slog.Default())
-	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", LastNSU: 0}
-	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
-
-	if err := svc.Sync(context.Background(), company, credential, "exact", nil); err != nil {
-		t.Fatalf("expected sync success, got %v", err)
-	}
-
-	if len(repo.applyEventParams) != 1 {
-		t.Fatalf("expected 1 event to be applied, got %d", len(repo.applyEventParams))
-	}
-	if len(repo.applyDocParams) != 0 {
-		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocParams))
-	}
-}
-
-func TestSyncService_FallsBackToSchemaWhenMetadataMissing(t *testing.T) {
-	repo := &mockSyncRepo{}
-	fetcher := &mockFetcher{
-		responses: []func() (*adn.DocumentResponse, error){
-			func() (*adn.DocumentResponse, error) {
-				return &adn.DocumentResponse{
-					UltNSU: 2,
-					MaxNSU: 2,
-					Docs: []adn.DocumentEnvelope{
-						{
-							NSU:           2,
-							Schema:        "procEventoNFSe_v1.00.xsd",
-							XMLGZipBase64: mustEncodeGzipBase64(t, `<pedCancNFSe><infPedidoCanc><chNFSe>12345678901234567890123456789012345678901234567890</chNFSe><cMotivo>Erro emissao</cMotivo><dhEvento>2026-06-04T12:00:00Z</dhEvento></infPedidoCanc></pedCancNFSe>`),
-						},
-					},
-				}, nil
-			},
-		},
-	}
-	xmlStore := &mockXMLStore{}
-
-	svc := NewSyncService(repo, fetcher, xmlStore, slog.Default())
-	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", LastNSU: 0}
-	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
-
-	if err := svc.Sync(context.Background(), company, credential, "exact", nil); err != nil {
-		t.Fatalf("expected sync success, got %v", err)
-	}
-
-	if len(repo.applyEventParams) != 1 {
-		t.Fatalf("expected 1 event to be applied, got %d", len(repo.applyEventParams))
-	}
-	if len(repo.applyDocParams) != 0 {
-		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocParams))
-	}
-}
-
-func TestNextNSU(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name            string
-		requestedNSU    int64
-		apiUltNSU       int64
-		batchSuccessNSU int64
-		emptyBatch      bool
-		want            int64
-	}{
-		{name: "empty batch advances manually", requestedNSU: 10, apiUltNSU: 10, emptyBatch: true, want: 11},
-		{name: "empty batch uses api ult", requestedNSU: 10, apiUltNSU: 15, emptyBatch: true, want: 15},
-		{name: "non empty prefers api ult", apiUltNSU: 20, batchSuccessNSU: 18, want: 20},
-		{name: "non empty falls back to processed nsu", apiUltNSU: 18, batchSuccessNSU: 20, want: 20},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := nextNSU(tt.requestedNSU, tt.apiUltNSU, tt.batchSuccessNSU, tt.emptyBatch); got != tt.want {
-				t.Fatalf("nextNSU() = %d, want %d", got, tt.want)
 			}
-		})
+			return &adn.DocumentResponse{}, nil
+		},
+	}
+
+	originalDelay := syncRequestDelay
+	syncRequestDelay = 0
+	defer func() { syncRequestDelay = originalDelay }()
+
+	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, slog.Default())
+	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
+	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
+
+	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
+		t.Fatalf("expected sync success, got %v", err)
+	}
+
+	if len(repo.applyEventParams) != 1 {
+		t.Fatalf("expected 1 event to be applied, got %d", len(repo.applyEventParams))
+	}
+	if len(repo.applyDocParams) != 0 {
+		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocParams))
 	}
 }
 
-func assertSingleFinishRun(t *testing.T, repo *mockSyncRepo, wantStatus nfse.SyncStatus) {
+func assertSingleFinishRun(t *testing.T, repo *mockSyncRepo, wantStatus nfse.SyncStatus, wantReason nfse.SyncStopReason) {
 	t.Helper()
 	if len(repo.finishRunParams) != 1 {
 		t.Fatalf("expected exactly 1 finish call, got %d", len(repo.finishRunParams))
 	}
 	if repo.finishRunParams[0].Status != wantStatus {
 		t.Fatalf("finish status = %s, want %s", repo.finishRunParams[0].Status, wantStatus)
+	}
+	if repo.finishRunParams[0].StopReason != wantReason {
+		t.Fatalf("finish stop_reason = %s, want %s", repo.finishRunParams[0].StopReason, wantReason)
 	}
 }
 

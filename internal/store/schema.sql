@@ -16,7 +16,6 @@ CREATE TABLE credentials (
     id TEXT PRIMARY KEY,
     label TEXT NOT NULL,
     cert_path TEXT NOT NULL,
-    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     owner_cnpj TEXT NOT NULL,
     owner_cnpj_root TEXT NOT NULL,
     fingerprint_sha256 TEXT NOT NULL,
@@ -92,16 +91,39 @@ CREATE TABLE sync_runs (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES companies(id),
     credential_id TEXT NOT NULL REFERENCES credentials(id),
+    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     credential_cnpj TEXT NOT NULL,
     consultation_cnpj TEXT NOT NULL,
     consultation_basis TEXT NOT NULL CHECK (consultation_basis IN ('exact_certificate_cnpj', 'same_root_certificate')),
+    mode TEXT NOT NULL CHECK (mode IN ('normal', 'first_setup')),
     started_at TEXT NOT NULL,
     finished_at TEXT,
     from_nsu INTEGER NOT NULL,
     to_nsu INTEGER NOT NULL,
+    checked_count INTEGER NOT NULL DEFAULT 0,
     documents_found INTEGER NOT NULL DEFAULT 0,
+    empty_count INTEGER NOT NULL DEFAULT 0,
+    consecutive_empty_count INTEGER NOT NULL DEFAULT 0,
     errors_count INTEGER NOT NULL DEFAULT 0,
-    status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed', 'interrupted'))
+    last_found_nsu INTEGER,
+    status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed', 'interrupted')),
+    stop_reason TEXT CHECK (stop_reason IN ('empty_limit', 'context_canceled', 'fetch_error', 'process_error'))
+);
+
+CREATE TABLE sync_state (
+    company_id TEXT NOT NULL REFERENCES companies(id),
+    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
+    consultation_cnpj TEXT NOT NULL,
+    last_checked_nsu INTEGER NOT NULL DEFAULT 0,
+    last_found_nsu INTEGER,
+    last_empty_streak INTEGER NOT NULL DEFAULT 0,
+    last_success_at TEXT,
+    last_error_at TEXT,
+    last_error_code TEXT,
+    last_error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (company_id, environment, consultation_cnpj)
 );
 
 CREATE UNIQUE INDEX idx_sync_runs_running ON sync_runs(company_id) WHERE status = 'running';

@@ -33,6 +33,18 @@
         </q-td>
       </template>
 
+      <template #body-cell-lastFoundNSU="props">
+        <q-td :props="props">
+          {{ props.row.LastFoundNSUValid ? props.row.LastFoundNSU : '—' }}
+        </q-td>
+      </template>
+
+      <template #body-cell-lastSyncAt="props">
+        <q-td :props="props">
+          {{ formatDateTime(props.row.LastSyncAt) }}
+        </q-td>
+      </template>
+
       <template #body-cell-credencial="props">
         <q-td :props="props" style="width: 250px">
           <q-select
@@ -70,6 +82,16 @@
             title="Editar"
             @click="openEditDialog(props.row)"
           />
+          <q-btn
+            v-if="debugEnabled"
+            dense
+            flat
+            round
+            color="negative"
+            icon="restart_alt"
+            title="Resetar NSU"
+            @click="confirmResetSync(props.row)"
+          />
         </q-td>
       </template>
     </q-table>
@@ -94,6 +116,7 @@
 </style>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { onMounted, ref, shallowRef } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import {
@@ -101,12 +124,16 @@ import {
   ListCompanies,
   ListCredentials,
   Pull,
+  ResetSyncState,
 } from '../../wailsjs/go/main/App'
 import { nfse } from '../../wailsjs/go/models'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
+import { useAppStore } from '../stores/app'
 
 const $q = useQuasar()
+const appStore = useAppStore()
+const { debugEnabled } = storeToRefs(appStore)
 const companies = shallowRef<nfse.Company[]>([])
 const showAddDialog = ref(false)
 const syncing = ref<string | null>(null)
@@ -120,6 +147,8 @@ const columns: QTableColumn[] = [
   { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
+  { name: 'lastFoundNSU', label: 'Último NSU com documento', field: 'LastFoundNSU', align: 'left', sortable: true },
+  { name: 'lastSyncAt', label: 'Última sincronização', field: 'LastSyncAt', align: 'left', sortable: true },
   { name: 'credencial', label: 'Credencial', field: () => '', align: 'left' },
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
@@ -132,7 +161,7 @@ function openEditDialog(company: nfse.Company) {
 async function loadCredentials() {
   const list = (await ListCredentials()) || []
   credentialOptions.value = list.map((credential) => ({
-    label: `${credential.Label} (${credential.Environment})`,
+    label: `${credential.Label}`,
     value: credential.ID,
   }))
 }
@@ -172,11 +201,12 @@ async function assignCredential(cnpj: string) {
 async function syncCompany(cnpj: string) {
   syncing.value = cnpj
   try {
-    const result = await Pull({ CNPJ: cnpj })
+    const result = await Pull({ CNPJ: cnpj, Mode: '' })
     const credentialCNPJ = result.CredentialCNPJ || 'pendente'
+    const lastFound = result.LastFoundNSUValid ? result.LastFoundNSU : '—'
     $q.notify({
       type: 'positive',
-      message: `Sincronização concluída! Docs: ${result.DocumentsFound}, Base: ${result.ConsultationBasis}, Credencial: ${credentialCNPJ}`,
+      message: `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastCheckedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`,
     })
     await loadCompanies()
   } catch (err) {
@@ -190,7 +220,39 @@ async function syncCompany(cnpj: string) {
   }
 }
 
+function confirmResetSync(company: nfse.Company) {
+  $q.dialog({
+    title: 'Resetar sincronização',
+    message: `Isso vai zerar o cursor de sincronização de ${company.Name} (${company.CNPJ}) sem apagar documentos já baixados. A próxima sincronização poderá revisitar NSUs antigos. Continuar?`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Resetar',
+      color: 'negative',
+      flat: false,
+    },
+  }).onOk(async () => {
+    try {
+      await ResetSyncState({ CNPJ: company.CNPJ })
+      $q.notify({
+        type: 'warning',
+        message: `Cursor de sincronização resetado para ${company.Name}.`,
+      })
+      await loadCompanies()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: 'Erro ao resetar sincronização: ' + String(err) })
+    }
+  })
+}
+
 onMounted(() => {
   reloadData()
 })
+
+function formatDateTime(value: string | Date | null | undefined) {
+  if (!value) return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('pt-BR')
+}
 </script>

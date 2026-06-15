@@ -128,14 +128,17 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { ref, onMounted, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { EventsOn, WindowMinimise, WindowToggleMaximise, Quit } from '../../wailsjs/runtime/runtime'
+import { useAppStore } from '../stores/app'
 
 const $q = useQuasar()
+const appStore = useAppStore()
 const leftDrawerOpen = ref(false)
 const consoleOpen = ref(false)
-const debugEnabled = ref(false)
+const { debugEnabled } = storeToRefs(appStore)
 const logs = ref<string[]>([])
 const parsedLogs = ref<Array<{time: string, level: string, msg: string, extras: string}>>([])
 const logScrollArea = ref<HTMLElement | null>(null)

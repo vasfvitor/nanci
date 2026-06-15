@@ -12,17 +12,16 @@ import (
 
 const createCredential = `-- name: CreateCredential :exec
 INSERT INTO credentials (
-    id, label, cert_path, environment, owner_cnpj, owner_cnpj_root, 
+    id, label, cert_path, owner_cnpj, owner_cnpj_root, 
     fingerprint_sha256, subject_name, not_before, not_after, inspected_at,
     created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateCredentialParams struct {
 	ID                string
 	Label             string
 	CertPath          string
-	Environment       string
 	OwnerCnpj         string
 	OwnerCnpjRoot     string
 	FingerprintSha256 string
@@ -39,7 +38,6 @@ func (q *Queries) CreateCredential(ctx context.Context, arg CreateCredentialPara
 		arg.ID,
 		arg.Label,
 		arg.CertPath,
-		arg.Environment,
 		arg.OwnerCnpj,
 		arg.OwnerCnpjRoot,
 		arg.FingerprintSha256,
@@ -63,7 +61,7 @@ func (q *Queries) DeleteCredential(ctx context.Context, id string) error {
 }
 
 const getCredential = `-- name: GetCredential :one
-SELECT id, label, cert_path, environment, owner_cnpj, owner_cnpj_root, fingerprint_sha256, subject_name, not_before, not_after, inspected_at, created_at, updated_at FROM credentials WHERE id = ? LIMIT 1
+SELECT id, label, cert_path, owner_cnpj, owner_cnpj_root, fingerprint_sha256, subject_name, not_before, not_after, inspected_at, created_at, updated_at FROM credentials WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetCredential(ctx context.Context, id string) (Credential, error) {
@@ -73,7 +71,6 @@ func (q *Queries) GetCredential(ctx context.Context, id string) (Credential, err
 		&i.ID,
 		&i.Label,
 		&i.CertPath,
-		&i.Environment,
 		&i.OwnerCnpj,
 		&i.OwnerCnpjRoot,
 		&i.FingerprintSha256,
@@ -88,7 +85,7 @@ func (q *Queries) GetCredential(ctx context.Context, id string) (Credential, err
 }
 
 const listCredentials = `-- name: ListCredentials :many
-SELECT id, label, cert_path, environment, owner_cnpj, owner_cnpj_root, fingerprint_sha256, subject_name, not_before, not_after, inspected_at, created_at, updated_at FROM credentials ORDER BY label ASC
+SELECT id, label, cert_path, owner_cnpj, owner_cnpj_root, fingerprint_sha256, subject_name, not_before, not_after, inspected_at, created_at, updated_at FROM credentials ORDER BY label ASC
 `
 
 func (q *Queries) ListCredentials(ctx context.Context) ([]Credential, error) {
@@ -104,7 +101,6 @@ func (q *Queries) ListCredentials(ctx context.Context) ([]Credential, error) {
 			&i.ID,
 			&i.Label,
 			&i.CertPath,
-			&i.Environment,
 			&i.OwnerCnpj,
 			&i.OwnerCnpjRoot,
 			&i.FingerprintSha256,
@@ -132,7 +128,6 @@ const updateCredential = `-- name: UpdateCredential :exec
 UPDATE credentials SET
     label = ?,
     cert_path = ?,
-    environment = ?,
     owner_cnpj = ?,
     owner_cnpj_root = ?,
     fingerprint_sha256 = ?,
@@ -147,7 +142,6 @@ WHERE id = ?
 type UpdateCredentialParams struct {
 	Label             string
 	CertPath          string
-	Environment       string
 	OwnerCnpj         string
 	OwnerCnpjRoot     string
 	FingerprintSha256 string
@@ -163,7 +157,6 @@ func (q *Queries) UpdateCredential(ctx context.Context, arg UpdateCredentialPara
 	_, err := q.db.ExecContext(ctx, updateCredential,
 		arg.Label,
 		arg.CertPath,
-		arg.Environment,
 		arg.OwnerCnpj,
 		arg.OwnerCnpjRoot,
 		arg.FingerprintSha256,

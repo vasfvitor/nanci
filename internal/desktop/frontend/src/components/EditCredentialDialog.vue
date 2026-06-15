@@ -8,13 +8,6 @@
       <q-card-section class="q-pt-none q-gutter-y-md">
         <q-input v-model="form.Label" label="Rótulo da Credencial" outlined dense />
 
-        <q-select
-          v-model="form.Environment"
-          :options="['producao', 'producao_restrita']"
-          label="Ambiente"
-          outlined
-          dense
-        />
       </q-card-section>
 
       <q-card-actions align="right">
@@ -45,7 +38,6 @@ const loading = ref(false)
 const form = ref({
   CredentialID: '',
   Label: '',
-  Environment: 'producao',
 })
 
 watch(
@@ -55,7 +47,6 @@ watch(
     if (val && props.credentialData) {
       form.value.CredentialID = props.credentialData.ID || ''
       form.value.Label = props.credentialData.Label || ''
-      form.value.Environment = props.credentialData.Environment || 'producao'
     }
   }
 )
@@ -75,7 +66,6 @@ async function submit() {
     await UpdateCredentialData({
       CredentialID: form.value.CredentialID,
       Label: form.value.Label,
-      Environment: form.value.Environment,
     })
     $q.notify({ type: 'positive', message: 'Credencial atualizada com sucesso!' })
     emit('updated')

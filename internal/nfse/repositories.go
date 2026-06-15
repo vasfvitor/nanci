@@ -36,11 +36,20 @@ type DocumentReader interface {
 type StartRunParams struct {
 	CompanyID         CompanyID
 	CredentialID      CredentialID
+	Environment       Environment
 	CredentialCNPJ    string
 	ConsultationCNPJ  string
 	ConsultationBasis ConsultationBasis
+	Mode              SyncMode
 	FromNSU           int64
 	ToNSU             int64
+}
+
+type GetOrCreateSyncStateParams struct {
+	CompanyID        CompanyID
+	Environment      Environment
+	ConsultationCNPJ string
+	LegacyLastNSU    int64
 }
 
 type ApplyDocumentParams struct {
@@ -62,16 +71,56 @@ type AdvanceCheckpointParams struct {
 	LastNSU   int64
 }
 
+type PersistSyncProgressParams struct {
+	CompanyID             CompanyID
+	RunID                 SyncRunID
+	Environment           Environment
+	ConsultationCNPJ      string
+	LastCheckedNSU        int64
+	LastFoundNSU          int64
+	LastFoundNSUValid     bool
+	LastEmptyStreak       int
+	CheckedCount          int
+	DocumentsFound        int
+	EmptyCount            int
+	ConsecutiveEmptyCount int
+	ErrorsCount           int
+	ErrorCode             string
+	ErrorMessage          string
+	MarkSuccess           bool
+}
+
 type FinishRunParams struct {
-	RunID    SyncRunID
-	Status   SyncStatus
-	ErrorMsg string
+	RunID                 SyncRunID
+	Status                SyncStatus
+	StopReason            SyncStopReason
+	ErrorCode             string
+	ErrorMsg              string
+	CheckedCount          int
+	DocumentsFound        int
+	EmptyCount            int
+	ConsecutiveEmptyCount int
+	ErrorsCount           int
+	LastFoundNSU          int64
+	LastFoundNSUValid     bool
+}
+
+type SyncSnapshot struct {
+	State *SyncState
+	Run   *SyncRun
+}
+
+type ResetSyncStateParams struct {
+	CompanyID CompanyID
 }
 
 type SyncRepository interface {
+	GetOrCreateState(ctx context.Context, params GetOrCreateSyncStateParams) (*SyncState, error)
 	StartRun(ctx context.Context, params StartRunParams) (SyncRun, error)
 	ApplyDocument(ctx context.Context, params ApplyDocumentParams) error
 	ApplyEvent(ctx context.Context, params ApplyEventParams) error
-	AdvanceCheckpoint(ctx context.Context, params AdvanceCheckpointParams) error
+	PersistProgress(ctx context.Context, params PersistSyncProgressParams) error
 	FinishRun(ctx context.Context, params FinishRunParams) error
+	LatestSyncSnapshot(ctx context.Context, companyID CompanyID, environment Environment, consultationCNPJ string) (SyncSnapshot, error)
+	ResetSyncState(ctx context.Context, params ResetSyncStateParams) error
 }

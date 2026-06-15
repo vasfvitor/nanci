@@ -23,7 +23,6 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 		ID:                "dev-credential-70860312000150",
 		Label:             "Certificado Mock 70860312000150",
 		CertPath:          "devdata/certs/cert_a1_mock_70860312000150.pfx",
-		Environment:       nfse.EnvironmentRestricted,
 		OwnerCNPJ:         "70860312000150",
 		OwnerCNPJRoot:     "70860312",
 		FingerprintSHA256: "mock-fingerprint",
@@ -43,14 +42,13 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 func UpsertCredential(ctx context.Context, db *sql.DB, c nfse.Credential) error {
 	query := `
 		INSERT INTO credentials (
-			id, label, cert_path, environment, owner_cnpj, owner_cnpj_root,
+			id, label, cert_path, owner_cnpj, owner_cnpj_root,
 			fingerprint_sha256, subject_name, not_before, not_after, inspected_at,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 		ON CONFLICT(id) DO UPDATE SET
 			label = excluded.label,
 			cert_path = excluded.cert_path,
-			environment = excluded.environment,
 			owner_cnpj = excluded.owner_cnpj,
 			owner_cnpj_root = excluded.owner_cnpj_root,
 			fingerprint_sha256 = excluded.fingerprint_sha256,
@@ -62,7 +60,7 @@ func UpsertCredential(ctx context.Context, db *sql.DB, c nfse.Credential) error 
 	`
 	_, err := db.ExecContext(
 		ctx, query,
-		c.ID, c.Label, c.CertPath, string(c.Environment), c.OwnerCNPJ, c.OwnerCNPJRoot,
+		c.ID, c.Label, c.CertPath, c.OwnerCNPJ, c.OwnerCNPJRoot,
 		c.FingerprintSHA256, c.SubjectName, c.NotBefore, c.NotAfter, c.InspectedAt,
 	)
 	return err

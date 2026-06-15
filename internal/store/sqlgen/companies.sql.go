@@ -21,10 +21,6 @@ SET credential_id = ?1,
         SELECT cert_path FROM credentials
         WHERE credentials.id = ?1
     ),
-    environment = (
-        SELECT environment FROM credentials
-        WHERE credentials.id = ?1
-    ),
     updated_at = ?2
 WHERE companies.id = ?3
   AND EXISTS (

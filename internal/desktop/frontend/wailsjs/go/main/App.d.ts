@@ -31,6 +31,8 @@ export function QueryNFSe(arg1:app.QueryNFSeInput):Promise<string>;
 
 export function QueryNFSeEvents(arg1:app.QueryNFSeInput):Promise<string>;
 
+export function ResetSyncState(arg1:app.ResetSyncInput):Promise<void>;
+
 export function SelectCertificate():Promise<string>;
 
 export function SelectExportDirectory():Promise<string>;

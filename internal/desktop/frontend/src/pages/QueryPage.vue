@@ -9,11 +9,16 @@
       <q-form @submit="runQuery" class="q-gutter-md">
         <div class="row q-col-gutter-md">
           <div class="col-12 col-md-6">
-            <q-input
+            <q-select
               v-model="appStore.queryForm.cnpj"
-              label="CNPJ (Para autenticação)"
-              mask="##.###.###/####-##"
-              unmasked-value
+              :options="companyOptions"
+              use-input
+              input-debounce="0"
+              @new-value="createValue"
+              @filter="filterFn"
+              emit-value
+              map-options
+              label="Empresa / CNPJ (Para autenticação)"
               outlined
               dense
               :rules="[val => !!val || 'CNPJ é obrigatório']"
@@ -52,14 +57,47 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAppStore } from '../stores/app'
+import { ListCompanies } from '../../wailsjs/go/main/App'
 
 const $q = useQuasar()
 const appStore = useAppStore()
 
 const loading = ref(false)
+
+const allOptions = ref<{label: string, value: string}[]>([])
+const companyOptions = ref<{label: string, value: string}[]>([])
+
+onMounted(async () => {
+  try {
+    const list = await ListCompanies() || []
+    const opts = list.map(c => ({
+      label: `${c.Name} (${c.CNPJ})`,
+      value: c.CNPJ
+    }))
+    allOptions.value = opts
+    companyOptions.value = opts
+  } catch (e) {
+    console.error("Erro ao carregar empresas para consulta", e)
+  }
+})
+
+function createValue(val: string, done: (item: any, mode: 'add' | 'add-unique' | 'toggle') => void) {
+  if (val.length > 0) {
+    done(val, 'add-unique')
+  }
+}
+
+function filterFn(val: string, update: (callback: () => void) => void) {
+  update(() => {
+    const needle = val.toLowerCase()
+    companyOptions.value = allOptions.value.filter(
+      v => v.label.toLowerCase().indexOf(needle) > -1 || v.value.indexOf(needle) > -1
+    )
+  })
+}
 
 const highlightedResult = computed(() => {
   if (!appStore.queryResult) return ''

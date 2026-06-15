@@ -9,9 +9,8 @@ import (
 
 // AddCredentialInput carries the data required to register a reusable credential.
 type AddCredentialInput struct {
-	Label       string
-	CertPath    string
-	Environment string
+	Label    string
+	CertPath string
 }
 
 // UpdateCredentialPathInput updates the PKCS#12 path of an existing credential.
@@ -31,16 +30,10 @@ func (a *App) AddCredential(ctx context.Context, input AddCredentialInput) error
 	if err := validateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
-	environment, err := parseEnvironment(input.Environment)
-	if err != nil {
-		return err
-	}
-
 	credential := &nfse.Credential{
-		ID:          nfse.CredentialID(nfse.GenerateID()),
-		Label:       input.Label,
-		CertPath:    input.CertPath,
-		Environment: environment,
+		ID:       nfse.CredentialID(nfse.GenerateID()),
+		Label:    input.Label,
+		CertPath: input.CertPath,
 	}
 	if credential.Label == "" {
 		credential.Label = input.CertPath
@@ -77,27 +70,20 @@ func (a *App) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPa
 	return nil
 }
 
-// UpdateCredentialDataInput carries data to update a credential's label and environment.
+// UpdateCredentialDataInput carries data to update a credential's label.
 type UpdateCredentialDataInput struct {
 	CredentialID string
 	Label        string
-	Environment  string // "producao" | "producao_restrita"
 }
 
-// UpdateCredentialData updates the label and environment of an existing credential.
+// UpdateCredentialData updates the label of an existing credential.
 func (a *App) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
 	cred, err := a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
 	if err != nil {
 		return err
 	}
 
-	environment, err := parseEnvironment(input.Environment)
-	if err != nil {
-		return err
-	}
-
 	cred.Label = input.Label
-	cred.Environment = environment
 
 	if err := a.CredentialRepo.UpdateCredential(ctx, cred); err != nil {
 		return fmt.Errorf("atualizar credencial: %w", err)

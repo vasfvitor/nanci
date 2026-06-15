@@ -21,10 +21,6 @@ SET credential_id = sqlc.arg(credential_id),
         SELECT cert_path FROM credentials
         WHERE credentials.id = sqlc.arg(credential_id)
     ),
-    environment = (
-        SELECT environment FROM credentials
-        WHERE credentials.id = sqlc.arg(credential_id)
-    ),
     updated_at = sqlc.arg(updated_at)
 WHERE companies.id = sqlc.arg(company_id)
   AND EXISTS (

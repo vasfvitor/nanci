@@ -14,7 +14,7 @@ import (
 )
 
 type syncRunner interface {
-	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, progress nfse.ProgressFunc) error
+	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
 }
 
 var newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
@@ -24,6 +24,7 @@ var newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, xmlStore 
 // PullInput is the input for the Pull use case.
 type PullInput struct {
 	CNPJ string
+	Mode string
 }
 
 // PullResult summarises a completed sync run.
@@ -33,6 +34,12 @@ type PullResult struct {
 	CredentialLabel   string
 	CredentialCNPJ    string
 	ConsultationBasis string
+	Status            string
+	StopReason        string
+	LastCheckedNSU    int64
+	LastFoundNSU      int64
+	LastFoundNSUValid bool
+	EmptyStreak       int
 	DocumentsFound    int
 	EventsFound       int
 	Errors            int
@@ -44,6 +51,10 @@ type PullResult struct {
 // neither the CLI nor Wails need to wire cert loading themselves.
 func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	if err != nil {
+		return PullResult{}, err
+	}
+	mode, err := parsePullMode(input.Mode)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -133,11 +144,28 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	start := time.Now()
-	if err := svc.Sync(ctx, company, credential, string(consultationBasis), progress); err != nil {
+	if err := svc.Sync(ctx, company, credential, string(consultationBasis), mode, progress); err != nil {
 		a.Log.ErrorContext(ctx, "Sincronização finalizada com erro", slog.String("error", err.Error()))
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
 	result.Duration = time.Since(start)
+
+	snapshot, err := a.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	if err != nil {
+		return PullResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
+	}
+	if snapshot.State != nil {
+		result.LastCheckedNSU = snapshot.State.LastCheckedNSU
+		result.LastFoundNSU = snapshot.State.LastFoundNSU
+		result.LastFoundNSUValid = snapshot.State.LastFoundNSUValid
+		result.EmptyStreak = snapshot.State.LastEmptyStreak
+	}
+	if snapshot.Run != nil {
+		result.Status = string(snapshot.Run.Status)
+		result.StopReason = string(snapshot.Run.StopReason)
+		result.Errors = snapshot.Run.ErrorsCount
+		result.DocumentsFound = snapshot.Run.DocumentsFound
+	}
 
 	a.Log.InfoContext(
 		ctx, "Sincronização concluída com sucesso",
@@ -147,6 +175,13 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	)
 
 	return result, nil
+}
+
+func parsePullMode(raw string) (nfse.SyncMode, error) {
+	if raw == "" {
+		return nfse.SyncModeNormal, nil
+	}
+	return nfse.ParseSyncMode(raw)
 }
 
 func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {

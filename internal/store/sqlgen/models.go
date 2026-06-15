@@ -40,7 +40,6 @@ type Credential struct {
 	ID                string
 	Label             string
 	CertPath          string
-	Environment       string
 	OwnerCnpj         string
 	OwnerCnpjRoot     string
 	FingerprintSha256 string
@@ -101,14 +100,21 @@ type SyncRun struct {
 	ID                string
 	CompanyID         string
 	CredentialID      string
+	Environment       string
 	CredentialCnpj    string
 	ConsultationCnpj  string
 	ConsultationBasis string
+	Mode              string
 	StartedAt         string
 	FinishedAt        sql.NullString
 	FromNsu           int64
 	ToNsu             int64
+	CheckedCount      int64
 	DocumentsFound    int64
+	EmptyCount        int64
+	ConsecutiveEmptyCount int64
 	ErrorsCount       int64
+	LastFoundNsu      sql.NullInt64
 	Status            string
+	StopReason        sql.NullString
 }

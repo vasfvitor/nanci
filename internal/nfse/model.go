@@ -15,6 +15,11 @@ type Company struct {
 	CredentialCertPath string
 	Environment        Environment // derived from the assigned credential
 	LastNSU            int64
+	LastFoundNSU       int64
+	LastFoundNSUValid  bool
+	LastSyncAt         *time.Time
+	LastRunStatus      SyncStatus
+	LastRunStopReason  SyncStopReason
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -24,7 +29,6 @@ type Credential struct {
 	ID                CredentialID
 	Label             string
 	CertPath          string
-	Environment       Environment
 	OwnerCNPJ         string
 	OwnerCNPJRoot     string
 	FingerprintSHA256 string
@@ -91,29 +95,60 @@ type CompanyParticipation struct {
 
 // SyncRun represents a synchronization execution for audit and control.
 type SyncRun struct {
-	ID                SyncRunID
+	ID                    SyncRunID
+	CompanyID             CompanyID
+	CredentialID          CredentialID
+	Environment           Environment
+	CredentialCNPJ        string
+	ConsultationCNPJ      string
+	ConsultationBasis     ConsultationBasis // "exact_certificate_cnpj" | "same_root_certificate"
+	Mode                  SyncMode
+	StartedAt             time.Time
+	FinishedAt            *time.Time
+	FromNSU               int64
+	ToNSU                 int64
+	CheckedCount          int
+	DocumentsFound        int
+	EmptyCount            int
+	ConsecutiveEmptyCount int
+	ErrorsCount           int
+	LastFoundNSU          int64
+	LastFoundNSUValid     bool
+	Status                SyncStatus // "running" | "completed" | "failed" | "interrupted"
+	StopReason            SyncStopReason
+}
+
+// SyncState represents the persisted sync cursor and audit state for a company/environment/CNPJ pair.
+type SyncState struct {
 	CompanyID         CompanyID
-	CredentialID      CredentialID
-	CredentialCNPJ    string
+	Environment       Environment
 	ConsultationCNPJ  string
-	ConsultationBasis ConsultationBasis // "exact_certificate_cnpj" | "same_root_certificate"
-	StartedAt         time.Time
-	FinishedAt        *time.Time
-	FromNSU           int64
-	ToNSU             int64
-	DocumentsFound    int
-	ErrorsCount       int
-	Status            SyncStatus // "running" | "completed" | "failed" | "interrupted"
+	LastCheckedNSU    int64
+	LastFoundNSU      int64
+	LastFoundNSUValid bool
+	LastEmptyStreak   int
+	LastSuccessAt     *time.Time
+	LastErrorAt       *time.Time
+	LastErrorCode     string
+	LastErrorMessage  string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // ProgressEvent contains information about the progress of a long-running operation.
 type ProgressEvent struct {
-	CurrentNSU  int64
-	MaxNSU      int64
-	DocsFound   int
-	DocsInBatch int
-	Errors      int
-	Message     string
+	CurrentNSU        int64
+	MaxNSU            int64
+	LastCheckedNSU    int64
+	LastFoundNSU      int64
+	LastFoundNSUValid bool
+	EmptyStreak       int
+	Status            SyncStatus
+	StopReason        SyncStopReason
+	DocsFound         int
+	DocsInBatch       int
+	Errors            int
+	Message           string
 }
 
 // ProgressFunc is a callback function to report progress.

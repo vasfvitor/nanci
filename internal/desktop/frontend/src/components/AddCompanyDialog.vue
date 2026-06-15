@@ -14,6 +14,13 @@
           dense
         />
         <q-input v-model="form.Name" label="Nome / Razão Social" outlined dense />
+        <q-select
+          v-model="form.Environment"
+          :options="['producao', 'producao_restrita']"
+          label="Ambiente da Empresa"
+          outlined
+          dense
+        />
 
         <q-option-group
           v-model="credentialMode"
@@ -37,13 +44,6 @@
 
         <template v-else>
           <q-input v-model="form.CredentialLabel" label="Rótulo da Credencial" outlined dense />
-          <q-select
-            v-model="form.Environment"
-            :options="['producao', 'producao_restrita']"
-            label="Ambiente"
-            outlined
-            dense
-          />
           <div class="row items-center q-gutter-x-sm">
             <q-input
               v-model="form.CertPath"
@@ -110,7 +110,7 @@ async function loadCredentials() {
   try {
     const credentials = (await ListCredentials()) || []
     credentialOptions.value = credentials.map((credential) => ({
-      label: `${credential.Label} (${credential.Environment})`,
+      label: `${credential.Label}`,
       value: credential.ID,
     }))
     credentialMode.value = credentialOptions.value.length > 0 ? 'existing' : 'new'
@@ -161,7 +161,7 @@ async function submit() {
       CredentialID: credentialMode.value === 'existing' ? form.value.CredentialID : '',
       CredentialLabel: credentialMode.value === 'new' ? form.value.CredentialLabel : '',
       CertPath: credentialMode.value === 'new' ? form.value.CertPath : '',
-      Environment: credentialMode.value === 'new' ? form.value.Environment : '',
+      Environment: form.value.Environment,
     })
     $q.notify({ type: 'positive', message: 'Empresa adicionada com sucesso!' })
     emit('added')

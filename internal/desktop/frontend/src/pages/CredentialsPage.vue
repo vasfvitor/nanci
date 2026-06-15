@@ -31,17 +31,6 @@
         </q-td>
       </template>
 
-      <template #body-cell-ambiente="props">
-        <q-td :props="props">
-          <q-badge
-            :color="props.row.Environment === 'producao' ? 'positive' : 'warning'"
-            :text-color="props.row.Environment === 'producao' ? 'white' : 'dark'"
-          >
-            {{ props.row.Environment }}
-          </q-badge>
-        </q-td>
-      </template>
-
       <template #body-cell-inspecao="props">
         <q-td :props="props">
           <q-badge :color="props.row.InspectedAt ? 'positive' : 'grey'" outline>
@@ -107,7 +96,6 @@ const columns: QTableColumn[] = [
     sortable: true,
   },
   { name: 'path', label: 'Arquivo PFX', field: 'CertPath', align: 'left' },
-  { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'inspecao', label: 'Inspeção', field: () => '', align: 'center', sortable: true },
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
