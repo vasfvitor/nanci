@@ -27,6 +27,10 @@ export function ListDocuments(arg1:app.ListInput):Promise<Array<nfse.CompanyDocu
 
 export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
 
+export function QueryNFSe(arg1:app.QueryNFSeInput):Promise<string>;
+
+export function QueryNFSeEvents(arg1:app.QueryNFSeInput):Promise<string>;
+
 export function SelectCertificate():Promise<string>;
 
 export function SelectExportDirectory():Promise<string>;

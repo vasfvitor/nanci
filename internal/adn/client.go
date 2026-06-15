@@ -50,6 +50,11 @@ func (e *APIError) Error() string {
 	return fmt.Errorf("ADN API error %s %s: status %d, body: %s", e.Method, e.URL, e.StatusCode, e.Body).Error()
 }
 
+// RawGet performs a GET request to an arbitrary relative path and decodes the JSON into dest.
+func (c *Client) RawGet(ctx context.Context, path string, dest interface{}) error {
+	return c.request(ctx, "GET", path, nil, dest)
+}
+
 type RetryConfig struct {
 	MaxRetries int
 	Initial    time.Duration

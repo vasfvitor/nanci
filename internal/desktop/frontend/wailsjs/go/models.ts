@@ -126,6 +126,20 @@ export namespace app {
 	        this.Duration = source["Duration"];
 	    }
 	}
+	export class QueryNFSeInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueryNFSeInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	    }
+	}
 	export class StatusResult {
 	    CompanyName: string;
 	    CNPJ: string;

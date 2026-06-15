@@ -62,6 +62,17 @@
             <q-item-label class="text-weight-medium">Credenciais</q-item-label>
           </q-item-section>
         </q-item>
+
+        <q-separator class="q-my-md" />
+
+        <q-item v-ripple clickable to="/query" exact dense active-class="text-primary">
+          <q-item-section avatar>
+            <q-icon name="api" size="sm" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Consulta Direta API</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -204,10 +215,10 @@ onMounted(() => {
     const levelMatch = line.match(/level=([^\s]+)/)
     const msgMatch = line.match(/msg="([^"]+)"/)
     
-    if (timeMatch) timeStr = timeMatch[1].substring(11, 19) // Extract HH:mm:ss from ISO string
-    if (levelMatch) levelStr = levelMatch[1]
+    if (timeMatch && timeMatch[1]) timeStr = timeMatch[1].substring(11, 19) // Extract HH:mm:ss from ISO string
+    if (levelMatch && levelMatch[1]) levelStr = levelMatch[1]
     
-    if (msgMatch) {
+    if (msgMatch && msgMatch[1]) {
       msgStr = msgMatch[1]
       // Everything after the message is considered 'extras'
       const afterMsg = line.substring(msgMatch.index! + msgMatch[0].length)

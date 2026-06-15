@@ -257,6 +257,14 @@ func (a *App) Pull(input app.PullInput) (app.PullResult, error) {
 	return a.core.Pull(a.ctx, input)
 }
 
+func (a *App) QueryNFSe(input app.QueryNFSeInput) (string, error) {
+	return a.core.QueryNFSe(a.ctx, input)
+}
+
+func (a *App) QueryNFSeEvents(input app.QueryNFSeInput) (string, error) {
+	return a.core.QueryNFSeEvents(a.ctx, input)
+}
+
 func (a *App) ListDocuments(input app.ListInput) ([]nfse.CompanyDocument, error) {
 	return a.core.ListDocuments(a.ctx, input)
 }

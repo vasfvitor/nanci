@@ -104,7 +104,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	// 4. Build ADN client
 	apiClient, err := adn.NewClient(adn.ClientConfig{
-		Environment: credential.Environment,
+		Environment: company.Environment,
 		Certificate: &tlsCert,
 	})
 	if err != nil {
@@ -156,8 +156,8 @@ func validateConsultationCompatibility(company *nfse.Company, credential *nfse.C
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
 		return "", fmt.Errorf("o certificado não expõe um CNPJ proprietário utilizável para consulta")
 	}
-	if credential.Environment == "" {
-		return "", fmt.Errorf("a credencial não possui ambiente configurado")
+	if company.Environment == "" {
+		return "", fmt.Errorf("a empresa não possui ambiente configurado")
 	}
 	if company.CNPJRoot != credential.OwnerCNPJRoot {
 		return "", fmt.Errorf("a credencial pertence à raiz %s e não pode consultar a empresa %s", credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
