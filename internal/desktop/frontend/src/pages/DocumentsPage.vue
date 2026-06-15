@@ -159,16 +159,6 @@
   </q-page>
 </template>
 
-<style scoped>
-:deep(.q-table) {
-  table-layout: fixed;
-}
-:deep(.q-table td) {
-  white-space: normal !important;
-  word-break: break-word;
-}
-</style>
-
 <script setup lang="ts">
 import { ref, shallowRef, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -396,3 +386,13 @@ onMounted(() => {
   loadCompanies()
 })
 </script>
+
+<style scoped>
+:deep(.q-table) {
+  table-layout: fixed;
+}
+:deep(.q-table td) {
+  white-space: normal !important;
+  word-break: break-word;
+}
+</style>

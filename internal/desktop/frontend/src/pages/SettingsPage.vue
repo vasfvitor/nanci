@@ -7,7 +7,7 @@
 
     <q-card flat bordered class="q-pa-md">
       <q-list>
-        <q-item tag="label" v-ripple>
+        <q-item v-ripple tag="label">
           <q-item-section>
             <q-item-label class="text-weight-medium">Modo Escuro (Dark Mode)</q-item-label>
             <q-item-label caption>Ajuste o tema de cores do aplicativo</q-item-label>
@@ -33,6 +33,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import {
+  WindowSetDarkTheme,
+  WindowSetLightTheme,
+  WindowSetSystemDefaultTheme,
+} from '../../wailsjs/runtime/runtime'
 
 const $q = useQuasar()
 const darkMode = ref<'auto' | boolean>('auto')
@@ -57,5 +62,12 @@ onMounted(() => {
 function updateDarkMode(val: 'auto' | boolean) {
   localStorage.setItem('darkMode', String(val))
   $q.dark.set(val)
+  if (val === true) {
+    WindowSetDarkTheme()
+  } else if (val === false) {
+    WindowSetLightTheme()
+  } else {
+    WindowSetSystemDefaultTheme()
+  }
 }
 </script>

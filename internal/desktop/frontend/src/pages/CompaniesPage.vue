@@ -114,16 +114,6 @@
   </q-page>
 </template>
 
-<style scoped>
-:deep(.q-table) {
-  table-layout: fixed;
-}
-:deep(.q-table td) {
-  white-space: normal !important;
-  word-break: break-word;
-}
-</style>
-
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { onMounted, ref, shallowRef } from 'vue'
@@ -271,3 +261,13 @@ function formatDateTime(value: string | Date | null | undefined) {
   return date.toLocaleString('pt-BR')
 }
 </script>
+
+<style scoped>
+:deep(.q-table) {
+  table-layout: fixed;
+}
+:deep(.q-table td) {
+  white-space: normal !important;
+  word-break: break-word;
+}
+</style>

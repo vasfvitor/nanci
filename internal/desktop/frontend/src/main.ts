@@ -12,6 +12,11 @@ import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
 import { useAppStore } from './stores/app'
+import {
+  WindowSetDarkTheme,
+  WindowSetLightTheme,
+  WindowSetSystemDefaultTheme,
+} from '../wailsjs/runtime/runtime'
 
 const myApp = createApp(App)
 const pinia = createPinia()
@@ -21,8 +26,15 @@ myApp.use(router)
 
 const savedDark = localStorage.getItem('darkMode')
 let initialDark: boolean | 'auto' = 'auto'
-if (savedDark === 'true') initialDark = true
-else if (savedDark === 'false') initialDark = false
+if (savedDark === 'true') {
+  initialDark = true
+  WindowSetDarkTheme()
+} else if (savedDark === 'false') {
+  initialDark = false
+  WindowSetLightTheme()
+} else {
+  WindowSetSystemDefaultTheme()
+}
 
 myApp.use(Quasar, {
   plugins: {

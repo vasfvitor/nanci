@@ -27,6 +27,10 @@ body.body--light {
   --app-json-number: #c2185b;
   --app-json-boolean: #f57c00;
   --app-json-null: #757575;
+
+  /* Console Tokens */
+  --app-console-bg: #0f172a;
+  --app-console-text: #e5e7eb;
 }
 
 body.body--dark {
@@ -56,11 +60,16 @@ body.body--dark {
   --app-json-number: #f48fb1;
   --app-json-boolean: #ffb74d;
   --app-json-null: #bdbdbd;
+
+  /* Console Tokens */
+  --app-console-bg: #020617;
+  --app-console-text: #e5e7eb;
 }
 
 body {
   background: var(--app-bg) !important;
   color: var(--app-text) !important;
+  --app-header-bg: #2563eb; /* Fixed header color for both light and dark modes */
 }
 
 /* App Utility Classes */
@@ -81,6 +90,15 @@ body {
 
 .bg-app-surface-muted {
   background: var(--app-surface-muted) !important;
+}
+
+.bg-app-header {
+  background: var(--app-header-bg) !important;
+}
+
+.app-console {
+  background: var(--app-console-bg) !important;
+  color: var(--app-console-text) !important;
 }
 
 /* JSON Viewer Globals */

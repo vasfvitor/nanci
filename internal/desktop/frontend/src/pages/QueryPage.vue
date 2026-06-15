@@ -6,7 +6,7 @@
     </div>
 
     <q-card flat bordered class="q-pa-md q-mb-md">
-      <q-form @submit="runQuery" class="q-gutter-md">
+      <q-form class="q-gutter-md" @submit="runQuery">
         <div class="row q-col-gutter-md">
           <div class="col-12 col-md-6">
             <q-select
@@ -14,14 +14,14 @@
               :options="companyOptions"
               use-input
               input-debounce="0"
-              @new-value="createValue"
-              @filter="filterFn"
               emit-value
               map-options
               label="Empresa / CNPJ (Para autenticação)"
               outlined
               dense
               :rules="[val => !!val || 'CNPJ é obrigatório']"
+              @new-value="createValue"
+              @filter="filterFn"
             />
           </div>
           <div class="col-12 col-md-6">
@@ -41,7 +41,7 @@
       </q-form>
     </q-card>
 
-    <q-card flat bordered class="col column q-mt-md" v-if="appStore.queryResult">
+    <q-card v-if="appStore.queryResult" flat bordered class="col column q-mt-md">
       <q-toolbar class="dense bg-primary text-white">
         <q-toolbar-title class="text-subtitle2">Resultado da Consulta</q-toolbar-title>
         <q-btn flat round dense icon="content_copy" @click="copyResult">
