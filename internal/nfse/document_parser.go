@@ -28,6 +28,7 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 
 	var pathStack []string
 	var currentText strings.Builder
+	var infNFSeID string
 
 	for {
 		t, err := decoder.Token()
@@ -49,6 +50,9 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 				for _, attr := range se.Attr {
 					if attr.Name.Local == "versao" {
 						doc.LayoutVersion = attr.Value
+					}
+					if attr.Name.Local == "Id" {
+						infNFSeID = strings.TrimSpace(attr.Value)
 					}
 				}
 			}
@@ -162,6 +166,12 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 	}
 
 	// Validate essential fields
+	if doc.ChaveAcesso == "" {
+		if infNFSeID != "" {
+			doc.ChaveAcesso = AccessKey(infNFSeID)
+			warnings = append(warnings, "document missing chNFSe; using infNFSe Id as fallback identifier")
+		}
+	}
 	if doc.ChaveAcesso == "" {
 		return doc, nil, errors.New("missing essential field: chNFSe")
 	}
