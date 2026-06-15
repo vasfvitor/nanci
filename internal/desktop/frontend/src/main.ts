@@ -9,9 +9,11 @@ import 'quasar/src/css/index.sass'
 
 import App from './App.vue'
 import router from './router'
+import { createPinia } from 'pinia'
 
 const myApp = createApp(App)
 
+myApp.use(createPinia())
 myApp.use(router)
 
 myApp.use(Quasar, {

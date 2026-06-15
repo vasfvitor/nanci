@@ -10,7 +10,7 @@
         <div class="row q-col-gutter-md">
           <div class="col-12 col-md-6">
             <q-input
-              v-model="form.cnpj"
+              v-model="appStore.queryForm.cnpj"
               label="CNPJ (Para autenticação)"
               mask="##.###.###/####-##"
               unmasked-value
@@ -21,7 +21,7 @@
           </div>
           <div class="col-12 col-md-6">
             <q-input
-              v-model="form.chave"
+              v-model="appStore.queryForm.chave"
               label="Chave de Acesso (50 posições)"
               outlined
               dense
@@ -30,13 +30,13 @@
           </div>
         </div>
         <div class="row q-gutter-sm">
-          <q-btn type="submit" color="primary" icon="search" label="Consultar NFSe" :loading="loading" @click="queryType = 'nfse'" />
-          <q-btn type="submit" color="secondary" icon="event" label="Consultar Eventos" :loading="loading" @click="queryType = 'events'" />
+          <q-btn type="submit" color="primary" icon="search" label="Consultar NFSe" :loading="loading" @click="appStore.queryType = 'nfse'" />
+          <q-btn type="submit" color="secondary" icon="event" label="Consultar Eventos" :loading="loading" @click="appStore.queryType = 'events'" />
         </div>
       </q-form>
     </q-card>
 
-    <q-card flat bordered class="col column q-mt-md" v-if="result">
+    <q-card flat bordered class="col column q-mt-md" v-if="appStore.queryResult">
       <q-toolbar class="dense bg-primary text-white">
         <q-toolbar-title class="text-subtitle2">Resultado da Consulta</q-toolbar-title>
         <q-btn flat round dense icon="content_copy" @click="copyResult">
@@ -54,21 +54,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { useAppStore } from '../stores/app'
 
 const $q = useQuasar()
-
-const form = ref({
-  cnpj: '',
-  chave: '',
-})
+const appStore = useAppStore()
 
 const loading = ref(false)
-const queryType = ref('nfse')
-const result = ref('')
 
 const highlightedResult = computed(() => {
-  if (!result.value) return ''
-  let jsonStr = result.value
+  if (!appStore.queryResult) return ''
+  let jsonStr = appStore.queryResult
   jsonStr = jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
     let cls = 'text-positive' // string default
@@ -88,10 +83,10 @@ const highlightedResult = computed(() => {
 })
 
 async function runQuery() {
-  if (!form.value.cnpj || form.value.chave.length !== 50) return
+  if (!appStore.queryForm.cnpj || appStore.queryForm.chave.length !== 50) return
 
   loading.value = true
-  result.value = ''
+  appStore.queryResult = ''
 
   try {
     // We use ts-ignore dynamically calling the Wails backend since bindings might not be generated yet
@@ -99,18 +94,18 @@ async function runQuery() {
     const wailsApp = window.go.main.App
     
     let res = ''
-    if (queryType.value === 'nfse') {
+    if (appStore.queryType === 'nfse') {
       res = await wailsApp.QueryNFSe({
-        CNPJ: form.value.cnpj,
-        ChaveAcesso: form.value.chave,
+        CNPJ: appStore.queryForm.cnpj,
+        ChaveAcesso: appStore.queryForm.chave,
       })
     } else {
       res = await wailsApp.QueryNFSeEvents({
-        CNPJ: form.value.cnpj,
-        ChaveAcesso: form.value.chave,
+        CNPJ: appStore.queryForm.cnpj,
+        ChaveAcesso: appStore.queryForm.chave,
       })
     }
-    result.value = res
+    appStore.queryResult = res
   } catch (err: any) {
     $q.notify({ type: 'negative', message: 'Erro na consulta: ' + String(err) })
   } finally {
@@ -119,8 +114,8 @@ async function runQuery() {
 }
 
 async function copyResult() {
-  if (!result.value) return
-  await navigator.clipboard.writeText(result.value)
+  if (!appStore.queryResult) return
+  await navigator.clipboard.writeText(appStore.queryResult)
   $q.notify({ type: 'positive', message: 'JSON copiado!' })
 }
 </script>
