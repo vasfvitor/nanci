@@ -148,7 +148,7 @@ const columns: QTableColumn[] = [
   { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
-  { name: 'lastFoundNSU', label: 'Último NSU com documento', field: 'LastFoundNSU', align: 'left', sortable: true },
+  { name: 'lastFoundNSU', label: 'Último NSU (c/ doc)', field: 'LastFoundNSU', align: 'left', sortable: true },
   { name: 'lastSyncAt', label: 'Última sincronização', field: 'LastSyncAt', align: 'left', sortable: true },
   { name: 'credencial', label: 'Credencial', field: () => '', align: 'left' },
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
@@ -262,12 +262,4 @@ function formatDateTime(value: string | Date | null | undefined) {
 }
 </script>
 
-<style scoped>
-:deep(.q-table) {
-  table-layout: fixed;
-}
-:deep(.q-table td) {
-  white-space: normal !important;
-  word-break: break-word;
-}
-</style>
+

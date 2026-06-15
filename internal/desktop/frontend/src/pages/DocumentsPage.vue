@@ -300,7 +300,7 @@ function formatChave(chave: string) {
 
 async function copyChave(chave: string) {
   if (!chave) return
-  await navigator.clipboard.writeText(chave)
+  await navigator.clipboard.writeText(chave.replace(/^NFS/i, ''))
   $q.notify({ type: 'positive', message: 'Chave copiada!', timeout: 1000 })
 }
 

@@ -1,6 +1,6 @@
 /* src/css/app.scss */
 
-body.body--light {
+body.body--light, .body--light {
   color-scheme: light;
 
   /* Quasar Brand Colors */
@@ -19,7 +19,8 @@ body.body--light {
   --app-surface-muted: #f1f5f9;
   --app-text: #0f172a;
   --app-text-muted: #64748b;
-  --app-border: #e2e8f0;
+  --app-primary-text: #ffffff;
+  --app-border: #64748b;
 
   /* JSON Viewer Semantic Tokens */
   --app-json-key: #1976d2;
@@ -33,7 +34,7 @@ body.body--light {
   --app-console-text: #e5e7eb;
 }
 
-body.body--dark {
+body.body--dark, .body--dark {
   color-scheme: dark;
 
   /* Quasar Brand Colors */
@@ -52,7 +53,8 @@ body.body--dark {
   --app-surface-muted: #1e293b;
   --app-text: #e5e7eb;
   --app-text-muted: #94a3b8;
-  --app-border: #334155;
+  --app-primary-text: #020617;
+  --app-border: #64748b;
 
   /* JSON Viewer Semantic Tokens */
   --app-json-key: #90caf9;
