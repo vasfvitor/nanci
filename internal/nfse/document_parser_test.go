@@ -102,6 +102,42 @@ func TestParseDocumentXML_InvalidOrMissingChave(t *testing.T) {
 	}
 }
 
+func TestParseDocumentXML_FallsBackToInfNFSeID(t *testing.T) {
+	xmlData := `<?xml version="1.0" encoding="utf-8"?>
+<NFSe versao="1.00" xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFS26079012298765432000199000000000000224049328439565">
+    <nNFSe>2</nNFSe>
+    <dhEmi>2026-06-07T10:00:00-03:00</dhEmi>
+    <compNFSe>2026-06</compNFSe>
+    <prest>
+      <CNPJ>98765432000199</CNPJ>
+      <xNome>Prestador Teste</xNome>
+    </prest>
+    <toma>
+      <CNPJ>12345678000100</CNPJ>
+      <xNome>Tomador Teste</xNome>
+    </toma>
+    <valores>
+      <vServ>100.00</vServ>
+    </valores>
+    <xDescServ>Servico teste</xDescServ>
+  </infNFSe>
+</NFSe>`
+
+	doc, warnings, err := ParseDocumentXML([]byte(xmlData))
+	if err != nil {
+		t.Fatalf("ParseDocumentXML failed: %v", err)
+	}
+
+	if doc.ChaveAcesso != "NFS26079012298765432000199000000000000224049328439565" {
+		t.Fatalf("fallback chave = %q", doc.ChaveAcesso)
+	}
+
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "using infNFSe Id") {
+		t.Fatalf("warnings = %v", warnings)
+	}
+}
+
 func TestParseDocumentXML_Empty(t *testing.T) {
 	_, _, err := ParseDocumentXML([]byte("   "))
 	if err == nil {
