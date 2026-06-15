@@ -24,7 +24,7 @@
 
       <template #body-cell-path="props">
         <q-td :props="props">
-          <div class="ellipsis text-grey" style="max-width: 200px">
+          <div class="ellipsis text-app-muted" style="max-width: 200px;">
             {{ props.row.CertPath }}
             <q-tooltip>{{ props.row.CertPath }}</q-tooltip>
           </div>

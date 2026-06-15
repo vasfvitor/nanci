@@ -104,17 +104,17 @@ const highlightedResult = computed(() => {
   let jsonStr = appStore.queryResult
   jsonStr = jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
-    let cls = 'text-positive' // string default
+    let cls = 'json-string'
     if (/^"/.test(match)) {
       if (/:$/.test(match)) {
-        cls = 'text-primary text-weight-bold' // key
+        cls = 'json-key'
       }
     } else if (/true|false/.test(match)) {
-      cls = 'text-secondary text-weight-bold' // boolean
+      cls = 'json-boolean'
     } else if (/null/.test(match)) {
-      cls = 'text-grey' // null
+      cls = 'json-null'
     } else {
-      cls = 'text-accent' // number
+      cls = 'json-number'
     }
     return `<span class="${cls}">${match}</span>`
   })

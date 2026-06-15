@@ -1,7 +1,7 @@
 <template>
   <q-layout view="hHh Lpr lFf">
-    <q-header bordered class="bg-transparent">
-      <q-bar style="--wails-draggable: drag">
+    <q-header bordered class="bg-primary text-white">
+      <q-bar class="bg-primary text-white" style="--wails-draggable: drag">
         <q-btn
           dense
           flat
@@ -73,6 +73,17 @@
             <q-item-label class="text-weight-medium">Consulta Direta API</q-item-label>
           </q-item-section>
         </q-item>
+
+        <q-separator class="q-my-md" />
+
+        <q-item v-ripple clickable to="/settings" exact dense active-class="text-primary">
+          <q-item-section avatar>
+            <q-icon name="settings" size="sm" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Configurações</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -82,10 +93,9 @@
       bordered
       :width="500"
       overlay
-      class="bg-grey-10 text-white"
     >
       <div class="column full-height">
-        <q-toolbar class="bg-grey-9 text-white dense">
+        <q-toolbar class="dense">
           <q-toolbar-title class="text-subtitle1">Console</q-toolbar-title>
           <q-select
             v-model="logFilterLevel"
@@ -97,8 +107,6 @@
             dense
             options-dense
             class="q-mr-sm"
-            dark
-            bg-color="grey-8"
             style="min-width: 150px"
             @update:model-value="onLogLevelChange"
           />

@@ -1,0 +1,103 @@
+/* src/css/app.scss */
+
+body.body--light {
+  color-scheme: light;
+
+  /* Quasar Brand Colors */
+  --q-primary: #2563eb;
+  --q-secondary: #0f766e;
+  --q-accent: #7c3aed;
+  --q-dark: #1e293b;
+  --q-positive: #16a34a;
+  --q-negative: #dc2626;
+  --q-info: #0284c7;
+  --q-warning: #ca8a04;
+
+  /* App Semantic Tokens */
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f1f5f9;
+  --app-text: #0f172a;
+  --app-text-muted: #64748b;
+  --app-border: #e2e8f0;
+
+  /* JSON Viewer Semantic Tokens */
+  --app-json-key: #1976d2;
+  --app-json-string: #2e7d32;
+  --app-json-number: #c2185b;
+  --app-json-boolean: #f57c00;
+  --app-json-null: #757575;
+}
+
+body.body--dark {
+  color-scheme: dark;
+
+  /* Quasar Brand Colors */
+  --q-primary: #60a5fa;
+  --q-secondary: #2dd4bf;
+  --q-accent: #c084fc;
+  --q-dark: #020617;
+  --q-positive: #4ade80;
+  --q-negative: #f87171;
+  --q-info: #38bdf8;
+  --q-warning: #facc15;
+
+  /* App Semantic Tokens */
+  --app-bg: #0f172a;
+  --app-surface: #111827;
+  --app-surface-muted: #1e293b;
+  --app-text: #e5e7eb;
+  --app-text-muted: #94a3b8;
+  --app-border: #334155;
+
+  /* JSON Viewer Semantic Tokens */
+  --app-json-key: #90caf9;
+  --app-json-string: #a5d6a7;
+  --app-json-number: #f48fb1;
+  --app-json-boolean: #ffb74d;
+  --app-json-null: #bdbdbd;
+}
+
+body {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+/* App Utility Classes */
+
+.app-card {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+}
+
+.text-app-muted {
+  color: var(--app-text-muted) !important;
+}
+
+.bg-app-surface {
+  background: var(--app-surface) !important;
+}
+
+.bg-app-surface-muted {
+  background: var(--app-surface-muted) !important;
+}
+
+/* JSON Viewer Globals */
+.json-key {
+  color: var(--app-json-key);
+  font-weight: bold;
+}
+.json-string {
+  color: var(--app-json-string);
+}
+.json-number {
+  color: var(--app-json-number);
+}
+.json-boolean {
+  color: var(--app-json-boolean);
+  font-weight: bold;
+}
+.json-null {
+  color: var(--app-json-null);
+}

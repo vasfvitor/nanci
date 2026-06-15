@@ -3,10 +3,10 @@
     <q-card style="min-width: 350px">
       <q-card-section>
         <div class="text-h6">Senha do Certificado</div>
-        <div class="text-caption text-grey">Empresa: {{ requestData?.CompanyName }}</div>
-        <div class="text-caption text-grey">CNPJ consultado: {{ requestData?.TargetCNPJ }}</div>
-        <div class="text-caption text-grey">Credencial: {{ requestData?.CredentialLabel }}</div>
-        <div class="text-caption text-grey">Arquivo: {{ requestData?.CertPath }}</div>
+        <div class="text-caption text-app-muted">Empresa: {{ requestData?.CompanyName }}</div>
+        <div class="text-caption text-app-muted">CNPJ consultado: {{ requestData?.TargetCNPJ }}</div>
+        <div class="text-caption text-app-muted">Credencial: {{ requestData?.CredentialLabel }}</div>
+        <div class="text-caption text-app-muted">Arquivo: {{ requestData?.CertPath }}</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
