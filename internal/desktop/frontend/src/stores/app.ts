@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { SetLogLevel } from '../../wailsjs/go/main/App'
+import { nfse } from '../../wailsjs/go/models'
 
 export type LogFilterLevel = 'info' | 'warn' | 'debug' | 'trace'
 
@@ -72,6 +73,13 @@ export const useAppStore = defineStore('app', () => {
   const queryResult = ref('')
   const queryType = ref('nfse')
 
+  const documentsFilter = ref({
+    CNPJ: '',
+    Competence: '',
+    Direction: '',
+  })
+  const documentsList = ref<nfse.CompanyDocument[]>([])
+
   const debugEnabled = computed(
     () => logFilterLevel.value === 'debug' || logFilterLevel.value === 'trace'
   )
@@ -127,6 +135,8 @@ export const useAppStore = defineStore('app', () => {
     queryForm,
     queryResult,
     queryType,
+    documentsFilter,
+    documentsList,
     clearLogs,
     initLogListeners,
     setLogFilter,

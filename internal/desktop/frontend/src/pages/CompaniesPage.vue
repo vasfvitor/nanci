@@ -46,7 +46,7 @@
       </template>
 
       <template #body-cell-credencial="props">
-        <q-td :props="props" style="width: 250px">
+        <q-td :props="props" style="max-width: 250px">
           <q-select
             v-model="selectedCredentials[props.row.CNPJ]"
             :options="credentialOptions"
@@ -56,6 +56,7 @@
             outlined
             dense
             options-dense
+            class="ellipsis"
             @update:model-value="assignCredential(props.row.CNPJ)"
           />
         </q-td>
@@ -144,14 +145,14 @@ const showEditDialog = ref(false)
 const selectedCompanyToEdit = ref<nfse.Company | null>(null)
 
 const columns: QTableColumn[] = [
+  { name: 'acoes', label: 'Ações', field: () => '', align: 'center' as const },
   { name: 'nome', label: 'Nome', field: 'Name', align: 'left', sortable: true },
-  { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true },
+  { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true, format: (val: string) => formatDocument(val) },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
   { name: 'lastFoundNSU', label: 'Último NSU (c/ doc)', field: 'LastFoundNSU', align: 'left', sortable: true },
   { name: 'lastSyncAt', label: 'Última sincronização', field: 'LastSyncAt', align: 'left', sortable: true },
-  { name: 'credencial', label: 'Credencial', field: () => '', align: 'left' },
-  { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
+  { name: 'credencial', label: 'Credencial', field: () => '', align: 'left', style: 'max-width: 250px' },
 ]
 
 function openEditDialog(company: nfse.Company) {
@@ -259,6 +260,18 @@ function formatDateTime(value: string | Date | null | undefined) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleString('pt-BR')
+}
+
+function formatDocument(doc: string | null | undefined) {
+  if (!doc) return ''
+  const d = doc.replace(/\D/g, '')
+  if (d.length === 14) {
+    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+  }
+  if (d.length === 11) {
+    return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+  }
+  return doc
 }
 </script>
 

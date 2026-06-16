@@ -196,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   ListCompanies,
@@ -206,21 +206,19 @@ import {
   ExportZIP,
   SelectExportDirectory,
 } from '../../wailsjs/go/main/App'
-import { nfse, app } from '../../wailsjs/go/models'
+import { app } from '../../wailsjs/go/models'
 import { useQuasar, date } from 'quasar'
+import { useAppStore } from '../stores/app'
+import { storeToRefs } from 'pinia'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 
 const $q = useQuasar()
 const route = useRoute()
-const companyOptions = ref<{ label: string; value: string }[]>([])
-const documents = shallowRef<nfse.CompanyDocument[]>([])
-const loading = ref(false)
+const appStore = useAppStore()
+const { documentsFilter: filter, documentsList: documents } = storeToRefs(appStore)
 
-const filter = ref({
-  CNPJ: '',
-  Competence: '',
-  Direction: '',
-})
+const companyOptions = ref<{ label: string; value: string }[]>([])
+const loading = ref(false)
 
 const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
@@ -256,6 +254,7 @@ function shiftCompetence(monthDelta: number) {
 }
 
 const columns = [
+  { name: 'actions', label: 'Ações', field: () => '', align: 'center' as const },
   {
     name: 'issueDate',
     label: 'Emissão',
@@ -269,8 +268,8 @@ const columns = [
   { name: 'companyRole', label: 'Direção', field: 'CompanyRole', sortable: true },
   { name: 'visibilityReason', label: 'Visibilidade', field: 'VisibilityReason', sortable: true },
   { name: 'status', label: 'Status', field: 'Status', sortable: true },
-  { name: 'prestador', label: 'Prestador', field: 'PrestadorCNPJ', sortable: true },
-  { name: 'tomador', label: 'Tomador', field: 'TomadorCNPJ', sortable: true },
+  { name: 'prestador', label: 'Prestador', field: 'PrestadorCNPJ', sortable: true, format: (val: string) => formatDocument(val) },
+  { name: 'tomador', label: 'Tomador', field: 'TomadorCNPJ', sortable: true, format: (val: string) => formatDocument(val) },
   {
     name: 'value',
     label: 'Valor (R$)',
@@ -278,7 +277,6 @@ const columns = [
     format: (val: number) => formatCurrency(val),
     sortable: true,
   },
-  { name: 'actions', label: 'Ações', field: () => '', align: 'right' as const },
 ]
 
 function formatDate(value: string | Date | null | undefined) {
@@ -300,8 +298,21 @@ function formatChave(chave: string) {
 
 async function copyChave(chave: string) {
   if (!chave) return
-  await navigator.clipboard.writeText(chave.replace(/^NFS/i, ''))
+  const clean = chave.replace(/^NFS/i, '')
+  await navigator.clipboard.writeText(clean)
   $q.notify({ type: 'positive', message: 'Chave copiada!', timeout: 1000 })
+}
+
+function formatDocument(doc: string | null | undefined) {
+  if (!doc) return ''
+  const d = doc.replace(/\D/g, '')
+  if (d.length === 14) {
+    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+  }
+  if (d.length === 11) {
+    return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+  }
+  return doc
 }
 
 function formatCurrency(value: number | null | undefined) {
@@ -381,16 +392,31 @@ async function loadCompanies() {
     }))
     if (companyOptions.value.length > 0) {
       const cnpjFromRoute = String(route.query['cnpj'] || '')
-      const matchingOption = companyOptions.value.find((option) => option.value === cnpjFromRoute)
-      const selectedOption = matchingOption || companyOptions.value[0]
-      if (selectedOption) {
-        filter.value.CNPJ = selectedOption.value
+      let shouldSearch = false
+
+      if (cnpjFromRoute) {
+        const matchingOption = companyOptions.value.find((option) => option.value === cnpjFromRoute)
+        if (matchingOption) {
+          filter.value.CNPJ = matchingOption.value
+          shouldSearch = true
+        }
+      } else if (filter.value && !filter.value.CNPJ) {
+        const firstOption = companyOptions.value[0]
+        if (firstOption) {
+          filter.value.CNPJ = firstOption.value
+          shouldSearch = true
+        }
       }
+
       const competenceFromRoute = String(route.query['competence'] || '')
       if (competenceFromRoute) {
         filter.value.Competence = competenceFromRoute
+        shouldSearch = true
       }
-      search()
+
+      if (shouldSearch || (documents.value && documents.value.length === 0)) {
+        search()
+      }
     }
   } catch (err) {
     $q.notify({ type: 'negative', message: String(err) })
