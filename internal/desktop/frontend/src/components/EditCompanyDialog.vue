@@ -35,13 +35,13 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { UpdateCompany } from '../../wailsjs/go/main/App'
 import { useQuasar } from 'quasar'
-import { nfse } from '../../wailsjs/go/models'
+import { desktopClient } from '@/platform/wails/client'
+import type { CompanySummary } from '@/types/desktop'
 
 const props = defineProps<{
   modelValue: boolean
-  companyData: nfse.Company | null
+  companyData: CompanySummary | null
 }>()
 
 const emit = defineEmits(['update:modelValue', 'updated'])
@@ -80,7 +80,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await UpdateCompany({
+    await desktopClient.updateCompany({
       CNPJ: form.value.CNPJ,
       Name: form.value.Name,
       Environment: form.value.Environment,

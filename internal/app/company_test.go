@@ -403,3 +403,7 @@ type stubDocumentReader struct {
 func (s *stubDocumentReader) ListCompanyDocuments(context.Context, nfse.CompanyID, nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
 	return s.docs, nil
 }
+
+func (s *stubDocumentReader) ListEventsByDocument(context.Context, string) ([]nfse.Event, error) {
+	return nil, nil
+}

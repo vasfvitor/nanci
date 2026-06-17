@@ -75,23 +75,24 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import { ListCredentials, SelectCertificate, UpdateCredentialPath } from '../../wailsjs/go/main/App'
-import { nfse } from '../../wailsjs/go/models'
 import AddCredentialDialog from '../components/AddCredentialDialog.vue'
 import EditCredentialDialog from '../components/EditCredentialDialog.vue'
+import { useCredentials } from '@/composables/useCredentials'
+import type { CredentialSummary } from '@/types/desktop'
 
 const $q = useQuasar()
-const credentials = ref<nfse.Credential[]>([])
+const credentialsApi = useCredentials()
+const { credentials } = credentialsApi
 const showAddDialog = ref(false)
 const showEditDialog = ref(false)
-const selectedCredentialToEdit = ref<nfse.Credential | null>(null)
+const selectedCredentialToEdit = ref<CredentialSummary | null>(null)
 
 const columns: QTableColumn[] = [
   { name: 'label', label: 'Nome', field: 'Label', align: 'left', sortable: true },
   {
     name: 'owner',
     label: 'Proprietário',
-    field: (row: nfse.Credential) => ownerLabel(row),
+    field: (row: CredentialSummary) => ownerLabel(row),
     align: 'left',
     sortable: true,
   },
@@ -100,18 +101,18 @@ const columns: QTableColumn[] = [
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
 
-function openEditDialog(credential: nfse.Credential) {
+function openEditDialog(credential: CredentialSummary) {
   selectedCredentialToEdit.value = credential
   showEditDialog.value = true
 }
 
-function ownerLabel(credential: nfse.Credential) {
+function ownerLabel(credential: CredentialSummary) {
   return credential.OwnerCNPJ || 'Pendente de inspeção'
 }
 
 async function loadCredentials() {
   try {
-    credentials.value = (await ListCredentials()) || []
+    await credentialsApi.loadCredentials()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao listar credenciais: ' + String(err) })
   }
@@ -119,9 +120,9 @@ async function loadCredentials() {
 
 async function changePath(credentialID: string) {
   try {
-    const path = await SelectCertificate()
+    const path = await credentialsApi.selectCertificate()
     if (!path) return
-    await UpdateCredentialPath({ CredentialID: credentialID, CertPath: path })
+    await credentialsApi.updateCredentialPath(credentialID, path)
     $q.notify({ type: 'positive', message: 'Caminho da credencial atualizado.' })
     await loadCredentials()
   } catch (err) {

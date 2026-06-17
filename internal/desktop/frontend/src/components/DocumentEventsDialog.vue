@@ -56,8 +56,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { ListEventsForDocument } from '../../wailsjs/go/main/App'
-import { app } from '../../wailsjs/go/models'
+import { useDocuments } from '@/composables/useDocuments'
+import type { DocumentEvent } from '@/types/desktop'
 
 const props = defineProps<{
   modelValue: boolean
@@ -69,9 +69,10 @@ const emit = defineEmits<{
 }>()
 
 const $q = useQuasar()
+const { loadEvents: loadDocumentEvents } = useDocuments()
 const isOpen = ref(props.modelValue)
 const loading = ref(false)
-const events = ref<app.EventView[]>([])
+const events = ref<DocumentEvent[]>([])
 
 const columns = [
   { name: 'eventAt', label: 'Data', field: 'EventAt', align: 'left' as const, sortable: true },
@@ -95,7 +96,7 @@ watch(isOpen, (newVal) => {
 async function loadEvents() {
   loading.value = true
   try {
-    const res = await ListEventsForDocument(props.documentId)
+    const res = await loadDocumentEvents(props.documentId)
     events.value = res || []
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar eventos: ' + String(err) })

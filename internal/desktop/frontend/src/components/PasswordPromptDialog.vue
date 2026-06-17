@@ -23,8 +23,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
-import { SubmitCertPassword, CancelCertPassword } from '../../wailsjs/go/main/App'
+import { desktopClient } from '@/platform/wails/client'
+import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
 
 interface CertPasswordRequest {
   RequestID: string
@@ -38,6 +38,7 @@ const requests = ref<CertPasswordRequest[]>([])
 const password = ref('')
 const isOpen = computed(() => requests.value.length > 0)
 const requestData = computed(() => requests.value[0])
+const unsubscribe = ref<Unsubscribe | null>(null)
 
 function handleRequest(req: CertPasswordRequest) {
   requests.value.push(req)
@@ -47,7 +48,7 @@ async function onSubmit() {
   if (requests.value.length > 0) {
     const req = requests.value[0]
     if (req) {
-      await SubmitCertPassword(req.RequestID, password.value)
+      await desktopClient.submitCertPassword(req.RequestID, password.value)
     }
     password.value = ''
     requests.value.shift()
@@ -58,7 +59,7 @@ async function onCancel() {
   if (requests.value.length > 0) {
     const req = requests.value[0]
     if (req) {
-      await CancelCertPassword(req.RequestID)
+      await desktopClient.cancelCertPassword(req.RequestID)
     }
     password.value = ''
     requests.value.shift()
@@ -66,10 +67,11 @@ async function onCancel() {
 }
 
 onMounted(() => {
-  EventsOn('request-cert-password', handleRequest)
+  unsubscribe.value = onWailsEvent<CertPasswordRequest>('request-cert-password', handleRequest)
 })
 
 onUnmounted(() => {
-  EventsOff('request-cert-password')
+  unsubscribe.value?.()
+  unsubscribe.value = null
 })
 </script>

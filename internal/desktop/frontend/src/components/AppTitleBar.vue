@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { WindowMinimise, WindowToggleMaximise, Quit } from '../../wailsjs/runtime/runtime'
+import { desktopRuntime } from '@/platform/wails/runtime'
 
 defineEmits<{
   'toggle-menu': []
@@ -66,15 +66,15 @@ defineEmits<{
 }>()
 
 function minimise() {
-  WindowMinimise()
+  desktopRuntime.minimiseWindow()
 }
 
 function toggleMaximise() {
-  WindowToggleMaximise()
+  desktopRuntime.toggleMaximiseWindow()
 }
 
 function closeApp() {
-  Quit()
+  desktopRuntime.quit()
 }
 
 function onDblClick(event: MouseEvent) {
@@ -84,7 +84,7 @@ function onDblClick(event: MouseEvent) {
     return
   }
 
-  WindowToggleMaximise()
+  desktopRuntime.toggleMaximiseWindow()
 }
 </script>
 

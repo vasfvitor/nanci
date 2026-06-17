@@ -20,13 +20,13 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { UpdateCredentialData } from '../../wailsjs/go/main/App'
 import { useQuasar } from 'quasar'
-import { nfse } from '../../wailsjs/go/models'
+import { desktopClient } from '@/platform/wails/client'
+import type { CredentialSummary } from '@/types/desktop'
 
 const props = defineProps<{
   modelValue: boolean
-  credentialData: nfse.Credential | null
+  credentialData: CredentialSummary | null
 }>()
 
 const emit = defineEmits(['update:modelValue', 'updated'])
@@ -63,7 +63,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await UpdateCredentialData({
+    await desktopClient.updateCredentialData({
       CredentialID: form.value.CredentialID,
       Label: form.value.Label,
     })
