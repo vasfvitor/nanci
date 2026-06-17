@@ -10,11 +10,13 @@ import {
 import {
   ExportDANFSe,
   ExportDANFSeZIP,
+  ExportDocuments,
   ListCompanies,
   ListCredentials,
   ListDocuments,
   ListEventsForDocument,
   SelectCertificate,
+  SelectSaveFile,
 } from '../../../wailsjs/go/main/App'
 
 vi.mock('../../../wailsjs/go/main/App', () => ({
@@ -35,6 +37,7 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ResetSyncState: vi.fn(),
   SelectCertificate: vi.fn(),
   SelectExportDirectory: vi.fn(),
+  SelectSaveFile: vi.fn(),
   SetLogLevel: vi.fn(),
   SubmitCertPassword: vi.fn(),
   UpdateCompany: vi.fn(),
@@ -149,34 +152,62 @@ describe('desktop client calls', () => {
       OutPath: 'C:\\exports\\danfses.zip',
       Format: 'danfse-zip',
     } as never)
+    vi.mocked(SelectSaveFile).mockResolvedValue('C:\\mock\\save\\path.ext')
 
     await desktopClient.exportDANFSe({
       CNPJ: '123',
       ChaveAcesso: 'chave-1',
-      OutDir: 'C:\\exports',
     })
     await desktopClient.exportDANFSeZIP({
       CNPJ: '123',
       Competence: '2026-06',
       Direction: 'tomada',
       Format: 'zip',
-      OutDir: 'C:\\exports',
     })
 
     expect(ExportDANFSe).toHaveBeenCalledWith({
       CNPJ: '123',
       ChaveAcesso: 'chave-1',
-      OutDir: 'C:\\exports',
-      BaseName: '',
+      OutPath: 'C:\\mock\\save\\path.ext',
     })
     expect(ExportDANFSeZIP).toHaveBeenCalledWith({
       CNPJ: '123',
       Competence: '2026-06',
       Direction: 'tomada',
       Format: 'zip',
-      OutDir: 'C:\\exports',
-      BaseName: '',
+      OutPath: 'C:\\mock\\save\\path.ext',
     })
+  })
+
+  it('returns null and skips backend export when save-file selection is cancelled', async () => {
+    vi.mocked(SelectSaveFile).mockResolvedValue('')
+
+    await expect(
+      desktopClient.exportDocuments({
+        CNPJ: '123',
+        Competence: '2026-06',
+        Direction: 'tomada',
+        Format: 'csv',
+      })
+    ).resolves.toBeNull()
+    await expect(
+      desktopClient.exportDANFSe({
+        CNPJ: '123',
+        ChaveAcesso: 'chave-1',
+      })
+    ).resolves.toBeNull()
+    await expect(
+      desktopClient.exportDANFSeZIP({
+        CNPJ: '123',
+        Competence: '2026-06',
+        Direction: 'tomada',
+        Format: 'zip',
+      })
+    ).resolves.toBeNull()
+
+    expect(ExportDocuments).not.toHaveBeenCalled()
+    expect(ExportDANFSe).not.toHaveBeenCalled()
+    expect(ExportDANFSeZIP).not.toHaveBeenCalled()
   })
 
   it('normalizes thrown Wails errors', async () => {

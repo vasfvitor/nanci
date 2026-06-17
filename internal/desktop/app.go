@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -177,6 +176,18 @@ func (a *App) SelectExportDirectory() (string, error) {
 	})
 }
 
+// SelectSaveFile opens a dialog to select an output file path for exports
+func (a *App) SelectSaveFile(title, defaultFilename, pattern string) (string, error) {
+	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           title,
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: title, Pattern: pattern},
+			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
+		},
+	})
+}
+
 // --- Core API Exposure ---
 
 func (a *App) ToggleDebug(enable bool) {
@@ -272,74 +283,52 @@ func (a *App) Status(cnpj string) (app.StatusResult, error) {
 }
 
 func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
-	if input.OutDir == "" {
-		return desktopapi.ExportResult{}, fmt.Errorf("pasta de saída não especificada")
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
-
-	baseName := strings.TrimSpace(input.BaseName)
-	if baseName == "" {
-		baseName = fmt.Sprintf("danfse_%s", input.ChaveAcesso)
-	}
-	outPath := filepath.Join(input.OutDir, baseName+".pdf")
 
 	err := a.core.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
-		OutPath:     outPath,
+		OutPath:     input.OutPath,
 	})
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: outPath, Format: "danfse"}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse"}, nil
 }
 
 func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
-	if input.OutDir == "" {
-		return desktopapi.ExportResult{}, fmt.Errorf("pasta de saída não especificada")
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
-
-	baseName := strings.TrimSpace(input.BaseName)
-	if baseName == "" {
-		baseName = fmt.Sprintf("danfses_%s_%d", input.CNPJ, time.Now().UnixMilli())
-	}
-	outPath := filepath.Join(input.OutDir, baseName+".zip")
 
 	err := a.core.ExportDANFSeZIP(a.ctx, app.ExportInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
-		OutPath:    outPath,
+		OutPath:    input.OutPath,
 	})
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: outPath, Format: "danfse-zip"}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse-zip"}, nil
 }
 
 func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
 	format := strings.ToLower(strings.TrimSpace(input.Format))
-	if input.OutDir == "" {
-		return desktopapi.ExportResult{}, fmt.Errorf("pasta de saída não especificada")
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
-
-	extension, err := exportExtension(format)
-	if err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-
-	baseName := strings.TrimSpace(input.BaseName)
-	if baseName == "" {
-		baseName = fmt.Sprintf("export_%s_%d", input.CNPJ, time.Now().UnixMilli())
-	}
-	outPath := filepath.Join(input.OutDir, baseName+extension)
 
 	exportInput := app.ExportInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
-		OutPath:    outPath,
+		OutPath:    input.OutPath,
 	}
 
+	var err error
 	switch format {
 	case "csv":
 		err = a.core.ExportCSV(a.ctx, exportInput)
@@ -347,12 +336,15 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 		err = a.core.ExportXLSX(a.ctx, exportInput)
 	case "zip":
 		err = a.core.ExportZIP(a.ctx, exportInput)
+	default:
+		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}
+
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
 
-	return desktopapi.ExportResult{OutPath: outPath, Format: format}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: format}, nil
 }
 
 func exportExtension(format string) (string, error) {

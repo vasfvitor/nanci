@@ -33,36 +33,27 @@ export function useDocuments() {
   }
 
   async function exportDocuments(format: ExportFormat) {
-    const outDir = await desktopClient.selectExportDirectory()
-    if (!outDir) return null
     return desktopClient.exportDocuments({
       CNPJ: filter.value.CNPJ,
       Competence: filter.value.Competence || '',
       Direction: filter.value.Direction || '',
       Format: format,
-      OutDir: outDir,
     })
   }
 
   async function exportDANFSe(chaveAcesso: string) {
-    const outDir = await desktopClient.selectExportDirectory()
-    if (!outDir) return null
     return desktopClient.exportDANFSe({
       CNPJ: filter.value.CNPJ,
       ChaveAcesso: chaveAcesso,
-      OutDir: outDir,
     })
   }
 
   async function exportDANFSeZIP() {
-    const outDir = await desktopClient.selectExportDirectory()
-    if (!outDir) return null
     return desktopClient.exportDANFSeZIP({
       CNPJ: filter.value.CNPJ,
       Competence: filter.value.Competence || '',
       Direction: filter.value.Direction || '',
       Format: 'zip',
-      OutDir: outDir,
     })
   }
 
