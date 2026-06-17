@@ -79,7 +79,7 @@
             round
             color="primary"
             icon="sync"
-            :loading="syncing === props.row.CNPJ"
+            :loading="isSyncingCompany(props.row.CNPJ)"
             title="Sincronizar"
             @click="syncCompany(props.row.CNPJ)"
           />
@@ -132,7 +132,7 @@ const router = useRouter()
 const consoleStore = useConsoleStore()
 const { debugEnabled } = storeToRefs(consoleStore)
 const companiesApi = useCompanies()
-const { companies, credentials, syncing } = companiesApi
+const { companies, credentials, isSyncingCompany } = companiesApi
 const showAddDialog = ref(false)
 const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)
@@ -243,4 +243,3 @@ onMounted(() => {
 })
 
 </script>
-
