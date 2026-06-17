@@ -31,6 +31,7 @@ type DocumentFilter struct {
 
 type DocumentReader interface {
 	ListCompanyDocuments(ctx context.Context, companyID CompanyID, filter DocumentFilter) ([]CompanyDocument, error)
+	CompanyDocumentByChave(ctx context.Context, companyID CompanyID, chave string) (*CompanyDocument, error)
 	ListEventsByDocument(ctx context.Context, docID string) ([]Event, error)
 }
 

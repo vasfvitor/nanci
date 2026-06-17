@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/vasfvitor/nanci/internal/danfse"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
@@ -44,6 +45,7 @@ type App struct {
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
+	DANFSeRenderer     danfse.Renderer
 }
 
 // Dependencies contains the infrastructure required by App.
@@ -57,12 +59,14 @@ type Dependencies struct {
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
+	DANFSeRenderer     danfse.Renderer
 }
 
 // RuntimeOptions defines how a production app instance should be assembled.
 type RuntimeOptions struct {
 	Log                *slog.Logger
 	CredentialProvider CredentialProvider
+	DANFSeRenderer     danfse.Renderer
 	DataDir            string
 	RunMigrations      bool
 }
@@ -100,6 +104,7 @@ func New(deps Dependencies) (*App, error) {
 		XMLStore:           deps.XMLStore,
 		DataDir:            deps.DataDir,
 		CredentialProvider: deps.CredentialProvider,
+		DANFSeRenderer:     deps.DANFSeRenderer,
 	}, nil
 }
 
@@ -144,6 +149,7 @@ func NewRuntime(opts RuntimeOptions) (*App, error) {
 		XMLStore:           files.NewBlobStore(dataDir),
 		DataDir:            dataDir,
 		CredentialProvider: opts.CredentialProvider,
+		DANFSeRenderer:     opts.DANFSeRenderer,
 	})
 	if err != nil {
 		_ = db.Close()

@@ -8,6 +8,8 @@ import {
   WailsClientError,
 } from './client'
 import {
+  ExportDANFSe,
+  ExportDANFSeZIP,
   ListCompanies,
   ListCredentials,
   ListDocuments,
@@ -20,6 +22,8 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
   CancelCertPassword: vi.fn(),
+  ExportDANFSe: vi.fn(),
+  ExportDANFSeZIP: vi.fn(),
   ExportDocuments: vi.fn(),
   ListCompanies: vi.fn(),
   ListCredentials: vi.fn(),
@@ -134,6 +138,45 @@ describe('desktop client calls', () => {
   it('normalizes cancelled dialogs to null', async () => {
     vi.mocked(SelectCertificate).mockResolvedValue('')
     await expect(desktopClient.selectCertificate()).resolves.toBeNull()
+  })
+
+  it('maps DANFSe export requests through Wails DTOs', async () => {
+    vi.mocked(ExportDANFSe).mockResolvedValue({
+      OutPath: 'C:\\exports\\danfse.pdf',
+      Format: 'danfse',
+    } as never)
+    vi.mocked(ExportDANFSeZIP).mockResolvedValue({
+      OutPath: 'C:\\exports\\danfses.zip',
+      Format: 'danfse-zip',
+    } as never)
+
+    await desktopClient.exportDANFSe({
+      CNPJ: '123',
+      ChaveAcesso: 'chave-1',
+      OutDir: 'C:\\exports',
+    })
+    await desktopClient.exportDANFSeZIP({
+      CNPJ: '123',
+      Competence: '2026-06',
+      Direction: 'tomada',
+      Format: 'zip',
+      OutDir: 'C:\\exports',
+    })
+
+    expect(ExportDANFSe).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: 'chave-1',
+      OutDir: 'C:\\exports',
+      BaseName: '',
+    })
+    expect(ExportDANFSeZIP).toHaveBeenCalledWith({
+      CNPJ: '123',
+      Competence: '2026-06',
+      Direction: 'tomada',
+      Format: 'zip',
+      OutDir: 'C:\\exports',
+      BaseName: '',
+    })
   })
 
   it('normalizes thrown Wails errors', async () => {

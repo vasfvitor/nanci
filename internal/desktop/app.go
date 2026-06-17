@@ -14,6 +14,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
@@ -108,7 +109,8 @@ func (a *App) startup(ctx context.Context) {
 				mu:            &a.mu,
 			},
 		},
-		RunMigrations: true,
+		DANFSeRenderer: godanfsev2.New(),
+		RunMigrations:  true,
 	})
 	if err != nil {
 		fmt.Printf("failed to configure app: %v\n", err)
@@ -267,6 +269,51 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 
 func (a *App) Status(cnpj string) (app.StatusResult, error) {
 	return a.core.Status(a.ctx, cnpj)
+}
+
+func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
+	if input.OutDir == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("pasta de saída não especificada")
+	}
+
+	baseName := strings.TrimSpace(input.BaseName)
+	if baseName == "" {
+		baseName = fmt.Sprintf("danfse_%s", input.ChaveAcesso)
+	}
+	outPath := filepath.Join(input.OutDir, baseName+".pdf")
+
+	err := a.core.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     outPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult{OutPath: outPath, Format: "danfse"}, nil
+}
+
+func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
+	if input.OutDir == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("pasta de saída não especificada")
+	}
+
+	baseName := strings.TrimSpace(input.BaseName)
+	if baseName == "" {
+		baseName = fmt.Sprintf("danfses_%s_%d", input.CNPJ, time.Now().UnixMilli())
+	}
+	outPath := filepath.Join(input.OutDir, baseName+".zip")
+
+	err := a.core.ExportDANFSeZIP(a.ctx, app.ExportInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+		OutPath:    outPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult{OutPath: outPath, Format: "danfse-zip"}, nil
 }
 
 func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {

@@ -18,6 +18,14 @@ export function CancelCertPassword(arg1) {
   return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
+export function ExportDANFSe(arg1) {
+  return window['go']['main']['App']['ExportDANFSe'](arg1);
+}
+
+export function ExportDANFSeZIP(arg1) {
+  return window['go']['main']['App']['ExportDANFSeZIP'](arg1);
+}
+
 export function ExportDocuments(arg1) {
   return window['go']['main']['App']['ExportDocuments'](arg1);
 }

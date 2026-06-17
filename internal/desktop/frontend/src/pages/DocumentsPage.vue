@@ -119,6 +119,10 @@
             <q-item-section avatar><q-icon name="folder_zip" /></q-item-section>
             <q-item-section><q-item-label>Exportar XMLs (ZIP)</q-item-label></q-item-section>
           </q-item>
+          <q-item v-close-popup clickable @click="exportDanfseZip">
+            <q-item-section avatar><q-icon name="picture_as_pdf" /></q-item-section>
+            <q-item-section><q-item-label>Exportar DANFSes (ZIP)</q-item-label></q-item-section>
+          </q-item>
         </q-list>
       </q-btn-dropdown>
     </div>
@@ -174,6 +178,16 @@
       </template>
       <template #body-cell-actions="props">
         <q-td :props="props" class="q-gutter-x-sm">
+          <q-btn
+            dense
+            flat
+            round
+            size="sm"
+            color="negative"
+            icon="picture_as_pdf"
+            title="Exportar DANFSe"
+            @click="exportDanfse(props.row.ChaveAcesso)"
+          />
           <q-btn
             v-if="props.row.Status === 'cancelada' || props.row.Status === 'substituida'"
             dense
@@ -335,6 +349,26 @@ async function exportData(format: 'csv' | 'xlsx' | 'zip') {
     $q.notify({ type: 'positive', message: `Exportado com sucesso para ${result.OutPath}` })
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao exportar: ' + String(err) })
+  }
+}
+
+async function exportDanfse(chaveAcesso: string) {
+  try {
+    const result = await documentsApi.exportDANFSe(chaveAcesso)
+    if (!result) return
+    $q.notify({ type: 'positive', message: `DANFSe exportado com sucesso para ${result.OutPath}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao exportar DANFSe: ' + String(err) })
+  }
+}
+
+async function exportDanfseZip() {
+  try {
+    const result = await documentsApi.exportDANFSeZIP()
+    if (!result) return
+    $q.notify({ type: 'positive', message: `DANFSes exportados com sucesso para ${result.OutPath}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao exportar DANFSes: ' + String(err) })
   }
 }
 

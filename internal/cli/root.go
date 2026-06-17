@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 )
 
@@ -57,7 +58,8 @@ func newApp() (*app.App, error) {
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
 		},
-		RunMigrations: true,
+		DANFSeRenderer: godanfsev2.New(),
+		RunMigrations:  true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("configurar aplicação: %w", err)

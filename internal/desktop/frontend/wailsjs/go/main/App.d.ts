@@ -11,6 +11,10 @@ export function AssignCredentialToCompany(arg1:app.AssignCredentialInput):Promis
 
 export function CancelCertPassword(arg1:string):Promise<void>;
 
+export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
+
+export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
+
 export function ExportDocuments(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
 
 export function ExportLogs():Promise<string>;

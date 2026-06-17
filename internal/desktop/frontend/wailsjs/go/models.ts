@@ -504,6 +504,24 @@ export namespace desktopapi {
 		    return a;
 		}
 	}
+	export class ExportDANFSeInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	    OutDir: string;
+	    BaseName: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportDANFSeInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.OutDir = source["OutDir"];
+	        this.BaseName = source["BaseName"];
+	    }
+	}
 	export class ExportDocumentsInput {
 	    CNPJ: string;
 	    Competence: string;
@@ -542,4 +560,3 @@ export namespace desktopapi {
 	}
 
 }
-

@@ -3,6 +3,8 @@ import {
   AddCredential,
   AssignCredentialToCompany,
   CancelCertPassword,
+  ExportDANFSe,
+  ExportDANFSeZIP,
   ExportDocuments,
   ListCompanies,
   ListCredentials,
@@ -28,6 +30,7 @@ import type {
   CredentialSummary,
   DocumentEvent,
   DocumentRow,
+  ExportDANFSeInput,
   ExportDocumentsInput,
   ExportResult,
   ListDocumentsInput,
@@ -192,6 +195,24 @@ export const desktopClient = {
   async exportDocuments(input: ExportDocumentsInput): Promise<ExportResult> {
     const result = await callWails(() =>
       ExportDocuments({
+        ...input,
+        BaseName: input.BaseName ?? '',
+      })
+    )
+    return result as ExportResult
+  },
+  async exportDANFSe(input: ExportDANFSeInput): Promise<ExportResult> {
+    const result = await callWails(() =>
+      ExportDANFSe({
+        ...input,
+        BaseName: input.BaseName ?? '',
+      })
+    )
+    return result as ExportResult
+  },
+  async exportDANFSeZIP(input: ExportDocumentsInput): Promise<ExportResult> {
+    const result = await callWails(() =>
+      ExportDANFSeZIP({
         ...input,
         BaseName: input.BaseName ?? '',
       })
