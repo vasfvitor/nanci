@@ -33,11 +33,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import {
-  WindowSetDarkTheme,
-  WindowSetLightTheme,
-  WindowSetSystemDefaultTheme,
-} from '../../wailsjs/runtime/runtime'
+import { desktopRuntime } from '@/platform/wails/runtime'
 
 const $q = useQuasar()
 const darkMode = ref<'auto' | boolean>('auto')
@@ -63,11 +59,11 @@ function updateDarkMode(val: 'auto' | boolean) {
   localStorage.setItem('darkMode', String(val))
   $q.dark.set(val)
   if (val === true) {
-    WindowSetDarkTheme()
+    desktopRuntime.setDarkTheme()
   } else if (val === false) {
-    WindowSetLightTheme()
+    desktopRuntime.setLightTheme()
   } else {
-    WindowSetSystemDefaultTheme()
+    desktopRuntime.setSystemDefaultTheme()
   }
 }
 </script>

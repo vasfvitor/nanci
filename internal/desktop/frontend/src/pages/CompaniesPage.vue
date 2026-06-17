@@ -117,37 +117,38 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { useRouter } from 'vue-router'
-import {
-  AssignCredentialToCompany,
-  ListCompanies,
-  ListCredentials,
-  Pull,
-  ResetSyncState,
-} from '../../wailsjs/go/main/App'
-import { nfse } from '../../wailsjs/go/models'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
-import { useAppStore } from '../stores/app'
+import { useConsoleStore } from '@/stores/console'
+import { useCompanies } from '@/composables/useCompanies'
+import { formatCpfCnpj, formatDateTime } from '@/utils/formatters'
+import type { CompanySummary } from '@/types/desktop'
 
 const $q = useQuasar()
 const router = useRouter()
-const appStore = useAppStore()
-const { debugEnabled } = storeToRefs(appStore)
-const companies = shallowRef<nfse.Company[]>([])
+const consoleStore = useConsoleStore()
+const { debugEnabled } = storeToRefs(consoleStore)
+const companiesApi = useCompanies()
+const { companies, credentials, syncing } = companiesApi
 const showAddDialog = ref(false)
-const syncing = ref<string | null>(null)
-const credentialOptions = ref<{ label: string; value: string }[]>([])
 const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)
-const selectedCompanyToEdit = ref<nfse.Company | null>(null)
+const selectedCompanyToEdit = ref<CompanySummary | null>(null)
+
+const credentialOptions = computed(() =>
+  credentials.value.map((credential) => ({
+    label: credential.Label,
+    value: credential.ID,
+  }))
+)
 
 const columns: QTableColumn[] = [
   { name: 'acoes', label: 'Ações', field: () => '', align: 'center' as const },
   { name: 'nome', label: 'Nome', field: 'Name', align: 'left', sortable: true },
-  { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true, format: (val: string) => formatDocument(val) },
+  { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true, format: (val: string) => formatCpfCnpj(val) },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
   { name: 'lastFoundNSU', label: 'Último NSU (c/ doc)', field: 'LastFoundNSU', align: 'left', sortable: true },
@@ -155,7 +156,7 @@ const columns: QTableColumn[] = [
   { name: 'credencial', label: 'Credencial', field: () => '', align: 'left', style: 'max-width: 250px' },
 ]
 
-function openEditDialog(company: nfse.Company) {
+function openEditDialog(company: CompanySummary) {
   selectedCompanyToEdit.value = company
   showEditDialog.value = true
 }
@@ -164,17 +165,8 @@ function openDocuments(cnpj: string) {
   router.push({ path: '/documents', query: { cnpj } })
 }
 
-async function loadCredentials() {
-  const list = (await ListCredentials()) || []
-  credentialOptions.value = list.map((credential) => ({
-    label: `${credential.Label}`,
-    value: credential.ID,
-  }))
-}
-
 async function loadCompanies() {
-  const list = (await ListCompanies()) || []
-  companies.value = list
+  const list = await companiesApi.loadCompanies()
   selectedCredentials.value = Object.fromEntries(
     list.map((company) => [company.CNPJ, company.CredentialID])
   )
@@ -182,7 +174,8 @@ async function loadCompanies() {
 
 async function reloadData() {
   try {
-    await Promise.all([loadCredentials(), loadCompanies()])
+    await companiesApi.loadCredentials()
+    await loadCompanies()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + String(err) })
   }
@@ -193,10 +186,7 @@ async function assignCredential(cnpj: string) {
     const credId = selectedCredentials.value[cnpj]
     if (!credId) return
 
-    await AssignCredentialToCompany({
-      CompanyCNPJ: cnpj,
-      CredentialID: credId,
-    })
+    await companiesApi.assignCredential(cnpj, credId)
     $q.notify({ type: 'positive', message: 'Credencial atribuída com sucesso.' })
     await loadCompanies()
   } catch (err) {
@@ -205,9 +195,8 @@ async function assignCredential(cnpj: string) {
 }
 
 async function syncCompany(cnpj: string) {
-  syncing.value = cnpj
   try {
-    const result = await Pull({ CNPJ: cnpj, Mode: '' })
+    const result = await companiesApi.syncCompany(cnpj)
     const credentialCNPJ = result.CredentialCNPJ || 'pendente'
     const lastFound = result.LastFoundNSUValid ? result.LastFoundNSU : '—'
     $q.notify({
@@ -221,12 +210,10 @@ async function syncCompany(cnpj: string) {
     } else {
       $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + String(err) })
     }
-  } finally {
-    syncing.value = null
   }
 }
 
-function confirmResetSync(company: nfse.Company) {
+function confirmResetSync(company: CompanySummary) {
   $q.dialog({
     title: 'Resetar sincronização',
     message: `Isso vai zerar o cursor de sincronização de ${company.Name} (${company.CNPJ}) sem apagar documentos já baixados. A próxima sincronização poderá revisitar NSUs antigos. Continuar?`,
@@ -239,7 +226,7 @@ function confirmResetSync(company: nfse.Company) {
     },
   }).onOk(async () => {
     try {
-      await ResetSyncState({ CNPJ: company.CNPJ })
+      await companiesApi.resetSyncState(company.CNPJ)
       $q.notify({
         type: 'warning',
         message: `Cursor de sincronização resetado para ${company.Name}.`,
@@ -255,24 +242,5 @@ onMounted(() => {
   reloadData()
 })
 
-function formatDateTime(value: string | Date | null | undefined) {
-  if (!value) return '—'
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString('pt-BR')
-}
-
-function formatDocument(doc: string | null | undefined) {
-  if (!doc) return ''
-  const d = doc.replace(/\D/g, '')
-  if (d.length === 14) {
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
-  }
-  if (d.length === 11) {
-    return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
-  }
-  return doc
-}
 </script>
-
 

@@ -50,7 +50,7 @@
 import { storeToRefs } from 'pinia'
 import { ref, nextTick, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { useAppStore } from '../stores/app'
+import { useConsoleStore } from '@/stores/console'
 
 interface QScrollAreaRef {
   setScrollPercentage: (axis: 'vertical' | 'horizontal', percentage: number) => void
@@ -59,8 +59,8 @@ interface QScrollAreaRef {
 const model = defineModel<boolean>({ default: false })
 
 const $q = useQuasar()
-const appStore = useAppStore()
-const { logFilterLevel, filteredLogEntries, filteredLogsText } = storeToRefs(appStore)
+const consoleStore = useConsoleStore()
+const { logFilterLevel, filteredLogEntries, filteredLogsText } = storeToRefs(consoleStore)
 const logScrollArea = ref<QScrollAreaRef | null>(null)
 
 const logLevelOptions = [
@@ -80,11 +80,11 @@ function getLevelColor(level: string) {
 }
 
 async function onLogLevelChange(level: 'info' | 'warn' | 'debug' | 'trace') {
-  await appStore.setLogFilter(level)
+  await consoleStore.setLogFilter(level)
 }
 
 function clearLogs() {
-  appStore.clearLogs()
+  consoleStore.clearLogs()
 }
 
 async function copyLogs() {

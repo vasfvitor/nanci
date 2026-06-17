@@ -68,8 +68,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { AddCompany, ListCredentials, SelectCertificate } from '../../wailsjs/go/main/App'
 import { useQuasar } from 'quasar'
+import { desktopClient } from '@/platform/wails/client'
 
 const props = defineProps<{
   modelValue: boolean
@@ -108,7 +108,7 @@ watch(isOpen, (val) => {
 
 async function loadCredentials() {
   try {
-    const credentials = (await ListCredentials()) || []
+    const credentials = await desktopClient.listCredentials()
     credentialOptions.value = credentials.map((credential) => ({
       label: `${credential.Label}`,
       value: credential.ID,
@@ -127,7 +127,7 @@ async function loadCredentials() {
 
 async function selectCert() {
   try {
-    const path = await SelectCertificate()
+    const path = await desktopClient.selectCertificate()
     if (path) {
       form.value.CertPath = path
       if (!form.value.CredentialLabel) {
@@ -155,7 +155,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await AddCompany({
+    await desktopClient.addCompany({
       CNPJ: form.value.CNPJ,
       Name: form.value.Name,
       CredentialID: credentialMode.value === 'existing' ? form.value.CredentialID : '',

@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/vasfvitor/nanci/internal/app"
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
@@ -199,8 +201,12 @@ func (a *App) AddCredential(input app.AddCredentialInput) error {
 	return a.core.AddCredential(a.ctx, input)
 }
 
-func (a *App) ListCredentials() ([]nfse.Credential, error) {
-	return a.core.ListCredentials(a.ctx)
+func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
+	credentials, err := a.core.ListCredentials(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return desktopapi.CredentialSummaries(credentials), nil
 }
 
 func (a *App) UpdateCredentialPath(input app.UpdateCredentialPathInput) error {
@@ -219,8 +225,12 @@ func (a *App) AssignCredentialToCompany(input app.AssignCredentialInput) error {
 	return a.core.AssignCredentialToCompany(a.ctx, input)
 }
 
-func (a *App) ListCompanies() ([]nfse.Company, error) {
-	return a.core.ListCompanies(a.ctx)
+func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
+	companies, err := a.core.ListCompanies(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return desktopapi.CompanySummaries(companies), nil
 }
 
 func (a *App) Pull(input app.PullInput) (app.PullResult, error) {
@@ -239,28 +249,76 @@ func (a *App) QueryNFSeEvents(input app.QueryNFSeInput) (string, error) {
 	return a.core.QueryNFSeEvents(a.ctx, input)
 }
 
-func (a *App) ListDocuments(input app.ListInput) ([]nfse.CompanyDocument, error) {
-	return a.core.ListDocuments(a.ctx, input)
+func (a *App) ListDocuments(input app.ListInput) ([]desktopapi.DocumentRow, error) {
+	documents, err := a.core.ListDocuments(a.ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	return desktopapi.DocumentRows(documents), nil
 }
 
-func (a *App) ListEventsForDocument(documentID string) ([]app.EventView, error) {
-	return a.core.ListEventsForDocument(a.ctx, documentID)
+func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEvent, error) {
+	events, err := a.core.ListEventsForDocument(a.ctx, documentID)
+	if err != nil {
+		return nil, err
+	}
+	return desktopapi.DocumentEvents(events), nil
 }
 
 func (a *App) Status(cnpj string) (app.StatusResult, error) {
 	return a.core.Status(a.ctx, cnpj)
 }
 
-func (a *App) ExportCSV(input app.ExportInput) error {
-	return a.core.ExportCSV(a.ctx, input)
+func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
+	format := strings.ToLower(strings.TrimSpace(input.Format))
+	if input.OutDir == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("pasta de saída não especificada")
+	}
+
+	extension, err := exportExtension(format)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+
+	baseName := strings.TrimSpace(input.BaseName)
+	if baseName == "" {
+		baseName = fmt.Sprintf("export_%s_%d", input.CNPJ, time.Now().UnixMilli())
+	}
+	outPath := filepath.Join(input.OutDir, baseName+extension)
+
+	exportInput := app.ExportInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+		OutPath:    outPath,
+	}
+
+	switch format {
+	case "csv":
+		err = a.core.ExportCSV(a.ctx, exportInput)
+	case "xlsx":
+		err = a.core.ExportXLSX(a.ctx, exportInput)
+	case "zip":
+		err = a.core.ExportZIP(a.ctx, exportInput)
+	}
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+
+	return desktopapi.ExportResult{OutPath: outPath, Format: format}, nil
 }
 
-func (a *App) ExportXLSX(input app.ExportInput) error {
-	return a.core.ExportXLSX(a.ctx, input)
-}
-
-func (a *App) ExportZIP(input app.ExportInput) error {
-	return a.core.ExportZIP(a.ctx, input)
+func exportExtension(format string) (string, error) {
+	switch format {
+	case "csv":
+		return ".csv", nil
+	case "xlsx":
+		return ".xlsx", nil
+	case "zip":
+		return ".zip", nil
+	default:
+		return "", fmt.Errorf("formato de exportação inválido: %s", format)
+	}
 }
 
 func (a *App) ExportLogs() (string, error) {

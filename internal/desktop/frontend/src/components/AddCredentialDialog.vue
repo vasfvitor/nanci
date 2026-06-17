@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { AddCredential, SelectCertificate } from '../../wailsjs/go/main/App'
+import { desktopClient } from '@/platform/wails/client'
 
 const props = defineProps<{
   modelValue: boolean
@@ -61,7 +61,7 @@ watch(isOpen, (val) => {
 
 async function selectCert() {
   try {
-    const path = await SelectCertificate()
+    const path = await desktopClient.selectCertificate()
     if (path) {
       form.value.CertPath = path
       if (!form.value.Label) {
@@ -81,7 +81,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await AddCredential(form.value)
+    await desktopClient.addCredential(form.value)
     $q.notify({ type: 'positive', message: 'Credencial adicionada com sucesso!' })
     emit('added')
     isOpen.value = false

@@ -1,8 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { EventsOn } from '../../wailsjs/runtime/runtime'
-import { SetLogLevel } from '../../wailsjs/go/main/App'
-import { nfse } from '../../wailsjs/go/models'
+import { desktopClient } from '@/platform/wails/client'
+import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
 
 export type LogFilterLevel = 'info' | 'warn' | 'debug' | 'trace'
 
@@ -37,7 +36,7 @@ function normalizeLogLevel(level: unknown): string {
   return level.trim().toUpperCase()
 }
 
-function coerceLogEntry(payload: unknown): LogEntry | null {
+export function coerceLogEntry(payload: unknown): LogEntry | null {
   if (!payload || typeof payload !== 'object') return null
   const rawPayload = payload as Record<string, unknown>
   const level = normalizeLogLevel(rawPayload['level'])
@@ -59,26 +58,12 @@ function formatLogEntry(entry: LogEntry) {
   return `[${entry.time}] ${entry.level} ${entry.msg}${entry.attrs ? ` ${entry.attrs}` : ''}`
 }
 
-export const useAppStore = defineStore('app', () => {
-  const activeCompanyId = ref<string | null>(null)
+export const useConsoleStore = defineStore('console', () => {
   const consoleOpen = ref(false)
   const logFilterLevel = ref<LogFilterLevel>('info')
   const logEntries = ref<LogEntry[]>([])
   const logListenersInitialised = ref(false)
-
-  const queryForm = ref({
-    cnpj: '',
-    chave: '',
-  })
-  const queryResult = ref('')
-  const queryType = ref('nfse')
-
-  const documentsFilter = ref({
-    CNPJ: '',
-    Competence: '',
-    Direction: '',
-  })
-  const documentsList = ref<nfse.CompanyDocument[]>([])
+  const logUnsubscribe = ref<Unsubscribe | null>(null)
 
   const debugEnabled = computed(
     () => logFilterLevel.value === 'debug' || logFilterLevel.value === 'trace'
@@ -110,35 +95,39 @@ export const useAppStore = defineStore('app', () => {
 
   async function setLogFilter(level: LogFilterLevel) {
     logFilterLevel.value = level
-    await SetLogLevel(level)
+    await desktopClient.setLogLevel(level)
   }
 
   function initLogListeners() {
     if (logListenersInitialised.value) return
     logListenersInitialised.value = true
 
-    EventsOn('backend-log', (payload: unknown) => {
+    logUnsubscribe.value = onWailsEvent<unknown>('backend-log', (payload) => {
       const entry = coerceLogEntry(payload)
       if (!entry) return
       pushLogEntry(entry)
     })
   }
 
+  function disposeLogListeners() {
+    logUnsubscribe.value?.()
+    logUnsubscribe.value = null
+    logListenersInitialised.value = false
+  }
+
   return {
-    activeCompanyId,
     consoleOpen,
     logFilterLevel,
     logEntries,
+    logListenersInitialised,
+    logUnsubscribe,
     debugEnabled,
     filteredLogEntries,
     filteredLogsText,
-    queryForm,
-    queryResult,
-    queryType,
-    documentsFilter,
-    documentsList,
+    pushLogEntry,
     clearLogs,
     initLogListeners,
+    disposeLogListeners,
     setLogFilter,
   }
 })

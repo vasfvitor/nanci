@@ -136,7 +136,7 @@
     >
       <template #body-cell-status="props">
         <q-td :props="props">
-          <q-badge :color="props.row.Status === 'normal' ? 'positive' : 'negative'">
+          <q-badge :color="statusColor(props.row.Status)">
             {{ props.row.Status }}
           </q-badge>
         </q-td>
@@ -198,27 +198,21 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  ListCompanies,
-  ListDocuments,
-  ExportCSV,
-  ExportXLSX,
-  ExportZIP,
-  SelectExportDirectory,
-} from '../../wailsjs/go/main/App'
-import { app } from '../../wailsjs/go/models'
 import { useQuasar, date } from 'quasar'
-import { useAppStore } from '../stores/app'
-import { storeToRefs } from 'pinia'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
+import { useDocuments } from '@/composables/useDocuments'
+import {
+  formatChaveAcesso,
+  formatCpfCnpj,
+  formatCurrencyCents,
+  formatDate,
+} from '@/utils/formatters'
+import { roleColor, roleLabel, statusColor, visibilityColor, visibilityLabel } from '@/utils/nfseDisplay'
 
 const $q = useQuasar()
 const route = useRoute()
-const appStore = useAppStore()
-const { documentsFilter: filter, documentsList: documents } = storeToRefs(appStore)
-
-const companyOptions = ref<{ label: string; value: string }[]>([])
-const loading = ref(false)
+const documentsApi = useDocuments()
+const { filter, documents, companyOptions, loading } = documentsApi
 
 const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
@@ -268,32 +262,19 @@ const columns = [
   { name: 'companyRole', label: 'Direção', field: 'CompanyRole', sortable: true },
   { name: 'visibilityReason', label: 'Visibilidade', field: 'VisibilityReason', sortable: true },
   { name: 'status', label: 'Status', field: 'Status', sortable: true },
-  { name: 'prestador', label: 'Prestador', field: 'PrestadorCNPJ', sortable: true, format: (val: string) => formatDocument(val) },
-  { name: 'tomador', label: 'Tomador', field: 'TomadorCNPJ', sortable: true, format: (val: string) => formatDocument(val) },
+  { name: 'prestador', label: 'Prestador', field: 'PrestadorCNPJ', sortable: true, format: (val: string) => formatCpfCnpj(val) },
+  { name: 'tomador', label: 'Tomador', field: 'TomadorCNPJ', sortable: true, format: (val: string) => formatCpfCnpj(val) },
   {
     name: 'value',
     label: 'Valor (R$)',
     field: 'ServiceValue',
-    format: (val: number) => formatCurrency(val),
+    format: (val: number) => formatCurrencyCents(val),
     sortable: true,
   },
 ]
 
-function formatDate(value: string | Date | null | undefined) {
-  if (!value) return ''
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('pt-BR')
-}
-
 function formatChave(chave: string) {
-  if (!chave) return ''
-  // Remove possible 'NFS' prefix
-  const clean = chave.replace(/^NFS/i, '')
-  if (clean.length > 10) {
-    return '...' + clean.slice(-10)
-  }
-  return clean
+  return formatChaveAcesso(chave)
 }
 
 async function copyChave(chave: string) {
@@ -303,93 +284,9 @@ async function copyChave(chave: string) {
   $q.notify({ type: 'positive', message: 'Chave copiada!', timeout: 1000 })
 }
 
-function formatDocument(doc: string | null | undefined) {
-  if (!doc) return ''
-  const d = doc.replace(/\D/g, '')
-  if (d.length === 14) {
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
-  }
-  if (d.length === 11) {
-    return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
-  }
-  return doc
-}
-
-function formatCurrency(value: number | null | undefined) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return 'R$ 0,00'
-  return (value / 100).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
-}
-
-function roleLabel(role: string) {
-  switch (role) {
-    case 'prestada':
-      return 'Prestada'
-    case 'tomada':
-      return 'Tomada'
-    case 'intermediario':
-      return 'Intermediário'
-    case 'none':
-      return 'Sem papel fiscal'
-    default:
-      return role || 'Desconhecido'
-  }
-}
-
-function roleColor(role: string) {
-  switch (role) {
-    case 'prestada':
-      return 'primary'
-    case 'tomada':
-      return 'secondary'
-    case 'intermediario':
-      return 'accent'
-    case 'none':
-      return 'grey'
-    default:
-      return 'grey'
-  }
-}
-
-function visibilityLabel(reason: string) {
-  switch (reason) {
-    case 'exact_prestador':
-      return 'Prestador exato'
-    case 'exact_tomador':
-      return 'Tomador exato'
-    case 'exact_intermediario':
-      return 'Intermediário exato'
-    case 'same_root_only':
-      return 'Mesmo raiz apenas'
-    case 'unknown':
-      return 'Desconhecida'
-    default:
-      return reason || 'Desconhecida'
-  }
-}
-
-function visibilityColor(reason: string) {
-  switch (reason) {
-    case 'exact_prestador':
-    case 'exact_tomador':
-    case 'exact_intermediario':
-      return 'positive'
-    case 'same_root_only':
-      return 'warning'
-    default:
-      return 'grey'
-  }
-}
-
 async function loadCompanies() {
   try {
-    const list = await ListCompanies()
-    companyOptions.value = (list || []).map((c) => ({
-      label: `${c.Name} (${c.CNPJ})`,
-      value: c.CNPJ,
-    }))
+    await documentsApi.loadCompanies()
     if (companyOptions.value.length > 0) {
       const cnpjFromRoute = String(route.query['cnpj'] || '')
       let shouldSearch = false
@@ -424,48 +321,18 @@ async function loadCompanies() {
 }
 
 async function search() {
-  if (!filter.value.CNPJ) return
-  loading.value = true
   try {
-    const req = new app.ListInput({
-      CNPJ: filter.value.CNPJ,
-      Competence: filter.value.Competence || '',
-      Direction: filter.value.Direction || '',
-    })
-    const res = await ListDocuments(req)
-    documents.value = res || []
+    await documentsApi.search()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao buscar documentos: ' + err })
-  } finally {
-    loading.value = false
   }
 }
 
 async function exportData(format: 'csv' | 'xlsx' | 'zip') {
   try {
-    const outDir = await SelectExportDirectory()
-    if (!outDir) return // user cancelled
-
-    const ext = format === 'csv' ? '.csv' : format === 'xlsx' ? '.xlsx' : '.zip'
-    const fileName = `export_${filter.value.CNPJ}_${Date.now()}${ext}`
-    // Quick workaround for cross-platform paths
-    const outPath =
-      outDir.endsWith('\\') || outDir.endsWith('/')
-        ? `${outDir}${fileName}`
-        : `${outDir}\\${fileName}`
-
-    const req = new app.ExportInput({
-      CNPJ: filter.value.CNPJ,
-      Competence: filter.value.Competence || '',
-      Direction: filter.value.Direction || '',
-      OutPath: outPath,
-    })
-
-    if (format === 'csv') await ExportCSV(req)
-    else if (format === 'xlsx') await ExportXLSX(req)
-    else if (format === 'zip') await ExportZIP(req)
-
-    $q.notify({ type: 'positive', message: `Exportado com sucesso para ${outPath}` })
+    const result = await documentsApi.exportDocuments(format)
+    if (!result) return
+    $q.notify({ type: 'positive', message: `Exportado com sucesso para ${result.OutPath}` })
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao exportar: ' + String(err) })
   }

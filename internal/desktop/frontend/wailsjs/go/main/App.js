@@ -18,20 +18,12 @@ export function CancelCertPassword(arg1) {
   return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
-export function ExportCSV(arg1) {
-  return window['go']['main']['App']['ExportCSV'](arg1);
+export function ExportDocuments(arg1) {
+  return window['go']['main']['App']['ExportDocuments'](arg1);
 }
 
 export function ExportLogs() {
   return window['go']['main']['App']['ExportLogs']();
-}
-
-export function ExportXLSX(arg1) {
-  return window['go']['main']['App']['ExportXLSX'](arg1);
-}
-
-export function ExportZIP(arg1) {
-  return window['go']['main']['App']['ExportZIP'](arg1);
 }
 
 export function ListCompanies() {

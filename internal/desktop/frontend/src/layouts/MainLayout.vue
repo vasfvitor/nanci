@@ -18,27 +18,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
-import { EventsOn } from '../../wailsjs/runtime/runtime'
-import { useAppStore } from '../stores/app'
+import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
+import { useConsoleStore } from '@/stores/console'
 import AppTitleBar from '../components/AppTitleBar.vue'
 import AppLeftDrawer from '../components/AppLeftDrawer.vue'
 import AppConsoleDrawer from '../components/AppConsoleDrawer.vue'
 
 const $q = useQuasar()
-const appStore = useAppStore()
+const consoleStore = useConsoleStore()
 const leftDrawerOpen = ref(false)
-const { consoleOpen } = storeToRefs(appStore)
+const { consoleOpen } = storeToRefs(consoleStore)
+const unsubscribers: Unsubscribe[] = []
 
 onMounted(() => {
-  EventsOn('notify-success', (msg: string) => {
-    $q.notify({ type: 'positive', message: msg })
-  })
+  unsubscribers.push(
+    onWailsEvent<string>('notify-success', (msg) => {
+      $q.notify({ type: 'positive', message: msg })
+    }),
+    onWailsEvent<string>('notify-error', (msg) => {
+      $q.notify({ type: 'negative', message: msg })
+    })
+  )
+})
 
-  EventsOn('notify-error', (msg: string) => {
-    $q.notify({ type: 'negative', message: msg })
-  })
+onUnmounted(() => {
+  for (const unsubscribe of unsubscribers.splice(0)) {
+    unsubscribe()
+  }
 })
 </script>
