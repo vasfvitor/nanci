@@ -1,0 +1,79 @@
+name: Bug
+description: Reporte um problema no Nanci
+title: "[Bug]: "
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de abrir o bug, confira se você está usando a versão mais recente do Nanci.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Onde o problema acontece?
+      options:
+        - Desktop
+        - CLI
+        - Instalação
+        - Outro
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versão do Nanci
+      placeholder: ex. v1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: Versão do Windows
+      placeholder: ex. Windows 11 23H2
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o problema do jeito que você viu.
+      placeholder: |
+        Exemplo:
+        Ao tentar consultar as NFS-e, o aplicativo fecha sozinho.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Como reproduzir
+      description: Liste os passos que levam ao problema.
+      placeholder: |
+        1. Abrir o Nanci
+        2. Selecionar a empresa
+        3. Clicar em "Sincronizar"
+        4. O erro acontece
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que você esperava que acontecesse?
+      placeholder: |
+        Exemplo:
+        A sincronização deveria terminar e mostrar os documentos encontrados.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, mensagens de erro ou prints
+      description: Cole aqui mensagens de erro, logs do terminal ou prints da tela. Remova senhas, certificados, CNPJ/CPF ou qualquer dado sensível antes de enviar.
+    validations:
+      required: false

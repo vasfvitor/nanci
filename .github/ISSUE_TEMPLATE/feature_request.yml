@@ -1,0 +1,61 @@
+name: Melhoria
+description: Sugira uma melhoria ou nova funcionalidade para o Nanci
+title: "[Feature]: "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use este formulário para sugerir melhorias no Nanci.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Onde essa melhoria se aplica?
+      options:
+        - Desktop
+        - CLI
+        - Instalação
+        - Exportação de dados
+        - Sincronização
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: O que você gostaria que fosse adicionado ou melhorado?
+      description: Descreva a ideia de forma objetiva.
+      placeholder: |
+        Exemplo:
+        Gostaria de exportar os documentos sincronizados em formato ZIP, separados por empresa e mês.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema isso resolve?
+      description: Explique em que situação essa melhoria ajudaria no seu uso do Nanci.
+      placeholder: |
+        Exemplo:
+        Hoje preciso separar os arquivos manualmente antes de enviar para a contabilidade.
+    validations:
+      required: false
+
+  - type: textarea
+    id: current_workaround
+    attributes:
+      label: Como você faz isso hoje?
+      description: Descreva se existe algum contorno manual, outra ferramenta ou processo usado atualmente.
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Observações adicionais
+      description: Inclua exemplos, prints, arquivos ou detalhes que ajudem a entender o pedido.
+    validations:
+      required: false
