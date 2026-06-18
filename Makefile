@@ -40,3 +40,7 @@ seeddev:
 
 mockcert:
 	go run ./cmd/mockcert
+
+screenshots:
+	cd internal/desktop/frontend && pnpm run screenshots
+
