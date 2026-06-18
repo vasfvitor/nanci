@@ -504,13 +504,28 @@ export namespace desktopapi {
 		    return a;
 		}
 	}
+	export class ExportDANFSeInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportDANFSeInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
 	export class ExportDocumentsInput {
 	    CNPJ: string;
 	    Competence: string;
 	    Direction: string;
 	    Format: string;
-	    OutDir: string;
-	    BaseName: string;
+	    OutPath: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExportDocumentsInput(source);
@@ -522,8 +537,7 @@ export namespace desktopapi {
 	        this.Competence = source["Competence"];
 	        this.Direction = source["Direction"];
 	        this.Format = source["Format"];
-	        this.OutDir = source["OutDir"];
-	        this.BaseName = source["BaseName"];
+	        this.OutPath = source["OutPath"];
 	    }
 	}
 	export class ExportResult {

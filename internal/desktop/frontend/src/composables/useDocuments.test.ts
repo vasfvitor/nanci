@@ -5,6 +5,8 @@ import { desktopClient } from '@/platform/wails/client'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    exportDANFSe: vi.fn(),
+    exportDANFSeZIP: vi.fn(),
     exportDocuments: vi.fn(),
     listCompanies: vi.fn(),
     listDocuments: vi.fn(),
@@ -39,14 +41,10 @@ describe('useDocuments', () => {
   })
 
   it('builds export requests from the document filter', async () => {
-    vi.mocked(desktopClient.selectExportDirectory).mockResolvedValue('C:\\exports')
-    vi.mocked(desktopClient.exportDocuments).mockResolvedValue({
-      OutPath: 'C:\\exports\\export.csv',
-      Format: 'csv',
-    })
-
     const documents = useDocuments()
-    documents.filter.value = { CNPJ: '123', Competence: '2026-06', Direction: 'tomada' }
+    documents.filter.value.CNPJ = '123'
+    documents.filter.value.Competence = '2026-06'
+    documents.filter.value.Direction = 'tomada'
 
     await documents.exportDocuments('csv')
 
@@ -55,16 +53,34 @@ describe('useDocuments', () => {
       Competence: '2026-06',
       Direction: 'tomada',
       Format: 'csv',
-      OutDir: 'C:\\exports',
     })
   })
 
-  it('does not export when directory selection is cancelled', async () => {
-    vi.mocked(desktopClient.selectExportDirectory).mockResolvedValue(null)
-
+  it('builds single DANFSe export requests from the document filter', async () => {
     const documents = useDocuments()
-    await expect(documents.exportDocuments('zip')).resolves.toBeNull()
+    documents.filter.value.CNPJ = '123'
 
-    expect(desktopClient.exportDocuments).not.toHaveBeenCalled()
+    await documents.exportDANFSe('chave-1')
+
+    expect(desktopClient.exportDANFSe).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: 'chave-1',
+    })
+  })
+
+  it('builds DANFSe ZIP export requests from the document filter', async () => {
+    const documents = useDocuments()
+    documents.filter.value.CNPJ = '123'
+    documents.filter.value.Competence = '2026-06'
+    documents.filter.value.Direction = 'tomada'
+
+    await documents.exportDANFSeZIP()
+
+    expect(desktopClient.exportDANFSeZIP).toHaveBeenCalledWith({
+      CNPJ: '123',
+      Competence: '2026-06',
+      Direction: 'tomada',
+      Format: 'zip',
+    })
   })
 })

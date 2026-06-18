@@ -76,6 +76,56 @@ func (s *DocumentRepository) GetDocumentByChave(ctx context.Context, chave strin
 	return &doc, nil
 }
 
+// CompanyDocumentByChave retrieves one company-visible document by access key.
+func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfse.CompanyDocument, error) {
+	query := `
+		SELECT
+			d.id, d.chave_acesso, d.issue_date, d.competence,
+			d.prestador_cnpj, d.prestador_name, d.tomador_cnpj, d.tomador_name,
+			d.intermediario_cnpj, d.intermediario_name,
+			d.service_value, d.iss_value, d.irrf_value, d.inss_value, d.pis_value, d.cofins_value, d.csll_value, d.total_retentions,
+			d.status, d.layout_version, d.xml_path, d.raw_hash, d.parse_warnings, d.created_at, d.updated_at,
+			d.nfse_number, d.service_description,
+			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
+			cd.first_seen_nsu, cd.last_seen_nsu,
+			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
+			cd.first_synced_at, cd.last_synced_at
+		FROM company_documents cd
+		INNER JOIN documents d ON d.id = cd.document_id
+		WHERE cd.company_id = ? AND d.chave_acesso = ?
+		LIMIT 1
+	`
+
+	var d nfse.CompanyDocument
+	var issueDate, createdAt, updatedAt string
+	var parseWarnings sql.NullString
+	var firstSeenValid, lastSeenValid int64
+	var firstSyncedAt, lastSyncedAt string
+
+	err := s.db.QueryRowContext(ctx, query, string(companyID), chave).Scan(
+		&d.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
+		&d.PrestadorCNPJ, &d.PrestadorName, &d.TomadorCNPJ, &d.TomadorName,
+		&d.IntermediarioCNPJ, &d.IntermediarioName,
+		&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue, &d.TotalRetentions,
+		&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
+		&d.NFSeNumber, &d.ServiceDescription,
+		&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
+		&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
+		&firstSyncedAt, &lastSyncedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to query company document by chave: %w", err)
+	}
+
+	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt); err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
 // ListCompanyDocuments retrieves company-facing documents based on the provided filters.
 func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
 	query := `
@@ -151,29 +201,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
-		if err != nil {
-			return nil, err
-		}
-		d.CreatedAt, err = parseRequiredTime("document created_at", createdAt)
-		if err != nil {
-			return nil, err
-		}
-		d.UpdatedAt, err = parseRequiredTime("document updated_at", updatedAt)
-		if err != nil {
-			return nil, err
-		}
-		if err := decodeWarnings(parseWarnings, &d.ParseWarnings); err != nil {
-			return nil, fmt.Errorf("document parse_warnings: %w", err)
-		}
-		d.FirstSeenNSUValid = firstSeenValid != 0
-		d.LastSeenNSUValid = lastSeenValid != 0
-		d.FirstSyncedAt, err = parseRequiredTime("company document first_synced_at", firstSyncedAt)
-		if err != nil {
-			return nil, err
-		}
-		d.LastSyncedAt, err = parseRequiredTime("company document last_synced_at", lastSyncedAt)
-		if err != nil {
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt); err != nil {
 			return nil, err
 		}
 
@@ -260,6 +288,36 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	}
 
 	return events, nil
+}
+
+func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeenValid, lastSeenValid int64, firstSyncedAt, lastSyncedAt string) error {
+	var err error
+	d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
+	if err != nil {
+		return err
+	}
+	d.CreatedAt, err = parseRequiredTime("document created_at", createdAt)
+	if err != nil {
+		return err
+	}
+	d.UpdatedAt, err = parseRequiredTime("document updated_at", updatedAt)
+	if err != nil {
+		return err
+	}
+	if err := decodeWarnings(parseWarnings, &d.ParseWarnings); err != nil {
+		return fmt.Errorf("document parse_warnings: %w", err)
+	}
+	d.FirstSeenNSUValid = firstSeenValid != 0
+	d.LastSeenNSUValid = lastSeenValid != 0
+	d.FirstSyncedAt, err = parseRequiredTime("company document first_synced_at", firstSyncedAt)
+	if err != nil {
+		return err
+	}
+	d.LastSyncedAt, err = parseRequiredTime("company document last_synced_at", lastSyncedAt)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func parseRequiredTime(field, value string) (time.Time, error) {

@@ -96,8 +96,13 @@ type ExportDocumentsInput struct {
 	Competence string
 	Direction  string
 	Format     string
-	OutDir     string
-	BaseName   string
+	OutPath    string
+}
+
+type ExportDANFSeInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
 }
 
 type ExportResult struct {

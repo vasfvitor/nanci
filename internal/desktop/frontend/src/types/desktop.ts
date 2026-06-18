@@ -91,16 +91,22 @@ export type ListDocumentsInput = {
 }
 
 export type ExportFormat = 'csv' | 'xlsx' | 'zip'
+export type ExportResultFormat = ExportFormat | 'danfse' | 'danfse-zip'
 
 export type ExportDocumentsInput = ListDocumentsInput & {
   Format: ExportFormat
-  OutDir: string
-  BaseName?: string
+  OutPath: string
+}
+
+export type ExportDANFSeInput = {
+  CNPJ: string
+  ChaveAcesso: string
+  OutPath: string
 }
 
 export type ExportResult = {
   OutPath: string
-  Format: ExportFormat
+  Format: ExportResultFormat
 }
 
 export type QueryNFSeInput = {

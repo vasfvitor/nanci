@@ -312,6 +312,109 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	}
 }
 
+func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xmlStore := &stubXMLStore{
+		data: map[string][]byte{
+			"hash-1": []byte("<NFSe>stub</NFSe>"),
+		},
+	}
+	renderer := &stubDANFSeRenderer{pdf: []byte("%PDF-1.7 stub")}
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		DB:             db,
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docByChave: &nfse.CompanyDocument{
+			Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+			CompanyID:   "company-1",
+			CompanyRole: "prestada",
+		}},
+		XMLStore:           xmlStore,
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+		DANFSeRenderer:     renderer,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		application.Close()
+	})
+
+	outPath := filepath.Join(t.TempDir(), "danfse.pdf")
+	if err := application.ExportDANFSe(context.Background(), app.ExportDANFSeInput{
+		CNPJ:        "11222333000181",
+		ChaveAcesso: "chave-1",
+		OutPath:     outPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := string(renderer.inputs[0]); got != "<NFSe>stub</NFSe>" {
+		t.Fatalf("renderer input = %q", got)
+	}
+	written, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(written) != "%PDF-1.7 stub" {
+		t.Fatalf("PDF content = %q", string(written))
+	}
+}
+
+func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		DB:             db,
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "missing"},
+				CompanyRole: "prestada",
+			},
+		}},
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+		DANFSeRenderer:     &stubDANFSeRenderer{pdf: []byte("%PDF-1.7 stub")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		application.Close()
+	})
+
+	outPath := filepath.Join(t.TempDir(), "danfses.zip")
+	err = application.ExportDANFSeZIP(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	})
+	if err == nil {
+		t.Fatal("expected missing XML error")
+	}
+	if !strings.Contains(err.Error(), "ler XML original") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestNewRejectsMissingDocumentReader(t *testing.T) {
 	t.Parallel()
 
@@ -397,13 +500,31 @@ func (stubCredentialRepo) DeleteCredential(context.Context, nfse.CredentialID) e
 func (stubCredentialRepo) UpdateCredential(context.Context, *nfse.Credential) error  { return nil }
 
 type stubDocumentReader struct {
-	docs []nfse.CompanyDocument
+	docs       []nfse.CompanyDocument
+	docByChave *nfse.CompanyDocument
 }
 
 func (s *stubDocumentReader) ListCompanyDocuments(context.Context, nfse.CompanyID, nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
 	return s.docs, nil
 }
 
+func (s *stubDocumentReader) CompanyDocumentByChave(context.Context, nfse.CompanyID, string) (*nfse.CompanyDocument, error) {
+	if s.docByChave == nil {
+		return nil, store.ErrNotFound
+	}
+	return s.docByChave, nil
+}
+
 func (s *stubDocumentReader) ListEventsByDocument(context.Context, string) ([]nfse.Event, error) {
 	return nil, nil
+}
+
+type stubDANFSeRenderer struct {
+	pdf    []byte
+	inputs [][]byte
+}
+
+func (s *stubDANFSeRenderer) Render(xmlData []byte) ([]byte, error) {
+	s.inputs = append(s.inputs, append([]byte(nil), xmlData...))
+	return s.pdf, nil
 }

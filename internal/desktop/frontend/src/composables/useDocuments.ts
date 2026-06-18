@@ -33,14 +33,27 @@ export function useDocuments() {
   }
 
   async function exportDocuments(format: ExportFormat) {
-    const outDir = await desktopClient.selectExportDirectory()
-    if (!outDir) return null
     return desktopClient.exportDocuments({
       CNPJ: filter.value.CNPJ,
       Competence: filter.value.Competence || '',
       Direction: filter.value.Direction || '',
       Format: format,
-      OutDir: outDir,
+    })
+  }
+
+  async function exportDANFSe(chaveAcesso: string) {
+    return desktopClient.exportDANFSe({
+      CNPJ: filter.value.CNPJ,
+      ChaveAcesso: chaveAcesso,
+    })
+  }
+
+  async function exportDANFSeZIP() {
+    return desktopClient.exportDANFSeZIP({
+      CNPJ: filter.value.CNPJ,
+      Competence: filter.value.Competence || '',
+      Direction: filter.value.Direction || '',
+      Format: 'zip',
     })
   }
 
@@ -56,6 +69,8 @@ export function useDocuments() {
     loadCompanies,
     search,
     exportDocuments,
+    exportDANFSe,
+    exportDANFSeZIP,
     loadEvents,
   }
 }

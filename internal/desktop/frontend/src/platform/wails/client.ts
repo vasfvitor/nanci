@@ -3,6 +3,8 @@ import {
   AddCredential,
   AssignCredentialToCompany,
   CancelCertPassword,
+  ExportDANFSe,
+  ExportDANFSeZIP,
   ExportDocuments,
   ListCompanies,
   ListCredentials,
@@ -14,6 +16,7 @@ import {
   ResetSyncState,
   SelectCertificate,
   SelectExportDirectory,
+  SelectSaveFile,
   SetLogLevel,
   SubmitCertPassword,
   UpdateCompany,
@@ -28,6 +31,7 @@ import type {
   CredentialSummary,
   DocumentEvent,
   DocumentRow,
+  ExportDANFSeInput,
   ExportDocumentsInput,
   ExportResult,
   ListDocumentsInput,
@@ -189,11 +193,42 @@ export const desktopClient = {
   assignCredential(input: AssignCredentialInput) {
     return callWails(() => AssignCredentialToCompany(input))
   },
-  async exportDocuments(input: ExportDocumentsInput): Promise<ExportResult> {
+  async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+    const extension = input.Format === 'csv' ? '.csv' : input.Format === 'xlsx' ? '.xlsx' : '.zip'
+    const defaultName = input.BaseName || `export_${input.CNPJ}_${Date.now()}${extension}`
+    const outPath = await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
+    if (!outPath) return null
+
     const result = await callWails(() =>
       ExportDocuments({
         ...input,
-        BaseName: input.BaseName ?? '',
+        OutPath: outPath,
+      })
+    )
+    return result as ExportResult
+  },
+  async exportDANFSe(input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+    const defaultName = input.BaseName || `danfse_${input.ChaveAcesso}.pdf`
+    const outPath = await desktopClient.selectSaveFile('Salvar DANFSe', defaultName, '*.pdf')
+    if (!outPath) return null
+
+    const result = await callWails(() =>
+      ExportDANFSe({
+        ...input,
+        OutPath: outPath,
+      })
+    )
+    return result as ExportResult
+  },
+  async exportDANFSeZIP(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+    const defaultName = input.BaseName || `danfses_${input.CNPJ}_${Date.now()}.zip`
+    const outPath = await desktopClient.selectSaveFile('Salvar ZIP de DANFSes', defaultName, '*.zip')
+    if (!outPath) return null
+
+    const result = await callWails(() =>
+      ExportDANFSeZIP({
+        ...input,
+        OutPath: outPath,
       })
     )
     return result as ExportResult
@@ -232,6 +267,10 @@ export const desktopClient = {
   },
   async selectExportDirectory(): Promise<string | null> {
     const path = await callWails(() => SelectExportDirectory())
+    return path || null
+  },
+  async selectSaveFile(title: string, defaultFilename: string, pattern: string): Promise<string | null> {
+    const path = await callWails(() => SelectSaveFile(title, defaultFilename, pattern))
     return path || null
   },
   setLogLevel(level: string) {

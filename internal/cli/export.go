@@ -13,6 +13,7 @@ var (
 	exportCompetence string
 	exportDirection  string
 	exportOut        string
+	exportChave      string
 )
 
 var exportCmd = &cobra.Command{
@@ -101,11 +102,66 @@ var exportZipCmd = &cobra.Command{
 	},
 }
 
+var exportDANFSeCmd = &cobra.Command{
+	Use:   "danfse",
+	Short: "Exporta o DANFSe de uma NFS-e para PDF (.pdf)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
+		if err != nil {
+			return fmt.Errorf("inicializar: %w", err)
+		}
+		defer application.Close()
+
+		input := app.ExportDANFSeInput{
+			CNPJ:        exportCNPJ,
+			ChaveAcesso: exportChave,
+			OutPath:     exportOut,
+		}
+
+		fmt.Println("Gerando DANFSe...")
+		if err := application.ExportDANFSe(cmd.Context(), input); err != nil {
+			return fmt.Errorf("erro ao gerar DANFSe: %w", err)
+		}
+
+		fmt.Printf("DANFSe gerado com sucesso: %s\n", exportOut)
+		return nil
+	},
+}
+
+var exportDANFSeZipCmd = &cobra.Command{
+	Use:   "danfse-zip",
+	Short: "Exporta DANFSes dos documentos filtrados em um arquivo compactado (.zip)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		application, err := newApp()
+		if err != nil {
+			return fmt.Errorf("inicializar: %w", err)
+		}
+		defer application.Close()
+
+		input := app.ExportInput{
+			CNPJ:       exportCNPJ,
+			Competence: exportCompetence,
+			Direction:  exportDirection,
+			OutPath:    exportOut,
+		}
+
+		fmt.Println("Gerando ZIP de DANFSes...")
+		if err := application.ExportDANFSeZIP(cmd.Context(), input); err != nil {
+			return fmt.Errorf("erro ao gerar ZIP de DANFSes: %w", err)
+		}
+
+		fmt.Printf("ZIP de DANFSes gerado com sucesso: %s\n", exportOut)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.AddCommand(exportXlsxCmd)
 	exportCmd.AddCommand(exportCsvCmd)
 	exportCmd.AddCommand(exportZipCmd)
+	exportCmd.AddCommand(exportDANFSeCmd)
+	exportCmd.AddCommand(exportDANFSeZipCmd)
 
 	// Persistent flags applied to all subcommands
 	exportCmd.PersistentFlags().StringVarP(&exportCNPJ, "cnpj", "c", "", "CNPJ da empresa")
@@ -117,4 +173,8 @@ func init() {
 	exportXlsxCmd.Flags().StringVarP(&exportOut, "out", "o", "export.xlsx", "Caminho do arquivo de saída")
 	exportCsvCmd.Flags().StringVarP(&exportOut, "out", "o", "export.csv", "Caminho do arquivo de saída")
 	exportZipCmd.Flags().StringVarP(&exportOut, "out", "o", "export.zip", "Caminho do arquivo de saída")
+	exportDANFSeCmd.Flags().StringVar(&exportChave, "chave", "", "Chave de acesso da NFS-e")
+	exportDANFSeCmd.Flags().StringVarP(&exportOut, "out", "o", "danfse.pdf", "Caminho do arquivo de saída")
+	_ = exportDANFSeCmd.MarkFlagRequired("chave")
+	exportDANFSeZipCmd.Flags().StringVarP(&exportOut, "out", "o", "danfses.zip", "Caminho do arquivo de saída")
 }
