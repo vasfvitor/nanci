@@ -13,7 +13,7 @@ const open = ref(true)
           <AppLeftDrawer v-model="open" />
           <q-page-container>
             <q-page class="q-pa-md">
-              <q-btn @click="open = !open" color="primary">Toggle Drawer</q-btn>
+              <q-btn color="primary" @click="open = !open">Toggle Drawer</q-btn>
             </q-page>
           </q-page-container>
         </q-layout>
@@ -26,7 +26,7 @@ const open = ref(true)
           <AppLeftDrawer v-model="open" />
           <q-page-container>
             <q-page class="q-pa-md">
-              <q-btn @click="open = !open" color="primary">Toggle Drawer</q-btn>
+              <q-btn color="primary" @click="open = !open">Toggle Drawer</q-btn>
             </q-page>
           </q-page-container>
         </q-layout>

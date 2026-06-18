@@ -8,7 +8,45 @@ Baixe o instalador mais recente na página de **Releases** do GitHub.
 
 Para usar o aplicativo desktop, basta instalar o aplicativo compilado **não é necessário instalar Go, Node.js, pnpm ou Wails**.
 
+## Telas do Aplicativo
+
+### 🏢 Empresas (Dashboard Principal)
+Sincronização incremental por NSU e status da última sincronização das empresas cadastradas.
+
+| Tema Claro | Tema Escuro |
+| :---: | :---: |
+| ![Empresas Claro](docs/screenshots/empresas-light.png) | ![Empresas Escuro](docs/screenshots/empresas-dark.png) |
+
+*Fluxo intuitivo para cadastramento de novas empresas:*
+
+<p align="center">
+  <img src="docs/screenshots/dialogo-adicionar-empresa-dark.png" alt="Diálogo para Adicionar Empresa" width="80%">
+</p>
+
+### 📄 Documentos Fiscais (NFS-e)
+Visualização detalhada das notas com filtros por Empresa, Competência e Direção (Notas Tomadas, Prestadas ou Intermediadas).
+
+| Tema Claro | Tema Escuro |
+| :---: | :---: |
+| ![Documentos Claro](docs/screenshots/documentos-light.png) | ![Documentos Escuro](docs/screenshots/documentos-dark.png) |
+
+### 🔑 Credenciais (Certificados A1)
+Gerenciamento centralizado de certificados `.pfx` ou `.p12` com validação de status de inspeção.
+
+| Tema Claro | Tema Escuro |
+| :---: | :---: |
+| ![Credenciais Claro](docs/screenshots/credenciais-light.png) | ![Credenciais Escuro](docs/screenshots/credenciais-dark.png) |
+
+### 🔍 Outros Recursos
+* **Consulta Direta (API ADN)**: Busca pontual e depuração por chave de acesso ou eventos.
+* **Console de Sincronização**: Logs de processamento em lote em tempo real exibidos diretamente no app.
+
+| Consulta Direta (Tema Escuro) | Console de Logs (Tema Escuro) |
+| :---: | :---: |
+| ![Consulta Direta](docs/screenshots/consulta-direta-dark.png) | ![Console de Logs](docs/screenshots/console-logs-dark.png) |
+
 ---
+
 
 ### Desenvolvimento
 
