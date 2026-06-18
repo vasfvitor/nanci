@@ -2,7 +2,7 @@ module github.com/vasfvitor/nanci
 
 go 1.26.3
 
-replace software.sslmate.com/src/go-pkcs12 => ./internal/thirdparty/go-pkcs12
+replace software.sslmate.com/src/go-pkcs12 => ./third_party/go-pkcs12
 
 require (
 	github.com/google/uuid v1.6.0
@@ -26,7 +26,7 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/richardlehane/mscfb v1.0.6 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
