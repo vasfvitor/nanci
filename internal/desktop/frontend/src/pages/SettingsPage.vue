@@ -69,10 +69,10 @@
             <strong>Certificado Carregado:</strong>
             <q-icon :name="testResult.certLoaded ? 'check_circle' : 'cancel'" :color="testResult.certLoaded ? 'positive' : 'negative'" class="q-ml-xs" size="xs" />
           </div>
-          <div class="col-6" v-if="testResult.certLoaded">
+          <div v-if="testResult.certLoaded" class="col-6">
             <strong>Expiração:</strong> <span class="text-mono">{{ testResult.certExpiration }}</span>
           </div>
-          <div class="col-12" v-if="testResult.certLoaded">
+          <div v-if="testResult.certLoaded" class="col-12">
             <strong>Assunto:</strong> <span class="text-caption text-grey-6">{{ testResult.certSubject }}</span>
           </div>
           <div class="col-6">
