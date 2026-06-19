@@ -18,19 +18,7 @@ type QueryNFSeInput struct {
 	ChaveAcesso string
 }
 
-func (a *App) QueryNFSe(ctx context.Context, input QueryNFSeInput) (string, error) {
-	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)
-	if err != nil {
-		return "", err
-	}
 
-	apiClient, err := a.buildClientForQuery(ctx, input.CNPJ)
-	if err != nil {
-		return "", err
-	}
-	path := fmt.Sprintf("nfse/%s", accessKey)
-	return a.queryGenericEndpoint(ctx, apiClient, path)
-}
 
 func (a *App) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
 	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)

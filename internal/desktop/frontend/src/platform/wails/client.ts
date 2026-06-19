@@ -12,7 +12,6 @@ import {
   ListDocuments,
   ListEventsForDocument,
   Pull,
-  QueryNFSe,
   QueryNFSeEvents,
   ResetSyncState,
   SelectCertificate,
@@ -266,9 +265,6 @@ export const desktopClient = {
   },
   pull(input: PullInput): Promise<PullResult> {
     return callWails(() => Pull(input)) as Promise<PullResult>
-  },
-  queryNFSe(input: QueryNFSeInput) {
-    return callWails(() => QueryNFSe(input))
   },
   queryNFSeEvents(input: QueryNFSeInput) {
     return callWails(() => QueryNFSeEvents(input))

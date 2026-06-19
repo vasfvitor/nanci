@@ -31,7 +31,6 @@ export function ListEventsForDocument(arg1:string):Promise<Array<desktopapi.Docu
 
 export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
 
-export function QueryNFSe(arg1:app.QueryNFSeInput):Promise<string>;
 
 export function QueryNFSeEvents(arg1:app.QueryNFSeInput):Promise<string>;
 

@@ -66,8 +66,7 @@
           </div>
         </div>
         <div class="row q-gutter-sm">
-          <q-btn type="submit" color="primary" icon="search" label="Consultar NFSe" :loading="loading" @click="type = 'nfse'" />
-          <q-btn type="submit" color="secondary" icon="event" label="Consultar Eventos" :loading="loading" @click="type = 'events'" />
+          <q-btn type="submit" color="primary" icon="search" label="Consultar no ADN" :loading="loading" />
         </div>
       </q-form>
     </q-card>
@@ -93,7 +92,7 @@ import { useQuery } from '@/composables/useQuery'
 
 const $q = useQuasar()
 const query = useQuery()
-const { form, result, type, loading, companyOptions, documentOptions } = query
+const { form, result, loading, companyOptions, documentOptions } = query
 
 onMounted(async () => {
   try {

@@ -87,10 +87,7 @@ export function useQuery() {
         CNPJ: form.value.cnpj,
         ChaveAcesso: chaveVal,
       }
-      result.value =
-        type.value === 'nfse'
-          ? await desktopClient.queryNFSe(input)
-          : await desktopClient.queryNFSeEvents(input)
+      result.value = await desktopClient.queryNFSeEvents(input)
       return result.value
     } finally {
       loading.value = false

@@ -58,8 +58,6 @@ export function Pull(arg1) {
   return window['go']['main']['App']['Pull'](arg1);
 }
 
-export function QueryNFSe(arg1) {
-  return window['go']['main']['App']['QueryNFSe'](arg1);
 }
 
 export function QueryNFSeEvents(arg1) {
