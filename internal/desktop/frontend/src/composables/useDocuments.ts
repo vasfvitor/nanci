@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useDocumentsStore } from '@/stores/documents'
@@ -9,6 +9,21 @@ export function useDocuments() {
   const { filter, documents } = storeToRefs(documentsStore)
   const companyOptions = ref<{ label: string; value: string }[]>([])
   const loading = ref(false)
+
+  const savedRowsPerPage = Number(localStorage.getItem('nanci:documents:rowsPerPage')) || 25
+  const pagination = ref({
+    sortBy: 'issueDate',
+    descending: true,
+    page: 1,
+    rowsPerPage: savedRowsPerPage
+  })
+
+  watch(
+    () => pagination.value.rowsPerPage,
+    (newVal) => {
+      localStorage.setItem('nanci:documents:rowsPerPage', String(newVal))
+    }
+  )
 
   async function loadCompanies() {
     const companies = await desktopClient.listCompanies()
@@ -64,6 +79,7 @@ export function useDocuments() {
   return {
     filter,
     documents,
+    pagination,
     companyOptions,
     loading,
     loadCompanies,

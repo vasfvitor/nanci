@@ -131,6 +131,7 @@
       :rows="documents"
       :columns="columns"
       row-key="RelationID"
+      v-model:pagination="pagination"
       :loading="loading"
       no-data-label="Nenhum documento encontrado."
       flat
@@ -226,7 +227,7 @@ import { roleColor, roleLabel, statusColor, visibilityColor, visibilityLabel } f
 const $q = useQuasar()
 const route = useRoute()
 const documentsApi = useDocuments()
-const { filter, documents, companyOptions, loading } = documentsApi
+const { filter, documents, pagination, companyOptions, loading } = documentsApi
 
 const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
