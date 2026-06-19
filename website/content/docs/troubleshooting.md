@@ -38,5 +38,5 @@ A senha do arquivo `.pfx` ou `.p12` digitada está incorreta. Se você alterou a
 
 Se um problema persistir e não estiver listado aqui, você precisará dos logs para abrir uma issue (mas **lembre-se de ocultar dados sensíveis** do arquivo antes de nos mandar).
 
-- No Desktop: Abra a aba de "Console" e clique no botão de gerar diagnóstico (se disponível na versão).
-- Se estiver rodando via CLI, verifique o terminal ou acesse o arquivo `nanci.log` presente na pasta [Padrão de Dados do Usuário](privacidade).
+- No Desktop: Vá em Configurações e clique em **Exportar logs de diagnóstico (ZIP)**.
+- Se estiver rodando via CLI, verifique o terminal ou os arquivos `nanci.log`/`nanci-desktop.log` na [pasta de dados do usuário](privacidade).

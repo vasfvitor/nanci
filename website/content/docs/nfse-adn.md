@@ -16,3 +16,8 @@ GET /NFSe/{ChaveAcesso}/Eventos
 ```
 
 `{ChaveAcesso}` deve conter exatamente 50 dígitos.
+
+## Ambientes de Execução
+
+- **Produção (RFB):** `https://adn.nfse.gov.br/contribuintes`
+- **Produção Restrita (Homologação):** `https://adn.producaorestrita.nfse.gov.br/contribuintes`
