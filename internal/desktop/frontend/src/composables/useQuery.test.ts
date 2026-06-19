@@ -59,4 +59,41 @@ describe('useQuery', () => {
     })
     expect(desktopClient.queryNFSe).not.toHaveBeenCalled()
   })
+
+  it('rejects non-digit access keys before calling Wails', async () => {
+    const query = useQuery()
+    query.form.value = { cnpj: '123', chave: `${'1'.repeat(49)}/` }
+    query.type.value = 'nfse'
+
+    await expect(query.runQuery()).resolves.toBe('')
+
+    expect(desktopClient.queryNFSe).not.toHaveBeenCalled()
+    expect(desktopClient.queryNFSeEvents).not.toHaveBeenCalled()
+  })
+
+  it('keeps loading state across composable instances while a query is pending', async () => {
+    let resolveQuery!: (value: string) => void
+    vi.mocked(desktopClient.queryNFSe).mockReturnValue(
+      new Promise<string>((resolve) => {
+        resolveQuery = resolve
+      })
+    )
+
+    const first = useQuery()
+    first.form.value = { cnpj: '123', chave: '1'.repeat(50) }
+    first.type.value = 'nfse'
+
+    const pending = first.runQuery()
+    expect(first.loading.value).toBe(true)
+
+    const second = useQuery()
+    expect(second.loading.value).toBe(true)
+
+    await expect(second.runQuery()).resolves.toBe('')
+    expect(desktopClient.queryNFSe).toHaveBeenCalledTimes(1)
+
+    resolveQuery('{"ok":true}')
+    await expect(pending).resolves.toBe('{"ok":true}')
+    expect(second.loading.value).toBe(false)
+  })
 })

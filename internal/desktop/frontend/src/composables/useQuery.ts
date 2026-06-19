@@ -5,8 +5,7 @@ import { useQueryStore } from '@/stores/query'
 
 export function useQuery() {
   const queryStore = useQueryStore()
-  const { form, result, type } = storeToRefs(queryStore)
-  const loading = ref(false)
+  const { form, result, type, loading } = storeToRefs(queryStore)
   const allOptions = ref<{ label: string; value: string }[]>([])
   const companyOptions = ref<{ label: string; value: string }[]>([])
 
@@ -29,7 +28,8 @@ export function useQuery() {
   }
 
   async function runQuery() {
-    if (!form.value.cnpj || form.value.chave.length !== 50) return ''
+    if (loading.value) return result.value
+    if (!form.value.cnpj || !/^\d{50}$/.test(form.value.chave)) return ''
 
     loading.value = true
     queryStore.clearResult()

@@ -30,7 +30,7 @@
               label="Chave de Acesso (50 posições)"
               outlined
               dense
-              :rules="[val => !!val || 'Chave é obrigatória', val => val.length === 50 || 'Chave deve ter 50 números']"
+              :rules="[val => !!val || 'Chave é obrigatória', val => /^\d{50}$/.test(val) || 'Chave deve ter 50 números']"
             />
           </div>
         </div>

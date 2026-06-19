@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 
 export type QueryType = 'nfse' | 'events'
@@ -8,8 +8,9 @@ export const useQueryStore = defineStore('query', () => {
     cnpj: '',
     chave: '',
   })
-  const result = ref('')
-  const type = ref<QueryType>('nfse')
+  const result = shallowRef('')
+  const type = shallowRef<QueryType>('nfse')
+  const loading = shallowRef(false)
 
   function clearResult() {
     result.value = ''
@@ -19,6 +20,7 @@ export const useQueryStore = defineStore('query', () => {
     form,
     result,
     type,
+    loading,
     clearResult,
   }
 })

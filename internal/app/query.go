@@ -19,21 +19,39 @@ type QueryNFSeInput struct {
 }
 
 func (a *App) QueryNFSe(ctx context.Context, input QueryNFSeInput) (string, error) {
+	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)
+	if err != nil {
+		return "", err
+	}
+
 	apiClient, err := a.buildClientForQuery(ctx, input.CNPJ)
 	if err != nil {
 		return "", err
 	}
-	path := fmt.Sprintf("NFSe/%s", input.ChaveAcesso)
+	path := fmt.Sprintf("NFSe/%s", accessKey)
 	return a.queryGenericEndpoint(ctx, apiClient, path)
 }
 
 func (a *App) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
+	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)
+	if err != nil {
+		return "", err
+	}
+
 	apiClient, err := a.buildClientForQuery(ctx, input.CNPJ)
 	if err != nil {
 		return "", err
 	}
-	path := fmt.Sprintf("NFSe/%s/Eventos", input.ChaveAcesso)
+	path := fmt.Sprintf("NFSe/%s/Eventos", accessKey)
 	return a.queryGenericEndpoint(ctx, apiClient, path)
+}
+
+func validateQueryAccessKey(raw string) (nfse.AccessKey, error) {
+	accessKey, err := nfse.ParseAccessKey(raw)
+	if err != nil {
+		return "", fmt.Errorf("chave de acesso inválida: %w", err)
+	}
+	return accessKey, nil
 }
 
 func (a *App) queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path string) (string, error) {
