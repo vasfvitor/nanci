@@ -170,7 +170,7 @@ func resolveRuntimeDataDir(override string) (string, error) {
 }
 
 func runtimeDBPath(dataDir string) string {
-	return filepath.Join(dataDir, "nanci-v2.db")
+	return filepath.Join(dataDir, "nanci-v1.db")
 }
 
 func shouldRunMigrations(opts RuntimeOptions) bool {

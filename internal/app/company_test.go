@@ -118,7 +118,7 @@ func TestNewRuntimeBuildsProductionDependencies(t *testing.T) {
 	if application.DataDir != dataDir {
 		t.Fatalf("DataDir = %q, want %q", application.DataDir, dataDir)
 	}
-	if _, err := os.Stat(filepath.Join(dataDir, "nanci-v2.db")); err != nil {
+	if _, err := os.Stat(filepath.Join(dataDir, "nanci-v1.db")); err != nil {
 		t.Fatalf("expected runtime database to exist: %v", err)
 	}
 	if err := application.AddCredential(context.Background(), app.AddCredentialInput{

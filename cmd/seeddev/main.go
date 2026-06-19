@@ -24,7 +24,7 @@ func main() {
 		fatalf("create devdata directory: %v", err)
 	}
 
-	dbPath := filepath.Join(devdataDir, "nanci-v2.db")
+	dbPath := filepath.Join(devdataDir, "nanci-v1.db")
 	db, err := store.OpenDB(dbPath, true)
 	if err != nil {
 		fatalf("open dev db: %v", err)
