@@ -79,7 +79,7 @@ importers:
         specifier: 2.7.0
         version: 2.7.0
       playwright:
-        specifier: ^1.60.0
+        specifier: 1.60.0
         version: 1.60.0
       prettier:
         specifier: 3.8.3

@@ -1,14 +1,41 @@
-import { createServer } from 'vite'
-import { chromium } from 'playwright'
-import fs from 'node:fs'
+import { createServer, type ViteDevServer } from 'vite'
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
+import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+type Theme = 'light' | 'dark'
+type EventCallback = (...args: unknown[]) => void
+
+type ScreenshotSpec = {
+  route: string
+  name: string
+  theme: Theme
+  ready?: string
+  setup?: (page: Page) => Promise<void>
+}
+
+declare global {
+  interface Window {
+    go: unknown
+    runtime: {
+      EventsOnMultiple: (eventName: string, callback: EventCallback, maxCallbacks?: number) => () => void
+      EventsOnce: (eventName: string, callback: EventCallback) => void
+      EventsOff: (eventName: string) => void
+      EventsOffAll: () => void
+      EventsEmit: (eventName: string, ...args: unknown[]) => void
+      [key: string]: unknown
+    }
+    triggerWailsEvent?: (eventName: string, payload: unknown) => void
+  }
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '../../../..')
 const screenshotsDir = path.resolve(rootDir, 'docs/screenshots')
+const viteConfig = path.resolve(__dirname, '../vite.config.ts')
+const appUrl = 'http://localhost:5173'
 
-// Mock structures matching types/desktop.ts
 const mockCompanies = [
   {
     ID: '1',
@@ -109,7 +136,7 @@ const mockDocuments = [
     TomadorName: 'Parceiro Comercial S/A',
     IntermediarioCNPJ: '',
     IntermediarioName: '',
-    ServiceValue: 150000, // R$ 1.500,00 (cents)
+    ServiceValue: 150000,
     ISSValue: 3000,
     IRRFValue: 2250,
     INSSValue: 0,
@@ -149,7 +176,7 @@ const mockDocuments = [
     TomadorName: 'ACME Tecnologia e Serviços LTDA',
     IntermediarioCNPJ: '',
     IntermediarioName: '',
-    ServiceValue: 500000, // R$ 5.000,00
+    ServiceValue: 500000,
     ISSValue: 10000,
     IRRFValue: 7500,
     INSSValue: 55000,
@@ -189,7 +216,7 @@ const mockDocuments = [
     TomadorName: 'Supermercado Central Ltda',
     IntermediarioCNPJ: '',
     IntermediarioName: '',
-    ServiceValue: 85000, // R$ 850,00
+    ServiceValue: 85000,
     ISSValue: 1700,
     IRRFValue: 0,
     INSSValue: 0,
@@ -220,49 +247,84 @@ const mockDocuments = [
   },
 ]
 
-async function run() {
-  console.log('🚀 Iniciando servidor Vite para captura de prints...')
-  const server = await createServer({
-    configFile: path.resolve(__dirname, '../vite.config.ts'),
-    server: {
-      port: 5173,
+const syncLogs = [
+  { level: 'INFO', msg: 'Iniciando sincronização para ACME Tecnologia e Serviços LTDA', time: '2026-06-18T14:30:01Z' },
+  { level: 'DEBUG', msg: 'Usando ambiente de produção', time: '2026-06-18T14:30:02Z' },
+  { level: 'TRACE', msg: 'Consultando NSU para CNPJ 12345678000100', time: '2026-06-18T14:30:02Z' },
+  { level: 'INFO', msg: 'Busca concluída: 3 documentos encontrados', time: '2026-06-18T14:30:03Z' },
+  { level: 'INFO', msg: 'Documento 1234 salvo no banco local', time: '2026-06-18T14:30:03Z' },
+  { level: 'WARNING', msg: 'Alíquota ISS incomum no documento 5678', time: '2026-06-18T14:30:04Z' },
+  { level: 'INFO', msg: 'Documento 5678 salvo no banco local', time: '2026-06-18T14:30:04Z' },
+  { level: 'INFO', msg: 'Documento 1235 salvo no banco local', time: '2026-06-18T14:30:04Z' },
+  { level: 'INFO', msg: 'Sincronização concluída em 1.24s', time: '2026-06-18T14:30:05Z' },
+]
+
+const screenshots: ScreenshotSpec[] = [
+  { route: '/', name: 'empresas', theme: 'light', ready: 'text=Empresas' },
+  { route: '/', name: 'empresas', theme: 'dark', ready: 'text=Empresas' },
+
+  {
+    route: '/',
+    name: 'dialogo-adicionar-empresa',
+    theme: 'dark',
+    ready: 'text=Empresas',
+    setup: async (page) => {
+      await page.click('button:has-text("Adicionar")')
+      await page.waitForSelector('.q-dialog', { timeout: 3000 })
     },
-  })
-  await server.listen()
-  console.log('✅ Servidor Vite rodando em http://localhost:5173')
+  },
 
-  // Garantir existência do diretório de prints
-  if (!fs.existsSync(screenshotsDir)) {
-    fs.mkdirSync(screenshotsDir, { recursive: true })
-    console.log(`📁 Diretório criado: ${screenshotsDir}`)
-  }
+  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Documentos' },
+  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Documentos' },
 
-  console.log('🌐 Inicializando navegador Playwright (Chromium)...')
-  const browser = await chromium.launch({ headless: true })
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 2, // Deixa a imagem nítida (retina quality)
-  })
+  { route: '/credentials', name: 'credenciais', theme: 'light', ready: 'text=Credenciais' },
+  { route: '/credentials', name: 'credenciais', theme: 'dark', ready: 'text=Credenciais' },
 
-  // Injeta mocks globais para contornar o Wails
+  { route: '/query', name: 'consulta-direta', theme: 'light', ready: 'text=Consulta' },
+  { route: '/query', name: 'consulta-direta', theme: 'dark', ready: 'text=Consulta' },
+
+  { route: '/settings', name: 'configuracoes', theme: 'light', ready: 'text=Configurações' },
+  { route: '/settings', name: 'configuracoes', theme: 'dark', ready: 'text=Configurações' },
+
+  {
+    route: '/',
+    name: 'console-logs',
+    theme: 'dark',
+    ready: 'text=Empresas',
+    setup: async (page) => {
+      await page.click('button[aria-label="Abrir console"]')
+      await page.waitForSelector('.app-console', { timeout: 3000 })
+
+      await page.evaluate((logs) => {
+        logs.forEach((log) => window.triggerWailsEvent?.('backend-log', log))
+      }, syncLogs)
+    },
+  },
+]
+
+async function installWailsMock(context: BrowserContext) {
   await context.addInitScript(
-    ({ mockCompanies, mockCredentials, mockDocuments }) => {
-      const eventListeners: Record<string, Function[]> = {}
+    ({ companies, credentials, documents }) => {
+      const listeners: Record<string, EventCallback[]> = {}
+
+      const off = (eventName: string, callback: EventCallback) => {
+        listeners[eventName] = (listeners[eventName] ?? []).filter((item) => item !== callback)
+      }
 
       window.go = {
         main: {
           App: {
-            AddCompany: async (input: any) => ({ ...input, ID: String(Date.now()) }),
-            AddCredential: async (input: any) => ({ ...input, ID: String(Date.now()) }),
-            AssignCredentialToCompany: async () => {},
-            CancelCertPassword: async () => {},
+            AddCompany: async (input: unknown) => ({ ...(input as object), ID: String(Date.now()) }),
+            AddCredential: async (input: unknown) => ({ ...(input as object), ID: String(Date.now()) }),
+            AssignCredentialToCompany: async () => undefined,
+            CancelCertPassword: async () => undefined,
             ExportDocuments: async () => ({ OutPath: 'C:\\exports\\nfs-export.xlsx', Format: 'xlsx' }),
-            ExportLogs: async () => {},
-            ListCompanies: async () => mockCompanies,
-            ListCredentials: async () => mockCredentials,
-            ListDocuments: async () => mockDocuments,
+            ExportLogs: async () => undefined,
+            ListCompanies: async () => companies,
+            ListCredentials: async () => credentials,
+            ListDocuments: async () => documents,
             ListEventsForDocument: async () => [],
-            Pull: async (input: any) => ({
+            Pull: async (input: { CNPJ?: string }) => ({
               CompanyName: 'ACME Tecnologia e Serviços LTDA',
               CNPJ: input.CNPJ,
               CredentialLabel: 'Certificado PFX ACME 2026',
@@ -279,159 +341,180 @@ async function run() {
               Errors: 0,
               Duration: 1240000000,
             }),
-            ResetSyncState: async () => {},
+            ResetSyncState: async () => undefined,
             SelectCertificate: async () => 'C:\\Certificados\\mock.pfx',
             SelectExportDirectory: async () => 'C:\\exports',
-            SetLogLevel: async () => {},
+            SetLogLevel: async () => undefined,
             Status: async () => ({}),
-            SubmitCertPassword: async () => {},
-            ToggleDebug: async () => {},
-            UpdateCompany: async () => {},
-            UpdateCredentialData: async () => {},
-            UpdateCredentialPath: async () => {},
+            SubmitCertPassword: async () => undefined,
+            ToggleDebug: async () => undefined,
+            UpdateCompany: async () => undefined,
+            UpdateCredentialData: async () => undefined,
+            UpdateCredentialPath: async () => undefined,
           },
         },
       }
 
       window.runtime = {
-        EventsOnMultiple: (eventName: string, callback: Function, maxCallbacks: number) => {
-          if (!eventListeners[eventName]) eventListeners[eventName] = []
-          eventListeners[eventName].push(callback)
-          return () => {
-            eventListeners[eventName] = eventListeners[eventName].filter((cb) => cb !== callback)
+        EventsOnMultiple: (eventName, callback, maxCallbacks = Number.POSITIVE_INFINITY) => {
+          let calls = 0
+
+          const wrapped: EventCallback = (...args) => {
+            calls += 1
+            callback(...args)
+
+            if (calls >= maxCallbacks) {
+              off(eventName, wrapped)
+            }
           }
+
+          listeners[eventName] ??= []
+          listeners[eventName].push(wrapped)
+
+          return () => off(eventName, wrapped)
         },
-        EventsOff: (eventName: string) => {
-          delete eventListeners[eventName]
-        },
-        EventsOffAll: () => {
-          Object.keys(eventListeners).forEach((k) => delete eventListeners[k])
-        },
-        EventsOnce: (eventName: string, callback: Function) => {
+
+        EventsOnce: (eventName, callback) => {
           window.runtime.EventsOnMultiple(eventName, callback, 1)
         },
-        EventsEmit: (eventName: string, ...args: any[]) => {
-          if (eventListeners[eventName]) {
-            eventListeners[eventName].forEach((cb) => cb(...args))
+
+        EventsOff: (eventName) => {
+          delete listeners[eventName]
+        },
+
+        EventsOffAll: () => {
+          Object.keys(listeners).forEach((eventName) => delete listeners[eventName])
+        },
+
+        EventsEmit: (eventName, ...args) => {
+          for (const callback of listeners[eventName] ?? []) {
+            callback(...args)
           }
         },
-        WindowMinimise: () => {},
-        WindowToggleMaximise: () => {},
-        Quit: () => {},
-        WindowSetDarkTheme: () => {},
-        WindowSetLightTheme: () => {},
-        WindowSetSystemDefaultTheme: () => {},
-        LogPrint: () => {},
-        LogTrace: () => {},
-        LogDebug: () => {},
-        LogInfo: () => {},
-        LogWarning: () => {},
-        LogError: () => {},
-        LogFatal: () => {},
+
+        WindowMinimise: () => undefined,
+        WindowToggleMaximise: () => undefined,
+        Quit: () => undefined,
+
+        WindowSetDarkTheme: () => undefined,
+        WindowSetLightTheme: () => undefined,
+        WindowSetSystemDefaultTheme: () => undefined,
+
+        LogPrint: () => undefined,
+        LogTrace: () => undefined,
+        LogDebug: () => undefined,
+        LogInfo: () => undefined,
+        LogWarning: () => undefined,
+        LogError: () => undefined,
+        LogFatal: () => undefined,
       }
 
-      // Helper global para injetar logs ou notificações via console do Playwright
-      window.triggerWailsEvent = (eventName: string, payload: any) => {
+      window.triggerWailsEvent = (eventName, payload) => {
         window.runtime.EventsEmit(eventName, payload)
       }
     },
-    { mockCompanies, mockCredentials, mockDocuments }
+    {
+      companies: mockCompanies,
+      credentials: mockCredentials,
+      documents: mockDocuments,
+    }
   )
+}
+
+async function createPage(browser: Browser, theme: Theme) {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 2,
+    colorScheme: theme,
+  })
+
+  await installWailsMock(context)
+
+  await context.addInitScript((selectedTheme) => {
+    localStorage.setItem('darkMode', String(selectedTheme === 'dark'))
+  }, theme)
 
   const page = await context.newPage()
 
-  async function takeScreenshot(route: string, name: string, mode: 'light' | 'dark', options?: { beforeCapture?: () => Promise<void> }) {
-    console.log(`📸 Capturando ${name} (${mode})...`)
-    
-    // Configura o tema no localStorage do navegador
-    await page.goto('http://localhost:5173/')
-    await page.evaluate((m) => {
-      localStorage.setItem('darkMode', String(m === 'dark'))
-    }, mode)
-
-    // Navega para a rota de fato
-    await page.goto(`http://localhost:5173/#${route}`)
-    
-    // Espera renderizar
-    await page.waitForSelector('.q-page', { timeout: 5000 })
-    
-    // Estabiliza transições / fontes
-    await page.waitForTimeout(500)
-
-    if (options?.beforeCapture) {
-      await options.beforeCapture()
-      await page.waitForTimeout(300)
-    }
-
-    const screenshotPath = path.resolve(screenshotsDir, `${name}-${mode}.png`)
-    await page.screenshot({ path: screenshotPath })
-    console.log(`  💾 Salvo em: ${screenshotPath}`)
-  }
-
-  // 1. Pagina de Empresas
-  await takeScreenshot('/', 'empresas', 'light')
-  await takeScreenshot('/', 'empresas', 'dark')
-
-  // 2. Dialogo de Adicionar Empresa (no tema escuro para destaque)
-  await takeScreenshot('/', 'dialogo-adicionar-empresa', 'dark', {
-    beforeCapture: async () => {
-      await page.click('button:has-text("Adicionar")')
-      await page.waitForSelector('.q-dialog', { timeout: 3000 })
-    }
-  })
-
-  // 3. Pagina de Documentos
-  await takeScreenshot('/documents', 'documentos', 'light')
-  await takeScreenshot('/documents', 'documentos', 'dark')
-
-  // 4. Pagina de Credenciais
-  await takeScreenshot('/credentials', 'credenciais', 'light')
-  await takeScreenshot('/credentials', 'credenciais', 'dark')
-
-  // 5. Pagina de Consulta Direta
-  await takeScreenshot('/query', 'consulta-direta', 'light')
-  await takeScreenshot('/query', 'consulta-direta', 'dark')
-
-  // 6. Pagina de Configurações
-  await takeScreenshot('/settings', 'configuracoes', 'light')
-  await takeScreenshot('/settings', 'configuracoes', 'dark')
-
-  // 7. Console de Logs do Sync (com logs reais simulados)
-  await takeScreenshot('/', 'console-logs', 'dark', {
-    beforeCapture: async () => {
-      // Abre a gaveta do console
-      await page.click('button[aria-label="Abrir console"]')
-      await page.waitForSelector('.app-console', { timeout: 3000 })
-
-      // Injeta logs via evento global
-      await page.evaluate(() => {
-        const trigger = (window as any).triggerWailsEvent
-        if (!trigger) return
-
-        const logs = [
-          { level: 'INFO', msg: 'Iniciando sincronização para ACME Tecnologia e Serviços LTDA', time: '2026-06-18T14:30:01Z' },
-          { level: 'DEBUG', msg: 'Acessando endpoint do ambiente de produção', time: '2026-06-18T14:30:02Z' },
-          { level: 'TRACE', msg: 'HTTP POST: https://adn.api.gov.br/consultarNSU - CNPJ: 12345678000100', time: '2026-06-18T14:30:02Z' },
-          { level: 'INFO', msg: 'Busca concluída: 3 novos documentos encontrados', time: '2026-06-18T14:30:03Z' },
-          { level: 'INFO', msg: 'Salvando documento 1234 (R$ 1.500,00) no banco local...', time: '2026-06-18T14:30:03Z' },
-          { level: 'WARNING', msg: 'Aliquota ISS incomum para o municipio em documento 5678', time: '2026-06-18T14:30:04Z' },
-          { level: 'INFO', msg: 'Salvando documento 5678 (R$ 5.000,00) no banco local...', time: '2026-06-18T14:30:04Z' },
-          { level: 'INFO', msg: 'Salvando documento 1235 (R$ 850,00) [Cancelada] no banco local...', time: '2026-06-18T14:30:04Z' },
-          { level: 'INFO', msg: 'Sincronização concluída com sucesso. Tempo total: 1.24s', time: '2026-06-18T14:30:05Z' },
-        ]
-
-        logs.forEach(l => trigger('backend-log', l))
-      })
-    }
-  })
-
-  console.log('🧹 Finalizando navegador e servidor dev...')
-  await browser.close()
-  await server.close()
-  console.log('🎉 Todos os prints foram capturados e salvos com sucesso em docs/screenshots!')
+  return { context, page }
 }
 
-run().catch((err) => {
-  console.error('❌ Erro durante a geração de prints:', err)
-  process.exit(1)
+async function waitForApp(page: Page, spec: ScreenshotSpec) {
+  await page.waitForSelector('.q-page', { timeout: 5000 })
+
+  if (spec.ready) {
+    await page.waitForSelector(spec.ready, { timeout: 5000 })
+  }
+
+  await page.evaluate(async () => {
+    await document.fonts?.ready
+  })
+
+  await page.waitForTimeout(150)
+}
+
+async function capture(browser: Browser, spec: ScreenshotSpec) {
+  const { context, page } = await createPage(browser, spec.theme)
+
+  try {
+    const hash = `#${spec.route}`
+
+    await page.goto(`${appUrl}/${hash}`, { waitUntil: 'domcontentloaded' })
+
+    await page.waitForFunction(
+      (expectedHash) => window.location.hash === expectedHash,
+      hash
+    )
+
+    await waitForApp(page, spec)
+
+    if (spec.setup) {
+      await spec.setup(page)
+      await page.waitForTimeout(150)
+    }
+
+    const outPath = path.join(screenshotsDir, `${spec.name}-${spec.theme}.png`)
+
+    await page.screenshot({
+      path: outPath,
+      animations: 'disabled',
+    })
+
+    console.log(`saved ${path.relative(rootDir, outPath)}`)
+  } finally {
+    await context.close()
+  }
+}
+
+async function main() {
+  let server: ViteDevServer | undefined
+  let browser: Browser | undefined
+
+  try {
+    await mkdir(screenshotsDir, { recursive: true })
+
+    server = await createServer({
+      configFile: viteConfig,
+      server: {
+        port: 5173,
+        strictPort: true,
+      },
+    })
+
+    await server.listen()
+
+    browser = await chromium.launch({ headless: true })
+
+    for (const spec of screenshots) {
+      await capture(browser, spec)
+    }
+  } finally {
+    await browser?.close()
+    await server?.close()
+  }
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
 })
