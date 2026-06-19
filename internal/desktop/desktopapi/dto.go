@@ -105,6 +105,12 @@ type ExportDANFSeInput struct {
 	OutPath     string
 }
 
+type ExportXMLInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
+}
+
 type ExportResult struct {
 	OutPath string
 	Format  string

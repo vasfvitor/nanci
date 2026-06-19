@@ -114,6 +114,12 @@ export type QueryNFSeInput = {
   ChaveAcesso: string
 }
 
+export type ExportXMLInput = {
+  CNPJ: string
+  ChaveAcesso: string
+  OutPath: string
+}
+
 export type AddCompanyInput = {
   CNPJ: string
   Name: string

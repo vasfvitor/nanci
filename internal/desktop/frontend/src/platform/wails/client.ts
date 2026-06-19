@@ -6,6 +6,7 @@ import {
   ExportDANFSe,
   ExportDANFSeZIP,
   ExportDocuments,
+  ExportXML,
   ListCompanies,
   ListCredentials,
   ListDocuments,
@@ -34,6 +35,7 @@ import type {
   ExportDANFSeInput,
   ExportDocumentsInput,
   ExportResult,
+  ExportXMLInput,
   ListDocumentsInput,
   PullInput,
   PullResult,
@@ -214,6 +216,19 @@ export const desktopClient = {
 
     const result = await callWails(() =>
       ExportDANFSe({
+        ...input,
+        OutPath: outPath,
+      })
+    )
+    return result as ExportResult
+  },
+  async exportXML(input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+    const defaultName = input.BaseName || `nfse_${input.ChaveAcesso}.xml`
+    const outPath = await desktopClient.selectSaveFile('Salvar XML Original', defaultName, '*.xml')
+    if (!outPath) return null
+
+    const result = await callWails(() =>
+      ExportXML({
         ...input,
         OutPath: outPath,
       })

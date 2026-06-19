@@ -63,6 +63,13 @@ export function useDocuments() {
     })
   }
 
+  async function exportXML(chaveAcesso: string) {
+    return desktopClient.exportXML({
+      CNPJ: filter.value.CNPJ,
+      ChaveAcesso: chaveAcesso,
+    })
+  }
+
   async function exportDANFSeZIP() {
     return desktopClient.exportDANFSeZIP({
       CNPJ: filter.value.CNPJ,
@@ -86,6 +93,7 @@ export function useDocuments() {
     search,
     exportDocuments,
     exportDANFSe,
+    exportXML,
     exportDANFSeZIP,
     loadEvents,
   }

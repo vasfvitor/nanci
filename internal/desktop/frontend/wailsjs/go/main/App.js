@@ -34,6 +34,10 @@ export function ExportLogs() {
   return window['go']['main']['App']['ExportLogs']();
 }
 
+export function ExportXML(arg1) {
+  return window['go']['main']['App']['ExportXML'](arg1);
+}
+
 export function ListCompanies() {
   return window['go']['main']['App']['ListCompanies']();
 }

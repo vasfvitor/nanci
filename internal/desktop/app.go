@@ -298,6 +298,22 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse"}, nil
 }
 
+func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	err := a.core.ExportXML(a.ctx, app.ExportXMLInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+}
+
 func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")

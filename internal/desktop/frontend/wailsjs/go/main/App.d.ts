@@ -19,6 +19,8 @@ export function ExportDocuments(arg1:desktopapi.ExportDocumentsInput):Promise<de
 
 export function ExportLogs():Promise<string>;
 
+export function ExportXML(arg1:desktopapi.ExportXMLInput):Promise<desktopapi.ExportResult>;
+
 export function ListCompanies():Promise<Array<desktopapi.CompanySummary>>;
 
 export function ListCredentials():Promise<Array<desktopapi.CredentialSummary>>;

@@ -184,6 +184,16 @@
             flat
             round
             size="sm"
+            color="primary"
+            icon="code"
+            title="Exportar XML Original"
+            @click="exportXML(props.row.ChaveAcesso)"
+          />
+          <q-btn
+            dense
+            flat
+            round
+            size="sm"
             color="negative"
             icon="picture_as_pdf"
             title="Exportar DANFSe"
@@ -360,6 +370,16 @@ async function exportDanfse(chaveAcesso: string) {
     $q.notify({ type: 'positive', message: `DANFSe exportado com sucesso para ${result.OutPath}` })
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao exportar DANFSe: ' + String(err) })
+  }
+}
+
+async function exportXML(chaveAcesso: string) {
+  try {
+    const result = await documentsApi.exportXML(chaveAcesso)
+    if (!result) return
+    $q.notify({ type: 'positive', message: `XML exportado com sucesso para ${result.OutPath}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao exportar XML: ' + String(err) })
   }
 }
 

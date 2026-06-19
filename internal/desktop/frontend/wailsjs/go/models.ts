@@ -554,6 +554,22 @@ export namespace desktopapi {
 	        this.Format = source["Format"];
 	    }
 	}
+	export class ExportXMLInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportXMLInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
 
 }
 

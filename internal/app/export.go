@@ -26,6 +26,13 @@ type ExportDANFSeInput struct {
 	OutPath     string
 }
 
+// ExportXMLInput identifies one company-visible NFS-e and the destination XML path.
+type ExportXMLInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
+}
+
 // ExportCSV writes a CSV report for the matching documents to input.OutPath.
 func (a *App) ExportCSV(ctx context.Context, input ExportInput) error {
 	docs, err := a.queryExportDocs(ctx, input)
@@ -77,6 +84,39 @@ func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
 	}
 	if err := os.WriteFile(input.OutPath, pdf, 0o644); err != nil { // #nosec G306 -- destination is explicitly selected by the local user.
 		return fmt.Errorf("gravar DANFSe: %w", err)
+	}
+	return nil
+}
+
+// ExportXML writes the raw XML for one company-visible NFS-e.
+func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
+	if input.OutPath == "" {
+		return fmt.Errorf("caminho de saída não especificado")
+	}
+	if input.ChaveAcesso == "" {
+		return fmt.Errorf("chave de acesso não especificada")
+	}
+
+	company, err := a.companyByCNPJ(ctx, input.CNPJ)
+	if err != nil {
+		return err
+	}
+	doc, err := a.DocumentReader.CompanyDocumentByChave(ctx, company.ID, input.ChaveAcesso)
+	if err != nil {
+		return fmt.Errorf("localizar documento: %w", err)
+	}
+
+	if doc.RawHash == "" {
+		return fmt.Errorf("XML original não encontrado para a chave %s", doc.ChaveAcesso)
+	}
+
+	xmlData, err := a.XMLStore.Get(doc.RawHash)
+	if err != nil {
+		return fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
+	}
+	
+	if err := os.WriteFile(input.OutPath, xmlData, 0o644); err != nil { // #nosec G306
+		return fmt.Errorf("gravar XML: %w", err)
 	}
 	return nil
 }
