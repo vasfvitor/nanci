@@ -16,7 +16,10 @@ Até que seja implementado [criptografia em repouso](https://github.com/vasfvito
 
 Se você encontrar um problema de segurança relacionado à proteção local dos dados (SQLite), tratamento de certificados, injeção de dependências ou vazamento de logs locais, **por favor, não crie uma issue pública**.
 
-Envie um e-mail com os detalhes do problema para `[sec@virtuaires.com.br]`. Caso não receba uma resposta, crie uma issue solicitando resposta sem mencionar a vulnerabilidade.
+> [!CAUTION]
+> **NUNCA** abra uma issue pública (mesmo para reportar bugs não relacionados a segurança) anexando arquivos de certificado digital (`.pfx` ou `.p12`), senhas, XMLs fiscais reais contendo dados de terceiros ou o banco SQLite da sua aplicação. 
+
+Envie um e-mail com os detalhes do problema de segurança para `sec@virtuaires.com.br`. Caso não receba uma resposta, crie uma issue solicitando resposta sem mencionar a vulnerabilidade.
 
 ### O que incluir:
 - Um resumo do problema de segurança detectado.

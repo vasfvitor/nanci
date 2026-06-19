@@ -1,0 +1,68 @@
+baseURL = "https://vasfvitor.github.io/nanci/"
+defaultContentLanguage = "pt"
+locale = "pt-BR"
+title = "Nanci"
+enableRobotsTXT = true
+enableGitInfo = true
+timeZone = "America/Sao_Paulo"
+
+[module.hugoVersion]
+  min = "0.140.0"
+
+[module]
+  [[module.imports]]
+    path = "github.com/imfing/hextra"
+
+[author]
+  name = "Ayres Vitor"
+
+[params]
+  description = "App desktop e CLI para baixar NFS-e da NFS-e Nacional"
+
+[params.navbar]
+  displayTitle = true
+  displayLogo = true
+  width = "wide"
+
+[params.navbar.logo]
+  path = "favicon.svg"
+  dark = "favicon.svg"
+  width = 24
+  height = 24
+
+[params.page]
+  width = "wide"
+
+[params.theme]
+  default = "system"
+  displayToggle = true
+
+[params.search]
+  enable = true
+
+[params.footer]
+  enable = true
+  displayPoweredBy = false
+  displayCopyright = true
+  width = "wide"
+
+[[menu.main]]
+  name = "Documentação"
+  url = "/docs/"
+  weight = 10
+
+[[menu.main]]
+  name = "Buscar"
+  weight = 20
+  [menu.main.params]
+    type = "search"
+
+[[menu.main]]
+  name = "GitHub"
+  url = "https://github.com/vasfvitor/nanci"
+  weight = 30
+  [menu.main.params]
+    icon = "github"
+
+[markup.goldmark.renderer]
+  unsafe = true

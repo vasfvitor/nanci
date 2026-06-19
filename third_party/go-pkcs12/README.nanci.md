@@ -18,4 +18,4 @@ When updating upstream:
    file, and the `unmarshal` normalization call in `pkcs12.go`.
 2. Review upstream changes to `unmarshal`, `getSafeContents`, and `verifyMac`.
 3. Run the root certificate tests, the fork tests, and the optional external
-   certificate acceptance test documented in `docs/CERTIFICATES.md`.
+   certificate acceptance test.
