@@ -34,7 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '../../../..')
 const screenshotsDir = path.resolve(rootDir, 'docs/screenshots')
 const viteConfig = path.resolve(__dirname, '../vite.config.ts')
-const appUrl = 'http://localhost:5173'
+const appUrl = 'http://localhost:5555'
 
 const mockCompanies = [
   {
@@ -642,7 +642,7 @@ async function main() {
     server = await createServer({
       configFile: viteConfig,
       server: {
-        port: 5173,
+        port: 5555,
         strictPort: true,
       },
     })
