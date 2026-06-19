@@ -28,7 +28,7 @@ func (a *App) QueryNFSe(ctx context.Context, input QueryNFSeInput) (string, erro
 	if err != nil {
 		return "", err
 	}
-	path := fmt.Sprintf("NFSe/%s", accessKey)
+	path := fmt.Sprintf("nfse/%s", accessKey)
 	return a.queryGenericEndpoint(ctx, apiClient, path)
 }
 
@@ -42,7 +42,7 @@ func (a *App) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string
 	if err != nil {
 		return "", err
 	}
-	path := fmt.Sprintf("NFSe/%s/Eventos", accessKey)
+	path := fmt.Sprintf("nfse/%s/eventos", accessKey)
 	return a.queryGenericEndpoint(ctx, apiClient, path)
 }
 
