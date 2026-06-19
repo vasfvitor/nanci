@@ -5,20 +5,24 @@
     </div>
 
     <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
-      <q-select v-model="filter.CNPJ" class="col-12 col-md-3" :options="companyOptions" label="Empresa" emit-value
+      <q-select
+v-model="filter.CNPJ" class="col-12 col-md-3" :options="companyOptions" label="Empresa" emit-value
         map-options outlined dense options-dense :disable="loading" @update:model-value="handleCompanyChange" />
 
       <div class="col-12 col-md-3">
         <div class="row no-wrap items-center q-gutter-xs">
-          <q-btn color="grey-7" icon="chevron_left" dense flat round :disable="loading || !filter.Competence"
+          <q-btn
+color="grey-7" icon="chevron_left" dense flat round :disable="loading || !filter.Competence"
             title="Competência anterior" aria-label="Competência anterior" @click="shiftCompetence(-1)" />
 
-          <q-input v-model="filter.Competence" class="col" label="Competência" outlined dense clearable mask="####-##"
+          <q-input
+v-model="filter.Competence" class="col" label="Competência" outlined dense clearable mask="####-##"
             :disable="loading">
             <template #append>
               <q-icon name="event" class="cursor-pointer">
                 <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="filter.Competence" minimal mask="YYYY-MM" emit-immediately default-view="Months"
+                  <q-date
+v-model="filter.Competence" minimal mask="YYYY-MM" emit-immediately default-view="Months"
                     years-in-month-view @update:model-value="onDateChange">
                     <div class="row items-center justify-end">
                       <q-btn label="Mês Atual" color="primary" flat @click="setToday" />
@@ -30,20 +34,24 @@
             </template>
           </q-input>
 
-          <q-btn color="grey-7" icon="chevron_right" dense flat round :disable="loading || !filter.Competence"
+          <q-btn
+color="grey-7" icon="chevron_right" dense flat round :disable="loading || !filter.Competence"
             title="Próxima competência" aria-label="Próxima competência" @click="shiftCompetence(1)" />
         </div>
       </div>
 
-      <q-select v-model="filter.Direction" class="col-12 col-md-2" :options="directionOptions" label="Direção"
+      <q-select
+v-model="filter.Direction" class="col-12 col-md-2" :options="directionOptions" label="Direção"
         emit-value map-options outlined dense options-dense :disable="loading" />
 
       <q-space />
 
-      <q-btn color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" :loading="loading" dense
+      <q-btn
+color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" :loading="loading" dense
         flat @click="search" />
 
-      <q-btn-dropdown color="secondary" label="Exportar" :disable="exporting || documents.length === 0"
+      <q-btn-dropdown
+color="secondary" label="Exportar" :disable="exporting || documents.length === 0"
         :loading="exporting" dense flat>
         <q-list dense>
           <q-item v-close-popup clickable @click="exportData('csv')">
@@ -85,7 +93,8 @@
       </q-btn-dropdown>
     </div>
 
-    <q-table v-model:pagination="pagination" :rows="filteredDocuments" :columns="columns" row-key="RelationID"
+    <q-table
+v-model:pagination="pagination" :rows="filteredDocuments" :columns="columns" row-key="RelationID"
       :loading="loading" no-data-label="Nenhum documento encontrado." binary-state-sort flat bordered dense
       class="full-height">
       <template #top>
@@ -95,7 +104,8 @@
               Documentos Fiscais Carregados
             </div>
 
-            <q-input v-model="filterText" class="document-search-input"
+            <q-input
+v-model="filterText" class="document-search-input"
               placeholder="Filtrar por nome, CNPJ, número ou chave..." outlined dense clearable debounce="300">
               <template #append>
                 <q-icon name="search" />
@@ -184,19 +194,23 @@
           <q-td v-for="col in props.cols" :key="col.name" :props="props">
             <template v-if="col.name === 'actions'">
               <div class="row no-wrap items-center justify-center q-gutter-x-xs">
-                <q-btn dense flat round size="sm" :color="props.expand ? 'primary' : 'grey-7'"
+                <q-btn
+dense flat round size="sm" :color="props.expand ? 'primary' : 'grey-7'"
                   :icon="props.expand ? 'expand_less' : 'expand_more'" title="Ver detalhes do serviço e impostos"
                   aria-label="Ver detalhes do serviço e impostos" @click.stop="props.expand = !props.expand" />
 
-                <q-btn dense flat round size="sm" color="primary" icon="code" title="Exportar XML Original"
+                <q-btn
+dense flat round size="sm" color="primary" icon="code" title="Exportar XML Original"
                   aria-label="Exportar XML Original" :disable="exporting || !props.row.ChaveAcesso"
                   @click.stop="exportXML(props.row.ChaveAcesso)" />
 
-                <q-btn dense flat round size="sm" color="negative" icon="picture_as_pdf" title="Exportar DANFSe"
+                <q-btn
+dense flat round size="sm" color="negative" icon="picture_as_pdf" title="Exportar DANFSe"
                   aria-label="Exportar DANFSe" :disable="exporting || !props.row.ChaveAcesso"
                   @click.stop="exportDanfse(props.row.ChaveAcesso)" />
 
-                <q-btn v-if="hasEvents(props.row)" dense flat round size="sm" color="warning" icon="history"
+                <q-btn
+v-if="hasEvents(props.row)" dense flat round size="sm" color="warning" icon="history"
                   title="Ver Eventos" aria-label="Ver Eventos" :disable="!props.row.DocumentID"
                   @click.stop="openEventsDialog(props.row.DocumentID)" />
               </div>
@@ -204,13 +218,15 @@
 
             <template v-else-if="col.name === 'chaveAcesso'">
               <div class="row no-wrap items-center q-gutter-x-xs chave-acesso-cell">
-                <span :title="props.row.ChaveAcesso"
+                <span
+:title="props.row.ChaveAcesso"
                   class="cursor-pointer text-weight-medium ellipsis chave-acesso-text"
                   @click="copyChave(props.row.ChaveAcesso)">
                   {{ formatChave(props.row.ChaveAcesso) }}
                 </span>
 
-                <q-btn dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chave Completa"
+                <q-btn
+dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chave Completa"
                   aria-label="Copiar Chave Completa" :disable="!props.row.ChaveAcesso"
                   @click.stop="copyChave(props.row.ChaveAcesso)" />
               </div>
@@ -223,7 +239,8 @@
                   <q-tooltip>Direção: {{ roleLabel(props.row.CompanyRole) }}</q-tooltip>
                 </q-badge>
 
-                <q-badge :color="visibilityColor(props.row.VisibilityReason)"
+                <q-badge
+:color="visibilityColor(props.row.VisibilityReason)"
                   class="text-weight-bold text-mono cursor-help">
                   {{ getVisibilityAbbreviation(props.row.VisibilityReason) }}
                   <q-tooltip>Visibilidade: {{ visibilityLabel(props.row.VisibilityReason) }}</q-tooltip>
