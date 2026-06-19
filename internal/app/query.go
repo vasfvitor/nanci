@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
@@ -99,4 +100,74 @@ func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn
 		return nil, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
 	return apiClient, nil
+}
+
+// ConnectionTestResult contains the diagnostics returned by TestConnection.
+type ConnectionTestResult struct {
+	CertLoaded        bool
+	CertSubject       string
+	CertExpiration    string
+	MTLSAccepted      bool
+	EndpointReached   bool
+	ResponseCode      string
+	ResponseDetail    string
+	StatusExplanation string
+}
+
+// TestConnection verifies that the certificate can be loaded, mTLS works, and the ADN endpoint can be queried.
+func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (ConnectionTestResult, error) {
+	result := ConnectionTestResult{}
+
+	company, err := a.companyByCNPJ(ctx, companyCNPJ)
+	if err != nil {
+		return result, fmt.Errorf("empresa não encontrada: %w", err)
+	}
+
+	credential, err := a.credentialByID(ctx, company.CredentialID)
+	if err != nil {
+		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
+		return result, nil
+	}
+
+	result.CertLoaded = true
+	result.CertSubject = credential.SubjectName
+	if credential.NotAfter != nil {
+		result.CertExpiration = credential.NotAfter.Format("02/01/2006 15:04:05")
+		if credential.NotAfter.Before(time.Now()) {
+			result.StatusExplanation = "Certificado digital expirado."
+			return result, nil
+		}
+	}
+
+	// Try to build client (which loads certificate and asks for password if needed)
+	apiClient, err := a.buildClientForQuery(ctx, companyCNPJ)
+	if err != nil {
+		result.StatusExplanation = fmt.Sprintf("Erro ao carregar certificado/senha: %v", err)
+		return result, nil
+	}
+
+	result.MTLSAccepted = true
+
+	// Call FetchDocuments for lastNSU 0 to test connectivity
+	docResp, err := apiClient.FetchDocuments(ctx, adn.DistributionRequest{
+		LastNSU:          0,
+		ConsultationCNPJ: company.CNPJ,
+	})
+
+	if err != nil {
+		result.StatusExplanation = fmt.Sprintf("Conexão falhou: %v", err)
+		return result, nil
+	}
+
+	result.EndpointReached = true
+	result.ResponseCode = "Sucesso"
+	if len(docResp.Docs) > 0 {
+		result.ResponseDetail = fmt.Sprintf("Documentos retornados: %d. Último NSU: %d", len(docResp.Docs), docResp.UltNSU)
+		result.StatusExplanation = "Conexão OK, documentos localizados com sucesso."
+	} else {
+		result.ResponseDetail = "Nenhum documento localizado para o NSU 0 (Erro E2220 / fila vazia)."
+		result.StatusExplanation = "Conexão OK, sem novos documentos disponíveis para este NSU."
+	}
+
+	return result, nil
 }

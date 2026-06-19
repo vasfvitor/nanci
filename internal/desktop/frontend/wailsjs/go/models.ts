@@ -253,6 +253,22 @@ export namespace app {
 
 export namespace desktopapi {
 	
+	export class BuildInfo {
+	    version: string;
+	    commit: string;
+	    date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BuildInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.commit = source["commit"];
+	        this.date = source["date"];
+	    }
+	}
 	export class CompanySummary {
 	    ID: string;
 	    CNPJ: string;
@@ -315,6 +331,32 @@ export namespace desktopapi {
 		    }
 		    return a;
 		}
+	}
+	export class ConnectionTestResult {
+	    certLoaded: boolean;
+	    certSubject: string;
+	    certExpiration: string;
+	    mtlsAccepted: boolean;
+	    endpointReached: boolean;
+	    responseCode: string;
+	    responseDetail: string;
+	    statusExplanation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConnectionTestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.certLoaded = source["certLoaded"];
+	        this.certSubject = source["certSubject"];
+	        this.certExpiration = source["certExpiration"];
+	        this.mtlsAccepted = source["mtlsAccepted"];
+	        this.endpointReached = source["endpointReached"];
+	        this.responseCode = source["responseCode"];
+	        this.responseDetail = source["responseDetail"];
+	        this.statusExplanation = source["statusExplanation"];
+	    }
 	}
 	export class CredentialSummary {
 	    ID: string;

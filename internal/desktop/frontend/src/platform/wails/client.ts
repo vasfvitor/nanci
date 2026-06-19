@@ -6,11 +6,16 @@ import {
   ExportDANFSe,
   ExportDANFSeZIP,
   ExportDocuments,
+  ExportLogs,
   ExportXML,
+  GetBuildInfo,
+  GetDataDirectory,
   ListCompanies,
   ListCredentials,
   ListDocuments,
   ListEventsForDocument,
+  OpenDataDirectory,
+  OpenLogsDirectory,
   Pull,
   QueryNFSeEvents,
   ResetSyncState,
@@ -19,6 +24,7 @@ import {
   SelectSaveFile,
   SetLogLevel,
   SubmitCertPassword,
+  TestConnection,
   UpdateCompany,
   UpdateCredentialData,
   UpdateCredentialPath,
@@ -27,7 +33,9 @@ import type {
   AddCompanyInput,
   AddCredentialInput,
   AssignCredentialInput,
+  BuildInfo,
   CompanySummary,
+  ConnectionTestResult,
   CredentialSummary,
   DocumentEvent,
   DocumentRow,
@@ -301,5 +309,35 @@ export const desktopClient = {
   },
   updateCredentialPath(input: UpdateCredentialPathInput) {
     return callWails(() => UpdateCredentialPath(input))
+  },
+  getBuildInfo(): Promise<BuildInfo> {
+    return callWails(() => GetBuildInfo())
+  },
+  getDataDirectory(): Promise<string> {
+    return callWails(() => GetDataDirectory())
+  },
+  openDataDirectory(): Promise<void> {
+    return callWails(() => OpenDataDirectory())
+  },
+  openLogsDirectory(): Promise<void> {
+    return callWails(() => OpenLogsDirectory())
+  },
+  async exportLogs(): Promise<string | null> {
+    const path = await callWails(() => ExportLogs())
+    return path || null
+  },
+  async testConnection(companyCNPJ: string): Promise<ConnectionTestResult> {
+    const res = await callWails(() => TestConnection(companyCNPJ))
+    const item = asRawRecord(res)
+    return {
+      certLoaded: asBoolean(item['certLoaded']),
+      certSubject: asString(item['certSubject']),
+      certExpiration: asString(item['certExpiration']),
+      mtlsAccepted: asBoolean(item['mtlsAccepted']),
+      endpointReached: asBoolean(item['endpointReached']),
+      responseCode: asString(item['responseCode']),
+      responseDetail: asString(item['responseDetail']),
+      statusExplanation: asString(item['statusExplanation']),
+    }
   },
 }

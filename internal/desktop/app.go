@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync"
 
@@ -15,6 +17,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
+	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
+	"github.com/vasfvitor/nanci/internal/foundation/paths"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
@@ -439,4 +443,62 @@ func exportRotatedLogs(savePath string, basePath string) error {
 		return fmt.Errorf("fechar zip: %w", err)
 	}
 	return nil
+}
+
+func (a *App) GetBuildInfo() desktopapi.BuildInfo {
+	return desktopapi.BuildInfo{
+		Version: buildinfo.Version,
+		Commit:  buildinfo.Commit,
+		Date:    buildinfo.Date,
+	}
+}
+
+func (a *App) GetDataDirectory() (string, error) {
+	return paths.DataDir()
+}
+
+func openDir(dir string) error {
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", dir)
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", dir)
+	}
+	return cmd.Start()
+}
+
+func (a *App) OpenDataDirectory() error {
+	dir, err := paths.DataDir()
+	if err != nil {
+		return err
+	}
+	return openDir(dir)
+}
+
+func (a *App) OpenLogsDirectory() error {
+	dir, err := desktopLogDir()
+	if err != nil {
+		return err
+	}
+	return openDir(dir)
+}
+
+func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResult, error) {
+	res, err := a.core.TestConnection(a.ctx, companyCNPJ)
+	if err != nil {
+		return desktopapi.ConnectionTestResult{}, err
+	}
+	return desktopapi.ConnectionTestResult{
+		CertLoaded:        res.CertLoaded,
+		CertSubject:       res.CertSubject,
+		CertExpiration:    res.CertExpiration,
+		MTLSAccepted:      res.MTLSAccepted,
+		EndpointReached:   res.EndpointReached,
+		ResponseCode:      res.ResponseCode,
+		ResponseDetail:    res.ResponseDetail,
+		StatusExplanation: res.StatusExplanation,
+	}, nil
 }

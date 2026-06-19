@@ -6,6 +6,7 @@ import { desktopClient } from '@/platform/wails/client'
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     listCompanies: vi.fn(),
+    listDocuments: vi.fn().mockResolvedValue([]),
     queryNFSeEvents: vi.fn(),
   },
 }))
