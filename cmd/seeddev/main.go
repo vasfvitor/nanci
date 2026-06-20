@@ -20,7 +20,7 @@ func main() {
 	}
 
 	devdataDir := filepath.Join(rootDir, "devdata")
-	if err := os.MkdirAll(devdataDir, 0o755); err != nil {
+	if err := os.MkdirAll(devdataDir, 0o750); err != nil {
 		fatalf("create devdata directory: %v", err)
 	}
 
@@ -29,11 +29,11 @@ func main() {
 	if err != nil {
 		fatalf("open dev db: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Copy mock cert to devdata/certs
 	certsDir := filepath.Join(devdataDir, "certs")
-	if err := os.MkdirAll(certsDir, 0o755); err != nil {
+	if err := os.MkdirAll(certsDir, 0o750); err != nil {
 		fatalf("create devdata/certs directory: %v", err)
 	}
 
@@ -54,7 +54,7 @@ func main() {
 
 	// Copy and process XMLs
 	xmlDir := filepath.Join(devdataDir, "xml")
-	if err := os.MkdirAll(xmlDir, 0o755); err != nil {
+	if err := os.MkdirAll(xmlDir, 0o750); err != nil {
 		fatalf("create devdata/xml directory: %v", err)
 	}
 
@@ -79,7 +79,7 @@ func main() {
 }
 
 func seedXML(ctx context.Context, db *sql.DB, xmlPath, companyID string) error {
-	data, err := os.ReadFile(xmlPath)
+	data, err := os.ReadFile(xmlPath) //nolint:gosec // intentional: test
 	if err != nil {
 		return err
 	}
@@ -122,17 +122,17 @@ func fileExists(path string) bool {
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) //nolint:gosec // intentional: test
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
-	out, err := os.Create(dst)
+	out, err := os.Create(dst) //nolint:gosec // intentional: test
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
 	return err

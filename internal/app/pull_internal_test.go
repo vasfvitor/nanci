@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"crypto/tls"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -50,7 +49,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
-	company := &nfse.Company{
+	company := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",
@@ -76,7 +75,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 
 	xmlStore := &captureXMLStore{}
 	application, err := New(Dependencies{
-		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:                slog.New(slog.DiscardHandler),
 		DB:                 db,
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,

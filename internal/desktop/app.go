@@ -258,8 +258,6 @@ func (a *App) ResetSyncState(input app.ResetSyncInput) error {
 	return a.core.ResetSyncState(a.ctx, input)
 }
 
-
-
 func (a *App) QueryNFSeEvents(input app.QueryNFSeInput) (string, error) {
 	return a.core.QueryNFSeEvents(a.ctx, input)
 }

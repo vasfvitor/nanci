@@ -40,7 +40,7 @@ func main() {
 	}
 	info("using %s", strings.TrimSpace(version))
 
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o750); err != nil {
 		fatalf("create output directory: %v", err)
 	}
 
@@ -182,7 +182,7 @@ func findOpenSSL() (string, error) {
 }
 
 func runCommand(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) //nolint:gosec,noctx // intentional: test tool executing dynamic command
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

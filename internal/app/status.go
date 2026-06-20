@@ -50,7 +50,7 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("contar documentos: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var role string

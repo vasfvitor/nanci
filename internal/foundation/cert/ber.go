@@ -200,7 +200,7 @@ func (p *berParser) readObject(offset, depth int) (asn1Object, int, error) {
 	}
 
 	var children []asn1Object
-	for {
+	for indefinite || offset < contentEnd {
 		if indefinite {
 			if offset+2 > len(p.data) {
 				return nil, 0, errors.New("ber2der: missing end-of-content marker")
@@ -209,10 +209,6 @@ func (p *berParser) readObject(offset, depth int) (asn1Object, int, error) {
 				offset += 2
 				break
 			}
-		} else if offset == contentEnd {
-			break
-		} else if offset > contentEnd {
-			return nil, 0, errors.New("ber2der: child exceeds constructed content")
 		}
 
 		child, next, err := p.readObject(offset, depth+1)
@@ -269,7 +265,8 @@ func encodeLength(out *bytes.Buffer, length int) error {
 		return err
 	}
 	for shift := (numberOfBytes - 1) * 8; shift >= 0; shift -= 8 {
-		if err := out.WriteByte(byte(length >> uint(shift))); err != nil {
+		part := (length >> uint(shift)) & 0xff
+		if err := out.WriteByte(byte(part)); err != nil {
 			return err
 		}
 	}

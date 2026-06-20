@@ -3,7 +3,7 @@ package fixtures
 import "github.com/vasfvitor/nanci/internal/nfse"
 
 func Company() nfse.Company {
-	return nfse.Company{
+	return nfse.Company{ //nolint:gosec // intentional: mock test credentials
 		ID:           "dev-company-70860312000150",
 		CNPJ:         "70860312000150",
 		CNPJRoot:     "70860312",

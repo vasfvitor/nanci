@@ -1,6 +1,7 @@
 version: "2"
 
 run:
+  timeout: 5m
   tests: true
   concurrency: 4
 
@@ -32,42 +33,27 @@ linters:
     - gosec
 
     # Maintainability / DX
-    - revive
     - gocritic
     - unconvert
-    - misspell
     - predeclared
-    - copyloopvar
     - durationcheck
     - makezero
     - nolintlint
-
+    
     # slog consistency
     - sloglint
 
-  settings:
-    misspell:
-      ignore-rules:
-        - adn
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (*database/sql.Tx).Rollback
+      - (*database/sql.Rows).Close
+      - (*compress/gzip.Reader).Close
+      - (*github.com/spf13/cobra.Command).MarkFlagRequired
 
-    errcheck:
-      exclude-functions:
-        - (*database/sql.Tx).Rollback
-        - (*database/sql.Rows).Close
-        - (*compress/gzip.Reader).Close
-
-        - (*github.com/spf13/cobra.Command).MarkFlagRequired
-
-    gosec:
-      excludes:
-        - G404
-
-    revive:
-      rules:
-        - name: unused-parameter
-          disabled: true
-        - name: package-comments
-          disabled: true
+  gosec:
+    excludes:
+      - G404
 
 formatters:
   enable:

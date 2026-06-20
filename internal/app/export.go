@@ -114,7 +114,7 @@ func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
 	if err != nil {
 		return fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
 	}
-	
+
 	if err := os.WriteFile(input.OutPath, xmlData, 0o644); err != nil { // #nosec G306
 		return fmt.Errorf("gravar XML: %w", err)
 	}

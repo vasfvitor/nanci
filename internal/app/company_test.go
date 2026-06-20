@@ -35,7 +35,7 @@ func newTestApp(t *testing.T) (*app.App, *store.CompanyRepository, *store.Creden
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
 	application, err := app.New(app.Dependencies{
-		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:                slog.New(slog.DiscardHandler),
 		DB:                 db,
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
@@ -103,7 +103,7 @@ func TestNewRuntimeBuildsProductionDependencies(t *testing.T) {
 
 	dataDir := t.TempDir()
 	application, err := app.NewRuntime(app.RuntimeOptions{
-		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:                slog.New(slog.DiscardHandler),
 		CredentialProvider: credentialProviderStub{},
 		DataDir:            dataDir,
 		RunMigrations:      true,
@@ -178,7 +178,7 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := application.SyncRepo.PersistProgress(context.Background(), nfse.PersistSyncProgressParams{
+	_ = application.SyncRepo.PersistProgress(context.Background(), nfse.PersistSyncProgressParams{
 		CompanyID:             company.ID,
 		RunID:                 "run-1",
 		Environment:           company.Environment,
@@ -193,9 +193,7 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		ConsecutiveEmptyCount: 0,
 		ErrorsCount:           0,
 		MarkSuccess:           true,
-	}); err == nil {
-		// PersistProgress requires an existing run; ignore and seed directly below.
-	}
+	})
 	if _, err := application.DB.ExecContext(context.Background(), `
 		UPDATE companies SET last_nsu = 42 WHERE id = ?;
 		UPDATE sync_state SET last_checked_nsu = 42, last_found_nsu = 29, last_empty_streak = 3 WHERE company_id = ?;
@@ -254,7 +252,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 		},
 	}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.DiscardHandler),
 		DB:             db,
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
@@ -292,7 +290,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	if len(reader.File) != 1 {
 		t.Fatalf("expected 1 zip entry, got %d", len(reader.File))
@@ -301,7 +299,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	content, err := io.ReadAll(rc)
 	if err != nil {
@@ -327,7 +325,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	}
 	renderer := &stubDANFSeRenderer{pdf: []byte("%PDF-1.7 stub")}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.DiscardHandler),
 		DB:             db,
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
@@ -361,7 +359,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	if got := string(renderer.inputs[0]); got != "<NFSe>stub</NFSe>" {
 		t.Fatalf("renderer input = %q", got)
 	}
-	written, err := os.ReadFile(outPath)
+	written, err := os.ReadFile(outPath) //nolint:gosec // intentional: test
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +377,7 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.DiscardHandler),
 		DB:             db,
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},

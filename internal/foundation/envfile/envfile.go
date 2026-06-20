@@ -52,7 +52,7 @@ func candidatePaths() []string {
 }
 
 func loadFile(path string) error {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // intentional: path is a local config file
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil

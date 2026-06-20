@@ -106,7 +106,6 @@ func TestBer2DerMalformedInputDoesNotPanic(t *testing.T) {
 	}
 
 	for _, input := range tests {
-		input := input
 		t.Run(strings.ToUpper(fmtHex(input)), func(t *testing.T) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
@@ -137,7 +136,7 @@ func TestNormalizePKCS12BER_ExternalStructure(t *testing.T) {
 		t.Skip("set NANCI_TEST_PFX_PATH to test an external certificate structure")
 	}
 
-	ber, err := os.ReadFile(path)
+	ber, err := os.ReadFile(path) //nolint:gosec // intentional: test
 	if err != nil {
 		t.Fatal(err)
 	}
