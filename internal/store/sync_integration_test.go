@@ -331,11 +331,13 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	}
 
 	// Second application (conflict simulation)
-	// We simulate receiving the same document again (idempotency check)
-	p.DocumentParams.NSU = 11
-	p.ProgressParams.LastProcessedNSU = 11
+	// We simulate receiving the same document again with the same NSU (idempotency check)
+	// But we change LastFoundNSU to verify that the progress update commits successfully.
+	p.DocumentParams.NSU = 10
+	p.ProgressParams.LastProcessedNSU = 10
+	p.ProgressParams.LastFoundNSU = 999
 
-	// Should not fail
+	// Should not fail due to unique constraint, but should INSERT OR IGNORE the doc and UPDATE the progress
 	if err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
 		t.Fatalf("second apply failed, expected idempotency: %v", err)
 	}
@@ -358,8 +360,11 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state.LastProcessedNSU != 11 {
-		t.Fatalf("expected progress LastProcessedNSU=11, got %d", state.LastProcessedNSU)
+	if state.LastProcessedNSU != 10 {
+		t.Fatalf("expected progress LastProcessedNSU=10, got %d", state.LastProcessedNSU)
+	}
+	if state.LastFoundNSU != 999 {
+		t.Fatalf("expected progress LastFoundNSU=999, got %d", state.LastFoundNSU)
 	}
 }
 

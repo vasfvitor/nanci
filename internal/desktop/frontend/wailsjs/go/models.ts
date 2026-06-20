@@ -88,7 +88,7 @@ export namespace app {
 	    ConsultationBasis: string;
 	    Status: string;
 	    StopReason: string;
-	    LastCheckedNSU: number;
+	    LastProcessedNSU: number;
 	    LastFoundNSU: number;
 	    LastFoundNSUValid: boolean;
 	    EmptyStreak: number;
@@ -110,7 +110,7 @@ export namespace app {
 	        this.ConsultationBasis = source["ConsultationBasis"];
 	        this.Status = source["Status"];
 	        this.StopReason = source["StopReason"];
-	        this.LastCheckedNSU = source["LastCheckedNSU"];
+	        this.LastProcessedNSU = source["LastProcessedNSU"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.EmptyStreak = source["EmptyStreak"];
@@ -154,7 +154,7 @@ export namespace app {
 	    CredentialCNPJ: string;
 	    // Go type: time
 	    CredentialNotAfter?: any;
-	    LastCheckedNSU: number;
+	    LastProcessedNSU: number;
 	    LastFoundNSU: number;
 	    LastFoundNSUValid: boolean;
 	    // Go type: time
@@ -176,7 +176,7 @@ export namespace app {
 	        this.ConsultationCNPJ = source["ConsultationCNPJ"];
 	        this.CredentialCNPJ = source["CredentialCNPJ"];
 	        this.CredentialNotAfter = this.convertValues(source["CredentialNotAfter"], null);
-	        this.LastCheckedNSU = source["LastCheckedNSU"];
+	        this.LastProcessedNSU = source["LastProcessedNSU"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
