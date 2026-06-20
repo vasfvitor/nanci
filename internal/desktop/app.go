@@ -319,16 +319,24 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.ExportDANFSeZIP(a.ctx, app.ExportInput{
-		CNPJ:       input.CNPJ,
-		Competence: input.Competence,
-		Direction:  input.Direction,
-		OutPath:    input.OutPath,
-	})
+	exportInput := app.ExportInput{
+		CNPJ:        input.CNPJ,
+		Competence:  input.Competence,
+		Direction:   input.Direction,
+		OutPath:     input.OutPath,
+		Incremental: input.Incremental,
+	}
+
+	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse-zip"}, nil
+	return desktopapi.ExportResult{
+		OutPath:       res.OutPath,
+		Format:        res.Format,
+		Incremental:   res.Incremental,
+		ExportedCount: res.ExportedCount,
+	}, nil
 }
 
 func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
@@ -338,20 +346,22 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	}
 
 	exportInput := app.ExportInput{
-		CNPJ:       input.CNPJ,
-		Competence: input.Competence,
-		Direction:  input.Direction,
-		OutPath:    input.OutPath,
+		CNPJ:        input.CNPJ,
+		Competence:  input.Competence,
+		Direction:   input.Direction,
+		OutPath:     input.OutPath,
+		Incremental: input.Incremental,
 	}
 
+	var res app.ExportResult
 	var err error
 	switch format {
 	case "csv":
-		err = a.core.ExportCSV(a.ctx, exportInput)
+		res, err = a.core.ExportCSV(a.ctx, exportInput)
 	case "xlsx":
-		err = a.core.ExportXLSX(a.ctx, exportInput)
+		res, err = a.core.ExportXLSX(a.ctx, exportInput)
 	case "zip":
-		err = a.core.ExportZIP(a.ctx, exportInput)
+		res, err = a.core.ExportZIP(a.ctx, exportInput)
 	default:
 		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}
@@ -360,7 +370,32 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 		return desktopapi.ExportResult{}, err
 	}
 
-	return desktopapi.ExportResult{OutPath: input.OutPath, Format: format}, nil
+	return desktopapi.ExportResult{
+		OutPath:       res.OutPath,
+		Format:        res.Format,
+		Incremental:   res.Incremental,
+		ExportedCount: res.ExportedCount,
+	}, nil
+}
+
+func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, error) {
+	format := strings.ToLower(strings.TrimSpace(input.Format))
+	if format == "zip" {
+		format = "xml"
+	} else if format == "danfse-zip" {
+		format = "danfse"
+	}
+
+	exportInput := app.ExportInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+	}
+	return a.core.CountPendingExportDocuments(a.ctx, exportInput, format)
+}
+
+func (a *App) MarkDocumentsViewed(input app.ListInput) (int, error) {
+	return a.core.MarkDocumentsViewed(a.ctx, input)
 }
 
 func exportExtension(format string) (string, error) {

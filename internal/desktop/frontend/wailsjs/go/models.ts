@@ -54,6 +54,7 @@ export namespace app {
 	    CNPJ: string;
 	    Competence: string;
 	    Direction: string;
+	    OnlyUnread: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListInput(source);
@@ -64,6 +65,7 @@ export namespace app {
 	        this.CNPJ = source["CNPJ"];
 	        this.Competence = source["Competence"];
 	        this.Direction = source["Direction"];
+	        this.OnlyUnread = source["OnlyUnread"];
 	    }
 	}
 	export class PullInput {
@@ -481,6 +483,8 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
+	    // Go type: time
+	    ViewedAt?: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new DocumentRow(source);
@@ -526,6 +530,7 @@ export namespace desktopapi {
 	        this.LastSeenNSUValid = source["LastSeenNSUValid"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -568,6 +573,7 @@ export namespace desktopapi {
 	    Direction: string;
 	    Format: string;
 	    OutPath: string;
+	    Incremental: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExportDocumentsInput(source);
@@ -580,11 +586,14 @@ export namespace desktopapi {
 	        this.Direction = source["Direction"];
 	        this.Format = source["Format"];
 	        this.OutPath = source["OutPath"];
+	        this.Incremental = source["Incremental"];
 	    }
 	}
 	export class ExportResult {
 	    OutPath: string;
 	    Format: string;
+	    Incremental: boolean;
+	    ExportedCount: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExportResult(source);
@@ -594,6 +603,8 @@ export namespace desktopapi {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.OutPath = source["OutPath"];
 	        this.Format = source["Format"];
+	        this.Incremental = source["Incremental"];
+	        this.ExportedCount = source["ExportedCount"];
 	    }
 	}
 	export class ExportXMLInput {

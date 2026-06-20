@@ -80,6 +80,7 @@ type DocumentRow struct {
 	LastSeenNSUValid   bool
 	FirstSyncedAt      time.Time
 	LastSyncedAt       time.Time
+	ViewedAt           *time.Time
 }
 
 type DocumentEvent struct {
@@ -92,11 +93,12 @@ type DocumentEvent struct {
 }
 
 type ExportDocumentsInput struct {
-	CNPJ       string
-	Competence string
-	Direction  string
-	Format     string
-	OutPath    string
+	CNPJ        string
+	Competence  string
+	Direction   string
+	Format      string
+	OutPath     string
+	Incremental bool
 }
 
 type ExportDANFSeInput struct {
@@ -112,8 +114,10 @@ type ExportXMLInput struct {
 }
 
 type ExportResult struct {
-	OutPath string
-	Format  string
+	OutPath                     string
+	Format                      string
+	Incremental   bool
+	ExportedCount int
 }
 
 func CompanySummaries(companies []nfse.Company) []CompanySummary {
@@ -204,6 +208,7 @@ func DocumentRows(documents []nfse.CompanyDocument) []DocumentRow {
 			LastSeenNSUValid:   document.LastSeenNSUValid,
 			FirstSyncedAt:      document.FirstSyncedAt,
 			LastSyncedAt:       document.LastSyncedAt,
+			ViewedAt:           document.ViewedAt,
 		}
 	}
 	return out

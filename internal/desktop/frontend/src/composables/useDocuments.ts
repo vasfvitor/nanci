@@ -38,6 +38,7 @@ export function useDocuments() {
         CNPJ: filter.value.CNPJ,
         Competence: filter.value.Competence || '',
         Direction: filter.value.Direction || '',
+        OnlyUnread: filter.value.OnlyUnread || false,
       })
       documentsStore.setDocuments(rows)
       return rows
@@ -46,7 +47,25 @@ export function useDocuments() {
     }
   }
 
-  async function exportDocuments(format: ExportFormat) {
+  async function markDocumentsViewed() {
+    if (!filter.value.CNPJ) return 0
+    loading.value = true
+    try {
+      const count = await desktopClient.markDocumentsViewed({
+        CNPJ: filter.value.CNPJ,
+        Competence: filter.value.Competence || '',
+        Direction: filter.value.Direction || '',
+        OnlyUnread: filter.value.OnlyUnread || false,
+      })
+      // Reload documents after marking as viewed to update the state
+      await search()
+      return count
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function exportDocuments(format: ExportFormat, incremental: boolean = false, outPath: string = '') {
     if (exporting.value) return
     exporting.value = true
     try {
@@ -55,6 +74,8 @@ export function useDocuments() {
         Competence: filter.value.Competence || '',
         Direction: filter.value.Direction || '',
         Format: format,
+        OutPath: outPath,
+        Incremental: incremental,
       })
     } finally {
       exporting.value = false
@@ -87,7 +108,7 @@ export function useDocuments() {
     }
   }
 
-  async function exportDANFSeZIP() {
+  async function exportDANFSeZIP(incremental: boolean = false, outPath: string = '') {
     if (exporting.value) return
     exporting.value = true
     try {
@@ -96,10 +117,24 @@ export function useDocuments() {
         Competence: filter.value.Competence || '',
         Direction: filter.value.Direction || '',
         Format: 'zip',
+        OutPath: outPath,
+        Incremental: incremental,
       })
     } finally {
       exporting.value = false
     }
+  }
+
+  async function countPendingExports(format: ExportFormat | 'danfse-zip') {
+    if (!filter.value.CNPJ) return 0
+    return desktopClient.countPendingExports({
+      CNPJ: filter.value.CNPJ,
+      Competence: filter.value.Competence || '',
+      Direction: filter.value.Direction || '',
+      Format: format as ExportFormat,
+      OutPath: '',
+      Incremental: true,
+    })
   }
 
   async function loadEvents(documentID: string) {
@@ -120,6 +155,8 @@ export function useDocuments() {
     exportXML,
     exportDANFSeZIP,
     loadEvents,
+    markDocumentsViewed,
+    countPendingExports,
   }
 }
 

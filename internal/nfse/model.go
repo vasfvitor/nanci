@@ -85,6 +85,7 @@ type CompanyDocument struct {
 	LastSeenNSUValid  bool
 	FirstSyncedAt     time.Time
 	LastSyncedAt      time.Time
+	ViewedAt          *time.Time
 }
 
 // CompanyParticipation contains company-scoped role and visibility classification for one document.

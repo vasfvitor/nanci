@@ -73,6 +73,7 @@ export type DocumentRow = {
   LastSeenNSUValid: boolean
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
+  ViewedAt?: ISODateValue
 }
 
 export type DocumentEvent = {
@@ -88,14 +89,19 @@ export type ListDocumentsInput = {
   CNPJ: string
   Competence: string
   Direction: string
+  OnlyUnread: boolean
 }
 
 export type ExportFormat = 'csv' | 'xlsx' | 'zip'
 export type ExportResultFormat = ExportFormat | 'danfse' | 'danfse-zip'
 
-export type ExportDocumentsInput = ListDocumentsInput & {
+export type ExportDocumentsInput = {
+  CNPJ: string
+  Competence: string
+  Direction: string
   Format: ExportFormat
   OutPath: string
+  Incremental: boolean
 }
 
 export type ExportDANFSeInput = {
@@ -107,6 +113,8 @@ export type ExportDANFSeInput = {
 export type ExportResult = {
   OutPath: string
   Format: ExportResultFormat
+  Incremental: boolean
+  ExportedCount: number
 }
 
 export type QueryNFSeInput = {

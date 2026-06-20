@@ -89,7 +89,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
 			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
-			cd.first_synced_at, cd.last_synced_at
+			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		WHERE cd.company_id = ? AND d.chave_acesso = ?
@@ -101,6 +101,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 	var parseWarnings sql.NullString
 	var firstSeenValid, lastSeenValid int64
 	var firstSyncedAt, lastSyncedAt string
+	var viewedAt sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, string(companyID), chave).Scan(
 		&d.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
@@ -111,7 +112,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		&d.NFSeNumber, &d.ServiceDescription,
 		&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 		&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
-		&firstSyncedAt, &lastSyncedAt,
+		&firstSyncedAt, &lastSyncedAt, &viewedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -120,7 +121,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		return nil, fmt.Errorf("failed to query company document by chave: %w", err)
 	}
 
-	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt); err != nil {
+	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -139,7 +140,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
 			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
-			cd.first_synced_at, cd.last_synced_at
+			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		WHERE cd.company_id = ?
@@ -166,6 +167,9 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
 		args = append(args, *filter.ToNSU)
 	}
+	if filter.OnlyUnread {
+		query += " AND cd.viewed_at IS NULL"
+	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -186,6 +190,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		var parseWarnings sql.NullString
 		var firstSeenValid, lastSeenValid int64
 		var firstSyncedAt, lastSyncedAt string
+		var viewedAt sql.NullString
 
 		if err := rows.Scan(
 			&d.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
@@ -196,12 +201,12 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			&d.NFSeNumber, &d.ServiceDescription,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 			&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
-			&firstSyncedAt, &lastSyncedAt,
+			&firstSyncedAt, &lastSyncedAt, &viewedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt); err != nil {
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 			return nil, err
 		}
 
@@ -290,7 +295,7 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	return events, nil
 }
 
-func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeenValid, lastSeenValid int64, firstSyncedAt, lastSyncedAt string) error {
+func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeenValid, lastSeenValid int64, firstSyncedAt, lastSyncedAt string, viewedAt sql.NullString) error {
 	var err error
 	d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
 	if err != nil {
@@ -317,6 +322,13 @@ func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updat
 	if err != nil {
 		return err
 	}
+	if viewedAt.Valid && viewedAt.String != "" {
+		parsedViewedAt, err := parseRequiredTime("company document viewed_at", viewedAt.String)
+		if err != nil {
+			return err
+		}
+		d.ViewedAt = &parsedViewedAt
+	}
 	return nil
 }
 
@@ -333,4 +345,222 @@ func decodeWarnings(value sql.NullString, dst *[]string) error {
 		return nil
 	}
 	return json.Unmarshal([]byte(value.String), dst)
+}
+
+// ListPendingExportDocuments retrieves documents that have not been exported for the given kind, or where the hash changed.
+func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) ([]nfse.CompanyDocument, error) {
+	// Re-use ListCompanyDocuments logic but add a JOIN/WHERE for pending export
+	query := `
+		SELECT
+			d.id, d.chave_acesso, d.issue_date, d.competence,
+			d.prestador_cnpj, d.prestador_name, d.tomador_cnpj, d.tomador_name,
+			d.intermediario_cnpj, d.intermediario_name,
+			d.service_value, d.iss_value, d.irrf_value, d.inss_value, d.pis_value, d.cofins_value, d.csll_value, d.total_retentions,
+			d.status, d.layout_version, d.xml_path, d.raw_hash, d.parse_warnings, d.created_at, d.updated_at,
+			d.nfse_number, d.service_description,
+			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
+			cd.first_seen_nsu, cd.last_seen_nsu,
+			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
+			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
+		FROM company_documents cd
+		INNER JOIN documents d ON d.id = cd.document_id
+		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
+		WHERE cd.company_id = ? AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)
+	`
+	args := []interface{}{kind, string(companyID)}
+
+	if filter.Competence != "" {
+		query += " AND d.competence = ?"
+		args = append(args, filter.Competence)
+	}
+	if filter.Direction != "" {
+		query += " AND cd.company_role = ?"
+		args = append(args, filter.Direction)
+	}
+	if filter.Status != "" {
+		query += " AND d.status = ?"
+		args = append(args, filter.Status)
+	}
+	if filter.FromNSU != nil {
+		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		args = append(args, *filter.FromNSU)
+	}
+	if filter.ToNSU != nil {
+		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		args = append(args, *filter.ToNSU)
+	}
+	if filter.OnlyUnread {
+		query += " AND cd.viewed_at IS NULL"
+	}
+
+	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
+	if filter.Limit != nil && *filter.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, *filter.Limit)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending export documents: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var docs []nfse.CompanyDocument
+	for rows.Next() {
+		var d nfse.CompanyDocument
+		var issueDate, createdAt, updatedAt string
+		var parseWarnings sql.NullString
+		var firstSeenValid, lastSeenValid int64
+		var firstSyncedAt, lastSyncedAt string
+		var viewedAt sql.NullString
+
+		if err := rows.Scan(
+			&d.ID, &d.ChaveAcesso, &issueDate, &d.Competence,
+			&d.PrestadorCNPJ, &d.PrestadorName, &d.TomadorCNPJ, &d.TomadorName,
+			&d.IntermediarioCNPJ, &d.IntermediarioName,
+			&d.ServiceValue, &d.ISSValue, &d.IRRFValue, &d.INSSValue, &d.PISValue, &d.COFINSValue, &d.CSLLValue, &d.TotalRetentions,
+			&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
+			&d.NFSeNumber, &d.ServiceDescription,
+			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
+			&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
+			&firstSyncedAt, &lastSyncedAt, &viewedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan document: %w", err)
+		}
+
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+			return nil, err
+		}
+
+		docs = append(docs, d)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	return docs, nil
+}
+
+// CountPendingExportDocuments counts pending export documents.
+func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) (int, error) {
+	query := `
+		SELECT COUNT(1)
+		FROM company_documents cd
+		INNER JOIN documents d ON d.id = cd.document_id
+		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
+		WHERE cd.company_id = ? AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)
+	`
+	args := []interface{}{kind, string(companyID)}
+
+	if filter.Competence != "" {
+		query += " AND d.competence = ?"
+		args = append(args, filter.Competence)
+	}
+	if filter.Direction != "" {
+		query += " AND cd.company_role = ?"
+		args = append(args, filter.Direction)
+	}
+	if filter.Status != "" {
+		query += " AND d.status = ?"
+		args = append(args, filter.Status)
+	}
+	if filter.FromNSU != nil {
+		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		args = append(args, *filter.FromNSU)
+	}
+	if filter.ToNSU != nil {
+		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		args = append(args, *filter.ToNSU)
+	}
+	if filter.OnlyUnread {
+		query += " AND cd.viewed_at IS NULL"
+	}
+
+	var count int
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// MarkDocumentsExported marks documents as exported for a specific kind.
+func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyID nfse.CompanyID, kind string, marks []nfse.DocumentExportMark) error {
+	if len(marks) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO company_document_export_marks (company_id, document_id, export_kind, exported_hash, exported_at)
+		VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+		ON CONFLICT(company_id, document_id, export_kind) DO UPDATE SET
+			exported_hash=excluded.exported_hash,
+			exported_at=excluded.exported_at
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, m := range marks {
+		if _, err := stmt.ExecContext(ctx, string(companyID), m.DocumentID, kind, m.Hash); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// MarkDocumentsViewed marks documents matching the filter as viewed.
+func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) (int, error) {
+	// First we need to find the relation_ids that match, then update them.
+	// Or we can do an UPDATE with a subquery.
+	query := `
+		UPDATE company_documents
+		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		WHERE company_id = ? AND viewed_at IS NULL AND relation_id IN (
+			SELECT cd.relation_id
+			FROM company_documents cd
+			INNER JOIN documents d ON d.id = cd.document_id
+			WHERE cd.company_id = ?
+	`
+	args := []interface{}{string(companyID), string(companyID)}
+
+	if filter.Competence != "" {
+		query += " AND d.competence = ?"
+		args = append(args, filter.Competence)
+	}
+	if filter.Direction != "" {
+		query += " AND cd.company_role = ?"
+		args = append(args, filter.Direction)
+	}
+	if filter.Status != "" {
+		query += " AND d.status = ?"
+		args = append(args, filter.Status)
+	}
+	if filter.FromNSU != nil {
+		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		args = append(args, *filter.FromNSU)
+	}
+	if filter.ToNSU != nil {
+		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		args = append(args, *filter.ToNSU)
+	}
+	query += ")"
+
+	res, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return int(rows), nil
 }

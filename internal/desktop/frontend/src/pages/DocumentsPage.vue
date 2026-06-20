@@ -44,11 +44,25 @@ color="grey-7" icon="chevron_right" dense flat round :disable="loading || !filte
 v-model="filter.Direction" class="col-12 col-md-2" :options="directionOptions" label="Direção"
         emit-value map-options outlined dense options-dense :disable="loading" />
 
+      <q-toggle
+        v-model="filter.OnlyUnread"
+        label="Somente novos"
+        dense
+        class="col-auto q-mr-sm"
+        :disable="loading"
+        @update:model-value="handleCompanyChange"
+      />
+
       <q-space />
 
       <q-btn
 color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" :loading="loading" dense
         flat @click="search" />
+
+      <q-btn
+        v-if="documents.length > 0 && filter.OnlyUnread"
+        color="warning" icon="done_all" label="Marcar Vistos" :disable="loading" :loading="loading" dense
+        flat @click="markViewed" />
 
       <q-btn-dropdown
 color="secondary" label="Exportar" :disable="exporting || documents.length === 0"
@@ -229,6 +243,8 @@ v-if="hasEvents(props.row)" dense flat round size="sm" color="warning" icon="his
 dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chave Completa"
                   aria-label="Copiar Chave Completa" :disable="!props.row.ChaveAcesso"
                   @click.stop="copyChave(props.row.ChaveAcesso)" />
+
+                <q-badge v-if="!props.row.ViewedAt" color="warning" text-color="dark" label="Novo" dense class="q-ml-xs text-weight-bold" />
               </div>
             </template>
 
@@ -393,6 +409,8 @@ import {
 type Direction = '' | 'tomada' | 'prestada' | 'intermediario' | 'none'
 type ExportFormat = 'csv' | 'xlsx' | 'zip'
 
+import type { ExportResult } from '@/types/desktop'
+
 type SelectOption<T = string> = {
   label: string
   value: T
@@ -422,11 +440,9 @@ type DocumentRow = {
   COFINSValue?: number
   CSLLValue?: number
   TotalRetentions?: number
+  ViewedAt?: string | Date | null
 }
 
-type ExportResult = {
-  OutPath?: string
-}
 
 const $q = useQuasar()
 const route = useRoute()
@@ -650,13 +666,25 @@ function notifyError(message: string, error: unknown) {
 }
 
 function notifyExportSuccess(label: string, result: ExportResult | null | undefined) {
-  if (!result?.OutPath) {
+  if (!result) return
+
+  if (result.ExportedCount === 0) {
+    $q.notify({
+      type: 'info',
+      message: 'Nenhum documento novo encontrado para exportação.',
+    })
     return
   }
 
+  if (!result.OutPath) return
+
+  const msg = result.Incremental
+    ? `${label} incremental exportado com sucesso para ${result.OutPath} (${result.ExportedCount} documentos)`
+    : `${label} exportado com sucesso para ${result.OutPath}`
+
   $q.notify({
     type: 'positive',
-    message: `${label} exportado com sucesso para ${result.OutPath}`,
+    message: msg,
   })
 }
 
@@ -717,12 +745,31 @@ async function search() {
 }
 
 async function exportData(format: ExportFormat) {
-  try {
-    const result = await documentsApi.exportDocuments(format)
-    notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
-  } catch (error) {
-    notifyError('Erro ao exportar', error)
-  }
+  $q.dialog({
+    title: 'Exportar Documentos',
+    message: 'Deseja exportar apenas os documentos novos (não exportados)?',
+    options: {
+      type: 'checkbox',
+      model: ['incremental'],
+      items: [
+        { label: 'Exportação Incremental', value: 'incremental', color: 'primary' }
+      ]
+    },
+    cancel: true,
+    persistent: true
+  }).onOk(async (data: string[]) => {
+    const incremental = data.includes('incremental')
+    try {
+      const result = await documentsApi.exportDocuments(format, incremental)
+      notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
+      // refresh view
+      if (incremental && filter.value.OnlyUnread) {
+        await search()
+      }
+    } catch (error) {
+      notifyError('Erro ao exportar', error)
+    }
+  })
 }
 
 async function exportDanfse(chaveAcesso?: string) {
@@ -752,12 +799,49 @@ async function exportXML(chaveAcesso?: string) {
 }
 
 async function exportDanfseZip() {
-  try {
-    const result = await documentsApi.exportDANFSeZIP()
-    notifyExportSuccess('ZIP de DANFSes', result)
-  } catch (error) {
-    notifyError('Erro ao exportar DANFSes', error)
-  }
+  $q.dialog({
+    title: 'Exportar DANFSes',
+    message: 'Deseja exportar apenas os documentos novos (não exportados)?',
+    options: {
+      type: 'checkbox',
+      model: ['incremental'],
+      items: [
+        { label: 'Exportação Incremental', value: 'incremental', color: 'primary' }
+      ]
+    },
+    cancel: true,
+    persistent: true
+  }).onOk(async (data: string[]) => {
+    const incremental = data.includes('incremental')
+    try {
+      const result = await documentsApi.exportDANFSeZIP(incremental)
+      notifyExportSuccess('ZIP de DANFSes', result)
+      if (incremental && filter.value.OnlyUnread) {
+        await search()
+      }
+    } catch (error) {
+      notifyError('Erro ao exportar ZIP de DANFSes', error)
+    }
+  })
+}
+
+async function markViewed() {
+  $q.dialog({
+    title: 'Marcar Vistos',
+    message: 'Tem certeza que deseja marcar os documentos exibidos como vistos?',
+    cancel: true,
+    persistent: true
+  }).onOk(async () => {
+    try {
+      const count = await documentsApi.markDocumentsViewed()
+      $q.notify({
+        type: 'positive',
+        message: `${count} documentos marcados como vistos.`,
+      })
+    } catch (error) {
+      notifyError('Erro ao marcar documentos como vistos', error)
+    }
+  })
 }
 
 function openEventsDialog(documentId?: string) {

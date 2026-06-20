@@ -69,8 +69,21 @@ CREATE TABLE company_documents (
     last_seen_nsu_valid INTEGER NOT NULL DEFAULT 0,
     first_synced_at TEXT NOT NULL,
     last_synced_at TEXT NOT NULL,
+    viewed_at TEXT,
     UNIQUE(company_id, document_id)
 );
+
+CREATE TABLE company_document_export_marks (
+    company_id TEXT NOT NULL,
+    document_id TEXT NOT NULL,
+    export_kind TEXT NOT NULL CHECK (export_kind IN ('xml', 'csv', 'xlsx', 'danfse')),
+    exported_hash TEXT NOT NULL,
+    exported_at TEXT NOT NULL,
+    PRIMARY KEY (company_id, document_id, export_kind)
+);
+
+CREATE INDEX idx_company_documents_viewed_at ON company_documents(company_id, viewed_at);
+CREATE INDEX idx_export_marks_kind ON company_document_export_marks(company_id, export_kind, exported_at);
 
 CREATE TABLE events (
     id TEXT PRIMARY KEY,

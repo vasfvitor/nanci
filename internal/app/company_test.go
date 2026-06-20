@@ -41,6 +41,7 @@ func newTestApp(t *testing.T) (*app.App, *store.CompanyRepository, *store.Creden
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
 		DocumentReader:     store.NewDocumentRepository(db),
+		DocumentTracker:    store.NewDocumentRepository(db),
 		XMLStore:           files.NewBlobStore(dataDir),
 		DataDir:            dataDir,
 		CredentialProvider: credentialProviderStub{},
@@ -264,6 +265,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 				CompanyRole: "prestada",
 			},
 		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            dataDir,
 		CredentialProvider: credentialProviderStub{},
@@ -276,7 +278,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	})
 
 	outPath := filepath.Join(t.TempDir(), "docs.zip")
-	if err := application.ExportZIP(context.Background(), app.ExportInput{
+	if _, err := application.ExportZIP(context.Background(), app.ExportInput{
 		CNPJ:    "11222333000181",
 		OutPath: outPath,
 	}); err != nil {
@@ -336,6 +338,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 			CompanyID:   "company-1",
 			CompanyRole: "prestada",
 		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            dataDir,
 		CredentialProvider: credentialProviderStub{},
@@ -389,6 +392,7 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 				CompanyRole: "prestada",
 			},
 		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
 		XMLStore:           &stubXMLStore{},
 		DataDir:            dataDir,
 		CredentialProvider: credentialProviderStub{},
@@ -402,7 +406,7 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	})
 
 	outPath := filepath.Join(t.TempDir(), "danfses.zip")
-	err = application.ExportDANFSeZIP(context.Background(), app.ExportInput{
+	_, err = application.ExportDANFSeZIP(context.Background(), app.ExportInput{
 		CNPJ:    "11222333000181",
 		OutPath: outPath,
 	})
@@ -430,6 +434,7 @@ func TestNewRejectsMissingDocumentReader(t *testing.T) {
 		CompanyRepo:        store.NewCompanyRepository(db),
 		CredentialRepo:     store.NewCredentialRepository(db),
 		SyncRepo:           store.NewSyncRepository(db),
+		DocumentTracker:    store.NewDocumentRepository(db),
 		XMLStore:           files.NewBlobStore(dataDir),
 		DataDir:            dataDir,
 		CredentialProvider: credentialProviderStub{},

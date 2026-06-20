@@ -14,11 +14,25 @@ var (
 	exportDirection  string
 	exportOut        string
 	exportChave      string
+	exportIncremental bool
 )
 
 var exportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Exporta os documentos sincronizados para planilhas ou ZIP",
+}
+
+func printExportResult(res app.ExportResult) {
+	if res.ExportedCount == 0 {
+		if res.Incremental {
+			fmt.Println("Nenhum documento pendente para exportação incremental.")
+		} else {
+			fmt.Println("Nenhum documento encontrado para exportar.")
+		}
+		return
+	}
+	fmt.Printf("Arquivo %s gerado com sucesso: %s\n", res.Format, res.OutPath)
+	fmt.Printf("Documentos exportados: %d\n", res.ExportedCount)
 }
 
 var exportXlsxCmd = &cobra.Command{
@@ -32,18 +46,20 @@ var exportXlsxCmd = &cobra.Command{
 		defer application.Close()
 
 		input := app.ExportInput{
-			CNPJ:       exportCNPJ,
-			Competence: exportCompetence,
-			Direction:  exportDirection,
-			OutPath:    exportOut,
+			CNPJ:        exportCNPJ,
+			Competence:  exportCompetence,
+			Direction:   exportDirection,
+			OutPath:     exportOut,
+			Incremental: exportIncremental,
 		}
 
 		fmt.Println("Gerando arquivo Excel...")
-		if err := application.ExportXLSX(cmd.Context(), input); err != nil {
+		res, err := application.ExportXLSX(cmd.Context(), input)
+		if err != nil {
 			return fmt.Errorf("erro ao gerar arquivo XLSX: %w", err)
 		}
 
-		fmt.Printf("Planilha gerada com sucesso: %s\n", exportOut)
+		printExportResult(res)
 		return nil
 	},
 }
@@ -59,18 +75,20 @@ var exportCsvCmd = &cobra.Command{
 		defer application.Close()
 
 		input := app.ExportInput{
-			CNPJ:       exportCNPJ,
-			Competence: exportCompetence,
-			Direction:  exportDirection,
-			OutPath:    exportOut,
+			CNPJ:        exportCNPJ,
+			Competence:  exportCompetence,
+			Direction:   exportDirection,
+			OutPath:     exportOut,
+			Incremental: exportIncremental,
 		}
 
 		fmt.Println("Gerando arquivo CSV...")
-		if err := application.ExportCSV(cmd.Context(), input); err != nil {
+		res, err := application.ExportCSV(cmd.Context(), input)
+		if err != nil {
 			return fmt.Errorf("erro ao gerar arquivo CSV: %w", err)
 		}
 
-		fmt.Printf("Arquivo CSV gerado com sucesso: %s\n", exportOut)
+		printExportResult(res)
 		return nil
 	},
 }
@@ -86,18 +104,20 @@ var exportZipCmd = &cobra.Command{
 		defer application.Close()
 
 		input := app.ExportInput{
-			CNPJ:       exportCNPJ,
-			Competence: exportCompetence,
-			Direction:  exportDirection,
-			OutPath:    exportOut,
+			CNPJ:        exportCNPJ,
+			Competence:  exportCompetence,
+			Direction:   exportDirection,
+			OutPath:     exportOut,
+			Incremental: exportIncremental,
 		}
 
 		fmt.Println("Gerando arquivo ZIP...")
-		if err := application.ExportZIP(cmd.Context(), input); err != nil {
+		res, err := application.ExportZIP(cmd.Context(), input)
+		if err != nil {
 			return fmt.Errorf("erro ao gerar arquivo ZIP: %w", err)
 		}
 
-		fmt.Printf("Arquivo ZIP gerado com sucesso: %s\n", exportOut)
+		printExportResult(res)
 		return nil
 	},
 }
@@ -139,18 +159,20 @@ var exportDANFSeZipCmd = &cobra.Command{
 		defer application.Close()
 
 		input := app.ExportInput{
-			CNPJ:       exportCNPJ,
-			Competence: exportCompetence,
-			Direction:  exportDirection,
-			OutPath:    exportOut,
+			CNPJ:        exportCNPJ,
+			Competence:  exportCompetence,
+			Direction:   exportDirection,
+			OutPath:     exportOut,
+			Incremental: exportIncremental,
 		}
 
 		fmt.Println("Gerando ZIP de DANFSes...")
-		if err := application.ExportDANFSeZIP(cmd.Context(), input); err != nil {
+		res, err := application.ExportDANFSeZIP(cmd.Context(), input)
+		if err != nil {
 			return fmt.Errorf("erro ao gerar ZIP de DANFSes: %w", err)
 		}
 
-		fmt.Printf("ZIP de DANFSes gerado com sucesso: %s\n", exportOut)
+		printExportResult(res)
 		return nil
 	},
 }
@@ -167,6 +189,7 @@ func init() {
 	exportCmd.PersistentFlags().StringVarP(&exportCNPJ, "cnpj", "c", "", "CNPJ da empresa")
 	exportCmd.PersistentFlags().StringVarP(&exportCompetence, "competencia", "m", "", "Competência (ex: 2026-06)")
 	exportCmd.PersistentFlags().StringVarP(&exportDirection, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
+	exportCmd.PersistentFlags().BoolVar(&exportIncremental, "incremental", false, "Exportar apenas documentos não exportados (ou modificados)")
 	_ = exportCmd.MarkPersistentFlagRequired("cnpj")
 
 	// Specific flags for out

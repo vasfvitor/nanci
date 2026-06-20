@@ -130,7 +130,7 @@ describe('desktop client calls', () => {
     await expect(desktopClient.listCompanies()).resolves.toMatchObject([{ ID: 'c1' }])
     await expect(desktopClient.listCredentials()).resolves.toMatchObject([{ ID: 'cred-1' }])
     await expect(
-      desktopClient.listDocuments({ CNPJ: '123', Competence: '', Direction: '' })
+      desktopClient.listDocuments({ CNPJ: '123', Competence: '', Direction: '', OnlyUnread: false })
     ).resolves.toMatchObject([{ DocumentID: 'doc-1', ServiceValue: 100 }])
     await expect(desktopClient.listEventsForDocument('doc-1')).resolves.toMatchObject([
       { ID: 'evt-1' },
@@ -162,6 +162,7 @@ describe('desktop client calls', () => {
       Competence: '2026-06',
       Direction: 'tomada',
       Format: 'zip',
+      Incremental: false,
     })
 
     expect(ExportDANFSe).toHaveBeenCalledWith({
@@ -175,6 +176,7 @@ describe('desktop client calls', () => {
       Direction: 'tomada',
       Format: 'zip',
       OutPath: 'C:\\mock\\save\\path.ext',
+      Incremental: false,
     })
   })
 
@@ -187,6 +189,7 @@ describe('desktop client calls', () => {
         Competence: '2026-06',
         Direction: 'tomada',
         Format: 'csv',
+        Incremental: false,
       })
     ).resolves.toBeNull()
     await expect(
@@ -201,6 +204,7 @@ describe('desktop client calls', () => {
         Competence: '2026-06',
         Direction: 'tomada',
         Format: 'zip',
+        Incremental: false,
       })
     ).resolves.toBeNull()
 

@@ -11,6 +11,8 @@ export function AssignCredentialToCompany(arg1:app.AssignCredentialInput):Promis
 
 export function CancelCertPassword(arg1:string):Promise<void>;
 
+export function CountPendingExports(arg1:desktopapi.ExportDocumentsInput):Promise<number>;
+
 export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
 
 export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
@@ -32,6 +34,8 @@ export function ListCredentials():Promise<Array<desktopapi.CredentialSummary>>;
 export function ListDocuments(arg1:app.ListInput):Promise<Array<desktopapi.DocumentRow>>;
 
 export function ListEventsForDocument(arg1:string):Promise<Array<desktopapi.DocumentEvent>>;
+
+export function MarkDocumentsViewed(arg1:app.ListInput):Promise<number>;
 
 export function OpenDataDirectory():Promise<void>;
 

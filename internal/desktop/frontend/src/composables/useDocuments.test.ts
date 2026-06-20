@@ -38,6 +38,7 @@ describe('useDocuments', () => {
       CNPJ: '123',
       Competence: '',
       Direction: '',
+      OnlyUnread: false,
     })
   })
 
@@ -54,6 +55,8 @@ describe('useDocuments', () => {
       Competence: '2026-06',
       Direction: 'tomada',
       Format: 'csv',
+      OutPath: '',
+      Incremental: false,
     })
   })
 
@@ -82,6 +85,8 @@ describe('useDocuments', () => {
       Competence: '2026-06',
       Direction: 'tomada',
       Format: 'zip',
+      OutPath: '',
+      Incremental: false,
     })
   })
 
@@ -131,7 +136,7 @@ describe('useDocuments', () => {
     await expect(secondPending).resolves.toBeUndefined()
     expect(desktopClient.exportDocuments).toHaveBeenCalledTimes(1)
 
-    resolveExport({ OutPath: '/path', Format: 'csv' })
+    resolveExport({ OutPath: '/path', Format: 'csv', Incremental: false, ExportedCount: 10 })
     await pending
     expect(first.exporting.value).toBe(false)
     expect(second.exporting.value).toBe(false)

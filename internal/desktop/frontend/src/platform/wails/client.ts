@@ -3,6 +3,7 @@ import {
   AddCredential,
   AssignCredentialToCompany,
   CancelCertPassword,
+  CountPendingExports,
   ExportDANFSe,
   ExportDANFSeZIP,
   ExportDocuments,
@@ -14,6 +15,7 @@ import {
   ListCredentials,
   ListDocuments,
   ListEventsForDocument,
+  MarkDocumentsViewed,
   OpenDataDirectory,
   OpenLogsDirectory,
   Pull,
@@ -177,6 +179,7 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     LastSeenNSUValid: asBoolean(item['LastSeenNSUValid']),
     FirstSyncedAt: item['FirstSyncedAt'] as DocumentRow['FirstSyncedAt'],
     LastSyncedAt: item['LastSyncedAt'] as DocumentRow['LastSyncedAt'],
+    ViewedAt: item['ViewedAt'] as DocumentRow['ViewedAt'],
   }
 }
 
@@ -202,10 +205,10 @@ export const desktopClient = {
   assignCredential(input: AssignCredentialInput) {
     return callWails(() => AssignCredentialToCompany(input))
   },
-  async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+  async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const extension = input.Format === 'csv' ? '.csv' : input.Format === 'xlsx' ? '.xlsx' : '.zip'
     const defaultName = input.BaseName || `export_${input.CNPJ}_${Date.now()}${extension}`
-    const outPath = await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
+    const outPath = input.OutPath || await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -216,9 +219,9 @@ export const desktopClient = {
     )
     return result as ExportResult
   },
-  async exportDANFSe(input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+  async exportDANFSe(input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfse_${input.ChaveAcesso}.pdf`
-    const outPath = await desktopClient.selectSaveFile('Salvar DANFSe', defaultName, '*.pdf')
+    const outPath = input.OutPath || await desktopClient.selectSaveFile('Salvar DANFSe', defaultName, '*.pdf')
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -229,9 +232,9 @@ export const desktopClient = {
     )
     return result as ExportResult
   },
-  async exportXML(input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+  async exportXML(input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `nfse_${input.ChaveAcesso}.xml`
-    const outPath = await desktopClient.selectSaveFile('Salvar XML Original', defaultName, '*.xml')
+    const outPath = input.OutPath || await desktopClient.selectSaveFile('Salvar XML Original', defaultName, '*.xml')
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -242,9 +245,9 @@ export const desktopClient = {
     )
     return result as ExportResult
   },
-  async exportDANFSeZIP(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string }): Promise<ExportResult | null> {
+  async exportDANFSeZIP(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfses_${input.CNPJ}_${Date.now()}.zip`
-    const outPath = await desktopClient.selectSaveFile('Salvar ZIP de DANFSes', defaultName, '*.zip')
+    const outPath = input.OutPath || await desktopClient.selectSaveFile('Salvar ZIP de DANFSes', defaultName, '*.zip')
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -266,6 +269,12 @@ export const desktopClient = {
   async listDocuments(input: ListDocumentsInput): Promise<DocumentRow[]> {
     const result = await callWails(() => ListDocuments(input))
     return (result || []).map(mapDocumentRow)
+  },
+  async markDocumentsViewed(input: ListDocumentsInput): Promise<number> {
+    return callWails(() => MarkDocumentsViewed(input))
+  },
+  async countPendingExports(input: ExportDocumentsInput): Promise<number> {
+    return callWails(() => CountPendingExports(input))
   },
   async listEventsForDocument(documentID: string): Promise<DocumentEvent[]> {
     const result = await callWails(() => ListEventsForDocument(documentID))

@@ -27,6 +27,20 @@ type DocumentFilter struct {
 	FromNSU    *int64
 	ToNSU      *int64
 	Limit      *int
+	OnlyUnread bool
+}
+
+type DocumentExportMark struct {
+	DocumentID string
+	ExportKind string
+	Hash       string
+}
+
+type DocumentTracker interface {
+	ListPendingExportDocuments(ctx context.Context, companyID CompanyID, filter DocumentFilter, kind string) ([]CompanyDocument, error)
+	CountPendingExportDocuments(ctx context.Context, companyID CompanyID, filter DocumentFilter, kind string) (int, error)
+	MarkDocumentsExported(ctx context.Context, companyID CompanyID, kind string, marks []DocumentExportMark) error
+	MarkDocumentsViewed(ctx context.Context, companyID CompanyID, filter DocumentFilter) (int, error)
 }
 
 type DocumentReader interface {

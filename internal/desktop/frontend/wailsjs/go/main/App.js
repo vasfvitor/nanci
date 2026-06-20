@@ -18,6 +18,10 @@ export function CancelCertPassword(arg1) {
   return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
+export function CountPendingExports(arg1) {
+  return window['go']['main']['App']['CountPendingExports'](arg1);
+}
+
 export function ExportDANFSe(arg1) {
   return window['go']['main']['App']['ExportDANFSe'](arg1);
 }
@@ -60,6 +64,10 @@ export function ListDocuments(arg1) {
 
 export function ListEventsForDocument(arg1) {
   return window['go']['main']['App']['ListEventsForDocument'](arg1);
+}
+
+export function MarkDocumentsViewed(arg1) {
+  return window['go']['main']['App']['MarkDocumentsViewed'](arg1);
 }
 
 export function OpenDataDirectory() {

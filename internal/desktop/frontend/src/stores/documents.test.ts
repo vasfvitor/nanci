@@ -10,7 +10,7 @@ describe('documents store', () => {
   it('initializes with empty filter and document rows', () => {
     const store = useDocumentsStore()
 
-    expect(store.filter).toEqual({ CNPJ: '', Competence: '', Direction: '' })
+    expect(store.filter).toEqual({ CNPJ: '', Competence: '', Direction: '', OnlyUnread: false })
     expect(store.documents).toEqual([])
   })
 
@@ -70,6 +70,7 @@ describe('documents store', () => {
       CNPJ: '123',
       Competence: '2026-06',
       Direction: 'tomada',
+      OnlyUnread: false,
     })
   })
 })

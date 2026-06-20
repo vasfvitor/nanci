@@ -7,6 +7,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     CNPJ: '',
     Competence: '',
     Direction: '',
+    OnlyUnread: false,
   })
   const documents = ref<DocumentRow[]>([])
   const loading = shallowRef(false)

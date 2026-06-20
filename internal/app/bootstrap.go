@@ -42,6 +42,7 @@ type App struct {
 	CredentialRepo     nfse.CredentialRepository
 	SyncRepo           nfse.SyncRepository
 	DocumentReader     nfse.DocumentReader
+	DocumentTracker    nfse.DocumentTracker
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -56,6 +57,7 @@ type Dependencies struct {
 	CredentialRepo     nfse.CredentialRepository
 	SyncRepo           nfse.SyncRepository
 	DocumentReader     nfse.DocumentReader
+	DocumentTracker    nfse.DocumentTracker
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -86,6 +88,8 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: sync repository is required")
 	case deps.DocumentReader == nil:
 		return nil, errors.New("app: document reader is required")
+	case deps.DocumentTracker == nil:
+		return nil, errors.New("app: document tracker is required")
 	case deps.XMLStore == nil:
 		return nil, errors.New("app: XML store is required")
 	case deps.DataDir == "":
@@ -101,6 +105,7 @@ func New(deps Dependencies) (*App, error) {
 		CredentialRepo:     deps.CredentialRepo,
 		SyncRepo:           deps.SyncRepo,
 		DocumentReader:     deps.DocumentReader,
+		DocumentTracker:    deps.DocumentTracker,
 		XMLStore:           deps.XMLStore,
 		DataDir:            deps.DataDir,
 		CredentialProvider: deps.CredentialProvider,
@@ -139,13 +144,16 @@ func NewRuntime(opts RuntimeOptions) (*App, error) {
 		return nil, fmt.Errorf("inicializar banco de dados: %w", err)
 	}
 
+	docRepo := store.NewDocumentRepository(db)
+
 	application, err := New(Dependencies{
 		Log:                opts.Log,
 		DB:                 db,
 		CompanyRepo:        store.NewCompanyRepository(db),
 		CredentialRepo:     store.NewCredentialRepository(db),
 		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     store.NewDocumentRepository(db),
+		DocumentReader:     docRepo,
+		DocumentTracker:    docRepo,
 		XMLStore:           files.NewBlobStore(dataDir),
 		DataDir:            dataDir,
 		CredentialProvider: opts.CredentialProvider,

@@ -81,6 +81,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
 		DocumentReader:     store.NewDocumentRepository(db),
+		DocumentTracker:    store.NewDocumentRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            dataDir,
 		CredentialProvider: providerStub{},

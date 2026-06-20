@@ -21,7 +21,7 @@ export function useQuery() {
         return
       }
       try {
-        const docs = await desktopClient.listDocuments({ CNPJ: newCnpj, Competence: '', Direction: '' })
+        const docs = await desktopClient.listDocuments({ CNPJ: newCnpj, Competence: '', Direction: '', OnlyUnread: false })
         allDocumentOptions.value = docs.map((d) => {
           const pureKey = d.ChaveAcesso.replace(/\D/g, '')
           const shortKey = pureKey.length >= 6 ? pureKey.slice(-6) : pureKey
