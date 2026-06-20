@@ -19,8 +19,10 @@ type mockSyncRepo struct {
 	startRunParams   []nfse.StartRunParams
 	persistParams    []nfse.PersistSyncProgressParams
 	finishRunParams  []nfse.FinishRunParams
-	applyDocParams   []nfse.ApplyDocumentParams
-	applyEventParams []nfse.ApplyEventParams
+	applyDocParams            []nfse.ApplyDocumentParams
+	applyEventParams          []nfse.ApplyEventParams
+	applyDocAndProgressParams []nfse.ApplyDocumentAndProgressParams
+	applyEventAndProgressParams []nfse.ApplyEventAndProgressParams
 }
 
 func (m *mockSyncRepo) GetOrCreateState(context.Context, nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
@@ -64,12 +66,12 @@ func (m *mockSyncRepo) ApplyEvent(ctx context.Context, p nfse.ApplyEventParams) 
 }
 
 func (m *mockSyncRepo) ApplyDocumentAndProgress(ctx context.Context, p nfse.ApplyDocumentAndProgressParams) error {
-	m.applyDocParams = append(m.applyDocParams, p.DocumentParams)
+	m.applyDocAndProgressParams = append(m.applyDocAndProgressParams, p)
 	return m.PersistProgress(ctx, p.ProgressParams)
 }
 
 func (m *mockSyncRepo) ApplyEventAndProgress(ctx context.Context, p nfse.ApplyEventAndProgressParams) error {
-	m.applyEventParams = append(m.applyEventParams, p.EventParams)
+	m.applyEventAndProgressParams = append(m.applyEventAndProgressParams, p)
 	return m.PersistProgress(ctx, p.ProgressParams)
 }
 
@@ -293,11 +295,11 @@ func TestSyncServiceProcessesEventFromTipoEventoMetadata(t *testing.T) {
 		t.Fatalf("expected sync success, got %v", err)
 	}
 
-	if len(repo.applyEventParams) != 1 {
-		t.Fatalf("expected 1 event to be applied, got %d", len(repo.applyEventParams))
+	if len(repo.applyEventAndProgressParams) != 1 {
+		t.Fatalf("expected 1 event to be applied atomically, got %d", len(repo.applyEventAndProgressParams))
 	}
-	if len(repo.applyDocParams) != 0 {
-		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocParams))
+	if len(repo.applyDocAndProgressParams) != 0 {
+		t.Fatalf("expected no documents to be applied, got %d", len(repo.applyDocAndProgressParams))
 	}
 }
 
@@ -395,12 +397,12 @@ func TestSyncServiceProcessesBatchInAscendingNSUOrder(t *testing.T) {
 		t.Fatalf("expected sync success, got %v", err)
 	}
 
-	if len(repo.applyDocParams) != 3 {
-		t.Fatalf("expected 3 documents applied, got %d", len(repo.applyDocParams))
+	if len(repo.applyDocAndProgressParams) != 3 {
+		t.Fatalf("expected 3 documents applied, got %d", len(repo.applyDocAndProgressParams))
 	}
 
-	if repo.applyDocParams[0].NSU != 1 || repo.applyDocParams[1].NSU != 2 || repo.applyDocParams[2].NSU != 3 {
-		t.Fatalf("documents not applied in ascending NSU order: %v", repo.applyDocParams)
+	if repo.applyDocAndProgressParams[0].DocumentParams.NSU != 1 || repo.applyDocAndProgressParams[1].DocumentParams.NSU != 2 || repo.applyDocAndProgressParams[2].DocumentParams.NSU != 3 {
+		t.Fatalf("documents not applied in ascending NSU order")
 	}
 }
 
@@ -464,13 +466,28 @@ func TestSyncServiceConflictTreatedAsSuccess(t *testing.T) {
 	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
 	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
 
-	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
-		t.Fatalf("expected sync success, got %v", err)
+	// Run sync once
+	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeFirstSetup, nil); err != nil {
+		t.Fatalf("expected first sync success, got %v", err)
 	}
 
-	if len(repo.persistParams) == 0 {
-		t.Fatal("expected progress to be persisted")
+	if len(repo.applyDocAndProgressParams) != 1 {
+		t.Fatalf("expected 1 document applied, got %d", len(repo.applyDocAndProgressParams))
 	}
+
+	// Simulate conflict scenario: the run restarts and processes the same NSU again
+	// because LastProcessedNSU was rolled back or we explicitly asked to sync from 0.
+	repo.state.LastProcessedNSU = 0
+
+	// Second execution should not fail, proving idempotency logic allows proceeding
+	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeFirstSetup, nil); err != nil {
+		t.Fatalf("expected second sync success (idempotent), got %v", err)
+	}
+
+	if len(repo.applyDocAndProgressParams) != 2 {
+		t.Fatalf("expected document to be applied a second time without error, got %d", len(repo.applyDocAndProgressParams))
+	}
+
 	last := repo.persistParams[len(repo.persistParams)-1]
 	if last.LastProcessedNSU != 1 {
 		t.Fatalf("last processed nsu = %d, want 1", last.LastProcessedNSU)
@@ -506,11 +523,15 @@ func TestSyncServiceApplyDocumentAndProgressIsAtomic(t *testing.T) {
 	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
 	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
 
-	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
+	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeFirstSetup, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
 	}
 
-	if len(repo.applyDocParams) != 1 {
-		t.Fatalf("expected 1 document applied, got %d", len(repo.applyDocParams))
+	if len(repo.applyDocAndProgressParams) != 1 {
+		t.Fatalf("expected atomic ApplyDocumentAndProgress to be called 1 time, got %d", len(repo.applyDocAndProgressParams))
+	}
+
+	if len(repo.applyDocParams) != 0 {
+		t.Fatalf("expected non-atomic ApplyDocument to NOT be called, but got %d calls", len(repo.applyDocParams))
 	}
 }
