@@ -85,7 +85,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	}
 
 	runState := syncRuntimeState{
-		lastProcessedNSU:     state.LastProcessedNSU,
+		lastProcessedNSU:   state.LastProcessedNSU,
 		lastFoundNSU:       state.LastFoundNSU,
 		lastFoundNSUValid:  state.LastFoundNSUValid,
 		checkedCount:       0,
@@ -178,9 +178,8 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	return nil
 }
 
-
 type syncRuntimeState struct {
-	lastProcessedNSU     int64
+	lastProcessedNSU   int64
 	lastFoundNSU       int64
 	lastFoundNSUValid  bool
 	checkedCount       int
@@ -237,11 +236,9 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 	runState.checkedCount++
 	docsInBatch := len(resp.Docs)
 
-
 	sort.Slice(resp.Docs, func(i, j int) bool {
 		return resp.Docs[i].NSU < resp.Docs[j].NSU
 	})
-
 
 	processedCount := 0
 
@@ -337,7 +334,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		if !isRevisit {
 			runState.consecutiveEmpty++
 		}
-		
 		if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
 			CompanyID:             company.ID,
 			RunID:                 runID,
