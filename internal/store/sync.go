@@ -298,7 +298,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 			updated_at = ?
 		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
 	`,
-		params.LastCheckedNSU,
+		params.LastProcessedNSU,
 		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
 		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
 		params.LastEmptyStreak,
@@ -330,8 +330,8 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 		updated_at = ?
 		WHERE id = ?
 	`,
-		params.LastCheckedNSU,
-		params.LastCheckedNSU,
+		params.LastProcessedNSU,
+		params.LastProcessedNSU,
 		now,
 		string(params.CompanyID),
 	)
@@ -354,7 +354,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 			END
 		WHERE id = ?
 	`,
-		params.LastCheckedNSU,
+		params.LastProcessedNSU,
 		params.CheckedCount,
 		params.DocumentsFound,
 		params.EmptyCount,
@@ -464,7 +464,7 @@ func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.Compan
 		&state.CompanyID,
 		&state.Environment,
 		&state.ConsultationCNPJ,
-		&state.LastCheckedNSU,
+		&state.LastProcessedNSU,
 		&lastFound,
 		&state.LastEmptyStreak,
 		&lastSuccessAt,

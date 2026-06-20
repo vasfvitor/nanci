@@ -78,7 +78,7 @@ type PersistSyncProgressParams struct {
 	RunID                 SyncRunID
 	Environment           Environment
 	ConsultationCNPJ      string
-	LastCheckedNSU        int64
+	LastProcessedNSU      int64
 	LastFoundNSU          int64
 	LastFoundNSUValid     bool
 	LastEmptyStreak       int
