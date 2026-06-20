@@ -285,3 +285,81 @@ func assertDocumentStatus(t *testing.T, db *sql.DB, accessKey nfse.AccessKey, wa
 		t.Fatalf("status = %q, want %q", got, want)
 	}
 }
+
+func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDB(t)
+	syncRepo := NewSyncRepository(db)
+	company := seedCompany(t, db, "company-1", "11222333000181")
+
+	// Initialize the sync state first so the UPDATE statement has a row to update.
+	_, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
+		CompanyID:        company.ID,
+		Environment:      nfse.EnvironmentRestricted,
+		ConsultationCNPJ: "11222333000181",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	doc := testDocument("doc-sync-1", "12345678901234567890123456789012345678901234567890", "hash-sync-1")
+
+	p := nfse.ApplyDocumentAndProgressParams{
+		DocumentParams: nfse.ApplyDocumentParams{
+			Document: doc,
+			Participation: nfse.CompanyParticipation{
+				CompanyRole:      nfse.CompanyRoleTomada,
+				VisibilityReason: "exact_tomador",
+			},
+			CompanyID: company.ID,
+			NSU:       10,
+		},
+		ProgressParams: nfse.PersistSyncProgressParams{
+			CompanyID:         company.ID,
+			Environment:       nfse.EnvironmentRestricted,
+			ConsultationCNPJ:  "11222333000181",
+			LastProcessedNSU:  10,
+			LastFoundNSU:      10,
+			LastFoundNSUValid: true,
+		},
+	}
+
+	// First application
+	if err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
+		t.Fatalf("first apply failed: %v", err)
+	}
+
+	// Second application (conflict simulation)
+	// We simulate receiving the same document again (idempotency check)
+	p.DocumentParams.NSU = 11
+	p.ProgressParams.LastProcessedNSU = 11
+
+	// Should not fail
+	if err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
+		t.Fatalf("second apply failed, expected idempotency: %v", err)
+	}
+
+	// Verify idempotency
+	var docCount int
+	if err := db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM documents WHERE chave_acesso = ?`, doc.ChaveAcesso).Scan(&docCount); err != nil {
+		t.Fatal(err)
+	}
+	if docCount != 1 {
+		t.Fatalf("expected 1 document, got %d", docCount)
+	}
+
+	// Verify atomicity (Progress was saved and transaction succeeded)
+	state, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
+		CompanyID:        company.ID,
+		Environment:      nfse.EnvironmentRestricted,
+		ConsultationCNPJ: "11222333000181",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastProcessedNSU != 11 {
+		t.Fatalf("expected progress LastProcessedNSU=11, got %d", state.LastProcessedNSU)
+	}
+}
+

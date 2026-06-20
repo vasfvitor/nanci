@@ -437,62 +437,7 @@ func TestSyncServiceBreaksGracefullyOnEmptyList(t *testing.T) {
 	assertSingleFinishRun(t, repo, nfse.SyncStatusCompleted, nfse.SyncStopReasonEmptyLimit)
 }
 
-func TestSyncServiceConflictTreatedAsSuccess(t *testing.T) {
-	repo := &mockSyncRepo{
-		state: &nfse.SyncState{
-			CompanyID:        "comp-1",
-			Environment:      nfse.EnvironmentProduction,
-			ConsultationCNPJ: "12345678901234",
-		},
-	}
-	fetcher := &mockFetcher{
-		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
-			if req.LastNSU == 0 {
-				return &adn.DocumentResponse{
-					Docs: []adn.DocumentEnvelope{
-						{NSU: 1, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, validDocumentXML)},
-					},
-				}, nil
-			}
-			return &adn.DocumentResponse{}, nil
-		},
-	}
 
-	originalDelay := syncRequestDelay
-	syncRequestDelay = 0
-	defer func() { syncRequestDelay = originalDelay }()
-
-	svc := NewSyncService(repo, fetcher, &mockXMLStore{}, discardLogger())
-	company := &nfse.Company{ID: "comp-1", CNPJ: "12345678901234", Environment: nfse.EnvironmentProduction}
-	credential := &nfse.Credential{ID: "cred-1", OwnerCNPJ: "12345678901234"}
-
-	// Run sync once
-	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeFirstSetup, nil); err != nil {
-		t.Fatalf("expected first sync success, got %v", err)
-	}
-
-	if len(repo.applyDocAndProgressParams) != 1 {
-		t.Fatalf("expected 1 document applied, got %d", len(repo.applyDocAndProgressParams))
-	}
-
-	// Simulate conflict scenario: the run restarts and processes the same NSU again
-	// because LastProcessedNSU was rolled back or we explicitly asked to sync from 0.
-	repo.state.LastProcessedNSU = 0
-
-	// Second execution should not fail, proving idempotency logic allows proceeding
-	if err := svc.Sync(context.Background(), company, credential, "exact_certificate_cnpj", nfse.SyncModeFirstSetup, nil); err != nil {
-		t.Fatalf("expected second sync success (idempotent), got %v", err)
-	}
-
-	if len(repo.applyDocAndProgressParams) != 2 {
-		t.Fatalf("expected document to be applied a second time without error, got %d", len(repo.applyDocAndProgressParams))
-	}
-
-	last := repo.persistParams[len(repo.persistParams)-1]
-	if last.LastProcessedNSU != 1 {
-		t.Fatalf("last processed nsu = %d, want 1", last.LastProcessedNSU)
-	}
-}
 
 func TestSyncServiceApplyDocumentAndProgressIsAtomic(t *testing.T) {
 	repo := &mockSyncRepo{
