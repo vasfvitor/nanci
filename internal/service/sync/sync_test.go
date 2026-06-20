@@ -62,6 +62,16 @@ func (m *mockSyncRepo) ApplyEvent(ctx context.Context, p nfse.ApplyEventParams) 
 	return nil
 }
 
+func (m *mockSyncRepo) ApplyDocumentAndProgress(ctx context.Context, p nfse.ApplyDocumentAndProgressParams) error {
+	m.applyDocParams = append(m.applyDocParams, p.DocumentParams)
+	return m.PersistProgress(ctx, p.ProgressParams)
+}
+
+func (m *mockSyncRepo) ApplyEventAndProgress(ctx context.Context, p nfse.ApplyEventAndProgressParams) error {
+	m.applyEventParams = append(m.applyEventParams, p.EventParams)
+	return m.PersistProgress(ctx, p.ProgressParams)
+}
+
 func (m *mockSyncRepo) LatestSyncSnapshot(context.Context, nfse.CompanyID, nfse.Environment, string) (nfse.SyncSnapshot, error) {
 	return nfse.SyncSnapshot{}, nil
 }
