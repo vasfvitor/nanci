@@ -365,6 +365,16 @@ const screenshots: ScreenshotSpec[] = [
   {
     route: '/',
     name: 'dialogo-adicionar-empresa',
+    theme: 'light',
+    ready: 'text=Empresas',
+    setup: async (page) => {
+      await page.click('button:has-text("Adicionar")')
+      await page.waitForSelector('.q-dialog', { timeout: 3000 })
+    },
+  },
+  {
+    route: '/',
+    name: 'dialogo-adicionar-empresa',
     theme: 'dark',
     ready: 'text=Empresas',
     setup: async (page) => {
@@ -373,6 +383,24 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
+  {
+    route: '/',
+    name: 'dialogo-senha-certificado',
+    theme: 'light',
+    ready: 'text=Empresas',
+    setup: async (page) => {
+      await page.evaluate(() => {
+        window.triggerWailsEvent?.('request-cert-password', {
+          RequestID: 'req-123',
+          CompanyName: 'TechCorp Soluções Digitais',
+          TargetCNPJ: '11222333000144',
+          CredentialLabel: 'Certificado TechCorp (Vencido)',
+          CertPath: 'C:\\Certificados\\techcorp_old.pfx',
+        })
+      })
+      await page.waitForSelector('.q-dialog', { timeout: 3000 })
+    },
+  },
   {
     route: '/',
     name: 'dialogo-senha-certificado',
@@ -406,7 +434,34 @@ const screenshots: ScreenshotSpec[] = [
       await page.waitForTimeout(500) // espera a animação de expansão
     },
   },
+  {
+    route: '/documents',
+    name: 'detalhes-documento',
+    theme: 'dark',
+    ready: 'text=Documentos',
+    setup: async (page) => {
+      // Abre a expansão da primeira nota fiscal
+      await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
+      await page.waitForTimeout(500) // espera a animação de expansão
+    },
+  },
 
+  {
+    route: '/documents',
+    name: 'dialogo-eventos-documento',
+    theme: 'light',
+    ready: 'text=Documentos',
+    setup: async (page) => {
+      // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
+      // Pode ser o primeiro botão de histórico que encontrar
+      const btn = page.locator('button[aria-label="Ver Eventos"]').first()
+      if (await btn.isVisible()) {
+        await btn.click()
+        await page.waitForSelector('.q-dialog', { timeout: 3000 })
+        await page.waitForSelector('text="Emissão Normal"', { timeout: 3000 })
+      }
+    },
+  },
   {
     route: '/documents',
     name: 'dialogo-eventos-documento',
@@ -419,6 +474,7 @@ const screenshots: ScreenshotSpec[] = [
       if (await btn.isVisible()) {
         await btn.click()
         await page.waitForSelector('.q-dialog', { timeout: 3000 })
+        await page.waitForSelector('text="Emissão Normal"', { timeout: 3000 })
       }
     },
   },
@@ -432,6 +488,20 @@ const screenshots: ScreenshotSpec[] = [
   { route: '/settings', name: 'configuracoes', theme: 'light', ready: 'text=Configurações' },
   { route: '/settings', name: 'configuracoes', theme: 'dark', ready: 'text=Configurações' },
 
+  {
+    route: '/',
+    name: 'console-logs',
+    theme: 'light',
+    ready: 'text=Empresas',
+    setup: async (page) => {
+      await page.click('button[aria-label="Abrir console"]')
+      await page.waitForSelector('.app-console', { timeout: 3000 })
+
+      await page.evaluate((logs) => {
+        logs.forEach((log) => window.triggerWailsEvent?.('backend-log', log))
+      }, syncLogs)
+    },
+  },
   {
     route: '/',
     name: 'console-logs',
@@ -450,7 +520,7 @@ const screenshots: ScreenshotSpec[] = [
 
 async function installWailsMock(context: BrowserContext) {
   await context.addInitScript(
-    ({ companies, credentials, documents }) => {
+    ({ companies, credentials, documents, events }) => {
       const listeners: Record<string, EventCallback[]> = {}
 
       const off = (eventName: string, callback: EventCallback) => {
@@ -464,12 +534,17 @@ async function installWailsMock(context: BrowserContext) {
             AddCredential: async (input: unknown) => ({ ...(input as object), ID: String(Date.now()) }),
             AssignCredentialToCompany: async () => undefined,
             CancelCertPassword: async () => undefined,
-            ExportDocuments: async () => ({ OutPath: 'C:\\exports\\nfs-export.xlsx', Format: 'xlsx' }),
+            ExportDocuments: async () => ({ OutPath: 'C:\\exports\\nfs-export.xlsx', Format: 'xlsx', Incremental: false, ExportedCount: 1 }),
+            ExportDANFSe: async () => ({ OutPath: 'C:\\exports\\danfse.pdf', Format: 'pdf', Incremental: false, ExportedCount: 1 }),
+            ExportDANFSeZIP: async () => ({ OutPath: 'C:\\exports\\danfses.zip', Format: 'zip', Incremental: false, ExportedCount: 1 }),
+            ExportXML: async () => ({ OutPath: 'C:\\exports\\nfs.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
             ExportLogs: async () => undefined,
+            CountPendingExports: async () => 0,
+            MarkDocumentsViewed: async () => 0,
             ListCompanies: async () => companies,
             ListCredentials: async () => credentials,
             ListDocuments: async () => documents,
-            ListEventsForDocument: async () => mockEvents,
+            ListEventsForDocument: async () => events,
             Pull: async (input: { CNPJ?: string }) => ({
               CompanyName: 'ACME Tecnologia e Serviços LTDA',
               CNPJ: input.CNPJ,
@@ -497,6 +572,16 @@ async function installWailsMock(context: BrowserContext) {
             UpdateCompany: async () => undefined,
             UpdateCredentialData: async () => undefined,
             UpdateCredentialPath: async () => undefined,
+            TestConnection: async () => ({
+              certLoaded: true,
+              certSubject: 'ACME TECNOLOGIA',
+              certExpiration: '2026-01-01T23:59:59Z',
+              mtlsAccepted: true,
+              endpointReached: true,
+              responseCode: '200',
+              responseDetail: 'OK',
+              statusExplanation: 'Conexão estabelecida com sucesso.',
+            }),
           },
         },
       }
@@ -563,6 +648,7 @@ async function installWailsMock(context: BrowserContext) {
       companies: mockCompanies,
       credentials: mockCredentials,
       documents: mockDocuments,
+      events: mockEvents,
     }
   )
 }
