@@ -90,7 +90,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends mingw-w64 nsis
+          sudo apt-get install -y --no-install-recommends mingw-w64 nsis jq
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -118,6 +118,8 @@ jobs:
           GOFLAGS: -trimpath
         shell: bash
         run: |
+          set -euo pipefail
+
           version="${{ needs.prepare.outputs.version }}"
           commit="${GITHUB_SHA::7}"
           date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -160,19 +162,27 @@ jobs:
       - name: Stage Release Assets
         shell: bash
         run: |
+          set -euo pipefail
+
           mkdir -p release
 
           tag="${{ needs.prepare.outputs.tag }}"
+          installer_name="nanci-desktop-windows-amd64-${tag}-installer.exe"
 
-          cp artifacts/desktop/nanci-desktop-amd64-installer.exe \
-            "release/nanci-desktop-windows-amd64-${tag}-installer.exe"
+          cp artifacts/desktop/nanci-desktop-amd64-installer.exe "release/$installer_name"
 
-          test -s "release/nanci-desktop-windows-amd64-${tag}-installer.exe"
+          test -s "release/$installer_name"
 
-          cd release
-          sha256sum * > nanci-checksums.txt
+          (
+            cd release
+            sha256sum "$installer_name" > nanci-checksums.txt
+          )
 
-          cat nanci-checksums.txt
+          echo "Release assets:"
+          ls -lh release
+
+          echo "Checksums:"
+          cat release/nanci-checksums.txt
 
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v4
@@ -197,6 +207,8 @@ jobs:
             SHA-256 checksum:
 
             - `nanci-checksums.txt`
+
+            This release also includes GitHub build provenance attestation for the installer and checksum file.
           files: |
             release/*.exe
             release/nanci-checksums.txt
