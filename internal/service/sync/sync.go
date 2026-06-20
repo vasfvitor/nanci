@@ -117,7 +117,36 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		})
 	}()
 
-	advanceNSU := state.LastProcessedNSU + 1
+	if mode == nfse.SyncModeNormal {
+		revisitStart := maxInt64(1, state.LastProcessedNSU-int64(normalRevisitWindow)+1)
+		for nsu := revisitStart; nsu <= state.LastProcessedNSU; nsu++ {
+			select {
+			case <-ctx.Done():
+				finalStatus = nfse.SyncStatusInterrupted
+				stopReason = nfse.SyncStopReasonContextCanceled
+				return ctx.Err()
+			default:
+			}
+
+			_, err := s.processNSU(ctx, company, syncRun.ID, nsu+1, true, &runState, progress)
+			if err != nil {
+				finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
+				return err
+			}
+
+			if err := waitRequestDelay(ctx); err != nil {
+				finalStatus = nfse.SyncStatusInterrupted
+				stopReason = nfse.SyncStopReasonContextCanceled
+				return err
+			}
+		}
+	}
+
+	advanceNSU := int64(1)
+	if mode == nfse.SyncModeNormal {
+		advanceNSU = state.LastProcessedNSU + 1
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -127,13 +156,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		default:
 		}
 
-		if err := waitRequestDelay(ctx); err != nil {
-			finalStatus = nfse.SyncStatusInterrupted
-			stopReason = nfse.SyncStopReasonContextCanceled
-			return err
-		}
-
-		processedCount, err := s.processNSU(ctx, company, syncRun.ID, advanceNSU, &runState, progress)
+		processedCount, err := s.processNSU(ctx, company, syncRun.ID, advanceNSU, false, &runState, progress)
 		if err != nil {
 			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
 			return err
@@ -141,6 +164,12 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 		if processedCount == 0 {
 			break
+		}
+
+		if err := waitRequestDelay(ctx); err != nil {
+			finalStatus = nfse.SyncStatusInterrupted
+			stopReason = nfse.SyncStopReasonContextCanceled
+			return err
 		}
 
 		advanceNSU = runState.lastProcessedNSU + 1
@@ -188,7 +217,7 @@ func classifySyncError(err error) (nfse.SyncStatus, nfse.SyncStopReason, string,
 	return nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError, "process_error", err.Error()
 }
 
-func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, runID nfse.SyncRunID, advanceNSU int64, runState *syncRuntimeState, progress nfse.ProgressFunc) (int, error) {
+func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, runID nfse.SyncRunID, advanceNSU int64, isRevisit bool, runState *syncRuntimeState, progress nfse.ProgressFunc) (int, error) {
 	resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
 		LastNSU:          advanceNSU - 1,
 		ConsultationCNPJ: company.CNPJ,
@@ -245,6 +274,9 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			ErrorsCount:           runState.errorsCount,
 			MarkSuccess:           true,
 		}
+		if isRevisit {
+			progressParams.LastProcessedNSU = runState.lastProcessedNSU
+		}
 
 		var processErr error
 		if env.IsEvent() {
@@ -287,18 +319,24 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			}
 		}
 
-		runState.lastProcessedNSU = env.NSU
+		if !isRevisit {
+			runState.lastProcessedNSU = env.NSU
+		}
 		runState.documentsFound++
 		processedCount++
 		runState.lastFoundNSU = nextLastFoundNSU
 		runState.lastFoundNSUValid = nextLastFoundNSUValid
 	}
 
-	company.LastNSU = runState.lastProcessedNSU
+	if !isRevisit {
+		company.LastNSU = runState.lastProcessedNSU
+	}
 
 	if docsInBatch == 0 {
 		runState.emptyCount++
-		runState.consecutiveEmpty++
+		if !isRevisit {
+			runState.consecutiveEmpty++
+		}
 		
 		if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
 			CompanyID:             company.ID,
@@ -323,11 +361,11 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 				code:       "persist_error",
 			}
 		}
-	} else {
+	} else if !isRevisit {
 		runState.consecutiveEmpty = 0
 	}
 
-	s.reportProgress(progress, runState, resp, docsInBatch)
+	s.reportProgress(progress, runState, isRevisit, advanceNSU, resp, docsInBatch)
 	s.log.DebugContext(ctx, "ADN response observed",
 		slog.Int64("requested_last_nsu", advanceNSU-1),
 		slog.Int64("ult_nsu", resp.UltNSU),
@@ -337,21 +375,25 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 	return processedCount, nil
 }
 
-func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, resp *adn.DocumentResponse, docsInBatch int) {
+func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, isRevisit bool, advanceNSU int64, resp *adn.DocumentResponse, docsInBatch int) {
 	if progress == nil {
 		return
 	}
+	phase := "advance"
+	if isRevisit {
+		phase = "revisit"
+	}
 	progress(nfse.ProgressEvent{
-		CurrentNSU:        runState.lastProcessedNSU,
+		CurrentNSU:        advanceNSU - 1,
 		MaxNSU:            resp.MaxNSU,
-		LastProcessedNSU:    runState.lastProcessedNSU,
+		LastProcessedNSU:  runState.lastProcessedNSU,
 		LastFoundNSU:      runState.lastFoundNSU,
 		LastFoundNSUValid: runState.lastFoundNSUValid,
 		EmptyStreak:       runState.currentEmptyStreak(),
 		DocsFound:         runState.documentsFound,
 		DocsInBatch:       docsInBatch,
 		Errors:            runState.errorsCount,
-		Message:           fmt.Sprintf("fetched=%d ultNSU=%d maxNSU=%d", docsInBatch, resp.UltNSU, resp.MaxNSU),
+		Message:           fmt.Sprintf("phase=%s fetched=%d ultNSU=%d maxNSU=%d", phase, docsInBatch, resp.UltNSU, resp.MaxNSU),
 	})
 }
 
