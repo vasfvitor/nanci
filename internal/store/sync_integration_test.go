@@ -240,7 +240,7 @@ func testDocument(id, accessKey, hash string) nfse.Document {
 
 func applyDocument(t *testing.T, repo *SyncRepository, companyID nfse.CompanyID, document nfse.Document, nsu int64) {
 	t.Helper()
-	err := repo.ApplyDocument(context.Background(), nfse.ApplyDocumentParams{
+	_, err := repo.ApplyDocument(context.Background(), nfse.ApplyDocumentParams{
 		Document: document,
 		Participation: nfse.CompanyParticipation{
 			CompanyRole:      nfse.CompanyRoleTomada,
@@ -256,7 +256,7 @@ func applyDocument(t *testing.T, repo *SyncRepository, companyID nfse.CompanyID,
 
 func applyEvent(t *testing.T, repo *SyncRepository, event nfse.Event, companyID nfse.CompanyID, nsu int64) {
 	t.Helper()
-	if err := repo.ApplyEvent(context.Background(), nfse.ApplyEventParams{
+	if _, err := repo.ApplyEvent(context.Background(), nfse.ApplyEventParams{
 		Event:     event,
 		CompanyID: companyID,
 		NSU:       nsu,
@@ -326,7 +326,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	}
 
 	// First application
-	if err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
+	if _, err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
 		t.Fatalf("first apply failed: %v", err)
 	}
 
@@ -338,7 +338,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	p.ProgressParams.LastFoundNSU = 999
 
 	// Should not fail due to unique constraint, but should INSERT OR IGNORE the doc and UPDATE the progress
-	if err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
+	if _, err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
 		t.Fatalf("second apply failed, expected idempotency: %v", err)
 	}
 

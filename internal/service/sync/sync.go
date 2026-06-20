@@ -17,10 +17,7 @@ import (
 )
 
 const (
-	normalRevisitWindow  = 50
-	normalEmptyLimit     = 100
-	firstSetupEmptyLimit = 500
-	requestDelay         = 500 * time.Millisecond
+	requestDelay = 500 * time.Millisecond
 )
 
 var syncRequestDelay = requestDelay
@@ -85,15 +82,18 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	}
 
 	runState := syncRuntimeState{
-		lastProcessedNSU:   state.LastProcessedNSU,
-		lastFoundNSU:       state.LastFoundNSU,
-		lastFoundNSUValid:  state.LastFoundNSUValid,
-		checkedCount:       0,
-		documentsFound:     0,
-		emptyCount:         0,
-		consecutiveEmpty:   0,
-		errorsCount:        0,
-		initialEmptyStreak: state.LastEmptyStreak,
+		lastProcessedNSU:       state.LastProcessedNSU,
+		lastFoundNSU:           state.LastFoundNSU,
+		lastFoundNSUValid:      state.LastFoundNSUValid,
+		checkedCount:           0,
+		documentsInserted:      0,
+		documentsReturned:      0,
+		documentsSkippedStale:  0,
+		documentsSkippedDup:    0,
+		emptyCount:             0,
+		consecutiveEmpty:       0,
+		errorsCount:            0,
+		initialEmptyStreak:     state.LastEmptyStreak,
 	}
 	finalStatus := nfse.SyncStatusCompleted
 	stopReason := nfse.SyncStopReasonEmptyLimit
@@ -108,7 +108,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 			ErrorCode:             errorCode,
 			ErrorMsg:              errorMsg,
 			CheckedCount:          runState.checkedCount,
-			DocumentsFound:        runState.documentsFound,
+			DocumentsFound:        runState.documentsInserted,
 			EmptyCount:            runState.emptyCount,
 			ConsecutiveEmptyCount: runState.consecutiveEmpty,
 			ErrorsCount:           runState.errorsCount,
@@ -117,34 +117,9 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		})
 	}()
 
-	if mode == nfse.SyncModeNormal {
-		revisitStart := maxInt64(1, state.LastProcessedNSU-int64(normalRevisitWindow)+1)
-		for nsu := revisitStart; nsu <= state.LastProcessedNSU; nsu++ {
-			select {
-			case <-ctx.Done():
-				finalStatus = nfse.SyncStatusInterrupted
-				stopReason = nfse.SyncStopReasonContextCanceled
-				return ctx.Err()
-			default:
-			}
-
-			_, err := s.processNSU(ctx, company, syncRun.ID, nsu+1, true, &runState, progress)
-			if err != nil {
-				finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
-				return err
-			}
-
-			if err := waitRequestDelay(ctx); err != nil {
-				finalStatus = nfse.SyncStatusInterrupted
-				stopReason = nfse.SyncStopReasonContextCanceled
-				return err
-			}
-		}
-	}
-
-	advanceNSU := int64(1)
-	if mode == nfse.SyncModeNormal {
-		advanceNSU = state.LastProcessedNSU + 1
+	cursorLastNSU := state.LastProcessedNSU
+	if mode == nfse.SyncModeFirstSetup {
+		cursorLastNSU = 0
 	}
 
 	for {
@@ -156,13 +131,22 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		default:
 		}
 
-		processedCount, err := s.processNSU(ctx, company, syncRun.ID, advanceNSU, false, &runState, progress)
+		batchResult, err := s.processNSU(ctx, company, syncRun.ID, cursorLastNSU, &runState, progress)
 		if err != nil {
 			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
 			return err
 		}
 
-		if processedCount == 0 {
+		if batchResult.docsInBatch == 0 {
+			break
+		}
+
+		if !batchResult.advanced {
+			s.log.WarnContext(ctx, "sync batch did not advance cursor; stopping to avoid loop",
+				slog.Int64("cursor_last_nsu", cursorLastNSU),
+				slog.Int("docs_in_batch", batchResult.docsInBatch),
+				slog.Int("skipped_stale", runState.documentsSkippedStale),
+				slog.Int("skipped_duplicate", runState.documentsSkippedDup))
 			break
 		}
 
@@ -172,22 +156,37 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 			return err
 		}
 
-		advanceNSU = runState.lastProcessedNSU + 1
+		cursorLastNSU = runState.lastProcessedNSU
 	}
+
+	s.log.InfoContext(ctx, "Sync completed",
+		slog.Int64("last_processed_nsu", runState.lastProcessedNSU),
+		slog.Int("documents_returned", runState.documentsReturned),
+		slog.Int("documents_inserted", runState.documentsInserted),
+		slog.Int("documents_skipped_stale", runState.documentsSkippedStale),
+		slog.Int("documents_skipped_duplicate", runState.documentsSkippedDup))
 
 	return nil
 }
 
 type syncRuntimeState struct {
-	lastProcessedNSU   int64
-	lastFoundNSU       int64
-	lastFoundNSUValid  bool
-	checkedCount       int
-	documentsFound     int
-	emptyCount         int
-	consecutiveEmpty   int
-	errorsCount        int
-	initialEmptyStreak int
+	lastProcessedNSU      int64
+	lastFoundNSU          int64
+	lastFoundNSUValid     bool
+	checkedCount          int
+	documentsInserted     int
+	documentsReturned     int
+	documentsSkippedStale int
+	documentsSkippedDup   int
+	emptyCount            int
+	consecutiveEmpty      int
+	errorsCount           int
+	initialEmptyStreak    int
+}
+
+type syncBatchResult struct {
+	docsInBatch int
+	advanced    bool
 }
 
 type syncFailure struct {
@@ -216,17 +215,17 @@ func classifySyncError(err error) (nfse.SyncStatus, nfse.SyncStopReason, string,
 	return nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError, "process_error", err.Error()
 }
 
-func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, runID nfse.SyncRunID, advanceNSU int64, isRevisit bool, runState *syncRuntimeState, progress nfse.ProgressFunc) (int, error) {
+func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, runID nfse.SyncRunID, cursorLastNSU int64, runState *syncRuntimeState, progress nfse.ProgressFunc) (syncBatchResult, error) {
 	resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
-		LastNSU:          advanceNSU - 1,
+		LastNSU:          cursorLastNSU,
 		ConsultationCNPJ: company.CNPJ,
 	})
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return 0, err
+			return syncBatchResult{}, err
 		}
-		return 0, &syncFailure{
-			err:        fmt.Errorf("failed to fetch documents at NSU %d: %w", advanceNSU-1, err),
+		return syncBatchResult{}, &syncFailure{
+			err:        fmt.Errorf("failed to fetch documents at NSU %d: %w", cursorLastNSU, err),
 			status:     nfse.SyncStatusFailed,
 			stopReason: nfse.SyncStopReasonFetchError,
 			code:       "fetch_error",
@@ -235,15 +234,17 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 
 	runState.checkedCount++
 	docsInBatch := len(resp.Docs)
+	runState.documentsReturned += docsInBatch
 
 	sort.Slice(resp.Docs, func(i, j int) bool {
 		return resp.Docs[i].NSU < resp.Docs[j].NSU
 	})
 
-	processedCount := 0
+	nextCursorLastNSU := cursorLastNSU
 
 	for _, env := range resp.Docs {
-		if env.NSU < advanceNSU {
+		if env.NSU <= cursorLastNSU {
+			runState.documentsSkippedStale++
 			s.log.DebugContext(ctx, "Ignoring stale document", slog.Int64("nsu", env.NSU))
 			continue
 		}
@@ -265,21 +266,21 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			LastFoundNSUValid:     nextLastFoundNSUValid,
 			LastEmptyStreak:       runState.currentEmptyStreak(),
 			CheckedCount:          runState.checkedCount,
-			DocumentsFound:        runState.documentsFound + 1,
+			DocumentsFound:        runState.documentsInserted,
 			EmptyCount:            runState.emptyCount,
 			ConsecutiveEmptyCount: runState.consecutiveEmpty,
 			ErrorsCount:           runState.errorsCount,
 			MarkSuccess:           true,
 		}
-		if isRevisit {
-			progressParams.LastProcessedNSU = runState.lastProcessedNSU
-		}
 
-		var processErr error
+		var (
+			outcome    nfse.ApplyOutcome
+			processErr error
+		)
 		if env.IsEvent() {
-			processErr = s.processEvent(ctx, company, env, progressParams)
+			outcome, processErr = s.processEvent(ctx, company, env, progressParams)
 		} else {
-			processErr = s.processDocument(ctx, company, env, progressParams)
+			outcome, processErr = s.processDocument(ctx, company, env, progressParams)
 		}
 
 		if processErr != nil {
@@ -294,21 +295,21 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 				LastFoundNSUValid:     runState.lastFoundNSUValid,
 				LastEmptyStreak:       runState.currentEmptyStreak(),
 				CheckedCount:          runState.checkedCount,
-				DocumentsFound:        runState.documentsFound,
+				DocumentsFound:        runState.documentsInserted,
 				EmptyCount:            runState.emptyCount,
 				ConsecutiveEmptyCount: runState.consecutiveEmpty,
 				ErrorsCount:           runState.errorsCount,
 				ErrorCode:             "process_error",
 				ErrorMessage:          processErr.Error(),
 			}); persistErr != nil {
-				return processedCount, &syncFailure{
+				return syncBatchResult{}, &syncFailure{
 					err:        fmt.Errorf("failed to persist checkpoint after processing error: %w", persistErr),
 					status:     nfse.SyncStatusFailed,
 					stopReason: nfse.SyncStopReasonProcessError,
 					code:       "process_error",
 				}
 			}
-			return processedCount, &syncFailure{
+			return syncBatchResult{}, &syncFailure{
 				err:        fmt.Errorf("failed to process NSU %d: %w", env.NSU, processErr),
 				status:     nfse.SyncStatusFailed,
 				stopReason: nfse.SyncStopReasonProcessError,
@@ -316,24 +317,22 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			}
 		}
 
-		if !isRevisit {
-			runState.lastProcessedNSU = env.NSU
+		if outcome.Inserted {
+			runState.documentsInserted++
+		} else {
+			runState.documentsSkippedDup++
 		}
-		runState.documentsFound++
-		processedCount++
+		runState.lastProcessedNSU = env.NSU
 		runState.lastFoundNSU = nextLastFoundNSU
 		runState.lastFoundNSUValid = nextLastFoundNSUValid
+		nextCursorLastNSU = env.NSU
 	}
 
-	if !isRevisit {
-		company.LastNSU = runState.lastProcessedNSU
-	}
+	company.LastNSU = runState.lastProcessedNSU
 
 	if docsInBatch == 0 {
 		runState.emptyCount++
-		if !isRevisit {
-			runState.consecutiveEmpty++
-		}
+		runState.consecutiveEmpty++
 		if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
 			CompanyID:             company.ID,
 			RunID:                 runID,
@@ -344,52 +343,79 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			LastFoundNSUValid:     runState.lastFoundNSUValid,
 			LastEmptyStreak:       runState.currentEmptyStreak(),
 			CheckedCount:          runState.checkedCount,
-			DocumentsFound:        runState.documentsFound,
+			DocumentsFound:        runState.documentsInserted,
 			EmptyCount:            runState.emptyCount,
 			ConsecutiveEmptyCount: runState.consecutiveEmpty,
 			ErrorsCount:           runState.errorsCount,
 			MarkSuccess:           true,
 		}); err != nil {
-			return processedCount, &syncFailure{
+			return syncBatchResult{}, &syncFailure{
 				err:        fmt.Errorf("failed to persist sync progress on empty batch: %w", err),
 				status:     nfse.SyncStatusFailed,
 				stopReason: nfse.SyncStopReasonProcessError,
 				code:       "persist_error",
 			}
 		}
-	} else if !isRevisit {
+	} else {
 		runState.consecutiveEmpty = 0
+		if nextCursorLastNSU == cursorLastNSU {
+			if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
+				CompanyID:             company.ID,
+				RunID:                 runID,
+				Environment:           company.Environment,
+				ConsultationCNPJ:      company.CNPJ,
+				LastProcessedNSU:      runState.lastProcessedNSU,
+				LastFoundNSU:          runState.lastFoundNSU,
+				LastFoundNSUValid:     runState.lastFoundNSUValid,
+				LastEmptyStreak:       runState.currentEmptyStreak(),
+				CheckedCount:          runState.checkedCount,
+				DocumentsFound:        runState.documentsInserted,
+				EmptyCount:            runState.emptyCount,
+				ConsecutiveEmptyCount: runState.consecutiveEmpty,
+				ErrorsCount:           runState.errorsCount,
+				MarkSuccess:           true,
+			}); err != nil {
+				return syncBatchResult{}, &syncFailure{
+					err:        fmt.Errorf("failed to persist sync progress on non-advancing batch: %w", err),
+					status:     nfse.SyncStatusFailed,
+					stopReason: nfse.SyncStopReasonProcessError,
+					code:       "persist_error",
+				}
+			}
+		}
 	}
 
-	s.reportProgress(progress, runState, isRevisit, advanceNSU, resp, docsInBatch)
+	s.reportProgress(progress, runState, cursorLastNSU, resp, docsInBatch)
 	s.log.DebugContext(ctx, "ADN response observed",
-		slog.Int64("requested_last_nsu", advanceNSU-1),
+		slog.Int64("requested_last_nsu", cursorLastNSU),
 		slog.Int64("ult_nsu", resp.UltNSU),
 		slog.Int64("max_nsu", resp.MaxNSU),
-		slog.Int("docs_in_batch", docsInBatch))
+		slog.Int("docs_in_batch", docsInBatch),
+		slog.Int("documents_inserted", runState.documentsInserted),
+		slog.Int("documents_skipped_stale", runState.documentsSkippedStale),
+		slog.Int("documents_skipped_duplicate", runState.documentsSkippedDup))
 
-	return processedCount, nil
+	return syncBatchResult{
+		docsInBatch: docsInBatch,
+		advanced:    nextCursorLastNSU > cursorLastNSU,
+	}, nil
 }
 
-func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, isRevisit bool, advanceNSU int64, resp *adn.DocumentResponse, docsInBatch int) {
+func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, cursorLastNSU int64, resp *adn.DocumentResponse, docsInBatch int) {
 	if progress == nil {
 		return
 	}
-	phase := "advance"
-	if isRevisit {
-		phase = "revisit"
-	}
 	progress(nfse.ProgressEvent{
-		CurrentNSU:        advanceNSU - 1,
+		CurrentNSU:        cursorLastNSU,
 		MaxNSU:            resp.MaxNSU,
 		LastProcessedNSU:  runState.lastProcessedNSU,
 		LastFoundNSU:      runState.lastFoundNSU,
 		LastFoundNSUValid: runState.lastFoundNSUValid,
 		EmptyStreak:       runState.currentEmptyStreak(),
-		DocsFound:         runState.documentsFound,
+		DocsFound:         runState.documentsInserted,
 		DocsInBatch:       docsInBatch,
 		Errors:            runState.errorsCount,
-		Message:           fmt.Sprintf("phase=%s fetched=%d ultNSU=%d maxNSU=%d", phase, docsInBatch, resp.UltNSU, resp.MaxNSU),
+		Message:           fmt.Sprintf("cursor=%d fetched=%d ultNSU=%d maxNSU=%d inserted=%d stale=%d duplicate=%d", cursorLastNSU, docsInBatch, resp.UltNSU, resp.MaxNSU, runState.documentsInserted, runState.documentsSkippedStale, runState.documentsSkippedDup),
 	})
 }
 
@@ -419,7 +445,7 @@ func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams
 }
 
 // processDocument handles the decoding, parsing, and saving of a single document.
-func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) error {
+func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (nfse.ApplyOutcome, error) {
 	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", env.NSU))
 
 	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
@@ -428,7 +454,7 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 	})
 	if err != nil {
 		s.log.ErrorContext(ctx, "Falha ao decodificar payload do documento", slog.Int64("nsu", env.NSU), slog.String("erro", err.Error()))
-		return fmt.Errorf("decode failed: %w", err)
+		return nfse.ApplyOutcome{}, fmt.Errorf("decode failed: %w", err)
 	}
 
 	doc, _, err := nfse.ParseDocumentXML(payload.XML)
@@ -440,19 +466,19 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 			slog.String("tipo_evento", env.EventType),
 			slog.String("xml_preview", xmlPreview(payload.XML)),
 			slog.String("erro", err.Error()))
-		return fmt.Errorf("parse failed: %w", err)
+		return nfse.ApplyOutcome{}, fmt.Errorf("parse failed: %w", err)
 	}
 
 	doc.ID = nfse.DocumentID(uuid.NewString())
 	doc.RawHash = payload.SHA256
 
 	if err := s.fileWriter.Store(doc.RawHash, payload.XML); err != nil {
-		return fmt.Errorf("file save failed: %w", err)
+		return nfse.ApplyOutcome{}, fmt.Errorf("file save failed: %w", err)
 	}
 	doc.XMLPath = doc.RawHash + ".xml"
 
 	participation := nfse.ClassifyCompanyParticipation(&doc, company.CNPJ)
-	if err := s.store.ApplyDocumentAndProgress(ctx, nfse.ApplyDocumentAndProgressParams{
+	outcome, err := s.store.ApplyDocumentAndProgress(ctx, nfse.ApplyDocumentAndProgressParams{
 		DocumentParams: nfse.ApplyDocumentParams{
 			Document:      doc,
 			Participation: participation,
@@ -460,15 +486,16 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 			NSU:           env.NSU,
 		},
 		ProgressParams: progressParams,
-	}); err != nil {
-		return fmt.Errorf("db apply document failed: %w", err)
+	})
+	if err != nil {
+		return nfse.ApplyOutcome{}, fmt.Errorf("db apply document failed: %w", err)
 	}
 
-	return nil
+	return outcome, nil
 }
 
 // processEvent handles decoding and saving an Event.
-func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) error {
+func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (nfse.ApplyOutcome, error) {
 	s.log.Log(ctx, slog.Level(-8), "Processando evento", slog.Int64("nsu", env.NSU))
 
 	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
@@ -477,7 +504,7 @@ func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, e
 	})
 	if err != nil {
 		s.log.ErrorContext(ctx, "Falha ao decodificar payload do evento", slog.Int64("nsu", env.NSU), slog.String("erro", err.Error()))
-		return fmt.Errorf("decode event failed: %w", err)
+		return nfse.ApplyOutcome{}, fmt.Errorf("decode event failed: %w", err)
 	}
 
 	ev, _, err := nfse.ParseEventXML(payload.XML)
@@ -489,36 +516,30 @@ func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, e
 			slog.String("tipo_evento", env.EventType),
 			slog.String("xml_preview", xmlPreview(payload.XML)),
 			slog.String("erro", err.Error()))
-		return fmt.Errorf("parse event failed: %w", err)
+		return nfse.ApplyOutcome{}, fmt.Errorf("parse event failed: %w", err)
 	}
 
 	ev.ID = nfse.GenerateID()
 	ev.RawHash = payload.SHA256
 
 	if err := s.fileWriter.Store(ev.RawHash, payload.XML); err != nil {
-		return fmt.Errorf("event file save failed: %w", err)
+		return nfse.ApplyOutcome{}, fmt.Errorf("event file save failed: %w", err)
 	}
 	ev.RawXMLPath = ev.RawHash + ".xml"
 
-	if err := s.store.ApplyEventAndProgress(ctx, nfse.ApplyEventAndProgressParams{
+	outcome, err := s.store.ApplyEventAndProgress(ctx, nfse.ApplyEventAndProgressParams{
 		EventParams: nfse.ApplyEventParams{
 			Event:     ev,
 			CompanyID: company.ID,
 			NSU:       env.NSU,
 		},
 		ProgressParams: progressParams,
-	}); err != nil {
-		return fmt.Errorf("db apply event failed: %w", err)
+	})
+	if err != nil {
+		return nfse.ApplyOutcome{}, fmt.Errorf("db apply event failed: %w", err)
 	}
 
-	return nil
-}
-
-func maxInt64(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
+	return outcome, nil
 }
 
 func xmlPreview(data []byte) string {

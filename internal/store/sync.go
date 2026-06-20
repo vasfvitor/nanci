@@ -115,12 +115,12 @@ func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParam
 	}, nil
 }
 
-func (r *SyncRepository) doApplyDocument(ctx context.Context, q *sqlgen.Queries, params nfse.ApplyDocumentParams) error {
+func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	parseWarnings, err := json.Marshal(params.Document.ParseWarnings)
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
 	canonicalDocumentID, err := q.UpsertDocument(ctx, sqlgen.UpsertDocumentParams{
@@ -153,7 +153,12 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, q *sqlgen.Queries,
 		UpdatedAt:          now,
 	})
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
+	}
+
+	inserted, err := companyDocumentMissing(ctx, tx, string(params.CompanyID), canonicalDocumentID)
+	if err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
 
 	err = q.UpsertCompanyDocument(ctx, sqlgen.UpsertCompanyDocumentParams{
@@ -170,29 +175,29 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, q *sqlgen.Queries,
 		LastSyncedAt:      now,
 	})
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
 	if err := q.LinkEventsToDocument(ctx, sqlgen.LinkEventsToDocumentParams{
 		DocumentID:  sql.NullString{String: canonicalDocumentID, Valid: true},
 		ChaveAcesso: string(params.Document.ChaveAcesso),
 	}); err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
 	if err := recomputeDocumentStatus(ctx, q, string(params.Document.ChaveAcesso), now); err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
-	return nil
+	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doApplyEvent(ctx context.Context, q *sqlgen.Queries, params nfse.ApplyEventParams) error {
+func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	documentID, err := q.GetDocumentIDByAccessKey(ctx, string(params.Event.ChaveAcesso))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
 	var valid int64
@@ -204,7 +209,12 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, q *sqlgen.Queries, pa
 
 	parseWarnings, err := json.Marshal(params.Event.ParseWarnings)
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
+	}
+
+	inserted, err := eventHashMissing(ctx, tx, params.Event.RawHash)
+	if err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
 
 	err = q.InsertEvent(ctx, sqlgen.InsertEventParams{
@@ -222,14 +232,14 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, q *sqlgen.Queries, pa
 		CreatedAt:              now,
 	})
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
 	if err := recomputeDocumentStatus(ctx, q, string(params.Event.ChaveAcesso), now); err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 
-	return nil
+	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
 func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, params nfse.PersistSyncProgressParams) error {
@@ -351,32 +361,40 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 	return nil
 }
 
-func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDocumentParams) error {
+func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := r.doApplyDocument(ctx, r.queries.WithTx(tx), params); err != nil {
-		return err
+	outcome, err := r.doApplyDocument(ctx, tx, r.queries.WithTx(tx), params)
+	if err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nfse.ApplyOutcome{}, err
+	}
+	return outcome, nil
 }
 
-func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventParams) error {
+func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := r.doApplyEvent(ctx, r.queries.WithTx(tx), params); err != nil {
-		return err
+	outcome, err := r.doApplyEvent(ctx, tx, r.queries.WithTx(tx), params)
+	if err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nfse.ApplyOutcome{}, err
+	}
+	return outcome, nil
 }
 
 func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.PersistSyncProgressParams) error {
@@ -393,38 +411,85 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 	return tx.Commit()
 }
 
-func (r *SyncRepository) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) error {
+func (r *SyncRepository) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := r.doApplyDocument(ctx, r.queries.WithTx(tx), params.DocumentParams); err != nil {
-		return err
+	outcome, err := r.doApplyDocument(ctx, tx, r.queries.WithTx(tx), params.DocumentParams)
+	if err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
-	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
-		return err
+	progressParams := params.ProgressParams
+	if outcome.Inserted {
+		progressParams.DocumentsFound++
+	}
+	if err := r.doPersistProgress(ctx, tx, progressParams); err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nfse.ApplyOutcome{}, err
+	}
+	return outcome, nil
 }
 
-func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) error {
+func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nfse.ApplyOutcome{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := r.doApplyEvent(ctx, r.queries.WithTx(tx), params.EventParams); err != nil {
-		return err
+	outcome, err := r.doApplyEvent(ctx, tx, r.queries.WithTx(tx), params.EventParams)
+	if err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
-	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
-		return err
+	progressParams := params.ProgressParams
+	if outcome.Inserted {
+		progressParams.DocumentsFound++
+	}
+	if err := r.doPersistProgress(ctx, tx, progressParams); err != nil {
+		return nfse.ApplyOutcome{}, err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nfse.ApplyOutcome{}, err
+	}
+	return outcome, nil
+}
+
+func companyDocumentMissing(ctx context.Context, tx *sql.Tx, companyID, documentID string) (bool, error) {
+	var exists int
+	err := tx.QueryRowContext(ctx,
+		`SELECT 1 FROM company_documents WHERE company_id = ? AND document_id = ? LIMIT 1`,
+		companyID,
+		documentID,
+	).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func eventHashMissing(ctx context.Context, tx *sql.Tx, rawHash string) (bool, error) {
+	var exists int
+	err := tx.QueryRowContext(ctx,
+		`SELECT 1 FROM events WHERE raw_hash = ? LIMIT 1`,
+		rawHash,
+	).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return false, nil
 }
 
 func (r *SyncRepository) FinishRun(ctx context.Context, params nfse.FinishRunParams) error {

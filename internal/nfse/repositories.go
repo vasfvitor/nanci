@@ -73,6 +73,10 @@ type AdvanceCheckpointParams struct {
 	LastNSU   int64
 }
 
+type ApplyOutcome struct {
+	Inserted bool
+}
+
 type ApplyDocumentAndProgressParams struct {
 	DocumentParams ApplyDocumentParams
 	ProgressParams PersistSyncProgressParams
@@ -129,10 +133,10 @@ type ResetSyncStateParams struct {
 type SyncRepository interface {
 	GetOrCreateState(ctx context.Context, params GetOrCreateSyncStateParams) (*SyncState, error)
 	StartRun(ctx context.Context, params StartRunParams) (SyncRun, error)
-	ApplyDocument(ctx context.Context, params ApplyDocumentParams) error
-	ApplyEvent(ctx context.Context, params ApplyEventParams) error
-	ApplyDocumentAndProgress(ctx context.Context, params ApplyDocumentAndProgressParams) error
-	ApplyEventAndProgress(ctx context.Context, params ApplyEventAndProgressParams) error
+	ApplyDocument(ctx context.Context, params ApplyDocumentParams) (ApplyOutcome, error)
+	ApplyEvent(ctx context.Context, params ApplyEventParams) (ApplyOutcome, error)
+	ApplyDocumentAndProgress(ctx context.Context, params ApplyDocumentAndProgressParams) (ApplyOutcome, error)
+	ApplyEventAndProgress(ctx context.Context, params ApplyEventAndProgressParams) (ApplyOutcome, error)
 	PersistProgress(ctx context.Context, params PersistSyncProgressParams) error
 	FinishRun(ctx context.Context, params FinishRunParams) error
 	LatestSyncSnapshot(ctx context.Context, companyID CompanyID, environment Environment, consultationCNPJ string) (SyncSnapshot, error)
