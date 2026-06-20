@@ -53,3 +53,40 @@ export function visibilityLabel(reason: string) {
 export function visibilityColor(reason: string) {
   return visibilityColors[reason] || 'grey'
 }
+
+export function getRoleAbbreviation(role?: string): string {
+  const abbreviations: Record<string, string> = {
+    prestada: 'P',
+    tomada: 'T',
+    intermediario: 'I',
+  }
+  return abbreviations[role ?? ''] ?? '-'
+}
+
+export function getVisibilityAbbreviation(reason?: string): string {
+  const abbreviations: Record<string, string> = {
+    exact_prestador: 'PE',
+    exact_tomador: 'TE',
+    exact_intermediario: 'IE',
+    same_root_only: 'MR',
+  }
+  return abbreviations[reason ?? ''] ?? '?'
+}
+
+export function getStatusAbbreviation(status?: string): string {
+  const abbreviations: Record<string, string> = {
+    normal: 'N',
+    cancelada: 'C',
+    substituida: 'S',
+  }
+  return abbreviations[status ?? ''] ?? '?'
+}
+
+export function getStatusLabel(status?: string): string {
+  const labels: Record<string, string> = {
+    normal: 'Normal',
+    cancelada: 'Cancelada',
+    substituida: 'Substituída',
+  }
+  return labels[status ?? ''] ?? status ?? 'Desconhecido'
+}

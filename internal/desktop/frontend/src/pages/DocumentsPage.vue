@@ -113,13 +113,13 @@ v-model="filterText" class="document-search-input"
             </q-input>
           </div>
 
-          <div class="column q-gutter-y-xs text-caption legend-panel q-pa-md rounded-borders full-width">
-            <div class="text-weight-bold legend-title q-mb-xs">
+          <div :class="['column q-gutter-y-xs text-caption q-pa-md rounded-borders full-width custom-border-dashed', $q.dark.isActive ? 'bg-grey-10 text-grey-4' : 'bg-grey-2 text-grey-8']">
+            <div :class="['text-weight-bold q-mb-xs', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
               Legenda dos Indicadores:
             </div>
 
             <div class="row items-center q-gutter-x-sm">
-              <span class="text-weight-bold legend-label">Direção (D):</span>
+              <span :class="['text-weight-bold legend-label-width', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">Direção (D):</span>
 
               <div class="row items-center q-gutter-x-md">
                 <span class="row items-center q-gutter-x-xs">
@@ -140,7 +140,7 @@ v-model="filterText" class="document-search-input"
             </div>
 
             <div class="row items-center q-gutter-x-sm">
-              <span class="text-weight-bold legend-label">Visibilidade (V):</span>
+              <span :class="['text-weight-bold legend-label-width', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">Visibilidade (V):</span>
 
               <div class="row items-center q-gutter-x-md">
                 <span class="row items-center q-gutter-x-xs">
@@ -166,7 +166,7 @@ v-model="filterText" class="document-search-input"
             </div>
 
             <div class="row items-center q-gutter-x-sm">
-              <span class="text-weight-bold legend-label">Status (S):</span>
+              <span :class="['text-weight-bold legend-label-width', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">Status (S):</span>
 
               <div class="row items-center q-gutter-x-md">
                 <span class="row items-center q-gutter-x-xs">
@@ -279,7 +279,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
           </q-td>
         </q-tr>
 
-        <q-tr v-if="props.expand" :props="props" class="detail-container">
+        <q-tr v-if="props.expand" :props="props" :class="['detail-container-borders', $q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
           <q-td :colspan="props.cols.length" class="q-pa-md">
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-7">
@@ -302,7 +302,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
                 <div class="q-mt-sm">
                   <span class="text-weight-bold text-body2">Descrição do Serviço:</span>
                   <div
-                    class="q-mt-xs q-pa-sm detail-card text-body2 text-grey-8 shadow-1 rounded-borders service-description">
+                    :class="['q-mt-xs q-pa-sm text-body2 shadow-1 rounded-borders service-description custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
                     {{ props.row.ServiceDescription || 'Sem descrição.' }}
                   </div>
                 </div>
@@ -313,34 +313,34 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
                   Retenções e Tributos
                 </div>
 
-                <div class="detail-card q-pa-md shadow-1 rounded-borders">
+                <div :class="['q-pa-md shadow-1 rounded-borders custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
                   <div class="row q-col-gutter-xs text-body2">
-                    <div class="col-6 text-grey-7">ISS Retido:</div>
+                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">ISS Retido:</div>
                     <div class="col-6 text-right text-weight-medium">
                       {{ formatCurrencyCents(props.row.ISSValue) }}
                     </div>
 
-                    <div class="col-6 text-grey-7">IRRF:</div>
+                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">IRRF:</div>
                     <div class="col-6 text-right text-weight-medium">
                       {{ formatCurrencyCents(props.row.IRRFValue) }}
                     </div>
 
-                    <div class="col-6 text-grey-7">INSS:</div>
+                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">INSS:</div>
                     <div class="col-6 text-right text-weight-medium">
                       {{ formatCurrencyCents(props.row.INSSValue) }}
                     </div>
 
-                    <div class="col-6 text-grey-7">PIS:</div>
+                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">PIS:</div>
                     <div class="col-6 text-right text-weight-medium">
                       {{ formatCurrencyCents(props.row.PISValue) }}
                     </div>
 
-                    <div class="col-6 text-grey-7">COFINS:</div>
+                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">COFINS:</div>
                     <div class="col-6 text-right text-weight-medium">
                       {{ formatCurrencyCents(props.row.COFINSValue) }}
                     </div>
 
-                    <div class="col-6 text-grey-7">CSLL:</div>
+                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">CSLL:</div>
                     <div class="col-6 text-right text-weight-medium">
                       {{ formatCurrencyCents(props.row.CSLLValue) }}
                     </div>
@@ -379,6 +379,10 @@ import {
   formatDate,
 } from '@/utils/formatters'
 import {
+  getRoleAbbreviation,
+  getStatusAbbreviation,
+  getStatusLabel,
+  getVisibilityAbbreviation,
   roleColor,
   roleLabel,
   statusColor,
@@ -565,47 +569,6 @@ function normalizeText(value: unknown): string {
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .trim()
-}
-
-function getRoleAbbreviation(role?: string): string {
-  const abbreviations: Record<string, string> = {
-    prestada: 'P',
-    tomada: 'T',
-    intermediario: 'I',
-  }
-
-  return abbreviations[role ?? ''] ?? '-'
-}
-
-function getVisibilityAbbreviation(reason?: string): string {
-  const abbreviations: Record<string, string> = {
-    exact_prestador: 'PE',
-    exact_tomador: 'TE',
-    exact_intermediario: 'IE',
-    same_root_only: 'MR',
-  }
-
-  return abbreviations[reason ?? ''] ?? '?'
-}
-
-function getStatusAbbreviation(status?: string): string {
-  const abbreviations: Record<string, string> = {
-    normal: 'N',
-    cancelada: 'C',
-    substituida: 'S',
-  }
-
-  return abbreviations[status ?? ''] ?? '?'
-}
-
-function getStatusLabel(status?: string): string {
-  const labels: Record<string, string> = {
-    normal: 'Normal',
-    cancelada: 'Cancelada',
-    substituida: 'Substituída',
-  }
-
-  return labels[status ?? ''] ?? status ?? 'Desconhecido'
 }
 
 function hasEvents(document: DocumentRow): boolean {
@@ -861,19 +824,16 @@ function openEventsDialog(documentId?: string) {
   max-width: 100%;
 }
 
-.legend-panel {
-  color: #616161;
-  background-color: #f5f5f5;
-  border: 1px dashed rgba(0, 0, 0, 0.15);
+.custom-border-dashed {
+  border: 1px dashed var(--q-separator-color);
 }
 
-.legend-title {
-  color: #424242;
+.custom-border-solid {
+  border: 1px solid var(--q-separator-color);
 }
 
-.legend-label {
+.legend-label-width {
   min-width: 100px;
-  color: #424242;
 }
 
 .partner-name {
@@ -886,37 +846,9 @@ function openEventsDialog(documentId?: string) {
   overflow-y: auto;
 }
 
-.detail-container {
-  background-color: #f8f9fa;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.detail-card {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-}
-
-.body--dark .legend-panel {
-  color: #bdbdbd;
-  background-color: #1d1d1d;
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.body--dark .legend-title,
-.body--dark .legend-label {
-  color: #e0e0e0;
-}
-
-.body--dark .detail-container {
-  background-color: #1d1d1d;
-  border-color: rgba(255, 255, 255, 0.05);
-}
-
-.body--dark .detail-card {
-  color: #d1d1d1;
-  background-color: #121212;
-  border-color: #333333;
+.detail-container-borders {
+  border-top: 1px solid var(--q-separator-color);
+  border-bottom: 1px solid var(--q-separator-color);
 }
 
 :deep(.chave-acesso-column) {
