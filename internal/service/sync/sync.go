@@ -243,11 +243,9 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			runState.consecutiveEmpty++
 			runState.lastCheckedNSU = requestedNSU
 		}
-	} else {
-		if phase == phaseAdvance {
-			runState.consecutiveEmpty = 0
-			runState.lastCheckedNSU = requestedNSU
-		}
+	} else if phase == phaseAdvance {
+		runState.consecutiveEmpty = 0
+		runState.lastCheckedNSU = requestedNSU
 	}
 
 	foundInThisRequest := 0

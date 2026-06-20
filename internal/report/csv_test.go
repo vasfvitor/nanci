@@ -42,7 +42,7 @@ func TestGenerateCSV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open generated CSV: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()

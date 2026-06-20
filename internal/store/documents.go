@@ -177,7 +177,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 	if err != nil {
 		return nil, fmt.Errorf("failed to query documents: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var docs []nfse.CompanyDocument
 	for rows.Next() {
@@ -233,7 +233,7 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []nfse.Event
 	for rows.Next() {

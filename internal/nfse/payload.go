@@ -48,7 +48,7 @@ func DecodePayload(payloadBase64 string, limits PayloadLimits) (DecodedPayload, 
 	if err != nil {
 		return DecodedPayload{}, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
-	defer gzipReader.Close()
+	defer func() { _ = gzipReader.Close() }()
 
 	limitedReader := io.LimitReader(gzipReader, limits.UncompressedBytes+1) // +1 to detect overflow
 

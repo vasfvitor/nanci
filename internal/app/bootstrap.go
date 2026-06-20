@@ -174,10 +174,7 @@ func runtimeDBPath(dataDir string) string {
 }
 
 func shouldRunMigrations(opts RuntimeOptions) bool {
-	if !opts.RunMigrations {
-		return false
-	}
-	return true
+	return opts.RunMigrations
 }
 
 // Close releases resources (such as the database connection).

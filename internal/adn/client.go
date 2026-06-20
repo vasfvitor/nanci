@@ -208,7 +208,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 				bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, MaxJSONResponseBytes+1))
-				
+
 				if c.log != nil {
 					// Quick sanitization to hide giant XML chunks in logs
 					logBody := string(bodyBytes)
@@ -268,7 +268,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 
 func (c *Client) newBackoff() retry.Backoff {
 	b := retry.NewExponential(c.retry.Initial)
-	b = retry.WithMaxRetries(uint64(c.retry.MaxRetries), b)
+	b = retry.WithMaxRetries(uint64(c.retry.MaxRetries), b) //nolint:gosec // intentional: max retries is known to be non-negative
 	b = retry.WithCappedDuration(c.retry.MaxDelay, b)
 	b = retry.WithJitterPercent(20, b)
 	return b

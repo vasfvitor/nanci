@@ -40,7 +40,7 @@ func main() {
 	}
 	info("using %s", strings.TrimSpace(version))
 
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o750); err != nil {
 		fatalf("create output directory: %v", err)
 	}
 

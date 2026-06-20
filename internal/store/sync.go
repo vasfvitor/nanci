@@ -120,7 +120,7 @@ func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDoc
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	q := r.queries.WithTx(tx)
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -199,7 +199,7 @@ func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventP
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	q := r.queries.WithTx(tx)
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -251,7 +251,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	lastSuccessAt := sql.NullString{}
@@ -428,7 +428,7 @@ func (r *SyncRepository) ResetSyncState(ctx context.Context, params nfse.ResetSy
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sync_state WHERE company_id = ?`, string(params.CompanyID)); err != nil {

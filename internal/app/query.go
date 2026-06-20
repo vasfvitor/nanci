@@ -19,8 +19,6 @@ type QueryNFSeInput struct {
 	ChaveAcesso string
 }
 
-
-
 func (a *App) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
 	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)
 	if err != nil {
@@ -52,7 +50,7 @@ func (a *App) queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, p
 
 	pretty, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		return string(response), nil
+		return string(response), nil //nolint:nilerr // intentional: return raw response if formatting fails
 	}
 	return string(pretty), nil
 }
@@ -126,7 +124,7 @@ func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (Connectio
 	credential, err := a.credentialByID(ctx, company.CredentialID)
 	if err != nil {
 		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
-		return result, nil
+		return result, nil //nolint:nilerr // intentional: return diagnostic error info in result
 	}
 
 	result.CertLoaded = true

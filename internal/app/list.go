@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
