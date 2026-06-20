@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	pathspkg "github.com/vasfvitor/nanci/internal/foundation/paths"
 )
 
 const fileName = ".env.local"
@@ -24,7 +26,7 @@ func LoadLocal() error {
 
 func candidatePaths() []string {
 	seen := make(map[string]struct{})
-	var paths []string
+	var candidates []string
 
 	add := func(path string) {
 		if path == "" {
@@ -35,7 +37,7 @@ func candidatePaths() []string {
 			return
 		}
 		seen[clean] = struct{}{}
-		paths = append(paths, clean)
+		candidates = append(candidates, clean)
 	}
 
 	if cwd, err := os.Getwd(); err == nil {
@@ -44,11 +46,11 @@ func candidatePaths() []string {
 	if exe, err := os.Executable(); err == nil {
 		add(filepath.Join(filepath.Dir(exe), fileName))
 	}
-	if configDir, err := os.UserConfigDir(); err == nil {
-		add(filepath.Join(configDir, "nanci", fileName))
+	if dataDir, err := pathspkg.DataDir(); err == nil {
+		add(filepath.Join(dataDir, fileName))
 	}
 
-	return paths
+	return candidates
 }
 
 func loadFile(path string) error {

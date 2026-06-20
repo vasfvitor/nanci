@@ -153,6 +153,9 @@ jobs:
       attestations: write
       id-token: write
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
       - name: Download Desktop Artifact
         uses: actions/download-artifact@v4
         with:
@@ -191,6 +194,31 @@ jobs:
             release/*.exe
             release/nanci-checksums.txt
 
+      - name: Generate Release Notes
+        shell: bash
+        run: |
+          tag="${{ needs.prepare.outputs.tag }}"
+          installer_name="nanci-desktop-windows-amd64-${tag}-installer.exe"
+          commit_desc=$(git log -1 --format='%b')
+          
+          cat <<EOF > release_notes.md
+          $commit_desc
+          
+          ## Nota de segurança
+
+          As versões para Windows atualmente não possuem assinatura digital. Alguns antivírus podem relatar falsos positivos (detecções genéricas/ML) no instalador NSIS ou no executável devido à baixa reputação inicial do binário.
+
+          Os arquivos de release são compilados pelo GitHub Actions e incluem checksums SHA-256 e atestados de proveniência do GitHub (artifact attestations).
+
+          ## Download
+
+          - \`$installer_name\`
+
+          Checksum SHA-256:
+
+          - \`nanci-checksums.txt\`
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -199,16 +227,7 @@ jobs:
           draft: false
           target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true
-          body: |
-            ## Download
-
-            - `nanci-desktop-windows-amd64-${{ needs.prepare.outputs.tag }}-installer.exe`
-
-            SHA-256 checksum:
-
-            - `nanci-checksums.txt`
-
-            This release also includes GitHub build provenance attestation for the installer and checksum file.
+          body_path: release_notes.md
           files: |
             release/*.exe
             release/nanci-checksums.txt

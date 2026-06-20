@@ -10,17 +10,24 @@ O **Nanci** foi concebido desde o princípio como uma aplicação *Local-First*.
 
 Toda a extração, conexão com o certificado digital e armazenamento ocorre localmente na sua máquina.
 
+## Onde o app é instalado?
+
+No Windows, o instalador desktop padrão coloca o executável em:
+
+- `%LOCALAPPDATA%\Programs\Nanci Desktop`
+
 ## Onde os dados ficam salvos?
 
-O Nanci armazena seus dados em uma pasta específica do seu usuário:
+O Nanci armazena seus dados e configurações em uma pasta específica do seu usuário:
 
-- **Windows:** `C:\Users\SeuUsuario\AppData\Roaming\nanci`
+- **Windows:** `C:\Users\SeuUsuario\AppData\Local\nanci`
 
 ### O que é salvo nessa pasta?
 
 1. `nanci-v1.db`: O banco de dados SQLite principal, onde ficam salvas as configurações das empresas (CNPJs cadastrados) e os metadados das notas fiscais extraídos.
 2. `blobs/`: Pasta contendo os arquivos originais temporários `.xml` das NFS-es baixadas da base de dados do governo. Não é um backup e o app pode limpar essa pasta periodicamente para economizar espaço. 
-3. `nanci-desktop.log` / `wails.log`: Arquivos de log de diagnóstico da aplicação.
+3. `.env.local`: Arquivo opcional para variáveis de ambiente locais, como `NANCI_CERT_PASSWORD`.
+4. `logs/`: Pasta com os arquivos `nanci-desktop.log` e `wails.log` de diagnóstico da aplicação.
 
 ## O que NÃO é enviado para lugar nenhum
 

@@ -14,6 +14,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
+	"github.com/vasfvitor/nanci/internal/foundation/paths"
 )
 
 const (
@@ -33,11 +34,11 @@ type desktopLogEvent struct {
 }
 
 func desktopLogDir() (string, error) {
-	configDir, err := os.UserConfigDir()
+	dataDir, err := paths.DataDir()
 	if err != nil {
-		return "", fmt.Errorf("user config dir: %w", err)
+		return "", fmt.Errorf("data dir: %w", err)
 	}
-	logDir := filepath.Join(configDir, "Nanci")
+	logDir := filepath.Join(dataDir, "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		return "", fmt.Errorf("ensure log dir: %w", err)
 	}

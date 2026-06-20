@@ -22,7 +22,7 @@ Para desenvolvimento ou uso avançado em automações recorrentes, o Nanci carre
 
 1. No diretório de trabalho atual (onde o comando foi invocado).
 2. No diretório onde o executável do Nanci está localizado.
-3. Na pasta de dados do usuário: `%APPDATA%\nanci\.env.local` (Windows) ou `~/.nanci/.env.local` (Linux/macOS).
+3. Na pasta de dados do usuário: `%LOCALAPPDATA%\nanci\.env.local` (Windows) ou `~/.nanci/.env.local` (Linux/macOS).
 
 **Exemplo de conteúdo para o `.env.local`:**
 

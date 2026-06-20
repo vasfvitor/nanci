@@ -14,7 +14,9 @@ O Nanci está disponível para Windows. Você não precisa instalar linguagens d
 2. Baixe o arquivo `nanci-desktop-windows-amd64-installer.exe` mais recente.
 3. Execute o instalador no seu computador.
 
-O banco de dados e as configurações ficarão salvos na sua pasta de usuário (App Data). Nada é enviado para a nuvem.
+Por padrão, o executável desktop é instalado em `%LOCALAPPDATA%\Programs\Nanci Desktop`.
+
+O banco de dados, os logs e as configurações ficam na sua pasta de usuário em `%LOCALAPPDATA%\nanci`. Nada é enviado para a nuvem.
 
 ## Primeiro Uso (Desktop)
 

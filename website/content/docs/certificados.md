@@ -24,7 +24,7 @@ Para desenvolvedores ou usuários avançados, o Nanci carrega variáveis de ambi
 
 1. No diretório atual onde o comando foi rodado
 2. No diretório onde o executável do Nanci está
-3. Na pasta de dados do app: `%APPDATA%\nanci\.env.local` (Windows).
+3. Na pasta de dados do app: `%LOCALAPPDATA%\nanci\.env.local` (Windows).
 
 **Exemplo de `.env.local`:**
 ```dotenv
