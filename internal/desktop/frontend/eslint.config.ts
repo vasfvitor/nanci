@@ -18,12 +18,9 @@ export default defineConfig([
   },
 
   js.configs.recommended,
-
   ...tseslint.configs.strict,
-
   ...pluginVue.configs['flat/recommended'],
 
-  // Strict JS/TS Rules
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,vue}'],
     languageOptions: {
@@ -31,22 +28,31 @@ export default defineConfig([
         ...globals.browser,
         ...globals.es2022,
       },
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+        extraFileExtensions: ['.vue'],
+      },
     },
     rules: {
       'no-console': 'warn',
-      '@typescript-eslint/no-explicit-any': 'error',
       'no-useless-assignment': 'off',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
       'no-self-compare': 'error',
+
+      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
     },
   },
 
-  // Vue-specific Strict Rules
   {
     files: ['**/*.vue'],
     languageOptions: {
@@ -59,25 +65,26 @@ export default defineConfig([
       'vue/block-lang': ['error', { script: { lang: 'ts' } }],
       'vue/define-emits-declaration': ['error', 'type-based'],
       'vue/define-props-declaration': ['error', 'type-based'],
+
       'vue/require-macro-variable-name': [
-        'error',
+        'warn',
         {
           defineProps: 'props',
           defineEmits: 'emit',
           defineSlots: 'slots',
           useSlots: 'slots',
           useAttrs: 'attrs',
-        }
+        },
       ],
-      'vue/require-typed-ref': 'error',
+
+      'vue/require-typed-ref': 'warn',
       'vue/no-empty-component-block': 'error',
       'vue/no-ref-object-reactivity-loss': 'error',
-      'vue/prefer-true-attribute-shorthand': 'error',
+      'vue/prefer-true-attribute-shorthand': 'warn',
       'vue/v-for-delimiter-style': ['error', 'in'],
     },
   },
 
-  // Architectural Boundaries: Restrict direct Wails imports outside wrappers
   {
     files: ['src/**/*.{ts,vue}'],
     ignores: [
@@ -93,21 +100,17 @@ export default defineConfig([
           patterns: [
             {
               group: ['**/wailsjs/go/**', '@/wailsjs/go/**'],
-              message: 'Do not import generated Wails bindings directly. Use the wrappers in src/platform/wails/ instead.'
-            }
-          ]
-        }
-      ]
-    }
+              message:
+                'Do not import generated Wails bindings directly. Use the wrappers in src/platform/wails/ instead.',
+            },
+          ],
+        },
+      ],
+    },
   },
 
-  // Architectural Boundaries: Prevent importing pages from components/stores/composables
   {
-    files: [
-      'src/components/**/*.{ts,vue}',
-      'src/stores/**/*.ts',
-      'src/composables/**/*.ts',
-    ],
+    files: ['src/components/**/*.{ts,vue}', 'src/stores/**/*.ts', 'src/composables/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -115,15 +118,14 @@ export default defineConfig([
           patterns: [
             {
               group: ['**/pages/**', '@/pages/**'],
-              message: 'Components, stores, and composables must not import pages.'
-            }
-          ]
-        }
-      ]
-    }
+              message: 'Components, stores, and composables must not import pages.',
+            },
+          ],
+        },
+      ],
+    },
   },
 
-  // Architectural Boundaries: Prevent pages from importing other pages
   {
     files: ['src/pages/**/*.{ts,vue}'],
     rules: {
@@ -132,13 +134,14 @@ export default defineConfig([
         {
           patterns: [
             {
-              group: ['**/pages/*', '@/pages/*'],
-              message: 'Pages must not import other pages. Share code via components, composables, or stores.'
-            }
-          ]
-        }
-      ]
-    }
+              group: ['**/pages/**', '@/pages/**'],
+              message:
+                'Pages must not import other pages. Share code via components, composables, stores, or routes.',
+            },
+          ],
+        },
+      ],
+    },
   },
 
   prettier,

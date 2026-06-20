@@ -367,7 +367,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { copyToClipboard, date, useQuasar, type QTableColumn } from 'quasar'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
@@ -439,23 +439,7 @@ const {
   companyOptions,
   loading,
   exporting,
-} = documentsApi as {
-  filter: Ref<{
-    CNPJ: string
-    Competence: string
-    Direction: Direction
-  }>
-  documents: Ref<DocumentRow[]>
-  pagination: Ref<{
-    page: number
-    rowsPerPage?: number
-    sortBy?: string
-    descending?: boolean
-  }>
-  companyOptions: Ref<SelectOption<string>[]>
-  loading: Ref<boolean>
-  exporting: Ref<boolean>
-}
+} = documentsApi
 
 const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
