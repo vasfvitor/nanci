@@ -74,8 +74,8 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
-				Title:   "Nanci",
-				Message: fmt.Sprintf("© 2026 Nanci. Todos os direitos reservados.\nVersão: %s\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version),
+				Title:   "Sobre o Nanci Desktop",
+				Message: fmt.Sprintf("© 2026 Contribuidores do Nanci\nVersão: %s\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version),
 				Icon:    icon,
 			},
 			TitleBar: &mac.TitleBar{

@@ -15,13 +15,13 @@ import (
 )
 
 type mockSyncRepo struct {
-	state            *nfse.SyncState
-	startRunParams   []nfse.StartRunParams
-	persistParams    []nfse.PersistSyncProgressParams
-	finishRunParams  []nfse.FinishRunParams
-	applyDocParams            []nfse.ApplyDocumentParams
-	applyEventParams          []nfse.ApplyEventParams
-	applyDocAndProgressParams []nfse.ApplyDocumentAndProgressParams
+	state                       *nfse.SyncState
+	startRunParams              []nfse.StartRunParams
+	persistParams               []nfse.PersistSyncProgressParams
+	finishRunParams             []nfse.FinishRunParams
+	applyDocParams              []nfse.ApplyDocumentParams
+	applyEventParams            []nfse.ApplyEventParams
+	applyDocAndProgressParams   []nfse.ApplyDocumentAndProgressParams
 	applyEventAndProgressParams []nfse.ApplyEventAndProgressParams
 }
 
@@ -436,8 +436,6 @@ func TestSyncServiceBreaksGracefullyOnEmptyList(t *testing.T) {
 
 	assertSingleFinishRun(t, repo, nfse.SyncStatusCompleted, nfse.SyncStopReasonEmptyLimit)
 }
-
-
 
 func TestSyncServiceApplyDocumentAndProgressIsAtomic(t *testing.T) {
 	repo := &mockSyncRepo{

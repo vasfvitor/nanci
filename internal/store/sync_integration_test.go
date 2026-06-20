@@ -367,4 +367,3 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 		t.Fatalf("expected progress LastFoundNSU=999, got %d", state.LastFoundNSU)
 	}
 }
-
