@@ -201,7 +201,7 @@ async function syncCompany(cnpj: string) {
     const lastFound = result.LastFoundNSUValid ? result.LastFoundNSU : '—'
     $q.notify({
       type: 'positive',
-      message: `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastCheckedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`,
+      message: `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastProcessedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`,
     })
     await loadCompanies()
   } catch (err) {

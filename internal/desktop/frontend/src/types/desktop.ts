@@ -168,7 +168,7 @@ export type PullResult = {
   ConsultationBasis: string
   Status: string
   StopReason: string
-  LastCheckedNSU: number
+  LastProcessedNSU: number
   LastFoundNSU: number
   LastFoundNSUValid: boolean
   EmptyStreak: number
