@@ -14,6 +14,7 @@ export default defineConfig([
       'src/vite-env.d.ts',
       '*.tsbuildinfo',
       'package.json.md5',
+      '.histoire/**',
     ],
   },
 
@@ -24,10 +25,6 @@ export default defineConfig([
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,vue}'],
     languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.es2022,
-      },
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
@@ -50,6 +47,32 @@ export default defineConfig([
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+    },
+  },
+
+  {
+    files: ['src/**/*.{js,mjs,cjs,ts,mts,cts,vue}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.es2022,
+      },
+    },
+  },
+
+  {
+    files: [
+      'eslint.config.ts',
+      'vite.config.ts',
+      'vitest.config.ts',
+      'histoire.config.ts',
+      'scripts/**/*.ts',
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.es2022,
+      },
     },
   },
 
@@ -141,6 +164,12 @@ export default defineConfig([
           ],
         },
       ],
+    },
+  },  {
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-dynamic-delete': 'off',
     },
   },
 

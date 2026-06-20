@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "lint": "eslint \"src/**/*.{ts,vue}\" --fix",
-    "lint:check": "eslint \"src/**/*.{ts,vue}\"",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "format": "prettier --write .",
     "preview": "vite preview",
     "check-contrast": "jiti scripts/check-contrast.ts",
