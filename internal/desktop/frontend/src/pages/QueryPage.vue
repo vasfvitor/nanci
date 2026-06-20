@@ -25,18 +25,48 @@
             />
           </div>
           <div class="col-12 col-md-6">
-            <q-input
+            <q-select
               v-model="form.chave"
+              :options="documentOptions"
+              use-input
+              fill-input
+              hide-selected
+              input-debounce="0"
+              emit-value
+              map-options
               label="Chave de Acesso (50 posições)"
               outlined
               dense
-              :rules="[val => !!val || 'Chave é obrigatória', val => val.length === 50 || 'Chave deve ter 50 números']"
-            />
+              :rules="[
+                val => !!val || 'Chave é obrigatória',
+                val => {
+                  const v = typeof val === 'object' && val !== null ? val.value : val;
+                  return /^\d{50}$/.test(v) || 'Chave deve ter 50 números';
+                }
+              ]"
+              @new-value="createValue"
+              @filter="filterDocumentsFn"
+              @input-value="(v) => { if (v && v.length === 50) form.chave = v }"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.description }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">
+                    Digite a chave completa ou sincronize notas primeiro.
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
         </div>
         <div class="row q-gutter-sm">
-          <q-btn type="submit" color="primary" icon="search" label="Consultar NFSe" :loading="loading" @click="type = 'nfse'" />
-          <q-btn type="submit" color="secondary" icon="event" label="Consultar Eventos" :loading="loading" @click="type = 'events'" />
+          <q-btn type="submit" color="primary" icon="search" label="Consultar no ADN" :loading="loading" />
         </div>
       </q-form>
     </q-card>
@@ -62,7 +92,7 @@ import { useQuery } from '@/composables/useQuery'
 
 const $q = useQuasar()
 const query = useQuery()
-const { form, result, type, loading, companyOptions } = query
+const { form, result, loading, companyOptions, documentOptions } = query
 
 onMounted(async () => {
   try {
@@ -81,6 +111,12 @@ function createValue(val: string, done: (item: unknown, mode: 'add' | 'add-uniqu
 function filterFn(val: string, update: (callback: () => void) => void) {
   update(() => {
     query.filterCompanies(val)
+  })
+}
+
+function filterDocumentsFn(val: string, update: (callback: () => void) => void) {
+  update(() => {
+    query.filterDocuments(val)
   })
 }
 

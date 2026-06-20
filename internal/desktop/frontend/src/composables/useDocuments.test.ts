@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, vi } from 'vitest'
 import { useDocuments } from './useDocuments'
 import { desktopClient } from '@/platform/wails/client'
+import type { DocumentRow, ExportResult } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -82,5 +83,57 @@ describe('useDocuments', () => {
       Direction: 'tomada',
       Format: 'zip',
     })
+  })
+
+  it('keeps loading state across composable instances while a search is pending', async () => {
+    let resolveSearch!: (value: DocumentRow[]) => void
+    vi.mocked(desktopClient.listDocuments).mockReturnValue(
+      new Promise<DocumentRow[]>((resolve) => {
+        resolveSearch = resolve
+      })
+    )
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+
+    const first = useDocuments()
+    first.filter.value.CNPJ = '123'
+
+    const pending = first.search()
+    expect(first.loading.value).toBe(true)
+
+    const second = useDocuments()
+    expect(second.loading.value).toBe(true)
+
+    resolveSearch([])
+    await pending
+    expect(first.loading.value).toBe(false)
+    expect(second.loading.value).toBe(false)
+  })
+
+  it('keeps exporting state across composable instances while export is pending', async () => {
+    let resolveExport!: (value: ExportResult | null) => void
+    vi.mocked(desktopClient.exportDocuments).mockReturnValue(
+      new Promise<ExportResult | null>((resolve) => {
+        resolveExport = resolve
+      })
+    )
+
+    const first = useDocuments()
+    first.filter.value.CNPJ = '123'
+
+    const pending = first.exportDocuments('csv')
+    expect(first.exporting.value).toBe(true)
+
+    const second = useDocuments()
+    expect(second.exporting.value).toBe(true)
+
+    // A second export call should be ignored and return undefined
+    const secondPending = second.exportDocuments('csv')
+    await expect(secondPending).resolves.toBeUndefined()
+    expect(desktopClient.exportDocuments).toHaveBeenCalledTimes(1)
+
+    resolveExport({ OutPath: '/path', Format: 'csv' })
+    await pending
+    expect(first.exporting.value).toBe(false)
+    expect(second.exporting.value).toBe(false)
   })
 })

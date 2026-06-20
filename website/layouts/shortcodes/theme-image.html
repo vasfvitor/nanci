@@ -1,0 +1,30 @@
+{{- $light := .Get "light" -}}
+{{- $dark := .Get "dark" -}}
+{{- $alt := .Get "alt" -}}
+{{- $class := .Get "class" -}}
+{{- $width := .Get "width" -}}
+{{- $height := .Get "height" -}}
+
+{{- if hasPrefix $light "/" -}}
+  {{- $light = relURL (strings.TrimPrefix "/" $light) -}}
+{{- end -}}
+{{- if and $dark (hasPrefix $dark "/") -}}
+  {{- $dark = relURL (strings.TrimPrefix "/" $dark) -}}
+{{- end -}}
+
+<img
+  src="{{ $light }}"
+  alt="{{ $alt }}"
+  class="hx:block{{ with $dark }} hx:dark:hidden{{ end }} {{ $class }}"
+  {{ with $width }}width="{{ . }}"{{ end }}
+  {{ with $height }}height="{{ . }}"{{ end }}
+/>
+{{- with $dark }}
+<img
+  src="{{ . }}"
+  alt="{{ $alt }}"
+  class="hx:hidden hx:dark:block {{ $class }}"
+  {{ with $width }}width="{{ . }}"{{ end }}
+  {{ with $height }}height="{{ . }}"{{ end }}
+/>
+{{- end }}

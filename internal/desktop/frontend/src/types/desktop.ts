@@ -181,3 +181,20 @@ export type PullResult = {
 export type ResetSyncInput = {
   CNPJ: string
 }
+
+export type BuildInfo = {
+  version: string
+  commit: string
+  date: string
+}
+
+export type ConnectionTestResult = {
+  certLoaded: boolean
+  certSubject: string
+  certExpiration: string
+  mtlsAccepted: boolean
+  endpointReached: boolean
+  responseCode: string
+  responseDetail: string
+  statusExplanation: string
+}

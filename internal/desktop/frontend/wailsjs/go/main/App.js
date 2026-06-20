@@ -38,6 +38,14 @@ export function ExportXML(arg1) {
   return window['go']['main']['App']['ExportXML'](arg1);
 }
 
+export function GetBuildInfo() {
+  return window['go']['main']['App']['GetBuildInfo']();
+}
+
+export function GetDataDirectory() {
+  return window['go']['main']['App']['GetDataDirectory']();
+}
+
 export function ListCompanies() {
   return window['go']['main']['App']['ListCompanies']();
 }
@@ -54,12 +62,16 @@ export function ListEventsForDocument(arg1) {
   return window['go']['main']['App']['ListEventsForDocument'](arg1);
 }
 
-export function Pull(arg1) {
-  return window['go']['main']['App']['Pull'](arg1);
+export function OpenDataDirectory() {
+  return window['go']['main']['App']['OpenDataDirectory']();
 }
 
-export function QueryNFSe(arg1) {
-  return window['go']['main']['App']['QueryNFSe'](arg1);
+export function OpenLogsDirectory() {
+  return window['go']['main']['App']['OpenLogsDirectory']();
+}
+
+export function Pull(arg1) {
+  return window['go']['main']['App']['Pull'](arg1);
 }
 
 export function QueryNFSeEvents(arg1) {
@@ -92,6 +104,10 @@ export function Status(arg1) {
 
 export function SubmitCertPassword(arg1, arg2) {
   return window['go']['main']['App']['SubmitCertPassword'](arg1, arg2);
+}
+
+export function TestConnection(arg1) {
+  return window['go']['main']['App']['TestConnection'](arg1);
 }
 
 export function ToggleDebug(arg1) {

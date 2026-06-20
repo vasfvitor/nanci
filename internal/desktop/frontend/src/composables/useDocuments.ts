@@ -6,9 +6,8 @@ import type { CompanySummary, ExportFormat } from '@/types/desktop'
 
 export function useDocuments() {
   const documentsStore = useDocumentsStore()
-  const { filter, documents } = storeToRefs(documentsStore)
+  const { filter, documents, loading, exporting } = storeToRefs(documentsStore)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-  const loading = ref(false)
 
   const savedRowsPerPage = Number(localStorage.getItem('nanci:documents:rowsPerPage')) || 25
   const pagination = ref({
@@ -48,35 +47,59 @@ export function useDocuments() {
   }
 
   async function exportDocuments(format: ExportFormat) {
-    return desktopClient.exportDocuments({
-      CNPJ: filter.value.CNPJ,
-      Competence: filter.value.Competence || '',
-      Direction: filter.value.Direction || '',
-      Format: format,
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportDocuments({
+        CNPJ: filter.value.CNPJ,
+        Competence: filter.value.Competence || '',
+        Direction: filter.value.Direction || '',
+        Format: format,
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function exportDANFSe(chaveAcesso: string) {
-    return desktopClient.exportDANFSe({
-      CNPJ: filter.value.CNPJ,
-      ChaveAcesso: chaveAcesso,
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportDANFSe({
+        CNPJ: filter.value.CNPJ,
+        ChaveAcesso: chaveAcesso,
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function exportXML(chaveAcesso: string) {
-    return desktopClient.exportXML({
-      CNPJ: filter.value.CNPJ,
-      ChaveAcesso: chaveAcesso,
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportXML({
+        CNPJ: filter.value.CNPJ,
+        ChaveAcesso: chaveAcesso,
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function exportDANFSeZIP() {
-    return desktopClient.exportDANFSeZIP({
-      CNPJ: filter.value.CNPJ,
-      Competence: filter.value.Competence || '',
-      Direction: filter.value.Direction || '',
-      Format: 'zip',
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportDANFSeZIP({
+        CNPJ: filter.value.CNPJ,
+        Competence: filter.value.Competence || '',
+        Direction: filter.value.Direction || '',
+        Format: 'zip',
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function loadEvents(documentID: string) {
@@ -89,6 +112,7 @@ export function useDocuments() {
     pagination,
     companyOptions,
     loading,
+    exporting,
     loadCompanies,
     search,
     exportDocuments,

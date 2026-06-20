@@ -21,6 +21,10 @@ export function ExportLogs():Promise<string>;
 
 export function ExportXML(arg1:desktopapi.ExportXMLInput):Promise<desktopapi.ExportResult>;
 
+export function GetBuildInfo():Promise<desktopapi.BuildInfo>;
+
+export function GetDataDirectory():Promise<string>;
+
 export function ListCompanies():Promise<Array<desktopapi.CompanySummary>>;
 
 export function ListCredentials():Promise<Array<desktopapi.CredentialSummary>>;
@@ -29,9 +33,11 @@ export function ListDocuments(arg1:app.ListInput):Promise<Array<desktopapi.Docum
 
 export function ListEventsForDocument(arg1:string):Promise<Array<desktopapi.DocumentEvent>>;
 
-export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
+export function OpenDataDirectory():Promise<void>;
 
-export function QueryNFSe(arg1:app.QueryNFSeInput):Promise<string>;
+export function OpenLogsDirectory():Promise<void>;
+
+export function Pull(arg1:app.PullInput):Promise<app.PullResult>;
 
 export function QueryNFSeEvents(arg1:app.QueryNFSeInput):Promise<string>;
 
@@ -48,6 +54,8 @@ export function SetLogLevel(arg1:string):Promise<void>;
 export function Status(arg1:string):Promise<app.StatusResult>;
 
 export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
+
+export function TestConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
 
 export function ToggleDebug(arg1:boolean):Promise<void>;
 

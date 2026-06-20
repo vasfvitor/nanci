@@ -32,7 +32,6 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ListDocuments: vi.fn(),
   ListEventsForDocument: vi.fn(),
   Pull: vi.fn(),
-  QueryNFSe: vi.fn(),
   QueryNFSeEvents: vi.fn(),
   ResetSyncState: vi.fn(),
   SelectCertificate: vi.fn(),

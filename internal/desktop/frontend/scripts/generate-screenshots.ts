@@ -34,7 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '../../../..')
 const screenshotsDir = path.resolve(rootDir, 'docs/screenshots')
 const viteConfig = path.resolve(__dirname, '../vite.config.ts')
-const appUrl = 'http://localhost:5173'
+const appUrl = 'http://localhost:5555'
 
 const mockCompanies = [
   {
@@ -91,6 +91,24 @@ const mockCompanies = [
     CreatedAt: '2026-05-10T10:00:00Z',
     UpdatedAt: '2026-05-10T10:00:00Z',
   },
+  {
+    ID: '4',
+    CNPJ: '11222333000144',
+    CNPJRoot: '11222333',
+    Name: 'TechCorp Soluções Digitais',
+    CredentialID: 'cred-3',
+    CredentialLabel: 'Certificado TechCorp (Vencido)',
+    CredentialCertPath: 'C:\\Certificados\\techcorp_old.pfx',
+    Environment: 'producao',
+    LastNSU: 500,
+    LastFoundNSU: 500,
+    LastFoundNSUValid: true,
+    LastSyncAt: '2023-12-30T10:00:00-03:00',
+    LastRunStatus: 'error',
+    LastRunStopReason: 'cert-expired',
+    CreatedAt: '2023-01-10T10:00:00Z',
+    UpdatedAt: '2023-12-30T10:00:00Z',
+  },
 ]
 
 const mockCredentials = [
@@ -121,6 +139,20 @@ const mockCredentials = [
     InspectedAt: '2025-06-02T11:00:00Z',
     CreatedAt: '2025-06-02T11:00:00Z',
     UpdatedAt: '2025-06-02T11:00:00Z',
+  },
+  {
+    ID: 'cred-3',
+    Label: 'Certificado TechCorp (Vencido)',
+    CertPath: 'C:\\Certificados\\techcorp_old.pfx',
+    OwnerCNPJ: '11222333000144',
+    OwnerCNPJRoot: '11222333',
+    FingerprintSHA256: 'deadbeefd3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a',
+    SubjectName: 'TECHCORP SOLUCOES DIGITAIS:11222333000144',
+    NotBefore: '2022-12-31T00:00:00Z',
+    NotAfter: '2023-12-31T23:59:59Z',
+    InspectedAt: '2023-01-02T11:00:00Z',
+    CreatedAt: '2023-01-02T11:00:00Z',
+    UpdatedAt: '2023-01-02T11:00:00Z',
   },
 ]
 
@@ -157,7 +189,7 @@ const mockDocuments = [
     CompanyID: '1',
     DocumentID: 'doc-1',
     CompanyRole: 'prestada',
-    VisibilityReason: 'prestador',
+    VisibilityReason: 'exact_prestador',
     FirstSeenNSU: 101,
     LastSeenNSU: 101,
     FirstSeenNSUValid: true,
@@ -197,7 +229,7 @@ const mockDocuments = [
     CompanyID: '1',
     DocumentID: 'doc-2',
     CompanyRole: 'tomada',
-    VisibilityReason: 'tomador',
+    VisibilityReason: 'exact_tomador',
     FirstSeenNSU: 102,
     LastSeenNSU: 102,
     FirstSeenNSUValid: true,
@@ -237,13 +269,53 @@ const mockDocuments = [
     CompanyID: '1',
     DocumentID: 'doc-3',
     CompanyRole: 'prestada',
-    VisibilityReason: 'prestador',
+    VisibilityReason: 'same_root_only',
     FirstSeenNSU: 95,
     LastSeenNSU: 95,
     FirstSeenNSUValid: true,
     LastSeenNSUValid: true,
     FirstSyncedAt: '2026-06-15T09:10:00Z',
     LastSyncedAt: '2026-06-15T09:10:00Z',
+  },
+  {
+    ID: 'doc-4',
+    ChaveAcesso: '35260611222333000144560010000088881002003007',
+    IssueDate: '2026-06-14T14:20:00-03:00',
+    Competence: '2026-06',
+    PrestadorCNPJ: '99999999000199',
+    PrestadorName: 'Agência de Publicidade Marketing S/A',
+    TomadorCNPJ: '88888888000188',
+    TomadorName: 'Cliente Final Ltda',
+    IntermediarioCNPJ: '11222333000144',
+    IntermediarioName: 'TechCorp Soluções Digitais',
+    ServiceValue: 200000,
+    ISSValue: 4000,
+    IRRFValue: 3000,
+    INSSValue: 0,
+    PISValue: 1300,
+    COFINSValue: 6000,
+    CSLLValue: 2000,
+    TotalRetentions: 12300,
+    Status: 'substituida',
+    LayoutVersion: '3.00',
+    XMLPath: 'C:\\nanci\\xmls\\doc-4.xml',
+    RawHash: 'sha256...',
+    ParseWarnings: ['Documento não possui assinatura válida'],
+    NFSeNumber: '8888',
+    ServiceDescription: 'Serviços de intermediação de negócios e agenciamento.',
+    CreatedAt: '2026-06-14T14:25:00Z',
+    UpdatedAt: '2026-06-14T14:25:00Z',
+    RelationID: 'rel-4',
+    CompanyID: '4',
+    DocumentID: 'doc-4',
+    CompanyRole: 'intermediario',
+    VisibilityReason: 'exact_intermediario',
+    FirstSeenNSU: 80,
+    LastSeenNSU: 80,
+    FirstSeenNSUValid: true,
+    LastSeenNSUValid: true,
+    FirstSyncedAt: '2026-06-14T14:25:00Z',
+    LastSyncedAt: '2026-06-14T14:25:00Z',
   },
 ]
 
@@ -257,6 +329,33 @@ const syncLogs = [
   { level: 'INFO', msg: 'Documento 5678 salvo no banco local', time: '2026-06-18T14:30:04Z' },
   { level: 'INFO', msg: 'Documento 1235 salvo no banco local', time: '2026-06-18T14:30:04Z' },
   { level: 'INFO', msg: 'Sincronização concluída em 1.24s', time: '2026-06-18T14:30:05Z' },
+]
+
+const mockEvents = [
+  {
+    ID: 'ev-1',
+    Type: 'NFSE',
+    EventAt: '2026-06-14T14:20:00Z',
+    ReplacementChaveAcesso: '',
+    Description: 'Emissão Normal',
+    RawXMLPath: 'C:\\nanci\\xmls\\doc-4.xml',
+  },
+  {
+    ID: 'ev-2',
+    Type: 'CANC',
+    EventAt: '2026-06-14T15:00:00Z',
+    ReplacementChaveAcesso: '',
+    Description: 'Cancelamento por erro de valores na prestação do serviço.',
+    RawXMLPath: 'C:\\nanci\\xmls\\doc-4-canc.xml',
+  },
+  {
+    ID: 'ev-3',
+    Type: 'SUBST',
+    EventAt: '2026-06-14T16:30:00Z',
+    ReplacementChaveAcesso: '35260611222333000144560010000088891002003008',
+    Description: 'Nota fiscal substituída pela de final 8889.',
+    RawXMLPath: 'C:\\nanci\\xmls\\doc-4-subst.xml',
+  },
 ]
 
 const screenshots: ScreenshotSpec[] = [
@@ -274,8 +373,55 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
+  {
+    route: '/',
+    name: 'dialogo-senha-certificado',
+    theme: 'dark',
+    ready: 'text=Empresas',
+    setup: async (page) => {
+      await page.evaluate(() => {
+        window.triggerWailsEvent?.('request-cert-password', {
+          RequestID: 'req-123',
+          CompanyName: 'TechCorp Soluções Digitais',
+          TargetCNPJ: '11222333000144',
+          CredentialLabel: 'Certificado TechCorp (Vencido)',
+          CertPath: 'C:\\Certificados\\techcorp_old.pfx',
+        })
+      })
+      await page.waitForSelector('.q-dialog', { timeout: 3000 })
+    },
+  },
+
   { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Documentos' },
   { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Documentos' },
+
+  {
+    route: '/documents',
+    name: 'detalhes-documento',
+    theme: 'light',
+    ready: 'text=Documentos',
+    setup: async (page) => {
+      // Abre a expansão da primeira nota fiscal
+      await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
+      await page.waitForTimeout(500) // espera a animação de expansão
+    },
+  },
+
+  {
+    route: '/documents',
+    name: 'dialogo-eventos-documento',
+    theme: 'dark',
+    ready: 'text=Documentos',
+    setup: async (page) => {
+      // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
+      // Pode ser o primeiro botão de histórico que encontrar
+      const btn = page.locator('button[aria-label="Ver Eventos"]').first()
+      if (await btn.isVisible()) {
+        await btn.click()
+        await page.waitForSelector('.q-dialog', { timeout: 3000 })
+      }
+    },
+  },
 
   { route: '/credentials', name: 'credenciais', theme: 'light', ready: 'text=Credenciais' },
   { route: '/credentials', name: 'credenciais', theme: 'dark', ready: 'text=Credenciais' },
@@ -323,7 +469,7 @@ async function installWailsMock(context: BrowserContext) {
             ListCompanies: async () => companies,
             ListCredentials: async () => credentials,
             ListDocuments: async () => documents,
-            ListEventsForDocument: async () => [],
+            ListEventsForDocument: async () => mockEvents,
             Pull: async (input: { CNPJ?: string }) => ({
               CompanyName: 'ACME Tecnologia e Serviços LTDA',
               CNPJ: input.CNPJ,
@@ -496,7 +642,7 @@ async function main() {
     server = await createServer({
       configFile: viteConfig,
       server: {
-        port: 5173,
+        port: 5555,
         strictPort: true,
       },
     })

@@ -1,14 +1,46 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useQueryStore } from '@/stores/query'
 
 export function useQuery() {
   const queryStore = useQueryStore()
-  const { form, result, type } = storeToRefs(queryStore)
-  const loading = ref(false)
+  const { form, result, type, loading } = storeToRefs(queryStore)
   const allOptions = ref<{ label: string; value: string }[]>([])
   const companyOptions = ref<{ label: string; value: string }[]>([])
+
+  const allDocumentOptions = ref<{ label: string; value: string; description?: string }[]>([])
+  const documentOptions = ref<{ label: string; value: string; description?: string }[]>([])
+
+  watch(
+    () => form.value.cnpj,
+    async (newCnpj) => {
+      if (!newCnpj) {
+        allDocumentOptions.value = []
+        documentOptions.value = []
+        return
+      }
+      try {
+        const docs = await desktopClient.listDocuments({ CNPJ: newCnpj, Competence: '', Direction: '' })
+        allDocumentOptions.value = docs.map((d) => {
+          const pureKey = d.ChaveAcesso.replace(/\D/g, '')
+          const shortKey = pureKey.length >= 6 ? pureKey.slice(-6) : pureKey
+          const valStr = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.ServiceValue / 100)
+          const name = d.CompanyRole === 'prestada' ? d.TomadorName : d.PrestadorName
+          const shortName = name && name.length > 20 ? name.slice(0, 20) + '...' : name
+          return {
+            label: pureKey,
+            value: pureKey,
+            description: `...${shortKey} | ${shortName || 'Desconhecido'} | ${valStr}`,
+          }
+        })
+        documentOptions.value = allDocumentOptions.value
+      } catch {
+        // Silently fail autocomplete fetch
+      }
+    },
+    { immediate: true }
+  )
 
   async function loadCompanies() {
     const companies = await desktopClient.listCompanies()
@@ -28,20 +60,34 @@ export function useQuery() {
     )
   }
 
+  function filterDocuments(val: string) {
+    if (val === '') {
+      documentOptions.value = allDocumentOptions.value
+      return
+    }
+    const needle = val.toLowerCase()
+    documentOptions.value = allDocumentOptions.value.filter(
+      (v) => v.value.toLowerCase().includes(needle) || (v.description && v.description.toLowerCase().includes(needle))
+    )
+  }
+
   async function runQuery() {
-    if (!form.value.cnpj || form.value.chave.length !== 50) return ''
+    if (loading.value) return result.value
+    
+    const chaveVal = typeof form.value.chave === 'object' && form.value.chave !== null 
+      ? (form.value.chave as { value: string }).value 
+      : form.value.chave
+
+    if (!form.value.cnpj || !/^\d{50}$/.test(chaveVal)) return ''
 
     loading.value = true
     queryStore.clearResult()
     try {
       const input = {
         CNPJ: form.value.cnpj,
-        ChaveAcesso: form.value.chave,
+        ChaveAcesso: chaveVal,
       }
-      result.value =
-        type.value === 'nfse'
-          ? await desktopClient.queryNFSe(input)
-          : await desktopClient.queryNFSeEvents(input)
+      result.value = await desktopClient.queryNFSeEvents(input)
       return result.value
     } finally {
       loading.value = false
@@ -55,8 +101,10 @@ export function useQuery() {
     loading,
     allOptions,
     companyOptions,
+    documentOptions,
     loadCompanies,
     filterCompanies,
+    filterDocuments,
     runQuery,
   }
 }

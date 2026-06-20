@@ -24,6 +24,8 @@ Dialogs should expose typed props and emits where practical. They should not rea
 
 Desktop Go methods exposed to Wails should return DTOs from `internal/desktop/desktopapi`, not `internal/nfse` domain structs. Add or update DTO mappers when fields cross the desktop boundary, and keep file path construction/export dispatch in the backend for export flows.
 
+Do not hardcode style colors or use Tailwind-style theme selectors (such as `dark:bg-grey-9`). For dark theme styling adaptations, use Quasar-native dynamic class bindings based on `$q.dark.isActive` (e.g. `:class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"`) or leverage Quasar's built-in CSS variables (e.g. `var(--q-separator-color)`).
+
 ## Testing Guidelines
 Place Go tests next to the code they cover using `*_test.go`. Existing examples include `internal/store/companies_test.go` and `internal/foundation/cnpj/cnpj_test.go`. Run `make test` before opening a PR; use `go test ./...` for quick iteration. Add regression tests for parser, storage, and path-handling changes.
 

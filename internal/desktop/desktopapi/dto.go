@@ -216,3 +216,20 @@ func DocumentEvents(events []app.EventView) []DocumentEvent {
 	}
 	return out
 }
+
+type BuildInfo struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit"`
+	Date    string `json:"date"`
+}
+
+type ConnectionTestResult struct {
+	CertLoaded        bool   `json:"certLoaded"`
+	CertSubject       string `json:"certSubject"`
+	CertExpiration    string `json:"certExpiration"`
+	MTLSAccepted      bool   `json:"mtlsAccepted"`
+	EndpointReached   bool   `json:"endpointReached"`
+	ResponseCode      string `json:"responseCode"`
+	ResponseDetail    string `json:"responseDetail"`
+	StatusExplanation string `json:"statusExplanation"`
+}

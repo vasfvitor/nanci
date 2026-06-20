@@ -38,7 +38,10 @@ const props = defineProps<{
   modelValue: boolean
 }>()
 
-const emit = defineEmits(['update:modelValue', 'added'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'added'): void
+}>()
 const $q = useQuasar()
 const isOpen = ref(props.modelValue)
 const loading = ref(false)
