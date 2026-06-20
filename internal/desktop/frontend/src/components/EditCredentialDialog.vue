@@ -29,7 +29,10 @@ const props = defineProps<{
   credentialData: CredentialSummary | null
 }>()
 
-const emit = defineEmits(['update:modelValue', 'updated'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'updated'): void
+}>()
 const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)

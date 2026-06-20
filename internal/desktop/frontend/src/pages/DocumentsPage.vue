@@ -733,70 +733,46 @@ async function search() {
 }
 
 async function exportData(format: ExportFormat) {
-  if (exporting.value) {
-    return
-  }
-
-  exporting.value = true
-
   try {
     const result = await documentsApi.exportDocuments(format)
     notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
   } catch (error) {
     notifyError('Erro ao exportar', error)
-  } finally {
-    exporting.value = false
   }
 }
 
 async function exportDanfse(chaveAcesso?: string) {
-  if (!chaveAcesso || exporting.value) {
+  if (!chaveAcesso) {
     return
   }
-
-  exporting.value = true
 
   try {
     const result = await documentsApi.exportDANFSe(chaveAcesso)
     notifyExportSuccess('DANFSe', result)
   } catch (error) {
     notifyError('Erro ao exportar DANFSe', error)
-  } finally {
-    exporting.value = false
   }
 }
 
 async function exportXML(chaveAcesso?: string) {
-  if (!chaveAcesso || exporting.value) {
+  if (!chaveAcesso) {
     return
   }
-
-  exporting.value = true
 
   try {
     const result = await documentsApi.exportXML(chaveAcesso)
     notifyExportSuccess('XML', result)
   } catch (error) {
     notifyError('Erro ao exportar XML', error)
-  } finally {
-    exporting.value = false
   }
 }
 
 async function exportDanfseZip() {
-  if (exporting.value) {
-    return
-  }
-
-  exporting.value = true
-
   try {
     const result = await documentsApi.exportDANFSeZIP()
     notifyExportSuccess('ZIP de DANFSes', result)
   } catch (error) {
     notifyError('Erro ao exportar DANFSes', error)
-  } finally {
-    exporting.value = false
   }
 }
 

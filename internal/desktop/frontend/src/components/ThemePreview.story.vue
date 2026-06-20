@@ -1,6 +1,3 @@
-<script setup lang="ts">
-</script>
-
 <template>
   <Story title="Design System/Theme Palette">
     <Variant title="Light Theme">

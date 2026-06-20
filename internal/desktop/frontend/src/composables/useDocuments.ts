@@ -47,35 +47,59 @@ export function useDocuments() {
   }
 
   async function exportDocuments(format: ExportFormat) {
-    return desktopClient.exportDocuments({
-      CNPJ: filter.value.CNPJ,
-      Competence: filter.value.Competence || '',
-      Direction: filter.value.Direction || '',
-      Format: format,
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportDocuments({
+        CNPJ: filter.value.CNPJ,
+        Competence: filter.value.Competence || '',
+        Direction: filter.value.Direction || '',
+        Format: format,
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function exportDANFSe(chaveAcesso: string) {
-    return desktopClient.exportDANFSe({
-      CNPJ: filter.value.CNPJ,
-      ChaveAcesso: chaveAcesso,
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportDANFSe({
+        CNPJ: filter.value.CNPJ,
+        ChaveAcesso: chaveAcesso,
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function exportXML(chaveAcesso: string) {
-    return desktopClient.exportXML({
-      CNPJ: filter.value.CNPJ,
-      ChaveAcesso: chaveAcesso,
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportXML({
+        CNPJ: filter.value.CNPJ,
+        ChaveAcesso: chaveAcesso,
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function exportDANFSeZIP() {
-    return desktopClient.exportDANFSeZIP({
-      CNPJ: filter.value.CNPJ,
-      Competence: filter.value.Competence || '',
-      Direction: filter.value.Direction || '',
-      Format: 'zip',
-    })
+    if (exporting.value) return
+    exporting.value = true
+    try {
+      return await desktopClient.exportDANFSeZIP({
+        CNPJ: filter.value.CNPJ,
+        Competence: filter.value.Competence || '',
+        Direction: filter.value.Direction || '',
+        Format: 'zip',
+      })
+    } finally {
+      exporting.value = false
+    }
   }
 
   async function loadEvents(documentID: string) {
