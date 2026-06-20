@@ -36,7 +36,7 @@ type PullResult struct {
 	ConsultationBasis string
 	Status            string
 	StopReason        string
-	LastCheckedNSU    int64
+	LastProcessedNSU  int64
 	LastFoundNSU      int64
 	LastFoundNSUValid bool
 	EmptyStreak       int
@@ -155,7 +155,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
 	if snapshot.State != nil {
-		result.LastCheckedNSU = snapshot.State.LastCheckedNSU
+		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
 		result.LastFoundNSU = snapshot.State.LastFoundNSU
 		result.LastFoundNSUValid = snapshot.State.LastFoundNSUValid
 		result.EmptyStreak = snapshot.State.LastEmptyStreak

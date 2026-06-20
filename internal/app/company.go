@@ -66,7 +66,7 @@ func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
 		}
 		if snapshot.State != nil {
-			companies[i].LastNSU = snapshot.State.LastCheckedNSU
+			companies[i].LastNSU = snapshot.State.LastProcessedNSU
 			companies[i].LastFoundNSU = snapshot.State.LastFoundNSU
 			companies[i].LastFoundNSUValid = snapshot.State.LastFoundNSUValid
 			companies[i].LastSyncAt = snapshot.State.LastSuccessAt

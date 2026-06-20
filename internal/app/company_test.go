@@ -183,7 +183,7 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		RunID:                 "run-1",
 		Environment:           company.Environment,
 		ConsultationCNPJ:      company.CNPJ,
-		LastCheckedNSU:        42,
+		LastProcessedNSU:      42,
 		LastFoundNSU:          29,
 		LastFoundNSUValid:     true,
 		LastEmptyStreak:       3,
