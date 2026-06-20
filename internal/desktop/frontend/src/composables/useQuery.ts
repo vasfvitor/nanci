@@ -35,8 +35,8 @@ export function useQuery() {
           }
         })
         documentOptions.value = allDocumentOptions.value
-      } catch (err) {
-        console.error('Erro ao carregar documentos para autocomplete:', err)
+      } catch {
+        // Silently fail autocomplete fetch
       }
     },
     { immediate: true }

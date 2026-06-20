@@ -160,18 +160,21 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
 import { desktopClient } from '@/platform/wails/client'
-import type { BuildInfo, ConnectionTestResult } from '@/types/desktop'
+import { useDiagnosticsStore } from '@/stores/diagnostics'
+import type { BuildInfo } from '@/types/desktop'
 
 const $q = useQuasar()
+const diagnosticsStore = useDiagnosticsStore()
+const { testing, testResult } = storeToRefs(diagnosticsStore)
+
 const darkMode = ref<'auto' | boolean>('auto')
 
 const buildInfo = ref<BuildInfo>({ version: '...', commit: '...', date: '...' })
 const dataDir = ref('')
 const selectedCompany = ref('')
-const testing = ref(false)
-const testResult = ref<ConnectionTestResult | null>(null)
 const companyOptions = ref<{ label: string; value: string }[]>([])
 
 const darkModeOptions = [
@@ -207,7 +210,7 @@ onMounted(async () => {
     dataDir.value = await desktopClient.getDataDirectory()
     await loadCompanies()
   } catch (err) {
-    console.error('Erro ao carregar dados de sistema:', err)
+    $q.notify({ type: 'negative', message: 'Erro ao carregar dados de sistema: ' + String(err) })
   }
 })
 
@@ -253,7 +256,7 @@ async function exportDiagnosticLogs() {
 async function runConnectionTest() {
   if (!selectedCompany.value) return
   testing.value = true
-  testResult.value = null
+  diagnosticsStore.clearResult()
   try {
     testResult.value = await desktopClient.testConnection(selectedCompany.value)
   } catch (err) {

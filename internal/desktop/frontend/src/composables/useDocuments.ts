@@ -6,9 +6,8 @@ import type { CompanySummary, ExportFormat } from '@/types/desktop'
 
 export function useDocuments() {
   const documentsStore = useDocumentsStore()
-  const { filter, documents } = storeToRefs(documentsStore)
+  const { filter, documents, loading, exporting } = storeToRefs(documentsStore)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-  const loading = ref(false)
 
   const savedRowsPerPage = Number(localStorage.getItem('nanci:documents:rowsPerPage')) || 25
   const pagination = ref({
@@ -89,6 +88,7 @@ export function useDocuments() {
     pagination,
     companyOptions,
     loading,
+    exporting,
     loadCompanies,
     search,
     exportDocuments,

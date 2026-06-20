@@ -438,6 +438,7 @@ const {
   pagination,
   companyOptions,
   loading,
+  exporting,
 } = documentsApi as {
   filter: Ref<{
     CNPJ: string
@@ -453,12 +454,12 @@ const {
   }>
   companyOptions: Ref<SelectOption<string>[]>
   loading: Ref<boolean>
+  exporting: Ref<boolean>
 }
 
 const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
 const filterText = ref('')
-const exporting = ref(false)
 
 const datePopup = ref<{ hide: () => void } | null>(null)
 
