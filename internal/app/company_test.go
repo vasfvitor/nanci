@@ -178,12 +178,12 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := application.SyncRepo.PersistProgress(context.Background(), nfse.PersistSyncProgressParams{
+	_ = application.SyncRepo.PersistProgress(context.Background(), nfse.PersistSyncProgressParams{
 		CompanyID:             company.ID,
 		RunID:                 "run-1",
 		Environment:           company.Environment,
 		ConsultationCNPJ:      company.CNPJ,
-		LastCheckedNSU:        42,
+		LastProcessedNSU:      42,
 		LastFoundNSU:          29,
 		LastFoundNSUValid:     true,
 		LastEmptyStreak:       3,
@@ -193,9 +193,8 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		ConsecutiveEmptyCount: 0,
 		ErrorsCount:           0,
 		MarkSuccess:           true,
-	}); err == nil {
-		// PersistProgress requires an existing run; ignore and seed directly below.
-	}
+	})
+	// PersistProgress requires an existing run; ignore error and seed directly below.
 	if _, err := application.DB.ExecContext(context.Background(), `
 		UPDATE companies SET last_nsu = 42 WHERE id = ?;
 		UPDATE sync_state SET last_checked_nsu = 42, last_found_nsu = 29, last_empty_streak = 3 WHERE company_id = ?;

@@ -115,14 +115,7 @@ func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParam
 	}, nil
 }
 
-func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDocumentParams) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	q := r.queries.WithTx(tx)
+func (r *SyncRepository) doApplyDocument(ctx context.Context, q *sqlgen.Queries, params nfse.ApplyDocumentParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	parseWarnings, err := json.Marshal(params.Document.ParseWarnings)
@@ -191,17 +184,10 @@ func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDoc
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventParams) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	q := r.queries.WithTx(tx)
+func (r *SyncRepository) doApplyEvent(ctx context.Context, q *sqlgen.Queries, params nfse.ApplyEventParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	documentID, err := q.GetDocumentIDByAccessKey(ctx, string(params.Event.ChaveAcesso))
@@ -243,16 +229,10 @@ func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventP
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.PersistSyncProgressParams) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
+func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, params nfse.PersistSyncProgressParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	lastSuccessAt := sql.NullString{}
 	lastErrorAt := sql.NullString{}
@@ -268,7 +248,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 		lastErrorMessage = sql.NullString{String: params.ErrorMessage, Valid: params.ErrorMessage != ""}
 	}
 
-	_, err = tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, `
 		UPDATE sync_state
 		SET
 			last_checked_nsu = ?,
@@ -298,7 +278,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 			updated_at = ?
 		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
 	`,
-		params.LastCheckedNSU,
+		params.LastProcessedNSU,
 		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
 		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
 		params.LastEmptyStreak,
@@ -330,8 +310,8 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 		updated_at = ?
 		WHERE id = ?
 	`,
-		params.LastCheckedNSU,
-		params.LastCheckedNSU,
+		params.LastProcessedNSU,
+		params.LastProcessedNSU,
 		now,
 		string(params.CompanyID),
 	)
@@ -354,7 +334,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 			END
 		WHERE id = ?
 	`,
-		params.LastCheckedNSU,
+		params.LastProcessedNSU,
 		params.CheckedCount,
 		params.DocumentsFound,
 		params.EmptyCount,
@@ -365,6 +345,82 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 		string(params.RunID),
 	)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDocumentParams) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := r.doApplyDocument(ctx, r.queries.WithTx(tx), params); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventParams) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := r.doApplyEvent(ctx, r.queries.WithTx(tx), params); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.PersistSyncProgressParams) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := r.doPersistProgress(ctx, tx, params); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *SyncRepository) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := r.doApplyDocument(ctx, r.queries.WithTx(tx), params.DocumentParams); err != nil {
+		return err
+	}
+	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := r.doApplyEvent(ctx, r.queries.WithTx(tx), params.EventParams); err != nil {
+		return err
+	}
+	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
 		return err
 	}
 
@@ -464,7 +520,7 @@ func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.Compan
 		&state.CompanyID,
 		&state.Environment,
 		&state.ConsultationCNPJ,
-		&state.LastCheckedNSU,
+		&state.LastProcessedNSU,
 		&lastFound,
 		&state.LastEmptyStreak,
 		&lastSuccessAt,

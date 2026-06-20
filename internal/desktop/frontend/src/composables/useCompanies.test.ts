@@ -44,7 +44,7 @@ describe('useCompanies', () => {
       ConsultationBasis: '',
       Status: 'completed',
       StopReason: 'done',
-      LastCheckedNSU: 1,
+      LastProcessedNSU: 1,
       LastFoundNSU: 1,
       LastFoundNSUValid: true,
       EmptyStreak: 0,

@@ -73,12 +73,22 @@ type AdvanceCheckpointParams struct {
 	LastNSU   int64
 }
 
+type ApplyDocumentAndProgressParams struct {
+	DocumentParams ApplyDocumentParams
+	ProgressParams PersistSyncProgressParams
+}
+
+type ApplyEventAndProgressParams struct {
+	EventParams    ApplyEventParams
+	ProgressParams PersistSyncProgressParams
+}
+
 type PersistSyncProgressParams struct {
 	CompanyID             CompanyID
 	RunID                 SyncRunID
 	Environment           Environment
 	ConsultationCNPJ      string
-	LastCheckedNSU        int64
+	LastProcessedNSU      int64
 	LastFoundNSU          int64
 	LastFoundNSUValid     bool
 	LastEmptyStreak       int
@@ -121,6 +131,8 @@ type SyncRepository interface {
 	StartRun(ctx context.Context, params StartRunParams) (SyncRun, error)
 	ApplyDocument(ctx context.Context, params ApplyDocumentParams) error
 	ApplyEvent(ctx context.Context, params ApplyEventParams) error
+	ApplyDocumentAndProgress(ctx context.Context, params ApplyDocumentAndProgressParams) error
+	ApplyEventAndProgress(ctx context.Context, params ApplyEventAndProgressParams) error
 	PersistProgress(ctx context.Context, params PersistSyncProgressParams) error
 	FinishRun(ctx context.Context, params FinishRunParams) error
 	LatestSyncSnapshot(ctx context.Context, companyID CompanyID, environment Environment, consultationCNPJ string) (SyncSnapshot, error)

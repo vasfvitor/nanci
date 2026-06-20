@@ -36,7 +36,7 @@ var pullCmd = &cobra.Command{
 			fmt.Printf(" (%s)", result.StopReason)
 		}
 		fmt.Println()
-		fmt.Printf("Último NSU consultado: %d\n", result.LastCheckedNSU)
+		fmt.Printf("Último NSU consultado: %d\n", result.LastProcessedNSU)
 		if result.LastFoundNSUValid {
 			fmt.Printf("Último NSU com documento: %d\n", result.LastFoundNSU)
 		}

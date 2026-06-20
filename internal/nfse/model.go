@@ -123,7 +123,7 @@ type SyncState struct {
 	CompanyID         CompanyID
 	Environment       Environment
 	ConsultationCNPJ  string
-	LastCheckedNSU    int64
+	LastProcessedNSU  int64
 	LastFoundNSU      int64
 	LastFoundNSUValid bool
 	LastEmptyStreak   int
@@ -139,7 +139,7 @@ type SyncState struct {
 type ProgressEvent struct {
 	CurrentNSU        int64
 	MaxNSU            int64
-	LastCheckedNSU    int64
+	LastProcessedNSU  int64
 	LastFoundNSU      int64
 	LastFoundNSUValid bool
 	EmptyStreak       int
