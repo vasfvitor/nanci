@@ -17,7 +17,7 @@ O Nanci é composto por duas frentes principais:
 Para desenvolver ou compilar o projeto localmente, você precisará de:
 
 - Go 1.23+
-- Node.js 20+
+- Node.js 24+
 - pnpm (gerenciador de pacotes do Node)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation/)
 - Compilador C/C++ (como `mingw-w64` ou `gcc`) para compilar as partes Cgo do Wails e SQLite.
