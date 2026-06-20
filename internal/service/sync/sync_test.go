@@ -40,7 +40,7 @@ func (m *mockSyncRepo) PersistProgress(ctx context.Context, p nfse.PersistSyncPr
 	if m.state == nil {
 		m.state = &nfse.SyncState{}
 	}
-	m.state.LastCheckedNSU = p.LastCheckedNSU
+	m.state.LastProcessedNSU = p.LastProcessedNSU
 	m.state.LastFoundNSU = p.LastFoundNSU
 	m.state.LastFoundNSUValid = p.LastFoundNSUValid
 	m.state.LastEmptyStreak = p.LastEmptyStreak
@@ -128,11 +128,11 @@ func TestSyncServiceSuccessFinishesOnceAsCompleted(t *testing.T) {
 		t.Fatalf("expected sync success, got %v", err)
 	}
 
-	if len(fetcher.requests) != normalEmptyLimit {
-		t.Fatalf("expected %d fetches, got %d", normalEmptyLimit, len(fetcher.requests))
+	if len(fetcher.requests) != 1 {
+		t.Fatalf("expected 1 fetch, got %d", len(fetcher.requests))
 	}
-	if got := repo.persistParams[len(repo.persistParams)-1].LastCheckedNSU; got != int64(normalEmptyLimit) {
-		t.Fatalf("last checked nsu = %d, want %d", got, normalEmptyLimit)
+	if got := repo.persistParams[len(repo.persistParams)-1].LastProcessedNSU; got != 0 {
+		t.Fatalf("last checked nsu = %d, want 0", got)
 	}
 	assertSingleFinishRun(t, repo, nfse.SyncStatusCompleted, nfse.SyncStopReasonEmptyLimit)
 }
@@ -203,13 +203,13 @@ func TestSyncServiceProcessingFailurePersistsConsultedCheckpointBeforeFailing(t 
 	fetcher := &mockFetcher{
 		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
 			switch req.LastNSU {
-			case 1:
+			case 0:
 				return &adn.DocumentResponse{
 					Docs: []adn.DocumentEnvelope{
 						{NSU: 1, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, validDocumentXML)},
 					},
 				}, nil
-			case 2:
+			case 1:
 				return &adn.DocumentResponse{
 					Docs: []adn.DocumentEnvelope{
 						{NSU: 2, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, "<NFSe>")},
@@ -238,8 +238,8 @@ func TestSyncServiceProcessingFailurePersistsConsultedCheckpointBeforeFailing(t 
 		t.Fatalf("expected at least 2 progress writes, got %d", len(repo.persistParams))
 	}
 	last := repo.persistParams[len(repo.persistParams)-1]
-	if last.LastCheckedNSU != 2 {
-		t.Fatalf("last persisted checkpoint = %d, want 2", last.LastCheckedNSU)
+	if last.LastProcessedNSU != 1 {
+		t.Fatalf("last persisted checkpoint = %d, want 1", last.LastProcessedNSU)
 	}
 	assertSingleFinishRun(t, repo, nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError)
 }
@@ -254,7 +254,7 @@ func TestSyncServiceProcessesEventFromTipoEventoMetadata(t *testing.T) {
 	}
 	fetcher := &mockFetcher{
 		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
-			if req.LastNSU == 1 {
+			if req.LastNSU == 0 {
 				return &adn.DocumentResponse{
 					Docs: []adn.DocumentEnvelope{
 						{
