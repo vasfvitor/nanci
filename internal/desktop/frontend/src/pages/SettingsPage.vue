@@ -27,6 +27,16 @@
             />
           </q-item-section>
         </q-item>
+        <q-separator spaced />
+        <q-item tag="label" v-ripple class="q-px-none">
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Modo Debug</q-item-label>
+            <q-item-label caption>Habilita logs detalhados e ações de desenvolvedor (ex: Resetar NSU)</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-toggle v-model="debugToggle" color="primary" />
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-card>
 
@@ -158,17 +168,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
 import { desktopClient } from '@/platform/wails/client'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
+import { useConsoleStore } from '@/stores/console'
 import type { BuildInfo } from '@/types/desktop'
 
 const $q = useQuasar()
 const diagnosticsStore = useDiagnosticsStore()
 const { testing, testResult } = storeToRefs(diagnosticsStore)
+
+const consoleStore = useConsoleStore()
+
+const debugToggle = computed({
+  get: () => consoleStore.debugEnabled,
+  set: (val: boolean) => {
+    consoleStore.setLogFilter(val ? 'debug' : 'info')
+  }
+})
 
 const darkMode = ref<'auto' | boolean>('auto')
 
