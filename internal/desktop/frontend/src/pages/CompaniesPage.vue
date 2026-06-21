@@ -45,6 +45,12 @@
         </q-td>
       </template>
 
+      <template #body-cell-syncStart="props">
+        <q-td :props="props">
+          {{ syncStartLabel(props.row) }}
+        </q-td>
+      </template>
+
       <template #body-cell-credencial="props">
         <q-td :props="props" style="max-width: 250px">
           <q-select
@@ -124,7 +130,7 @@ import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useConsoleStore } from '@/stores/console'
 import { useCompanies } from '@/composables/useCompanies'
-import { formatCpfCnpj, formatDateTime } from '@/utils/formatters'
+import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
 import type { CompanySummary } from '@/types/desktop'
 
 const $q = useQuasar()
@@ -152,6 +158,7 @@ const columns: QTableColumn[] = [
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
   { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
   { name: 'lastFoundNSU', label: 'Último NSU (c/ doc)', field: 'LastFoundNSU', align: 'left', sortable: true },
+  { name: 'syncStart', label: 'Histórico inicial', field: 'SyncStartPolicy', align: 'left', sortable: true },
   { name: 'lastSyncAt', label: 'Última sincronização', field: 'LastSyncAt', align: 'left', sortable: true },
   { name: 'credencial', label: 'Credencial', field: () => '', align: 'left', style: 'max-width: 250px' },
 ]
@@ -163,6 +170,19 @@ function openEditDialog(company: CompanySummary) {
 
 function openDocuments(cnpj: string) {
   router.push({ path: '/documents', query: { cnpj } })
+}
+
+function syncStartLabel(company: CompanySummary) {
+  switch (company.SyncStartPolicy) {
+    case 'all':
+      return 'Todo histórico'
+    case 'since_date':
+      return `Desde ${formatDate(company.SyncStartDate)}`
+    case 'from_now':
+      return company.SyncStartDate ? `A partir de ${formatDate(company.SyncStartDate)}` : 'A partir de hoje'
+    default:
+      return 'A partir de hoje'
+  }
 }
 
 async function loadCompanies() {

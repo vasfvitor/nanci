@@ -9,7 +9,7 @@ type CompanyRepository interface {
 	CompanyByCNPJ(ctx context.Context, cnpjVal string) (*Company, error)
 	ListCompanies(ctx context.Context) ([]Company, error)
 	AssignCredential(ctx context.Context, id CompanyID, credID CredentialID) error
-	UpdateCompany(ctx context.Context, id CompanyID, name string, environment Environment) error
+	UpdateCompany(ctx context.Context, c *Company) error
 }
 
 type CredentialRepository interface {
@@ -144,6 +144,10 @@ type ResetSyncStateParams struct {
 	CompanyID CompanyID
 }
 
+type HasSyncStateParams struct {
+	CompanyID CompanyID
+}
+
 type SyncRepository interface {
 	GetOrCreateState(ctx context.Context, params GetOrCreateSyncStateParams) (*SyncState, error)
 	StartRun(ctx context.Context, params StartRunParams) (SyncRun, error)
@@ -155,4 +159,7 @@ type SyncRepository interface {
 	FinishRun(ctx context.Context, params FinishRunParams) error
 	LatestSyncSnapshot(ctx context.Context, companyID CompanyID, environment Environment, consultationCNPJ string) (SyncSnapshot, error)
 	ResetSyncState(ctx context.Context, params ResetSyncStateParams) error
+	HasSyncState(ctx context.Context, params HasSyncStateParams) (bool, error)
+	MarkInitialSyncCompleted(ctx context.Context, companyID CompanyID) error
+	CompanyDocumentExistsByAccessKey(ctx context.Context, companyID CompanyID, chave string) (bool, error)
 }

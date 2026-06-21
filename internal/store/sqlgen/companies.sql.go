@@ -46,21 +46,25 @@ func (q *Queries) AssignCredentialToCompany(ctx context.Context, arg AssignCrede
 const createCompany = `-- name: CreateCompany :exec
 INSERT INTO companies (
     id, cnpj, cnpj_root, name, credential_id, credential_label,
-    credential_cert_path, environment, last_nsu, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+    credential_cert_path, environment, last_nsu, sync_start_policy,
+    sync_start_date, initial_sync_completed_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
 `
 
 type CreateCompanyParams struct {
-	ID                 string
-	Cnpj               string
-	CnpjRoot           string
-	Name               string
-	CredentialID       sql.NullString
-	CredentialLabel    sql.NullString
-	CredentialCertPath sql.NullString
-	Environment        string
-	CreatedAt          string
-	UpdatedAt          string
+	ID                     string
+	Cnpj                   string
+	CnpjRoot               string
+	Name                   string
+	CredentialID           sql.NullString
+	CredentialLabel        sql.NullString
+	CredentialCertPath     sql.NullString
+	Environment            string
+	SyncStartPolicy        string
+	SyncStartDate          sql.NullString
+	InitialSyncCompletedAt sql.NullString
+	CreatedAt              string
+	UpdatedAt              string
 }
 
 func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) error {
@@ -73,6 +77,9 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 		arg.CredentialLabel,
 		arg.CredentialCertPath,
 		arg.Environment,
+		arg.SyncStartPolicy,
+		arg.SyncStartDate,
+		arg.InitialSyncCompletedAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -80,7 +87,7 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 }
 
 const getCompanyByCNPJ = `-- name: GetCompanyByCNPJ :one
-SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, last_nsu, created_at, updated_at FROM companies WHERE cnpj = ? LIMIT 1
+SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, last_nsu, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at FROM companies WHERE cnpj = ? LIMIT 1
 `
 
 func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, error) {
@@ -96,6 +103,9 @@ func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, e
 		&i.CredentialCertPath,
 		&i.Environment,
 		&i.LastNsu,
+		&i.SyncStartPolicy,
+		&i.SyncStartDate,
+		&i.InitialSyncCompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -103,7 +113,7 @@ func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, e
 }
 
 const listCompanies = `-- name: ListCompanies :many
-SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, last_nsu, created_at, updated_at FROM companies ORDER BY name ASC
+SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, last_nsu, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at FROM companies ORDER BY name ASC
 `
 
 func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
@@ -125,6 +135,9 @@ func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
 			&i.CredentialCertPath,
 			&i.Environment,
 			&i.LastNsu,
+			&i.SyncStartPolicy,
+			&i.SyncStartDate,
+			&i.InitialSyncCompletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -160,21 +173,29 @@ func (q *Queries) UpdateCompanyNSU(ctx context.Context, arg UpdateCompanyNSUPara
 
 const updateCompany = `-- name: UpdateCompany :exec
 UPDATE companies
-SET name = ?, environment = ?, updated_at = ?
+SET name = ?,
+    environment = ?,
+    sync_start_policy = ?,
+    sync_start_date = ?,
+    updated_at = ?
 WHERE id = ?
 `
 
 type UpdateCompanyParams struct {
-	Name        string
-	Environment string
-	UpdatedAt   string
-	ID          string
+	Name            string
+	Environment     string
+	SyncStartPolicy string
+	SyncStartDate   sql.NullString
+	UpdatedAt       string
+	ID              string
 }
 
 func (q *Queries) UpdateCompany(ctx context.Context, arg UpdateCompanyParams) error {
 	_, err := q.db.ExecContext(ctx, updateCompany,
 		arg.Name,
 		arg.Environment,
+		arg.SyncStartPolicy,
+		arg.SyncStartDate,
 		arg.UpdatedAt,
 		arg.ID,
 	)

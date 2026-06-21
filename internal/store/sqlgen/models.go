@@ -9,17 +9,20 @@ import (
 )
 
 type Company struct {
-	ID                 string
-	Cnpj               string
-	CnpjRoot           string
-	Name               string
-	CredentialID       sql.NullString
-	CredentialLabel    sql.NullString
-	CredentialCertPath sql.NullString
-	Environment        string
-	LastNsu            int64
-	CreatedAt          string
-	UpdatedAt          string
+	ID                     string
+	Cnpj                   string
+	CnpjRoot               string
+	Name                   string
+	CredentialID           sql.NullString
+	CredentialLabel        sql.NullString
+	CredentialCertPath     sql.NullString
+	Environment            string
+	LastNsu                int64
+	SyncStartPolicy        string
+	SyncStartDate          sql.NullString
+	InitialSyncCompletedAt sql.NullString
+	CreatedAt              string
+	UpdatedAt              string
 }
 
 type CompanyDocument struct {

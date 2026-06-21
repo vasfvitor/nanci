@@ -539,7 +539,7 @@ func (s *stubCompanyRepo) ListCompanies(context.Context) ([]nfse.Company, error)
 func (s *stubCompanyRepo) AssignCredential(context.Context, nfse.CompanyID, nfse.CredentialID) error {
 	return nil
 }
-func (s *stubCompanyRepo) UpdateCompany(context.Context, nfse.CompanyID, string, nfse.Environment) error {
+func (s *stubCompanyRepo) UpdateCompany(context.Context, *nfse.Company) error {
 	return nil
 }
 

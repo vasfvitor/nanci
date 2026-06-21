@@ -447,11 +447,7 @@ func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
 	}
-	progressParams := params.ProgressParams
-	if outcome.Inserted {
-		progressParams.DocumentsFound++
-	}
-	if err := r.doPersistProgress(ctx, tx, progressParams); err != nil {
+	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
 		return nfse.ApplyOutcome{}, err
 	}
 
@@ -555,11 +551,55 @@ func (r *SyncRepository) ResetSyncState(ctx context.Context, params nfse.ResetSy
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sync_state WHERE company_id = ?`, string(params.CompanyID)); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE companies SET last_nsu = 0, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE companies SET last_nsu = 0, initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
 		return err
 	}
 
 	return tx.Commit()
+}
+
+func (r *SyncRepository) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM sync_state WHERE company_id = ? LIMIT 1`, string(params.CompanyID)).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *SyncRepository) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE companies
+		SET initial_sync_completed_at = CASE
+				WHEN initial_sync_completed_at IS NULL THEN ?
+				ELSE initial_sync_completed_at
+			END,
+			updated_at = ?
+		WHERE id = ?
+	`, now, now, string(companyID))
+	return err
+}
+
+func (r *SyncRepository) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT 1
+		FROM company_documents cd
+		JOIN documents d ON d.id = cd.document_id
+		WHERE cd.company_id = ? AND d.chave_acesso = ?
+		LIMIT 1
+	`, string(companyID), chave).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {

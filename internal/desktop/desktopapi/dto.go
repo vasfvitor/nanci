@@ -20,6 +20,9 @@ type CompanySummary struct {
 	LastFoundNSU       int64
 	LastFoundNSUValid  bool
 	LastSyncAt         *time.Time
+	SyncStartPolicy    string
+	SyncStartDate      *time.Time
+	InitialSyncDoneAt  *time.Time
 	LastRunStatus      string
 	LastRunStopReason  string
 	CreatedAt          time.Time
@@ -114,8 +117,8 @@ type ExportXMLInput struct {
 }
 
 type ExportResult struct {
-	OutPath                     string
-	Format                      string
+	OutPath       string
+	Format        string
 	Incremental   bool
 	ExportedCount int
 }
@@ -136,6 +139,9 @@ func CompanySummaries(companies []nfse.Company) []CompanySummary {
 			LastFoundNSU:       company.LastFoundNSU,
 			LastFoundNSUValid:  company.LastFoundNSUValid,
 			LastSyncAt:         company.LastSyncAt,
+			SyncStartPolicy:    string(company.SyncStartPolicy),
+			SyncStartDate:      company.SyncStartDate,
+			InitialSyncDoneAt:  company.InitialSyncDoneAt,
 			LastRunStatus:      string(company.LastRunStatus),
 			LastRunStopReason:  string(company.LastRunStopReason),
 			CreatedAt:          company.CreatedAt,

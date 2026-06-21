@@ -8,6 +8,9 @@ CREATE TABLE companies (
     credential_cert_path TEXT,
     environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     last_nsu INTEGER NOT NULL DEFAULT 0,
+    sync_start_policy TEXT NOT NULL DEFAULT 'from_now' CHECK (sync_start_policy IN ('all', 'since_date', 'from_now')),
+    sync_start_date TEXT,
+    initial_sync_completed_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

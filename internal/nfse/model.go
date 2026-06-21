@@ -18,6 +18,9 @@ type Company struct {
 	LastFoundNSU       int64
 	LastFoundNSUValid  bool
 	LastSyncAt         *time.Time
+	SyncStartPolicy    SyncStartPolicy
+	SyncStartDate      *time.Time
+	InitialSyncDoneAt  *time.Time
 	LastRunStatus      SyncStatus
 	LastRunStopReason  SyncStopReason
 	CreatedAt          time.Time
@@ -138,18 +141,22 @@ type SyncState struct {
 
 // ProgressEvent contains information about the progress of a long-running operation.
 type ProgressEvent struct {
-	CurrentNSU        int64
-	MaxNSU            int64
-	LastProcessedNSU  int64
-	LastFoundNSU      int64
-	LastFoundNSUValid bool
-	EmptyStreak       int
-	Status            SyncStatus
-	StopReason        SyncStopReason
-	DocsFound         int
-	DocsInBatch       int
-	Errors            int
-	Message           string
+	CurrentNSU               int64
+	MaxNSU                   int64
+	LastProcessedNSU         int64
+	LastFoundNSU             int64
+	LastFoundNSUValid        bool
+	EmptyStreak              int
+	Status                   SyncStatus
+	StopReason               SyncStopReason
+	DocsFound                int
+	DocumentsSaved           int
+	EventsSaved              int
+	DocumentsSkippedByPolicy int
+	EventsSkippedByPolicy    int
+	DocsInBatch              int
+	Errors                   int
+	Message                  string
 }
 
 // ProgressFunc is a callback function to report progress.

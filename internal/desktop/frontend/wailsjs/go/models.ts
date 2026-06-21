@@ -7,6 +7,8 @@ export namespace app {
 	    CredentialLabel: string;
 	    CertPath: string;
 	    Environment: string;
+	    SyncStartPolicy: string;
+	    SyncStartDate: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AddCompanyInput(source);
@@ -20,6 +22,8 @@ export namespace app {
 	        this.CredentialLabel = source["CredentialLabel"];
 	        this.CertPath = source["CertPath"];
 	        this.Environment = source["Environment"];
+	        this.SyncStartPolicy = source["SyncStartPolicy"];
+	        this.SyncStartDate = source["SyncStartDate"];
 	    }
 	}
 	export class AddCredentialInput {
@@ -96,6 +100,10 @@ export namespace app {
 	    EmptyStreak: number;
 	    DocumentsFound: number;
 	    EventsFound: number;
+	    DocumentsSaved: number;
+	    EventsSaved: number;
+	    DocumentsSkippedByPolicy: number;
+	    EventsSkippedByPolicy: number;
 	    Errors: number;
 	    Duration: number;
 	
@@ -118,6 +126,10 @@ export namespace app {
 	        this.EmptyStreak = source["EmptyStreak"];
 	        this.DocumentsFound = source["DocumentsFound"];
 	        this.EventsFound = source["EventsFound"];
+	        this.DocumentsSaved = source["DocumentsSaved"];
+	        this.EventsSaved = source["EventsSaved"];
+	        this.DocumentsSkippedByPolicy = source["DocumentsSkippedByPolicy"];
+	        this.EventsSkippedByPolicy = source["EventsSkippedByPolicy"];
 	        this.Errors = source["Errors"];
 	        this.Duration = source["Duration"];
 	    }
@@ -161,6 +173,11 @@ export namespace app {
 	    LastFoundNSUValid: boolean;
 	    // Go type: time
 	    LastSyncAt?: any;
+	    SyncStartPolicy: string;
+	    // Go type: time
+	    SyncStartDate?: any;
+	    // Go type: time
+	    InitialSyncDoneAt?: any;
 	    LastRunStatus: string;
 	    LastRunStopReason: string;
 	    TotalEmitidas: number;
@@ -182,6 +199,9 @@ export namespace app {
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
+	        this.SyncStartPolicy = source["SyncStartPolicy"];
+	        this.SyncStartDate = this.convertValues(source["SyncStartDate"], null);
+	        this.InitialSyncDoneAt = this.convertValues(source["InitialSyncDoneAt"], null);
 	        this.LastRunStatus = source["LastRunStatus"];
 	        this.LastRunStopReason = source["LastRunStopReason"];
 	        this.TotalEmitidas = source["TotalEmitidas"];
@@ -210,6 +230,8 @@ export namespace app {
 	    CNPJ: string;
 	    Name: string;
 	    Environment: string;
+	    SyncStartPolicy: string;
+	    SyncStartDate: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateCompanyInput(source);
@@ -220,6 +242,8 @@ export namespace app {
 	        this.CNPJ = source["CNPJ"];
 	        this.Name = source["Name"];
 	        this.Environment = source["Environment"];
+	        this.SyncStartPolicy = source["SyncStartPolicy"];
+	        this.SyncStartDate = source["SyncStartDate"];
 	    }
 	}
 	export class UpdateCredentialDataInput {
@@ -625,4 +649,3 @@ export namespace desktopapi {
 	}
 
 }
-

@@ -29,21 +29,25 @@ type PullInput struct {
 
 // PullResult summarises a completed sync run.
 type PullResult struct {
-	CompanyName       string
-	CNPJ              string
-	CredentialLabel   string
-	CredentialCNPJ    string
-	ConsultationBasis string
-	Status            string
-	StopReason        string
-	LastProcessedNSU  int64
-	LastFoundNSU      int64
-	LastFoundNSUValid bool
-	EmptyStreak       int
-	DocumentsFound    int
-	EventsFound       int
-	Errors            int
-	Duration          time.Duration
+	CompanyName              string
+	CNPJ                     string
+	CredentialLabel          string
+	CredentialCNPJ           string
+	ConsultationBasis        string
+	Status                   string
+	StopReason               string
+	LastProcessedNSU         int64
+	LastFoundNSU             int64
+	LastFoundNSUValid        bool
+	EmptyStreak              int
+	DocumentsFound           int
+	EventsFound              int
+	DocumentsSaved           int
+	EventsSaved              int
+	DocumentsSkippedByPolicy int
+	EventsSkippedByPolicy    int
+	Errors                   int
+	Duration                 time.Duration
 }
 
 // Pull synchronises fiscal documents for the given company from the ADN API.
@@ -141,6 +145,18 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		if event.DocsFound > result.DocumentsFound {
 			result.DocumentsFound = event.DocsFound
 		}
+		if event.DocumentsSaved > result.DocumentsSaved {
+			result.DocumentsSaved = event.DocumentsSaved
+		}
+		if event.EventsSaved > result.EventsSaved {
+			result.EventsSaved = event.EventsSaved
+		}
+		if event.DocumentsSkippedByPolicy > result.DocumentsSkippedByPolicy {
+			result.DocumentsSkippedByPolicy = event.DocumentsSkippedByPolicy
+		}
+		if event.EventsSkippedByPolicy > result.EventsSkippedByPolicy {
+			result.EventsSkippedByPolicy = event.EventsSkippedByPolicy
+		}
 	}
 
 	start := time.Now()
@@ -165,6 +181,9 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		result.StopReason = string(snapshot.Run.StopReason)
 		result.Errors = snapshot.Run.ErrorsCount
 		result.DocumentsFound = snapshot.Run.DocumentsFound
+	}
+	if result.DocumentsSaved == 0 {
+		result.DocumentsSaved = result.DocumentsFound
 	}
 
 	a.Log.InfoContext(

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -17,6 +18,10 @@ var (
 	companyEnv             string
 	companyCredentialID    string
 	companyCredentialLabel string
+	companySyncStartPolicy string
+	companySyncStartDate   string
+	companyLast12Months    bool
+	companyLast5Years      bool
 	assignCredentialID     string
 )
 
@@ -35,6 +40,8 @@ var companyAddCmd = &cobra.Command{
 		}
 		defer application.Close()
 
+		syncStartPolicy, syncStartDate := resolveCompanySyncStartFlags()
+
 		if err := application.AddCompany(context.Background(), app.AddCompanyInput{
 			CNPJ:            companyCNPJ,
 			Name:            companyName,
@@ -42,6 +49,8 @@ var companyAddCmd = &cobra.Command{
 			CredentialLabel: companyCredentialLabel,
 			CertPath:        companyCert,
 			Environment:     companyEnv,
+			SyncStartPolicy: syncStartPolicy,
+			SyncStartDate:   syncStartDate,
 		}); err != nil {
 			return fmt.Errorf("erro ao adicionar empresa: %w", err)
 		}
@@ -115,6 +124,10 @@ func init() {
 	companyAddCmd.Flags().StringVar(&companyCredentialID, "credential-id", "", "ID de uma credencial existente")
 	companyAddCmd.Flags().StringVar(&companyCredentialLabel, "credential-label", "", "Rótulo da nova credencial quando criada inline")
 	companyAddCmd.Flags().StringVarP(&companyEnv, "env", "e", "producao_restrita", "Ambiente: producao ou producao_restrita")
+	companyAddCmd.Flags().StringVar(&companySyncStartPolicy, "sync-start-policy", "from_now", "Política inicial: all, since_date ou from_now")
+	companyAddCmd.Flags().StringVar(&companySyncStartDate, "sync-start-date", "", "Data de corte inicial YYYY-MM-DD para since_date")
+	companyAddCmd.Flags().BoolVar(&companyLast12Months, "last-12-months", false, "Atalho para importar somente os últimos 12 meses no primeiro sync")
+	companyAddCmd.Flags().BoolVar(&companyLast5Years, "last-5-years", false, "Atalho para importar somente os últimos 5 anos no primeiro sync")
 
 	_ = companyAddCmd.MarkFlagRequired("cnpj")
 	_ = companyAddCmd.MarkFlagRequired("name")
@@ -123,4 +136,16 @@ func init() {
 	companyAssignCredentialCmd.Flags().StringVar(&assignCredentialID, "credential-id", "", "ID da credencial")
 	_ = companyAssignCredentialCmd.MarkFlagRequired("cnpj")
 	_ = companyAssignCredentialCmd.MarkFlagRequired("credential-id")
+}
+
+func resolveCompanySyncStartFlags() (string, string) {
+	now := time.Now()
+	switch {
+	case companyLast12Months:
+		return "since_date", now.AddDate(-1, 0, 0).Format("2006-01-02")
+	case companyLast5Years:
+		return "since_date", now.AddDate(-5, 0, 0).Format("2006-01-02")
+	default:
+		return companySyncStartPolicy, companySyncStartDate
+	}
 }

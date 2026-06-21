@@ -24,17 +24,29 @@ func NewCompanyRepository(db *sql.DB) *CompanyRepository {
 
 func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) error {
 	now := time.Now().UTC()
+	syncStartPolicy := c.SyncStartPolicy
+	if syncStartPolicy == "" {
+		syncStartPolicy = nfse.SyncStartPolicyFromNow
+		c.SyncStartPolicy = syncStartPolicy
+	}
+	if syncStartPolicy == nfse.SyncStartPolicyFromNow && c.SyncStartDate == nil {
+		today, _ := time.Parse(dateOnlyLayout, time.Now().Format(dateOnlyLayout))
+		c.SyncStartDate = &today
+	}
 	err := r.queries.CreateCompany(ctx, sqlgen.CreateCompanyParams{
-		ID:                 string(c.ID),
-		Cnpj:               c.CNPJ,
-		CnpjRoot:           c.CNPJRoot,
-		Name:               c.Name,
-		CredentialID:       sql.NullString{String: string(c.CredentialID), Valid: c.CredentialID != ""},
-		CredentialLabel:    sql.NullString{String: c.CredentialLabel, Valid: c.CredentialLabel != ""},
-		CredentialCertPath: sql.NullString{String: c.CredentialCertPath, Valid: c.CredentialCertPath != ""},
-		Environment:        string(c.Environment),
-		CreatedAt:          now.Format(time.RFC3339),
-		UpdatedAt:          now.Format(time.RFC3339),
+		ID:                     string(c.ID),
+		Cnpj:                   c.CNPJ,
+		CnpjRoot:               c.CNPJRoot,
+		Name:                   c.Name,
+		CredentialID:           sql.NullString{String: string(c.CredentialID), Valid: c.CredentialID != ""},
+		CredentialLabel:        sql.NullString{String: c.CredentialLabel, Valid: c.CredentialLabel != ""},
+		CredentialCertPath:     sql.NullString{String: c.CredentialCertPath, Valid: c.CredentialCertPath != ""},
+		Environment:            string(c.Environment),
+		SyncStartPolicy:        string(syncStartPolicy),
+		SyncStartDate:          nullableTime(c.SyncStartDate, dateOnlyLayout),
+		InitialSyncCompletedAt: nullableTime(c.InitialSyncDoneAt, time.RFC3339),
+		CreatedAt:              now.Format(time.RFC3339),
+		UpdatedAt:              now.Format(time.RFC3339),
 	})
 	if err != nil {
 		return err
@@ -54,20 +66,7 @@ func (r *CompanyRepository) CompanyByCNPJ(ctx context.Context, cnpjVal string) (
 		return nil, err
 	}
 
-	c := &nfse.Company{
-		ID:                 nfse.CompanyID(row.ID),
-		CNPJ:               row.Cnpj,
-		CNPJRoot:           row.CnpjRoot,
-		Name:               row.Name,
-		CredentialID:       nfse.CredentialID(row.CredentialID.String),
-		CredentialLabel:    row.CredentialLabel.String,
-		CredentialCertPath: row.CredentialCertPath.String,
-		Environment:        nfse.Environment(row.Environment),
-		LastNSU:            row.LastNsu,
-	}
-	c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
-
+	c := companyFromRow(row)
 	return c, nil
 }
 
@@ -79,23 +78,31 @@ func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, 
 
 	companies := make([]nfse.Company, 0, len(rows))
 	for _, row := range rows {
-		c := nfse.Company{
-			ID:                 nfse.CompanyID(row.ID),
-			CNPJ:               row.Cnpj,
-			CNPJRoot:           row.CnpjRoot,
-			Name:               row.Name,
-			CredentialID:       nfse.CredentialID(row.CredentialID.String),
-			CredentialLabel:    row.CredentialLabel.String,
-			CredentialCertPath: row.CredentialCertPath.String,
-			Environment:        nfse.Environment(row.Environment),
-			LastNSU:            row.LastNsu,
-		}
-		c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
-		c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
-		companies = append(companies, c)
+		companies = append(companies, *companyFromRow(row))
 	}
 
 	return companies, nil
+}
+
+func companyFromRow(row sqlgen.Company) *nfse.Company {
+	c := &nfse.Company{
+		ID:                 nfse.CompanyID(row.ID),
+		CNPJ:               row.Cnpj,
+		CNPJRoot:           row.CnpjRoot,
+		Name:               row.Name,
+		CredentialID:       nfse.CredentialID(row.CredentialID.String),
+		CredentialLabel:    row.CredentialLabel.String,
+		CredentialCertPath: row.CredentialCertPath.String,
+		Environment:        nfse.Environment(row.Environment),
+		LastNSU:            row.LastNsu,
+		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
+		SyncStartDate:      parseNullableDate(row.SyncStartDate),
+		InitialSyncDoneAt:  parseNullableTime(row.InitialSyncCompletedAt),
+	}
+	c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
+	c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
+
+	return c
 }
 
 func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID nfse.CompanyID, credID nfse.CredentialID) error {
@@ -114,16 +121,38 @@ func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID nfse
 	return nil
 }
 
-func (r *CompanyRepository) UpdateCompany(ctx context.Context, id nfse.CompanyID, name string, environment nfse.Environment) error {
+func (r *CompanyRepository) UpdateCompany(ctx context.Context, c *nfse.Company) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	err := r.queries.UpdateCompany(ctx, sqlgen.UpdateCompanyParams{
-		Name:        name,
-		Environment: string(environment),
-		UpdatedAt:   now,
-		ID:          string(id),
+		Name:            c.Name,
+		Environment:     string(c.Environment),
+		SyncStartPolicy: string(c.SyncStartPolicy),
+		SyncStartDate:   nullableTime(c.SyncStartDate, dateOnlyLayout),
+		UpdatedAt:       now,
+		ID:              string(c.ID),
 	})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+const dateOnlyLayout = "2006-01-02"
+
+func nullableTime(t *time.Time, layout string) sql.NullString {
+	if t == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: t.Format(layout), Valid: true}
+}
+
+func parseNullableDate(value sql.NullString) *time.Time {
+	if !value.Valid || value.String == "" {
+		return nil
+	}
+	parsed, err := time.Parse(dateOnlyLayout, value.String)
+	if err != nil {
+		return nil
+	}
+	return &parsed
 }

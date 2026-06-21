@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -16,6 +17,8 @@ type AddCompanyInput struct {
 	CredentialLabel string
 	CertPath        string
 	Environment     string // "producao" | "producao_restrita"
+	SyncStartPolicy string // "all" | "since_date" | "from_now"
+	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
 }
 
 // AddCompany registers a new company in the store.
@@ -35,6 +38,10 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	if err != nil {
 		return err
 	}
+	syncStartPolicy, syncStartDate, err := parseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+	if err != nil {
+		return err
+	}
 
 	company := &nfse.Company{
 		ID:                 nfse.CompanyID(nfse.GenerateID()),
@@ -45,6 +52,8 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		CredentialLabel:    credential.Label,
 		CredentialCertPath: credential.CertPath,
 		Environment:        environment,
+		SyncStartPolicy:    syncStartPolicy,
+		SyncStartDate:      syncStartDate,
 	}
 
 	if err := a.CompanyRepo.CreateCompany(ctx, company); err != nil {
@@ -138,9 +147,11 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 
 // UpdateCompanyInput carries data to update a company
 type UpdateCompanyInput struct {
-	CNPJ        string
-	Name        string
-	Environment string // "producao" | "producao_restrita"
+	CNPJ            string
+	Name            string
+	Environment     string // "producao" | "producao_restrita"
+	SyncStartPolicy string // "all" | "since_date" | "from_now"
+	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
 }
 
 // UpdateCompany updates the name and environment of an existing company.
@@ -154,10 +165,83 @@ func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error
 	if err != nil {
 		return err
 	}
+	syncStartPolicy := company.SyncStartPolicy
+	syncStartDate := company.SyncStartDate
+	if input.SyncStartPolicy != "" {
+		var err error
+		syncStartPolicy, syncStartDate, err = parseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+		if err != nil {
+			return err
+		}
+	}
+	if syncStartPolicy != company.SyncStartPolicy || !sameDate(syncStartDate, company.SyncStartDate) {
+		hasState, err := a.SyncRepo.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID})
+		if err != nil {
+			return fmt.Errorf("verificar estado de sincronização: %w", err)
+		}
+		if hasState || company.LastNSU > 0 {
+			return fmt.Errorf("não é possível alterar a política inicial depois que a sincronização já começou")
+		}
+	}
 
-	if err := a.CompanyRepo.UpdateCompany(ctx, company.ID, input.Name, environment); err != nil {
+	company.Name = input.Name
+	company.Environment = environment
+	company.SyncStartPolicy = syncStartPolicy
+	company.SyncStartDate = syncStartDate
+
+	if err := a.CompanyRepo.UpdateCompany(ctx, company); err != nil {
 		return fmt.Errorf("atualizar empresa: %w", err)
 	}
 
 	return nil
+}
+
+func parseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy, *time.Time, error) {
+	if rawPolicy == "" {
+		rawPolicy = string(nfse.SyncStartPolicyFromNow)
+	}
+	policy, err := nfse.ParseSyncStartPolicy(rawPolicy)
+	if err != nil {
+		return "", nil, err
+	}
+
+	switch policy {
+	case nfse.SyncStartPolicyAll:
+		if rawDate != "" {
+			return "", nil, fmt.Errorf("sync_start_date deve ficar vazio para política all")
+		}
+		return policy, nil, nil
+	case nfse.SyncStartPolicySinceDate:
+		if rawDate == "" {
+			return "", nil, fmt.Errorf("sync_start_date é obrigatório para política since_date")
+		}
+		parsed, err := time.Parse("2006-01-02", rawDate)
+		if err != nil {
+			return "", nil, fmt.Errorf("sync_start_date inválido: use YYYY-MM-DD")
+		}
+		return policy, &parsed, nil
+	case nfse.SyncStartPolicyFromNow:
+		if rawDate == "" {
+			now := time.Now()
+			parsed, err := time.Parse("2006-01-02", now.Format("2006-01-02"))
+			if err != nil {
+				return "", nil, err
+			}
+			return policy, &parsed, nil
+		}
+		parsed, err := time.Parse("2006-01-02", rawDate)
+		if err != nil {
+			return "", nil, fmt.Errorf("sync_start_date inválido: use YYYY-MM-DD")
+		}
+		return policy, &parsed, nil
+	default:
+		return "", nil, fmt.Errorf("invalid sync start policy: %s", policy)
+	}
+}
+
+func sameDate(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Format("2006-01-02") == b.Format("2006-01-02")
 }

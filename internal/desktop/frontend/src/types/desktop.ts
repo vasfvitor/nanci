@@ -13,11 +13,16 @@ export type CompanySummary = {
   LastFoundNSU: number
   LastFoundNSUValid: boolean
   LastSyncAt?: ISODateValue
+  SyncStartPolicy: SyncStartPolicy
+  SyncStartDate?: ISODateValue
+  InitialSyncDoneAt?: ISODateValue
   LastRunStatus: string
   LastRunStopReason: string
   CreatedAt?: ISODateValue
   UpdatedAt?: ISODateValue
 }
+
+export type SyncStartPolicy = 'all' | 'since_date' | 'from_now' | ''
 
 export type CredentialSummary = {
   ID: string
@@ -135,6 +140,8 @@ export type AddCompanyInput = {
   CredentialLabel: string
   CertPath: string
   Environment: string
+  SyncStartPolicy: SyncStartPolicy
+  SyncStartDate: string
 }
 
 export type AddCredentialInput = {
@@ -146,6 +153,8 @@ export type UpdateCompanyInput = {
   CNPJ: string
   Name: string
   Environment: string
+  SyncStartPolicy: SyncStartPolicy
+  SyncStartDate: string
 }
 
 export type UpdateCredentialDataInput = {
@@ -182,6 +191,10 @@ export type PullResult = {
   EmptyStreak: number
   DocumentsFound: number
   EventsFound: number
+  DocumentsSaved: number
+  EventsSaved: number
+  DocumentsSkippedByPolicy: number
+  EventsSkippedByPolicy: number
   Errors: number
   Duration: number
 }

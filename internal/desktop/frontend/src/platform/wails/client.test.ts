@@ -52,6 +52,9 @@ describe('desktop client mappers', () => {
       LastSyncAt: null,
       LastFoundNSU: 55,
       LastFoundNSUValid: true,
+      SyncStartPolicy: 'since_date',
+      SyncStartDate: '2025-01-01T00:00:00Z',
+      InitialSyncDoneAt: null,
       LastRunStatus: 'completed',
       LastRunStopReason: 'empty_limit',
     })
@@ -60,6 +63,9 @@ describe('desktop client mappers', () => {
     expect(company.LastSyncAt).toBeNull()
     expect(company.LastFoundNSU).toBe(55)
     expect(company.LastFoundNSUValid).toBe(true)
+    expect(company.SyncStartPolicy).toBe('since_date')
+    expect(company.SyncStartDate).toBe('2025-01-01T00:00:00Z')
+    expect(company.InitialSyncDoneAt).toBeNull()
     expect(company.LastRunStatus).toBe('completed')
     expect(company.LastRunStopReason).toBe('empty_limit')
   })

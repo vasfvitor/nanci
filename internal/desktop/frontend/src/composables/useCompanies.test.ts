@@ -50,6 +50,10 @@ describe('useCompanies', () => {
       EmptyStreak: 0,
       DocumentsFound: 0,
       EventsFound: 0,
+      DocumentsSaved: 0,
+      EventsSaved: 0,
+      DocumentsSkippedByPolicy: 0,
+      EventsSkippedByPolicy: 0,
       Errors: 0,
       Duration: 0,
     })
