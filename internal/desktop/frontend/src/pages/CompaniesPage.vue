@@ -205,7 +205,7 @@ async function syncCompany(cnpj: string) {
     })
     await loadCompanies()
   } catch (err) {
-    if (String(err).includes('operação cancelada')) {
+    if (String(err).includes('ERR_CANCELED')) {
       $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
     } else {
       $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + String(err) })

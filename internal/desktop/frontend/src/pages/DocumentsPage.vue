@@ -747,12 +747,12 @@ async function search() {
 async function exportData(format: ExportFormat) {
   $q.dialog({
     title: 'Exportar Documentos',
-    message: 'Deseja exportar apenas os documentos novos (não exportados)?',
+    message: 'Todos os documentos ou apenas os que não foram exportados:',
     options: {
       type: 'checkbox',
       model: ['incremental'],
       items: [
-        { label: 'Exportação Incremental', value: 'incremental', color: 'primary' }
+        { label: 'Exportar somente novos', value: 'incremental', color: 'primary' }
       ]
     },
     cancel: true,
@@ -801,12 +801,12 @@ async function exportXML(chaveAcesso?: string) {
 async function exportDanfseZip() {
   $q.dialog({
     title: 'Exportar DANFSes',
-    message: 'Deseja exportar apenas os documentos novos (não exportados)?',
+    message: 'Todos os documentos ou apenas os que não foram exportados:',
     options: {
       type: 'checkbox',
       model: ['incremental'],
       items: [
-        { label: 'Exportação Incremental', value: 'incremental', color: 'primary' }
+        { label: 'Exportar somente novos', value: 'incremental', color: 'primary' }
       ]
     },
     cancel: true,

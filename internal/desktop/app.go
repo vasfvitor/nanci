@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 )
@@ -49,7 +51,7 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 	select {
 	case pass := <-ch:
 		if pass == "" {
-			return "", fmt.Errorf("operação cancelada pelo usuário")
+			return "", app.ErrOperationCanceled
 		}
 		return pass, nil
 	case <-ctx.Done():
@@ -251,7 +253,11 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 }
 
 func (a *App) Pull(input app.PullInput) (app.PullResult, error) {
-	return a.core.Pull(a.ctx, input)
+	res, err := a.core.Pull(a.ctx, input)
+	if err != nil && errors.Is(err, app.ErrOperationCanceled) {
+		return res, fmt.Errorf("ERR_CANCELED: %w", err)
+	}
+	return res, err
 }
 
 func (a *App) ResetSyncState(input app.ResetSyncInput) error {
@@ -293,7 +299,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, err
+		return desktopapi.ExportResult{}, formatExportError(err)
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse"}, nil
 }
@@ -309,7 +315,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, err
+		return desktopapi.ExportResult{}, formatExportError(err)
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
 }
@@ -329,7 +335,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 
 	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
-		return desktopapi.ExportResult{}, err
+		return desktopapi.ExportResult{}, formatExportError(err)
 	}
 	return desktopapi.ExportResult{
 		OutPath:       res.OutPath,
@@ -367,7 +373,7 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	}
 
 	if err != nil {
-		return desktopapi.ExportResult{}, err
+		return desktopapi.ExportResult{}, formatExportError(err)
 	}
 
 	return desktopapi.ExportResult{
@@ -396,6 +402,13 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 
 func (a *App) MarkDocumentsViewed(input app.ListInput) (int, error) {
 	return a.core.MarkDocumentsViewed(a.ctx, input)
+}
+
+func formatExportError(err error) error {
+	if err != nil && errors.Is(err, files.ErrFileNotFound) {
+		return fmt.Errorf("%w. Dica: Use a opção 'Resetar NSU' (necessita Modo Debug ativado) na aba Empresas e sincronize novamente para rebaixar os arquivos ausentes", err)
+	}
+	return err
 }
 
 func exportExtension(format string) (string, error) {

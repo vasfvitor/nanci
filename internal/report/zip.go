@@ -34,8 +34,7 @@ func GenerateZIP(documents []ReportRow, xmlStore files.XMLStore, outPath string)
 
 		data, err := xmlStore.Get(doc.RawHash)
 		if err != nil {
-			fmt.Printf("[Aviso] Arquivo XML não encontrado para chave %s: %v\n", doc.ChaveAcesso, err)
-			continue
+			return fmt.Errorf("arquivo físico XML não encontrado para a nota %s: %w", doc.ChaveAcesso, err)
 		}
 
 		// The path inside the zip file

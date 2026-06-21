@@ -16,6 +16,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
+var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
+
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest struct {
 	RequestID       string
