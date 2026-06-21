@@ -2,6 +2,7 @@ package report
 
 import (
 	"archive/zip"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -49,5 +50,30 @@ func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 	}
 	if archive.File[0].Name != "2026-06/sem-papel-fiscal/NFSZIP.xml" {
 		t.Fatalf("unexpected zip entry path: %s", archive.File[0].Name)
+	}
+}
+
+func TestGenerateZIPFailsWhenBlobIsMissing(t *testing.T) {
+	baseDir := t.TempDir()
+	store := files.NewBlobStore(baseDir)
+
+	outPath := filepath.Join(baseDir, "docs.zip")
+	documents := []nfse.CompanyDocument{
+		{
+			Document: nfse.Document{
+				ChaveAcesso: "NFSMISS",
+				Competence:  "2026-06",
+				RawHash:     "missing",
+			},
+			CompanyRole: "prestada",
+		},
+	}
+
+	err := GenerateZIP(BuildRows(documents), store, outPath)
+	if err == nil {
+		t.Fatal("expected missing blob error")
+	}
+	if !errors.Is(err, files.ErrFileNotFound) {
+		t.Fatalf("expected ErrFileNotFound, got %v", err)
 	}
 }

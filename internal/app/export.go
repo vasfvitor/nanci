@@ -22,10 +22,10 @@ type ExportInput struct {
 
 // ExportResult contains structured info about the export operation.
 type ExportResult struct {
-	OutPath                     string
-	Format                      string
-	Incremental                 bool
-	ExportedCount               int
+	OutPath       string
+	Format        string
+	Incremental   bool
+	ExportedCount int
 }
 
 // ExportDANFSeInput identifies one company-visible NFS-e and the destination PDF path.
@@ -86,7 +86,7 @@ func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportRes
 		for _, doc := range docs {
 			pdf, err := a.renderDANFSe(&doc)
 			if err != nil {
-				return fmt.Errorf("arquivo físico XML não encontrado para a nota %s: %w", doc.ChaveAcesso, err)
+				return fmt.Errorf("gerar DANFSe %s: %w", doc.ChaveAcesso, err)
 			}
 
 			roleFolder := string(doc.CompanyRole)

@@ -60,7 +60,8 @@ function formatLogEntry(entry: LogEntry) {
 
 export const useConsoleStore = defineStore('console', () => {
   const consoleOpen = ref(false)
-  const logFilterLevel = ref<LogFilterLevel>('info')
+  const savedLevel = (localStorage.getItem('nanci:logLevel') || 'info') as LogFilterLevel
+  const logFilterLevel = ref<LogFilterLevel>(savedLevel)
   const logEntries = ref<LogEntry[]>([])
   const logListenersInitialised = ref(false)
   const logUnsubscribe = ref<Unsubscribe | null>(null)
@@ -94,8 +95,21 @@ export const useConsoleStore = defineStore('console', () => {
   }
 
   async function setLogFilter(level: LogFilterLevel) {
+    const previousLevel = logFilterLevel.value
     logFilterLevel.value = level
-    await desktopClient.setLogLevel(level)
+    localStorage.setItem('nanci:logLevel', level)
+
+    try {
+      await desktopClient.setLogLevel(level)
+    } catch (error) {
+      logFilterLevel.value = previousLevel
+      localStorage.setItem('nanci:logLevel', previousLevel)
+      throw error
+    }
+  }
+
+  async function syncInitialLogLevel() {
+    await desktopClient.setLogLevel(logFilterLevel.value)
   }
 
   function initLogListeners() {
@@ -129,5 +143,6 @@ export const useConsoleStore = defineStore('console', () => {
     initLogListeners,
     disposeLogListeners,
     setLogFilter,
+    syncInitialLogLevel,
   }
 })

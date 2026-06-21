@@ -20,6 +20,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
+	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 )
 
@@ -196,20 +197,8 @@ func (a *App) SelectSaveFile(title, defaultFilename, pattern string) (string, er
 
 // --- Core API Exposure ---
 
-func (a *App) ToggleDebug(enable bool) {
-	if enable {
-		a.logLevel.Set(slog.LevelDebug)
-		return
-	}
-	a.logLevel.Set(slog.LevelDebug)
-}
-
 func (a *App) SetLogLevel(level string) {
-	if level == "trace" {
-		a.logLevel.Set(resolveDesktopBaseLevel(true))
-		return
-	}
-	a.logLevel.Set(resolveDesktopBaseLevel(false))
+	a.logLevel.Set(parseDesktopLogLevel(level))
 }
 
 func (a *App) AddCompany(input app.AddCompanyInput) error {
@@ -409,6 +398,21 @@ func formatExportError(err error) error {
 		return fmt.Errorf("%w. Dica: Use a opção 'Resetar NSU' (necessita Modo Debug ativado) na aba Empresas e sincronize novamente para rebaixar os arquivos ausentes", err)
 	}
 	return err
+}
+
+func parseDesktopLogLevel(level string) slog.Level {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "trace":
+		return logpkg.LevelTrace
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "info":
+		fallthrough
+	default:
+		return slog.LevelInfo
+	}
 }
 
 func exportExtension(format string) (string, error) {

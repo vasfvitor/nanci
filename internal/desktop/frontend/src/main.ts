@@ -44,6 +44,8 @@ myApp.use(Quasar, {
   iconSet: quasarIconSet,
 })
 
-useConsoleStore(pinia).initLogListeners()
+const consoleStore = useConsoleStore(pinia)
+consoleStore.initLogListeners()
+consoleStore.syncInitialLogLevel()
 
 myApp.mount('#app')

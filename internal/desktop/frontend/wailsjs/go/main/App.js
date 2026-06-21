@@ -118,10 +118,6 @@ export function TestConnection(arg1) {
   return window['go']['main']['App']['TestConnection'](arg1);
 }
 
-export function ToggleDebug(arg1) {
-  return window['go']['main']['App']['ToggleDebug'](arg1);
-}
-
 export function UpdateCompany(arg1) {
   return window['go']['main']['App']['UpdateCompany'](arg1);
 }

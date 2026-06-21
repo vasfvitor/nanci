@@ -251,5 +251,5 @@ func resolveDesktopBaseLevel(trace bool) slog.Level {
 	if trace {
 		return logpkg.LevelTrace
 	}
-	return slog.LevelDebug
+	return slog.LevelInfo
 }

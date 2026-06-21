@@ -416,6 +416,58 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	if !strings.Contains(err.Error(), "ler XML original") {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if !errors.Is(err, files.ErrFileNotFound) {
+		t.Fatalf("expected ErrFileNotFound, got %v", err)
+	}
+}
+
+func TestExportDANFSeZIPPreservesRendererFailures(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		DB:             db,
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+				CompanyRole: "prestada",
+			},
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           &stubXMLStore{data: map[string][]byte{"hash-1": []byte("<NFSe/>")}},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+		DANFSeRenderer:     &stubDANFSeRenderer{err: errors.New("renderer exploded")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		application.Close()
+	})
+
+	outPath := filepath.Join(t.TempDir(), "danfses.zip")
+	_, err = application.ExportDANFSeZIP(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	})
+	if err == nil {
+		t.Fatal("expected renderer error")
+	}
+	if !strings.Contains(err.Error(), "renderizar DANFSe") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(err.Error(), "arquivo físico XML não encontrado") {
+		t.Fatalf("renderer error should not be rewritten as missing XML: %v", err)
+	}
 }
 
 func TestNewRejectsMissingDocumentReader(t *testing.T) {
@@ -470,7 +522,7 @@ func (s *stubXMLStore) Get(hash string) ([]byte, error) {
 	s.getCalls = append(s.getCalls, hash)
 	data, ok := s.data[hash]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, files.ErrFileNotFound
 	}
 	return data, nil
 }
@@ -526,9 +578,13 @@ func (s *stubDocumentReader) ListEventsByDocument(context.Context, string) ([]nf
 type stubDANFSeRenderer struct {
 	pdf    []byte
 	inputs [][]byte
+	err    error
 }
 
 func (s *stubDANFSeRenderer) Render(xmlData []byte) ([]byte, error) {
 	s.inputs = append(s.inputs, append([]byte(nil), xmlData...))
+	if s.err != nil {
+		return nil, s.err
+	}
 	return s.pdf, nil
 }

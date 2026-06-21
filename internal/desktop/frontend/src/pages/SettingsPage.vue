@@ -34,7 +34,12 @@
             <q-item-label caption>Habilita logs detalhados e ações de desenvolvedor (ex: Resetar NSU)</q-item-label>
           </q-item-section>
           <q-item-section side>
-            <q-toggle v-model="debugToggle" color="primary" />
+            <q-toggle
+              :model-value="debugToggle"
+              :disable="updatingDebug"
+              color="primary"
+              @update:model-value="handleDebugToggle"
+            />
           </q-item-section>
         </q-item>
       </q-list>
@@ -184,13 +189,9 @@ const { testing, testResult } = storeToRefs(diagnosticsStore)
 
 const consoleStore = useConsoleStore()
 const preferencesStore = usePreferencesStore()
+const updatingDebug = ref(false)
 
-const debugToggle = computed({
-  get: () => consoleStore.debugEnabled,
-  set: (val: boolean) => {
-    consoleStore.setLogFilter(val ? 'debug' : 'info')
-  }
-})
+const debugToggle = computed(() => consoleStore.debugEnabled)
 
 const darkMode = computed({
   get: () => preferencesStore.darkMode,
@@ -240,6 +241,17 @@ function updateDarkMode(val: 'auto' | boolean) {
     desktopRuntime.setLightTheme()
   } else {
     desktopRuntime.setSystemDefaultTheme()
+  }
+}
+
+async function handleDebugToggle(val: boolean) {
+  updatingDebug.value = true
+  try {
+    await consoleStore.setLogFilter(val ? 'debug' : 'info')
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar modo debug: ' + String(err) })
+  } finally {
+    updatingDebug.value = false
   }
 }
 
