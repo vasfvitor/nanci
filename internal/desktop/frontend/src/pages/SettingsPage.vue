@@ -175,6 +175,7 @@ import { desktopRuntime } from '@/platform/wails/runtime'
 import { desktopClient } from '@/platform/wails/client'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
 import { useConsoleStore } from '@/stores/console'
+import { usePreferencesStore } from '@/stores/preferences'
 import type { BuildInfo } from '@/types/desktop'
 
 const $q = useQuasar()
@@ -182,6 +183,7 @@ const diagnosticsStore = useDiagnosticsStore()
 const { testing, testResult } = storeToRefs(diagnosticsStore)
 
 const consoleStore = useConsoleStore()
+const preferencesStore = usePreferencesStore()
 
 const debugToggle = computed({
   get: () => consoleStore.debugEnabled,
@@ -190,7 +192,12 @@ const debugToggle = computed({
   }
 })
 
-const darkMode = ref<'auto' | boolean>('auto')
+const darkMode = computed({
+  get: () => preferencesStore.darkMode,
+  set: (val) => {
+    preferencesStore.darkMode = val
+  }
+})
 
 const buildInfo = ref<BuildInfo>({ version: '...', commit: '...', date: '...' })
 const dataDir = ref('')
@@ -216,15 +223,6 @@ async function loadCompanies() {
 }
 
 onMounted(async () => {
-  const saved = localStorage.getItem('darkMode')
-  if (saved === 'true') {
-    darkMode.value = true
-  } else if (saved === 'false') {
-    darkMode.value = false
-  } else {
-    darkMode.value = 'auto'
-  }
-
   try {
     buildInfo.value = await desktopClient.getBuildInfo()
     dataDir.value = await desktopClient.getDataDirectory()
@@ -235,7 +233,6 @@ onMounted(async () => {
 })
 
 function updateDarkMode(val: 'auto' | boolean) {
-  localStorage.setItem('darkMode', String(val))
   $q.dark.set(val)
   if (val === true) {
     desktopRuntime.setDarkTheme()

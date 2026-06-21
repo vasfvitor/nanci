@@ -2,6 +2,7 @@ import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useDocumentsStore } from '@/stores/documents'
+import { usePreferencesStore } from '@/stores/preferences'
 import type { CompanySummary, ExportFormat } from '@/types/desktop'
 
 export function useDocuments() {
@@ -9,18 +10,20 @@ export function useDocuments() {
   const { filter, documents, loading, exporting } = storeToRefs(documentsStore)
   const companyOptions = ref<{ label: string; value: string }[]>([])
 
-  const savedRowsPerPage = Number(localStorage.getItem('nanci:documents:rowsPerPage')) || 25
+  const preferencesStore = usePreferencesStore()
+  const { rowsPerPage } = storeToRefs(preferencesStore)
+
   const pagination = ref({
     sortBy: 'issueDate',
     descending: true,
     page: 1,
-    rowsPerPage: savedRowsPerPage
+    rowsPerPage: rowsPerPage.value
   })
 
   watch(
     () => pagination.value.rowsPerPage,
     (newVal) => {
-      localStorage.setItem('nanci:documents:rowsPerPage', String(newVal))
+      rowsPerPage.value = newVal
     }
   )
 
