@@ -9,7 +9,6 @@ export type CompanySummary = {
   CredentialLabel: string
   CredentialCertPath: string
   Environment: string
-  LastNSU: number
   LastFoundNSU: number | null
   LastSyncAt?: ISODateValue
   SyncStartPolicy: SyncStartPolicy

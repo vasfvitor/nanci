@@ -156,7 +156,6 @@ const columns: QTableColumn[] = [
   { name: 'nome', label: 'Nome', field: 'Name', align: 'left', sortable: true },
   { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true, format: (val: string) => formatCpfCnpj(val) },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
-  { name: 'nsu', label: 'Último NSU', field: 'LastNSU', align: 'left', sortable: true },
   { name: 'lastFoundNSU', label: 'Último NSU (c/ doc)', field: 'LastFoundNSU', align: 'left', sortable: true },
   { name: 'syncStart', label: 'Histórico inicial', field: 'SyncStartPolicy', align: 'left', sortable: true },
   { name: 'lastSyncAt', label: 'Última sincronização', field: 'LastSyncAt', align: 'left', sortable: true },

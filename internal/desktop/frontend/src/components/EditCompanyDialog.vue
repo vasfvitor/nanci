@@ -103,7 +103,7 @@ const syncPolicyOptions = [
 const canEditSyncPolicy = computed(() => {
   const company = props.companyData
   if (!company) return true
-  return company.LastNSU <= 0 && !company.InitialSyncDoneAt
+  return !company.LastSyncAt && !company.InitialSyncDoneAt
 })
 
 watch(
