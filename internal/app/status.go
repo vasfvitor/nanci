@@ -38,36 +38,14 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 		return StatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
 
-	var totalEmitidas, totalTomadas int64
-	query := `
-		SELECT company_role, COUNT(*) 
-		FROM company_documents 
-		WHERE company_id = ? 
-		GROUP BY company_role
-	`
-	rows, err := a.DB.QueryContext(ctx, query, string(company.ID))
+	counts, err := a.DocumentReader.CountDocumentsByRole(ctx, company.ID)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("contar documentos: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 
-	for rows.Next() {
-		var role string
-		var count int64
-		if err := rows.Scan(&role, &count); err != nil {
-			return StatusResult{}, fmt.Errorf("ler contagem: %w", err)
-		}
-		switch role {
-		case "prestada":
-			totalEmitidas = count
-		case "tomada":
-			totalTomadas = count
-		}
-	}
-
-	if err := rows.Err(); err != nil {
-		return StatusResult{}, fmt.Errorf("erro iterando contagem de documentos: %w", err)
-	}
+	var totalEmitidas, totalTomadas int64
+	totalEmitidas = counts["prestada"]
+	totalTomadas = counts["tomada"]
 
 	result := StatusResult{
 		CompanyName:        company.Name,

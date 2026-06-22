@@ -22,6 +22,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
@@ -64,6 +65,7 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 type App struct {
 	ctx           context.Context
 	core          *app.App
+	cleanup       func()
 	passwordChans map[string]chan string
 	mu            sync.Mutex
 	logLevel      *slog.LevelVar
@@ -106,8 +108,37 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.logWriter = writer
 
-	coreApp, err := app.NewRuntime(app.RuntimeOptions{
+	dataDir, err := app.ResolveRuntimeDataDir("")
+	if err != nil {
+		fmt.Printf("failed to resolve data dir: %v\n", err)
+		return
+	}
+	if err := paths.EnsureDir(dataDir); err != nil {
+		fmt.Printf("failed to create data dir: %v\n", err)
+		return
+	}
+
+	db, err := store.OpenDB(app.RuntimeDBPath(dataDir), true)
+	if err != nil {
+		fmt.Printf("failed to initialize db: %v\n", err)
+		return
+	}
+
+	a.cleanup = func() {
+		_ = db.Close()
+	}
+
+	docRepo := store.NewDocumentRepository(db)
+
+	coreApp, err := app.NewRuntime(app.Dependencies{
 		Log: log,
+		CompanyRepo:        store.NewCompanyRepository(db),
+		CredentialRepo:     store.NewCredentialRepository(db),
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentReader:     docRepo,
+		DocumentTracker:    docRepo,
+		XMLStore:           files.NewBlobStore(dataDir),
+		DataDir:            dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: WailsCredentialProvider{
 				ctx:           ctx,
@@ -116,9 +147,9 @@ func (a *App) startup(ctx context.Context) {
 			},
 		},
 		DANFSeRenderer: godanfsev2.New(),
-		RunMigrations:  true,
 	})
 	if err != nil {
+		a.cleanup()
 		fmt.Printf("failed to configure app: %v\n", err)
 		return
 	}
@@ -127,8 +158,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	if a.core != nil {
-		a.core.Close()
+	if a.cleanup != nil {
+		a.cleanup()
 	}
 	if a.logWriter != nil {
 		_ = a.logWriter.Close()

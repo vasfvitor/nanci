@@ -34,11 +34,11 @@ var companyAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adiciona uma nova empresa",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		syncStartPolicy, syncStartDate := resolveCompanySyncStartFlags()
 
@@ -65,11 +65,11 @@ var companyListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lista todas as empresas",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		companies, err := application.ListCompanies(context.Background())
 		if err != nil {
@@ -94,11 +94,11 @@ var companyAssignCredentialCmd = &cobra.Command{
 	Use:   "assign-credential",
 	Short: "Atribui uma credencial existente a uma empresa",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		if err := application.AssignCredentialToCompany(context.Background(), app.AssignCredentialInput{
 			CompanyCNPJ:  companyCNPJ,

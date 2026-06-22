@@ -25,11 +25,11 @@ var credentialAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adiciona uma nova credencial",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		if err := application.AddCredential(context.Background(), app.AddCredentialInput{
 			Label:    credentialLabel,
@@ -46,11 +46,11 @@ var credentialListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lista todas as credenciais",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		credentials, err := application.ListCredentials(context.Background())
 		if err != nil {
@@ -80,11 +80,11 @@ var credentialUpdatePathCmd = &cobra.Command{
 	Use:   "update-path",
 	Short: "Atualiza o caminho do certificado de uma credencial",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		if err := application.UpdateCredentialPath(context.Background(), app.UpdateCredentialPathInput{
 			CredentialID: credentialID,

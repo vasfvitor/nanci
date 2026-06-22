@@ -27,6 +27,7 @@ type DocumentReader interface {
 	ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) ([]nfse.CompanyDocument, error)
 	CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfse.CompanyDocument, error)
 	ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error)
+	CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error)
 }
 
 type DocumentTracker interface {
@@ -41,4 +42,9 @@ type SyncRepository interface {
 	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error)
 	ResetSyncState(ctx context.Context, params nfse.ResetSyncStateParams) error
 	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
+}
+
+type XMLStore interface {
+	Store(hash string, data []byte) error
+	Get(hash string) ([]byte, error)
 }

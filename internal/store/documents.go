@@ -520,3 +520,34 @@ func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID 
 	}
 	return int(rows), nil
 }
+
+// CountDocumentsByRole returns a map of role to document count for the given company.
+func (s *DocumentRepository) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
+	query := `
+		SELECT company_role, COUNT(*) 
+		FROM company_documents 
+		WHERE company_id = ? 
+		GROUP BY company_role
+	`
+	rows, err := s.db.QueryContext(ctx, query, string(companyID))
+	if err != nil {
+		return nil, fmt.Errorf("contar documentos por papel: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	counts := make(map[string]int64)
+	for rows.Next() {
+		var role string
+		var count int64
+		if err := rows.Scan(&role, &count); err != nil {
+			return nil, fmt.Errorf("ler contagem por papel: %w", err)
+		}
+		counts[role] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("erro iterando contagem de documentos por papel: %w", err)
+	}
+
+	return counts, nil
+}

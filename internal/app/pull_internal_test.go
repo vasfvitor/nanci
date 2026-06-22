@@ -47,6 +47,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { db.Close() })
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
 	company := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
@@ -76,7 +77,6 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	xmlStore := &captureXMLStore{}
 	application, err := New(Dependencies{
 		Log:                slog.New(slog.DiscardHandler),
-		DB:                 db,
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
@@ -89,9 +89,6 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
 	originalLoadPKCS12 := loadPKCS12
 	originalNewADNClient := newADNClient

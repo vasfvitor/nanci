@@ -14,11 +14,11 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Mostra um resumo da situação da empresa",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		result, err := application.Status(cmd.Context(), statusCNPJ)
 		if err != nil {
