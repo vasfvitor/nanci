@@ -192,10 +192,8 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 		return nfse.ApplyOutcome{}, err
 	}
 
-	var valid int64
 	var eventAt sql.NullString
 	if params.Event.EventAt != nil {
-		valid = 1
 		eventAt = sql.NullString{String: params.Event.EventAt.Format(time.RFC3339), Valid: true}
 	}
 
@@ -215,7 +213,6 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 		ChaveAcesso:            string(params.Event.ChaveAcesso),
 		Type:                   string(params.Event.Type),
 		EventAt:                eventAt,
-		EventAtValid:           valid,
 		ReplacementChaveAcesso: params.Event.ReplacementChaveAcesso,
 		Description:            params.Event.Description,
 		RawXmlPath:             params.Event.RawXMLPath,

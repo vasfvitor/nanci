@@ -56,10 +56,10 @@ ON CONFLICT(company_id, document_id) DO UPDATE SET
 
 -- name: InsertEvent :exec
 INSERT INTO events (
-    id, document_id, chave_acesso, type, event_at, event_at_valid,
+    id, document_id, chave_acesso, type, event_at,
     replacement_chave_acesso, description, raw_xml_path, raw_hash,
     parse_warnings, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(raw_hash) DO NOTHING;
 
 -- name: GetDocumentIDByAccessKey :one

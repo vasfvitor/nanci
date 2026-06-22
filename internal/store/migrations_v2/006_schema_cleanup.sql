@@ -1,6 +1,27 @@
 -- +goose Up
 ALTER TABLE companies DROP COLUMN last_nsu;
 
+CREATE TABLE events_new (
+    id TEXT PRIMARY KEY,
+    document_id TEXT REFERENCES documents(id),
+    chave_acesso TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('cancelamento', 'substituicao', 'unknown')),
+    event_at TEXT,
+    replacement_chave_acesso TEXT NOT NULL,
+    description TEXT NOT NULL,
+    raw_xml_path TEXT NOT NULL,
+    raw_hash TEXT NOT NULL UNIQUE,
+    parse_warnings TEXT,
+    created_at TEXT NOT NULL
+);
+
+INSERT INTO events_new (id, document_id, chave_acesso, type, event_at, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at)
+SELECT id, document_id, chave_acesso, type, event_at, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at
+FROM events;
+
+DROP TABLE events;
+ALTER TABLE events_new RENAME TO events;
+
 CREATE TABLE company_documents_new (
     relation_id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES companies(id),
@@ -29,6 +50,28 @@ CREATE INDEX idx_company_documents_viewed_at ON company_documents(company_id, vi
 -- +goose Down
 -- Add rollback logic for recreating company_documents with valid flags and adding last_nsu to companies.
 ALTER TABLE companies ADD COLUMN last_nsu INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE events_old (
+    id TEXT PRIMARY KEY,
+    document_id TEXT REFERENCES documents(id),
+    chave_acesso TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('cancelamento', 'substituicao', 'unknown')),
+    event_at TEXT,
+    event_at_valid INTEGER NOT NULL DEFAULT 0,
+    replacement_chave_acesso TEXT NOT NULL,
+    description TEXT NOT NULL,
+    raw_xml_path TEXT NOT NULL,
+    raw_hash TEXT NOT NULL UNIQUE,
+    parse_warnings TEXT,
+    created_at TEXT NOT NULL
+);
+
+INSERT INTO events_old (id, document_id, chave_acesso, type, event_at, event_at_valid, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at)
+SELECT id, document_id, chave_acesso, type, event_at, CASE WHEN event_at IS NOT NULL THEN 1 ELSE 0 END, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at
+FROM events;
+
+DROP TABLE events;
+ALTER TABLE events_old RENAME TO events;
 
 CREATE TABLE company_documents_old (
     relation_id TEXT PRIMARY KEY,

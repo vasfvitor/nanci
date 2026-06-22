@@ -173,7 +173,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) {
 	query := `
 		SELECT
-			id, document_id, chave_acesso, type, event_at, event_at_valid, replacement_chave_acesso,
+			id, document_id, chave_acesso, type, event_at, replacement_chave_acesso,
 			description, raw_xml_path, raw_hash, parse_warnings, created_at
 		FROM events
 		WHERE document_id = ?
@@ -194,7 +194,6 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	for rows.Next() {
 		var event nfse.Event
 		var documentID, eventAt, parseWarnings sql.NullString
-		var eventAtValid int64
 		var createdAt string
 
 		if err := rows.Scan(
@@ -203,7 +202,6 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 			&event.ChaveAcesso,
 			&event.Type,
 			&eventAt,
-			&eventAtValid,
 			&event.ReplacementChaveAcesso,
 			&event.Description,
 			&event.RawXMLPath,
@@ -217,10 +215,7 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 		if documentID.Valid {
 			event.DocumentID = nfse.DocumentID(documentID.String)
 		}
-		if eventAtValid != 0 {
-			if !eventAt.Valid {
-				return nil, errors.New("event event_at is required when event_at_valid is set")
-			}
+		if eventAt.Valid {
 			parsedTime, err := parseRequiredTime("event event_at", eventAt.String)
 			if err != nil {
 				return nil, err

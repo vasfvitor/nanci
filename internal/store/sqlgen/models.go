@@ -87,7 +87,6 @@ type Event struct {
 	ChaveAcesso            string
 	Type                   string
 	EventAt                sql.NullString
-	EventAtValid           int64
 	ReplacementChaveAcesso string
 	Description            string
 	RawXmlPath             string

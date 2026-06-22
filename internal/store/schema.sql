@@ -91,7 +91,6 @@ CREATE TABLE events (
     chave_acesso TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('cancelamento', 'substituicao', 'unknown')),
     event_at TEXT,
-    event_at_valid INTEGER NOT NULL DEFAULT 0,
     replacement_chave_acesso TEXT NOT NULL,
     description TEXT NOT NULL,
     raw_xml_path TEXT NOT NULL,

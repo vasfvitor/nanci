@@ -26,10 +26,10 @@ func (q *Queries) GetDocumentIDByAccessKey(ctx context.Context, chaveAcesso stri
 
 const insertEvent = `-- name: InsertEvent :exec
 INSERT INTO events (
-    id, document_id, chave_acesso, type, event_at, event_at_valid,
+    id, document_id, chave_acesso, type, event_at,
     replacement_chave_acesso, description, raw_xml_path, raw_hash,
     parse_warnings, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(raw_hash) DO NOTHING
 `
 
@@ -39,7 +39,6 @@ type InsertEventParams struct {
 	ChaveAcesso            string
 	Type                   string
 	EventAt                sql.NullString
-	EventAtValid           int64
 	ReplacementChaveAcesso string
 	Description            string
 	RawXmlPath             string
@@ -55,7 +54,6 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 		arg.ChaveAcesso,
 		arg.Type,
 		arg.EventAt,
-		arg.EventAtValid,
 		arg.ReplacementChaveAcesso,
 		arg.Description,
 		arg.RawXmlPath,
