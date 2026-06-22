@@ -2,6 +2,7 @@ package adn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -66,6 +67,13 @@ func (c *Client) FetchDocuments(ctx context.Context, req DistributionRequest) (*
 	var response DocumentResponse
 	// bodyProvider is nil for GET request
 	if err := c.request(ctx, "GET", path, nil, &response); err != nil {
+		if errors.Is(err, ErrNoDocumentsLocated) {
+			return &DocumentResponse{
+				UltNSU: 0,
+				MaxNSU: 0,
+				Docs:   nil,
+			}, nil
+		}
 		return nil, err
 	}
 

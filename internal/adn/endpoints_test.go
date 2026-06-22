@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func TestClient_FetchDocuments(t *testing.T) {
@@ -128,8 +126,7 @@ func TestClient_Retries(t *testing.T) {
 	defer server.Close()
 
 	client, err := NewClient(ClientConfig{
-		Environment:     nfse.EnvironmentProduction,
-		BaseURLOverride: server.URL,
+		BaseURL: server.URL,
 		Retry: RetryConfig{
 			MaxRetries: 3,
 			Initial:    1 * time.Millisecond,
@@ -173,8 +170,7 @@ func TestClient_RetryAfterHeaderOverridesBackoff(t *testing.T) {
 	defer server.Close()
 
 	client, err := NewClient(ClientConfig{
-		Environment:     nfse.EnvironmentProduction,
-		BaseURLOverride: server.URL,
+		BaseURL: server.URL,
 		Retry: RetryConfig{
 			MaxRetries: 2,
 			Initial:    1 * time.Millisecond,
@@ -221,8 +217,7 @@ func TestClient_RetryAfterInvalidFallsBackToBackoff(t *testing.T) {
 	defer server.Close()
 
 	client, err := NewClient(ClientConfig{
-		Environment:     nfse.EnvironmentProduction,
-		BaseURLOverride: server.URL,
+		BaseURL: server.URL,
 		Retry: RetryConfig{
 			MaxRetries: 2,
 			Initial:    1 * time.Millisecond,
@@ -428,8 +423,7 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
 
 	client, err := NewClient(ClientConfig{
-		Environment:     nfse.EnvironmentProduction,
-		BaseURLOverride: baseURL,
+		BaseURL: baseURL,
 		Retry: RetryConfig{
 			MaxRetries: 0,
 			Initial:    1 * time.Millisecond,
@@ -446,8 +440,7 @@ func newRestrictedTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
 
 	client, err := NewClient(ClientConfig{
-		Environment:     nfse.EnvironmentRestricted,
-		BaseURLOverride: baseURL,
+		BaseURL: baseURL,
 		Retry: RetryConfig{
 			MaxRetries: 0,
 			Initial:    1 * time.Millisecond,

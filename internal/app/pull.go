@@ -118,7 +118,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	// 4. Build ADN client
 	apiClient, err := newADNClient(adn.ClientConfig{
-		Environment: company.Environment,
+		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 	})
 	if err != nil {
@@ -203,16 +203,27 @@ func parsePullMode(raw string) (nfse.SyncMode, error) {
 
 func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
-		return "", fmt.Errorf("o certificado não expõe um CNPJ proprietário utilizável para consulta")
+		return "", ErrCredentialNoOwner
 	}
 	if company.Environment == "" {
-		return "", fmt.Errorf("a empresa não possui ambiente configurado")
+		return "", ErrCompanyNoEnvironment
 	}
 	if company.CNPJRoot != credential.OwnerCNPJRoot {
-		return "", fmt.Errorf("a credencial pertence à raiz %s e não pode consultar a empresa %s", credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
+		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
 	}
 	if company.CNPJ == credential.OwnerCNPJ {
 		return nfse.ConsultationBasisExactCertificateCNPJ, nil
 	}
 	return nfse.ConsultationBasisSameRootCertificate, nil
+}
+
+func resolveEnvironmentURL(env nfse.Environment) string {
+	switch env {
+	case nfse.EnvironmentProduction:
+		return adn.BaseURLProduction
+	case nfse.EnvironmentRestricted:
+		return adn.BaseURLRestrictedProduction
+	default:
+		return ""
+	}
 }

@@ -90,7 +90,7 @@ func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn
 
 	tlsCert := loadedCert.TLS
 	apiClient, err := newADNClient(adn.ClientConfig{
-		Environment: company.Environment,
+		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 		Log:         a.Log,
 	})

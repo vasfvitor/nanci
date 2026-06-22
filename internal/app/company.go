@@ -2,11 +2,18 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
+)
+
+var (
+	ErrCredentialMismatch   = errors.New("a credencial informada não pertence à mesma raiz do CNPJ da empresa")
+	ErrCredentialNoOwner    = errors.New("o certificado não expõe um CNPJ proprietário utilizável para consulta")
+	ErrCompanyNoEnvironment = errors.New("a empresa não possui ambiente configurado")
 )
 
 // AddCompanyInput carries the data required to register a new company.
@@ -102,7 +109,7 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 	}
 
 	if company.CNPJRoot != "" && credential.OwnerCNPJRoot != "" && company.CNPJRoot != credential.OwnerCNPJRoot {
-		return fmt.Errorf("a credencial informada não pertence à mesma raiz do CNPJ da empresa")
+		return ErrCredentialMismatch
 	}
 
 	if err := a.CompanyRepo.AssignCredential(ctx, company.ID, credential.ID); err != nil {

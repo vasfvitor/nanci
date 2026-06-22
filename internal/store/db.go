@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 
@@ -11,7 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-var ErrNotFound = sql.ErrNoRows
+var ErrNotFound = errors.New("not found")
 
 //go:embed migrations_v2/*.sql
 var embedMigrationsV2 embed.FS
