@@ -76,7 +76,7 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 		CNPJ:         "11222333000181",
 		Name:         "Company",
 		CredentialID: string(credential.ID),
-		Environment:  string(nfse.EnvironmentProduction),
+		Environment:  nfse.EnvironmentProduction,
 	})
 	if err != nil {
 		t.Fatal(err)

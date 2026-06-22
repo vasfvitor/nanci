@@ -31,7 +31,7 @@ var credentialAddCmd = &cobra.Command{
 		}
 		defer cleanup()
 
-		if err := application.AddCredential(context.Background(), app.AddCredentialInput{
+		if err := application.AddCredential(cmd.Context(), app.AddCredentialInput{
 			Label:    credentialLabel,
 			CertPath: credentialPath,
 		}); err != nil {
@@ -52,7 +52,7 @@ var credentialListCmd = &cobra.Command{
 		}
 		defer cleanup()
 
-		credentials, err := application.ListCredentials(context.Background())
+		credentials, err := application.ListCredentials(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("erro ao listar credenciais: %w", err)
 		}
@@ -86,7 +86,7 @@ var credentialUpdatePathCmd = &cobra.Command{
 		}
 		defer cleanup()
 
-		if err := application.UpdateCredentialPath(context.Background(), app.UpdateCredentialPathInput{
+		if err := application.UpdateCredentialPath(cmd.Context(), app.UpdateCredentialPathInput{
 			CredentialID: credentialID,
 			CertPath:     credentialPath,
 		}); err != nil {

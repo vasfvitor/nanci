@@ -22,6 +22,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -233,15 +234,24 @@ func (a *App) SetLogLevel(level string) {
 }
 
 func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return err
+	}
+	policy, date, err := app.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+	if err != nil {
+		return err
+	}
+
 	return a.core.AddCompany(a.ctx, app.AddCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		CredentialID:    input.CredentialID,
 		CredentialLabel: input.CredentialLabel,
 		CertPath:        input.CertPath,
-		Environment:     input.Environment,
-		SyncStartPolicy: input.SyncStartPolicy,
-		SyncStartDate:   input.SyncStartDate,
+		Environment:     environment,
+		SyncStartPolicy: policy,
+		SyncStartDate:   date,
 	})
 }
 
@@ -275,12 +285,25 @@ func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) e
 }
 
 func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return err
+	}
+	policy := nfse.SyncStartPolicyFromNow
+	var date *time.Time
+	if input.SyncStartPolicy != "" {
+		policy, date, err = app.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+		if err != nil {
+			return err
+		}
+	}
+
 	return a.core.UpdateCompany(a.ctx, app.UpdateCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
-		Environment:     input.Environment,
-		SyncStartPolicy: input.SyncStartPolicy,
-		SyncStartDate:   input.SyncStartDate,
+		Environment:     environment,
+		SyncStartPolicy: policy,
+		SyncStartDate:   date,
 	})
 }
 
@@ -396,7 +419,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse"}, nil
 }
@@ -412,7 +435,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
 }
@@ -432,7 +455,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 
 	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{
 		OutPath:       res.OutPath,
@@ -470,7 +493,7 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	}
 
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 
 	return desktopapi.ExportResult{
@@ -507,9 +530,6 @@ func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
 }
 
 func formatExportError(err error) error {
-	if err != nil && errors.Is(err, files.ErrFileNotFound) {
-		return fmt.Errorf("%w. Dica: Use a opção 'Resetar NSU' (necessita Modo Debug ativado) na aba Empresas e sincronize novamente para rebaixar os arquivos ausentes", err)
-	}
 	return err
 }
 

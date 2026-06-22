@@ -23,9 +23,9 @@ type AddCompanyInput struct {
 	CredentialID    string
 	CredentialLabel string
 	CertPath        string
-	Environment     string // "producao" | "producao_restrita"
-	SyncStartPolicy string // "all" | "since_date" | "from_now"
-	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
+	Environment     nfse.Environment
+	SyncStartPolicy nfse.SyncStartPolicy
+	SyncStartDate   *time.Time
 }
 
 // AddCompany registers a new company in the store.
@@ -41,15 +41,6 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		return err
 	}
 
-	environment, err := parseEnvironment(input.Environment)
-	if err != nil {
-		return err
-	}
-	syncStartPolicy, syncStartDate, err := parseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
-	if err != nil {
-		return err
-	}
-
 	company := &nfse.Company{
 		ID:                 nfse.CompanyID(nfse.GenerateID()),
 		CNPJ:               cleanedCNPJ,
@@ -58,9 +49,9 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		CredentialID:       credential.ID,
 		CredentialLabel:    credential.Label,
 		CredentialCertPath: credential.CertPath,
-		Environment:        environment,
-		SyncStartPolicy:    syncStartPolicy,
-		SyncStartDate:      syncStartDate,
+		Environment:        input.Environment,
+		SyncStartPolicy:    input.SyncStartPolicy,
+		SyncStartDate:      input.SyncStartDate,
 	}
 
 	if err := a.CompanyRepo.CreateCompany(ctx, company); err != nil {
@@ -150,9 +141,9 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 type UpdateCompanyInput struct {
 	CNPJ            string
 	Name            string
-	Environment     string // "producao" | "producao_restrita"
-	SyncStartPolicy string // "all" | "since_date" | "from_now"
-	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
+	Environment     nfse.Environment
+	SyncStartPolicy nfse.SyncStartPolicy
+	SyncStartDate   *time.Time
 }
 
 // UpdateCompany updates the name and environment of an existing company.
@@ -162,20 +153,7 @@ func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error
 		return err
 	}
 
-	environment, err := parseEnvironment(input.Environment)
-	if err != nil {
-		return err
-	}
-	syncStartPolicy := company.SyncStartPolicy
-	syncStartDate := company.SyncStartDate
-	if input.SyncStartPolicy != "" {
-		var err error
-		syncStartPolicy, syncStartDate, err = parseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
-		if err != nil {
-			return err
-		}
-	}
-	if syncStartPolicy != company.SyncStartPolicy || !sameDate(syncStartDate, company.SyncStartDate) {
+	if input.SyncStartPolicy != company.SyncStartPolicy || !sameDate(input.SyncStartDate, company.SyncStartDate) {
 		hasState, err := a.SyncRepo.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID})
 		if err != nil {
 			return fmt.Errorf("verificar estado de sincronização: %w", err)
@@ -186,9 +164,9 @@ func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error
 	}
 
 	company.Name = input.Name
-	company.Environment = environment
-	company.SyncStartPolicy = syncStartPolicy
-	company.SyncStartDate = syncStartDate
+	company.Environment = input.Environment
+	company.SyncStartPolicy = input.SyncStartPolicy
+	company.SyncStartDate = input.SyncStartDate
 
 	if err := a.CompanyRepo.UpdateCompany(ctx, company); err != nil {
 		return fmt.Errorf("atualizar empresa: %w", err)
@@ -197,7 +175,7 @@ func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error
 	return nil
 }
 
-func parseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy, *time.Time, error) {
+func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy, *time.Time, error) {
 	if rawPolicy == "" {
 		rawPolicy = string(nfse.SyncStartPolicyFromNow)
 	}

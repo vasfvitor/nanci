@@ -9,6 +9,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 var (
@@ -40,17 +41,25 @@ var companyAddCmd = &cobra.Command{
 		}
 		defer cleanup()
 
-		syncStartPolicy, syncStartDate := resolveCompanySyncStartFlags()
+		environment, err := nfse.ParseEnvironment(companyEnv)
+		if err != nil {
+			return fmt.Errorf("erro no ambiente: %w", err)
+		}
+		rawSyncStartPolicy, rawSyncStartDate := resolveCompanySyncStartFlags()
+		policy, date, err := app.ParseSyncStartPolicyInput(rawSyncStartPolicy, rawSyncStartDate)
+		if err != nil {
+			return fmt.Errorf("erro na politica de sincronização: %w", err)
+		}
 
-		if err := application.AddCompany(context.Background(), app.AddCompanyInput{
+		if err := application.AddCompany(cmd.Context(), app.AddCompanyInput{
 			CNPJ:            companyCNPJ,
 			Name:            companyName,
 			CredentialID:    companyCredentialID,
 			CredentialLabel: companyCredentialLabel,
 			CertPath:        companyCert,
-			Environment:     companyEnv,
-			SyncStartPolicy: syncStartPolicy,
-			SyncStartDate:   syncStartDate,
+			Environment:     environment,
+			SyncStartPolicy: policy,
+			SyncStartDate:   date,
 		}); err != nil {
 			return fmt.Errorf("erro ao adicionar empresa: %w", err)
 		}
@@ -71,7 +80,7 @@ var companyListCmd = &cobra.Command{
 		}
 		defer cleanup()
 
-		companies, err := application.ListCompanies(context.Background())
+		companies, err := application.ListCompanies(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("erro ao listar empresas: %w", err)
 		}
@@ -100,7 +109,7 @@ var companyAssignCredentialCmd = &cobra.Command{
 		}
 		defer cleanup()
 
-		if err := application.AssignCredentialToCompany(context.Background(), app.AssignCredentialInput{
+		if err := application.AssignCredentialToCompany(cmd.Context(), app.AssignCredentialInput{
 			CompanyCNPJ:  companyCNPJ,
 			CredentialID: assignCredentialID,
 		}); err != nil {
