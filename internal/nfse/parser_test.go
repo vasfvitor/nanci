@@ -59,8 +59,8 @@ func TestParseEventXML(t *testing.T) {
 			if event.ReplacementChaveAcesso != tt.wantReplacement {
 				t.Fatalf("ReplacementChaveAcesso = %q, want %q", event.ReplacementChaveAcesso, tt.wantReplacement)
 			}
-			if event.EventAtValid != tt.wantEventAt {
-				t.Fatalf("EventAtValid = %v, want %v", event.EventAtValid, tt.wantEventAt)
+			if (event.EventAt != nil) != tt.wantEventAt {
+				t.Fatalf("EventAt != nil is %v, want %v", event.EventAt != nil, tt.wantEventAt)
 			}
 			if event.Description != tt.wantDescription {
 				t.Fatalf("Description = %q, want %q", event.Description, tt.wantDescription)
@@ -81,8 +81,8 @@ func TestParseEventParsesRFC3339Timestamp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseEvent: %v", err)
 	}
-	if !event.EventAtValid {
-		t.Fatal("EventAtValid = false, want true")
+	if event.EventAt == nil {
+		t.Fatal("EventAt = nil, want pointer")
 	}
 	if !event.EventAt.Equal(time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC)) {
 		t.Fatalf("EventAt = %s", event.EventAt)

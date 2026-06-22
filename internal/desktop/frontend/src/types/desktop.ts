@@ -81,7 +81,7 @@ export type DocumentRow = {
 export type DocumentEvent = {
   ID: string
   Type: string
-  EventAt: string
+  EventAt: string | null
   ReplacementChaveAcesso: string
   Description: string
   RawXMLPath: string

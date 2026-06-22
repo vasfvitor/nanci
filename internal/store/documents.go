@@ -225,11 +225,11 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 			if !eventAt.Valid {
 				return nil, errors.New("event event_at is required when event_at_valid is set")
 			}
-			event.EventAt, err = parseRequiredTime("event event_at", eventAt.String)
+			parsedTime, err := parseRequiredTime("event event_at", eventAt.String)
 			if err != nil {
 				return nil, err
 			}
-			event.EventAtValid = true
+			event.EventAt = &parsedTime
 		}
 		if err := decodeWarnings(parseWarnings, &event.ParseWarnings); err != nil {
 			return nil, fmt.Errorf("event parse_warnings: %w", err)

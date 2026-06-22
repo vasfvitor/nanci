@@ -196,7 +196,7 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 
 	var valid int64
 	var eventAt sql.NullString
-	if params.Event.EventAtValid {
+	if params.Event.EventAt != nil {
 		valid = 1
 		eventAt = sql.NullString{String: params.Event.EventAt.Format(time.RFC3339), Valid: true}
 	}

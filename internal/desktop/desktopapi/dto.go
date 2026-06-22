@@ -86,7 +86,7 @@ type DocumentRow struct {
 type DocumentEvent struct {
 	ID                     string
 	Type                   string
-	EventAt                string
+	EventAt                *time.Time
 	ReplacementChaveAcesso string
 	Description            string
 	RawXMLPath             string

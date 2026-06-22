@@ -75,7 +75,7 @@ const loading = ref(false)
 const events = ref<DocumentEvent[]>([])
 
 const columns = [
-  { name: 'eventAt', label: 'Data', field: 'EventAt', align: 'left' as const, sortable: true },
+  { name: 'eventAt', label: 'Data', field: (row: DocumentEvent) => row.EventAt ? row.EventAt : '—', align: 'left' as const, sortable: true },
   { name: 'type', label: 'Tipo', field: 'Type', align: 'left' as const, sortable: true },
   { name: 'description', label: 'Descrição / Motivo', field: 'Description', align: 'left' as const },
   { name: 'replacement', label: 'Chave Substituta', field: 'ReplacementChaveAcesso', align: 'left' as const },

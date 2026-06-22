@@ -8,8 +8,7 @@ type Event struct {
 	DocumentID             DocumentID
 	ChaveAcesso            AccessKey
 	Type                   EventType // e.g., "cancelamento", "substituicao", "unknown"
-	EventAt                time.Time
-	EventAtValid           bool
+	EventAt                *time.Time
 	ReplacementChaveAcesso string
 	Description            string
 	RawXMLPath             string

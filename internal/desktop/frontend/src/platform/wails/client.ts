@@ -193,7 +193,7 @@ export function mapDocumentEvent(raw: unknown): DocumentEvent {
   return {
     ID: asString(item['ID']),
     Type: asString(item['Type']),
-    EventAt: asString(item['EventAt']),
+    EventAt: item['EventAt'] as DocumentEvent['EventAt'],
     ReplacementChaveAcesso: asString(item['ReplacementChaveAcesso']),
     Description: asString(item['Description']),
     RawXMLPath: asString(item['RawXMLPath']),
