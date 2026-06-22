@@ -54,7 +54,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		CompanyID:        company.ID,
 		Environment:      company.Environment,
 		ConsultationCNPJ: company.CNPJ,
-		LegacyLastNSU:    company.LastNSU,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to load sync state: %w", err)

@@ -33,23 +33,17 @@ func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOr
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	lastFoundNSU, err := r.legacyLastFoundNSU(ctx, params.CompanyID)
-	if err != nil {
-		return nil, err
-	}
 
 	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO sync_state (
 			company_id, environment, consultation_cnpj,
 			last_checked_nsu, last_found_nsu, last_empty_streak,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+		) VALUES (?, ?, ?, 0, NULL, 0, ?, ?)
 	`,
 		string(params.CompanyID),
 		string(params.Environment),
 		params.ConsultationCNPJ,
-		params.LegacyLastNSU,
-		nullInt64FromPtr(lastFoundNSU),
 		now,
 		now,
 	)
@@ -708,17 +702,6 @@ func (r *SyncRepository) latestRun(ctx context.Context, companyID nfse.CompanyID
 	return &run, nil
 }
 
-func (r *SyncRepository) legacyLastFoundNSU(ctx context.Context, companyID nfse.CompanyID) (*int64, error) {
-	var nsu sql.NullInt64
-	if err := r.db.QueryRowContext(ctx, `
-		SELECT MAX(last_seen_nsu)
-		FROM company_documents
-		WHERE company_id = ? AND last_seen_nsu_valid = 1
-	`, string(companyID)).Scan(&nsu); err != nil {
-		return nil, err
-	}
-	return ptrFromNullInt64(nsu), nil
-}
 
 func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso, updatedAt string) error {
 	eventTypes, err := q.ListEventTypesByAccessKey(ctx, chaveAcesso)

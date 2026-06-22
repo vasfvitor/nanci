@@ -177,7 +177,6 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		CompanyID:        company.ID,
 		Environment:      company.Environment,
 		ConsultationCNPJ: company.CNPJ,
-		LegacyLastNSU:    42,
 	}); err != nil {
 		t.Fatal(err)
 	}

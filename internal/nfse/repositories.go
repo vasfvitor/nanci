@@ -67,7 +67,6 @@ type GetOrCreateSyncStateParams struct {
 	CompanyID        CompanyID
 	Environment      Environment
 	ConsultationCNPJ string
-	LegacyLastNSU    int64
 }
 
 type ApplyDocumentParams struct {
