@@ -16,6 +16,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
+func int64Ptr(v int64) *int64 { return &v }
+
 type mockSyncRepo struct {
 	state                         *nfse.SyncState
 	startRunParams                []nfse.StartRunParams
@@ -51,7 +53,6 @@ func (m *mockSyncRepo) PersistProgress(ctx context.Context, p nfse.PersistSyncPr
 	}
 	m.state.LastProcessedNSU = p.LastProcessedNSU
 	m.state.LastFoundNSU = p.LastFoundNSU
-	m.state.LastFoundNSUValid = p.LastFoundNSUValid
 	m.state.LastEmptyStreak = p.LastEmptyStreak
 	return nil
 }
@@ -203,8 +204,7 @@ func TestSyncServiceNormalModeUsesPersistedCursorWithoutRevisit(t *testing.T) {
 			Environment:       nfse.EnvironmentProduction,
 			ConsultationCNPJ:  "12345678901234",
 			LastProcessedNSU:  29,
-			LastFoundNSU:      29,
-			LastFoundNSUValid: true,
+			LastFoundNSU:      int64Ptr(29),
 		},
 	}
 	fetcher := &mockFetcher{

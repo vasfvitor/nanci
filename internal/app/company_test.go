@@ -17,6 +17,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
+func int64Ptr(v int64) *int64 { return &v }
+
 type credentialProviderStub struct{}
 
 func (credentialProviderStub) GetCertPassword(context.Context, app.CertPasswordRequest) (string, error) {
@@ -185,8 +187,7 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		Environment:           company.Environment,
 		ConsultationCNPJ:      company.CNPJ,
 		LastProcessedNSU:      42,
-		LastFoundNSU:          29,
-		LastFoundNSUValid:     true,
+		LastFoundNSU:          int64Ptr(29),
 		LastEmptyStreak:       3,
 		CheckedCount:          1,
 		DocumentsFound:        1,

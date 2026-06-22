@@ -77,7 +77,6 @@ func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 		if snapshot.State != nil {
 			companies[i].LastNSU = snapshot.State.LastProcessedNSU
 			companies[i].LastFoundNSU = snapshot.State.LastFoundNSU
-			companies[i].LastFoundNSUValid = snapshot.State.LastFoundNSUValid
 			companies[i].LastSyncAt = snapshot.State.LastSuccessAt
 		}
 		if snapshot.Run != nil {

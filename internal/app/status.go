@@ -15,8 +15,7 @@ type StatusResult struct {
 	CredentialCNPJ     string
 	CredentialNotAfter *time.Time
 	LastProcessedNSU   int64
-	LastFoundNSU       int64
-	LastFoundNSUValid  bool
+	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	LastRunStatus      string
 	LastRunStopReason  string
@@ -83,7 +82,6 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 	if snapshot.State != nil {
 		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
 		result.LastFoundNSU = snapshot.State.LastFoundNSU
-		result.LastFoundNSUValid = snapshot.State.LastFoundNSUValid
 		if snapshot.State.LastSuccessAt != nil {
 			result.LastSyncAt = snapshot.State.LastSuccessAt
 		}

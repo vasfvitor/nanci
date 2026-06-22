@@ -17,8 +17,7 @@ type CompanySummary struct {
 	CredentialCertPath string
 	Environment        string
 	LastNSU            int64
-	LastFoundNSU       int64
-	LastFoundNSUValid  bool
+	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	SyncStartPolicy    string
 	SyncStartDate      *time.Time
@@ -77,10 +76,8 @@ type DocumentRow struct {
 	DocumentID         string
 	CompanyRole        string
 	VisibilityReason   string
-	FirstSeenNSU       int64
-	LastSeenNSU        int64
-	FirstSeenNSUValid  bool
-	LastSeenNSUValid   bool
+	FirstSeenNSU       *int64
+	LastSeenNSU        *int64
 	FirstSyncedAt      time.Time
 	LastSyncedAt       time.Time
 	ViewedAt           *time.Time
@@ -137,7 +134,6 @@ func CompanySummaries(companies []nfse.Company) []CompanySummary {
 			Environment:        string(company.Environment),
 			LastNSU:            company.LastNSU,
 			LastFoundNSU:       company.LastFoundNSU,
-			LastFoundNSUValid:  company.LastFoundNSUValid,
 			LastSyncAt:         company.LastSyncAt,
 			SyncStartPolicy:    string(company.SyncStartPolicy),
 			SyncStartDate:      company.SyncStartDate,
@@ -210,8 +206,6 @@ func DocumentRows(documents []nfse.CompanyDocument) []DocumentRow {
 			VisibilityReason:   string(document.VisibilityReason),
 			FirstSeenNSU:       document.FirstSeenNSU,
 			LastSeenNSU:        document.LastSeenNSU,
-			FirstSeenNSUValid:  document.FirstSeenNSUValid,
-			LastSeenNSUValid:   document.LastSeenNSUValid,
 			FirstSyncedAt:      document.FirstSyncedAt,
 			LastSyncedAt:       document.LastSyncedAt,
 			ViewedAt:           document.ViewedAt,

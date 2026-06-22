@@ -37,8 +37,10 @@ var pullCmd = &cobra.Command{
 		}
 		fmt.Println()
 		fmt.Printf("Último NSU consultado: %d\n", result.LastProcessedNSU)
-		if result.LastFoundNSUValid {
-			fmt.Printf("Último NSU com documento: %d\n", result.LastFoundNSU)
+		if result.LastFoundNSU != nil {
+			fmt.Printf("Último NSU com documento: %d\n", *result.LastFoundNSU)
+		} else {
+			fmt.Printf("Último NSU com documento: -\n")
 		}
 		fmt.Printf("Documentos encontrados: %d | Erros: %d\n", result.DocumentsFound, result.Errors)
 

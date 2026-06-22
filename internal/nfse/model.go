@@ -15,8 +15,7 @@ type Company struct {
 	CredentialCertPath string
 	Environment        Environment // derived from the assigned credential
 	LastNSU            int64
-	LastFoundNSU       int64
-	LastFoundNSUValid  bool
+	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	SyncStartPolicy    SyncStartPolicy
 	SyncStartDate      *time.Time
@@ -82,10 +81,8 @@ type CompanyDocument struct {
 	DocumentID        DocumentID
 	CompanyRole       CompanyRole      // "tomada" | "prestada" | "intermediario" | "none"
 	VisibilityReason  VisibilityReason // "exact_prestador" | "exact_tomador" | "exact_intermediario" | "same_root_only" | "unknown"
-	FirstSeenNSU      int64
-	LastSeenNSU       int64
-	FirstSeenNSUValid bool
-	LastSeenNSUValid  bool
+	FirstSeenNSU      *int64
+	LastSeenNSU       *int64
 	FirstSyncedAt     time.Time
 	LastSyncedAt      time.Time
 	ViewedAt          *time.Time
@@ -116,8 +113,7 @@ type SyncRun struct {
 	EmptyCount            int
 	ConsecutiveEmptyCount int
 	ErrorsCount           int
-	LastFoundNSU          int64
-	LastFoundNSUValid     bool
+	LastFoundNSU          *int64
 	Status                SyncStatus // "running" | "completed" | "failed" | "interrupted"
 	StopReason            SyncStopReason
 }
@@ -128,8 +124,7 @@ type SyncState struct {
 	Environment       Environment
 	ConsultationCNPJ  string
 	LastProcessedNSU  int64
-	LastFoundNSU      int64
-	LastFoundNSUValid bool
+	LastFoundNSU      *int64
 	LastEmptyStreak   int
 	LastSuccessAt     *time.Time
 	LastErrorAt       *time.Time
@@ -144,8 +139,7 @@ type ProgressEvent struct {
 	CurrentNSU               int64
 	MaxNSU                   int64
 	LastProcessedNSU         int64
-	LastFoundNSU             int64
-	LastFoundNSUValid        bool
+	LastFoundNSU             *int64
 	EmptyStreak              int
 	Status                   SyncStatus
 	StopReason               SyncStopReason

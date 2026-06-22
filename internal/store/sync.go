@@ -33,7 +33,7 @@ func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOr
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	lastFoundNSU, lastFoundValid, err := r.legacyLastFoundNSU(ctx, params.CompanyID)
+	lastFoundNSU, err := r.legacyLastFoundNSU(ctx, params.CompanyID)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOr
 		string(params.Environment),
 		params.ConsultationCNPJ,
 		params.LegacyLastNSU,
-		nullInt64(lastFoundNSU, lastFoundValid),
+		nullInt64FromPtr(lastFoundNSU),
 		now,
 		now,
 	)
@@ -289,8 +289,8 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
 	`,
 		params.LastProcessedNSU,
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
+		nullInt64FromPtr(params.LastFoundNSU),
+		nullInt64FromPtr(params.LastFoundNSU),
 		params.LastEmptyStreak,
 		lastSuccessAt,
 		lastSuccessAt,
@@ -350,8 +350,8 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 		params.EmptyCount,
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
+		nullInt64FromPtr(params.LastFoundNSU),
+		nullInt64FromPtr(params.LastFoundNSU),
 		string(params.RunID),
 	)
 	if err != nil {
@@ -512,7 +512,7 @@ func (r *SyncRepository) FinishRun(ctx context.Context, params nfse.FinishRunPar
 		params.EmptyCount,
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
+		nullInt64FromPtr(params.LastFoundNSU),
 		string(params.RunID),
 	)
 	return err
@@ -638,10 +638,7 @@ func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.Compan
 		return nil, err
 	}
 
-	if lastFound.Valid {
-		state.LastFoundNSU = lastFound.Int64
-		state.LastFoundNSUValid = true
-	}
+	state.LastFoundNSU = ptrFromNullInt64(lastFound)
 	state.LastSuccessAt = parseNullableTime(lastSuccessAt)
 	state.LastErrorAt = parseNullableTime(lastErrorAt)
 	state.LastErrorCode = lastErrorCode.String
@@ -707,26 +704,20 @@ func (r *SyncRepository) latestRun(ctx context.Context, companyID nfse.CompanyID
 	}
 	run.StartedAt, _ = time.Parse(time.RFC3339, startedAt)
 	run.FinishedAt = parseNullableTime(finishedAt)
-	if lastFound.Valid {
-		run.LastFoundNSU = lastFound.Int64
-		run.LastFoundNSUValid = true
-	}
+	run.LastFoundNSU = ptrFromNullInt64(lastFound)
 	return &run, nil
 }
 
-func (r *SyncRepository) legacyLastFoundNSU(ctx context.Context, companyID nfse.CompanyID) (int64, bool, error) {
+func (r *SyncRepository) legacyLastFoundNSU(ctx context.Context, companyID nfse.CompanyID) (*int64, error) {
 	var nsu sql.NullInt64
 	if err := r.db.QueryRowContext(ctx, `
 		SELECT MAX(last_seen_nsu)
 		FROM company_documents
 		WHERE company_id = ? AND last_seen_nsu_valid = 1
 	`, string(companyID)).Scan(&nsu); err != nil {
-		return 0, false, err
+		return nil, err
 	}
-	if !nsu.Valid {
-		return 0, false, nil
-	}
-	return nsu.Int64, true, nil
+	return ptrFromNullInt64(nsu), nil
 }
 
 func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso, updatedAt string) error {

@@ -84,7 +84,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	runState := syncRuntimeState{
 		lastProcessedNSU:       state.LastProcessedNSU,
 		lastFoundNSU:           state.LastFoundNSU,
-		lastFoundNSUValid:      state.LastFoundNSUValid,
 		checkedCount:           0,
 		documentsInserted:      0,
 		eventsInserted:         0,
@@ -116,7 +115,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 			ConsecutiveEmptyCount: runState.consecutiveEmpty,
 			ErrorsCount:           runState.errorsCount,
 			LastFoundNSU:          runState.lastFoundNSU,
-			LastFoundNSUValid:     runState.lastFoundNSUValid,
 		})
 	}()
 
@@ -177,8 +175,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 type syncRuntimeState struct {
 	lastProcessedNSU       int64
-	lastFoundNSU           int64
-	lastFoundNSUValid      bool
+	lastFoundNSU           *int64
 	checkedCount           int
 	documentsInserted      int
 	eventsInserted         int
@@ -259,10 +256,9 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		}
 
 		nextLastFoundNSU := runState.lastFoundNSU
-		nextLastFoundNSUValid := runState.lastFoundNSUValid
-		if !runState.lastFoundNSUValid || env.NSU > runState.lastFoundNSU {
-			nextLastFoundNSU = env.NSU
-			nextLastFoundNSUValid = true
+		if runState.lastFoundNSU == nil || env.NSU > *runState.lastFoundNSU {
+			nsu := env.NSU
+			nextLastFoundNSU = &nsu
 		}
 
 		progressParams := nfse.PersistSyncProgressParams{
@@ -272,7 +268,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			ConsultationCNPJ:      company.CNPJ,
 			LastProcessedNSU:      env.NSU,
 			LastFoundNSU:          nextLastFoundNSU,
-			LastFoundNSUValid:     nextLastFoundNSUValid,
 			LastEmptyStreak:       runState.currentEmptyStreak(),
 			CheckedCount:          runState.checkedCount,
 			DocumentsFound:        runState.documentsInserted,
@@ -299,7 +294,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 				ConsultationCNPJ:      company.CNPJ,
 				LastProcessedNSU:      runState.lastProcessedNSU,
 				LastFoundNSU:          runState.lastFoundNSU,
-				LastFoundNSUValid:     runState.lastFoundNSUValid,
 				LastEmptyStreak:       runState.currentEmptyStreak(),
 				CheckedCount:          runState.checkedCount,
 				DocumentsFound:        runState.documentsInserted,
@@ -338,7 +332,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		}
 		runState.lastProcessedNSU = env.NSU
 		runState.lastFoundNSU = nextLastFoundNSU
-		runState.lastFoundNSUValid = nextLastFoundNSUValid
 		nextCursorLastNSU = env.NSU
 	}
 
@@ -354,7 +347,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 			ConsultationCNPJ:      company.CNPJ,
 			LastProcessedNSU:      runState.lastProcessedNSU,
 			LastFoundNSU:          runState.lastFoundNSU,
-			LastFoundNSUValid:     runState.lastFoundNSUValid,
 			LastEmptyStreak:       runState.currentEmptyStreak(),
 			CheckedCount:          runState.checkedCount,
 			DocumentsFound:        runState.documentsInserted,
@@ -392,7 +384,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 				ConsultationCNPJ:      company.CNPJ,
 				LastProcessedNSU:      runState.lastProcessedNSU,
 				LastFoundNSU:          runState.lastFoundNSU,
-				LastFoundNSUValid:     runState.lastFoundNSUValid,
 				LastEmptyStreak:       runState.currentEmptyStreak(),
 				CheckedCount:          runState.checkedCount,
 				DocumentsFound:        runState.documentsInserted,
@@ -439,7 +430,6 @@ func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncR
 		MaxNSU:                   resp.MaxNSU,
 		LastProcessedNSU:         runState.lastProcessedNSU,
 		LastFoundNSU:             runState.lastFoundNSU,
-		LastFoundNSUValid:        runState.lastFoundNSUValid,
 		EmptyStreak:              runState.currentEmptyStreak(),
 		DocsFound:                runState.documentsInserted,
 		DocumentsSaved:           runState.documentsInserted,

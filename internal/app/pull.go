@@ -37,8 +37,7 @@ type PullResult struct {
 	Status                   string
 	StopReason               string
 	LastProcessedNSU         int64
-	LastFoundNSU             int64
-	LastFoundNSUValid        bool
+	LastFoundNSU             *int64
 	EmptyStreak              int
 	DocumentsFound           int
 	EventsFound              int
@@ -173,7 +172,6 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	if snapshot.State != nil {
 		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
 		result.LastFoundNSU = snapshot.State.LastFoundNSU
-		result.LastFoundNSUValid = snapshot.State.LastFoundNSUValid
 		result.EmptyStreak = snapshot.State.LastEmptyStreak
 	}
 	if snapshot.Run != nil {

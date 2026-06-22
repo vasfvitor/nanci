@@ -106,11 +106,11 @@ func TestDocumentUpsertUsesCanonicalIDAndListsRelations(t *testing.T) {
 	if got.RelationID == "" {
 		t.Fatal("relation ID was not loaded")
 	}
-	if got.FirstSeenNSU != 10 || got.LastSeenNSU != 20 {
-		t.Fatalf("NSU range = %d-%d, want 10-20", got.FirstSeenNSU, got.LastSeenNSU)
-	}
-	if !got.FirstSeenNSUValid || !got.LastSeenNSUValid {
-		t.Fatal("NSU validity flags were not loaded")
+	if got.FirstSeenNSU == nil || *got.FirstSeenNSU != 10 || got.LastSeenNSU == nil || *got.LastSeenNSU != 20 {
+		var f, l int64
+		if got.FirstSeenNSU != nil { f = *got.FirstSeenNSU }
+		if got.LastSeenNSU != nil { l = *got.LastSeenNSU }
+		t.Fatalf("NSU range = %d-%d, want 10-20", f, l)
 	}
 }
 
@@ -320,8 +320,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 			Environment:       nfse.EnvironmentRestricted,
 			ConsultationCNPJ:  "11222333000181",
 			LastProcessedNSU:  10,
-			LastFoundNSU:      10,
-			LastFoundNSUValid: true,
+			LastFoundNSU:      int64Ptr(10),
 		},
 	}
 
@@ -335,7 +334,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	// But we change LastFoundNSU to verify that the progress update commits successfully.
 	p.DocumentParams.NSU = 10
 	p.ProgressParams.LastProcessedNSU = 10
-	p.ProgressParams.LastFoundNSU = 999
+	p.ProgressParams.LastFoundNSU = int64Ptr(999)
 
 	// Should not fail due to unique constraint, but should INSERT OR IGNORE the doc and UPDATE the progress
 	if _, err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
@@ -363,7 +362,9 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	if state.LastProcessedNSU != 10 {
 		t.Fatalf("expected progress LastProcessedNSU=10, got %d", state.LastProcessedNSU)
 	}
-	if state.LastFoundNSU != 999 {
-		t.Fatalf("expected progress LastFoundNSU=999, got %d", state.LastFoundNSU)
+	if state.LastFoundNSU == nil || *state.LastFoundNSU != 999 {
+		var f int64
+		if state.LastFoundNSU != nil { f = *state.LastFoundNSU }
+		t.Fatalf("expected progress LastFoundNSU=999, got %d", f)
 	}
 }

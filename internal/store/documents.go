@@ -99,6 +99,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 	var d nfse.CompanyDocument
 	var issueDate, createdAt, updatedAt string
 	var parseWarnings sql.NullString
+	var firstSeen, lastSeen int64
 	var firstSeenValid, lastSeenValid int64
 	var firstSyncedAt, lastSyncedAt string
 	var viewedAt sql.NullString
@@ -111,7 +112,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 		&d.NFSeNumber, &d.ServiceDescription,
 		&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-		&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
+		&firstSeen, &lastSeen, &firstSeenValid, &lastSeenValid,
 		&firstSyncedAt, &lastSyncedAt, &viewedAt,
 	)
 	if err != nil {
@@ -121,7 +122,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		return nil, fmt.Errorf("failed to query company document by chave: %w", err)
 	}
 
-	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -192,6 +193,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
 		var parseWarnings sql.NullString
+		var firstSeen, lastSeen int64
 		var firstSeenValid, lastSeenValid int64
 		var firstSyncedAt, lastSyncedAt string
 		var viewedAt sql.NullString
@@ -204,13 +206,13 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 			&d.NFSeNumber, &d.ServiceDescription,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-			&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
+			&firstSeen, &lastSeen, &firstSeenValid, &lastSeenValid,
 			&firstSyncedAt, &lastSyncedAt, &viewedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 			return nil, err
 		}
 
@@ -299,7 +301,7 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	return events, nil
 }
 
-func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeenValid, lastSeenValid int64, firstSyncedAt, lastSyncedAt string, viewedAt sql.NullString) error {
+func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeen, lastSeen, firstSeenValid, lastSeenValid int64, firstSyncedAt, lastSyncedAt string, viewedAt sql.NullString) error {
 	var err error
 	d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
 	if err != nil {
@@ -316,8 +318,8 @@ func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updat
 	if err := decodeWarnings(parseWarnings, &d.ParseWarnings); err != nil {
 		return fmt.Errorf("document parse_warnings: %w", err)
 	}
-	d.FirstSeenNSUValid = firstSeenValid != 0
-	d.LastSeenNSUValid = lastSeenValid != 0
+	d.FirstSeenNSU = ptrFromValidInt64(firstSeen, firstSeenValid)
+	d.LastSeenNSU = ptrFromValidInt64(lastSeen, lastSeenValid)
 	d.FirstSyncedAt, err = parseRequiredTime("company document first_synced_at", firstSyncedAt)
 	if err != nil {
 		return err
@@ -418,6 +420,7 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
 		var parseWarnings sql.NullString
+		var firstSeen, lastSeen int64
 		var firstSeenValid, lastSeenValid int64
 		var firstSyncedAt, lastSyncedAt string
 		var viewedAt sql.NullString
@@ -430,13 +433,13 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 			&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 			&d.NFSeNumber, &d.ServiceDescription,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-			&d.FirstSeenNSU, &d.LastSeenNSU, &firstSeenValid, &lastSeenValid,
+			&firstSeen, &lastSeen, &firstSeenValid, &lastSeenValid,
 			&firstSyncedAt, &lastSyncedAt, &viewedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 			return nil, err
 		}
 

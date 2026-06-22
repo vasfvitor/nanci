@@ -109,8 +109,7 @@ type PersistSyncProgressParams struct {
 	Environment           Environment
 	ConsultationCNPJ      string
 	LastProcessedNSU      int64
-	LastFoundNSU          int64
-	LastFoundNSUValid     bool
+	LastFoundNSU          *int64
 	LastEmptyStreak       int
 	CheckedCount          int
 	DocumentsFound        int
@@ -133,8 +132,7 @@ type FinishRunParams struct {
 	EmptyCount            int
 	ConsecutiveEmptyCount int
 	ErrorsCount           int
-	LastFoundNSU          int64
-	LastFoundNSUValid     bool
+	LastFoundNSU          *int64
 }
 
 type SyncSnapshot struct {

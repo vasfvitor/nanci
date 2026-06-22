@@ -154,17 +154,20 @@ func UpsertCompanyDocument(ctx context.Context, db *sql.DB, cd nfse.CompanyDocum
 			last_synced_at = excluded.last_synced_at;
 	`
 	var firstSeenValid, lastSeenValid int
-	if cd.FirstSeenNSUValid {
+	var firstSeenNSU, lastSeenNSU int64
+	if cd.FirstSeenNSU != nil {
 		firstSeenValid = 1
+		firstSeenNSU = *cd.FirstSeenNSU
 	}
-	if cd.LastSeenNSUValid {
+	if cd.LastSeenNSU != nil {
 		lastSeenValid = 1
+		lastSeenNSU = *cd.LastSeenNSU
 	}
 
 	_, err := db.ExecContext(
 		ctx, query,
 		cd.RelationID, cd.CompanyID, cd.DocumentID, string(cd.CompanyRole), string(cd.VisibilityReason),
-		cd.FirstSeenNSU, cd.LastSeenNSU, firstSeenValid, lastSeenValid,
+		firstSeenNSU, lastSeenNSU, firstSeenValid, lastSeenValid,
 	)
 	return err
 }
