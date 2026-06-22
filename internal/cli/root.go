@@ -76,14 +76,14 @@ func newApp() (*app.App, func(), error) {
 	docRepo := store.NewDocumentRepository(db)
 
 	application, err := app.NewRuntime(app.Dependencies{
-		Log:                log,
-		CompanyRepo:        store.NewCompanyRepository(db),
-		CredentialRepo:     store.NewCredentialRepository(db),
-		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     docRepo,
-		DocumentTracker:    docRepo,
-		XMLStore:           files.NewBlobStore(dataDir),
-		DataDir:            dataDir,
+		Log:             log,
+		CompanyRepo:     store.NewCompanyRepository(db),
+		CredentialRepo:  store.NewCredentialRepository(db),
+		SyncRepo:        store.NewSyncRepository(db),
+		DocumentReader:  docRepo,
+		DocumentTracker: docRepo,
+		XMLStore:        files.NewBlobStore(dataDir),
+		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr},
 		},

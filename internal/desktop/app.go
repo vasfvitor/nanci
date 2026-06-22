@@ -12,6 +12,7 @@ import (
 	goruntime "runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -132,14 +133,14 @@ func (a *App) startup(ctx context.Context) {
 	docRepo := store.NewDocumentRepository(db)
 
 	coreApp, err := app.NewRuntime(app.Dependencies{
-		Log: log,
-		CompanyRepo:        store.NewCompanyRepository(db),
-		CredentialRepo:     store.NewCredentialRepository(db),
-		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     docRepo,
-		DocumentTracker:    docRepo,
-		XMLStore:           files.NewBlobStore(dataDir),
-		DataDir:            dataDir,
+		Log:             log,
+		CompanyRepo:     store.NewCompanyRepository(db),
+		CredentialRepo:  store.NewCredentialRepository(db),
+		SyncRepo:        store.NewSyncRepository(db),
+		DocumentReader:  docRepo,
+		DocumentTracker: docRepo,
+		XMLStore:        files.NewBlobStore(dataDir),
+		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: WailsCredentialProvider{
 				ctx:           ctx,

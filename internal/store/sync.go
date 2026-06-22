@@ -712,7 +712,6 @@ func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso
 	})
 }
 
-
 func nullString(val string) sql.NullString {
 	return sql.NullString{String: val, Valid: val != ""}
 }

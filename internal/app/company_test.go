@@ -100,7 +100,6 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 	}
 }
 
-
 func TestStatusReturnsCompanyNotFound(t *testing.T) {
 	t.Parallel()
 
