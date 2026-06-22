@@ -46,9 +46,9 @@ func (q *Queries) AssignCredentialToCompany(ctx context.Context, arg AssignCrede
 const createCompany = `-- name: CreateCompany :exec
 INSERT INTO companies (
     id, cnpj, cnpj_root, name, credential_id, credential_label,
-    credential_cert_path, environment, last_nsu, sync_start_policy,
+    credential_cert_path, environment, sync_start_policy,
     sync_start_date, initial_sync_completed_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateCompanyParams struct {
@@ -87,7 +87,7 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 }
 
 const getCompanyByCNPJ = `-- name: GetCompanyByCNPJ :one
-SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, last_nsu, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at FROM companies WHERE cnpj = ? LIMIT 1
+SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at FROM companies WHERE cnpj = ? LIMIT 1
 `
 
 func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, error) {
@@ -102,7 +102,6 @@ func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, e
 		&i.CredentialLabel,
 		&i.CredentialCertPath,
 		&i.Environment,
-		&i.LastNsu,
 		&i.SyncStartPolicy,
 		&i.SyncStartDate,
 		&i.InitialSyncCompletedAt,
@@ -113,7 +112,7 @@ func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, e
 }
 
 const listCompanies = `-- name: ListCompanies :many
-SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, last_nsu, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at FROM companies ORDER BY name ASC
+SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at FROM companies ORDER BY name ASC
 `
 
 func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
@@ -134,7 +133,6 @@ func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
 			&i.CredentialLabel,
 			&i.CredentialCertPath,
 			&i.Environment,
-			&i.LastNsu,
 			&i.SyncStartPolicy,
 			&i.SyncStartDate,
 			&i.InitialSyncCompletedAt,

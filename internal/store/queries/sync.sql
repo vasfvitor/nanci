@@ -37,24 +37,21 @@ RETURNING id;
 -- name: UpsertCompanyDocument :exec
 INSERT INTO company_documents (
     relation_id, company_id, document_id, company_role, visibility_reason,
-    first_seen_nsu, last_seen_nsu, first_seen_nsu_valid, last_seen_nsu_valid,
-    first_synced_at, last_synced_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    first_seen_nsu, last_seen_nsu, first_synced_at, last_synced_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_id, document_id) DO UPDATE SET
     company_role = excluded.company_role,
     visibility_reason = excluded.visibility_reason,
-    first_seen_nsu = CASE
-        WHEN company_documents.first_seen_nsu_valid = 0 THEN excluded.first_seen_nsu
-        WHEN excluded.first_seen_nsu_valid = 0 THEN company_documents.first_seen_nsu
+    first_seen_nsu = CASE 
+        WHEN company_documents.first_seen_nsu IS NULL THEN excluded.first_seen_nsu
+        WHEN excluded.first_seen_nsu IS NULL THEN company_documents.first_seen_nsu
         ELSE MIN(company_documents.first_seen_nsu, excluded.first_seen_nsu)
     END,
-    first_seen_nsu_valid = MAX(company_documents.first_seen_nsu_valid, excluded.first_seen_nsu_valid),
     last_seen_nsu = CASE
-        WHEN company_documents.last_seen_nsu_valid = 0 THEN excluded.last_seen_nsu
-        WHEN excluded.last_seen_nsu_valid = 0 THEN company_documents.last_seen_nsu
+        WHEN company_documents.last_seen_nsu IS NULL THEN excluded.last_seen_nsu
+        WHEN excluded.last_seen_nsu IS NULL THEN company_documents.last_seen_nsu
         ELSE MAX(company_documents.last_seen_nsu, excluded.last_seen_nsu)
     END,
-    last_seen_nsu_valid = MAX(company_documents.last_seen_nsu_valid, excluded.last_seen_nsu_valid),
     last_synced_at = excluded.last_synced_at;
 
 -- name: InsertEvent :exec

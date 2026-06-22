@@ -7,9 +7,9 @@ SELECT * FROM companies ORDER BY name ASC;
 -- name: CreateCompany :exec
 INSERT INTO companies (
     id, cnpj, cnpj_root, name, credential_id, credential_label,
-    credential_cert_path, environment, last_nsu, sync_start_policy,
+    credential_cert_path, environment, sync_start_policy,
     sync_start_date, initial_sync_completed_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: AssignCredentialToCompany :execrows
 UPDATE companies

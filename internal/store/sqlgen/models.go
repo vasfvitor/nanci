@@ -17,7 +17,6 @@ type Company struct {
 	CredentialLabel        sql.NullString
 	CredentialCertPath     sql.NullString
 	Environment            string
-	LastNsu                int64
 	SyncStartPolicy        string
 	SyncStartDate          sql.NullString
 	InitialSyncCompletedAt sql.NullString
@@ -31,10 +30,8 @@ type CompanyDocument struct {
 	DocumentID        string
 	CompanyRole       string
 	VisibilityReason  string
-	FirstSeenNsu      int64
-	LastSeenNsu       int64
-	FirstSeenNsuValid int64
-	LastSeenNsuValid  int64
+	FirstSeenNsu      sql.NullInt64
+	LastSeenNsu       sql.NullInt64
 	FirstSyncedAt     string
 	LastSyncedAt      string
 }
