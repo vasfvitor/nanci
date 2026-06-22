@@ -612,9 +612,7 @@ function parseRouteQueryParam(param: unknown): string {
   return Array.isArray(param) ? String(param[0] ?? '') : String(param ?? '')
 }
 
-function applyRouteFilters(): boolean {
-  let shouldSearch = false
-
+function applyRouteFilters() {
   const cnpjFromRoute = parseRouteQueryParam(route.query['cnpj'])
   const competenceFromRoute = parseRouteQueryParam(route.query['competence'])
 
@@ -623,31 +621,26 @@ function applyRouteFilters(): boolean {
 
     if (matchingCompany) {
       filter.value.CNPJ = matchingCompany.value
-      shouldSearch = true
     }
   }
 
   if (/^\d{4}-\d{2}$/.test(competenceFromRoute)) {
     filter.value.Competence = competenceFromRoute
-    shouldSearch = true
   }
-
-  return shouldSearch
 }
 
-function selectDefaultCompany(): boolean {
+function selectDefaultCompany() {
   if (filter.value.CNPJ || companyOptions.value.length === 0) {
-    return false
+    return
   }
 
   const [firstCompany] = companyOptions.value
 
   if (!firstCompany) {
-    return false
+    return
   }
 
   filter.value.CNPJ = firstCompany.value
-  return true
 }
 
 function errorMessage(error: unknown): string {
@@ -722,9 +715,10 @@ async function loadCompanies() {
       return
     }
 
-    const shouldSearch = applyRouteFilters() || selectDefaultCompany() || documents.value.length === 0
+    applyRouteFilters()
+    selectDefaultCompany()
 
-    if (shouldSearch) {
+    if (filter.value.CNPJ) {
       await search()
     }
   } catch (error) {
