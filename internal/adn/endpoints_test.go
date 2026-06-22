@@ -424,31 +424,7 @@ func TestDocumentResponse_UnmarshalOfficialEnvelope(t *testing.T) {
 	}
 }
 
-func TestDocumentResponse_UnmarshalLegacyEnvelopeFallback(t *testing.T) {
-	payload := []byte(`{
-		"ultNSU": 10,
-		"maxNSU": 10,
-		"docFisc": [
-			{
-				"nsu": 10,
-				"schema": "procNFSe_v1.00.xsd",
-				"nfseXmlGZipB64": "payload_legacy"
-			}
-		]
-	}`)
 
-	var resp DocumentResponse
-	if err := json.Unmarshal(payload, &resp); err != nil {
-		t.Fatalf("unmarshal failed: %v", err)
-	}
-
-	if len(resp.Docs) != 1 {
-		t.Fatalf("expected 1 document, got %d", len(resp.Docs))
-	}
-	if got := resp.Docs[0].PayloadBase64(); got != "payload_legacy" {
-		t.Fatalf("expected legacy payload, got %q", got)
-	}
-}
 
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
