@@ -154,22 +154,6 @@ func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
 	return items, nil
 }
 
-const updateCompanyNSU = `-- name: UpdateCompanyNSU :exec
-UPDATE companies
-SET last_nsu = ?, updated_at = ?
-WHERE id = ?
-`
-
-type UpdateCompanyNSUParams struct {
-	LastNsu   int64
-	UpdatedAt string
-	ID        string
-}
-
-func (q *Queries) UpdateCompanyNSU(ctx context.Context, arg UpdateCompanyNSUParams) error {
-	_, err := q.db.ExecContext(ctx, updateCompanyNSU, arg.LastNsu, arg.UpdatedAt, arg.ID)
-	return err
-}
 
 const updateCompany = `-- name: UpdateCompany :exec
 UPDATE companies

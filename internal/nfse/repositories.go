@@ -82,12 +82,6 @@ type ApplyEventParams struct {
 	NSU       int64
 }
 
-type AdvanceCheckpointParams struct {
-	CompanyID CompanyID
-	RunID     SyncRunID
-	LastNSU   int64
-}
-
 type ApplyOutcome struct {
 	Inserted bool
 }

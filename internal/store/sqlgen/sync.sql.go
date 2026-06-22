@@ -10,58 +10,8 @@ import (
 	"database/sql"
 )
 
-const createSyncRun = `-- name: CreateSyncRun :exec
-INSERT INTO sync_runs (
-    id, company_id, credential_id, credential_cnpj, consultation_cnpj,
-    consultation_basis, started_at, from_nsu, to_nsu, status
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
 
-type CreateSyncRunParams struct {
-	ID                string
-	CompanyID         string
-	CredentialID      string
-	CredentialCnpj    string
-	ConsultationCnpj  string
-	ConsultationBasis string
-	StartedAt         string
-	FromNsu           int64
-	ToNsu             int64
-	Status            string
-}
 
-func (q *Queries) CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) error {
-	_, err := q.db.ExecContext(ctx, createSyncRun,
-		arg.ID,
-		arg.CompanyID,
-		arg.CredentialID,
-		arg.CredentialCnpj,
-		arg.ConsultationCnpj,
-		arg.ConsultationBasis,
-		arg.StartedAt,
-		arg.FromNsu,
-		arg.ToNsu,
-		arg.Status,
-	)
-	return err
-}
-
-const finishSyncRun = `-- name: FinishSyncRun :exec
-UPDATE sync_runs
-SET finished_at = ?, status = ?
-WHERE id = ?
-`
-
-type FinishSyncRunParams struct {
-	FinishedAt sql.NullString
-	Status     string
-	ID         string
-}
-
-func (q *Queries) FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) error {
-	_, err := q.db.ExecContext(ctx, finishSyncRun, arg.FinishedAt, arg.Status, arg.ID)
-	return err
-}
 
 const getDocumentIDByAccessKey = `-- name: GetDocumentIDByAccessKey :one
 SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1
@@ -172,28 +122,6 @@ func (q *Queries) UpdateDocumentStatusByAccessKey(ctx context.Context, arg Updat
 	return err
 }
 
-const updateSyncRunProgress = `-- name: UpdateSyncRunProgress :exec
-UPDATE sync_runs
-SET to_nsu = ?, documents_found = ?, errors_count = ?
-WHERE id = ?
-`
-
-type UpdateSyncRunProgressParams struct {
-	ToNsu          int64
-	DocumentsFound int64
-	ErrorsCount    int64
-	ID             string
-}
-
-func (q *Queries) UpdateSyncRunProgress(ctx context.Context, arg UpdateSyncRunProgressParams) error {
-	_, err := q.db.ExecContext(ctx, updateSyncRunProgress,
-		arg.ToNsu,
-		arg.DocumentsFound,
-		arg.ErrorsCount,
-		arg.ID,
-	)
-	return err
-}
 
 const upsertCompanyDocument = `-- name: UpsertCompanyDocument :exec
 INSERT INTO company_documents (

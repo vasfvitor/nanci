@@ -29,11 +29,6 @@ WHERE companies.id = sqlc.arg(company_id)
       WHERE credentials.id = sqlc.arg(credential_id)
   );
 
--- name: UpdateCompanyNSU :exec
-UPDATE companies
-SET last_nsu = ?, updated_at = ?
-WHERE id = ?;
-
 -- name: UpdateCompany :exec
 UPDATE companies
 SET name = ?,

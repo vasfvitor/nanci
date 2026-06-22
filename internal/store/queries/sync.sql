@@ -1,19 +1,3 @@
--- name: CreateSyncRun :exec
-INSERT INTO sync_runs (
-    id, company_id, credential_id, credential_cnpj, consultation_cnpj,
-    consultation_basis, started_at, from_nsu, to_nsu, status
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
--- name: UpdateSyncRunProgress :exec
-UPDATE sync_runs
-SET to_nsu = ?, documents_found = ?, errors_count = ?
-WHERE id = ?;
-
--- name: FinishSyncRun :exec
-UPDATE sync_runs
-SET finished_at = ?, status = ?
-WHERE id = ?;
-
 -- name: UpsertDocument :one
 INSERT INTO documents (
     id, chave_acesso, issue_date, competence,

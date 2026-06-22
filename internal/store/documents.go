@@ -24,58 +24,6 @@ func NewDocumentRepository(db *sql.DB) *DocumentRepository {
 	}
 }
 
-// GetDocumentByChave retrieves a canonical document by its access key.
-func (s *DocumentRepository) GetDocumentByChave(ctx context.Context, chave string) (*nfse.Document, error) {
-	query := `
-		SELECT
-			id, chave_acesso, issue_date, competence,
-			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
-			intermediario_cnpj, intermediario_name,
-			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value, total_retentions,
-			status, layout_version, xml_path, raw_hash, parse_warnings,
-			nfse_number, service_description, created_at, updated_at
-		FROM documents
-		WHERE chave_acesso = ?
-	`
-
-	var doc nfse.Document
-	var issueDate, createdAt, updatedAt string
-	var parseWarnings sql.NullString
-
-	err := s.db.QueryRowContext(ctx, query, chave).Scan(
-		&doc.ID, &doc.ChaveAcesso, &issueDate, &doc.Competence,
-		&doc.PrestadorCNPJ, &doc.PrestadorName, &doc.TomadorCNPJ, &doc.TomadorName,
-		&doc.IntermediarioCNPJ, &doc.IntermediarioName,
-		&doc.ServiceValue, &doc.ISSValue, &doc.IRRFValue, &doc.INSSValue, &doc.PISValue, &doc.COFINSValue, &doc.CSLLValue, &doc.TotalRetentions,
-		&doc.Status, &doc.LayoutVersion, &doc.XMLPath, &doc.RawHash, &parseWarnings,
-		&doc.NFSeNumber, &doc.ServiceDescription, &createdAt, &updatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to query document by chave: %w", err)
-	}
-
-	doc.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
-	if err != nil {
-		return nil, err
-	}
-	doc.CreatedAt, err = parseRequiredTime("document created_at", createdAt)
-	if err != nil {
-		return nil, err
-	}
-	doc.UpdatedAt, err = parseRequiredTime("document updated_at", updatedAt)
-	if err != nil {
-		return nil, err
-	}
-	if err := decodeWarnings(parseWarnings, &doc.ParseWarnings); err != nil {
-		return nil, fmt.Errorf("document parse_warnings: %w", err)
-	}
-
-	return &doc, nil
-}
-
 // CompanyDocumentByChave retrieves one company-visible document by access key.
 func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfse.CompanyDocument, error) {
 	query := `
