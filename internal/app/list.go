@@ -28,6 +28,10 @@ func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.Compan
 		OnlyUnread: input.OnlyUnread,
 	}
 
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+		filter.IssueDateGTE = company.SyncStartDate
+	}
+
 	docs, err := a.DocumentReader.ListCompanyDocuments(ctx, company.ID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("listar documentos: %w", err)
@@ -48,6 +52,10 @@ func (a *App) MarkDocumentsViewed(ctx context.Context, input ListInput) (int, er
 		Competence: input.Competence,
 		Direction:  input.Direction,
 		OnlyUnread: input.OnlyUnread,
+	}
+
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+		filter.IssueDateGTE = company.SyncStartDate
 	}
 
 	count, err := a.DocumentTracker.MarkDocumentsViewed(ctx, company.ID, filter)

@@ -170,6 +170,10 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 	if filter.OnlyUnread {
 		query += " AND cd.viewed_at IS NULL"
 	}
+	if filter.IssueDateGTE != nil {
+		query += " AND d.issue_date >= ?"
+		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
+	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -392,6 +396,10 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 	if filter.OnlyUnread {
 		query += " AND cd.viewed_at IS NULL"
 	}
+	if filter.IssueDateGTE != nil {
+		query += " AND d.issue_date >= ?"
+		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
+	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -476,6 +484,10 @@ func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, co
 	if filter.OnlyUnread {
 		query += " AND cd.viewed_at IS NULL"
 	}
+	if filter.IssueDateGTE != nil {
+		query += " AND d.issue_date >= ?"
+		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
+	}
 
 	var count int
 	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
@@ -551,6 +563,10 @@ func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID 
 	if filter.ToNSU != nil {
 		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
 		args = append(args, *filter.ToNSU)
+	}
+	if filter.IssueDateGTE != nil {
+		query += " AND d.issue_date >= ?"
+		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
 	}
 	query += ")"
 

@@ -2,6 +2,7 @@ package nfse
 
 import (
 	"context"
+	"time"
 )
 
 type CompanyRepository interface {
@@ -21,13 +22,14 @@ type CredentialRepository interface {
 }
 
 type DocumentFilter struct {
-	Competence string
-	Direction  string
-	Status     string
-	FromNSU    *int64
-	ToNSU      *int64
-	Limit      *int
-	OnlyUnread bool
+	Competence   string
+	Direction    string
+	Status       string
+	FromNSU      *int64
+	ToNSU        *int64
+	Limit        *int
+	OnlyUnread   bool
+	IssueDateGTE *time.Time
 }
 
 type DocumentExportMark struct {

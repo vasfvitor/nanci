@@ -129,6 +129,10 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 		Direction:  input.Direction,
 	}
 
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+		filter.IssueDateGTE = company.SyncStartDate
+	}
+
 	var docs []nfse.CompanyDocument
 	if input.Incremental {
 		docs, err = a.DocumentTracker.ListPendingExportDocuments(ctx, company.ID, filter, kind)
@@ -275,6 +279,10 @@ func (a *App) CountPendingExportDocuments(ctx context.Context, input ExportInput
 	filter := nfse.DocumentFilter{
 		Competence: input.Competence,
 		Direction:  input.Direction,
+	}
+
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+		filter.IssueDateGTE = company.SyncStartDate
 	}
 	return a.DocumentTracker.CountPendingExportDocuments(ctx, company.ID, filter, kind)
 }
