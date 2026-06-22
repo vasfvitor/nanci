@@ -36,7 +36,6 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 			d.nfse_number, d.service_description,
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
-			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
 			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
@@ -47,8 +46,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 	var d nfse.CompanyDocument
 	var issueDate, createdAt, updatedAt string
 	var parseWarnings sql.NullString
-	var firstSeen, lastSeen int64
-	var firstSeenValid, lastSeenValid int64
+	var firstSeen, lastSeen sql.NullInt64
 	var firstSyncedAt, lastSyncedAt string
 	var viewedAt sql.NullString
 
@@ -60,7 +58,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 		&d.NFSeNumber, &d.ServiceDescription,
 		&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-		&firstSeen, &lastSeen, &firstSeenValid, &lastSeenValid,
+		&firstSeen, &lastSeen,
 		&firstSyncedAt, &lastSyncedAt, &viewedAt,
 	)
 	if err != nil {
@@ -70,7 +68,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		return nil, fmt.Errorf("failed to query company document by chave: %w", err)
 	}
 
-	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+	if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -88,7 +86,6 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			d.nfse_number, d.service_description,
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
-			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
 			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
@@ -109,11 +106,11 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		args = append(args, filter.Status)
 	}
 	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
 		args = append(args, *filter.FromNSU)
 	}
 	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
 		args = append(args, *filter.ToNSU)
 	}
 	if filter.OnlyUnread {
@@ -141,8 +138,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
 		var parseWarnings sql.NullString
-		var firstSeen, lastSeen int64
-		var firstSeenValid, lastSeenValid int64
+		var firstSeen, lastSeen sql.NullInt64
 		var firstSyncedAt, lastSyncedAt string
 		var viewedAt sql.NullString
 
@@ -154,13 +150,13 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 			&d.NFSeNumber, &d.ServiceDescription,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-			&firstSeen, &lastSeen, &firstSeenValid, &lastSeenValid,
+			&firstSeen, &lastSeen,
 			&firstSyncedAt, &lastSyncedAt, &viewedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 			return nil, err
 		}
 
@@ -249,7 +245,7 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	return events, nil
 }
 
-func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeen, lastSeen, firstSeenValid, lastSeenValid int64, firstSyncedAt, lastSyncedAt string, viewedAt sql.NullString) error {
+func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeen, lastSeen sql.NullInt64, firstSyncedAt, lastSyncedAt string, viewedAt sql.NullString) error {
 	var err error
 	d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
 	if err != nil {
@@ -266,8 +262,8 @@ func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updat
 	if err := decodeWarnings(parseWarnings, &d.ParseWarnings); err != nil {
 		return fmt.Errorf("document parse_warnings: %w", err)
 	}
-	d.FirstSeenNSU = ptrFromValidInt64(firstSeen, firstSeenValid)
-	d.LastSeenNSU = ptrFromValidInt64(lastSeen, lastSeenValid)
+	d.FirstSeenNSU = ptrFromNullInt64(firstSeen)
+	d.LastSeenNSU = ptrFromNullInt64(lastSeen)
 	d.FirstSyncedAt, err = parseRequiredTime("company document first_synced_at", firstSyncedAt)
 	if err != nil {
 		return err
@@ -314,7 +310,6 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 			d.nfse_number, d.service_description,
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
-			cd.first_seen_nsu_valid, cd.last_seen_nsu_valid,
 			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
@@ -336,11 +331,11 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 		args = append(args, filter.Status)
 	}
 	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
 		args = append(args, *filter.FromNSU)
 	}
 	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
 		args = append(args, *filter.ToNSU)
 	}
 	if filter.OnlyUnread {
@@ -368,8 +363,7 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 		var d nfse.CompanyDocument
 		var issueDate, createdAt, updatedAt string
 		var parseWarnings sql.NullString
-		var firstSeen, lastSeen int64
-		var firstSeenValid, lastSeenValid int64
+		var firstSeen, lastSeen sql.NullInt64
 		var firstSyncedAt, lastSyncedAt string
 		var viewedAt sql.NullString
 
@@ -381,13 +375,13 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 			&d.Status, &d.LayoutVersion, &d.XMLPath, &d.RawHash, &parseWarnings, &createdAt, &updatedAt,
 			&d.NFSeNumber, &d.ServiceDescription,
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
-			&firstSeen, &lastSeen, &firstSeenValid, &lastSeenValid,
+			&firstSeen, &lastSeen,
 			&firstSyncedAt, &lastSyncedAt, &viewedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
 
-		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSeenValid, lastSeenValid, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
+		if err := hydrateCompanyDocument(&d, issueDate, createdAt, updatedAt, parseWarnings, firstSeen, lastSeen, firstSyncedAt, lastSyncedAt, viewedAt); err != nil {
 			return nil, err
 		}
 
@@ -425,11 +419,11 @@ func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, co
 		args = append(args, filter.Status)
 	}
 	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
 		args = append(args, *filter.FromNSU)
 	}
 	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
 		args = append(args, *filter.ToNSU)
 	}
 	if filter.OnlyUnread {
@@ -508,11 +502,11 @@ func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID 
 		args = append(args, filter.Status)
 	}
 	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu_valid = 1 AND cd.last_seen_nsu >= ?"
+		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
 		args = append(args, *filter.FromNSU)
 	}
 	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu_valid = 1 AND cd.first_seen_nsu <= ?"
+		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
 		args = append(args, *filter.ToNSU)
 	}
 	if filter.IssueDateGTE != nil {

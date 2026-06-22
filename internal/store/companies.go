@@ -94,7 +94,6 @@ func companyFromRow(row sqlgen.Company) *nfse.Company {
 		CredentialLabel:    row.CredentialLabel.String,
 		CredentialCertPath: row.CredentialCertPath.String,
 		Environment:        nfse.Environment(row.Environment),
-		LastNSU:            row.LastNsu,
 		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
 		SyncStartDate:      parseNullableDate(row.SyncStartDate),
 		InitialSyncDoneAt:  parseNullableTime(row.InitialSyncCompletedAt),

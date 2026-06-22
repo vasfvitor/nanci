@@ -58,8 +58,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	if err != nil {
 		return fmt.Errorf("failed to load sync state: %w", err)
 	}
-	company.LastNSU = state.LastProcessedNSU
-
 	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
 		slog.String("cnpj", company.CNPJ),
 		slog.String("mode", string(mode)),
@@ -333,8 +331,6 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		runState.lastFoundNSU = nextLastFoundNSU
 		nextCursorLastNSU = env.NSU
 	}
-
-	company.LastNSU = runState.lastProcessedNSU
 
 	if docsInBatch == 0 {
 		runState.emptyCount++

@@ -75,7 +75,6 @@ func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
 		}
 		if snapshot.State != nil {
-			companies[i].LastNSU = snapshot.State.LastProcessedNSU
 			companies[i].LastFoundNSU = snapshot.State.LastFoundNSU
 			companies[i].LastSyncAt = snapshot.State.LastSuccessAt
 		}
@@ -174,7 +173,7 @@ func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error
 		if err != nil {
 			return fmt.Errorf("verificar estado de sincronização: %w", err)
 		}
-		if hasState || company.LastNSU > 0 {
+		if hasState {
 			return fmt.Errorf("não é possível alterar a política inicial depois que a sincronização já começou")
 		}
 	}

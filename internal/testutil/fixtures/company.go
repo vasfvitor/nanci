@@ -10,6 +10,5 @@ func Company() nfse.Company {
 		Name:         "Empresa Mock Teste",
 		CredentialID: "dev-credential-70860312000150",
 		Environment:  nfse.EnvironmentRestricted,
-		LastNSU:      0,
 	}
 }

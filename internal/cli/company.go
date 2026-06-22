@@ -81,10 +81,10 @@ var companyListCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("%-20s %-24s %-18s %-15s %s\n", "CNPJ", "Nome", "Credencial", "Ambiente", "Último NSU")
+		fmt.Printf("%-20s %-24s %-18s %-15s\n", "CNPJ", "Nome", "Credencial", "Ambiente")
 		fmt.Println("------------------------------------------------------------------------------------------------")
 		for _, c := range companies {
-			fmt.Printf("%-20s %-24s %-18s %-15s %d\n", cnpj.Format(c.CNPJ), c.Name, c.CredentialLabel, c.Environment, c.LastNSU)
+			fmt.Printf("%-20s %-24s %-18s %-15s\n", cnpj.Format(c.CNPJ), c.Name, c.CredentialLabel, c.Environment)
 		}
 		return nil
 	},

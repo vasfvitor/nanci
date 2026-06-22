@@ -14,7 +14,6 @@ type Company struct {
 	CredentialLabel    string
 	CredentialCertPath string
 	Environment        Environment // derived from the assigned credential
-	LastNSU            int64
 	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	SyncStartPolicy    SyncStartPolicy

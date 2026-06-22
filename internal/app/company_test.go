@@ -197,9 +197,8 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 	})
 	// PersistProgress requires an existing run; ignore error and seed directly below.
 	if _, err := application.DB.ExecContext(context.Background(), `
-		UPDATE companies SET last_nsu = 42 WHERE id = ?;
 		UPDATE sync_state SET last_checked_nsu = 42, last_found_nsu = 29, last_empty_streak = 3 WHERE company_id = ?;
-	`, string(company.ID), string(company.ID)); err != nil {
+	`, string(company.ID)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -207,12 +206,9 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stored, err := companyRepo.CompanyByCNPJ(context.Background(), company.CNPJ)
+	_, err := companyRepo.CompanyByCNPJ(context.Background(), company.CNPJ)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if stored.LastNSU != 0 {
-		t.Fatalf("LastNSU = %d, want 0", stored.LastNSU)
 	}
 	snapshot, err := application.SyncRepo.LatestSyncSnapshot(context.Background(), company.ID, company.Environment, company.CNPJ)
 	if err != nil {

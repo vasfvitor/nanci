@@ -16,7 +16,6 @@ type CompanySummary struct {
 	CredentialLabel    string
 	CredentialCertPath string
 	Environment        string
-	LastNSU            int64
 	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	SyncStartPolicy    string
@@ -132,7 +131,6 @@ func CompanySummaries(companies []nfse.Company) []CompanySummary {
 			CredentialLabel:    company.CredentialLabel,
 			CredentialCertPath: company.CredentialCertPath,
 			Environment:        string(company.Environment),
-			LastNSU:            company.LastNSU,
 			LastFoundNSU:       company.LastFoundNSU,
 			LastSyncAt:         company.LastSyncAt,
 			SyncStartPolicy:    string(company.SyncStartPolicy),

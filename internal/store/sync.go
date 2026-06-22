@@ -161,10 +161,8 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sql
 		DocumentID:        canonicalDocumentID,
 		CompanyRole:       string(params.Participation.CompanyRole),
 		VisibilityReason:  string(params.Participation.VisibilityReason),
-		FirstSeenNsu:      params.NSU,
-		LastSeenNsu:       params.NSU,
-		FirstSeenNsuValid: 1,
-		LastSeenNsuValid:  1,
+		FirstSeenNsu:      sql.NullInt64{Int64: params.NSU, Valid: true},
+		LastSeenNsu:       sql.NullInt64{Int64: params.NSU, Valid: true},
 		FirstSyncedAt:     now,
 		LastSyncedAt:      now,
 	})
@@ -305,23 +303,6 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, `
-		UPDATE companies
-		SET last_nsu = CASE
-			WHEN last_nsu < ? THEN ?
-			ELSE last_nsu
-		END,
-		updated_at = ?
-		WHERE id = ?
-	`,
-		params.LastProcessedNSU,
-		params.LastProcessedNSU,
-		now,
-		string(params.CompanyID),
-	)
-	if err != nil {
-		return err
-	}
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE sync_runs
@@ -545,7 +526,7 @@ func (r *SyncRepository) ResetSyncState(ctx context.Context, params nfse.ResetSy
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sync_state WHERE company_id = ?`, string(params.CompanyID)); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE companies SET last_nsu = 0, initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE companies SET initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
 		return err
 	}
 

@@ -16,7 +16,6 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 		Name:         "Empresa Mock Teste",
 		CredentialID: "dev-credential-70860312000150",
 		Environment:  nfse.EnvironmentRestricted,
-		LastNSU:      0,
 	}
 
 	credential := nfse.Credential{
@@ -70,20 +69,19 @@ func UpsertCompany(ctx context.Context, db *sql.DB, c nfse.Company) error {
 	query := `
 		INSERT INTO companies (
 			id, cnpj, cnpj_root, name, credential_id, environment,
-			last_nsu, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 		ON CONFLICT(id) DO UPDATE SET
 			cnpj = excluded.cnpj,
 			cnpj_root = excluded.cnpj_root,
 			name = excluded.name,
 			credential_id = excluded.credential_id,
 			environment = excluded.environment,
-			last_nsu = excluded.last_nsu,
 			updated_at = excluded.updated_at;
 	`
 	_, err := db.ExecContext(
 		ctx, query,
-		c.ID, c.CNPJ, c.CNPJRoot, c.Name, c.CredentialID, string(c.Environment), c.LastNSU,
+		c.ID, c.CNPJ, c.CNPJRoot, c.Name, c.CredentialID, string(c.Environment),
 	)
 	return err
 }
