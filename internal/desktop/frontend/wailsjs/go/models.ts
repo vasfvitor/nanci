@@ -292,7 +292,6 @@ export namespace desktopapi {
 	    CredentialLabel: string;
 	    CredentialCertPath: string;
 	    Environment: string;
-	    LastNSU: number;
 	    LastFoundNSU?: number;
 	    // Go type: time
 	    LastSyncAt?: any;
@@ -322,7 +321,6 @@ export namespace desktopapi {
 	        this.CredentialLabel = source["CredentialLabel"];
 	        this.CredentialCertPath = source["CredentialCertPath"];
 	        this.Environment = source["Environment"];
-	        this.LastNSU = source["LastNSU"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
 	        this.SyncStartPolicy = source["SyncStartPolicy"];
