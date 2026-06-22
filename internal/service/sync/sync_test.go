@@ -534,7 +534,7 @@ func TestSyncServiceAdvancesCursorAcrossBatchesWithoutIncrementingRequestNSU(t *
 				return &adn.DocumentResponse{}, nil
 			default:
 				t.Fatalf("unexpected LastNSU request %d", req.LastNSU)
-				return nil, nil
+				return nil, errors.New("unreachable")
 			}
 		},
 	}
@@ -590,7 +590,7 @@ func TestSyncServiceSkipsStaleDocumentsAndAdvancesToFreshNSU(t *testing.T) {
 				return &adn.DocumentResponse{}, nil
 			default:
 				t.Fatalf("unexpected LastNSU request %d", req.LastNSU)
-				return nil, nil
+				return nil, errors.New("unreachable")
 			}
 		},
 	}
@@ -640,7 +640,7 @@ func TestSyncServiceAdvancesCursorOnDuplicateAboveCurrentCursor(t *testing.T) {
 				return &adn.DocumentResponse{}, nil
 			default:
 				t.Fatalf("unexpected LastNSU request %d", req.LastNSU)
-				return nil, nil
+				return nil, errors.New("unreachable")
 			}
 		},
 	}
@@ -693,7 +693,7 @@ func TestSyncServiceSkipsDocumentBeforeInitialSyncCutoffAndAdvancesCursor(t *tes
 				return &adn.DocumentResponse{}, nil
 			default:
 				t.Fatalf("unexpected LastNSU request %d", req.LastNSU)
-				return nil, nil
+				return nil, errors.New("unreachable")
 			}
 		},
 	}

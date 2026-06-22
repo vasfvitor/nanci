@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	exportCNPJ       string
-	exportCompetence string
-	exportDirection  string
-	exportOut        string
-	exportChave      string
+	exportCNPJ        string
+	exportCompetence  string
+	exportDirection   string
+	exportOut         string
+	exportChave       string
 	exportIncremental bool
 )
 
