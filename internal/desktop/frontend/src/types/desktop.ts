@@ -10,8 +10,7 @@ export type CompanySummary = {
   CredentialCertPath: string
   Environment: string
   LastNSU: number
-  LastFoundNSU: number
-  LastFoundNSUValid: boolean
+  LastFoundNSU: number | null
   LastSyncAt?: ISODateValue
   SyncStartPolicy: SyncStartPolicy
   SyncStartDate?: ISODateValue
@@ -72,10 +71,8 @@ export type DocumentRow = {
   DocumentID: string
   CompanyRole: string
   VisibilityReason: string
-  FirstSeenNSU: number
-  LastSeenNSU: number
-  FirstSeenNSUValid: boolean
-  LastSeenNSUValid: boolean
+  FirstSeenNSU: number | null
+  LastSeenNSU: number | null
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
   ViewedAt?: ISODateValue
@@ -186,8 +183,7 @@ export type PullResult = {
   Status: string
   StopReason: string
   LastProcessedNSU: number
-  LastFoundNSU: number
-  LastFoundNSUValid: boolean
+  LastFoundNSU: number | null
   EmptyStreak: number
   DocumentsFound: number
   EventsFound: number

@@ -35,7 +35,7 @@
 
       <template #body-cell-lastFoundNSU="props">
         <q-td :props="props">
-          {{ props.row.LastFoundNSUValid ? props.row.LastFoundNSU : '—' }}
+          {{ props.row.LastFoundNSU ?? '—' }}
         </q-td>
       </template>
 
@@ -218,7 +218,7 @@ async function syncCompany(cnpj: string) {
   try {
     const result = await companiesApi.syncCompany(cnpj)
     const credentialCNPJ = result.CredentialCNPJ || 'pendente'
-    const lastFound = result.LastFoundNSUValid ? result.LastFoundNSU : '—'
+    const lastFound = result.LastFoundNSU ?? '—'
     $q.notify({
       type: 'positive',
       message: `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastProcessedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`,

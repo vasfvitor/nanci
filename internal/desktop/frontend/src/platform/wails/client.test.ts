@@ -51,7 +51,6 @@ describe('desktop client mappers', () => {
       CNPJ: '123',
       LastSyncAt: null,
       LastFoundNSU: 55,
-      LastFoundNSUValid: true,
       SyncStartPolicy: 'since_date',
       SyncStartDate: '2025-01-01T00:00:00Z',
       InitialSyncDoneAt: null,
@@ -62,7 +61,6 @@ describe('desktop client mappers', () => {
     expect(company.ID).toBe('company-1')
     expect(company.LastSyncAt).toBeNull()
     expect(company.LastFoundNSU).toBe(55)
-    expect(company.LastFoundNSUValid).toBe(true)
     expect(company.SyncStartPolicy).toBe('since_date')
     expect(company.SyncStartDate).toBe('2025-01-01T00:00:00Z')
     expect(company.InitialSyncDoneAt).toBeNull()

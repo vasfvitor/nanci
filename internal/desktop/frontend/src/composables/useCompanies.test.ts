@@ -46,7 +46,6 @@ describe('useCompanies', () => {
       StopReason: 'done',
       LastProcessedNSU: 1,
       LastFoundNSU: 1,
-      LastFoundNSUValid: true,
       EmptyStreak: 0,
       DocumentsFound: 0,
       EventsFound: 0,

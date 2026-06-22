@@ -90,6 +90,11 @@ function asBoolean(value: unknown) {
   return typeof value === 'boolean' ? value : false
 }
 
+function asNullableNumber(value: unknown) {
+  if (value === null || value === undefined) return null
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
 function asRawRecord(value: unknown): RawRecord {
   return value && typeof value === 'object' ? (value as RawRecord) : {}
 }
@@ -110,8 +115,7 @@ export function mapCompanySummary(raw: unknown): CompanySummary {
     CredentialCertPath: asString(item['CredentialCertPath']),
     Environment: asString(item['Environment']),
     LastNSU: asNumber(item['LastNSU']),
-    LastFoundNSU: asNumber(item['LastFoundNSU']),
-    LastFoundNSUValid: asBoolean(item['LastFoundNSUValid']),
+    LastFoundNSU: asNullableNumber(item['LastFoundNSU']),
     LastSyncAt: item['LastSyncAt'] as CompanySummary['LastSyncAt'],
     SyncStartPolicy: asString(item['SyncStartPolicy']) as CompanySummary['SyncStartPolicy'],
     SyncStartDate: item['SyncStartDate'] as CompanySummary['SyncStartDate'],
@@ -176,10 +180,8 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     DocumentID: asString(item['DocumentID']),
     CompanyRole: asString(item['CompanyRole']),
     VisibilityReason: asString(item['VisibilityReason']),
-    FirstSeenNSU: asNumber(item['FirstSeenNSU']),
-    LastSeenNSU: asNumber(item['LastSeenNSU']),
-    FirstSeenNSUValid: asBoolean(item['FirstSeenNSUValid']),
-    LastSeenNSUValid: asBoolean(item['LastSeenNSUValid']),
+    FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
+    LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
     FirstSyncedAt: item['FirstSyncedAt'] as DocumentRow['FirstSyncedAt'],
     LastSyncedAt: item['LastSyncedAt'] as DocumentRow['LastSyncedAt'],
     ViewedAt: item['ViewedAt'] as DocumentRow['ViewedAt'],

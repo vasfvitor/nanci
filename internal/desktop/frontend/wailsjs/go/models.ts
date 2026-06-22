@@ -95,8 +95,7 @@ export namespace app {
 	    Status: string;
 	    StopReason: string;
 	    LastProcessedNSU: number;
-	    LastFoundNSU: number;
-	    LastFoundNSUValid: boolean;
+	    LastFoundNSU?: number;
 	    EmptyStreak: number;
 	    DocumentsFound: number;
 	    EventsFound: number;
@@ -122,7 +121,6 @@ export namespace app {
 	        this.StopReason = source["StopReason"];
 	        this.LastProcessedNSU = source["LastProcessedNSU"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
-	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.EmptyStreak = source["EmptyStreak"];
 	        this.DocumentsFound = source["DocumentsFound"];
 	        this.EventsFound = source["EventsFound"];
@@ -169,8 +167,7 @@ export namespace app {
 	    // Go type: time
 	    CredentialNotAfter?: any;
 	    LastProcessedNSU: number;
-	    LastFoundNSU: number;
-	    LastFoundNSUValid: boolean;
+	    LastFoundNSU?: number;
 	    // Go type: time
 	    LastSyncAt?: any;
 	    LastRunStatus: string;
@@ -192,7 +189,6 @@ export namespace app {
 	        this.CredentialNotAfter = this.convertValues(source["CredentialNotAfter"], null);
 	        this.LastProcessedNSU = source["LastProcessedNSU"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
-	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
 	        this.LastRunStatus = source["LastRunStatus"];
 	        this.LastRunStopReason = source["LastRunStopReason"];
@@ -297,8 +293,7 @@ export namespace desktopapi {
 	    CredentialCertPath: string;
 	    Environment: string;
 	    LastNSU: number;
-	    LastFoundNSU: number;
-	    LastFoundNSUValid: boolean;
+	    LastFoundNSU?: number;
 	    // Go type: time
 	    LastSyncAt?: any;
 	    SyncStartPolicy: string;
@@ -329,7 +324,6 @@ export namespace desktopapi {
 	        this.Environment = source["Environment"];
 	        this.LastNSU = source["LastNSU"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
-	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
 	        this.SyncStartPolicy = source["SyncStartPolicy"];
 	        this.SyncStartDate = this.convertValues(source["SyncStartDate"], null);
@@ -499,10 +493,8 @@ export namespace desktopapi {
 	    DocumentID: string;
 	    CompanyRole: string;
 	    VisibilityReason: string;
-	    FirstSeenNSU: number;
-	    LastSeenNSU: number;
-	    FirstSeenNSUValid: boolean;
-	    LastSeenNSUValid: boolean;
+	    FirstSeenNSU?: number;
+	    LastSeenNSU?: number;
 	    // Go type: time
 	    FirstSyncedAt: any;
 	    // Go type: time
@@ -550,8 +542,6 @@ export namespace desktopapi {
 	        this.VisibilityReason = source["VisibilityReason"];
 	        this.FirstSeenNSU = source["FirstSeenNSU"];
 	        this.LastSeenNSU = source["LastSeenNSU"];
-	        this.FirstSeenNSUValid = source["FirstSeenNSUValid"];
-	        this.LastSeenNSUValid = source["LastSeenNSUValid"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
