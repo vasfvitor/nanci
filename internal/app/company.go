@@ -121,10 +121,6 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 		return nil, err
 	}
 
-	if err := validateCertificatePath(input.CertPath); err != nil {
-		return nil, err
-	}
-
 	credential := &nfse.Credential{
 		ID:       nfse.CredentialID(nfse.GenerateID()),
 		Label:    input.CredentialLabel,

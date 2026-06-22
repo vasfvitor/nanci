@@ -26,7 +26,7 @@ func GenerateCSV(documents []ReportRow, outPath string) (err error) {
 
 	// Write header
 	headers := []string{
-		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao", "Visibilidade",
+		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
 		"CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
 		"Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
 	}
@@ -47,7 +47,6 @@ func GenerateCSV(documents []ReportRow, outPath string) (err error) {
 			issueStr,
 			doc.ChaveAcesso,
 			string(doc.CompanyRole),
-			"", // Visibility is no longer easily available in ReportRow since it was removed for simplicity, leaving blank
 			cnpj.Format(doc.PrestadorCNPJ),
 			doc.PrestadorName,
 			cnpj.Format(doc.TomadorCNPJ),

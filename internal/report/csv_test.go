@@ -60,7 +60,7 @@ func TestGenerateCSV(t *testing.T) {
 	}
 
 	row1 := records[1]
-	// "Competencia", "Data Emissao", "Chave de Acesso", "Direcao", "Visibilidade",
+	// "Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
 	// "CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
 	// "Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
 	if row1[0] != "202606" {
@@ -69,13 +69,13 @@ func TestGenerateCSV(t *testing.T) {
 	if row1[1] != "2026-06-07" {
 		t.Errorf("expected IssueDate '2026-06-07', got %s", row1[1])
 	}
-	if row1[9] != "1500.50" {
-		t.Errorf("expected Valor Servico '1500.50', got %s", row1[9])
+	if row1[8] != "1500.50" {
+		t.Errorf("expected Valor Servico '1500.50', got %s", row1[8])
 	}
-	if row1[13] != "9.75" {
-		t.Errorf("expected PIS '9.75', got %s", row1[13])
+	if row1[12] != "9.75" {
+		t.Errorf("expected PIS '9.75', got %s", row1[12])
 	}
-	if row1[16] != "normal" {
-		t.Errorf("expected Status 'normal', got %s", row1[16])
+	if row1[15] != "normal" {
+		t.Errorf("expected Status 'normal', got %s", row1[15])
 	}
 }
