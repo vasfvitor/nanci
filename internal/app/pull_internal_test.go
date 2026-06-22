@@ -43,7 +43,7 @@ func (s *captureXMLStore) Get(string) ([]byte, error) { return nil, nil }
 
 func TestPullUsesInjectedXMLStore(t *testing.T) {
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}

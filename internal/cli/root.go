@@ -64,7 +64,7 @@ func newApp() (*app.App, func(), error) {
 		return nil, nil, fmt.Errorf("criar diretório de dados: %w", err)
 	}
 
-	db, err := store.OpenDB(app.RuntimeDBPath(dataDir), true)
+	db, err := store.OpenDB(context.Background(), app.RuntimeDBPath(dataDir), true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("inicializar banco de dados: %w", err)
 	}

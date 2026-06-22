@@ -120,7 +120,7 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	db, err := store.OpenDB(app.RuntimeDBPath(dataDir), true)
+	db, err := store.OpenDB(ctx, app.RuntimeDBPath(dataDir), true)
 	if err != nil {
 		fmt.Printf("failed to initialize db: %v\n", err)
 		return

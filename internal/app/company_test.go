@@ -30,7 +30,7 @@ func newTestApp(t *testing.T) (*app.App, app.CompanyRepository, app.CredentialRe
 	t.Helper()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +335,7 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestExportDANFSeZIPPreservesRendererFailures(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +427,7 @@ func TestNewRejectsMissingDocumentReader(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}

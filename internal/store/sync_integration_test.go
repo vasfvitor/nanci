@@ -173,7 +173,7 @@ func TestEventsUpdateStatusAndLinkWhenDocumentArrives(t *testing.T) {
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := OpenDB(filepath.Join(t.TempDir(), "test.db"), true)
+	db, err := OpenDB(context.Background(), filepath.Join(t.TempDir(), "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}

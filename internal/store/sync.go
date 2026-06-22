@@ -23,6 +23,12 @@ func NewSyncRepository(db *sql.DB) *SyncRepository {
 	}
 }
 
+// executor abstracts sql.Tx and sql.DB for the private helpers.
+type executor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
 	state, err := r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
 	if err == nil {
@@ -109,7 +115,7 @@ func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParam
 	}, nil
 }
 
-func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
+func (r *SyncRepository) doApplyDocument(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	parseWarnings, err := json.Marshal(params.Document.ParseWarnings)
@@ -184,7 +190,7 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sql
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
+func (r *SyncRepository) doApplyEvent(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	documentID, err := q.GetDocumentIDByAccessKey(ctx, string(params.Event.ChaveAcesso))
@@ -231,7 +237,7 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, params nfse.PersistSyncProgressParams) error {
+func (r *SyncRepository) doPersistProgress(ctx context.Context, tx executor, params nfse.PersistSyncProgressParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	lastSuccessAt := sql.NullString{}
 	lastErrorAt := sql.NullString{}
@@ -428,7 +434,7 @@ func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.
 	return outcome, nil
 }
 
-func companyDocumentMissing(ctx context.Context, tx *sql.Tx, companyID, documentID string) (bool, error) {
+func companyDocumentMissing(ctx context.Context, tx executor, companyID, documentID string) (bool, error) {
 	var exists int
 	err := tx.QueryRowContext(ctx,
 		`SELECT 1 FROM company_documents WHERE company_id = ? AND document_id = ? LIMIT 1`,
@@ -444,7 +450,7 @@ func companyDocumentMissing(ctx context.Context, tx *sql.Tx, companyID, document
 	return false, nil
 }
 
-func eventHashMissing(ctx context.Context, tx *sql.Tx, rawHash string) (bool, error) {
+func eventHashMissing(ctx context.Context, tx executor, rawHash string) (bool, error) {
 	var exists int
 	err := tx.QueryRowContext(ctx,
 		`SELECT 1 FROM events WHERE raw_hash = ? LIMIT 1`,

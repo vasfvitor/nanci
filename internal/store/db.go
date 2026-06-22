@@ -18,7 +18,7 @@ var ErrNotFound = errors.New("not found")
 var embedMigrationsV2 embed.FS
 
 // OpenDB opens the SQLite database and optionally runs migrations.
-func OpenDB(dbPath string, runMigrations bool) (*sql.DB, error) {
+func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, error) {
 	dsn := fmt.Sprintf("%s?_pragma=journal_mode(wal)&_pragma=foreign_keys(1)", dbPath)
 
 	db, err := sql.Open("sqlite", dsn)
@@ -26,7 +26,7 @@ func OpenDB(dbPath string, runMigrations bool) (*sql.DB, error) {
 		return nil, fmt.Errorf("falha ao abrir banco sqlite: %w", err)
 	}
 
-	if err := db.PingContext(context.Background()); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("falha ao conectar no banco sqlite: %w", err)
 	}
@@ -44,7 +44,7 @@ func OpenDB(dbPath string, runMigrations bool) (*sql.DB, error) {
 			return nil, fmt.Errorf("falha ao configurar migrations: %w", err)
 		}
 
-		_, err = provider.Up(context.Background())
+		_, err = provider.Up(ctx)
 		if err != nil {
 			_ = db.Close()
 			return nil, fmt.Errorf("falha ao rodar migrations: %w", err)
