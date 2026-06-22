@@ -23,8 +23,19 @@ const (
 var syncRequestDelay = requestDelay
 
 // SyncService orchestrates the synchronization of documents from the ADN API.
+type SyncRepository interface {
+	GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error)
+	StartRun(ctx context.Context, params nfse.StartRunParams) (nfse.SyncRun, error)
+	PersistProgress(ctx context.Context, params nfse.PersistSyncProgressParams) error
+	MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID) error
+	FinishRun(ctx context.Context, params nfse.FinishRunParams) error
+	ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error)
+	CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error)
+	ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) (nfse.ApplyOutcome, error)
+}
+
 type SyncService struct {
-	store      nfse.SyncRepository
+	store      SyncRepository
 	apiClient  documentFetcher
 	fileWriter files.XMLStore
 	log        *slog.Logger
@@ -35,7 +46,7 @@ type documentFetcher interface {
 }
 
 // NewSyncService creates a new SyncService.
-func NewSyncService(syncRepo nfse.SyncRepository, adnClient documentFetcher, xmlStore files.XMLStore, log *slog.Logger) *SyncService {
+func NewSyncService(syncRepo SyncRepository, adnClient documentFetcher, xmlStore files.XMLStore, log *slog.Logger) *SyncService {
 	return &SyncService{
 		store:      syncRepo,
 		apiClient:  adnClient,

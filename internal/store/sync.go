@@ -156,15 +156,15 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sql
 	}
 
 	err = q.UpsertCompanyDocument(ctx, sqlgen.UpsertCompanyDocumentParams{
-		RelationID:        nfse.GenerateID(),
-		CompanyID:         string(params.CompanyID),
-		DocumentID:        canonicalDocumentID,
-		CompanyRole:       string(params.Participation.CompanyRole),
-		VisibilityReason:  string(params.Participation.VisibilityReason),
-		FirstSeenNsu:      sql.NullInt64{Int64: params.NSU, Valid: true},
-		LastSeenNsu:       sql.NullInt64{Int64: params.NSU, Valid: true},
-		FirstSyncedAt:     now,
-		LastSyncedAt:      now,
+		RelationID:       nfse.GenerateID(),
+		CompanyID:        string(params.CompanyID),
+		DocumentID:       canonicalDocumentID,
+		CompanyRole:      string(params.Participation.CompanyRole),
+		VisibilityReason: string(params.Participation.VisibilityReason),
+		FirstSeenNsu:     sql.NullInt64{Int64: params.NSU, Valid: true},
+		LastSeenNsu:      sql.NullInt64{Int64: params.NSU, Valid: true},
+		FirstSyncedAt:    now,
+		LastSyncedAt:     now,
 	})
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
@@ -299,7 +299,6 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 	if err != nil {
 		return err
 	}
-
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE sync_runs
@@ -680,7 +679,6 @@ func (r *SyncRepository) latestRun(ctx context.Context, companyID nfse.CompanyID
 	return &run, nil
 }
 
-
 func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso, updatedAt string) error {
 	eventTypes, err := q.ListEventTypesByAccessKey(ctx, chaveAcesso)
 	if err != nil {
@@ -714,9 +712,6 @@ func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso
 	})
 }
 
-func nullInt64(val int64, valid bool) sql.NullInt64 {
-	return sql.NullInt64{Int64: val, Valid: valid}
-}
 
 func nullString(val string) sql.NullString {
 	return sql.NullString{String: val, Valid: val != ""}

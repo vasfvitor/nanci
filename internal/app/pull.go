@@ -17,7 +17,7 @@ type syncRunner interface {
 	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
 }
 
-var newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
+var newSyncRunner = func(repo SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
 	return syncservice.NewSyncService(repo, client, xmlStore, log)
 }
 

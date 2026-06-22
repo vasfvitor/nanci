@@ -108,8 +108,12 @@ func TestDocumentUpsertUsesCanonicalIDAndListsRelations(t *testing.T) {
 	}
 	if got.FirstSeenNSU == nil || *got.FirstSeenNSU != 10 || got.LastSeenNSU == nil || *got.LastSeenNSU != 20 {
 		var f, l int64
-		if got.FirstSeenNSU != nil { f = *got.FirstSeenNSU }
-		if got.LastSeenNSU != nil { l = *got.LastSeenNSU }
+		if got.FirstSeenNSU != nil {
+			f = *got.FirstSeenNSU
+		}
+		if got.LastSeenNSU != nil {
+			l = *got.LastSeenNSU
+		}
 		t.Fatalf("NSU range = %d-%d, want 10-20", f, l)
 	}
 }
@@ -316,11 +320,11 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 			NSU:       10,
 		},
 		ProgressParams: nfse.PersistSyncProgressParams{
-			CompanyID:         company.ID,
-			Environment:       nfse.EnvironmentRestricted,
-			ConsultationCNPJ:  "11222333000181",
-			LastProcessedNSU:  10,
-			LastFoundNSU:      int64Ptr(10),
+			CompanyID:        company.ID,
+			Environment:      nfse.EnvironmentRestricted,
+			ConsultationCNPJ: "11222333000181",
+			LastProcessedNSU: 10,
+			LastFoundNSU:     int64Ptr(10),
 		},
 	}
 
@@ -364,7 +368,9 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	}
 	if state.LastFoundNSU == nil || *state.LastFoundNSU != 999 {
 		var f int64
-		if state.LastFoundNSU != nil { f = *state.LastFoundNSU }
+		if state.LastFoundNSU != nil {
+			f = *state.LastFoundNSU
+		}
 		t.Fatalf("expected progress LastFoundNSU=999, got %d", f)
 	}
 }

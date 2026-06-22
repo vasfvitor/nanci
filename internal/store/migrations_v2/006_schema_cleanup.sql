@@ -16,7 +16,7 @@ CREATE TABLE events_new (
 );
 
 INSERT INTO events_new (id, document_id, chave_acesso, type, event_at, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at)
-SELECT id, document_id, chave_acesso, type, event_at, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at
+SELECT id, document_id, chave_acesso, type, CASE WHEN event_at_valid = 1 THEN event_at ELSE NULL END, replacement_chave_acesso, description, raw_xml_path, raw_hash, parse_warnings, created_at
 FROM events;
 
 DROP TABLE events;

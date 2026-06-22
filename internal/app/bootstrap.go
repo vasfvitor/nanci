@@ -12,7 +12,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -40,11 +39,11 @@ type CredentialProvider interface {
 type App struct {
 	Log                *slog.Logger
 	DB                 *sql.DB
-	CompanyRepo        nfse.CompanyRepository
-	CredentialRepo     nfse.CredentialRepository
-	SyncRepo           nfse.SyncRepository
-	DocumentReader     nfse.DocumentReader
-	DocumentTracker    nfse.DocumentTracker
+	CompanyRepo        CompanyRepository
+	CredentialRepo     CredentialRepository
+	SyncRepo           SyncRepository
+	DocumentReader     DocumentReader
+	DocumentTracker    DocumentTracker
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -55,11 +54,11 @@ type App struct {
 type Dependencies struct {
 	Log                *slog.Logger
 	DB                 *sql.DB
-	CompanyRepo        nfse.CompanyRepository
-	CredentialRepo     nfse.CredentialRepository
-	SyncRepo           nfse.SyncRepository
-	DocumentReader     nfse.DocumentReader
-	DocumentTracker    nfse.DocumentTracker
+	CompanyRepo        CompanyRepository
+	CredentialRepo     CredentialRepository
+	SyncRepo           SyncRepository
+	DocumentReader     DocumentReader
+	DocumentTracker    DocumentTracker
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider

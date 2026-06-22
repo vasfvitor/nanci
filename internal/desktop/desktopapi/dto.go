@@ -7,6 +7,22 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
+type StatusResult struct {
+	CompanyName        string
+	CNPJ               string
+	Environment        string
+	ConsultationCNPJ   string
+	CredentialCNPJ     string
+	CredentialNotAfter *time.Time
+	LastProcessedNSU   int64
+	LastFoundNSU       *int64
+	LastSyncAt         *time.Time
+	LastRunStatus      string
+	LastRunStopReason  string
+	TotalEmitidas      int64
+	TotalTomadas       int64
+}
+
 type CompanySummary struct {
 	ID                 string
 	CNPJ               string
@@ -89,6 +105,87 @@ type DocumentEvent struct {
 	ReplacementChaveAcesso string
 	Description            string
 	RawXMLPath             string
+}
+
+type AddCompanyInput struct {
+	CNPJ            string
+	Name            string
+	CredentialID    string
+	CredentialLabel string
+	CertPath        string
+	Environment     string // "producao" | "producao_restrita"
+	SyncStartPolicy string // "all" | "since_date" | "from_now"
+	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
+}
+
+type UpdateCompanyInput struct {
+	CNPJ            string
+	Name            string
+	Environment     string // "producao" | "producao_restrita"
+	SyncStartPolicy string // "all" | "since_date" | "from_now"
+	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
+}
+
+type AddCredentialInput struct {
+	Label    string
+	CertPath string
+}
+
+type UpdateCredentialPathInput struct {
+	CredentialID string
+	CertPath     string
+}
+
+type AssignCredentialInput struct {
+	CompanyCNPJ  string
+	CredentialID string
+}
+
+type UpdateCredentialDataInput struct {
+	CredentialID string
+	Label        string
+}
+
+type ListInput struct {
+	CNPJ       string
+	Competence string
+	Direction  string
+	OnlyUnread bool
+}
+
+type PullInput struct {
+	CNPJ string
+	Mode string
+}
+
+type PullResult struct {
+	CompanyName              string
+	CNPJ                     string
+	CredentialLabel          string
+	CredentialCNPJ           string
+	ConsultationBasis        string
+	Status                   string
+	StopReason               string
+	LastProcessedNSU         int64
+	LastFoundNSU             *int64
+	EmptyStreak              int
+	DocumentsFound           int
+	EventsFound              int
+	DocumentsSaved           int
+	EventsSaved              int
+	DocumentsSkippedByPolicy int
+	EventsSkippedByPolicy    int
+	Errors                   int
+	Duration                 time.Duration
+}
+
+type QueryNFSeInput struct {
+	CompanyCNPJ string
+	ChaveAcesso string
+}
+
+type ResetSyncInput struct {
+	CompanyCNPJ string
 }
 
 type ExportDocumentsInput struct {

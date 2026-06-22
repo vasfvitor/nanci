@@ -71,5 +71,3 @@ func (c *Client) FetchDocuments(ctx context.Context, req DistributionRequest) (*
 
 	return &response, nil
 }
-
-

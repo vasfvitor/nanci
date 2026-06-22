@@ -200,11 +200,11 @@ func TestSyncServiceSuccessFinishesOnceAsCompleted(t *testing.T) {
 func TestSyncServiceNormalModeUsesPersistedCursorWithoutRevisit(t *testing.T) {
 	repo := &mockSyncRepo{
 		state: &nfse.SyncState{
-			CompanyID:         "comp-1",
-			Environment:       nfse.EnvironmentProduction,
-			ConsultationCNPJ:  "12345678901234",
-			LastProcessedNSU:  29,
-			LastFoundNSU:      int64Ptr(29),
+			CompanyID:        "comp-1",
+			Environment:      nfse.EnvironmentProduction,
+			ConsultationCNPJ: "12345678901234",
+			LastProcessedNSU: 29,
+			LastFoundNSU:     int64Ptr(29),
 		},
 	}
 	fetcher := &mockFetcher{

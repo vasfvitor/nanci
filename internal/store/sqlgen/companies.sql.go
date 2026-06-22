@@ -152,7 +152,6 @@ func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
 	return items, nil
 }
 
-
 const updateCompany = `-- name: UpdateCompany :exec
 UPDATE companies
 SET name = ?,

@@ -25,15 +25,15 @@ type Company struct {
 }
 
 type CompanyDocument struct {
-	RelationID        string
-	CompanyID         string
-	DocumentID        string
-	CompanyRole       string
-	VisibilityReason  string
-	FirstSeenNsu      sql.NullInt64
-	LastSeenNsu       sql.NullInt64
-	FirstSyncedAt     string
-	LastSyncedAt      string
+	RelationID       string
+	CompanyID        string
+	DocumentID       string
+	CompanyRole      string
+	VisibilityReason string
+	FirstSeenNsu     sql.NullInt64
+	LastSeenNsu      sql.NullInt64
+	FirstSyncedAt    string
+	LastSyncedAt     string
 }
 
 type Credential struct {

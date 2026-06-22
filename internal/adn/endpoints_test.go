@@ -424,8 +424,6 @@ func TestDocumentResponse_UnmarshalOfficialEnvelope(t *testing.T) {
 	}
 }
 
-
-
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
 

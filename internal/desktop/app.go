@@ -201,12 +201,24 @@ func (a *App) SetLogLevel(level string) {
 	a.logLevel.Set(parseDesktopLogLevel(level))
 }
 
-func (a *App) AddCompany(input app.AddCompanyInput) error {
-	return a.core.AddCompany(a.ctx, input)
+func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
+	return a.core.AddCompany(a.ctx, app.AddCompanyInput{
+		CNPJ:            input.CNPJ,
+		Name:            input.Name,
+		CredentialID:    input.CredentialID,
+		CredentialLabel: input.CredentialLabel,
+		CertPath:        input.CertPath,
+		Environment:     input.Environment,
+		SyncStartPolicy: input.SyncStartPolicy,
+		SyncStartDate:   input.SyncStartDate,
+	})
 }
 
-func (a *App) AddCredential(input app.AddCredentialInput) error {
-	return a.core.AddCredential(a.ctx, input)
+func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
+	return a.core.AddCredential(a.ctx, app.AddCredentialInput{
+		Label:    input.Label,
+		CertPath: input.CertPath,
+	})
 }
 
 func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
@@ -217,20 +229,35 @@ func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
 	return desktopapi.CredentialSummaries(credentials), nil
 }
 
-func (a *App) UpdateCredentialPath(input app.UpdateCredentialPathInput) error {
-	return a.core.UpdateCredentialPath(a.ctx, input)
+func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) error {
+	return a.core.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
+		CredentialID: input.CredentialID,
+		CertPath:     input.CertPath,
+	})
 }
 
-func (a *App) UpdateCredentialData(input app.UpdateCredentialDataInput) error {
-	return a.core.UpdateCredentialData(a.ctx, input)
+func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {
+	return a.core.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
+		CredentialID: input.CredentialID,
+		Label:        input.Label,
+	})
 }
 
-func (a *App) UpdateCompany(input app.UpdateCompanyInput) error {
-	return a.core.UpdateCompany(a.ctx, input)
+func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
+	return a.core.UpdateCompany(a.ctx, app.UpdateCompanyInput{
+		CNPJ:            input.CNPJ,
+		Name:            input.Name,
+		Environment:     input.Environment,
+		SyncStartPolicy: input.SyncStartPolicy,
+		SyncStartDate:   input.SyncStartDate,
+	})
 }
 
-func (a *App) AssignCredentialToCompany(input app.AssignCredentialInput) error {
-	return a.core.AssignCredentialToCompany(a.ctx, input)
+func (a *App) AssignCredentialToCompany(input desktopapi.AssignCredentialInput) error {
+	return a.core.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
+		CompanyCNPJ:  input.CompanyCNPJ,
+		CredentialID: input.CredentialID,
+	})
 }
 
 func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
@@ -241,24 +268,56 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 	return desktopapi.CompanySummaries(companies), nil
 }
 
-func (a *App) Pull(input app.PullInput) (app.PullResult, error) {
-	res, err := a.core.Pull(a.ctx, input)
+func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
+	res, err := a.core.Pull(a.ctx, app.PullInput{
+		CNPJ: input.CNPJ,
+		Mode: input.Mode,
+	})
 	if err != nil && errors.Is(err, app.ErrOperationCanceled) {
-		return res, fmt.Errorf("ERR_CANCELED: %w", err)
+		return desktopapi.PullResult{}, fmt.Errorf("ERR_CANCELED: %w", err)
 	}
-	return res, err
+	return desktopapi.PullResult{
+		CompanyName:              res.CompanyName,
+		CNPJ:                     res.CNPJ,
+		CredentialLabel:          res.CredentialLabel,
+		CredentialCNPJ:           res.CredentialCNPJ,
+		ConsultationBasis:        res.ConsultationBasis,
+		Status:                   res.Status,
+		StopReason:               res.StopReason,
+		LastProcessedNSU:         res.LastProcessedNSU,
+		LastFoundNSU:             res.LastFoundNSU,
+		EmptyStreak:              res.EmptyStreak,
+		DocumentsFound:           res.DocumentsFound,
+		EventsFound:              res.EventsFound,
+		DocumentsSaved:           res.DocumentsSaved,
+		EventsSaved:              res.EventsSaved,
+		DocumentsSkippedByPolicy: res.DocumentsSkippedByPolicy,
+		EventsSkippedByPolicy:    res.EventsSkippedByPolicy,
+		Errors:                   res.Errors,
+		Duration:                 res.Duration,
+	}, err
 }
 
-func (a *App) ResetSyncState(input app.ResetSyncInput) error {
-	return a.core.ResetSyncState(a.ctx, input)
+func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
+	return a.core.ResetSyncState(a.ctx, app.ResetSyncInput{
+		CNPJ: input.CompanyCNPJ,
+	})
 }
 
-func (a *App) QueryNFSeEvents(input app.QueryNFSeInput) (string, error) {
-	return a.core.QueryNFSeEvents(a.ctx, input)
+func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
+	return a.core.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
+		CNPJ:        input.CompanyCNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+	})
 }
 
-func (a *App) ListDocuments(input app.ListInput) ([]desktopapi.DocumentRow, error) {
-	documents, err := a.core.ListDocuments(a.ctx, input)
+func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRow, error) {
+	documents, err := a.core.ListDocuments(a.ctx, app.ListInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+		OnlyUnread: input.OnlyUnread,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -273,8 +332,26 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 	return desktopapi.DocumentEvents(events), nil
 }
 
-func (a *App) Status(cnpj string) (app.StatusResult, error) {
-	return a.core.Status(a.ctx, cnpj)
+func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
+	res, err := a.core.Status(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.StatusResult{}, err
+	}
+	return desktopapi.StatusResult{
+		CompanyName:        res.CompanyName,
+		CNPJ:               res.CNPJ,
+		Environment:        res.Environment,
+		ConsultationCNPJ:   res.ConsultationCNPJ,
+		CredentialCNPJ:     res.CredentialCNPJ,
+		CredentialNotAfter: res.CredentialNotAfter,
+		LastProcessedNSU:   res.LastProcessedNSU,
+		LastFoundNSU:       res.LastFoundNSU,
+		LastSyncAt:         res.LastSyncAt,
+		LastRunStatus:      res.LastRunStatus,
+		LastRunStopReason:  res.LastRunStopReason,
+		TotalEmitidas:      res.TotalEmitidas,
+		TotalTomadas:       res.TotalTomadas,
+	}, nil
 }
 
 func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
@@ -389,8 +466,13 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 	return a.core.CountPendingExportDocuments(a.ctx, exportInput, format)
 }
 
-func (a *App) MarkDocumentsViewed(input app.ListInput) (int, error) {
-	return a.core.MarkDocumentsViewed(a.ctx, input)
+func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
+	return a.core.MarkDocumentsViewed(a.ctx, app.ListInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+		OnlyUnread: input.OnlyUnread,
+	})
 }
 
 func formatExportError(err error) error {

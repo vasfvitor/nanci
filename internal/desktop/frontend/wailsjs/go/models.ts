@@ -1,4 +1,4 @@
-export namespace app {
+export namespace desktopapi {
 	
 	export class AddCompanyInput {
 	    CNPJ: string;
@@ -54,219 +54,6 @@ export namespace app {
 	        this.CredentialID = source["CredentialID"];
 	    }
 	}
-	export class ListInput {
-	    CNPJ: string;
-	    Competence: string;
-	    Direction: string;
-	    OnlyUnread: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new ListInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CNPJ = source["CNPJ"];
-	        this.Competence = source["Competence"];
-	        this.Direction = source["Direction"];
-	        this.OnlyUnread = source["OnlyUnread"];
-	    }
-	}
-	export class PullInput {
-	    CNPJ: string;
-	    Mode: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new PullInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CNPJ = source["CNPJ"];
-	        this.Mode = source["Mode"];
-	    }
-	}
-	export class PullResult {
-	    CompanyName: string;
-	    CNPJ: string;
-	    CredentialLabel: string;
-	    CredentialCNPJ: string;
-	    ConsultationBasis: string;
-	    Status: string;
-	    StopReason: string;
-	    LastProcessedNSU: number;
-	    LastFoundNSU?: number;
-	    EmptyStreak: number;
-	    DocumentsFound: number;
-	    EventsFound: number;
-	    DocumentsSaved: number;
-	    EventsSaved: number;
-	    DocumentsSkippedByPolicy: number;
-	    EventsSkippedByPolicy: number;
-	    Errors: number;
-	    Duration: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new PullResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CompanyName = source["CompanyName"];
-	        this.CNPJ = source["CNPJ"];
-	        this.CredentialLabel = source["CredentialLabel"];
-	        this.CredentialCNPJ = source["CredentialCNPJ"];
-	        this.ConsultationBasis = source["ConsultationBasis"];
-	        this.Status = source["Status"];
-	        this.StopReason = source["StopReason"];
-	        this.LastProcessedNSU = source["LastProcessedNSU"];
-	        this.LastFoundNSU = source["LastFoundNSU"];
-	        this.EmptyStreak = source["EmptyStreak"];
-	        this.DocumentsFound = source["DocumentsFound"];
-	        this.EventsFound = source["EventsFound"];
-	        this.DocumentsSaved = source["DocumentsSaved"];
-	        this.EventsSaved = source["EventsSaved"];
-	        this.DocumentsSkippedByPolicy = source["DocumentsSkippedByPolicy"];
-	        this.EventsSkippedByPolicy = source["EventsSkippedByPolicy"];
-	        this.Errors = source["Errors"];
-	        this.Duration = source["Duration"];
-	    }
-	}
-	export class QueryNFSeInput {
-	    CNPJ: string;
-	    ChaveAcesso: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new QueryNFSeInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CNPJ = source["CNPJ"];
-	        this.ChaveAcesso = source["ChaveAcesso"];
-	    }
-	}
-	export class ResetSyncInput {
-	    CNPJ: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ResetSyncInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CNPJ = source["CNPJ"];
-	    }
-	}
-	export class StatusResult {
-	    CompanyName: string;
-	    CNPJ: string;
-	    Environment: string;
-	    ConsultationCNPJ: string;
-	    CredentialCNPJ: string;
-	    // Go type: time
-	    CredentialNotAfter?: any;
-	    LastProcessedNSU: number;
-	    LastFoundNSU?: number;
-	    // Go type: time
-	    LastSyncAt?: any;
-	    LastRunStatus: string;
-	    LastRunStopReason: string;
-	    TotalEmitidas: number;
-	    TotalTomadas: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new StatusResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CompanyName = source["CompanyName"];
-	        this.CNPJ = source["CNPJ"];
-	        this.Environment = source["Environment"];
-	        this.ConsultationCNPJ = source["ConsultationCNPJ"];
-	        this.CredentialCNPJ = source["CredentialCNPJ"];
-	        this.CredentialNotAfter = this.convertValues(source["CredentialNotAfter"], null);
-	        this.LastProcessedNSU = source["LastProcessedNSU"];
-	        this.LastFoundNSU = source["LastFoundNSU"];
-	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
-	        this.LastRunStatus = source["LastRunStatus"];
-	        this.LastRunStopReason = source["LastRunStopReason"];
-	        this.TotalEmitidas = source["TotalEmitidas"];
-	        this.TotalTomadas = source["TotalTomadas"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class UpdateCompanyInput {
-	    CNPJ: string;
-	    Name: string;
-	    Environment: string;
-	    SyncStartPolicy: string;
-	    SyncStartDate: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new UpdateCompanyInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CNPJ = source["CNPJ"];
-	        this.Name = source["Name"];
-	        this.Environment = source["Environment"];
-	        this.SyncStartPolicy = source["SyncStartPolicy"];
-	        this.SyncStartDate = source["SyncStartDate"];
-	    }
-	}
-	export class UpdateCredentialDataInput {
-	    CredentialID: string;
-	    Label: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new UpdateCredentialDataInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CredentialID = source["CredentialID"];
-	        this.Label = source["Label"];
-	    }
-	}
-	export class UpdateCredentialPathInput {
-	    CredentialID: string;
-	    CertPath: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new UpdateCredentialPathInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CredentialID = source["CredentialID"];
-	        this.CertPath = source["CertPath"];
-	    }
-	}
-
-}
-
-export namespace desktopapi {
-	
 	export class BuildInfo {
 	    version: string;
 	    commit: string;
@@ -652,6 +439,214 @@ export namespace desktopapi {
 	        this.CNPJ = source["CNPJ"];
 	        this.ChaveAcesso = source["ChaveAcesso"];
 	        this.OutPath = source["OutPath"];
+	    }
+	}
+	export class ListInput {
+	    CNPJ: string;
+	    Competence: string;
+	    Direction: string;
+	    OnlyUnread: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ListInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Competence = source["Competence"];
+	        this.Direction = source["Direction"];
+	        this.OnlyUnread = source["OnlyUnread"];
+	    }
+	}
+	export class PullInput {
+	    CNPJ: string;
+	    Mode: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PullInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Mode = source["Mode"];
+	    }
+	}
+	export class PullResult {
+	    CompanyName: string;
+	    CNPJ: string;
+	    CredentialLabel: string;
+	    CredentialCNPJ: string;
+	    ConsultationBasis: string;
+	    Status: string;
+	    StopReason: string;
+	    LastProcessedNSU: number;
+	    LastFoundNSU?: number;
+	    EmptyStreak: number;
+	    DocumentsFound: number;
+	    EventsFound: number;
+	    DocumentsSaved: number;
+	    EventsSaved: number;
+	    DocumentsSkippedByPolicy: number;
+	    EventsSkippedByPolicy: number;
+	    Errors: number;
+	    Duration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PullResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyName = source["CompanyName"];
+	        this.CNPJ = source["CNPJ"];
+	        this.CredentialLabel = source["CredentialLabel"];
+	        this.CredentialCNPJ = source["CredentialCNPJ"];
+	        this.ConsultationBasis = source["ConsultationBasis"];
+	        this.Status = source["Status"];
+	        this.StopReason = source["StopReason"];
+	        this.LastProcessedNSU = source["LastProcessedNSU"];
+	        this.LastFoundNSU = source["LastFoundNSU"];
+	        this.EmptyStreak = source["EmptyStreak"];
+	        this.DocumentsFound = source["DocumentsFound"];
+	        this.EventsFound = source["EventsFound"];
+	        this.DocumentsSaved = source["DocumentsSaved"];
+	        this.EventsSaved = source["EventsSaved"];
+	        this.DocumentsSkippedByPolicy = source["DocumentsSkippedByPolicy"];
+	        this.EventsSkippedByPolicy = source["EventsSkippedByPolicy"];
+	        this.Errors = source["Errors"];
+	        this.Duration = source["Duration"];
+	    }
+	}
+	export class QueryNFSeInput {
+	    CompanyCNPJ: string;
+	    ChaveAcesso: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueryNFSeInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyCNPJ = source["CompanyCNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	    }
+	}
+	export class ResetSyncInput {
+	    CompanyCNPJ: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResetSyncInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyCNPJ = source["CompanyCNPJ"];
+	    }
+	}
+	export class StatusResult {
+	    CompanyName: string;
+	    CNPJ: string;
+	    Environment: string;
+	    ConsultationCNPJ: string;
+	    CredentialCNPJ: string;
+	    // Go type: time
+	    CredentialNotAfter?: any;
+	    LastProcessedNSU: number;
+	    LastFoundNSU?: number;
+	    // Go type: time
+	    LastSyncAt?: any;
+	    LastRunStatus: string;
+	    LastRunStopReason: string;
+	    TotalEmitidas: number;
+	    TotalTomadas: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatusResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyName = source["CompanyName"];
+	        this.CNPJ = source["CNPJ"];
+	        this.Environment = source["Environment"];
+	        this.ConsultationCNPJ = source["ConsultationCNPJ"];
+	        this.CredentialCNPJ = source["CredentialCNPJ"];
+	        this.CredentialNotAfter = this.convertValues(source["CredentialNotAfter"], null);
+	        this.LastProcessedNSU = source["LastProcessedNSU"];
+	        this.LastFoundNSU = source["LastFoundNSU"];
+	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
+	        this.LastRunStatus = source["LastRunStatus"];
+	        this.LastRunStopReason = source["LastRunStopReason"];
+	        this.TotalEmitidas = source["TotalEmitidas"];
+	        this.TotalTomadas = source["TotalTomadas"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateCompanyInput {
+	    CNPJ: string;
+	    Name: string;
+	    Environment: string;
+	    SyncStartPolicy: string;
+	    SyncStartDate: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCompanyInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Name = source["Name"];
+	        this.Environment = source["Environment"];
+	        this.SyncStartPolicy = source["SyncStartPolicy"];
+	        this.SyncStartDate = source["SyncStartDate"];
+	    }
+	}
+	export class UpdateCredentialDataInput {
+	    CredentialID: string;
+	    Label: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCredentialDataInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CredentialID = source["CredentialID"];
+	        this.Label = source["Label"];
+	    }
+	}
+	export class UpdateCredentialPathInput {
+	    CredentialID: string;
+	    CertPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCredentialPathInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CredentialID = source["CredentialID"];
+	        this.CertPath = source["CertPath"];
 	    }
 	}
 

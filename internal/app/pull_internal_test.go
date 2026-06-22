@@ -121,7 +121,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 
 	var receivedStore files.XMLStore
-	newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
+	newSyncRunner = func(repo SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
 		receivedStore = store
 		return syncRunnerStub{
 			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {

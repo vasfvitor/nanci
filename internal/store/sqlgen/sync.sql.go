@@ -10,9 +10,6 @@ import (
 	"database/sql"
 )
 
-
-
-
 const getDocumentIDByAccessKey = `-- name: GetDocumentIDByAccessKey :one
 SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1
 `
@@ -120,7 +117,6 @@ func (q *Queries) UpdateDocumentStatusByAccessKey(ctx context.Context, arg Updat
 	return err
 }
 
-
 const upsertCompanyDocument = `-- name: UpsertCompanyDocument :exec
 INSERT INTO company_documents (
     relation_id, company_id, document_id, company_role, visibility_reason,
@@ -143,15 +139,15 @@ ON CONFLICT(company_id, document_id) DO UPDATE SET
 `
 
 type UpsertCompanyDocumentParams struct {
-	RelationID        string
-	CompanyID         string
-	DocumentID        string
-	CompanyRole       string
-	VisibilityReason  string
-	FirstSeenNsu      sql.NullInt64
-	LastSeenNsu       sql.NullInt64
-	FirstSyncedAt     string
-	LastSyncedAt      string
+	RelationID       string
+	CompanyID        string
+	DocumentID       string
+	CompanyRole      string
+	VisibilityReason string
+	FirstSeenNsu     sql.NullInt64
+	LastSeenNsu      sql.NullInt64
+	FirstSyncedAt    string
+	LastSyncedAt     string
 }
 
 func (q *Queries) UpsertCompanyDocument(ctx context.Context, arg UpsertCompanyDocumentParams) error {
