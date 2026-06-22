@@ -173,11 +173,6 @@ export namespace app {
 	    LastFoundNSUValid: boolean;
 	    // Go type: time
 	    LastSyncAt?: any;
-	    SyncStartPolicy: string;
-	    // Go type: time
-	    SyncStartDate?: any;
-	    // Go type: time
-	    InitialSyncDoneAt?: any;
 	    LastRunStatus: string;
 	    LastRunStopReason: string;
 	    TotalEmitidas: number;
@@ -199,9 +194,6 @@ export namespace app {
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
-	        this.SyncStartPolicy = source["SyncStartPolicy"];
-	        this.SyncStartDate = this.convertValues(source["SyncStartDate"], null);
-	        this.InitialSyncDoneAt = this.convertValues(source["InitialSyncDoneAt"], null);
 	        this.LastRunStatus = source["LastRunStatus"];
 	        this.LastRunStopReason = source["LastRunStopReason"];
 	        this.TotalEmitidas = source["TotalEmitidas"];
@@ -309,6 +301,11 @@ export namespace desktopapi {
 	    LastFoundNSUValid: boolean;
 	    // Go type: time
 	    LastSyncAt?: any;
+	    SyncStartPolicy: string;
+	    // Go type: time
+	    SyncStartDate?: any;
+	    // Go type: time
+	    InitialSyncDoneAt?: any;
 	    LastRunStatus: string;
 	    LastRunStopReason: string;
 	    // Go type: time
@@ -334,6 +331,9 @@ export namespace desktopapi {
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastFoundNSUValid = source["LastFoundNSUValid"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
+	        this.SyncStartPolicy = source["SyncStartPolicy"];
+	        this.SyncStartDate = this.convertValues(source["SyncStartDate"], null);
+	        this.InitialSyncDoneAt = this.convertValues(source["InitialSyncDoneAt"], null);
 	        this.LastRunStatus = source["LastRunStatus"];
 	        this.LastRunStopReason = source["LastRunStopReason"];
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
@@ -649,3 +649,4 @@ export namespace desktopapi {
 	}
 
 }
+
