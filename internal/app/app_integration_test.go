@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -79,5 +80,67 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 
 	if comps[0].CredentialID != credID {
 		t.Errorf("esperava CredentialID %s, obteve %s", credID, comps[0].CredentialID)
+	}
+}
+
+func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
+	application := setupTestApp(t)
+	ctx := context.Background()
+
+	// Use this test file as the certificate path to pass os.Stat checks
+	certPath, _ := filepath.Abs("app_integration_test.go")
+
+	// Setup base company
+	application.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	creds, _ := application.ListCredentials(ctx)
+	application.AddCompany(ctx, app.AddCompanyInput{
+		CNPJ:            "45852546000109",
+		Name:            "Empresa Sync",
+		Environment:     nfse.EnvironmentRestricted,
+		CredentialID:    string(creds[0].ID),
+		SyncStartPolicy: "all",
+	})
+
+	// Act: Update to from_now
+	policyFromNow, dateFromNow, _ := app.ParseSyncStartPolicyInput("from_now", "")
+	updateInput := app.UpdateCompanyInput{
+		CNPJ:            "45852546000109",
+		Name:            "Empresa Sync",
+		Environment:     nfse.EnvironmentRestricted,
+		SyncStartPolicy: policyFromNow,
+		SyncStartDate:   dateFromNow,
+	}
+	err := application.UpdateCompany(ctx, updateInput)
+	if err != nil {
+		t.Fatalf("UpdateCompany falhou: %v", err)
+	}
+
+	// Assert
+	comps, _ := application.ListCompanies(ctx)
+	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyFromNow {
+		t.Errorf("esperava politica from_now, obteve %s", comps[0].SyncStartPolicy)
+	}
+	if comps[0].SyncStartDate == nil {
+		t.Error("esperava SyncStartDate preenchido para from_now, mas veio nil")
+	} else {
+		expectedDate := time.Now().Truncate(24 * time.Hour)
+		actualDate := comps[0].SyncStartDate.Truncate(24 * time.Hour)
+		if !actualDate.Equal(expectedDate) {
+			t.Errorf("esperava SyncStartDate %v, obteve %v", expectedDate, actualDate)
+		}
+	}
+
+	// Act: Update back to all
+	policyAll, dateAll, _ := app.ParseSyncStartPolicyInput("all", "")
+	updateInput.SyncStartPolicy = policyAll
+	updateInput.SyncStartDate = dateAll
+	application.UpdateCompany(ctx, updateInput)
+	comps, _ = application.ListCompanies(ctx)
+
+	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyAll {
+		t.Errorf("esperava politica all, obteve %s", comps[0].SyncStartPolicy)
+	}
+	if comps[0].SyncStartDate != nil {
+		t.Errorf("esperava SyncStartDate nil para all, obteve %v", comps[0].SyncStartDate)
 	}
 }
