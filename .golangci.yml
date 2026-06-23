@@ -35,6 +35,7 @@ linters:
     # Maintainability / DX
     - revive
     - gocritic
+    - depguard
     - unconvert
     - misspell
     - predeclared
@@ -47,9 +48,35 @@ linters:
     - sloglint
 
   settings:
+    depguard:
+      rules:
+        app-core:
+          files:
+            - "**/internal/app/**/*.go"
+            - "!**/*_test.go"
+          deny:
+            - pkg: "github.com/vasfvitor/nanci/internal/store"
+              desc: "Core business logic (app) cannot depend on the database layer."
+            - pkg: "github.com/vasfvitor/nanci/internal/files"
+              desc: "Core business logic (app) cannot depend on the file storage implementation."
+            - pkg: "database/sql"
+              desc: "Core business logic (app) cannot depend on SQL."
+        domain:
+          files:
+            - "**/internal/nfse/**/*.go"
+            - "!**/*_test.go"
+          deny:
+            - pkg: "github.com/vasfvitor/nanci/internal/app"
+              desc: "Domain models cannot depend on application services."
+            - pkg: "github.com/vasfvitor/nanci/internal/store"
+              desc: "Domain models cannot depend on the database layer."
+            - pkg: "database/sql"
+              desc: "Domain models cannot depend on SQL."
+
     misspell:
       ignore-rules:
         - adn
+        - correspondente
 
     errcheck:
       exclude-functions:

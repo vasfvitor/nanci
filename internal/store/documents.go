@@ -458,7 +458,7 @@ func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyI
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, m := range marks {
 		if _, err := stmt.ExecContext(ctx, string(companyID), m.DocumentID, kind, m.Hash); err != nil {

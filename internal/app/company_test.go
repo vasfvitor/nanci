@@ -34,13 +34,13 @@ func newTestApp(t *testing.T) (*app.App, app.CompanyRepository, app.CredentialRe
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
 	application, err := app.New(app.Dependencies{
-		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
@@ -212,15 +212,15 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	xmlStore := &stubXMLStore{
 		data: map[string][]byte{
 			"hash-1": []byte("<NFSe>stub</NFSe>"),
 		},
 	}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -255,7 +255,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	if len(reader.File) != 1 {
 		t.Fatalf("expected 1 zip entry, got %d", len(reader.File))
@@ -264,7 +264,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	content, err := io.ReadAll(rc)
 	if err != nil {
@@ -283,7 +283,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	xmlStore := &stubXMLStore{
 		data: map[string][]byte{
 			"hash-1": []byte("<NFSe>stub</NFSe>"),
@@ -291,7 +291,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	}
 	renderer := &stubDANFSeRenderer{pdf: []byte("%PDF-1.7 stub")}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -322,7 +322,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	if got := string(renderer.inputs[0]); got != "<NFSe>stub</NFSe>" {
 		t.Fatalf("renderer input = %q", got)
 	}
-	written, err := os.ReadFile(outPath)
+	written, err := os.ReadFile(outPath) //nolint:gosec // intentional: test file reading
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,9 +339,9 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -385,9 +385,9 @@ func TestExportDANFSeZIPPreservesRendererFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -431,7 +431,7 @@ func TestNewRejectsMissingDocumentReader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	t.Cleanup(func() { _ = db.Close() })
 
 	_, err = app.New(app.Dependencies{
@@ -529,7 +529,7 @@ func (s *stubDocumentReader) ListEventsByDocument(ctx context.Context, docID str
 }
 
 func (s *stubDocumentReader) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
-	return nil, nil
+	return map[string]int64{}, nil
 }
 
 type stubDANFSeRenderer struct {

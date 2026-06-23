@@ -112,7 +112,7 @@ func TestLoadPKCS12_ValidMockCert(t *testing.T) {
 
 func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 	mockPfxPath := filepath.Join("testdata", "cert_a1_mock_70860312000150.pfx")
-	pfxData, err := os.ReadFile(mockPfxPath)
+	pfxData, err := os.ReadFile(mockPfxPath) //nolint:gosec // intentional: test file reading
 	if err != nil {
 		if os.IsNotExist(err) {
 			t.Skip("Mock cert not found, skipping.")
@@ -126,7 +126,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 	}
 
 	berFile := filepath.Join(t.TempDir(), "mock_ber.pfx")
-	if err := os.WriteFile(berFile, berData, 0o600); err != nil {
+	if err := os.WriteFile(berFile, berData, 0o600); err != nil { //nolint:gosec // intentional: test file writing
 		t.Fatal(err)
 	}
 
@@ -150,7 +150,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 	tampered := bytes.Clone(berData)
 	tampered[tamperOffset] ^= 0x01
 	tamperedFile := filepath.Join(t.TempDir(), "mock_ber_tampered.pfx")
-	if err := os.WriteFile(tamperedFile, tampered, 0o600); err != nil {
+	if err := os.WriteFile(tamperedFile, tampered, 0o600); err != nil { //nolint:gosec // intentional: test file writing
 		t.Fatal(err)
 	}
 	if _, err := LoadPKCS12(tamperedFile, "mockdata"); !errors.Is(err, ErrInvalidPass) {

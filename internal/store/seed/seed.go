@@ -9,7 +9,7 @@ import (
 )
 
 func SeedDevelopment(ctx context.Context, db *sql.DB) error {
-	company := nfse.Company{
+	company := nfse.Company{ //nolint:gosec // intentional: mock test credentials
 		ID:           "dev-company-70860312000150",
 		CNPJ:         "70860312000150",
 		CNPJRoot:     "70860312",

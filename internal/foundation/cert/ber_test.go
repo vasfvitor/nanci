@@ -136,7 +136,7 @@ func TestNormalizePKCS12BER_ExternalStructure(t *testing.T) {
 		t.Skip("set NANCI_TEST_PFX_PATH to test an external certificate structure")
 	}
 
-	ber, err := os.ReadFile(path)
+	ber, err := os.ReadFile(path) //nolint:gosec // intentional: test file reading
 	if err != nil {
 		t.Fatal(err)
 	}

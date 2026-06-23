@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -182,7 +183,7 @@ func findOpenSSL() (string, error) {
 }
 
 func runCommand(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...) //nolint:gosec // intentional: this tool wraps openssl
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

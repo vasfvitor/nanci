@@ -58,11 +58,3 @@ func validateCertificatePath(path string) error {
 	}
 	return nil
 }
-
-func parseEnvironment(raw string) (nfse.Environment, error) {
-	environment, err := nfse.ParseEnvironment(raw)
-	if err != nil {
-		return "", fmt.Errorf("ambiente inválido: %w", err)
-	}
-	return environment, nil
-}

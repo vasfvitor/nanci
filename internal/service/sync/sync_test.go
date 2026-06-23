@@ -400,7 +400,7 @@ func TestSyncServiceProcessesEventFromTipoEventoMetadata(t *testing.T) {
 }
 
 func discardLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+	return slog.New(slog.NewTextHandler(io.Discard, nil)) //nolint:sloglint
 }
 
 func assertSingleFinishRun(t *testing.T, repo *mockSyncRepo, wantStatus nfse.SyncStatus, wantReason nfse.SyncStopReason) {
