@@ -93,7 +93,12 @@ func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportRes
 			if roleFolder == "" || roleFolder == "none" {
 				roleFolder = "sem-papel-fiscal"
 			}
-			entryPath := filepath.ToSlash(filepath.Join(doc.Competence, roleFolder, string(doc.ChaveAcesso)+".pdf"))
+			var entryPath string
+			if doc.Competence != "" {
+				entryPath = filepath.ToSlash(filepath.Join(doc.Competence, roleFolder, string(doc.ChaveAcesso)+".pdf"))
+			} else {
+				entryPath = filepath.ToSlash(filepath.Join(roleFolder, string(doc.ChaveAcesso)+".pdf"))
+			}
 
 			writer, err := zipWriter.Create(entryPath)
 			if err != nil {

@@ -211,7 +211,8 @@ export const desktopClient = {
   },
   async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const extension = input.Format === 'csv' ? '.csv' : input.Format === 'xlsx' ? '.xlsx' : '.zip'
-    const defaultName = input.BaseName || `export_${input.CNPJ}_${Date.now()}${extension}`
+    const timestamp = new Date().toISOString().replace(/[:T-]/g, '').slice(0, 14)
+    const defaultName = input.BaseName || `nanci_exportacao_${input.CNPJ}_${timestamp}${extension}`
     const outPath = input.OutPath || await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
     if (!outPath) return null
 
