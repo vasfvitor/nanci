@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
@@ -154,7 +155,8 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 		return res, nil
 	}
 
-	tempPath := input.OutPath + ".tmp"
+	ext := filepath.Ext(input.OutPath)
+	tempPath := strings.TrimSuffix(input.OutPath, ext) + ".tmp" + ext
 	defer func() { _ = os.Remove(tempPath) }()
 
 	if err := generator(docs, tempPath); err != nil {

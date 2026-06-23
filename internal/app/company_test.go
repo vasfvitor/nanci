@@ -545,3 +545,213 @@ func (s *stubDANFSeRenderer) Render(xmlData []byte) ([]byte, error) {
 	}
 	return s.pdf, nil
 }
+
+func TestExportCSV_Success(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+				CompanyRole: "prestada",
+			},
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "docs.csv")
+	res, err := application.ExportCSV(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.ExportedCount != 1 {
+		t.Fatalf("expected 1 exported document, got %d", res.ExportedCount)
+	}
+
+	content, err := os.ReadFile(outPath) //nolint:gosec // intentional test read
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "chave-1") {
+		t.Fatalf("expected CSV to contain 'chave-1'")
+	}
+}
+
+func TestExportXLSX_Success(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+				CompanyRole: "prestada",
+			},
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "docs.xlsx")
+	res, err := application.ExportXLSX(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.ExportedCount != 1 {
+		t.Fatalf("expected 1 exported document, got %d", res.ExportedCount)
+	}
+
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected XLSX file to exist, got error: %v", err)
+	}
+}
+
+func TestExportXML_Success(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	xmlStore := &stubXMLStore{
+		data: map[string][]byte{
+			"hash-1": []byte("<NFSe>stub</NFSe>"),
+		},
+	}
+
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docByChave: &nfse.CompanyDocument{
+			Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+			CompanyRole: "prestada",
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           xmlStore,
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "doc.xml")
+	err = application.ExportXML(context.Background(), app.ExportXMLInput{
+		CNPJ:        "11222333000181",
+		ChaveAcesso: "chave-1",
+		OutPath:     outPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(outPath) //nolint:gosec // intentional test read
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "<NFSe>stub</NFSe>" {
+		t.Fatalf("expected XML content to be '<NFSe>stub</NFSe>', got: %s", string(content))
+	}
+}
+
+type stubDocumentTracker struct {
+	count int
+}
+
+func (s *stubDocumentTracker) ListPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) ([]nfse.CompanyDocument, error) {
+	return nil, nil
+}
+
+func (s *stubDocumentTracker) CountPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) (int, error) {
+	return s.count, nil
+}
+
+func (s *stubDocumentTracker) MarkDocumentsExported(ctx context.Context, companyID nfse.CompanyID, kind string, marks []nfse.DocumentExportMark) error {
+	return nil
+}
+
+func (s *stubDocumentTracker) MarkDocumentsViewed(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) (int, error) {
+	return 0, nil
+}
+
+func TestCountPendingExportDocuments(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	application, err := app.New(app.Dependencies{
+		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:        &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo:     &stubCredentialRepo{},
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentReader:     &stubDocumentReader{},
+		DocumentTracker:    &stubDocumentTracker{count: 42},
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err := application.CountPendingExportDocuments(context.Background(), app.ExportInput{
+		CNPJ: "11222333000181",
+	}, "csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if count != 42 {
+		t.Fatalf("expected 42 pending documents, got %d", count)
+	}
+}
