@@ -11,8 +11,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-var loadPKCS12 = cert.LoadPKCS12
-var newADNClient = adn.NewClient
+
 
 type QueryNFSeInput struct {
 	CNPJ        string
@@ -83,13 +82,13 @@ func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn
 		return nil, fmt.Errorf("senha do certificado: %w", err)
 	}
 
-	loadedCert, err := loadPKCS12(credential.CertPath, pass)
+	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return nil, fmt.Errorf("carregar certificado: %w", err)
 	}
 
 	tlsCert := loadedCert.TLS
-	apiClient, err := newADNClient(adn.ClientConfig{
+	apiClient, err := adn.NewClient(adn.ClientConfig{
 		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 		Log:         a.Log,

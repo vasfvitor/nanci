@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	syncservice "github.com/vasfvitor/nanci/internal/service/sync"
@@ -93,7 +94,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	// 3. Load TLS certificate
 	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
-	loadedCert, err := loadPKCS12(credential.CertPath, pass)
+	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
 	}
@@ -117,7 +118,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 4. Build ADN client
-	apiClient, err := newADNClient(adn.ClientConfig{
+	apiClient, err := adn.NewClient(adn.ClientConfig{
 		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 	})
