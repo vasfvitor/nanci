@@ -84,7 +84,7 @@ export function useQuery() {
     queryStore.clearResult()
     try {
       const input = {
-        CNPJ: form.value.cnpj,
+        CompanyCNPJ: form.value.cnpj,
         ChaveAcesso: chaveVal,
       }
       result.value = await desktopClient.queryNFSeEvents(input)

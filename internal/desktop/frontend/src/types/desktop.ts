@@ -119,7 +119,7 @@ export type ExportResult = {
 }
 
 export type QueryNFSeInput = {
-  CNPJ: string
+  CompanyCNPJ: string
   ChaveAcesso: string
 }
 
@@ -195,7 +195,7 @@ export type PullResult = {
 }
 
 export type ResetSyncInput = {
-  CNPJ: string
+  CompanyCNPJ: string
 }
 
 export type BuildInfo = {

@@ -38,7 +38,7 @@ describe('useQuery', () => {
 
     await expect(query.runQuery()).resolves.toBe('{"events":[]}')
     expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({
-      CNPJ: '123',
+      CompanyCNPJ: '123',
       ChaveAcesso: '2'.repeat(50),
     })
   })
