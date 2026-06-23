@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
-func setupTestApp(t *testing.T) *app.App {
+func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 	ctx := context.Background()
 	db, err := store.OpenDB(ctx, "file::memory:?cache=shared", true)
 	if err != nil {
@@ -21,16 +22,19 @@ func setupTestApp(t *testing.T) *app.App {
 		db.Close()
 	})
 
+	docRepo := store.NewDocumentRepository(db)
 	application := &app.App{
 		CompanyRepo:    store.NewCompanyRepository(db),
 		CredentialRepo: store.NewCredentialRepository(db),
 		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: docRepo,
+		DocumentTracker: docRepo,
 	}
-	return application
+	return application, db
 }
 
 func TestAppIntegration_OnboardingFlow(t *testing.T) {
-	application := setupTestApp(t)
+	application, _ := setupTestApp(t)
 	ctx := context.Background()
 
 	// Use this test file as the certificate path to pass os.Stat checks
@@ -84,7 +88,7 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 }
 
 func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
-	application := setupTestApp(t)
+	application, _ := setupTestApp(t)
 	ctx := context.Background()
 
 	// Use this test file as the certificate path to pass os.Stat checks
