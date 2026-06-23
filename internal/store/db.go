@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"strings"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
@@ -19,7 +20,11 @@ var embedMigrationsV2 embed.FS
 
 // OpenDB opens the SQLite database and optionally runs migrations.
 func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, error) {
-	dsn := fmt.Sprintf("%s?_pragma=journal_mode(wal)&_pragma=foreign_keys(1)", dbPath)
+	separator := "?"
+	if strings.Contains(dbPath, "?") {
+		separator = "&"
+	}
+	dsn := fmt.Sprintf("%s%s_pragma=journal_mode(wal)&_pragma=foreign_keys(1)", dbPath, separator)
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
