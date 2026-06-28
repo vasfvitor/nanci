@@ -97,23 +97,31 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
           version: '10.33.0'
 
-      - name: Install Wails CLI
-        shell: bash
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: 'internal/desktop/frontend/pnpm-lock.yaml'
 
-      - name: Install Garble
+      - name: Cache Go Binaries
+        id: cache-go-bins
+        uses: actions/cache@v4
+        with:
+          path: ~\go\bin
+          key: ${{ runner.os }}-go-bins-wails-2.12.0-garble
+
+      - name: Install Wails CLI & Garble
+        if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
-        run: go install mvdan.cc/garble@latest
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          go install mvdan.cc/garble@latest
 
       - name: Exclude paths from Windows Defender
         shell: powershell
