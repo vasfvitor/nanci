@@ -81,16 +81,15 @@ jobs:
 
   build-desktop:
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Install cross-compilation dependencies
-        shell: bash
+      - name: Install dependencies (NSIS & jq)
+        shell: powershell
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends mingw-w64 nsis jq
+          choco install nsis jq --no-progress
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -115,6 +114,12 @@ jobs:
       - name: Install Garble
         shell: bash
         run: go install mvdan.cc/garble@latest
+
+      - name: Exclude paths from Windows Defender
+        shell: powershell
+        run: |
+          Add-MpPreference -ExclusionPath "$env:TEMP"
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
 
       - name: Build Desktop App
         working-directory: ./internal/desktop
