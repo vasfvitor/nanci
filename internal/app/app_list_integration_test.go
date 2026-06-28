@@ -55,31 +55,23 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 		)
 		VALUES (?, ?, ?, 'prestada', 'exact_prestador', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`
-
+	
 	_, err := db.ExecContext(ctx, insertDoc, "doc-old", "111", yesterday.Format("2006-01-02T15:04:05Z"), "2026-06", "hash1")
-	if err != nil {
-		t.Fatalf("insert doc-old err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert doc-old err: %v", err) }
 	_, err = db.ExecContext(ctx, insertRel, "rel-1", string(companyID), "doc-old")
-	if err != nil {
-		t.Fatalf("insert rel-1 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert rel-1 err: %v", err) }
 
 	_, err = db.ExecContext(ctx, insertDoc, "doc-new", "222", tomorrow.Format("2006-01-02T15:04:05Z"), "2026-06", "hash2")
-	if err != nil {
-		t.Fatalf("insert doc-new err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert doc-new err: %v", err) }
 	_, err = db.ExecContext(ctx, insertRel, "rel-2", string(companyID), "doc-new")
-	if err != nil {
-		t.Fatalf("insert rel-2 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert rel-2 err: %v", err) }
 
 	// Act
 	input := app.ListInput{
 		CNPJ: "45852546000109",
 	}
 	docs, err := application.ListDocuments(ctx, input)
-
+	
 	if err != nil {
 		t.Fatalf("ListDocuments falhou: %v", err)
 	}
@@ -102,10 +94,10 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 	creds, _ := application.ListCredentials(ctx)
 
 	application.AddCompany(ctx, app.AddCompanyInput{
-		CNPJ:            "45852546000109",
-		Name:            "Company A",
-		CredentialID:    string(creds[0].ID),
-		Environment:     "producao",
+		CNPJ: "45852546000109", 
+		Name: "Company A",
+		CredentialID: string(creds[0].ID),
+		Environment: "producao",
 		SyncStartPolicy: "all",
 	})
 
@@ -131,24 +123,16 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		)
 		VALUES (?, ?, ?, 'prestada', 'exact_prestador', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`
-
+	
 	_, err := db.ExecContext(ctx, insertDoc, "doc-1", "111", now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash1")
-	if err != nil {
-		t.Fatalf("insert doc-1 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert doc-1 err: %v", err) }
 	_, err = db.ExecContext(ctx, insertRel, "rel-1", string(company.ID), "doc-1")
-	if err != nil {
-		t.Fatalf("insert rel-1 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert rel-1 err: %v", err) }
 
 	_, err = db.ExecContext(ctx, insertDoc, "doc-2", "222", now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash2")
-	if err != nil {
-		t.Fatalf("insert doc-2 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert doc-2 err: %v", err) }
 	_, err = db.ExecContext(ctx, insertRel, "rel-2", string(company.ID), "doc-2")
-	if err != nil {
-		t.Fatalf("insert rel-2 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert rel-2 err: %v", err) }
 
 	input := app.ListInput{
 		CNPJ:       "45852546000109",
@@ -186,9 +170,7 @@ func TestAppIntegration_ListEvents(t *testing.T) {
 		);
 	`
 	_, err := db.ExecContext(ctx, insertDoc)
-	if err != nil {
-		t.Fatalf("insert doc err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert doc err: %v", err) }
 
 	insertEvt := `
 		INSERT INTO events (
@@ -199,13 +181,9 @@ func TestAppIntegration_ListEvents(t *testing.T) {
 		);
 	`
 	_, err = db.ExecContext(ctx, insertEvt, "evt-1", "cancelamento", "hash4")
-	if err != nil {
-		t.Fatalf("insert evt-1 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert evt-1 err: %v", err) }
 	_, err = db.ExecContext(ctx, insertEvt, "evt-2", "substituicao", "hash5")
-	if err != nil {
-		t.Fatalf("insert evt-2 err: %v", err)
-	}
+	if err != nil { t.Fatalf("insert evt-2 err: %v", err) }
 
 	events, err := application.ListEventsForDocument(ctx, "doc-events")
 	if err != nil {

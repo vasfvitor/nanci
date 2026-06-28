@@ -8,212 +8,212 @@ import (
 )
 
 type StatusResult struct {
-	CompanyName        string `json:"CompanyName"`
-	CNPJ               string `json:"CNPJ"`
-	Environment        string `json:"Environment"`
-	ConsultationCNPJ   string `json:"ConsultationCNPJ"`
-	CredentialCNPJ     string `json:"CredentialCNPJ"`
-	CredentialNotAfter *time.Time `json:"CredentialNotAfter"`
-	LastProcessedNSU   int64 `json:"LastProcessedNSU"`
-	LastFoundNSU       *int64 `json:"LastFoundNSU"`
-	LastSyncAt         *time.Time `json:"LastSyncAt"`
-	LastRunStatus      string `json:"LastRunStatus"`
-	LastRunStopReason  string `json:"LastRunStopReason"`
-	TotalEmitidas      int64 `json:"TotalEmitidas"`
-	TotalTomadas       int64 `json:"TotalTomadas"`
+	CompanyName        string
+	CNPJ               string
+	Environment        string
+	ConsultationCNPJ   string
+	CredentialCNPJ     string
+	CredentialNotAfter *time.Time
+	LastProcessedNSU   int64
+	LastFoundNSU       *int64
+	LastSyncAt         *time.Time
+	LastRunStatus      string
+	LastRunStopReason  string
+	TotalEmitidas      int64
+	TotalTomadas       int64
 }
 
 type CompanySummary struct {
-	ID                 string `json:"ID"`
-	CNPJ               string `json:"CNPJ"`
-	CNPJRoot           string `json:"CNPJRoot"`
-	Name               string `json:"Name"`
-	CredentialID       string `json:"CredentialID"`
-	CredentialLabel    string `json:"CredentialLabel"`
-	CredentialCertPath string `json:"CredentialCertPath"`
-	Environment        string `json:"Environment"`
-	LastFoundNSU       *int64 `json:"LastFoundNSU"`
-	LastSyncAt         *time.Time `json:"LastSyncAt"`
-	SyncStartPolicy    string `json:"SyncStartPolicy"`
-	SyncStartDate      *time.Time `json:"SyncStartDate"`
-	InitialSyncDoneAt  *time.Time `json:"InitialSyncDoneAt"`
-	LastRunStatus      string `json:"LastRunStatus"`
-	LastRunStopReason  string `json:"LastRunStopReason"`
-	CreatedAt          time.Time `json:"CreatedAt"`
-	UpdatedAt          time.Time `json:"UpdatedAt"`
+	ID                 string
+	CNPJ               string
+	CNPJRoot           string
+	Name               string
+	CredentialID       string
+	CredentialLabel    string
+	CredentialCertPath string
+	Environment        string
+	LastFoundNSU       *int64
+	LastSyncAt         *time.Time
+	SyncStartPolicy    string
+	SyncStartDate      *time.Time
+	InitialSyncDoneAt  *time.Time
+	LastRunStatus      string
+	LastRunStopReason  string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type CredentialSummary struct {
-	ID                string `json:"ID"`
-	Label             string `json:"Label"`
-	CertPath          string `json:"CertPath"`
-	OwnerCNPJ         string `json:"OwnerCNPJ"`
-	OwnerCNPJRoot     string `json:"OwnerCNPJRoot"`
-	FingerprintSHA256 string `json:"FingerprintSHA256"`
-	SubjectName       string `json:"SubjectName"`
-	NotBefore         *time.Time `json:"NotBefore"`
-	NotAfter          *time.Time `json:"NotAfter"`
-	InspectedAt       *time.Time `json:"InspectedAt"`
-	CreatedAt         time.Time `json:"CreatedAt"`
-	UpdatedAt         time.Time `json:"UpdatedAt"`
+	ID                string
+	Label             string
+	CertPath          string
+	OwnerCNPJ         string
+	OwnerCNPJRoot     string
+	FingerprintSHA256 string
+	SubjectName       string
+	NotBefore         *time.Time
+	NotAfter          *time.Time
+	InspectedAt       *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type DocumentRow struct {
-	ID                 string `json:"ID"`
-	ChaveAcesso        string `json:"ChaveAcesso"`
-	IssueDate          time.Time `json:"IssueDate"`
-	Competence         string `json:"Competence"`
-	PrestadorCNPJ      string `json:"PrestadorCNPJ"`
-	PrestadorName      string `json:"PrestadorName"`
-	TomadorCNPJ        string `json:"TomadorCNPJ"`
-	TomadorName        string `json:"TomadorName"`
-	IntermediarioCNPJ  string `json:"IntermediarioCNPJ"`
-	IntermediarioName  string `json:"IntermediarioName"`
-	ServiceValue       int64 `json:"ServiceValue"`
-	ISSValue           int64 `json:"ISSValue"`
-	IRRFValue          int64 `json:"IRRFValue"`
-	INSSValue          int64 `json:"INSSValue"`
-	PISValue           int64 `json:"PISValue"`
-	COFINSValue        int64 `json:"COFINSValue"`
-	CSLLValue          int64 `json:"CSLLValue"`
-	TotalRetentions    int64 `json:"TotalRetentions"`
-	Status             string `json:"Status"`
-	LayoutVersion      string `json:"LayoutVersion"`
-	XMLPath            string `json:"XMLPath"`
-	RawHash            string `json:"RawHash"`
-	ParseWarnings      []string `json:"ParseWarnings"`
-	NFSeNumber         string `json:"NFSeNumber"`
-	ServiceDescription string `json:"ServiceDescription"`
-	CreatedAt          time.Time `json:"CreatedAt"`
-	UpdatedAt          time.Time `json:"UpdatedAt"`
-	RelationID         string `json:"RelationID"`
-	CompanyID          string `json:"CompanyID"`
-	DocumentID         string `json:"DocumentID"`
-	CompanyRole        string `json:"CompanyRole"`
-	VisibilityReason   string `json:"VisibilityReason"`
-	FirstSeenNSU       *int64 `json:"FirstSeenNSU"`
-	LastSeenNSU        *int64 `json:"LastSeenNSU"`
-	FirstSyncedAt      time.Time `json:"FirstSyncedAt"`
-	LastSyncedAt       time.Time `json:"LastSyncedAt"`
-	ViewedAt           *time.Time `json:"ViewedAt"`
+	ID                 string
+	ChaveAcesso        string
+	IssueDate          time.Time
+	Competence         string
+	PrestadorCNPJ      string
+	PrestadorName      string
+	TomadorCNPJ        string
+	TomadorName        string
+	IntermediarioCNPJ  string
+	IntermediarioName  string
+	ServiceValue       int64
+	ISSValue           int64
+	IRRFValue          int64
+	INSSValue          int64
+	PISValue           int64
+	COFINSValue        int64
+	CSLLValue          int64
+	TotalRetentions    int64
+	Status             string
+	LayoutVersion      string
+	XMLPath            string
+	RawHash            string
+	ParseWarnings      []string
+	NFSeNumber         string
+	ServiceDescription string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	RelationID         string
+	CompanyID          string
+	DocumentID         string
+	CompanyRole        string
+	VisibilityReason   string
+	FirstSeenNSU       *int64
+	LastSeenNSU        *int64
+	FirstSyncedAt      time.Time
+	LastSyncedAt       time.Time
+	ViewedAt           *time.Time
 }
 
 type DocumentEvent struct {
-	ID                     string `json:"ID"`
-	Type                   string `json:"Type"`
-	EventAt                *time.Time `json:"EventAt"`
-	ReplacementChaveAcesso string `json:"ReplacementChaveAcesso"`
-	Description            string `json:"Description"`
-	RawXMLPath             string `json:"RawXMLPath"`
+	ID                     string
+	Type                   string
+	EventAt                *time.Time
+	ReplacementChaveAcesso string
+	Description            string
+	RawXMLPath             string
 }
 
 type AddCompanyInput struct {
-	CNPJ            string `json:"CNPJ"`
-	Name            string `json:"Name"`
-	CredentialID    string `json:"CredentialID"`
-	CredentialLabel string `json:"CredentialLabel"`
-	CertPath        string `json:"CertPath"`
-	Environment     string `json:"Environment"` // "producao" | "producao_restrita"
-	SyncStartPolicy string `json:"SyncStartPolicy"` // "all" | "since_date" | "from_now"
-	SyncStartDate   string `json:"SyncStartDate"` // "YYYY-MM-DD" when SyncStartPolicy is since_date
+	CNPJ            string
+	Name            string
+	CredentialID    string
+	CredentialLabel string
+	CertPath        string
+	Environment     string // "producao" | "producao_restrita"
+	SyncStartPolicy string // "all" | "since_date" | "from_now"
+	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
 }
 
 type UpdateCompanyInput struct {
-	CNPJ            string `json:"CNPJ"`
-	Name            string `json:"Name"`
-	Environment     string `json:"Environment"` // "producao" | "producao_restrita"
-	SyncStartPolicy string `json:"SyncStartPolicy"` // "all" | "since_date" | "from_now"
-	SyncStartDate   string `json:"SyncStartDate"` // "YYYY-MM-DD" when SyncStartPolicy is since_date
+	CNPJ            string
+	Name            string
+	Environment     string // "producao" | "producao_restrita"
+	SyncStartPolicy string // "all" | "since_date" | "from_now"
+	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
 }
 
 type AddCredentialInput struct {
-	Label    string `json:"Label"`
-	CertPath string `json:"CertPath"`
+	Label    string
+	CertPath string
 }
 
 type UpdateCredentialPathInput struct {
-	CredentialID string `json:"CredentialID"`
-	CertPath     string `json:"CertPath"`
+	CredentialID string
+	CertPath     string
 }
 
 type AssignCredentialInput struct {
-	CompanyCNPJ  string `json:"CompanyCNPJ"`
-	CredentialID string `json:"CredentialID"`
+	CompanyCNPJ  string
+	CredentialID string
 }
 
 type UpdateCredentialDataInput struct {
-	CredentialID string `json:"CredentialID"`
-	Label        string `json:"Label"`
+	CredentialID string
+	Label        string
 }
 
 type ListInput struct {
-	CNPJ       string `json:"CNPJ"`
-	Competence string `json:"Competence"`
-	Direction  string `json:"Direction"`
-	OnlyUnread bool `json:"OnlyUnread"`
+	CNPJ       string
+	Competence string
+	Direction  string
+	OnlyUnread bool
 }
 
 type PullInput struct {
-	CNPJ string `json:"CNPJ"`
-	Mode string `json:"Mode"`
+	CNPJ string
+	Mode string
 }
 
 type PullResult struct {
-	CompanyName              string `json:"CompanyName"`
-	CNPJ                     string `json:"CNPJ"`
-	CredentialLabel          string `json:"CredentialLabel"`
-	CredentialCNPJ           string `json:"CredentialCNPJ"`
-	ConsultationBasis        string `json:"ConsultationBasis"`
-	Status                   string `json:"Status"`
-	StopReason               string `json:"StopReason"`
-	LastProcessedNSU         int64 `json:"LastProcessedNSU"`
-	LastFoundNSU             *int64 `json:"LastFoundNSU"`
-	EmptyStreak              int `json:"EmptyStreak"`
-	DocumentsFound           int `json:"DocumentsFound"`
-	EventsFound              int `json:"EventsFound"`
-	DocumentsSaved           int `json:"DocumentsSaved"`
-	EventsSaved              int `json:"EventsSaved"`
-	DocumentsSkippedByPolicy int `json:"DocumentsSkippedByPolicy"`
-	EventsSkippedByPolicy    int `json:"EventsSkippedByPolicy"`
-	Errors                   int `json:"Errors"`
-	Duration                 time.Duration `json:"Duration"`
+	CompanyName              string
+	CNPJ                     string
+	CredentialLabel          string
+	CredentialCNPJ           string
+	ConsultationBasis        string
+	Status                   string
+	StopReason               string
+	LastProcessedNSU         int64
+	LastFoundNSU             *int64
+	EmptyStreak              int
+	DocumentsFound           int
+	EventsFound              int
+	DocumentsSaved           int
+	EventsSaved              int
+	DocumentsSkippedByPolicy int
+	EventsSkippedByPolicy    int
+	Errors                   int
+	Duration                 time.Duration
 }
 
 type QueryNFSeInput struct {
-	CompanyCNPJ string `json:"CompanyCNPJ"`
-	ChaveAcesso string `json:"ChaveAcesso"`
+	CompanyCNPJ string
+	ChaveAcesso string
 }
 
 type ResetSyncInput struct {
-	CompanyCNPJ string `json:"CompanyCNPJ"`
+	CompanyCNPJ string
 }
 
 type ExportDocumentsInput struct {
-	CNPJ        string `json:"CNPJ"`
-	Competence  string `json:"Competence"`
-	Direction   string `json:"Direction"`
-	Format      string `json:"Format"`
-	OutPath     string `json:"OutPath"`
-	Incremental bool `json:"Incremental"`
+	CNPJ        string
+	Competence  string
+	Direction   string
+	Format      string
+	OutPath     string
+	Incremental bool
 }
 
 type ExportDANFSeInput struct {
-	CNPJ        string `json:"CNPJ"`
-	ChaveAcesso string `json:"ChaveAcesso"`
-	OutPath     string `json:"OutPath"`
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
 }
 
 type ExportXMLInput struct {
-	CNPJ        string `json:"CNPJ"`
-	ChaveAcesso string `json:"ChaveAcesso"`
-	OutPath     string `json:"OutPath"`
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
 }
 
 type ExportResult struct {
-	OutPath       string `json:"OutPath"`
-	Format        string `json:"Format"`
-	Incremental   bool `json:"Incremental"`
-	ExportedCount int `json:"ExportedCount"`
+	OutPath       string
+	Format        string
+	Incremental   bool
+	ExportedCount int
 }
 
 func CompanySummaries(companies []nfse.Company) []CompanySummary {

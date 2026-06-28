@@ -11,6 +11,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
+
+
 type QueryNFSeInput struct {
 	CNPJ        string
 	ChaveAcesso string

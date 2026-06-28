@@ -24,10 +24,10 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 
 	docRepo := store.NewDocumentRepository(db)
 	application := &app.App{
-		CompanyRepo:     store.NewCompanyRepository(db),
-		CredentialRepo:  store.NewCredentialRepository(db),
-		SyncRepo:        store.NewSyncRepository(db),
-		DocumentReader:  docRepo,
+		CompanyRepo:    store.NewCompanyRepository(db),
+		CredentialRepo: store.NewCredentialRepository(db),
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: docRepo,
 		DocumentTracker: docRepo,
 	}
 	return application, db
