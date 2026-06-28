@@ -22,6 +22,11 @@ var newSyncRunner = func(repo SyncRepository, client *adn.Client, xmlStore files
 	return syncservice.NewSyncService(repo, client, xmlStore, log)
 }
 
+var (
+	loadPKCS12   = cert.LoadPKCS12
+	newADNClient = adn.NewClient
+)
+
 // PullInput is the input for the Pull use case.
 type PullInput struct {
 	CNPJ string
@@ -94,7 +99,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	// 3. Load TLS certificate
 	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
-	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
+	loadedCert, err := loadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
 	}
@@ -118,7 +123,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 4. Build ADN client
-	apiClient, err := adn.NewClient(adn.ClientConfig{
+	apiClient, err := newADNClient(adn.ClientConfig{
 		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 	})
