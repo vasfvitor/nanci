@@ -138,8 +138,8 @@ func TestClassifyCompanyParticipation(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		cnpj        string
+		name           string
+		cnpj           string
 		expectedRole   nfse.CompanyRole
 		expectedReason nfse.VisibilityReason
 	}{
