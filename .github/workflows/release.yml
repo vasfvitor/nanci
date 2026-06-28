@@ -133,7 +133,7 @@ jobs:
           mv wails.tmp.json wails.json
 
           echo "Building Wails app with Garble obfuscation..."
-          wails build -platform windows/amd64 -nsis -m -obfuscated -garbleargs "-literals -tiny -seed=random" \
+          wails build -platform windows/amd64 -nsis -m -obfuscated -garbleargs "-literals -tiny" \
             -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
 
           test -s build/bin/nanci-desktop-amd64-installer.exe
