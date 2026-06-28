@@ -11,8 +11,7 @@
       <q-list>
         <q-item tag="label" class="q-px-none">
           <q-item-section>
-            <q-item-label class="text-weight-medium">Modo Escuro (Dark Mode)</q-item-label>
-            <q-item-label caption>Ajuste o tema de cores do aplicativo</q-item-label>
+            <q-item-label class="text-weight-medium">Tema</q-item-label>
           </q-item-section>
           <q-item-section side>
             <q-select
@@ -31,7 +30,7 @@
         <q-item v-ripple tag="label" class="q-px-none">
           <q-item-section>
             <q-item-label class="text-weight-medium">Modo Debug</q-item-label>
-            <q-item-label caption>Habilita logs detalhados e ações de desenvolvedor (ex: Resetar NSU)</q-item-label>
+            <q-item-label caption>Habilita logs detalhados e ações avaçandas (ex: Resetar NSU)</q-item-label>
           </q-item-section>
           <q-item-section side>
             <q-toggle
