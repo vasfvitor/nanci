@@ -82,7 +82,7 @@ jobs:
   build-desktop:
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
