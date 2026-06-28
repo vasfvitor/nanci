@@ -82,7 +82,7 @@ jobs:
   build-desktop:
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -115,15 +115,14 @@ jobs:
         id: cache-go-bins
         uses: actions/cache@v4
         with:
-          path: ~\go\bin
-          key: ${{ runner.os }}-go-bins-wails-2.12.0-garble
+          path: ~/go/bin
+          key: ${{ runner.os }}-go-bins-wails-2.12.0
 
-      - name: Install Wails CLI & Garble
+      - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
-          go install mvdan.cc/garble@latest
 
       - name: Build Desktop App
         working-directory: ./internal/desktop
@@ -141,8 +140,8 @@ jobs:
           jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.tmp.json
           mv wails.tmp.json wails.json
 
-          echo "Building Wails app with Garble obfuscation..."
-          wails build -platform windows/amd64 -nsis -m -obfuscated -garbleargs "-literals -tiny" \
+          echo "Building Wails app..."
+          wails build -platform windows/amd64 -nsis -m \
             -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
 
           test -s build/bin/nanci-desktop-amd64-installer.exe
