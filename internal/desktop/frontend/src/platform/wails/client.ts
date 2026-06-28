@@ -90,6 +90,11 @@ function asBoolean(value: unknown) {
   return typeof value === 'boolean' ? value : false
 }
 
+function asNullableNumber(value: unknown) {
+  if (value === null || value === undefined) return null
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
 function asRawRecord(value: unknown): RawRecord {
   return value && typeof value === 'object' ? (value as RawRecord) : {}
 }
@@ -109,10 +114,11 @@ export function mapCompanySummary(raw: unknown): CompanySummary {
     CredentialLabel: asString(item['CredentialLabel']),
     CredentialCertPath: asString(item['CredentialCertPath']),
     Environment: asString(item['Environment']),
-    LastNSU: asNumber(item['LastNSU']),
-    LastFoundNSU: asNumber(item['LastFoundNSU']),
-    LastFoundNSUValid: asBoolean(item['LastFoundNSUValid']),
+    LastFoundNSU: asNullableNumber(item['LastFoundNSU']),
     LastSyncAt: item['LastSyncAt'] as CompanySummary['LastSyncAt'],
+    SyncStartPolicy: asString(item['SyncStartPolicy']) as CompanySummary['SyncStartPolicy'],
+    SyncStartDate: item['SyncStartDate'] as CompanySummary['SyncStartDate'],
+    InitialSyncDoneAt: item['InitialSyncDoneAt'] as CompanySummary['InitialSyncDoneAt'],
     LastRunStatus: asString(item['LastRunStatus']),
     LastRunStopReason: asString(item['LastRunStopReason']),
     CreatedAt: item['CreatedAt'] as CompanySummary['CreatedAt'],
@@ -173,10 +179,8 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     DocumentID: asString(item['DocumentID']),
     CompanyRole: asString(item['CompanyRole']),
     VisibilityReason: asString(item['VisibilityReason']),
-    FirstSeenNSU: asNumber(item['FirstSeenNSU']),
-    LastSeenNSU: asNumber(item['LastSeenNSU']),
-    FirstSeenNSUValid: asBoolean(item['FirstSeenNSUValid']),
-    LastSeenNSUValid: asBoolean(item['LastSeenNSUValid']),
+    FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
+    LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
     FirstSyncedAt: item['FirstSyncedAt'] as DocumentRow['FirstSyncedAt'],
     LastSyncedAt: item['LastSyncedAt'] as DocumentRow['LastSyncedAt'],
     ViewedAt: item['ViewedAt'] as DocumentRow['ViewedAt'],
@@ -188,7 +192,7 @@ export function mapDocumentEvent(raw: unknown): DocumentEvent {
   return {
     ID: asString(item['ID']),
     Type: asString(item['Type']),
-    EventAt: asString(item['EventAt']),
+    EventAt: item['EventAt'] as DocumentEvent['EventAt'],
     ReplacementChaveAcesso: asString(item['ReplacementChaveAcesso']),
     Description: asString(item['Description']),
     RawXMLPath: asString(item['RawXMLPath']),
@@ -207,7 +211,15 @@ export const desktopClient = {
   },
   async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const extension = input.Format === 'csv' ? '.csv' : input.Format === 'xlsx' ? '.xlsx' : '.zip'
-    const defaultName = input.BaseName || `export_${input.CNPJ}_${Date.now()}${extension}`
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    const h = String(now.getHours()).padStart(2, '0')
+    const min = String(now.getMinutes()).padStart(2, '0')
+    const s = String(now.getSeconds()).padStart(2, '0')
+    const timestamp = `${y}_${m}_${d}_${h}${min}${s}`
+    const defaultName = input.BaseName || `nanci_exportacao_${input.CNPJ}_${timestamp}${extension}`
     const outPath = input.OutPath || await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
     if (!outPath) return null
 

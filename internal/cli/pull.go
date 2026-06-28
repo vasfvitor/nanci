@@ -15,11 +15,11 @@ var pullCmd = &cobra.Command{
 	Use:   "pull",
 	Short: "Sincroniza documentos fiscais da API ADN",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		result, err := application.Pull(cmd.Context(), app.PullInput{
 			CNPJ: pullCNPJ,
@@ -37,8 +37,10 @@ var pullCmd = &cobra.Command{
 		}
 		fmt.Println()
 		fmt.Printf("Último NSU consultado: %d\n", result.LastProcessedNSU)
-		if result.LastFoundNSUValid {
-			fmt.Printf("Último NSU com documento: %d\n", result.LastFoundNSU)
+		if result.LastFoundNSU != nil {
+			fmt.Printf("Último NSU com documento: %d\n", *result.LastFoundNSU)
+		} else {
+			fmt.Printf("Último NSU com documento: -\n")
 		}
 		fmt.Printf("Documentos encontrados: %d | Erros: %d\n", result.DocumentsFound, result.Errors)
 

@@ -43,10 +43,11 @@ func (s *captureXMLStore) Get(string) ([]byte, error) { return nil, nil }
 
 func TestPullUsesInjectedXMLStore(t *testing.T) {
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
 	company := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
@@ -76,7 +77,6 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	xmlStore := &captureXMLStore{}
 	application, err := New(Dependencies{
 		Log:                slog.New(slog.DiscardHandler),
-		DB:                 db,
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
@@ -89,9 +89,6 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
 	originalLoadPKCS12 := loadPKCS12
 	originalNewADNClient := newADNClient
@@ -121,7 +118,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 
 	var receivedStore files.XMLStore
-	newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
+	newSyncRunner = func(repo SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
 		receivedStore = store
 		return syncRunnerStub{
 			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {

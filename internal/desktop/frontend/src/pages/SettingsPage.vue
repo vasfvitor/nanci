@@ -28,7 +28,7 @@
           </q-item-section>
         </q-item>
         <q-separator spaced />
-        <q-item tag="label" v-ripple class="q-px-none">
+        <q-item v-ripple tag="label" class="q-px-none">
           <q-item-section>
             <q-item-label class="text-weight-medium">Modo Debug</q-item-label>
             <q-item-label caption>Habilita logs detalhados e ações de desenvolvedor (ex: Resetar NSU)</q-item-label>

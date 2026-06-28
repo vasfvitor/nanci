@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -25,13 +24,13 @@ var credentialAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adiciona uma nova credencial",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
-		if err := application.AddCredential(context.Background(), app.AddCredentialInput{
+		if err := application.AddCredential(cmd.Context(), app.AddCredentialInput{
 			Label:    credentialLabel,
 			CertPath: credentialPath,
 		}); err != nil {
@@ -46,13 +45,13 @@ var credentialListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lista todas as credenciais",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
-		credentials, err := application.ListCredentials(context.Background())
+		credentials, err := application.ListCredentials(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("erro ao listar credenciais: %w", err)
 		}
@@ -80,13 +79,13 @@ var credentialUpdatePathCmd = &cobra.Command{
 	Use:   "update-path",
 	Short: "Atualiza o caminho do certificado de uma credencial",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
-		if err := application.UpdateCredentialPath(context.Background(), app.UpdateCredentialPathInput{
+		if err := application.UpdateCredentialPath(cmd.Context(), app.UpdateCredentialPathInput{
 			CredentialID: credentialID,
 			CertPath:     credentialPath,
 		}); err != nil {

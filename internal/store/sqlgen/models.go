@@ -9,31 +9,31 @@ import (
 )
 
 type Company struct {
-	ID                 string
-	Cnpj               string
-	CnpjRoot           string
-	Name               string
-	CredentialID       sql.NullString
-	CredentialLabel    sql.NullString
-	CredentialCertPath sql.NullString
-	Environment        string
-	LastNsu            int64
-	CreatedAt          string
-	UpdatedAt          string
+	ID                     string
+	Cnpj                   string
+	CnpjRoot               string
+	Name                   string
+	CredentialID           sql.NullString
+	CredentialLabel        sql.NullString
+	CredentialCertPath     sql.NullString
+	Environment            string
+	SyncStartPolicy        string
+	SyncStartDate          sql.NullString
+	InitialSyncCompletedAt sql.NullString
+	CreatedAt              string
+	UpdatedAt              string
 }
 
 type CompanyDocument struct {
-	RelationID        string
-	CompanyID         string
-	DocumentID        string
-	CompanyRole       string
-	VisibilityReason  string
-	FirstSeenNsu      int64
-	LastSeenNsu       int64
-	FirstSeenNsuValid int64
-	LastSeenNsuValid  int64
-	FirstSyncedAt     string
-	LastSyncedAt      string
+	RelationID       string
+	CompanyID        string
+	DocumentID       string
+	CompanyRole      string
+	VisibilityReason string
+	FirstSeenNsu     sql.NullInt64
+	LastSeenNsu      sql.NullInt64
+	FirstSyncedAt    string
+	LastSyncedAt     string
 }
 
 type Credential struct {
@@ -87,7 +87,6 @@ type Event struct {
 	ChaveAcesso            string
 	Type                   string
 	EventAt                sql.NullString
-	EventAtValid           int64
 	ReplacementChaveAcesso string
 	Description            string
 	RawXmlPath             string

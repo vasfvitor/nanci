@@ -3,6 +3,7 @@ package app_test
 import (
 	"archive/zip"
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"log/slog"
@@ -17,26 +18,29 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
+func int64Ptr(v int64) *int64 { return &v }
+
 type credentialProviderStub struct{}
 
 func (credentialProviderStub) GetCertPassword(context.Context, app.CertPasswordRequest) (string, error) {
 	return "secret", nil
 }
 
-func newTestApp(t *testing.T) (*app.App, *store.CompanyRepository, *store.CredentialRepository, string) {
+func newTestApp(t *testing.T) (*app.App, app.CompanyRepository, app.CredentialRepository, string, *sql.DB) {
 	t.Helper()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 
 	companyRepo := store.NewCompanyRepository(db)
 	credentialRepo := store.NewCredentialRepository(db)
 	application, err := app.New(app.Dependencies{
-		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
-		DB:                 db,
+		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
@@ -49,17 +53,14 @@ func newTestApp(t *testing.T) (*app.App, *store.CompanyRepository, *store.Creden
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
-	return application, companyRepo, credentialRepo, dataDir
+	return application, companyRepo, credentialRepo, dataDir, db
 }
 
 func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 	t.Parallel()
 
-	application, companyRepo, credentialRepo, _ := newTestApp(t)
+	application, companyRepo, credentialRepo, _, _ := newTestApp(t)
 	credential := &nfse.Credential{
 		ID:            "credential-1",
 		Label:         "Certificate",
@@ -75,7 +76,7 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 		CNPJ:         "11222333000181",
 		Name:         "Company",
 		CredentialID: string(credential.ID),
-		Environment:  string(nfse.EnvironmentProduction),
+		Environment:  nfse.EnvironmentProduction,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -99,41 +100,10 @@ func TestAddCompanyInheritsExistingCredentialMetadata(t *testing.T) {
 	}
 }
 
-func TestNewRuntimeBuildsProductionDependencies(t *testing.T) {
-	t.Parallel()
-
-	dataDir := t.TempDir()
-	application, err := app.NewRuntime(app.RuntimeOptions{
-		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)),
-		CredentialProvider: credentialProviderStub{},
-		DataDir:            dataDir,
-		RunMigrations:      true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		application.Close()
-	})
-
-	if application.DataDir != dataDir {
-		t.Fatalf("DataDir = %q, want %q", application.DataDir, dataDir)
-	}
-	if _, err := os.Stat(filepath.Join(dataDir, "nanci-v1.db")); err != nil {
-		t.Fatalf("expected runtime database to exist: %v", err)
-	}
-	if err := application.AddCredential(context.Background(), app.AddCredentialInput{
-		Label:    "Credential",
-		CertPath: writeTempCertFile(t),
-	}); err != nil {
-		t.Fatalf("expected runtime app to persist credential: %v", err)
-	}
-}
-
 func TestStatusReturnsCompanyNotFound(t *testing.T) {
 	t.Parallel()
 
-	application, _, _, _ := newTestApp(t)
+	application, _, _, _, _ := newTestApp(t)
 
 	_, err := application.Status(context.Background(), "11222333000181")
 	if err == nil {
@@ -147,7 +117,7 @@ func TestStatusReturnsCompanyNotFound(t *testing.T) {
 func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 	t.Parallel()
 
-	application, companyRepo, credentialRepo, _ := newTestApp(t)
+	application, companyRepo, credentialRepo, _, db := newTestApp(t)
 	credential := &nfse.Credential{
 		ID:            "credential-1",
 		Label:         "Certificate",
@@ -175,7 +145,6 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		CompanyID:        company.ID,
 		Environment:      company.Environment,
 		ConsultationCNPJ: company.CNPJ,
-		LegacyLastNSU:    42,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -185,8 +154,7 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		Environment:           company.Environment,
 		ConsultationCNPJ:      company.CNPJ,
 		LastProcessedNSU:      42,
-		LastFoundNSU:          29,
-		LastFoundNSUValid:     true,
+		LastFoundNSU:          int64Ptr(29),
 		LastEmptyStreak:       3,
 		CheckedCount:          1,
 		DocumentsFound:        1,
@@ -196,10 +164,9 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		MarkSuccess:           true,
 	})
 	// PersistProgress requires an existing run; ignore error and seed directly below.
-	if _, err := application.DB.ExecContext(context.Background(), `
-		UPDATE companies SET last_nsu = 42 WHERE id = ?;
+	if _, err := db.ExecContext(context.Background(), `
 		UPDATE sync_state SET last_checked_nsu = 42, last_found_nsu = 29, last_empty_streak = 3 WHERE company_id = ?;
-	`, string(company.ID), string(company.ID)); err != nil {
+	`, string(company.ID)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -207,12 +174,9 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stored, err := companyRepo.CompanyByCNPJ(context.Background(), company.CNPJ)
+	_, err := companyRepo.CompanyByCNPJ(context.Background(), company.CNPJ)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if stored.LastNSU != 0 {
-		t.Fatalf("LastNSU = %d, want 0", stored.LastNSU)
 	}
 	snapshot, err := application.SyncRepo.LatestSyncSnapshot(context.Background(), company.ID, company.Environment, company.CNPJ)
 	if err != nil {
@@ -226,7 +190,7 @@ func TestResetSyncStateClearsCursorWithoutDeletingDocuments(t *testing.T) {
 func TestUpdateCredentialPathReturnsCredentialNotFound(t *testing.T) {
 	t.Parallel()
 
-	application, _, _, _ := newTestApp(t)
+	application, _, _, _, _ := newTestApp(t)
 
 	err := application.UpdateCredentialPath(context.Background(), app.UpdateCredentialPathInput{
 		CredentialID: "missing",
@@ -244,18 +208,19 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	xmlStore := &stubXMLStore{
 		data: map[string][]byte{
 			"hash-1": []byte("<NFSe>stub</NFSe>"),
 		},
 	}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
-		DB:             db,
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -273,9 +238,6 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
 	outPath := filepath.Join(t.TempDir(), "docs.zip")
 	if _, err := application.ExportZIP(context.Background(), app.ExportInput{
@@ -293,7 +255,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	if len(reader.File) != 1 {
 		t.Fatalf("expected 1 zip entry, got %d", len(reader.File))
@@ -302,7 +264,7 @@ func TestExportZIPUsesInjectedXMLStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	content, err := io.ReadAll(rc)
 	if err != nil {
@@ -317,10 +279,11 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
 	xmlStore := &stubXMLStore{
 		data: map[string][]byte{
 			"hash-1": []byte("<NFSe>stub</NFSe>"),
@@ -328,8 +291,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	}
 	renderer := &stubDANFSeRenderer{pdf: []byte("%PDF-1.7 stub")}
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
-		DB:             db,
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -347,9 +309,6 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
 	outPath := filepath.Join(t.TempDir(), "danfse.pdf")
 	if err := application.ExportDANFSe(context.Background(), app.ExportDANFSeInput{
@@ -363,7 +322,7 @@ func TestExportDANFSeUsesStoredXMLAndInjectedRenderer(t *testing.T) {
 	if got := string(renderer.inputs[0]); got != "<NFSe>stub</NFSe>" {
 		t.Fatalf("renderer input = %q", got)
 	}
-	written, err := os.ReadFile(outPath)
+	written, err := os.ReadFile(outPath) //nolint:gosec // intentional: test file reading
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,13 +335,13 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
-		DB:             db,
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -401,9 +360,6 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
 	outPath := filepath.Join(t.TempDir(), "danfses.zip")
 	_, err = application.ExportDANFSeZIP(context.Background(), app.ExportInput{
@@ -425,13 +381,13 @@ func TestExportDANFSeZIPPreservesRendererFailures(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
 	application, err := app.New(app.Dependencies{
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
-		DB:             db,
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
 		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
 		CredentialRepo: &stubCredentialRepo{},
 		SyncRepo:       store.NewSyncRepository(db),
@@ -450,9 +406,6 @@ func TestExportDANFSeZIPPreservesRendererFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		application.Close()
-	})
 
 	outPath := filepath.Join(t.TempDir(), "danfses.zip")
 	_, err = application.ExportDANFSeZIP(context.Background(), app.ExportInput{
@@ -474,15 +427,15 @@ func TestNewRejectsMissingDocumentReader(t *testing.T) {
 	t.Parallel()
 
 	dataDir := t.TempDir()
-	db, err := store.OpenDB(filepath.Join(dataDir, "test.db"), true)
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 
 	_, err = app.New(app.Dependencies{
 		Log:                slog.Default(),
-		DB:                 db,
 		CompanyRepo:        store.NewCompanyRepository(db),
 		CredentialRepo:     store.NewCredentialRepository(db),
 		SyncRepo:           store.NewSyncRepository(db),
@@ -539,7 +492,7 @@ func (s *stubCompanyRepo) ListCompanies(context.Context) ([]nfse.Company, error)
 func (s *stubCompanyRepo) AssignCredential(context.Context, nfse.CompanyID, nfse.CredentialID) error {
 	return nil
 }
-func (s *stubCompanyRepo) UpdateCompany(context.Context, nfse.CompanyID, string, nfse.Environment) error {
+func (s *stubCompanyRepo) UpdateCompany(context.Context, *nfse.Company) error {
 	return nil
 }
 
@@ -571,8 +524,12 @@ func (s *stubDocumentReader) CompanyDocumentByChave(context.Context, nfse.Compan
 	return s.docByChave, nil
 }
 
-func (s *stubDocumentReader) ListEventsByDocument(context.Context, string) ([]nfse.Event, error) {
+func (s *stubDocumentReader) ListEventsByDocument(ctx context.Context, docID string) ([]nfse.Event, error) {
 	return nil, nil
+}
+
+func (s *stubDocumentReader) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
+	return map[string]int64{}, nil
 }
 
 type stubDANFSeRenderer struct {
@@ -587,4 +544,214 @@ func (s *stubDANFSeRenderer) Render(xmlData []byte) ([]byte, error) {
 		return nil, s.err
 	}
 	return s.pdf, nil
+}
+
+func TestExportCSV_Success(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+				CompanyRole: "prestada",
+			},
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "docs.csv")
+	res, err := application.ExportCSV(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.ExportedCount != 1 {
+		t.Fatalf("expected 1 exported document, got %d", res.ExportedCount)
+	}
+
+	content, err := os.ReadFile(outPath) //nolint:gosec // intentional test read
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "chave-1") {
+		t.Fatalf("expected CSV to contain 'chave-1'")
+	}
+}
+
+func TestExportXLSX_Success(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docs: []nfse.CompanyDocument{
+			{
+				Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+				CompanyRole: "prestada",
+			},
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "docs.xlsx")
+	res, err := application.ExportXLSX(context.Background(), app.ExportInput{
+		CNPJ:    "11222333000181",
+		OutPath: outPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.ExportedCount != 1 {
+		t.Fatalf("expected 1 exported document, got %d", res.ExportedCount)
+	}
+
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected XLSX file to exist, got error: %v", err)
+	}
+}
+
+func TestExportXML_Success(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	xmlStore := &stubXMLStore{
+		data: map[string][]byte{
+			"hash-1": []byte("<NFSe>stub</NFSe>"),
+		},
+	}
+
+	application, err := app.New(app.Dependencies{
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:    &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo: &stubCredentialRepo{},
+		SyncRepo:       store.NewSyncRepository(db),
+		DocumentReader: &stubDocumentReader{docByChave: &nfse.CompanyDocument{
+			Document:    nfse.Document{ChaveAcesso: "chave-1", Competence: "2026-06", RawHash: "hash-1"},
+			CompanyRole: "prestada",
+		}},
+		DocumentTracker:    store.NewDocumentRepository(db),
+		XMLStore:           xmlStore,
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "doc.xml")
+	err = application.ExportXML(context.Background(), app.ExportXMLInput{
+		CNPJ:        "11222333000181",
+		ChaveAcesso: "chave-1",
+		OutPath:     outPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(outPath) //nolint:gosec // intentional test read
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "<NFSe>stub</NFSe>" {
+		t.Fatalf("expected XML content to be '<NFSe>stub</NFSe>', got: %s", string(content))
+	}
+}
+
+type stubDocumentTracker struct {
+	count int
+}
+
+func (s *stubDocumentTracker) ListPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) ([]nfse.CompanyDocument, error) {
+	return nil, nil
+}
+
+func (s *stubDocumentTracker) CountPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) (int, error) {
+	return s.count, nil
+}
+
+func (s *stubDocumentTracker) MarkDocumentsExported(ctx context.Context, companyID nfse.CompanyID, kind string, marks []nfse.DocumentExportMark) error {
+	return nil
+}
+
+func (s *stubDocumentTracker) MarkDocumentsViewed(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) (int, error) {
+	return 0, nil
+}
+
+func TestCountPendingExportDocuments(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	application, err := app.New(app.Dependencies{
+		Log:                slog.New(slog.NewTextHandler(io.Discard, nil)), //nolint:sloglint
+		CompanyRepo:        &stubCompanyRepo{company: &nfse.Company{ID: "company-1", CNPJ: "11222333000181", Name: "Company"}},
+		CredentialRepo:     &stubCredentialRepo{},
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentReader:     &stubDocumentReader{},
+		DocumentTracker:    &stubDocumentTracker{count: 42},
+		XMLStore:           &stubXMLStore{},
+		DataDir:            dataDir,
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err := application.CountPendingExportDocuments(context.Background(), app.ExportInput{
+		CNPJ: "11222333000181",
+	}, "csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if count != 42 {
+		t.Fatalf("expected 42 pending documents, got %d", count)
+	}
 }

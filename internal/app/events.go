@@ -3,12 +3,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 type EventView struct {
 	ID                     string
 	Type                   string
-	EventAt                string
+	EventAt                *time.Time
 	ReplacementChaveAcesso string
 	Description            string
 	RawXMLPath             string
@@ -22,15 +23,10 @@ func (a *App) ListEventsForDocument(ctx context.Context, documentID string) ([]E
 
 	views := make([]EventView, len(events))
 	for i, e := range events {
-		eventAtStr := ""
-		if e.EventAtValid {
-			eventAtStr = e.EventAt.Format("2006-01-02 15:04:05")
-		}
-
 		views[i] = EventView{
 			ID:                     e.ID,
 			Type:                   string(e.Type),
-			EventAt:                eventAtStr,
+			EventAt:                e.EventAt,
 			ReplacementChaveAcesso: e.ReplacementChaveAcesso,
 			Description:            e.Description,
 			RawXMLPath:             e.RawXMLPath,

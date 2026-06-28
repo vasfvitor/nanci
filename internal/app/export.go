@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
@@ -66,7 +67,7 @@ func (a *App) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, e
 // ExportDANFSeZIP writes one DANFSe PDF per matching document into a ZIP archive.
 func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return a.bulkExport(ctx, input, "danfse", func(docs []nfse.CompanyDocument, tempPath string) error {
-		zipFile, err := os.Create(tempPath)
+		zipFile, err := os.Create(tempPath) //nolint:gosec // intentional: creating temp export file in user directory
 		if err != nil {
 			return fmt.Errorf("criar arquivo ZIP temporário: %w", err)
 		}
@@ -93,7 +94,12 @@ func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportRes
 			if roleFolder == "" || roleFolder == "none" {
 				roleFolder = "sem-papel-fiscal"
 			}
-			entryPath := filepath.ToSlash(filepath.Join(doc.Competence, roleFolder, string(doc.ChaveAcesso)+".pdf"))
+			var entryPath string
+			if doc.Competence != "" {
+				entryPath = filepath.ToSlash(filepath.Join(doc.Competence, roleFolder, string(doc.ChaveAcesso)+".pdf"))
+			} else {
+				entryPath = filepath.ToSlash(filepath.Join(roleFolder, string(doc.ChaveAcesso)+".pdf"))
+			}
 
 			writer, err := zipWriter.Create(entryPath)
 			if err != nil {
@@ -129,6 +135,10 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 		Direction:  input.Direction,
 	}
 
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+		filter.IssueDateGTE = company.SyncStartDate
+	}
+
 	var docs []nfse.CompanyDocument
 	if input.Incremental {
 		docs, err = a.DocumentTracker.ListPendingExportDocuments(ctx, company.ID, filter, kind)
@@ -145,8 +155,9 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 		return res, nil
 	}
 
-	tempPath := input.OutPath + ".tmp"
-	defer os.Remove(tempPath)
+	ext := filepath.Ext(input.OutPath)
+	tempPath := strings.TrimSuffix(input.OutPath, ext) + ".tmp" + ext
+	defer func() { _ = os.Remove(tempPath) }()
 
 	if err := generator(docs, tempPath); err != nil {
 		return res, fmt.Errorf("gerar arquivo: %w", err)
@@ -197,11 +208,11 @@ func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
 
 	tempPath := input.OutPath + ".tmp"
 	if err := os.WriteFile(tempPath, pdf, 0o644); err != nil { // #nosec G306
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return fmt.Errorf("gravar DANFSe temp: %w", err)
 	}
 	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return fmt.Errorf("mover DANFSe temp: %w", err)
 	}
 
@@ -246,11 +257,11 @@ func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
 
 	tempPath := input.OutPath + ".tmp"
 	if err := os.WriteFile(tempPath, xmlData, 0o644); err != nil { // #nosec G306
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return fmt.Errorf("gravar XML temp: %w", err)
 	}
 	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return fmt.Errorf("mover XML temp: %w", err)
 	}
 
@@ -275,6 +286,10 @@ func (a *App) CountPendingExportDocuments(ctx context.Context, input ExportInput
 	filter := nfse.DocumentFilter{
 		Competence: input.Competence,
 		Direction:  input.Direction,
+	}
+
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+		filter.IssueDateGTE = company.SyncStartDate
 	}
 	return a.DocumentTracker.CountPendingExportDocuments(ctx, company.ID, filter, kind)
 }

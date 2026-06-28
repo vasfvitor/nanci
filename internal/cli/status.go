@@ -14,11 +14,11 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Mostra um resumo da situação da empresa",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		result, err := application.Status(cmd.Context(), statusCNPJ)
 		if err != nil {
@@ -29,8 +29,8 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("Ambiente: %s\n", result.Environment)
 		fmt.Printf("CNPJ consultado: %s\n", cnpj.Format(result.ConsultationCNPJ))
 		fmt.Printf("Último NSU consultado: %d\n", result.LastProcessedNSU)
-		if result.LastFoundNSUValid {
-			fmt.Printf("Último NSU com documento: %d\n", result.LastFoundNSU)
+		if result.LastFoundNSU != nil {
+			fmt.Printf("Último NSU com documento: %d\n", *result.LastFoundNSU)
 		} else {
 			fmt.Printf("Último NSU com documento: -\n")
 		}

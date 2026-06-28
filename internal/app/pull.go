@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	syncservice "github.com/vasfvitor/nanci/internal/service/sync"
@@ -17,7 +18,7 @@ type syncRunner interface {
 	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
 }
 
-var newSyncRunner = func(repo nfse.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
+var newSyncRunner = func(repo SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
 	return syncservice.NewSyncService(repo, client, xmlStore, log)
 }
 
@@ -29,21 +30,24 @@ type PullInput struct {
 
 // PullResult summarises a completed sync run.
 type PullResult struct {
-	CompanyName       string
-	CNPJ              string
-	CredentialLabel   string
-	CredentialCNPJ    string
-	ConsultationBasis string
-	Status            string
-	StopReason        string
-	LastProcessedNSU  int64
-	LastFoundNSU      int64
-	LastFoundNSUValid bool
-	EmptyStreak       int
-	DocumentsFound    int
-	EventsFound       int
-	Errors            int
-	Duration          time.Duration
+	CompanyName              string
+	CNPJ                     string
+	CredentialLabel          string
+	CredentialCNPJ           string
+	ConsultationBasis        string
+	Status                   string
+	StopReason               string
+	LastProcessedNSU         int64
+	LastFoundNSU             *int64
+	EmptyStreak              int
+	DocumentsFound           int
+	EventsFound              int
+	DocumentsSaved           int
+	EventsSaved              int
+	DocumentsSkippedByPolicy int
+	EventsSkippedByPolicy    int
+	Errors                   int
+	Duration                 time.Duration
 }
 
 // Pull synchronises fiscal documents for the given company from the ADN API.
@@ -90,7 +94,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	// 3. Load TLS certificate
 	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
-	loadedCert, err := loadPKCS12(credential.CertPath, pass)
+	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
 	}
@@ -114,8 +118,8 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	}
 
 	// 4. Build ADN client
-	apiClient, err := newADNClient(adn.ClientConfig{
-		Environment: company.Environment,
+	apiClient, err := adn.NewClient(adn.ClientConfig{
+		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 	})
 	if err != nil {
@@ -141,6 +145,18 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		if event.DocsFound > result.DocumentsFound {
 			result.DocumentsFound = event.DocsFound
 		}
+		if event.DocumentsSaved > result.DocumentsSaved {
+			result.DocumentsSaved = event.DocumentsSaved
+		}
+		if event.EventsSaved > result.EventsSaved {
+			result.EventsSaved = event.EventsSaved
+		}
+		if event.DocumentsSkippedByPolicy > result.DocumentsSkippedByPolicy {
+			result.DocumentsSkippedByPolicy = event.DocumentsSkippedByPolicy
+		}
+		if event.EventsSkippedByPolicy > result.EventsSkippedByPolicy {
+			result.EventsSkippedByPolicy = event.EventsSkippedByPolicy
+		}
 	}
 
 	start := time.Now()
@@ -157,7 +173,6 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	if snapshot.State != nil {
 		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
 		result.LastFoundNSU = snapshot.State.LastFoundNSU
-		result.LastFoundNSUValid = snapshot.State.LastFoundNSUValid
 		result.EmptyStreak = snapshot.State.LastEmptyStreak
 	}
 	if snapshot.Run != nil {
@@ -165,6 +180,9 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		result.StopReason = string(snapshot.Run.StopReason)
 		result.Errors = snapshot.Run.ErrorsCount
 		result.DocumentsFound = snapshot.Run.DocumentsFound
+	}
+	if result.DocumentsSaved == 0 {
+		result.DocumentsSaved = result.DocumentsFound
 	}
 
 	a.Log.InfoContext(
@@ -186,16 +204,27 @@ func parsePullMode(raw string) (nfse.SyncMode, error) {
 
 func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
-		return "", fmt.Errorf("o certificado não expõe um CNPJ proprietário utilizável para consulta")
+		return "", ErrCredentialNoOwner
 	}
 	if company.Environment == "" {
-		return "", fmt.Errorf("a empresa não possui ambiente configurado")
+		return "", ErrCompanyNoEnvironment
 	}
 	if company.CNPJRoot != credential.OwnerCNPJRoot {
-		return "", fmt.Errorf("a credencial pertence à raiz %s e não pode consultar a empresa %s", credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
+		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
 	}
 	if company.CNPJ == credential.OwnerCNPJ {
 		return nfse.ConsultationBasisExactCertificateCNPJ, nil
 	}
 	return nfse.ConsultationBasisSameRootCertificate, nil
+}
+
+func resolveEnvironmentURL(env nfse.Environment) string {
+	switch env {
+	case nfse.EnvironmentProduction:
+		return adn.BaseURLProduction
+	case nfse.EnvironmentRestricted:
+		return adn.BaseURLRestrictedProduction
+	default:
+		return ""
+	}
 }

@@ -50,7 +50,7 @@ export function useCompanies() {
   }
 
   async function resetSyncState(cnpj: string) {
-    await desktopClient.resetSyncState({ CNPJ: cnpj })
+    await desktopClient.resetSyncState({ CompanyCNPJ: cnpj })
     await loadCompanies()
   }
 

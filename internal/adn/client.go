@@ -15,8 +15,6 @@ import (
 	"time"
 
 	"github.com/sethvargo/go-retry"
-
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const (
@@ -62,12 +60,11 @@ type RetryConfig struct {
 }
 
 type ClientConfig struct {
-	Environment     nfse.Environment
-	BaseURLOverride string
-	HTTPClient      *http.Client
-	Certificate     *tls.Certificate
-	Retry           RetryConfig
-	Log             *slog.Logger
+	BaseURL     string
+	HTTPClient  *http.Client
+	Certificate *tls.Certificate
+	Retry       RetryConfig
+	Log         *slog.Logger
 }
 
 type Client struct {
@@ -77,26 +74,18 @@ type Client struct {
 	log        *slog.Logger
 }
 
+var ErrNoDocumentsLocated = errors.New("nenhum documento localizado")
+
 func NewClient(cfg ClientConfig) (*Client, error) {
 	if cfg.Retry.MaxRetries < 0 {
 		return nil, fmt.Errorf("max retries must not be negative")
 	}
 
-	var baseURLStr string
-	if cfg.BaseURLOverride != "" {
-		baseURLStr = cfg.BaseURLOverride
-	} else {
-		switch cfg.Environment {
-		case nfse.EnvironmentProduction:
-			baseURLStr = BaseURLProduction
-		case nfse.EnvironmentRestricted:
-			baseURLStr = BaseURLRestrictedProduction
-		default:
-			return nil, fmt.Errorf("invalid environment: %s", cfg.Environment)
-		}
+	if cfg.BaseURL == "" {
+		return nil, fmt.Errorf("base URL is required")
 	}
 
-	u, err := url.Parse(baseURLStr)
+	u, err := url.Parse(cfg.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
 	}
@@ -228,16 +217,12 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 			errBodyReader := io.LimitReader(resp.Body, MaxErrorBodyBytes)
 			errBodyBytes, _ := io.ReadAll(errBodyReader)
 
-			if resp.StatusCode == http.StatusNotFound && dest != nil {
-				handled, err := tryDecodeNoDocumentsResponse(errBodyBytes, dest)
-				if err != nil {
-					return c.newAPIError(method, u, resp.StatusCode, err.Error(), false, 0)
-				}
-				if handled {
+			if resp.StatusCode == http.StatusNotFound {
+				if isNoDocumentsResponse(errBodyBytes) {
 					if c.log != nil {
 						c.log.DebugContext(ctx, "ADN API empty result", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode))
 					}
-					return nil
+					return ErrNoDocumentsLocated
 				}
 				if explicit404 := classifyUnexpected404Body(errBodyBytes); explicit404 != "" {
 					return c.newAPIError(method, u, resp.StatusCode, explicit404, false, 0)
@@ -304,28 +289,19 @@ func (c *Client) newAPIError(method, url string, statusCode int, body string, re
 	}
 }
 
-func tryDecodeNoDocumentsResponse(body []byte, dest interface{}) (bool, error) {
+func isNoDocumentsResponse(body []byte) bool {
 	var response noDocumentsResponse
 	_ = json.Unmarshal(body, &response)
 	if response.StatusProcessamento == "" {
-		return false, nil
+		return false
 	}
 	if response.StatusProcessamento != "NENHUM_DOCUMENTO_LOCALIZADO" {
-		return false, nil
+		return false
 	}
 	if len(response.Erros) != 1 || response.Erros[0].Codigo != "E2220" {
-		return false, nil
+		return false
 	}
-
-	documentResponse, ok := dest.(*DocumentResponse)
-	if !ok {
-		return false, nil
-	}
-
-	documentResponse.UltNSU = 0
-	documentResponse.MaxNSU = 0
-	documentResponse.Docs = nil
-	return true, nil
+	return true
 }
 
 func classifyUnexpected404Body(body []byte) string {

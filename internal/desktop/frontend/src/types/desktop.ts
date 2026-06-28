@@ -9,15 +9,18 @@ export type CompanySummary = {
   CredentialLabel: string
   CredentialCertPath: string
   Environment: string
-  LastNSU: number
-  LastFoundNSU: number
-  LastFoundNSUValid: boolean
+  LastFoundNSU: number | null
   LastSyncAt?: ISODateValue
+  SyncStartPolicy: SyncStartPolicy
+  SyncStartDate?: ISODateValue
+  InitialSyncDoneAt?: ISODateValue
   LastRunStatus: string
   LastRunStopReason: string
   CreatedAt?: ISODateValue
   UpdatedAt?: ISODateValue
 }
+
+export type SyncStartPolicy = 'all' | 'since_date' | 'from_now' | ''
 
 export type CredentialSummary = {
   ID: string
@@ -67,10 +70,8 @@ export type DocumentRow = {
   DocumentID: string
   CompanyRole: string
   VisibilityReason: string
-  FirstSeenNSU: number
-  LastSeenNSU: number
-  FirstSeenNSUValid: boolean
-  LastSeenNSUValid: boolean
+  FirstSeenNSU: number | null
+  LastSeenNSU: number | null
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
   ViewedAt?: ISODateValue
@@ -79,7 +80,7 @@ export type DocumentRow = {
 export type DocumentEvent = {
   ID: string
   Type: string
-  EventAt: string
+  EventAt: string | null
   ReplacementChaveAcesso: string
   Description: string
   RawXMLPath: string
@@ -118,7 +119,7 @@ export type ExportResult = {
 }
 
 export type QueryNFSeInput = {
-  CNPJ: string
+  CompanyCNPJ: string
   ChaveAcesso: string
 }
 
@@ -135,6 +136,8 @@ export type AddCompanyInput = {
   CredentialLabel: string
   CertPath: string
   Environment: string
+  SyncStartPolicy: SyncStartPolicy
+  SyncStartDate: string
 }
 
 export type AddCredentialInput = {
@@ -146,6 +149,8 @@ export type UpdateCompanyInput = {
   CNPJ: string
   Name: string
   Environment: string
+  SyncStartPolicy: SyncStartPolicy
+  SyncStartDate: string
 }
 
 export type UpdateCredentialDataInput = {
@@ -177,17 +182,20 @@ export type PullResult = {
   Status: string
   StopReason: string
   LastProcessedNSU: number
-  LastFoundNSU: number
-  LastFoundNSUValid: boolean
+  LastFoundNSU: number | null
   EmptyStreak: number
   DocumentsFound: number
   EventsFound: number
+  DocumentsSaved: number
+  EventsSaved: number
+  DocumentsSkippedByPolicy: number
+  EventsSkippedByPolicy: number
   Errors: number
   Duration: number
 }
 
 export type ResetSyncInput = {
-  CNPJ: string
+  CompanyCNPJ: string
 }
 
 export type BuildInfo = {

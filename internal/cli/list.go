@@ -21,11 +21,11 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lista documentos fiscais sincronizados",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		docs, err := application.ListDocuments(cmd.Context(), app.ListInput{
 			CNPJ:       listCNPJ,

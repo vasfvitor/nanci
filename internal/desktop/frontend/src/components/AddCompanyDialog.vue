@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="isOpen">
-    <q-card style="min-width: 460px">
+    <q-card style="min-width: 560px">
       <q-card-section>
         <div class="text-h6">Adicionar Empresa</div>
       </q-card-section>
@@ -18,6 +18,31 @@
           v-model="form.Environment"
           :options="['producao', 'producao_restrita']"
           label="Ambiente da Empresa"
+          outlined
+          dense
+        />
+
+        <q-separator />
+
+        <div>
+          <div class="text-subtitle2">O que deseja importar no primeiro sync?</div>
+          <div class="text-caption text-app-muted">
+            O primeiro sync pode analisar documentos antigos para alcançar a posição atual do ADN,
+            mas só importará o histórico escolhido.
+          </div>
+        </div>
+
+        <q-option-group
+          v-model="syncStartChoice"
+          :options="syncStartOptions"
+          color="primary"
+        />
+
+        <q-input
+          v-if="syncStartChoice === 'custom_date'"
+          v-model="customSyncStartDate"
+          label="Importar a partir de"
+          type="date"
           outlined
           dense
         />
@@ -67,9 +92,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { desktopClient } from '@/platform/wails/client'
+import type { SyncStartPolicy } from '@/types/desktop'
 
 const props = defineProps<{
   modelValue: boolean
@@ -85,6 +111,8 @@ const isOpen = ref(props.modelValue)
 const loading = ref(false)
 const credentialMode = ref<'existing' | 'new'>('existing')
 const credentialOptions = ref<{ label: string; value: string }[]>([])
+const syncStartChoice = ref<'from_now' | 'last_12_months' | 'last_5_years' | 'custom_date' | 'all'>('from_now')
+const customSyncStartDate = ref('')
 
 const form = ref({
   CNPJ: '',
@@ -94,6 +122,14 @@ const form = ref({
   CertPath: '',
   Environment: 'producao_restrita',
 })
+
+const syncStartOptions = computed(() => [
+  { label: 'Apenas documentos a partir de hoje', value: 'from_now' },
+  { label: 'Últimos 12 meses', value: 'last_12_months' },
+  { label: 'Últimos 5 anos', value: 'last_5_years' },
+  { label: 'A partir de uma data específica', value: 'custom_date' },
+  { label: 'Todo o histórico disponível', value: 'all' },
+])
 
 watch(
   () => props.modelValue,
@@ -155,6 +191,8 @@ async function submit() {
     $q.notify({ type: 'warning', message: 'Selecione um certificado.' })
     return
   }
+  const syncStart = resolveSyncStartInput()
+  if (!syncStart) return
 
   loading.value = true
   try {
@@ -165,6 +203,8 @@ async function submit() {
       CredentialLabel: credentialMode.value === 'new' ? form.value.CredentialLabel : '',
       CertPath: credentialMode.value === 'new' ? form.value.CertPath : '',
       Environment: form.value.Environment,
+      SyncStartPolicy: syncStart.policy,
+      SyncStartDate: syncStart.date,
     })
     $q.notify({ type: 'positive', message: 'Empresa adicionada com sucesso!' })
     emit('added')
@@ -177,10 +217,38 @@ async function submit() {
       CertPath: '',
       Environment: 'producao_restrita',
     }
+    syncStartChoice.value = 'from_now'
+    customSyncStartDate.value = ''
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + String(err) })
   } finally {
     loading.value = false
   }
+}
+
+function resolveSyncStartInput(): { policy: SyncStartPolicy; date: string } | null {
+  const today = new Date()
+  switch (syncStartChoice.value) {
+    case 'from_now':
+      return { policy: 'from_now', date: '' }
+    case 'last_12_months':
+      return { policy: 'since_date', date: addYears(today, -1) }
+    case 'last_5_years':
+      return { policy: 'since_date', date: addYears(today, -5) }
+    case 'custom_date':
+      if (!customSyncStartDate.value) {
+        $q.notify({ type: 'warning', message: 'Informe a data inicial de importação.' })
+        return null
+      }
+      return { policy: 'since_date', date: customSyncStartDate.value }
+    case 'all':
+      return { policy: 'all', date: '' }
+  }
+}
+
+function addYears(date: Date, years: number) {
+  const copy = new Date(date)
+  copy.setFullYear(copy.getFullYear() + years)
+  return copy.toISOString().slice(0, 10)
 }
 </script>

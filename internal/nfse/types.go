@@ -160,6 +160,7 @@ type (
 	ConsultationBasis string
 	SyncMode          string
 	SyncStopReason    string
+	SyncStartPolicy   string
 )
 
 const (
@@ -378,4 +379,31 @@ func (r SyncStopReason) Valid() bool {
 
 func (r SyncStopReason) String() string {
 	return string(r)
+}
+
+const (
+	SyncStartPolicyAll       SyncStartPolicy = "all"
+	SyncStartPolicySinceDate SyncStartPolicy = "since_date"
+	SyncStartPolicyFromNow   SyncStartPolicy = "from_now"
+)
+
+func ParseSyncStartPolicy(val string) (SyncStartPolicy, error) {
+	policy := SyncStartPolicy(val)
+	if !policy.Valid() {
+		return "", fmt.Errorf("invalid sync start policy: %s", val)
+	}
+	return policy, nil
+}
+
+func (p SyncStartPolicy) Valid() bool {
+	switch p {
+	case SyncStartPolicyAll, SyncStartPolicySinceDate, SyncStartPolicyFromNow:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p SyncStartPolicy) String() string {
+	return string(p)
 }

@@ -10,59 +10,6 @@ import (
 	"database/sql"
 )
 
-const createSyncRun = `-- name: CreateSyncRun :exec
-INSERT INTO sync_runs (
-    id, company_id, credential_id, credential_cnpj, consultation_cnpj,
-    consultation_basis, started_at, from_nsu, to_nsu, status
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
-
-type CreateSyncRunParams struct {
-	ID                string
-	CompanyID         string
-	CredentialID      string
-	CredentialCnpj    string
-	ConsultationCnpj  string
-	ConsultationBasis string
-	StartedAt         string
-	FromNsu           int64
-	ToNsu             int64
-	Status            string
-}
-
-func (q *Queries) CreateSyncRun(ctx context.Context, arg CreateSyncRunParams) error {
-	_, err := q.db.ExecContext(ctx, createSyncRun,
-		arg.ID,
-		arg.CompanyID,
-		arg.CredentialID,
-		arg.CredentialCnpj,
-		arg.ConsultationCnpj,
-		arg.ConsultationBasis,
-		arg.StartedAt,
-		arg.FromNsu,
-		arg.ToNsu,
-		arg.Status,
-	)
-	return err
-}
-
-const finishSyncRun = `-- name: FinishSyncRun :exec
-UPDATE sync_runs
-SET finished_at = ?, status = ?
-WHERE id = ?
-`
-
-type FinishSyncRunParams struct {
-	FinishedAt sql.NullString
-	Status     string
-	ID         string
-}
-
-func (q *Queries) FinishSyncRun(ctx context.Context, arg FinishSyncRunParams) error {
-	_, err := q.db.ExecContext(ctx, finishSyncRun, arg.FinishedAt, arg.Status, arg.ID)
-	return err
-}
-
 const getDocumentIDByAccessKey = `-- name: GetDocumentIDByAccessKey :one
 SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1
 `
@@ -76,10 +23,10 @@ func (q *Queries) GetDocumentIDByAccessKey(ctx context.Context, chaveAcesso stri
 
 const insertEvent = `-- name: InsertEvent :exec
 INSERT INTO events (
-    id, document_id, chave_acesso, type, event_at, event_at_valid,
+    id, document_id, chave_acesso, type, event_at,
     replacement_chave_acesso, description, raw_xml_path, raw_hash,
     parse_warnings, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(raw_hash) DO NOTHING
 `
 
@@ -89,7 +36,6 @@ type InsertEventParams struct {
 	ChaveAcesso            string
 	Type                   string
 	EventAt                sql.NullString
-	EventAtValid           int64
 	ReplacementChaveAcesso string
 	Description            string
 	RawXmlPath             string
@@ -105,7 +51,6 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 		arg.ChaveAcesso,
 		arg.Type,
 		arg.EventAt,
-		arg.EventAtValid,
 		arg.ReplacementChaveAcesso,
 		arg.Description,
 		arg.RawXmlPath,
@@ -172,65 +117,37 @@ func (q *Queries) UpdateDocumentStatusByAccessKey(ctx context.Context, arg Updat
 	return err
 }
 
-const updateSyncRunProgress = `-- name: UpdateSyncRunProgress :exec
-UPDATE sync_runs
-SET to_nsu = ?, documents_found = ?, errors_count = ?
-WHERE id = ?
-`
-
-type UpdateSyncRunProgressParams struct {
-	ToNsu          int64
-	DocumentsFound int64
-	ErrorsCount    int64
-	ID             string
-}
-
-func (q *Queries) UpdateSyncRunProgress(ctx context.Context, arg UpdateSyncRunProgressParams) error {
-	_, err := q.db.ExecContext(ctx, updateSyncRunProgress,
-		arg.ToNsu,
-		arg.DocumentsFound,
-		arg.ErrorsCount,
-		arg.ID,
-	)
-	return err
-}
-
 const upsertCompanyDocument = `-- name: UpsertCompanyDocument :exec
 INSERT INTO company_documents (
     relation_id, company_id, document_id, company_role, visibility_reason,
-    first_seen_nsu, last_seen_nsu, first_seen_nsu_valid, last_seen_nsu_valid,
-    first_synced_at, last_synced_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    first_seen_nsu, last_seen_nsu, first_synced_at, last_synced_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_id, document_id) DO UPDATE SET
     company_role = excluded.company_role,
     visibility_reason = excluded.visibility_reason,
-    first_seen_nsu = CASE
-        WHEN company_documents.first_seen_nsu_valid = 0 THEN excluded.first_seen_nsu
-        WHEN excluded.first_seen_nsu_valid = 0 THEN company_documents.first_seen_nsu
+    first_seen_nsu = CASE 
+        WHEN company_documents.first_seen_nsu IS NULL THEN excluded.first_seen_nsu
+        WHEN excluded.first_seen_nsu IS NULL THEN company_documents.first_seen_nsu
         ELSE MIN(company_documents.first_seen_nsu, excluded.first_seen_nsu)
     END,
-    first_seen_nsu_valid = MAX(company_documents.first_seen_nsu_valid, excluded.first_seen_nsu_valid),
     last_seen_nsu = CASE
-        WHEN company_documents.last_seen_nsu_valid = 0 THEN excluded.last_seen_nsu
-        WHEN excluded.last_seen_nsu_valid = 0 THEN company_documents.last_seen_nsu
+        WHEN company_documents.last_seen_nsu IS NULL THEN excluded.last_seen_nsu
+        WHEN excluded.last_seen_nsu IS NULL THEN company_documents.last_seen_nsu
         ELSE MAX(company_documents.last_seen_nsu, excluded.last_seen_nsu)
     END,
-    last_seen_nsu_valid = MAX(company_documents.last_seen_nsu_valid, excluded.last_seen_nsu_valid),
     last_synced_at = excluded.last_synced_at
 `
 
 type UpsertCompanyDocumentParams struct {
-	RelationID        string
-	CompanyID         string
-	DocumentID        string
-	CompanyRole       string
-	VisibilityReason  string
-	FirstSeenNsu      int64
-	LastSeenNsu       int64
-	FirstSeenNsuValid int64
-	LastSeenNsuValid  int64
-	FirstSyncedAt     string
-	LastSyncedAt      string
+	RelationID       string
+	CompanyID        string
+	DocumentID       string
+	CompanyRole      string
+	VisibilityReason string
+	FirstSeenNsu     sql.NullInt64
+	LastSeenNsu      sql.NullInt64
+	FirstSyncedAt    string
+	LastSyncedAt     string
 }
 
 func (q *Queries) UpsertCompanyDocument(ctx context.Context, arg UpsertCompanyDocumentParams) error {
@@ -242,8 +159,6 @@ func (q *Queries) UpsertCompanyDocument(ctx context.Context, arg UpsertCompanyDo
 		arg.VisibilityReason,
 		arg.FirstSeenNsu,
 		arg.LastSeenNsu,
-		arg.FirstSeenNsuValid,
-		arg.LastSeenNsuValid,
 		arg.FirstSyncedAt,
 		arg.LastSyncedAt,
 	)

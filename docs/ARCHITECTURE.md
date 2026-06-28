@@ -7,7 +7,7 @@
 - `internal/desktop`: O aplicativo Wails completo. Contém o código Go que faz ponte com o frontend, e dentro dele, `frontend/` com o código Vue 3 / TypeScript.
 - `internal/app`: Casos de uso centrais. Responsável por inicializar as dependências e amarrar repositórios com serviços.
 - `internal/service/sync`: Lógica orquestradora de sincronização (buscar NSU, tratar erros de retry, salvar no DB).
-- `internal/store`: Camada de persistência. Contém as queries (frequentemente geradas via sqlc), conexões SQLite e a pasta `migrations/` com o schema do banco.
+- `internal/store`: Camada de persistência. Contém as queries (frequentemente geradas via sqlc), conexões SQLite e a pasta `migrations_v2/` com o schema do banco.
 - `internal/nfse` e `internal/adn`: Camadas de domínio responsáveis por definir os modelos de Nota Fiscal de Serviço Eletrônica e as interações com a API do Ambiente de Dados Nacional.
 - `internal/report`: Classes de exportação que formatam os dados do banco para `.xlsx`, `.csv` e `.zip`.
 - `internal/foundation`: Utilitários gerais do projeto (parsers de CNPJ, handlers de build, criptografia).

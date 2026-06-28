@@ -78,8 +78,7 @@ func ParseEventXML(data []byte) (Event, []string, error) {
 				ev.ChaveAcesso = parsed
 			} else if strings.HasSuffix(currentPath, "/dhEvento") || strings.HasSuffix(currentPath, "/dhRegEvento") || strings.HasSuffix(currentPath, "/dhProc") {
 				if parsed, err := time.Parse(time.RFC3339, val); err == nil {
-					ev.EventAt = parsed
-					ev.EventAtValid = true
+					ev.EventAt = &parsed
 				} else {
 					warnings = append(warnings, fmt.Sprintf("invalid time format: %s", val))
 				}

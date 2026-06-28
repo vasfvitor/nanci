@@ -23,6 +23,12 @@ func NewSyncRepository(db *sql.DB) *SyncRepository {
 	}
 }
 
+// executor abstracts sql.Tx and sql.DB for the private helpers.
+type executor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
 	state, err := r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
 	if err == nil {
@@ -33,23 +39,17 @@ func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOr
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	lastFoundNSU, lastFoundValid, err := r.legacyLastFoundNSU(ctx, params.CompanyID)
-	if err != nil {
-		return nil, err
-	}
 
 	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO sync_state (
 			company_id, environment, consultation_cnpj,
 			last_checked_nsu, last_found_nsu, last_empty_streak,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+		) VALUES (?, ?, ?, 0, NULL, 0, ?, ?)
 	`,
 		string(params.CompanyID),
 		string(params.Environment),
 		params.ConsultationCNPJ,
-		params.LegacyLastNSU,
-		nullInt64(lastFoundNSU, lastFoundValid),
 		now,
 		now,
 	)
@@ -115,7 +115,7 @@ func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParam
 	}, nil
 }
 
-func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
+func (r *SyncRepository) doApplyDocument(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	parseWarnings, err := json.Marshal(params.Document.ParseWarnings)
@@ -162,17 +162,15 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sql
 	}
 
 	err = q.UpsertCompanyDocument(ctx, sqlgen.UpsertCompanyDocumentParams{
-		RelationID:        nfse.GenerateID(),
-		CompanyID:         string(params.CompanyID),
-		DocumentID:        canonicalDocumentID,
-		CompanyRole:       string(params.Participation.CompanyRole),
-		VisibilityReason:  string(params.Participation.VisibilityReason),
-		FirstSeenNsu:      params.NSU,
-		LastSeenNsu:       params.NSU,
-		FirstSeenNsuValid: 1,
-		LastSeenNsuValid:  1,
-		FirstSyncedAt:     now,
-		LastSyncedAt:      now,
+		RelationID:       nfse.GenerateID(),
+		CompanyID:        string(params.CompanyID),
+		DocumentID:       canonicalDocumentID,
+		CompanyRole:      string(params.Participation.CompanyRole),
+		VisibilityReason: string(params.Participation.VisibilityReason),
+		FirstSeenNsu:     sql.NullInt64{Int64: params.NSU, Valid: true},
+		LastSeenNsu:      sql.NullInt64{Int64: params.NSU, Valid: true},
+		FirstSyncedAt:    now,
+		LastSyncedAt:     now,
 	})
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
@@ -192,7 +190,7 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, tx *sql.Tx, q *sql
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
+func (r *SyncRepository) doApplyEvent(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	documentID, err := q.GetDocumentIDByAccessKey(ctx, string(params.Event.ChaveAcesso))
@@ -200,10 +198,8 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 		return nfse.ApplyOutcome{}, err
 	}
 
-	var valid int64
 	var eventAt sql.NullString
-	if params.Event.EventAtValid {
-		valid = 1
+	if params.Event.EventAt != nil {
 		eventAt = sql.NullString{String: params.Event.EventAt.Format(time.RFC3339), Valid: true}
 	}
 
@@ -223,7 +219,6 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 		ChaveAcesso:            string(params.Event.ChaveAcesso),
 		Type:                   string(params.Event.Type),
 		EventAt:                eventAt,
-		EventAtValid:           valid,
 		ReplacementChaveAcesso: params.Event.ReplacementChaveAcesso,
 		Description:            params.Event.Description,
 		RawXmlPath:             params.Event.RawXMLPath,
@@ -242,7 +237,7 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx *sql.Tx, q *sqlgen
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, params nfse.PersistSyncProgressParams) error {
+func (r *SyncRepository) doPersistProgress(ctx context.Context, tx executor, params nfse.PersistSyncProgressParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	lastSuccessAt := sql.NullString{}
 	lastErrorAt := sql.NullString{}
@@ -289,8 +284,8 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
 	`,
 		params.LastProcessedNSU,
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
+		nullInt64FromPtr(params.LastFoundNSU),
+		nullInt64FromPtr(params.LastFoundNSU),
 		params.LastEmptyStreak,
 		lastSuccessAt,
 		lastSuccessAt,
@@ -306,24 +301,6 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 		string(params.CompanyID),
 		string(params.Environment),
 		params.ConsultationCNPJ,
-	)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.ExecContext(ctx, `
-		UPDATE companies
-		SET last_nsu = CASE
-			WHEN last_nsu < ? THEN ?
-			ELSE last_nsu
-		END,
-		updated_at = ?
-		WHERE id = ?
-	`,
-		params.LastProcessedNSU,
-		params.LastProcessedNSU,
-		now,
-		string(params.CompanyID),
 	)
 	if err != nil {
 		return err
@@ -350,8 +327,8 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx *sql.Tx, para
 		params.EmptyCount,
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
+		nullInt64FromPtr(params.LastFoundNSU),
+		nullInt64FromPtr(params.LastFoundNSU),
 		string(params.RunID),
 	)
 	if err != nil {
@@ -447,11 +424,7 @@ func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
 	}
-	progressParams := params.ProgressParams
-	if outcome.Inserted {
-		progressParams.DocumentsFound++
-	}
-	if err := r.doPersistProgress(ctx, tx, progressParams); err != nil {
+	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
 		return nfse.ApplyOutcome{}, err
 	}
 
@@ -461,7 +434,7 @@ func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.
 	return outcome, nil
 }
 
-func companyDocumentMissing(ctx context.Context, tx *sql.Tx, companyID, documentID string) (bool, error) {
+func companyDocumentMissing(ctx context.Context, tx executor, companyID, documentID string) (bool, error) {
 	var exists int
 	err := tx.QueryRowContext(ctx,
 		`SELECT 1 FROM company_documents WHERE company_id = ? AND document_id = ? LIMIT 1`,
@@ -477,7 +450,7 @@ func companyDocumentMissing(ctx context.Context, tx *sql.Tx, companyID, document
 	return false, nil
 }
 
-func eventHashMissing(ctx context.Context, tx *sql.Tx, rawHash string) (bool, error) {
+func eventHashMissing(ctx context.Context, tx executor, rawHash string) (bool, error) {
 	var exists int
 	err := tx.QueryRowContext(ctx,
 		`SELECT 1 FROM events WHERE raw_hash = ? LIMIT 1`,
@@ -516,7 +489,7 @@ func (r *SyncRepository) FinishRun(ctx context.Context, params nfse.FinishRunPar
 		params.EmptyCount,
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
-		nullInt64(params.LastFoundNSU, params.LastFoundNSUValid),
+		nullInt64FromPtr(params.LastFoundNSU),
 		string(params.RunID),
 	)
 	return err
@@ -555,11 +528,55 @@ func (r *SyncRepository) ResetSyncState(ctx context.Context, params nfse.ResetSy
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sync_state WHERE company_id = ?`, string(params.CompanyID)); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE companies SET last_nsu = 0, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE companies SET initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
 		return err
 	}
 
 	return tx.Commit()
+}
+
+func (r *SyncRepository) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM sync_state WHERE company_id = ? LIMIT 1`, string(params.CompanyID)).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *SyncRepository) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE companies
+		SET initial_sync_completed_at = CASE
+				WHEN initial_sync_completed_at IS NULL THEN ?
+				ELSE initial_sync_completed_at
+			END,
+			updated_at = ?
+		WHERE id = ?
+	`, now, now, string(companyID))
+	return err
+}
+
+func (r *SyncRepository) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT 1
+		FROM company_documents cd
+		JOIN documents d ON d.id = cd.document_id
+		WHERE cd.company_id = ? AND d.chave_acesso = ?
+		LIMIT 1
+	`, string(companyID), chave).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
@@ -598,10 +615,7 @@ func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.Compan
 		return nil, err
 	}
 
-	if lastFound.Valid {
-		state.LastFoundNSU = lastFound.Int64
-		state.LastFoundNSUValid = true
-	}
+	state.LastFoundNSU = ptrFromNullInt64(lastFound)
 	state.LastSuccessAt = parseNullableTime(lastSuccessAt)
 	state.LastErrorAt = parseNullableTime(lastErrorAt)
 	state.LastErrorCode = lastErrorCode.String
@@ -667,26 +681,8 @@ func (r *SyncRepository) latestRun(ctx context.Context, companyID nfse.CompanyID
 	}
 	run.StartedAt, _ = time.Parse(time.RFC3339, startedAt)
 	run.FinishedAt = parseNullableTime(finishedAt)
-	if lastFound.Valid {
-		run.LastFoundNSU = lastFound.Int64
-		run.LastFoundNSUValid = true
-	}
+	run.LastFoundNSU = ptrFromNullInt64(lastFound)
 	return &run, nil
-}
-
-func (r *SyncRepository) legacyLastFoundNSU(ctx context.Context, companyID nfse.CompanyID) (int64, bool, error) {
-	var nsu sql.NullInt64
-	if err := r.db.QueryRowContext(ctx, `
-		SELECT MAX(last_seen_nsu)
-		FROM company_documents
-		WHERE company_id = ? AND last_seen_nsu_valid = 1
-	`, string(companyID)).Scan(&nsu); err != nil {
-		return 0, false, err
-	}
-	if !nsu.Valid {
-		return 0, false, nil
-	}
-	return nsu.Int64, true, nil
 }
 
 func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso, updatedAt string) error {
@@ -720,10 +716,6 @@ func recomputeDocumentStatus(ctx context.Context, q *sqlgen.Queries, chaveAcesso
 		UpdatedAt:   updatedAt,
 		ChaveAcesso: chaveAcesso,
 	})
-}
-
-func nullInt64(val int64, valid bool) sql.NullInt64 {
-	return sql.NullInt64{Int64: val, Valid: valid}
 }
 
 func nullString(val string) sql.NullString {

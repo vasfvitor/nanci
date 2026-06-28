@@ -12,6 +12,7 @@ import (
 	goruntime "runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
@@ -64,6 +67,7 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 type App struct {
 	ctx           context.Context
 	core          *app.App
+	cleanup       func()
 	passwordChans map[string]chan string
 	mu            sync.Mutex
 	logLevel      *slog.LevelVar
@@ -106,8 +110,37 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.logWriter = writer
 
-	coreApp, err := app.NewRuntime(app.RuntimeOptions{
-		Log: log,
+	dataDir, err := app.ResolveRuntimeDataDir("")
+	if err != nil {
+		fmt.Printf("failed to resolve data dir: %v\n", err)
+		return
+	}
+	if err := paths.EnsureDir(dataDir); err != nil {
+		fmt.Printf("failed to create data dir: %v\n", err)
+		return
+	}
+
+	db, err := store.OpenDB(ctx, app.RuntimeDBPath(dataDir), true)
+	if err != nil {
+		fmt.Printf("failed to initialize db: %v\n", err)
+		return
+	}
+
+	a.cleanup = func() {
+		_ = db.Close()
+	}
+
+	docRepo := store.NewDocumentRepository(db)
+
+	coreApp, err := app.NewRuntime(app.Dependencies{
+		Log:             log,
+		CompanyRepo:     store.NewCompanyRepository(db),
+		CredentialRepo:  store.NewCredentialRepository(db),
+		SyncRepo:        store.NewSyncRepository(db),
+		DocumentReader:  docRepo,
+		DocumentTracker: docRepo,
+		XMLStore:        files.NewBlobStore(dataDir),
+		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: WailsCredentialProvider{
 				ctx:           ctx,
@@ -116,9 +149,9 @@ func (a *App) startup(ctx context.Context) {
 			},
 		},
 		DANFSeRenderer: godanfsev2.New(),
-		RunMigrations:  true,
 	})
 	if err != nil {
+		a.cleanup()
 		fmt.Printf("failed to configure app: %v\n", err)
 		return
 	}
@@ -127,8 +160,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	if a.core != nil {
-		a.core.Close()
+	if a.cleanup != nil {
+		a.cleanup()
 	}
 	if a.logWriter != nil {
 		_ = a.logWriter.Close()
@@ -201,12 +234,33 @@ func (a *App) SetLogLevel(level string) {
 	a.logLevel.Set(parseDesktopLogLevel(level))
 }
 
-func (a *App) AddCompany(input app.AddCompanyInput) error {
-	return a.core.AddCompany(a.ctx, input)
+func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return err
+	}
+	policy, date, err := app.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+	if err != nil {
+		return err
+	}
+
+	return a.core.AddCompany(a.ctx, app.AddCompanyInput{
+		CNPJ:            input.CNPJ,
+		Name:            input.Name,
+		CredentialID:    input.CredentialID,
+		CredentialLabel: input.CredentialLabel,
+		CertPath:        input.CertPath,
+		Environment:     environment,
+		SyncStartPolicy: policy,
+		SyncStartDate:   date,
+	})
 }
 
-func (a *App) AddCredential(input app.AddCredentialInput) error {
-	return a.core.AddCredential(a.ctx, input)
+func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
+	return a.core.AddCredential(a.ctx, app.AddCredentialInput{
+		Label:    input.Label,
+		CertPath: input.CertPath,
+	})
 }
 
 func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
@@ -217,20 +271,48 @@ func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
 	return desktopapi.CredentialSummaries(credentials), nil
 }
 
-func (a *App) UpdateCredentialPath(input app.UpdateCredentialPathInput) error {
-	return a.core.UpdateCredentialPath(a.ctx, input)
+func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) error {
+	return a.core.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
+		CredentialID: input.CredentialID,
+		CertPath:     input.CertPath,
+	})
 }
 
-func (a *App) UpdateCredentialData(input app.UpdateCredentialDataInput) error {
-	return a.core.UpdateCredentialData(a.ctx, input)
+func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {
+	return a.core.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
+		CredentialID: input.CredentialID,
+		Label:        input.Label,
+	})
 }
 
-func (a *App) UpdateCompany(input app.UpdateCompanyInput) error {
-	return a.core.UpdateCompany(a.ctx, input)
+func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
+	environment, err := nfse.ParseEnvironment(input.Environment)
+	if err != nil {
+		return err
+	}
+	policy := nfse.SyncStartPolicyFromNow
+	var date *time.Time
+	if input.SyncStartPolicy != "" {
+		policy, date, err = app.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+		if err != nil {
+			return err
+		}
+	}
+
+	return a.core.UpdateCompany(a.ctx, app.UpdateCompanyInput{
+		CNPJ:            input.CNPJ,
+		Name:            input.Name,
+		Environment:     environment,
+		SyncStartPolicy: policy,
+		SyncStartDate:   date,
+	})
 }
 
-func (a *App) AssignCredentialToCompany(input app.AssignCredentialInput) error {
-	return a.core.AssignCredentialToCompany(a.ctx, input)
+func (a *App) AssignCredentialToCompany(input desktopapi.AssignCredentialInput) error {
+	return a.core.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
+		CompanyCNPJ:  input.CompanyCNPJ,
+		CredentialID: input.CredentialID,
+	})
 }
 
 func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
@@ -241,24 +323,56 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 	return desktopapi.CompanySummaries(companies), nil
 }
 
-func (a *App) Pull(input app.PullInput) (app.PullResult, error) {
-	res, err := a.core.Pull(a.ctx, input)
+func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
+	res, err := a.core.Pull(a.ctx, app.PullInput{
+		CNPJ: input.CNPJ,
+		Mode: input.Mode,
+	})
 	if err != nil && errors.Is(err, app.ErrOperationCanceled) {
-		return res, fmt.Errorf("ERR_CANCELED: %w", err)
+		return desktopapi.PullResult{}, fmt.Errorf("ERR_CANCELED: %w", err)
 	}
-	return res, err
+	return desktopapi.PullResult{
+		CompanyName:              res.CompanyName,
+		CNPJ:                     res.CNPJ,
+		CredentialLabel:          res.CredentialLabel,
+		CredentialCNPJ:           res.CredentialCNPJ,
+		ConsultationBasis:        res.ConsultationBasis,
+		Status:                   res.Status,
+		StopReason:               res.StopReason,
+		LastProcessedNSU:         res.LastProcessedNSU,
+		LastFoundNSU:             res.LastFoundNSU,
+		EmptyStreak:              res.EmptyStreak,
+		DocumentsFound:           res.DocumentsFound,
+		EventsFound:              res.EventsFound,
+		DocumentsSaved:           res.DocumentsSaved,
+		EventsSaved:              res.EventsSaved,
+		DocumentsSkippedByPolicy: res.DocumentsSkippedByPolicy,
+		EventsSkippedByPolicy:    res.EventsSkippedByPolicy,
+		Errors:                   res.Errors,
+		Duration:                 res.Duration,
+	}, err
 }
 
-func (a *App) ResetSyncState(input app.ResetSyncInput) error {
-	return a.core.ResetSyncState(a.ctx, input)
+func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
+	return a.core.ResetSyncState(a.ctx, app.ResetSyncInput{
+		CNPJ: input.CompanyCNPJ,
+	})
 }
 
-func (a *App) QueryNFSeEvents(input app.QueryNFSeInput) (string, error) {
-	return a.core.QueryNFSeEvents(a.ctx, input)
+func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
+	return a.core.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
+		CNPJ:        input.CompanyCNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+	})
 }
 
-func (a *App) ListDocuments(input app.ListInput) ([]desktopapi.DocumentRow, error) {
-	documents, err := a.core.ListDocuments(a.ctx, input)
+func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRow, error) {
+	documents, err := a.core.ListDocuments(a.ctx, app.ListInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+		OnlyUnread: input.OnlyUnread,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -273,8 +387,26 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 	return desktopapi.DocumentEvents(events), nil
 }
 
-func (a *App) Status(cnpj string) (app.StatusResult, error) {
-	return a.core.Status(a.ctx, cnpj)
+func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
+	res, err := a.core.Status(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.StatusResult{}, err
+	}
+	return desktopapi.StatusResult{
+		CompanyName:        res.CompanyName,
+		CNPJ:               res.CNPJ,
+		Environment:        res.Environment,
+		ConsultationCNPJ:   res.ConsultationCNPJ,
+		CredentialCNPJ:     res.CredentialCNPJ,
+		CredentialNotAfter: res.CredentialNotAfter,
+		LastProcessedNSU:   res.LastProcessedNSU,
+		LastFoundNSU:       res.LastFoundNSU,
+		LastSyncAt:         res.LastSyncAt,
+		LastRunStatus:      res.LastRunStatus,
+		LastRunStopReason:  res.LastRunStopReason,
+		TotalEmitidas:      res.TotalEmitidas,
+		TotalTomadas:       res.TotalTomadas,
+	}, nil
 }
 
 func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
@@ -288,7 +420,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse"}, nil
 }
@@ -304,7 +436,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
 }
@@ -324,7 +456,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 
 	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{
 		OutPath:       res.OutPath,
@@ -362,7 +494,7 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	}
 
 	if err != nil {
-		return desktopapi.ExportResult{}, formatExportError(err)
+		return desktopapi.ExportResult{}, err
 	}
 
 	return desktopapi.ExportResult{
@@ -389,14 +521,16 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 	return a.core.CountPendingExportDocuments(a.ctx, exportInput, format)
 }
 
-func (a *App) MarkDocumentsViewed(input app.ListInput) (int, error) {
-	return a.core.MarkDocumentsViewed(a.ctx, input)
+func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
+	return a.core.MarkDocumentsViewed(a.ctx, app.ListInput{
+		CNPJ:       input.CNPJ,
+		Competence: input.Competence,
+		Direction:  input.Direction,
+		OnlyUnread: input.OnlyUnread,
+	})
 }
 
 func formatExportError(err error) error {
-	if err != nil && errors.Is(err, files.ErrFileNotFound) {
-		return fmt.Errorf("%w. Dica: Use a opção 'Resetar NSU' (necessita Modo Debug ativado) na aba Empresas e sincronize novamente para rebaixar os arquivos ausentes", err)
-	}
 	return err
 }
 

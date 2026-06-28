@@ -7,8 +7,9 @@ SELECT * FROM companies ORDER BY name ASC;
 -- name: CreateCompany :exec
 INSERT INTO companies (
     id, cnpj, cnpj_root, name, credential_id, credential_label,
-    credential_cert_path, environment, last_nsu, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
+    credential_cert_path, environment, sync_start_policy,
+    sync_start_date, initial_sync_completed_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: AssignCredentialToCompany :execrows
 UPDATE companies
@@ -28,12 +29,11 @@ WHERE companies.id = sqlc.arg(company_id)
       WHERE credentials.id = sqlc.arg(credential_id)
   );
 
--- name: UpdateCompanyNSU :exec
-UPDATE companies
-SET last_nsu = ?, updated_at = ?
-WHERE id = ?;
-
 -- name: UpdateCompany :exec
 UPDATE companies
-SET name = ?, environment = ?, updated_at = ?
+SET name = ?,
+    environment = ?,
+    sync_start_policy = ?,
+    sync_start_date = ?,
+    updated_at = ?
 WHERE id = ?;

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/vasfvitor/nanci/internal/files"
 )
@@ -42,7 +43,10 @@ func GenerateZIP(documents []ReportRow, xmlStore files.XMLStore, outPath string)
 		if roleFolder == "" || roleFolder == "none" {
 			roleFolder = "sem-papel-fiscal"
 		}
-		zipEntryPath := fmt.Sprintf("%s/%s/%s.xml", doc.Competence, roleFolder, doc.ChaveAcesso)
+		zipEntryPath := path.Join(roleFolder, doc.ChaveAcesso+".xml")
+		if doc.Competence != "" {
+			zipEntryPath = path.Join(doc.Competence, zipEntryPath)
+		}
 
 		writer, err := zipWriter.Create(zipEntryPath)
 		if err != nil {

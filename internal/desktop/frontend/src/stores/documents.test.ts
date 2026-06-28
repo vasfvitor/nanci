@@ -50,8 +50,6 @@ describe('documents store', () => {
         VisibilityReason: 'exact_tomador',
         FirstSeenNSU: 1,
         LastSeenNSU: 1,
-        FirstSeenNSUValid: true,
-        LastSeenNSUValid: true,
       },
     ])
 

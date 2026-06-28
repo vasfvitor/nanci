@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	exportCNPJ       string
-	exportCompetence string
-	exportDirection  string
-	exportOut        string
-	exportChave      string
+	exportCNPJ        string
+	exportCompetence  string
+	exportDirection   string
+	exportOut         string
+	exportChave       string
 	exportIncremental bool
 )
 
@@ -39,11 +39,11 @@ var exportXlsxCmd = &cobra.Command{
 	Use:   "xlsx",
 	Short: "Exporta os dados para uma planilha Excel (.xlsx)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		input := app.ExportInput{
 			CNPJ:        exportCNPJ,
@@ -68,11 +68,11 @@ var exportCsvCmd = &cobra.Command{
 	Use:   "csv",
 	Short: "Exporta os dados para um arquivo de texto separado por vírgulas (.csv)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		input := app.ExportInput{
 			CNPJ:        exportCNPJ,
@@ -97,11 +97,11 @@ var exportZipCmd = &cobra.Command{
 	Use:   "zip",
 	Short: "Exporta os arquivos físicos (.xml) em um arquivo compactado (.zip)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		input := app.ExportInput{
 			CNPJ:        exportCNPJ,
@@ -126,11 +126,11 @@ var exportDANFSeCmd = &cobra.Command{
 	Use:   "danfse",
 	Short: "Exporta o DANFSe de uma NFS-e para PDF (.pdf)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		input := app.ExportDANFSeInput{
 			CNPJ:        exportCNPJ,
@@ -152,11 +152,11 @@ var exportDANFSeZipCmd = &cobra.Command{
 	Use:   "danfse-zip",
 	Short: "Exporta DANFSes dos documentos filtrados em um arquivo compactado (.zip)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		application, err := newApp()
+		application, cleanup, err := newApp()
 		if err != nil {
 			return fmt.Errorf("inicializar: %w", err)
 		}
-		defer application.Close()
+		defer cleanup()
 
 		input := app.ExportInput{
 			CNPJ:        exportCNPJ,
