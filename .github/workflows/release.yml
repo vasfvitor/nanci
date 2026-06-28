@@ -112,6 +112,10 @@ jobs:
         shell: bash
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
+      - name: Install Garble
+        shell: bash
+        run: go install mvdan.cc/garble@latest
+
       - name: Build Desktop App
         working-directory: ./internal/desktop
         env:
@@ -128,8 +132,8 @@ jobs:
           jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.tmp.json
           mv wails.tmp.json wails.json
 
-          echo "Building Wails app..."
-          wails build -platform windows/amd64 -nsis -m \
+          echo "Building Wails app with Garble obfuscation..."
+          wails build -platform windows/amd64 -nsis -m -obfuscated -garbleargs "-literals -tiny -seed=random" \
             -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
 
           test -s build/bin/nanci-desktop-amd64-installer.exe
