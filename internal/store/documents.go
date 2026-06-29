@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -119,6 +120,14 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 	if filter.IssueDateGTE != nil {
 		query += " AND d.issue_date >= ?"
 		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
+	}
+	if len(filter.ChavesAcesso) > 0 {
+		placeholders := make([]string, len(filter.ChavesAcesso))
+		for i, chave := range filter.ChavesAcesso {
+			placeholders[i] = "?"
+			args = append(args, chave)
+		}
+		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ","))
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
@@ -339,6 +348,14 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 	if filter.IssueDateGTE != nil {
 		query += " AND d.issue_date >= ?"
 		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
+	}
+	if len(filter.ChavesAcesso) > 0 {
+		placeholders := make([]string, len(filter.ChavesAcesso))
+		for i, chave := range filter.ChavesAcesso {
+			placeholders[i] = "?"
+			args = append(args, chave)
+		}
+		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ","))
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
