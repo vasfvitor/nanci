@@ -227,6 +227,7 @@ export const desktopClient = {
       ExportDocuments({
         ...input,
         OutPath: outPath,
+        ChavesAcesso: input.ChavesAcesso || [],
       })
     )
     return result as ExportResult
@@ -266,6 +267,7 @@ export const desktopClient = {
       ExportDANFSeZIP({
         ...input,
         OutPath: outPath,
+        ChavesAcesso: input.ChavesAcesso || [],
       })
     )
     return result as ExportResult

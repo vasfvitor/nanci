@@ -68,7 +68,7 @@ export function useDocuments() {
     }
   }
 
-  async function exportDocuments(format: ExportFormat, incremental: boolean = false, outPath: string = '') {
+  async function exportDocuments(format: ExportFormat, incremental: boolean = false, outPath: string = '', chavesAcesso: string[] = []) {
     if (exporting.value) return
     exporting.value = true
     try {
@@ -79,6 +79,7 @@ export function useDocuments() {
         Format: format,
         OutPath: outPath,
         Incremental: incremental,
+        ChavesAcesso: chavesAcesso,
       })
     } finally {
       exporting.value = false
@@ -111,7 +112,7 @@ export function useDocuments() {
     }
   }
 
-  async function exportDANFSeZIP(incremental: boolean = false, outPath: string = '') {
+  async function exportDANFSeZIP(incremental: boolean = false, outPath: string = '', chavesAcesso: string[] = []) {
     if (exporting.value) return
     exporting.value = true
     try {
@@ -122,6 +123,7 @@ export function useDocuments() {
         Format: 'zip',
         OutPath: outPath,
         Incremental: incremental,
+        ChavesAcesso: chavesAcesso,
       })
     } finally {
       exporting.value = false

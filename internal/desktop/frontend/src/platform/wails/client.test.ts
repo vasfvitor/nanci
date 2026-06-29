@@ -181,6 +181,7 @@ describe('desktop client calls', () => {
       Format: 'zip',
       OutPath: 'C:\\mock\\save\\path.ext',
       Incremental: false,
+      ChavesAcesso: [],
     })
   })
 
