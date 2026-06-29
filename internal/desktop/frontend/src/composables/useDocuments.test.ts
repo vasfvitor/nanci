@@ -57,6 +57,7 @@ describe('useDocuments', () => {
       Format: 'csv',
       OutPath: '',
       Incremental: false,
+      ChavesAcesso: [],
     })
   })
 
@@ -87,6 +88,7 @@ describe('useDocuments', () => {
       Format: 'zip',
       OutPath: '',
       Incremental: false,
+      ChavesAcesso: [],
     })
   })
 

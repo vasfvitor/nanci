@@ -13,6 +13,7 @@ type DocumentFilter struct {
 	Limit        *int
 	OnlyUnread   bool
 	IssueDateGTE *time.Time
+	ChavesAcesso []string
 }
 
 type DocumentExportMark struct {

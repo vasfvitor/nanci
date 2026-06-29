@@ -103,6 +103,7 @@ export type ExportDocumentsInput = {
   Format: ExportFormat
   OutPath: string
   Incremental: boolean
+  ChavesAcesso?: string[]
 }
 
 export type ExportDANFSeInput = {

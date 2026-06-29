@@ -447,11 +447,12 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 	}
 
 	exportInput := app.ExportInput{
-		CNPJ:        input.CNPJ,
-		Competence:  input.Competence,
-		Direction:   input.Direction,
-		OutPath:     input.OutPath,
-		Incremental: input.Incremental,
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Direction:    input.Direction,
+		OutPath:      input.OutPath,
+		Incremental:  input.Incremental,
+		ChavesAcesso: input.ChavesAcesso,
 	}
 
 	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
@@ -473,11 +474,12 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	}
 
 	exportInput := app.ExportInput{
-		CNPJ:        input.CNPJ,
-		Competence:  input.Competence,
-		Direction:   input.Direction,
-		OutPath:     input.OutPath,
-		Incremental: input.Incremental,
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Direction:    input.Direction,
+		OutPath:      input.OutPath,
+		Incremental:  input.Incremental,
+		ChavesAcesso: input.ChavesAcesso,
 	}
 
 	var res app.ExportResult
