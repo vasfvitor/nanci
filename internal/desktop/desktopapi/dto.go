@@ -189,12 +189,13 @@ type ResetSyncInput struct {
 }
 
 type ExportDocumentsInput struct {
-	CNPJ        string
-	Competence  string
-	Direction   string
-	Format      string
-	OutPath     string
-	Incremental bool
+	CNPJ         string
+	Competence   string
+	Direction    string
+	Format       string
+	OutPath      string
+	Incremental  bool
+	ChavesAcesso []string
 }
 
 type ExportDANFSeInput struct {

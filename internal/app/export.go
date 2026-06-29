@@ -14,11 +14,12 @@ import (
 
 // ExportInput is shared by all export formats.
 type ExportInput struct {
-	CNPJ        string
-	Competence  string // "YYYY-MM", optional
-	Direction   string // "tomada" | "prestada" | "intermediario", optional
-	OutPath     string // destination file path
-	Incremental bool
+	CNPJ         string
+	Competence   string // "YYYY-MM", optional
+	Direction    string // "tomada" | "prestada" | "intermediario", optional
+	OutPath      string // destination file path
+	Incremental  bool
+	ChavesAcesso []string
 }
 
 // ExportResult contains structured info about the export operation.
@@ -131,8 +132,9 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 	}
 
 	filter := nfse.DocumentFilter{
-		Competence: input.Competence,
-		Direction:  input.Direction,
+		Competence:   input.Competence,
+		Direction:    input.Direction,
+		ChavesAcesso: input.ChavesAcesso,
 	}
 
 	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
