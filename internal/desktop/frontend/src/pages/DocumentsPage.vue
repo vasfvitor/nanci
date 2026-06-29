@@ -109,7 +109,7 @@ color="secondary" label="Exportar" :disable="exporting || documents.length === 0
 
     <q-table
 v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocuments" :columns="columns"
-      row-key="ChaveAcesso" selection="multiple"
+      row-key="RelationID" selection="multiple"
       :loading="loading" no-data-label="Nenhum documento encontrado." binary-state-sort flat bordered dense
       class="full-height">
       <template #top>
@@ -743,6 +743,7 @@ async function search() {
 async function exportData(format: ExportFormat) {
   if (selected.value.length > 0) {
     const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
+    if (chaves.length === 0) { notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida'); return }
     try {
       const result = await documentsApi.exportDocuments(format, false, '', chaves)
       notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
@@ -809,6 +810,7 @@ async function exportXML(chaveAcesso?: string) {
 async function exportDanfseZip() {
   if (selected.value.length > 0) {
     const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
+    if (chaves.length === 0) { notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida'); return }
     try {
       const result = await documentsApi.exportDANFSeZIP(false, '', chaves)
       notifyExportSuccess('ZIP de DANFSes', result)
