@@ -108,7 +108,8 @@ color="secondary" label="Exportar" :disable="exporting || documents.length === 0
     </div>
 
     <q-table
-v-model:pagination="pagination" :rows="filteredDocuments" :columns="columns" row-key="RelationID"
+v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocuments" :columns="columns"
+      row-key="ChaveAcesso" selection="multiple"
       :loading="loading" no-data-label="Nenhum documento encontrado." binary-state-sort flat bordered dense
       class="full-height">
       <template #top>
@@ -460,6 +461,7 @@ const {
 const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
 const filterText = ref('')
+const selected = ref<DocumentRow[]>([])
 
 const datePopup = ref<{ hide: () => void } | null>(null)
 
@@ -739,6 +741,18 @@ async function search() {
 }
 
 async function exportData(format: ExportFormat) {
+  if (selected.value.length > 0) {
+    const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
+    try {
+      const result = await documentsApi.exportDocuments(format, false, '', chaves)
+      notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
+      selected.value = [] // clear selection
+    } catch (error) {
+      notifyError('Erro ao exportar', error)
+    }
+    return
+  }
+
   $q.dialog({
     title: 'Exportar Documentos',
     message: 'Todos os documentos ou apenas os que não foram exportados:',
@@ -793,6 +807,18 @@ async function exportXML(chaveAcesso?: string) {
 }
 
 async function exportDanfseZip() {
+  if (selected.value.length > 0) {
+    const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
+    try {
+      const result = await documentsApi.exportDANFSeZIP(false, '', chaves)
+      notifyExportSuccess('ZIP de DANFSes', result)
+      selected.value = []
+    } catch (error) {
+      notifyError('Erro ao exportar ZIP de DANFSes', error)
+    }
+    return
+  }
+
   $q.dialog({
     title: 'Exportar DANFSes',
     message: 'Todos os documentos ou apenas os que não foram exportados:',
