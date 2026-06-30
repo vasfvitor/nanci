@@ -167,6 +167,7 @@ describe('desktop client calls', () => {
       Direction: 'tomada',
       Format: 'zip',
       Incremental: false,
+      ChavesAcesso: [],
     })
 
     expect(ExportDANFSe).toHaveBeenCalledWith({
@@ -195,6 +196,7 @@ describe('desktop client calls', () => {
         Direction: 'tomada',
         Format: 'csv',
         Incremental: false,
+        ChavesAcesso: [],
       })
     ).resolves.toBeNull()
     await expect(
@@ -210,6 +212,7 @@ describe('desktop client calls', () => {
         Direction: 'tomada',
         Format: 'zip',
         Incremental: false,
+        ChavesAcesso: [],
       })
     ).resolves.toBeNull()
 

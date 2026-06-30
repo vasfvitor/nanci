@@ -139,6 +139,7 @@ export function useDocuments() {
       Format: format as ExportFormat,
       OutPath: '',
       Incremental: true,
+      ChavesAcesso: [],
     })
   }
 

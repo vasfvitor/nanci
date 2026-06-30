@@ -392,6 +392,7 @@ export namespace desktopapi {
 	    Format: string;
 	    OutPath: string;
 	    Incremental: boolean;
+	    ChavesAcesso: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ExportDocumentsInput(source);
@@ -405,6 +406,7 @@ export namespace desktopapi {
 	        this.Format = source["Format"];
 	        this.OutPath = source["OutPath"];
 	        this.Incremental = source["Incremental"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
 	export class ExportResult {
