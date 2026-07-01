@@ -77,7 +77,7 @@ func GenerateXLSX(rows []ReportRow, outPath string) error {
 				warnings = fmt.Sprintf("%d avisos", doc.WarningsCount)
 			}
 
-			rowValues := []interface{}{
+			rowValues := []any{
 				issueStr,
 				cnpj.Format(doc.CounterpartyCNPJ),
 				doc.CounterpartyName,

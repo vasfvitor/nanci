@@ -26,16 +26,15 @@ var rootCmd = &cobra.Command{
 	Short: "CLI para sincronização de XMLs de NFS-e Nacional",
 	Long: `nanci (nfse-sync) sincroniza documentos fiscais da API ADN (NFS-e Nacional)
 usando certificado digital A1. Suporta extração de retenções e relatórios.`,
-	SilenceUsage: true,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
-// Execute runs the root command.
-func Execute(ctx context.Context) int {
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		fmt.Println(err)
-		return 1
-	}
-	return 0
+// Execute runs the root command and returns any error from the command tree.
+// The caller is the single reporting boundary: it prints the error to stderr
+// and chooses the exit code; Cobra itself stays silent (SilenceUsage + SilenceErrors).
+func Execute(ctx context.Context) error {
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func init() {

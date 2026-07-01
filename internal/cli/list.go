@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -37,11 +36,11 @@ var listCmd = &cobra.Command{
 		}
 
 		if len(docs) == 0 {
-			fmt.Println("Nenhum documento encontrado.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhum documento encontrado.")
 			return nil
 		}
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 		_, _ = fmt.Fprintln(w, "EMISSÃO\tCHAVE DE ACESSO\tDIREÇÃO\tVISIBILIDADE\tPRESTADOR\tTOMADOR\tVALOR (R$)\tISS\tIRRF")
 		_, _ = fmt.Fprintln(w, "-------\t---------------\t-------\t------------\t---------\t-------\t----------\t---\t----")
 
@@ -65,7 +64,7 @@ var listCmd = &cobra.Command{
 		}
 
 		_ = w.Flush()
-		fmt.Printf("\nTotal de %d documento(s) listado(s).\n", len(docs))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nTotal de %d documento(s) listado(s).\n", len(docs))
 		return nil
 	},
 }

@@ -1,11 +1,12 @@
 package syncservice
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -250,8 +251,8 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 	docsInBatch := len(resp.Docs)
 	runState.documentsReturned += docsInBatch
 
-	sort.Slice(resp.Docs, func(i, j int) bool {
-		return resp.Docs[i].NSU < resp.Docs[j].NSU
+	slices.SortFunc(resp.Docs, func(a, b adn.DocumentEnvelope) int {
+		return cmp.Compare(a.NSU, b.NSU)
 	})
 
 	nextCursorLastNSU := cursorLastNSU
@@ -488,20 +489,20 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 		UncompressedBytes: 20 * 1024 * 1024,
 	})
 	if err != nil {
-		s.log.ErrorContext(ctx, "Falha ao decodificar payload do documento", slog.Int64("nsu", env.NSU), slog.String("erro", err.Error()))
-		return envelopeProcessResult{}, fmt.Errorf("decode failed: %w", err)
+		return envelopeProcessResult{}, &ProcessingError{Op: "decode document", NSU: env.NSU, Err: err}
 	}
 
 	doc, _, err := nfse.ParseDocumentXML(payload.XML)
 	if err != nil {
-		s.log.ErrorContext(ctx, "Falha ao interpretar XML de documento",
-			slog.Int64("nsu", env.NSU),
-			slog.String("schema", env.Schema),
-			slog.String("tipo_documento", env.DocumentType),
-			slog.String("tipo_evento", env.EventType),
-			slog.String("xml_preview", xmlPreview(payload.XML)),
-			slog.String("erro", err.Error()))
-		return envelopeProcessResult{}, fmt.Errorf("parse failed: %w", err)
+		return envelopeProcessResult{}, &ProcessingError{
+			Op:         "parse document",
+			NSU:        env.NSU,
+			Schema:     env.Schema,
+			DocType:    env.DocumentType,
+			EventType:  env.EventType,
+			XMLPreview: xmlPreview(payload.XML),
+			Err:        err,
+		}
 	}
 
 	if shouldSkipDocumentByInitialPolicy(company, doc.IssueDate) {
@@ -548,20 +549,20 @@ func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, e
 		UncompressedBytes: 20 * 1024 * 1024,
 	})
 	if err != nil {
-		s.log.ErrorContext(ctx, "Falha ao decodificar payload do evento", slog.Int64("nsu", env.NSU), slog.String("erro", err.Error()))
-		return envelopeProcessResult{}, fmt.Errorf("decode event failed: %w", err)
+		return envelopeProcessResult{}, &ProcessingError{Op: "decode event", NSU: env.NSU, Err: err}
 	}
 
 	ev, _, err := nfse.ParseEventXML(payload.XML)
 	if err != nil {
-		s.log.ErrorContext(ctx, "Falha ao interpretar XML de evento",
-			slog.Int64("nsu", env.NSU),
-			slog.String("schema", env.Schema),
-			slog.String("tipo_documento", env.DocumentType),
-			slog.String("tipo_evento", env.EventType),
-			slog.String("xml_preview", xmlPreview(payload.XML)),
-			slog.String("erro", err.Error()))
-		return envelopeProcessResult{}, fmt.Errorf("parse event failed: %w", err)
+		return envelopeProcessResult{}, &ProcessingError{
+			Op:         "parse event",
+			NSU:        env.NSU,
+			Schema:     env.Schema,
+			DocType:    env.DocumentType,
+			EventType:  env.EventType,
+			XMLPreview: xmlPreview(payload.XML),
+			Err:        err,
+		}
 	}
 
 	hasLocalDocument, err := s.store.CompanyDocumentExistsByAccessKey(ctx, company.ID, string(ev.ChaveAcesso))
@@ -624,4 +625,64 @@ func xmlPreview(data []byte) string {
 		return preview[:400] + "...(truncated)"
 	}
 	return preview
+}
+
+// ProcessingError carries the structured context that used to be emitted via a
+// duplicate ErrorContext log call inside processDocument/processEvent. The
+// service layer now returns it instead of logging, so a single boundary (CLI
+// main, desktop) renders the failure once. NSU/Schema/etc. survive in the
+// returned error via Error() and via slog.LogValue for any slog-aware boundary.
+type ProcessingError struct {
+	Op         string // "decode document" | "parse document" | "decode event" | "parse event"
+	NSU        int64
+	Schema     string
+	DocType    string
+	EventType  string
+	XMLPreview string
+	Err        error
+}
+
+func (e *ProcessingError) Error() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s failed (nsu=%d", e.Op, e.NSU)
+	if e.Schema != "" {
+		fmt.Fprintf(&b, ", schema=%s", e.Schema)
+	}
+	if e.DocType != "" {
+		fmt.Fprintf(&b, ", tipo_documento=%s", e.DocType)
+	}
+	if e.EventType != "" {
+		fmt.Fprintf(&b, ", tipo_evento=%s", e.EventType)
+	}
+	if e.XMLPreview != "" {
+		fmt.Fprintf(&b, ", xml_preview=%s", e.XMLPreview)
+	}
+	b.WriteString("): ")
+	b.WriteString(e.Err.Error())
+	return b.String()
+}
+
+func (e *ProcessingError) Unwrap() error { return e.Err }
+
+// LogValue lets any slog-aware boundary render the structured fields by logging
+// the error via slog.Any("err", err) without re-deriving them.
+func (e *ProcessingError) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.String("op", e.Op),
+		slog.Int64("nsu", e.NSU),
+		slog.String("error", e.Err.Error()),
+	}
+	if e.Schema != "" {
+		attrs = append(attrs, slog.String("schema", e.Schema))
+	}
+	if e.DocType != "" {
+		attrs = append(attrs, slog.String("tipo_documento", e.DocType))
+	}
+	if e.EventType != "" {
+		attrs = append(attrs, slog.String("tipo_evento", e.EventType))
+	}
+	if e.XMLPreview != "" {
+		attrs = append(attrs, slog.String("xml_preview", e.XMLPreview))
+	}
+	return slog.GroupValue(attrs...)
 }

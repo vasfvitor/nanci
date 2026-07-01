@@ -27,8 +27,8 @@ func TestBlobStore_Get_EmptyHash(t *testing.T) {
 func TestBlobStore_Get_NotFound(t *testing.T) {
 	store := NewBlobStore(t.TempDir())
 	_, err := store.Get("nonexistent-hash")
-	if !errors.Is(err, ErrFileNotFound) {
-		t.Fatalf("expected ErrFileNotFound, got %v", err)
+	if !errors.Is(err, ErrBlobNotFound) {
+		t.Fatalf("expected ErrBlobNotFound, got %v", err)
 	}
 }
 

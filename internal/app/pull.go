@@ -166,7 +166,6 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	start := time.Now()
 	if err := svc.Sync(ctx, company, credential, string(consultationBasis), mode, progress); err != nil {
-		a.Log.ErrorContext(ctx, "Sincronização finalizada com erro", slog.String("error", err.Error()))
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
 	result.Duration = time.Since(start)

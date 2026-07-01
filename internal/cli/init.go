@@ -17,7 +17,7 @@ var initCmd = &cobra.Command{
 		defer cleanup()
 
 		application.Log.Info("Ambiente inicializado com sucesso!", "data_dir", application.DataDir)
-		fmt.Printf("Pronto. Banco de dados criado/atualizado em: %s\n", application.DataDir)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Pronto. Banco de dados criado/atualizado em: %s\n", application.DataDir)
 		return nil
 	},
 }

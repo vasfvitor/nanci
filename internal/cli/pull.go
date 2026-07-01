@@ -28,21 +28,22 @@ var pullCmd = &cobra.Command{
 			return fmt.Errorf("erro: %w", err)
 		}
 
-		fmt.Printf("Iniciando sincronização para %s (%s)\n",
+		out := cmd.OutOrStdout()
+		_, _ = fmt.Fprintf(out, "Iniciando sincronização para %s (%s)\n",
 			result.CompanyName, cnpj.Format(result.CNPJ))
-		fmt.Printf("Sincronização concluída em %v\n", result.Duration.Round(1e6))
-		fmt.Printf("Status: %s", result.Status)
+		_, _ = fmt.Fprintf(out, "Sincronização concluída em %v\n", result.Duration.Round(1e6))
+		_, _ = fmt.Fprintf(out, "Status: %s", result.Status)
 		if result.StopReason != "" {
-			fmt.Printf(" (%s)", result.StopReason)
+			_, _ = fmt.Fprintf(out, " (%s)", result.StopReason)
 		}
-		fmt.Println()
-		fmt.Printf("Último NSU consultado: %d\n", result.LastProcessedNSU)
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintf(out, "Último NSU consultado: %d\n", result.LastProcessedNSU)
 		if result.LastFoundNSU != nil {
-			fmt.Printf("Último NSU com documento: %d\n", *result.LastFoundNSU)
+			_, _ = fmt.Fprintf(out, "Último NSU com documento: %d\n", *result.LastFoundNSU)
 		} else {
-			fmt.Printf("Último NSU com documento: -\n")
+			_, _ = fmt.Fprintf(out, "Último NSU com documento: -\n")
 		}
-		fmt.Printf("Documentos encontrados: %d | Erros: %d\n", result.DocumentsFound, result.Errors)
+		_, _ = fmt.Fprintf(out, "Documentos encontrados: %d | Erros: %d\n", result.DocumentsFound, result.Errors)
 
 		return nil
 	},

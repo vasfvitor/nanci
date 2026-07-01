@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -22,17 +23,17 @@ var exportCmd = &cobra.Command{
 	Short: "Exporta os documentos sincronizados para planilhas ou ZIP",
 }
 
-func printExportResult(res app.ExportResult) {
+func printExportResult(w io.Writer, res app.ExportResult) {
 	if res.ExportedCount == 0 {
 		if res.Incremental {
-			fmt.Println("Nenhum documento pendente para exportação incremental.")
+			_, _ = fmt.Fprintln(w, "Nenhum documento pendente para exportação incremental.")
 		} else {
-			fmt.Println("Nenhum documento encontrado para exportar.")
+			_, _ = fmt.Fprintln(w, "Nenhum documento encontrado para exportar.")
 		}
 		return
 	}
-	fmt.Printf("Arquivo %s gerado com sucesso: %s\n", res.Format, res.OutPath)
-	fmt.Printf("Documentos exportados: %d\n", res.ExportedCount)
+	_, _ = fmt.Fprintf(w, "Arquivo %s gerado com sucesso: %s\n", res.Format, res.OutPath)
+	_, _ = fmt.Fprintf(w, "Documentos exportados: %d\n", res.ExportedCount)
 }
 
 var exportXlsxCmd = &cobra.Command{
@@ -53,13 +54,13 @@ var exportXlsxCmd = &cobra.Command{
 			Incremental: exportIncremental,
 		}
 
-		fmt.Println("Gerando arquivo Excel...")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo Excel...")
 		res, err := application.ExportXLSX(cmd.Context(), input)
 		if err != nil {
 			return fmt.Errorf("erro ao gerar arquivo XLSX: %w", err)
 		}
 
-		printExportResult(res)
+		printExportResult(cmd.OutOrStdout(), res)
 		return nil
 	},
 }
@@ -82,13 +83,13 @@ var exportCsvCmd = &cobra.Command{
 			Incremental: exportIncremental,
 		}
 
-		fmt.Println("Gerando arquivo CSV...")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo CSV...")
 		res, err := application.ExportCSV(cmd.Context(), input)
 		if err != nil {
 			return fmt.Errorf("erro ao gerar arquivo CSV: %w", err)
 		}
 
-		printExportResult(res)
+		printExportResult(cmd.OutOrStdout(), res)
 		return nil
 	},
 }
@@ -111,13 +112,13 @@ var exportZipCmd = &cobra.Command{
 			Incremental: exportIncremental,
 		}
 
-		fmt.Println("Gerando arquivo ZIP...")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo ZIP...")
 		res, err := application.ExportZIP(cmd.Context(), input)
 		if err != nil {
 			return fmt.Errorf("erro ao gerar arquivo ZIP: %w", err)
 		}
 
-		printExportResult(res)
+		printExportResult(cmd.OutOrStdout(), res)
 		return nil
 	},
 }
@@ -138,12 +139,12 @@ var exportDANFSeCmd = &cobra.Command{
 			OutPath:     exportOut,
 		}
 
-		fmt.Println("Gerando DANFSe...")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando DANFSe...")
 		if err := application.ExportDANFSe(cmd.Context(), input); err != nil {
 			return fmt.Errorf("erro ao gerar DANFSe: %w", err)
 		}
 
-		fmt.Printf("DANFSe gerado com sucesso: %s\n", exportOut)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "DANFSe gerado com sucesso: %s\n", exportOut)
 		return nil
 	},
 }
@@ -166,13 +167,13 @@ var exportDANFSeZipCmd = &cobra.Command{
 			Incremental: exportIncremental,
 		}
 
-		fmt.Println("Gerando ZIP de DANFSes...")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando ZIP de DANFSes...")
 		res, err := application.ExportDANFSeZIP(cmd.Context(), input)
 		if err != nil {
 			return fmt.Errorf("erro ao gerar ZIP de DANFSes: %w", err)
 		}
 
-		printExportResult(res)
+		printExportResult(cmd.OutOrStdout(), res)
 		return nil
 	},
 }

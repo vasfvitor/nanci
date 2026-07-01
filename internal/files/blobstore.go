@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-var ErrFileNotFound = errors.New("blob not found")
+var ErrBlobNotFound = errors.New("blob not found")
 
 // XMLStore defines the interface for storing and retrieving raw XML files by their hash.
 type XMLStore interface {
@@ -56,7 +56,7 @@ func (b *BlobStore) Get(hash string) ([]byte, error) {
 	data, err := os.ReadFile(fullPath) // #nosec G304 -- fullPath is rooted in the configured blob directory.
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrFileNotFound
+			return nil, ErrBlobNotFound
 		}
 		return nil, fmt.Errorf("failed to read blob file: %w", err)
 	}

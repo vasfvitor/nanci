@@ -372,7 +372,7 @@ func TestExportDANFSeZIPFailsWhenXMLIsMissing(t *testing.T) {
 	if !strings.Contains(err.Error(), "ler XML original") {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !errors.Is(err, files.ErrFileNotFound) {
+	if !errors.Is(err, files.ErrBlobNotFound) {
 		t.Fatalf("expected ErrFileNotFound, got %v", err)
 	}
 }
@@ -475,7 +475,7 @@ func (s *stubXMLStore) Get(hash string) ([]byte, error) {
 	s.getCalls = append(s.getCalls, hash)
 	data, ok := s.data[hash]
 	if !ok {
-		return nil, files.ErrFileNotFound
+		return nil, files.ErrBlobNotFound
 	}
 	return data, nil
 }
