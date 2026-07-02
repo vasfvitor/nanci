@@ -15,8 +15,9 @@ type EventView struct {
 	RawXMLPath             string
 }
 
-func (a *App) ListEventsForDocument(ctx context.Context, documentID string) ([]EventView, error) {
-	events, err := a.DocumentReader.ListEventsByDocument(ctx, documentID)
+// ListEventsForDocument returns the events associated with a document.
+func (s DocumentService) ListEventsForDocument(ctx context.Context, documentID string) ([]EventView, error) {
+	events, err := s.DocumentReader.ListEventsByDocument(ctx, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao listar eventos do documento: %w", err)
 	}

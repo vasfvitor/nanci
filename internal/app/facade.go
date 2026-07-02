@@ -43,6 +43,18 @@ func (a *App) UpdateCredentialData(ctx context.Context, input UpdateCredentialDa
 	return a.credential.UpdateCredentialData(ctx, input)
 }
 
+func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.CompanyDocument, error) {
+	return a.documents.ListDocuments(ctx, input)
+}
+
+func (a *App) MarkDocumentsViewed(ctx context.Context, input ListInput) (int, error) {
+	return a.documents.MarkDocumentsViewed(ctx, input)
+}
+
+func (a *App) ListEventsForDocument(ctx context.Context, documentID string) ([]EventView, error) {
+	return a.documents.ListEventsForDocument(ctx, documentID)
+}
+
 func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
 	return a.status.Status(ctx, rawCNPJ)
 }

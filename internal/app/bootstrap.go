@@ -50,6 +50,7 @@ type App struct {
 	// Focused services. App methods are one-line facades over these.
 	company    CompanyService
 	credential CredentialService
+	documents  DocumentService
 	status     SyncStatusService
 	query      QueryService
 }
@@ -113,6 +114,7 @@ func New(deps Dependencies) (*App, error) {
 func (a *App) InitServicesForTest(deps Dependencies) {
 	a.company = newCompanyService(deps)
 	a.credential = newCredentialService(deps)
+	a.documents = newDocumentService(deps)
 	a.status = newSyncStatusService(deps)
 	a.query = newQueryService(deps)
 }
