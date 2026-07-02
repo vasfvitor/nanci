@@ -17,7 +17,7 @@ type ListInput struct {
 
 // ListDocuments returns the company-facing fiscal documents matching the given filters.
 func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.CompanyDocument, error) {
-	company, err := a.companyByCNPJ(ctx, input.CNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (a *App) ListDocuments(ctx context.Context, input ListInput) ([]nfse.Compan
 // MarkDocumentsViewed marks documents matching the given filters as viewed.
 // Returns the number of documents updated.
 func (a *App) MarkDocumentsViewed(ctx context.Context, input ListInput) (int, error) {
-	company, err := a.companyByCNPJ(ctx, input.CNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return 0, err
 	}

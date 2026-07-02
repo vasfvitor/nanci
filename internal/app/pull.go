@@ -11,15 +11,20 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	syncservice "github.com/vasfvitor/nanci/internal/service/sync"
+	"github.com/vasfvitor/nanci/internal/store"
+	syncrun "github.com/vasfvitor/nanci/internal/syncrun"
 )
 
 type syncRunner interface {
 	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
 }
 
-var newSyncRunner = func(repo SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
-	return syncservice.NewSyncService(repo, client, xmlStore, log)
+// newSyncRunner wires the orchestrator with the wider concrete needed by
+// syncrun.SyncRepository (8 methods). The app's own SyncSnapshotStore
+// uses a 3-method consumer interface, but the orchestrator still needs the
+// full 8-method surface; *store.SyncRepository satisfies both structurally.
+var newSyncRunner = func(repo *store.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
+	return syncrun.NewSyncService(repo, client, xmlStore, log)
 }
 
 var (
@@ -71,11 +76,11 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	a.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
 
 	// 1. Resolve company
-	company, err := a.companyByCNPJ(ctx, cleanedCNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, cleanedCNPJ)
 	if err != nil {
 		return PullResult{}, err
 	}
-	credential, err := a.credentialByID(ctx, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, a.CredentialRepo, company.CredentialID)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}

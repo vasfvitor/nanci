@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
@@ -16,18 +17,35 @@ type QueryNFSeInput struct {
 	ChaveAcesso string
 }
 
-func (a *App) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
+// QueryService owns the diagnostic and direct-query use cases.
+type QueryService struct {
+	Log                *slog.Logger
+	CompanyRepo        CompanyRepository
+	CredentialRepo     CredentialRepository
+	CredentialProvider CredentialProvider
+}
+
+func newQueryService(d Dependencies) QueryService {
+	return QueryService{
+		Log:                d.Log,
+		CompanyRepo:        d.CompanyRepo,
+		CredentialRepo:     d.CredentialRepo,
+		CredentialProvider: d.CredentialProvider,
+	}
+}
+
+func (s QueryService) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
 	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)
 	if err != nil {
 		return "", err
 	}
 
-	apiClient, err := a.buildClientForQuery(ctx, input.CNPJ)
+	apiClient, err := s.buildClient(ctx, input.CNPJ)
 	if err != nil {
 		return "", err
 	}
 	path := fmt.Sprintf("NFSe/%s/Eventos", accessKey)
-	return a.queryGenericEndpoint(ctx, apiClient, path)
+	return queryGenericEndpoint(ctx, apiClient, path)
 }
 
 func validateQueryAccessKey(raw string) (nfse.AccessKey, error) {
@@ -38,7 +56,7 @@ func validateQueryAccessKey(raw string) (nfse.AccessKey, error) {
 	return accessKey, nil
 }
 
-func (a *App) queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path string) (string, error) {
+func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path string) (string, error) {
 	var response json.RawMessage
 	err := apiClient.RawGet(ctx, path, &response)
 	if err != nil {
@@ -52,13 +70,13 @@ func (a *App) queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, p
 	return string(pretty), nil
 }
 
-func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn.Client, error) {
-	company, err := a.companyByCNPJ(ctx, companyCNPJ)
+func (s QueryService) buildClient(ctx context.Context, companyCNPJ string) (*adn.Client, error) {
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, companyCNPJ)
 	if err != nil {
 		return nil, err
 	}
 
-	credential, err := a.credentialByID(ctx, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +85,7 @@ func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn
 		return nil, err
 	}
 
-	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
+	pass, err := s.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
 		RequestID:       nfse.GenerateID(),
 		CompanyID:       string(company.ID),
 		CompanyName:     company.Name,
@@ -89,7 +107,7 @@ func (a *App) buildClientForQuery(ctx context.Context, companyCNPJ string) (*adn
 	apiClient, err := adn.NewClient(adn.ClientConfig{
 		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
-		Log:         a.Log,
+		Log:         s.Log,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("configurar cliente ADN: %w", err)
@@ -110,15 +128,15 @@ type ConnectionTestResult struct {
 }
 
 // TestConnection verifies that the certificate can be loaded, mTLS works, and the ADN endpoint can be queried.
-func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (ConnectionTestResult, error) {
+func (s QueryService) TestConnection(ctx context.Context, companyCNPJ string) (ConnectionTestResult, error) {
 	result := ConnectionTestResult{}
 
-	company, err := a.companyByCNPJ(ctx, companyCNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, companyCNPJ)
 	if err != nil {
 		return result, fmt.Errorf("empresa não encontrada: %w", err)
 	}
 
-	credential, err := a.credentialByID(ctx, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
 	if err != nil {
 		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
 		return result, nil //nolint:nilerr // intentional: return diagnostic error info in result
@@ -134,8 +152,7 @@ func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (Connectio
 		}
 	}
 
-	// Try to build client (which loads certificate and asks for password if needed)
-	apiClient, err := a.buildClientForQuery(ctx, companyCNPJ)
+	apiClient, err := s.buildClient(ctx, companyCNPJ)
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Erro ao carregar certificado/senha: %v", err)
 		return result, nil
@@ -143,7 +160,6 @@ func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (Connectio
 
 	result.MTLSAccepted = true
 
-	// Call FetchDocuments for lastNSU 0 to test connectivity
 	docResp, err := apiClient.FetchDocuments(ctx, adn.DistributionRequest{
 		LastNSU:          0,
 		ConsultationCNPJ: company.CNPJ,

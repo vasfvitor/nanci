@@ -13,7 +13,7 @@ type ResetSyncInput struct {
 
 // ResetSyncState clears the persisted sync cursor for a company without deleting documents.
 func (a *App) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
-	company, err := a.companyByCNPJ(ctx, input.CNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return err
 	}

@@ -18,13 +18,13 @@ func normalizeCNPJ(raw string) (string, error) {
 	return cnpj.Clean(raw), nil
 }
 
-func (a *App) companyByCNPJ(ctx context.Context, raw string) (*nfse.Company, error) {
+func lookupCompanyByCNPJ(ctx context.Context, repo CompanyRepository, raw string) (*nfse.Company, error) {
 	cleanedCNPJ, err := normalizeCNPJ(raw)
 	if err != nil {
 		return nil, err
 	}
 
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	company, err := repo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
@@ -34,8 +34,12 @@ func (a *App) companyByCNPJ(ctx context.Context, raw string) (*nfse.Company, err
 	return company, nil
 }
 
-func (a *App) credentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
-	credential, err := a.CredentialRepo.CredentialByID(ctx, id)
+func (a *App) companyByCNPJ(ctx context.Context, raw string) (*nfse.Company, error) {
+	return lookupCompanyByCNPJ(ctx, a.CompanyRepo, raw)
+}
+
+func lookupCredentialByID(ctx context.Context, repo CredentialRepository, id nfse.CredentialID) (*nfse.Credential, error) {
+	credential, err := repo.CredentialByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, fmt.Errorf("credencial não encontrada")
@@ -43,6 +47,10 @@ func (a *App) credentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.C
 		return nil, fmt.Errorf("buscar credencial: %w", err)
 	}
 	return credential, nil
+}
+
+func (a *App) credentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
+	return lookupCredentialByID(ctx, a.CredentialRepo, id)
 }
 
 func validateCertificatePath(path string) error {

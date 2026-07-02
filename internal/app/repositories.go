@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
-	syncservice "github.com/vasfvitor/nanci/internal/service/sync"
 )
 
 type CompanyRepository interface {
@@ -35,16 +34,4 @@ type DocumentTracker interface {
 	CountPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) (int, error)
 	MarkDocumentsExported(ctx context.Context, companyID nfse.CompanyID, kind string, marks []nfse.DocumentExportMark) error
 	MarkDocumentsViewed(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) (int, error)
-}
-
-type SyncRepository interface {
-	syncservice.SyncRepository
-	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error)
-	ResetSyncState(ctx context.Context, params nfse.ResetSyncStateParams) error
-	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
-}
-
-type XMLStore interface {
-	Store(hash string, data []byte) error
-	Get(hash string) ([]byte, error)
 }

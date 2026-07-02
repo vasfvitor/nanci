@@ -30,6 +30,14 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 		DocumentReader:  docRepo,
 		DocumentTracker: docRepo,
 	}
+	// Wire the focused services so the App's facade methods have backing state.
+	application.InitServicesForTest(app.Dependencies{
+		CompanyRepo:     application.CompanyRepo,
+		CredentialRepo:  application.CredentialRepo,
+		SyncRepo:        application.SyncRepo,
+		DocumentReader:  application.DocumentReader,
+		DocumentTracker: application.DocumentTracker,
+	})
 	return application, db
 }
 

@@ -3,39 +3,83 @@ package cli
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
+
+	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
-// withTempDataDir isolates each CLI test in its own fresh SQLite database by
-// pointing NANCI_DATA_DIR at a per-test temp directory. This is a transitional
-// isolation mechanism; the structural plan will later replace newApp() with an
-// injectable AppFactory so tests can avoid the filesystem entirely.
-func withTempDataDir(t *testing.T) string {
+// newInMemTestRoot builds a fresh root wired to an in-memory SQLite-backed
+// app.App. Each call produces an isolated App, so tests are independent
+// without touching the filesystem or shared package globals.
+//
+// The harness is white-box (package cli) so it can reach the package-private
+// `rootCmd` etc. and use the AppFactory seam. The DB connection and blob
+// store are scoped to the test via t.Cleanup.
+func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
 	t.Helper()
-	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "blobs"), 0o750); err != nil {
-		t.Fatalf("create temp data dir: %v", err)
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, "file::memory:?cache=shared", true)
+	if err != nil {
+		t.Fatalf("open in-memory db: %v", err)
 	}
-	t.Setenv("NANCI_DATA_DIR", dir)
-	return dir
+	t.Cleanup(func() { _ = db.Close() })
+
+	docRepo := store.NewDocumentRepository(db)
+	application, err := app.New(app.Dependencies{
+		Log:                slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
+		CompanyRepo:        store.NewCompanyRepository(db),
+		CredentialRepo:     store.NewCredentialRepository(db),
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentReader:     docRepo,
+		DocumentTracker:    docRepo,
+		XMLStore:           files.NewBlobStore(t.TempDir()),
+		DataDir:            t.TempDir(),
+		CredentialProvider: app.KeyringCredentialProvider{Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr}},
+		DANFSeRenderer:     nil,
+	})
+	if err != nil {
+		t.Fatalf("app.New: %v", err)
+	}
+
+	factoryCalled := false
+	factory := func(ctx context.Context) (*app.App, func(), error) {
+		if factoryCalled {
+			return application, func() {}, nil
+		}
+		factoryCalled = true
+		return application, func() {}, nil
+	}
+
+	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	v, tr := false, false
+	root := NewRootCommand(CommandEnv{
+		In:         os.Stdin,
+		Out:        os.Stderr,
+		Stdout:     out,
+		AppFactory: factory,
+		Verbose:    &v,
+		Trace:      &tr,
+	})
+	return root, out, errOut
 }
 
 // TestCompanyList_EmptyDB_PrintsNoCompanies asserts the company list subcommand
 // routes success output through cmd.OutOrStdout and reports an empty database
 // without printing usage or touching stderr.
 func TestCompanyList_EmptyDB_PrintsNoCompanies(t *testing.T) {
-	resetRoot(t)
-	withTempDataDir(t)
+	root, out, errOut := newInMemTestRoot(t)
 
-	rootCmd.SetArgs([]string{"company", "list"})
-	var out, errOut bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetErr(&errOut)
+	root.SetArgs([]string{"company", "list"})
+	root.SetErr(errOut)
 
-	if err := Execute(context.Background()); err != nil {
+	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("Execute returned %v, want nil", err)
 	}
 	if got, want := strings.TrimSpace(out.String()), "Nenhuma empresa cadastrada."; got != want {
@@ -50,25 +94,21 @@ func TestCompanyList_EmptyDB_PrintsNoCompanies(t *testing.T) {
 // failure inside the app layer surfaces as the sole error on Execute's return
 // value, with neither usage text nor the error echoed by Cobra to stderr.
 func TestCompanyAdd_InvalidCNPJ_ReturnsErrorWithoutUsage(t *testing.T) {
-	resetRoot(t)
-	withTempDataDir(t)
+	root, out, errOut := newInMemTestRoot(t)
 
-	rootCmd.SetArgs([]string{
+	root.SetArgs([]string{
 		"company", "add",
 		"--cnpj", "00000000000000",
 		"--name", "Acme LTDA",
 		"--cert", "/nonexistent/cert.pfx",
 		"--env", "producao_restrita",
 	})
-	var out, errOut bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetErr(&errOut)
+	root.SetErr(errOut)
 
-	err := Execute(context.Background())
+	err := root.ExecuteContext(context.Background())
 	if err == nil {
 		t.Fatal("Execute returned nil for invalid CNPJ, want error")
 	}
-	// Cobra must stay silent: no usage text on either stream.
 	if strings.Contains(out.String(), "Usage") || strings.Contains(out.String(), "Flags") {
 		t.Errorf("stdout leaked usage text: %q", out.String())
 	}
@@ -80,20 +120,16 @@ func TestCompanyAdd_InvalidCNPJ_ReturnsErrorWithoutUsage(t *testing.T) {
 	}
 }
 
-// TestCompanyList_MissingRequiredFlag asserts missing required flags surface as
-// the single returned error without Cobra echoing usage to stderr. This covers
-// the SilenceErrors path for flag-validation failures specifically.
-func TestCompanyList_MissingRequiredFlag(t *testing.T) {
-	resetRoot(t)
-	withTempDataDir(t)
+// TestList_MissingRequiredFlag asserts missing required flags surface as
+// the single returned error without Cobra echoing usage to stderr.
+func TestList_MissingRequiredFlag(t *testing.T) {
+	root, _, errOut := newInMemTestRoot(t)
 
 	// list requires --cnpj; omit it.
-	rootCmd.SetArgs([]string{"list"})
-	var out, errOut bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetErr(&errOut)
+	root.SetArgs([]string{"list"})
+	root.SetErr(errOut)
 
-	err := Execute(context.Background())
+	err := root.ExecuteContext(context.Background())
 	if err == nil {
 		t.Fatal("Execute returned nil for missing required flag, want error")
 	}

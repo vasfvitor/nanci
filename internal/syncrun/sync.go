@@ -1,4 +1,4 @@
-package syncservice
+package syncrun
 
 import (
 	"cmp"

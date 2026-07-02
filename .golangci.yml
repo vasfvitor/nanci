@@ -57,8 +57,9 @@ linters:
           deny:
             - pkg: "github.com/vasfvitor/nanci/internal/store"
               desc: "Core business logic (app) cannot depend on the database layer."
-            - pkg: "github.com/vasfvitor/nanci/internal/files"
-              desc: "Core business logic (app) cannot depend on the file storage implementation."
+            # Note: the internal/files deny rule was removed in step 3 of the
+            # structural plan so app can import files.XMLStore (consumer-side
+            # interface ownership). See docs/plans/go-skill-audit-structural-impl/step-3-consolidate-xmlstore.md.
             - pkg: "database/sql"
               desc: "Core business logic (app) cannot depend on SQL."
         domain:

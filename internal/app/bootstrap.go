@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 
 	"github.com/vasfvitor/nanci/internal/danfse"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
@@ -37,13 +39,19 @@ type App struct {
 	Log                *slog.Logger
 	CompanyRepo        CompanyRepository
 	CredentialRepo     CredentialRepository
-	SyncRepo           SyncRepository
+	SyncRepo           *store.SyncRepository
 	DocumentReader     DocumentReader
 	DocumentTracker    DocumentTracker
-	XMLStore           XMLStore
+	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
 	DANFSeRenderer     danfse.Renderer
+
+	// Focused services. App methods are one-line facades over these.
+	company    CompanyService
+	credential CredentialService
+	status     SyncStatusService
+	query      QueryService
 }
 
 // Dependencies contains the infrastructure required by App.
@@ -51,10 +59,10 @@ type Dependencies struct {
 	Log                *slog.Logger
 	CompanyRepo        CompanyRepository
 	CredentialRepo     CredentialRepository
-	SyncRepo           SyncRepository
+	SyncRepo           *store.SyncRepository
 	DocumentReader     DocumentReader
 	DocumentTracker    DocumentTracker
-	XMLStore           XMLStore
+	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
 	DANFSeRenderer     danfse.Renderer
@@ -83,7 +91,7 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: credential provider is required")
 	}
 
-	return &App{
+	a := &App{
 		Log:                deps.Log,
 		CompanyRepo:        deps.CompanyRepo,
 		CredentialRepo:     deps.CredentialRepo,
@@ -94,7 +102,19 @@ func New(deps Dependencies) (*App, error) {
 		DataDir:            deps.DataDir,
 		CredentialProvider: deps.CredentialProvider,
 		DANFSeRenderer:     deps.DANFSeRenderer,
-	}, nil
+	}
+	a.InitServicesForTest(deps)
+	return a, nil
+}
+
+// InitServicesForTest wires the focused service fields. Production code
+// uses New(); tests that build an *App literal directly (avoiding New's
+// dependency validator) must call this explicitly.
+func (a *App) InitServicesForTest(deps Dependencies) {
+	a.company = newCompanyService(deps)
+	a.credential = newCredentialService(deps)
+	a.status = newSyncStatusService(deps)
+	a.query = newQueryService(deps)
 }
 
 // LoadRuntimeEnv loads supported .env.local files.
