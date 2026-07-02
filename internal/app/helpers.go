@@ -34,10 +34,6 @@ func lookupCompanyByCNPJ(ctx context.Context, repo CompanyRepository, raw string
 	return company, nil
 }
 
-func (a *App) companyByCNPJ(ctx context.Context, raw string) (*nfse.Company, error) {
-	return lookupCompanyByCNPJ(ctx, a.CompanyRepo, raw)
-}
-
 func lookupCredentialByID(ctx context.Context, repo CredentialRepository, id nfse.CredentialID) (*nfse.Credential, error) {
 	credential, err := repo.CredentialByID(ctx, id)
 	if err != nil {
@@ -47,10 +43,6 @@ func lookupCredentialByID(ctx context.Context, repo CredentialRepository, id nfs
 		return nil, fmt.Errorf("buscar credencial: %w", err)
 	}
 	return credential, nil
-}
-
-func (a *App) credentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
-	return lookupCredentialByID(ctx, a.CredentialRepo, id)
 }
 
 func validateCertificatePath(path string) error {

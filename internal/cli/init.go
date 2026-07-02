@@ -1,3 +1,4 @@
+// Package cli builds the nanci command tree.
 package cli
 
 import (

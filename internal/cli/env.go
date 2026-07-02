@@ -32,7 +32,9 @@ type CommandEnv struct {
 type AppFactory func(ctx context.Context) (*app.App, func(), error)
 
 // prodEnv builds a CommandEnv wired to the production factory and the
-// process's real IO.
+// process's real IO. The current implementation does not need ctx
+// (the AppFactory is built eagerly and captures stdin/stdout/stderr),
+// but the signature is kept for callers that flow context through.
 func prodEnv() CommandEnv {
 	v, tr := false, false
 	return CommandEnv{
