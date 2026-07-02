@@ -83,6 +83,14 @@ func (a *App) CountPendingExportDocuments(ctx context.Context, input ExportInput
 	return a.exports.CountPendingExportDocuments(ctx, input, kind)
 }
 
+func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
+	return a.sync.Pull(ctx, input)
+}
+
+func (a *App) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
+	return a.sync.ResetSyncState(ctx, input)
+}
+
 func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
 	return a.status.Status(ctx, rawCNPJ)
 }

@@ -54,6 +54,7 @@ type App struct {
 	exports    ExportService
 	status     SyncStatusService
 	query      QueryService
+	sync       SyncService
 }
 
 // Dependencies contains the infrastructure required by App.
@@ -119,6 +120,7 @@ func (a *App) InitServicesForTest(deps Dependencies) {
 	a.exports = newExportService(deps)
 	a.status = newSyncStatusService(deps)
 	a.query = newQueryService(deps)
+	a.sync = newSyncService(deps)
 }
 
 // LoadRuntimeEnv loads supported .env.local files.
