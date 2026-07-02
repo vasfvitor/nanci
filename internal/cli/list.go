@@ -26,7 +26,7 @@ func newListCommand(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			docs, err := application.ListDocuments(cmd.Context(), app.ListInput{
+			docs, err := application.Documents.ListDocuments(cmd.Context(), app.ListInput{
 				CNPJ:       cnpjFlag,
 				Competence: competenceFlag,
 				Direction:  directionFlag,

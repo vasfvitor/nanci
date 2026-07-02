@@ -59,7 +59,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 				return fmt.Errorf("erro na politica de sincronização: %w", err)
 			}
 
-			if err := application.AddCompany(cmd.Context(), app.AddCompanyInput{
+			if err := application.Companies.AddCompany(cmd.Context(), app.AddCompanyInput{
 				CNPJ:            cnpj,
 				Name:            name,
 				CredentialID:    credentialID,
@@ -103,7 +103,7 @@ func newCompanyListCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			companies, err := application.ListCompanies(cmd.Context())
+			companies, err := application.Companies.ListCompanies(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("erro ao listar empresas: %w", err)
 			}
@@ -140,7 +140,7 @@ func newCompanyAssignCredentialCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.AssignCredentialToCompany(cmd.Context(), app.AssignCredentialInput{
+			if err := application.Companies.AssignCredentialToCompany(cmd.Context(), app.AssignCredentialInput{
 				CompanyCNPJ:  cnpj,
 				CredentialID: credentialID,
 			}); err != nil {

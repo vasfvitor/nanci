@@ -20,7 +20,7 @@ func newStatusCommand(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			result, err := application.Status(cmd.Context(), cnpjFlag)
+			result, err := application.Status.Status(cmd.Context(), cnpjFlag)
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
 			}

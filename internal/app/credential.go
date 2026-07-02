@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // AddCredentialInput carries the data required to register a reusable credential.
@@ -27,15 +28,16 @@ type AssignCredentialInput struct {
 
 // CredentialService owns the credential use cases.
 type CredentialService struct {
-	CredentialRepo CredentialRepository
+	CredentialRepo *store.CredentialRepository
 }
 
-func newCredentialService(d Dependencies) CredentialService {
-	return CredentialService{CredentialRepo: d.CredentialRepo}
+func NewCredentialService(d Dependencies) *CredentialService {
+	return &CredentialService{
+		CredentialRepo: d.CredentialRepo}
 }
 
 // AddCredential registers a reusable credential record.
-func (s CredentialService) AddCredential(ctx context.Context, input AddCredentialInput) error {
+func (s *CredentialService) AddCredential(ctx context.Context, input AddCredentialInput) error {
 	if err := validateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
@@ -55,7 +57,7 @@ func (s CredentialService) AddCredential(ctx context.Context, input AddCredentia
 }
 
 // ListCredentials returns all reusable credentials.
-func (s CredentialService) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
+func (s *CredentialService) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
 	credentials, err := s.CredentialRepo.ListCredentials(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar credenciais: %w", err)
@@ -64,7 +66,7 @@ func (s CredentialService) ListCredentials(ctx context.Context) ([]nfse.Credenti
 }
 
 // UpdateCredentialPath updates the PKCS#12 path of an existing credential.
-func (s CredentialService) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPathInput) error {
+func (s *CredentialService) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPathInput) error {
 	if err := validateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
@@ -86,7 +88,7 @@ type UpdateCredentialDataInput struct {
 }
 
 // UpdateCredentialData updates the label of an existing credential.
-func (s CredentialService) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
+func (s *CredentialService) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
 	cred, err := s.CredentialRepo.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
 	if err != nil {
 		return fmt.Errorf("credencial não encontrada: %w", err)

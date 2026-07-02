@@ -56,7 +56,7 @@ func newExportXlsxCmd(env CommandEnv, cnpj, competence, direction *string, incre
 			}
 
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo Excel...")
-			res, err := application.ExportXLSX(cmd.Context(), input)
+			res, err := application.Exports.ExportXLSX(cmd.Context(), input)
 			if err != nil {
 				return fmt.Errorf("erro ao gerar arquivo XLSX: %w", err)
 			}
@@ -90,7 +90,7 @@ func newExportCsvCmd(env CommandEnv, cnpj, competence, direction *string, increm
 			}
 
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo CSV...")
-			res, err := application.ExportCSV(cmd.Context(), input)
+			res, err := application.Exports.ExportCSV(cmd.Context(), input)
 			if err != nil {
 				return fmt.Errorf("erro ao gerar arquivo CSV: %w", err)
 			}
@@ -124,7 +124,7 @@ func newExportZipCmd(env CommandEnv, cnpj, competence, direction *string, increm
 			}
 
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo ZIP...")
-			res, err := application.ExportZIP(cmd.Context(), input)
+			res, err := application.Exports.ExportZIP(cmd.Context(), input)
 			if err != nil {
 				return fmt.Errorf("erro ao gerar arquivo ZIP: %w", err)
 			}
@@ -159,7 +159,7 @@ func newExportDANFSeCmd(env CommandEnv, cnpj *string) *cobra.Command {
 			}
 
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando DANFSe...")
-			if err := application.ExportDANFSe(cmd.Context(), input); err != nil {
+			if err := application.Exports.ExportDANFSe(cmd.Context(), input); err != nil {
 				return fmt.Errorf("erro ao gerar DANFSe: %w", err)
 			}
 
@@ -194,7 +194,7 @@ func newExportDANFSeZipCmd(env CommandEnv, cnpj, competence, direction *string, 
 			}
 
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando ZIP de DANFSes...")
-			res, err := application.ExportDANFSeZIP(cmd.Context(), input)
+			res, err := application.Exports.ExportDANFSeZIP(cmd.Context(), input)
 			if err != nil {
 				return fmt.Errorf("erro ao gerar ZIP de DANFSes: %w", err)
 			}

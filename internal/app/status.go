@@ -27,23 +27,24 @@ type StatusResult struct {
 
 // SyncStatusService computes the display-ready status for a company.
 type SyncStatusService struct {
-	CompanyRepo    CompanyRepository
-	CredentialRepo CredentialRepository
+	CompanyRepo    *store.CompanyRepository
+	CredentialRepo *store.CredentialRepository
 	SyncRepo       *store.SyncRepository
-	DocumentReader DocumentReader
+	DocumentRepo   *store.DocumentRepository
 }
 
-func newSyncStatusService(d Dependencies) SyncStatusService {
-	return SyncStatusService{
+func NewSyncStatusService(d Dependencies) *SyncStatusService {
+	return &SyncStatusService{
+
 		CompanyRepo:    d.CompanyRepo,
 		CredentialRepo: d.CredentialRepo,
 		SyncRepo:       d.SyncRepo,
-		DocumentReader: d.DocumentReader,
+		DocumentRepo:   d.DocumentRepo,
 	}
 }
 
 // Status returns the current synchronisation state of the given company.
-func (s SyncStatusService) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
+func (s *SyncStatusService) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, rawCNPJ)
 	if err != nil {
 		return StatusResult{}, err
@@ -57,7 +58,7 @@ func (s SyncStatusService) Status(ctx context.Context, rawCNPJ string) (StatusRe
 		return StatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
 
-	counts, err := s.DocumentReader.CountDocumentsByRole(ctx, company.ID)
+	counts, err := s.DocumentRepo.CountDocumentsByRole(ctx, company.ID)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("contar documentos: %w", err)
 	}

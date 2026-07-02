@@ -37,8 +37,8 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 		CompanyRepo:        store.NewCompanyRepository(db),
 		CredentialRepo:     store.NewCredentialRepository(db),
 		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     docRepo,
-		DocumentTracker:    docRepo,
+		DocumentRepo: docRepo,
+		
 		XMLStore:           files.NewBlobStore(t.TempDir()),
 		DataDir:            t.TempDir(),
 		CredentialProvider: app.KeyringCredentialProvider{Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr}},

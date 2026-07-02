@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // ListInput defines the filters for listing documents.
@@ -17,22 +18,21 @@ type ListInput struct {
 
 // DocumentService owns the document list/view use cases.
 type DocumentService struct {
-	CompanyRepo     CompanyRepository
-	DocumentReader  DocumentReader
-	DocumentTracker DocumentTracker
+	CompanyRepo  *store.CompanyRepository
+	DocumentRepo *store.DocumentRepository
 }
 
-func newDocumentService(d Dependencies) DocumentService {
-	return DocumentService{
-		CompanyRepo:     d.CompanyRepo,
-		DocumentReader:  d.DocumentReader,
-		DocumentTracker: d.DocumentTracker,
+func NewDocumentService(d Dependencies) *DocumentService {
+	return &DocumentService{
+
+		CompanyRepo:  d.CompanyRepo,
+		DocumentRepo: d.DocumentRepo,
 	}
 }
 
 // buildFilter resolves a ListInput into an nfse.DocumentFilter, applying
 // the company's sync-start policy as a date floor.
-func (s DocumentService) buildFilter(ctx context.Context, input ListInput) (nfse.CompanyID, nfse.DocumentFilter, error) {
+func (s *DocumentService) buildFilter(ctx context.Context, input ListInput) (nfse.CompanyID, nfse.DocumentFilter, error) {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return "", nfse.DocumentFilter{}, err
@@ -49,12 +49,12 @@ func (s DocumentService) buildFilter(ctx context.Context, input ListInput) (nfse
 }
 
 // ListDocuments returns the company-facing fiscal documents matching the given filters.
-func (s DocumentService) ListDocuments(ctx context.Context, input ListInput) ([]nfse.CompanyDocument, error) {
+func (s *DocumentService) ListDocuments(ctx context.Context, input ListInput) ([]nfse.CompanyDocument, error) {
 	companyID, filter, err := s.buildFilter(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	docs, err := s.DocumentReader.ListCompanyDocuments(ctx, companyID, filter)
+	docs, err := s.DocumentRepo.ListCompanyDocuments(ctx, companyID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("listar documentos: %w", err)
 	}
@@ -63,12 +63,12 @@ func (s DocumentService) ListDocuments(ctx context.Context, input ListInput) ([]
 
 // MarkDocumentsViewed marks documents matching the given filters as viewed.
 // Returns the number of documents updated.
-func (s DocumentService) MarkDocumentsViewed(ctx context.Context, input ListInput) (int, error) {
+func (s *DocumentService) MarkDocumentsViewed(ctx context.Context, input ListInput) (int, error) {
 	companyID, filter, err := s.buildFilter(ctx, input)
 	if err != nil {
 		return 0, err
 	}
-	count, err := s.DocumentTracker.MarkDocumentsViewed(ctx, companyID, filter)
+	count, err := s.DocumentRepo.MarkDocumentsViewed(ctx, companyID, filter)
 	if err != nil {
 		return 0, fmt.Errorf("marcar documentos como vistos: %w", err)
 	}

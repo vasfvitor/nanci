@@ -31,13 +31,14 @@ type AddCompanyInput struct {
 
 // CompanyService owns the company use cases.
 type CompanyService struct {
-	CompanyRepo    CompanyRepository
-	CredentialRepo CredentialRepository
+	CompanyRepo    *store.CompanyRepository
+	CredentialRepo *store.CredentialRepository
 	SyncRepo       *store.SyncRepository
 }
 
-func newCompanyService(d Dependencies) CompanyService {
-	return CompanyService{
+func NewCompanyService(d Dependencies) *CompanyService {
+	return &CompanyService{
+
 		CompanyRepo:    d.CompanyRepo,
 		CredentialRepo: d.CredentialRepo,
 		SyncRepo:       d.SyncRepo,
@@ -45,7 +46,7 @@ func newCompanyService(d Dependencies) CompanyService {
 }
 
 // AddCompany registers a new company in the store.
-func (s CompanyService) AddCompany(ctx context.Context, input AddCompanyInput) error {
+func (s *CompanyService) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
 	if err != nil {
 		return err
@@ -78,7 +79,7 @@ func (s CompanyService) AddCompany(ctx context.Context, input AddCompanyInput) e
 }
 
 // ListCompanies returns all registered companies.
-func (s CompanyService) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+func (s *CompanyService) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 	companies, err := s.CompanyRepo.ListCompanies(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar empresas: %w", err)
@@ -104,7 +105,7 @@ func (s CompanyService) ListCompanies(ctx context.Context) ([]nfse.Company, erro
 }
 
 // AssignCredentialToCompany changes the active credential for an existing company.
-func (s CompanyService) AssignCredentialToCompany(ctx context.Context, input AssignCredentialInput) error {
+func (s *CompanyService) AssignCredentialToCompany(ctx context.Context, input AssignCredentialInput) error {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CompanyCNPJ)
 	if err != nil {
 		return err
@@ -128,7 +129,7 @@ func (s CompanyService) AssignCredentialToCompany(ctx context.Context, input Ass
 // resolveCredentialForCompany resolves the credential that should be
 // associated with a new company, either by ID or by creating a fresh
 // one from the cert path.
-func (s CompanyService) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
+func (s *CompanyService) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
 	if input.CredentialID != "" {
 		return lookupCredentialByID(ctx, s.CredentialRepo, nfse.CredentialID(input.CredentialID))
 	}
@@ -166,7 +167,7 @@ type UpdateCompanyInput struct {
 }
 
 // UpdateCompany updates the name and environment of an existing company.
-func (s CompanyService) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
+func (s *CompanyService) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return err

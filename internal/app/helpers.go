@@ -18,7 +18,7 @@ func normalizeCNPJ(raw string) (string, error) {
 	return cnpj.Clean(raw), nil
 }
 
-func lookupCompanyByCNPJ(ctx context.Context, repo CompanyRepository, raw string) (*nfse.Company, error) {
+func lookupCompanyByCNPJ(ctx context.Context, repo *store.CompanyRepository, raw string) (*nfse.Company, error) {
 	cleanedCNPJ, err := normalizeCNPJ(raw)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func lookupCompanyByCNPJ(ctx context.Context, repo CompanyRepository, raw string
 	return company, nil
 }
 
-func lookupCredentialByID(ctx context.Context, repo CredentialRepository, id nfse.CredentialID) (*nfse.Credential, error) {
+func lookupCredentialByID(ctx context.Context, repo *store.CredentialRepository, id nfse.CredentialID) (*nfse.Credential, error) {
 	credential, err := repo.CredentialByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {

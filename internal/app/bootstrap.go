@@ -36,35 +36,22 @@ type CredentialProvider interface {
 
 // App encapsulates the global dependencies of the application.
 type App struct {
-	Log                *slog.Logger
-	CompanyRepo        CompanyRepository
-	CredentialRepo     CredentialRepository
-	SyncRepo           *store.SyncRepository
-	DocumentReader     DocumentReader
-	DocumentTracker    DocumentTracker
-	XMLStore           files.XMLStore
-	DataDir            string
-	CredentialProvider CredentialProvider
-	DANFSeRenderer     danfse.Renderer
-
-	// Focused services. App methods are one-line facades over these.
-	company    CompanyService
-	credential CredentialService
-	documents  DocumentService
-	exports    ExportService
-	status     SyncStatusService
-	query      QueryService
-	sync       SyncService
+	Companies   *CompanyService
+	Credentials *CredentialService
+	Documents   *DocumentService
+	Exports     *ExportService
+	Status      *SyncStatusService
+	Query       *QueryService
+	Sync        *SyncService
 }
 
 // Dependencies contains the infrastructure required by App.
 type Dependencies struct {
 	Log                *slog.Logger
-	CompanyRepo        CompanyRepository
-	CredentialRepo     CredentialRepository
+	CompanyRepo        *store.CompanyRepository
+	CredentialRepo     *store.CredentialRepository
 	SyncRepo           *store.SyncRepository
-	DocumentReader     DocumentReader
-	DocumentTracker    DocumentTracker
+	DocumentRepo       *store.DocumentRepository
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -82,10 +69,8 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: credential repository is required")
 	case deps.SyncRepo == nil:
 		return nil, errors.New("app: sync repository is required")
-	case deps.DocumentReader == nil:
-		return nil, errors.New("app: document reader is required")
-	case deps.DocumentTracker == nil:
-		return nil, errors.New("app: document tracker is required")
+	case deps.DocumentRepo == nil:
+		return nil, errors.New("app: document repository is required")
 	case deps.XMLStore == nil:
 		return nil, errors.New("app: XML store is required")
 	case deps.DataDir == "":
@@ -94,33 +79,15 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: credential provider is required")
 	}
 
-	a := &App{
-		Log:                deps.Log,
-		CompanyRepo:        deps.CompanyRepo,
-		CredentialRepo:     deps.CredentialRepo,
-		SyncRepo:           deps.SyncRepo,
-		DocumentReader:     deps.DocumentReader,
-		DocumentTracker:    deps.DocumentTracker,
-		XMLStore:           deps.XMLStore,
-		DataDir:            deps.DataDir,
-		CredentialProvider: deps.CredentialProvider,
-		DANFSeRenderer:     deps.DANFSeRenderer,
-	}
-	a.InitServicesForTest(deps)
-	return a, nil
-}
-
-// InitServicesForTest wires the focused service fields. Production code
-// uses New(); tests that build an *App literal directly (avoiding New's
-// dependency validator) must call this explicitly.
-func (a *App) InitServicesForTest(deps Dependencies) {
-	a.company = newCompanyService(deps)
-	a.credential = newCredentialService(deps)
-	a.documents = newDocumentService(deps)
-	a.exports = newExportService(deps)
-	a.status = newSyncStatusService(deps)
-	a.query = newQueryService(deps)
-	a.sync = newSyncService(deps)
+	return &App{
+		Companies:   NewCompanyService(deps),
+		Credentials: NewCredentialService(deps),
+		Documents:   NewDocumentService(deps),
+		Exports:     NewExportService(deps),
+		Status:      NewSyncStatusService(deps),
+		Query:       NewQueryService(deps),
+		Sync:        NewSyncService(deps),
+	}, nil
 }
 
 // LoadRuntimeEnv loads supported .env.local files.

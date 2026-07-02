@@ -80,8 +80,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		CompanyRepo:        companyRepo,
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     store.NewDocumentRepository(db),
-		DocumentTracker:    store.NewDocumentRepository(db),
+		DocumentRepo:       store.NewDocumentRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            dataDir,
 		CredentialProvider: providerStub{},
@@ -130,7 +129,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		}
 	}
 
-	result, err := application.Pull(context.Background(), PullInput{CNPJ: "11222333000181"})
+	result, err := application.Sync.Pull(context.Background(), PullInput{CNPJ: "11222333000181"})
 	if err != nil {
 		t.Fatal(err)
 	}

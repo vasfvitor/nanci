@@ -174,8 +174,8 @@ func (a *App) startup(ctx context.Context) {
 		CompanyRepo:     store.NewCompanyRepository(db),
 		CredentialRepo:  store.NewCredentialRepository(db),
 		SyncRepo:        store.NewSyncRepository(db),
-		DocumentReader:  docRepo,
-		DocumentTracker: docRepo,
+		DocumentRepo: docRepo,
+		
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
@@ -259,7 +259,7 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 		return err
 	}
 
-	return a.core.AddCompany(a.ctx, app.AddCompanyInput{
+	return a.core.Companies.AddCompany(a.ctx, app.AddCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		CredentialID:    input.CredentialID,
@@ -272,14 +272,14 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 }
 
 func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
-	return a.core.AddCredential(a.ctx, app.AddCredentialInput{
+	return a.core.Credentials.AddCredential(a.ctx, app.AddCredentialInput{
 		Label:    input.Label,
 		CertPath: input.CertPath,
 	})
 }
 
 func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
-	credentials, err := a.core.ListCredentials(a.ctx)
+	credentials, err := a.core.Credentials.ListCredentials(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -287,14 +287,14 @@ func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
 }
 
 func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) error {
-	return a.core.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
+	return a.core.Credentials.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
 		CredentialID: input.CredentialID,
 		CertPath:     input.CertPath,
 	})
 }
 
 func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {
-	return a.core.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
+	return a.core.Credentials.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
 		CredentialID: input.CredentialID,
 		Label:        input.Label,
 	})
@@ -314,7 +314,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 		}
 	}
 
-	return a.core.UpdateCompany(a.ctx, app.UpdateCompanyInput{
+	return a.core.Companies.UpdateCompany(a.ctx, app.UpdateCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		Environment:     environment,
@@ -324,14 +324,14 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 }
 
 func (a *App) AssignCredentialToCompany(input desktopapi.AssignCredentialInput) error {
-	return a.core.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
+	return a.core.Companies.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
 		CompanyCNPJ:  input.CompanyCNPJ,
 		CredentialID: input.CredentialID,
 	})
 }
 
 func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
-	companies, err := a.core.ListCompanies(a.ctx)
+	companies, err := a.core.Companies.ListCompanies(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 }
 
 func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
-	res, err := a.core.Pull(a.ctx, app.PullInput{
+	res, err := a.core.Sync.Pull(a.ctx, app.PullInput{
 		CNPJ: input.CNPJ,
 		Mode: input.Mode,
 	})
@@ -369,20 +369,20 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
-	return a.core.ResetSyncState(a.ctx, app.ResetSyncInput{
+	return a.core.Sync.ResetSyncState(a.ctx, app.ResetSyncInput{
 		CNPJ: input.CompanyCNPJ,
 	})
 }
 
 func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
-	return a.core.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
+	return a.core.Query.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
 		CNPJ:        input.CompanyCNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 	})
 }
 
 func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRow, error) {
-	documents, err := a.core.ListDocuments(a.ctx, app.ListInput{
+	documents, err := a.core.Documents.ListDocuments(a.ctx, app.ListInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
@@ -395,7 +395,7 @@ func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRo
 }
 
 func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEvent, error) {
-	events, err := a.core.ListEventsForDocument(a.ctx, documentID)
+	events, err := a.core.Documents.ListEventsForDocument(a.ctx, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +403,7 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 }
 
 func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
-	res, err := a.core.Status(a.ctx, cnpj)
+	res, err := a.core.Status.Status(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.StatusResult{}, err
 	}
@@ -429,7 +429,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
+	err := a.core.Exports.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -445,7 +445,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.ExportXML(a.ctx, app.ExportXMLInput{
+	err := a.core.Exports.ExportXML(a.ctx, app.ExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -470,7 +470,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 		ChavesAcesso: input.ChavesAcesso,
 	}
 
-	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
+	res, err := a.core.Exports.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
@@ -501,11 +501,11 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	var err error
 	switch format {
 	case "csv":
-		res, err = a.core.ExportCSV(a.ctx, exportInput)
+		res, err = a.core.Exports.ExportCSV(a.ctx, exportInput)
 	case "xlsx":
-		res, err = a.core.ExportXLSX(a.ctx, exportInput)
+		res, err = a.core.Exports.ExportXLSX(a.ctx, exportInput)
 	case "zip":
-		res, err = a.core.ExportZIP(a.ctx, exportInput)
+		res, err = a.core.Exports.ExportZIP(a.ctx, exportInput)
 	default:
 		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}
@@ -535,11 +535,11 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 		Competence: input.Competence,
 		Direction:  input.Direction,
 	}
-	return a.core.CountPendingExportDocuments(a.ctx, exportInput, format)
+	return a.core.Exports.CountPendingExportDocuments(a.ctx, exportInput, format)
 }
 
 func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
-	return a.core.MarkDocumentsViewed(a.ctx, app.ListInput{
+	return a.core.Documents.MarkDocumentsViewed(a.ctx, app.ListInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
@@ -548,6 +548,9 @@ func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
 }
 
 func formatExportError(err error) error {
+	if errors.Is(err, files.ErrBlobNotFound) {
+		return fmt.Errorf("%w. Dica: o XML do documento não foi encontrado no disco. Isso pode ocorrer se o arquivo foi apagado manualmente ou se a sincronização não baixou o XML corretamente. Resetar NSU nas configurações da empresa pode forçar o download novamente", err)
+	}
 	return err
 }
 
@@ -688,7 +691,7 @@ func (a *App) OpenLogsDirectory() error {
 }
 
 func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResult, error) {
-	res, err := a.core.TestConnection(a.ctx, companyCNPJ)
+	res, err := a.core.Query.TestConnection(a.ctx, companyCNPJ)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
 	}

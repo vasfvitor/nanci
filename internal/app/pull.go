@@ -65,15 +65,16 @@ type PullResult struct {
 // ADN client constructor, and the orchestrator runner.
 type SyncService struct {
 	Log                *slog.Logger
-	CompanyRepo        CompanyRepository
-	CredentialRepo     CredentialRepository
+	CompanyRepo        *store.CompanyRepository
+	CredentialRepo     *store.CredentialRepository
 	SyncRepo           *store.SyncRepository
 	XMLStore           files.XMLStore
 	CredentialProvider CredentialProvider
 }
 
-func newSyncService(d Dependencies) SyncService {
-	return SyncService{
+func NewSyncService(d Dependencies) *SyncService {
+	return &SyncService{
+
 		Log:                d.Log,
 		CompanyRepo:        d.CompanyRepo,
 		CredentialRepo:     d.CredentialRepo,
@@ -86,7 +87,7 @@ func newSyncService(d Dependencies) SyncService {
 // Pull synchronises fiscal documents for the given company from the ADN API.
 // It resolves the certificate password via the injected provider so that
 // neither the CLI nor Wails need to wire cert loading themselves.
-func (s SyncService) Pull(ctx context.Context, input PullInput) (PullResult, error) {
+func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
 	if err != nil {
 		return PullResult{}, err

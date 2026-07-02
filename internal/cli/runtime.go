@@ -56,8 +56,8 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 			CompanyRepo:     store.NewCompanyRepository(db),
 			CredentialRepo:  store.NewCredentialRepository(db),
 			SyncRepo:        store.NewSyncRepository(db),
-			DocumentReader:  docRepo,
-			DocumentTracker: docRepo,
+			DocumentRepo: docRepo,
+			
 			XMLStore:        files.NewBlobStore(dataDir),
 			DataDir:         dataDir,
 			CredentialProvider: app.KeyringCredentialProvider{

@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 func TestAppIntegration_ListDocuments(t *testing.T) {
@@ -15,14 +16,14 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	application.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
-	creds, _ := application.ListCredentials(ctx)
+	application.Credentials.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	creds, _ := application.Credentials.ListCredentials(ctx)
 
 	now := time.Now().Truncate(24 * time.Hour)
 	policyFromNow, dateFromNow, _ := app.ParseSyncStartPolicyInput("from_now", "")
 
 	// Create Company with from_now policy
-	application.AddCompany(ctx, app.AddCompanyInput{
+	application.Companies.AddCompany(ctx, app.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Listagem",
 		Environment:     nfse.EnvironmentRestricted,
@@ -31,7 +32,7 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 		SyncStartDate:   dateFromNow,
 	})
 
-	comps, _ := application.ListCompanies(ctx)
+	comps, _ := application.Companies.ListCompanies(ctx)
 	companyID := comps[0].ID
 
 	yesterday := now.Add(-24 * time.Hour)
@@ -78,7 +79,7 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 	input := app.ListInput{
 		CNPJ: "45852546000109",
 	}
-	docs, err := application.ListDocuments(ctx, input)
+	docs, err := application.Documents.ListDocuments(ctx, input)
 
 	if err != nil {
 		t.Fatalf("ListDocuments falhou: %v", err)
@@ -98,10 +99,10 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	application.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
-	creds, _ := application.ListCredentials(ctx)
+	application.Credentials.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	creds, _ := application.Credentials.ListCredentials(ctx)
 
-	application.AddCompany(ctx, app.AddCompanyInput{
+	application.Companies.AddCompany(ctx, app.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Company A",
 		CredentialID:    string(creds[0].ID),
@@ -109,7 +110,7 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		SyncStartPolicy: "all",
 	})
 
-	company, _ := application.CompanyRepo.CompanyByCNPJ(ctx, "45852546000109")
+	company, _ := store.NewCompanyRepository(db).CompanyByCNPJ(ctx, "45852546000109")
 
 	now := time.Now().Truncate(24 * time.Hour)
 
@@ -154,7 +155,7 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		CNPJ:       "45852546000109",
 		OnlyUnread: true,
 	}
-	count, err := application.MarkDocumentsViewed(ctx, input)
+	count, err := application.Documents.MarkDocumentsViewed(ctx, input)
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed falhou: %v", err)
 	}
@@ -163,7 +164,7 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		t.Errorf("esperava marcar 2 documentos, marcou %d", count)
 	}
 
-	docs, _ := application.ListDocuments(ctx, input)
+	docs, _ := application.Documents.ListDocuments(ctx, input)
 	if len(docs) != 0 {
 		t.Errorf("esperava 0 documentos não lidos, obteve %d", len(docs))
 	}
@@ -207,7 +208,7 @@ func TestAppIntegration_ListEvents(t *testing.T) {
 		t.Fatalf("insert evt-2 err: %v", err)
 	}
 
-	events, err := application.ListEventsForDocument(ctx, "doc-events")
+	events, err := application.Documents.ListEventsForDocument(ctx, "doc-events")
 	if err != nil {
 		t.Fatalf("ListEventsForDocument falhou: %v", err)
 	}

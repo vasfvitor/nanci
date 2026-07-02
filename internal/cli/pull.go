@@ -21,7 +21,7 @@ func newPullCommand(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			result, err := application.Pull(cmd.Context(), app.PullInput{
+			result, err := application.Sync.Pull(cmd.Context(), app.PullInput{
 				CNPJ: cnpjFlag,
 			})
 			if err != nil {

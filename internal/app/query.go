@@ -10,6 +10,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 type QueryNFSeInput struct {
@@ -20,13 +21,14 @@ type QueryNFSeInput struct {
 // QueryService owns the diagnostic and direct-query use cases.
 type QueryService struct {
 	Log                *slog.Logger
-	CompanyRepo        CompanyRepository
-	CredentialRepo     CredentialRepository
+	CompanyRepo        *store.CompanyRepository
+	CredentialRepo     *store.CredentialRepository
 	CredentialProvider CredentialProvider
 }
 
-func newQueryService(d Dependencies) QueryService {
-	return QueryService{
+func NewQueryService(d Dependencies) *QueryService {
+	return &QueryService{
+
 		Log:                d.Log,
 		CompanyRepo:        d.CompanyRepo,
 		CredentialRepo:     d.CredentialRepo,
@@ -34,7 +36,7 @@ func newQueryService(d Dependencies) QueryService {
 	}
 }
 
-func (s QueryService) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
+func (s *QueryService) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput) (string, error) {
 	accessKey, err := validateQueryAccessKey(input.ChaveAcesso)
 	if err != nil {
 		return "", err
@@ -70,7 +72,7 @@ func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path strin
 	return string(pretty), nil
 }
 
-func (s QueryService) buildClient(ctx context.Context, companyCNPJ string) (*adn.Client, error) {
+func (s *QueryService) buildClient(ctx context.Context, companyCNPJ string) (*adn.Client, error) {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, companyCNPJ)
 	if err != nil {
 		return nil, err
@@ -128,7 +130,7 @@ type ConnectionTestResult struct {
 }
 
 // TestConnection verifies that the certificate can be loaded, mTLS works, and the ADN endpoint can be queried.
-func (s QueryService) TestConnection(ctx context.Context, companyCNPJ string) (ConnectionTestResult, error) {
+func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (ConnectionTestResult, error) {
 	result := ConnectionTestResult{}
 
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, companyCNPJ)

@@ -35,7 +35,7 @@ func newCredentialAddCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.AddCredential(cmd.Context(), app.AddCredentialInput{
+			if err := application.Credentials.AddCredential(cmd.Context(), app.AddCredentialInput{
 				Label:    label,
 				CertPath: path,
 			}); err != nil {
@@ -62,7 +62,7 @@ func newCredentialListCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			credentials, err := application.ListCredentials(cmd.Context())
+			credentials, err := application.Credentials.ListCredentials(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("erro ao listar credenciais: %w", err)
 			}
@@ -103,7 +103,7 @@ func newCredentialUpdatePathCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.UpdateCredentialPath(cmd.Context(), app.UpdateCredentialPathInput{
+			if err := application.Credentials.UpdateCredentialPath(cmd.Context(), app.UpdateCredentialPathInput{
 				CredentialID: id,
 				CertPath:     path,
 			}); err != nil {
