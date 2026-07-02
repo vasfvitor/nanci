@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vasfvitor/nanci/internal/danfse"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
 )
@@ -44,30 +46,51 @@ type ExportXMLInput struct {
 	OutPath     string
 }
 
+// ExportService owns the export use cases: bulk formats (CSV, XLSX, ZIP of
+// raw XML, ZIP of DANFSe PDFs), single-document exports (DANFSe, XML), and
+// the pending-export counter.
+type ExportService struct {
+	CompanyRepo     CompanyRepository
+	DocumentReader  DocumentReader
+	DocumentTracker DocumentTracker
+	XMLStore        files.XMLStore
+	DANFSeRenderer  danfse.Renderer
+}
+
+func newExportService(d Dependencies) ExportService {
+	return ExportService{
+		CompanyRepo:     d.CompanyRepo,
+		DocumentReader:  d.DocumentReader,
+		DocumentTracker: d.DocumentTracker,
+		XMLStore:        d.XMLStore,
+		DANFSeRenderer:  d.DANFSeRenderer,
+	}
+}
+
 // ExportCSV writes a CSV report for the matching documents to input.OutPath.
-func (a *App) ExportCSV(ctx context.Context, input ExportInput) (ExportResult, error) {
-	return a.bulkExport(ctx, input, "csv", func(docs []nfse.CompanyDocument, tempPath string) error {
+func (s ExportService) ExportCSV(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return s.bulkExport(ctx, input, "csv", func(docs []nfse.CompanyDocument, tempPath string) error {
 		return report.GenerateCSV(report.BuildRows(docs), tempPath)
 	})
 }
 
 // ExportXLSX writes an Excel report for the matching documents to input.OutPath.
-func (a *App) ExportXLSX(ctx context.Context, input ExportInput) (ExportResult, error) {
-	return a.bulkExport(ctx, input, "xlsx", func(docs []nfse.CompanyDocument, tempPath string) error {
+func (s ExportService) ExportXLSX(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return s.bulkExport(ctx, input, "xlsx", func(docs []nfse.CompanyDocument, tempPath string) error {
 		return report.GenerateXLSX(report.BuildRows(docs), tempPath)
 	})
 }
 
 // ExportZIP packs the raw XML files for the matching documents into input.OutPath.
-func (a *App) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
-	return a.bulkExport(ctx, input, "xml", func(docs []nfse.CompanyDocument, tempPath string) error {
-		return report.GenerateZIP(report.BuildRows(docs), a.XMLStore, tempPath)
+func (s ExportService) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return s.bulkExport(ctx, input, "xml", func(docs []nfse.CompanyDocument, tempPath string) error {
+		return report.GenerateZIP(report.BuildRows(docs), s.XMLStore, tempPath)
 	})
 }
 
 // ExportDANFSeZIP writes one DANFSe PDF per matching document into a ZIP archive.
-func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
-	return a.bulkExport(ctx, input, "danfse", func(docs []nfse.CompanyDocument, tempPath string) error {
+func (s ExportService) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return s.bulkExport(ctx, input, "danfse", func(docs []nfse.CompanyDocument, tempPath string) error {
 		zipFile, err := os.Create(tempPath) //nolint:gosec // intentional: creating temp export file in user directory
 		if err != nil {
 			return fmt.Errorf("criar arquivo ZIP temporário: %w", err)
@@ -86,7 +109,7 @@ func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportRes
 		}()
 
 		for _, doc := range docs {
-			pdf, err := a.renderDANFSe(&doc)
+			pdf, err := s.renderDANFSe(&doc)
 			if err != nil {
 				return fmt.Errorf("gerar DANFSe %s: %w", doc.ChaveAcesso, err)
 			}
@@ -115,7 +138,7 @@ func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportRes
 	})
 }
 
-func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, generator func([]nfse.CompanyDocument, string) error) (ExportResult, error) {
+func (s ExportService) bulkExport(ctx context.Context, input ExportInput, kind string, generator func([]nfse.CompanyDocument, string) error) (ExportResult, error) {
 	res := ExportResult{
 		OutPath:     input.OutPath,
 		Format:      kind,
@@ -126,7 +149,7 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 		return res, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return res, err
 	}
@@ -143,9 +166,9 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 
 	var docs []nfse.CompanyDocument
 	if input.Incremental {
-		docs, err = a.DocumentTracker.ListPendingExportDocuments(ctx, company.ID, filter, kind)
+		docs, err = s.DocumentTracker.ListPendingExportDocuments(ctx, company.ID, filter, kind)
 	} else {
-		docs, err = a.DocumentReader.ListCompanyDocuments(ctx, company.ID, filter)
+		docs, err = s.DocumentReader.ListCompanyDocuments(ctx, company.ID, filter)
 	}
 	if err != nil {
 		return res, fmt.Errorf("listar documentos: %w", err)
@@ -178,7 +201,7 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 		}
 	}
 
-	if err := a.DocumentTracker.MarkDocumentsExported(ctx, company.ID, kind, marks); err != nil {
+	if err := s.DocumentTracker.MarkDocumentsExported(ctx, company.ID, kind, marks); err != nil {
 		return res, fmt.Errorf("marcar documentos como exportados: %w", err)
 	}
 
@@ -186,7 +209,7 @@ func (a *App) bulkExport(ctx context.Context, input ExportInput, kind string, ge
 }
 
 // ExportDANFSe writes a DANFSe PDF for one company-visible NFS-e.
-func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
+func (s ExportService) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
 	if input.OutPath == "" {
 		return fmt.Errorf("caminho de saída não especificado")
 	}
@@ -194,16 +217,16 @@ func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
 		return fmt.Errorf("chave de acesso não especificada")
 	}
 
-	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return err
 	}
-	doc, err := a.DocumentReader.CompanyDocumentByChave(ctx, company.ID, input.ChaveAcesso)
+	doc, err := s.DocumentReader.CompanyDocumentByChave(ctx, company.ID, input.ChaveAcesso)
 	if err != nil {
 		return fmt.Errorf("localizar documento: %w", err)
 	}
 
-	pdf, err := a.renderDANFSe(doc)
+	pdf, err := s.renderDANFSe(doc)
 	if err != nil {
 		return err
 	}
@@ -223,7 +246,7 @@ func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
 		ExportKind: "danfse",
 		Hash:       doc.RawHash,
 	}
-	if err := a.DocumentTracker.MarkDocumentsExported(ctx, company.ID, "danfse", []nfse.DocumentExportMark{mark}); err != nil {
+	if err := s.DocumentTracker.MarkDocumentsExported(ctx, company.ID, "danfse", []nfse.DocumentExportMark{mark}); err != nil {
 		return fmt.Errorf("marcar danfse exportado: %w", err)
 	}
 
@@ -231,7 +254,7 @@ func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
 }
 
 // ExportXML writes the raw XML for one company-visible NFS-e.
-func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
+func (s ExportService) ExportXML(ctx context.Context, input ExportXMLInput) error {
 	if input.OutPath == "" {
 		return fmt.Errorf("caminho de saída não especificado")
 	}
@@ -239,11 +262,11 @@ func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
 		return fmt.Errorf("chave de acesso não especificada")
 	}
 
-	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return err
 	}
-	doc, err := a.DocumentReader.CompanyDocumentByChave(ctx, company.ID, input.ChaveAcesso)
+	doc, err := s.DocumentReader.CompanyDocumentByChave(ctx, company.ID, input.ChaveAcesso)
 	if err != nil {
 		return fmt.Errorf("localizar documento: %w", err)
 	}
@@ -252,7 +275,7 @@ func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
 		return fmt.Errorf("XML original não encontrado para a chave %s", doc.ChaveAcesso)
 	}
 
-	xmlData, err := a.XMLStore.Get(doc.RawHash)
+	xmlData, err := s.XMLStore.Get(doc.RawHash)
 	if err != nil {
 		return fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
 	}
@@ -272,7 +295,7 @@ func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
 		ExportKind: "xml",
 		Hash:       doc.RawHash,
 	}
-	if err := a.DocumentTracker.MarkDocumentsExported(ctx, company.ID, "xml", []nfse.DocumentExportMark{mark}); err != nil {
+	if err := s.DocumentTracker.MarkDocumentsExported(ctx, company.ID, "xml", []nfse.DocumentExportMark{mark}); err != nil {
 		return fmt.Errorf("marcar xml exportado: %w", err)
 	}
 
@@ -280,8 +303,8 @@ func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
 }
 
 // CountPendingExportDocuments counts the documents that are pending export for the given format.
-func (a *App) CountPendingExportDocuments(ctx context.Context, input ExportInput, kind string) (int, error) {
-	company, err := lookupCompanyByCNPJ(ctx, a.CompanyRepo, input.CNPJ)
+func (s ExportService) CountPendingExportDocuments(ctx context.Context, input ExportInput, kind string) (int, error) {
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyRepo, input.CNPJ)
 	if err != nil {
 		return 0, err
 	}
@@ -293,23 +316,23 @@ func (a *App) CountPendingExportDocuments(ctx context.Context, input ExportInput
 	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
 		filter.IssueDateGTE = company.SyncStartDate
 	}
-	return a.DocumentTracker.CountPendingExportDocuments(ctx, company.ID, filter, kind)
+	return s.DocumentTracker.CountPendingExportDocuments(ctx, company.ID, filter, kind)
 }
 
-func (a *App) renderDANFSe(doc *nfse.CompanyDocument) ([]byte, error) {
-	if a.DANFSeRenderer == nil {
+func (s ExportService) renderDANFSe(doc *nfse.CompanyDocument) ([]byte, error) {
+	if s.DANFSeRenderer == nil {
 		return nil, fmt.Errorf("DANFSe não configurado")
 	}
 	if doc.RawHash == "" {
 		return nil, fmt.Errorf("XML original não encontrado para a chave %s", doc.ChaveAcesso)
 	}
 
-	xmlData, err := a.XMLStore.Get(doc.RawHash)
+	xmlData, err := s.XMLStore.Get(doc.RawHash)
 	if err != nil {
 		return nil, fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
 	}
 
-	pdf, err := a.DANFSeRenderer.Render(xmlData)
+	pdf, err := s.DANFSeRenderer.Render(xmlData)
 	if err != nil {
 		return nil, fmt.Errorf("renderizar DANFSe: %w", err)
 	}

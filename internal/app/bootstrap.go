@@ -51,6 +51,7 @@ type App struct {
 	company    CompanyService
 	credential CredentialService
 	documents  DocumentService
+	exports    ExportService
 	status     SyncStatusService
 	query      QueryService
 }
@@ -115,6 +116,7 @@ func (a *App) InitServicesForTest(deps Dependencies) {
 	a.company = newCompanyService(deps)
 	a.credential = newCredentialService(deps)
 	a.documents = newDocumentService(deps)
+	a.exports = newExportService(deps)
 	a.status = newSyncStatusService(deps)
 	a.query = newQueryService(deps)
 }

@@ -55,6 +55,34 @@ func (a *App) ListEventsForDocument(ctx context.Context, documentID string) ([]E
 	return a.documents.ListEventsForDocument(ctx, documentID)
 }
 
+func (a *App) ExportCSV(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return a.exports.ExportCSV(ctx, input)
+}
+
+func (a *App) ExportXLSX(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return a.exports.ExportXLSX(ctx, input)
+}
+
+func (a *App) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return a.exports.ExportZIP(ctx, input)
+}
+
+func (a *App) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
+	return a.exports.ExportDANFSeZIP(ctx, input)
+}
+
+func (a *App) ExportDANFSe(ctx context.Context, input ExportDANFSeInput) error {
+	return a.exports.ExportDANFSe(ctx, input)
+}
+
+func (a *App) ExportXML(ctx context.Context, input ExportXMLInput) error {
+	return a.exports.ExportXML(ctx, input)
+}
+
+func (a *App) CountPendingExportDocuments(ctx context.Context, input ExportInput, kind string) (int, error) {
+	return a.exports.CountPendingExportDocuments(ctx, input, kind)
+}
+
 func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
 	return a.status.Status(ctx, rawCNPJ)
 }
