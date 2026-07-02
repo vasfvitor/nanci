@@ -27,15 +27,24 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
-// WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
+// WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction.
+// It owns the passwordChans map and its mutex; the App delegates Submit/Cancel calls to it.
 type WailsCredentialProvider struct {
 	ctx           context.Context
 	passwordChans map[string]chan string
-	mu            *sync.Mutex
+	mu            sync.Mutex
 }
 
+func newWailsCredentialProvider() *WailsCredentialProvider {
+	return &WailsCredentialProvider{
+		passwordChans: make(map[string]chan string),
+	}
+}
+
+func (p *WailsCredentialProvider) setCtx(ctx context.Context) { p.ctx = ctx }
+
 // GetCertPassword asks the frontend for the certificate password and blocks until one is provided
-func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
+func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
 	ch := make(chan string, 1)
 
 	p.mu.Lock()
@@ -63,23 +72,50 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 	}
 }
 
+// SubmitPassword receives the password from the frontend dialog and unblocks GetCertPassword
+func (p *WailsCredentialProvider) SubmitPassword(reqID, password string) {
+	p.mu.Lock()
+	ch, ok := p.passwordChans[reqID]
+	p.mu.Unlock()
+
+	if ok {
+		select {
+		case ch <- password:
+		default:
+		}
+	}
+}
+
+// CancelPassword receives a cancellation from the frontend and unblocks GetCertPassword
+func (p *WailsCredentialProvider) CancelPassword(reqID string) {
+	p.mu.Lock()
+	ch, ok := p.passwordChans[reqID]
+	p.mu.Unlock()
+
+	if ok {
+		select {
+		case ch <- "":
+		default:
+		}
+	}
+}
+
 // App struct
 type App struct {
-	ctx           context.Context
-	core          *app.App
-	cleanup       func()
-	passwordChans map[string]chan string
-	mu            sync.Mutex
-	logLevel      *slog.LevelVar
-	logWriter     *rotatingFileWriter
-	logPath       string
+	ctx       context.Context
+	core      *app.App
+	cleanup   func()
+	cred      *WailsCredentialProvider
+	logLevel  *slog.LevelVar
+	logWriter *rotatingFileWriter
+	logPath   string
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		passwordChans: make(map[string]chan string),
-		logLevel:      new(slog.LevelVar),
+		cred:     newWailsCredentialProvider(),
+		logLevel: new(slog.LevelVar),
 	}
 }
 
@@ -87,6 +123,7 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.cred.setCtx(ctx)
 
 	if err := app.LoadRuntimeEnv(); err != nil {
 		fmt.Printf("failed to load runtime env: %v\n", err)
@@ -142,11 +179,7 @@ func (a *App) startup(ctx context.Context) {
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
-			Fallback: WailsCredentialProvider{
-				ctx:           ctx,
-				passwordChans: a.passwordChans,
-				mu:            &a.mu,
-			},
+			Fallback: a.cred,
 		},
 		DANFSeRenderer: godanfsev2.New(),
 	})
@@ -172,30 +205,12 @@ func (a *App) shutdown(ctx context.Context) {
 
 // SubmitCertPassword receives the password from the frontend dialog and unblocks GetCertPassword
 func (a *App) SubmitCertPassword(reqID string, password string) {
-	a.mu.Lock()
-	ch, ok := a.passwordChans[reqID]
-	a.mu.Unlock()
-
-	if ok {
-		select {
-		case ch <- password:
-		default:
-		}
-	}
+	a.cred.SubmitPassword(reqID, password)
 }
 
 // CancelCertPassword receives a cancellation from the frontend and unblocks GetCertPassword
 func (a *App) CancelCertPassword(reqID string) {
-	a.mu.Lock()
-	ch, ok := a.passwordChans[reqID]
-	a.mu.Unlock()
-
-	if ok {
-		select {
-		case ch <- "":
-		default:
-		}
-	}
+	a.cred.CancelPassword(reqID)
 }
 
 // SelectCertificate opens a file dialog to select a .pfx or .p12 file

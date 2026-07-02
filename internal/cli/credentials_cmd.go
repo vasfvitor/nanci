@@ -36,7 +36,7 @@ var credentialAddCmd = &cobra.Command{
 		}); err != nil {
 			return fmt.Errorf("erro ao adicionar credencial: %w", err)
 		}
-		fmt.Println("Credencial adicionada com sucesso.")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Credencial adicionada com sucesso.")
 		return nil
 	},
 }
@@ -56,12 +56,13 @@ var credentialListCmd = &cobra.Command{
 			return fmt.Errorf("erro ao listar credenciais: %w", err)
 		}
 		if len(credentials) == 0 {
-			fmt.Println("Nenhuma credencial cadastrada.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhuma credencial cadastrada.")
 			return nil
 		}
 
-		fmt.Printf("%-36s %-18s %-20s %s\n", "ID", "Rótulo", "CNPJ Proprietário", "Certificado")
-		fmt.Println("----------------------------------------------------------------------------------------------------------------")
+		out := cmd.OutOrStdout()
+		_, _ = fmt.Fprintf(out, "%-36s %-18s %-20s %s\n", "ID", "Rótulo", "CNPJ Proprietário", "Certificado")
+		_, _ = fmt.Fprintln(out, "----------------------------------------------------------------------------------------------------------------")
 		for _, credential := range credentials {
 			owner := credential.OwnerCNPJ
 			if owner == "" {
@@ -69,7 +70,7 @@ var credentialListCmd = &cobra.Command{
 			} else {
 				owner = cnpj.Format(owner)
 			}
-			fmt.Printf("%-36s %-18s %-20s %s\n", credential.ID, credential.Label, owner, credential.CertPath)
+			_, _ = fmt.Fprintf(out, "%-36s %-18s %-20s %s\n", credential.ID, credential.Label, owner, credential.CertPath)
 		}
 		return nil
 	},
@@ -91,7 +92,7 @@ var credentialUpdatePathCmd = &cobra.Command{
 		}); err != nil {
 			return fmt.Errorf("erro ao atualizar credencial: %w", err)
 		}
-		fmt.Println("Caminho da credencial atualizado com sucesso.")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Caminho da credencial atualizado com sucesso.")
 		return nil
 	},
 }

@@ -20,7 +20,7 @@ func TestCompanyRepository(t *testing.T) {
 	}
 
 	company := testCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
-	
+
 	// Create
 	err := repo.CreateCompany(ctx, company)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestCompanyRepository(t *testing.T) {
 	if fetched.Name != company.Name {
 		t.Errorf("Expected name %s, got %s", company.Name, fetched.Name)
 	}
-	
+
 	if fetched.SyncStartPolicy != nfse.SyncStartPolicyFromNow {
 		t.Errorf("Expected SyncStartPolicyFromNow, got %s", fetched.SyncStartPolicy)
 	}

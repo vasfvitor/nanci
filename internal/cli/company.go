@@ -64,7 +64,7 @@ var companyAddCmd = &cobra.Command{
 		}
 
 		cleanedCNPJ := cnpj.Clean(companyCNPJ)
-		fmt.Printf("Empresa '%s' (%s) adicionada com sucesso.\n", companyName, cnpj.Format(cleanedCNPJ))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Empresa '%s' (%s) adicionada com sucesso.\n", companyName, cnpj.Format(cleanedCNPJ))
 		return nil
 	},
 }
@@ -85,14 +85,15 @@ var companyListCmd = &cobra.Command{
 		}
 
 		if len(companies) == 0 {
-			fmt.Println("Nenhuma empresa cadastrada.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhuma empresa cadastrada.")
 			return nil
 		}
 
-		fmt.Printf("%-20s %-24s %-18s %-15s\n", "CNPJ", "Nome", "Credencial", "Ambiente")
-		fmt.Println("------------------------------------------------------------------------------------------------")
+		out := cmd.OutOrStdout()
+		_, _ = fmt.Fprintf(out, "%-20s %-24s %-18s %-15s\n", "CNPJ", "Nome", "Credencial", "Ambiente")
+		_, _ = fmt.Fprintln(out, "------------------------------------------------------------------------------------------------")
 		for _, c := range companies {
-			fmt.Printf("%-20s %-24s %-18s %-15s\n", cnpj.Format(c.CNPJ), c.Name, c.CredentialLabel, c.Environment)
+			_, _ = fmt.Fprintf(out, "%-20s %-24s %-18s %-15s\n", cnpj.Format(c.CNPJ), c.Name, c.CredentialLabel, c.Environment)
 		}
 		return nil
 	},
@@ -115,7 +116,7 @@ var companyAssignCredentialCmd = &cobra.Command{
 			return fmt.Errorf("erro ao atribuir credencial: %w", err)
 		}
 
-		fmt.Println("Credencial atribuída com sucesso.")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Credencial atribuída com sucesso.")
 		return nil
 	},
 }

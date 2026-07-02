@@ -62,8 +62,8 @@ func TestExtractOwnerCNPJFromSubjectAltNameOtherName(t *testing.T) {
 
 func TestLoadPKCS12_FileNotFound(t *testing.T) {
 	_, err := LoadPKCS12("non_existent_file.pfx", "password")
-	if !errors.Is(err, ErrFileNotFound) {
-		t.Errorf("expected ErrFileNotFound, got %v", err)
+	if !errors.Is(err, ErrCertFileNotFound) {
+		t.Errorf("expected ErrCertFileNotFound, got %v", err)
 	}
 }
 

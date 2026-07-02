@@ -73,7 +73,7 @@ func TestGenerateZIPFailsWhenBlobIsMissing(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected missing blob error")
 	}
-	if !errors.Is(err, files.ErrFileNotFound) {
-		t.Fatalf("expected ErrFileNotFound, got %v", err)
+	if !errors.Is(err, files.ErrBlobNotFound) {
+		t.Fatalf("expected ErrBlobNotFound, got %v", err)
 	}
 }

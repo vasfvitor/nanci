@@ -92,7 +92,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 		INNER JOIN documents d ON d.id = cd.document_id
 		WHERE cd.company_id = ?
 	`
-	args := []interface{}{string(companyID)}
+	args := []any{string(companyID)}
 
 	if filter.Competence != "" {
 		query += " AND d.competence = ?"
@@ -320,7 +320,7 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
 		WHERE cd.company_id = ? AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)
 	`
-	args := []interface{}{kind, string(companyID)}
+	args := []any{kind, string(companyID)}
 
 	if filter.Competence != "" {
 		query += " AND d.competence = ?"
@@ -416,7 +416,7 @@ func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, co
 		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
 		WHERE cd.company_id = ? AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)
 	`
-	args := []interface{}{kind, string(companyID)}
+	args := []any{kind, string(companyID)}
 
 	if filter.Competence != "" {
 		query += " AND d.competence = ?"
@@ -499,7 +499,7 @@ func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID 
 			INNER JOIN documents d ON d.id = cd.document_id
 			WHERE cd.company_id = ?
 	`
-	args := []interface{}{string(companyID), string(companyID)}
+	args := []any{string(companyID), string(companyID)}
 
 	if filter.Competence != "" {
 		query += " AND d.competence = ?"

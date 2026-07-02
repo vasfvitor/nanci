@@ -214,7 +214,7 @@ func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy,
 		}
 		return policy, &parsed, nil
 	default:
-		return "", nil, fmt.Errorf("invalid sync start policy: %s", policy)
+		return "", nil, fmt.Errorf("invalid sync start policy %q: %w", policy, nfse.ErrInvalidEnum)
 	}
 }
 
