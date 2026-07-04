@@ -12,13 +12,13 @@ type ResetSyncInput struct {
 }
 
 // ResetSyncState clears the persisted sync cursor for a company without deleting documents.
-func (a *App) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
-	company, err := a.companyByCNPJ(ctx, input.CNPJ)
+func (s *SyncService) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return err
 	}
 
-	if err := a.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{
+	if err := s.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{
 		CompanyID: company.ID,
 	}); err != nil {
 		return fmt.Errorf("resetar estado de sincronização: %w", err)

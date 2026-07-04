@@ -140,7 +140,7 @@ func TestClient_RawGet_NoDocuments(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	var dest map[string]interface{}
+	var dest map[string]any
 	err = client.RawGet(context.Background(), "/no-docs", &dest)
 	if err != ErrNoDocumentsLocated {
 		t.Errorf("expected ErrNoDocumentsLocated, got %v", err)

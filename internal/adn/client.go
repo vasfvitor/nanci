@@ -49,7 +49,7 @@ func (e *APIError) Error() string {
 }
 
 // RawGet performs a GET request to an arbitrary relative path and decodes the JSON into dest.
-func (c *Client) RawGet(ctx context.Context, path string, dest interface{}) error {
+func (c *Client) RawGet(ctx context.Context, path string, dest any) error {
 	return c.request(ctx, "GET", path, nil, dest)
 }
 
@@ -147,7 +147,7 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) request(ctx context.Context, method, path string, bodyProvider func() io.Reader, dest interface{}) error {
+func (c *Client) request(ctx context.Context, method, path string, bodyProvider func() io.Reader, dest any) error {
 	rel, err := url.Parse(path)
 	if err != nil {
 		return fmt.Errorf("invalid path: %w", err) // Not retryable

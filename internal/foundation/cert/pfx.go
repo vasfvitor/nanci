@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	ErrFileNotFound = errors.New("certificate file not found")
-	ErrInvalidPass  = errors.New("invalid password for certificate")
-	ErrCNPJNotFound = errors.New("certificate owner cnpj not found")
+	ErrCertFileNotFound = errors.New("certificate file not found")
+	ErrInvalidPass      = errors.New("invalid password for certificate")
+	ErrCNPJNotFound     = errors.New("certificate owner cnpj not found")
 
 	oidCNPJ           = asn1.ObjectIdentifier{2, 16, 76, 1, 3, 3}
 	oidSubjectAltName = asn1.ObjectIdentifier{2, 5, 29, 17}
@@ -42,7 +42,7 @@ func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
 	pfxData, err := os.ReadFile(path) //nolint:gosec // intentional: path is explicitly selected by the local user
 	if err != nil {
 		if os.IsNotExist(err) {
-			return LoadedCertificate{}, ErrFileNotFound
+			return LoadedCertificate{}, ErrCertFileNotFound
 		}
 		return LoadedCertificate{}, err
 	}

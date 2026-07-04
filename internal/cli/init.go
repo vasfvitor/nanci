@@ -1,27 +1,27 @@
+// Package cli builds the nanci command tree.
 package cli
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/vasfvitor/nanci/internal/app"
 )
 
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Inicializa o banco de dados e diretórios locais",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		application, cleanup, err := newApp()
-		if err != nil {
-			return fmt.Errorf("erro ao inicializar: %w", err)
-		}
-		defer cleanup()
+func newInitCommand(env CommandEnv) *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Inicializa o banco de dados e diretórios locais",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, cleanup, err := env.AppFactory(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("erro ao inicializar: %w", err)
+			}
+			defer cleanup()
 
-		application.Log.Info("Ambiente inicializado com sucesso!", "data_dir", application.DataDir)
-		fmt.Printf("Pronto. Banco de dados criado/atualizado em: %s\n", application.DataDir)
-		return nil
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(initCmd)
+			dataDir, _ := app.ResolveRuntimeDataDir("")
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Pronto. Banco de dados criado/atualizado em: %s\n", dataDir)
+			return nil
+		},
+	}
 }

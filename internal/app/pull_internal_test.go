@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -48,9 +49,9 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	companyRepo := store.NewCompanyRepository(db)
+	companyStore := company.NewStore(db)
 	credentialRepo := store.NewCredentialRepository(db)
-	company := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
+	comp := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",
@@ -58,7 +59,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		CredentialID: "credential-1",
 		Environment:  nfse.EnvironmentProduction,
 	}
-	if err := companyRepo.CreateCompany(context.Background(), company); err != nil {
+	if err := companyStore.CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
 	}
 	certPath := filepath.Join(t.TempDir(), "cert.pfx")
@@ -77,11 +78,10 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	xmlStore := &captureXMLStore{}
 	application, err := New(Dependencies{
 		Log:                slog.New(slog.DiscardHandler),
-		CompanyRepo:        companyRepo,
+		CompanyStore:       companyStore,
 		CredentialRepo:     credentialRepo,
 		SyncRepo:           store.NewSyncRepository(db),
-		DocumentReader:     store.NewDocumentRepository(db),
-		DocumentTracker:    store.NewDocumentRepository(db),
+		DocumentRepo:       store.NewDocumentRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            dataDir,
 		CredentialProvider: providerStub{},
@@ -118,7 +118,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 
 	var receivedStore files.XMLStore
-	newSyncRunner = func(repo SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
+	newSyncRunner = func(repo *store.SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
 		receivedStore = store
 		return syncRunnerStub{
 			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
@@ -130,7 +130,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		}
 	}
 
-	result, err := application.Pull(context.Background(), PullInput{CNPJ: "11222333000181"})
+	result, err := application.Sync.Pull(context.Background(), PullInput{CNPJ: "11222333000181"})
 	if err != nil {
 		t.Fatal(err)
 	}

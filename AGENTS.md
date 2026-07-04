@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+*Clear is better than clever.* Go code should be boring in the best possible way—predictable, consistent, and immediately understandable to a new developer opening the file for the first time. When unsure, delete the abstraction.
+
 ## Project Structure & Module Organization
 `cmd/nanci` contains the CLI entrypoint. Core application logic lives in `internal/app`, with CLI adapters in `internal/cli`, sync orchestration in `internal/service/sync`, and persistence in `internal/store` plus `internal/store/migrations`. Domain-specific code is split across `internal/adn`, `internal/nfse`, `internal/report`, `internal/files`, and `internal/foundation`. The desktop app is under `internal/desktop`: Go/Wails backend files at the module root and the Vue 3 frontend in `internal/desktop/frontend/src`.
 

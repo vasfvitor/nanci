@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 // StatusResult holds the display-ready information about a company's sync state.
@@ -23,29 +26,43 @@ type StatusResult struct {
 	TotalTomadas       int64
 }
 
+// SyncStatusService computes the display-ready status for a company.
+type SyncStatusService struct {
+	CompanyStore   *company.Store
+	CredentialRepo *store.CredentialRepository
+	SyncRepo       *store.SyncRepository
+	DocumentRepo   *store.DocumentRepository
+}
+
+func NewSyncStatusService(d Dependencies) *SyncStatusService {
+	return &SyncStatusService{
+
+		CompanyStore:   d.CompanyStore,
+		CredentialRepo: d.CredentialRepo,
+		SyncRepo:       d.SyncRepo,
+		DocumentRepo:   d.DocumentRepo,
+	}
+}
+
 // Status returns the current synchronisation state of the given company.
-func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
-	company, err := a.companyByCNPJ(ctx, rawCNPJ)
+func (s *SyncStatusService) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, rawCNPJ)
 	if err != nil {
 		return StatusResult{}, err
 	}
-	credential, err := a.credentialByID(ctx, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
 	if err != nil {
 		return StatusResult{}, err
 	}
-	snapshot, err := a.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	snapshot, err := s.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
 
-	counts, err := a.DocumentReader.CountDocumentsByRole(ctx, company.ID)
+	counts, err := s.DocumentRepo.CountDocumentsByRole(ctx, company.ID)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("contar documentos: %w", err)
 	}
-
-	var totalEmitidas, totalTomadas int64
-	totalEmitidas = counts["prestada"]
-	totalTomadas = counts["tomada"]
 
 	result := StatusResult{
 		CompanyName:        company.Name,
@@ -54,8 +71,8 @@ func (a *App) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) 
 		ConsultationCNPJ:   company.CNPJ,
 		CredentialCNPJ:     credential.OwnerCNPJ,
 		CredentialNotAfter: credential.NotAfter,
-		TotalEmitidas:      totalEmitidas,
-		TotalTomadas:       totalTomadas,
+		TotalEmitidas:      counts["prestada"],
+		TotalTomadas:       counts["tomada"],
 	}
 	if snapshot.State != nil {
 		result.LastProcessedNSU = snapshot.State.LastProcessedNSU

@@ -94,7 +94,7 @@ func main() {
 		},
 		OnStartup:  app.startup,
 		OnShutdown: app.shutdown,
-		Bind: []interface{}{
+		Bind: []any{
 			app,
 		},
 	})

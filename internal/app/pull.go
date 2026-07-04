@@ -7,19 +7,25 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	companypkg "github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	syncservice "github.com/vasfvitor/nanci/internal/service/sync"
+	"github.com/vasfvitor/nanci/internal/store"
+	syncrun "github.com/vasfvitor/nanci/internal/syncrun"
 )
 
 type syncRunner interface {
 	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
 }
 
-var newSyncRunner = func(repo SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
-	return syncservice.NewSyncService(repo, client, xmlStore, log)
+// newSyncRunner wires the orchestrator with the wider concrete needed by
+// syncrun.SyncRepository (8 methods). The app's own SyncSnapshotStore
+// uses a 3-method consumer interface, but the orchestrator still needs the
+// full 8-method surface; *store.SyncRepository satisfies both structurally.
+var newSyncRunner = func(repo *store.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
+	return syncrun.NewSyncService(repo, client, xmlStore, log)
 }
 
 var (
@@ -55,10 +61,34 @@ type PullResult struct {
 	Duration                 time.Duration
 }
 
+// SyncService owns the sync lifecycle use cases: Pull (run a sync) and
+// ResetSyncState (clear the cursor). It depends on the certificate, the
+// ADN client constructor, and the orchestrator runner.
+type SyncService struct {
+	Log                *slog.Logger
+	CompanyStore       *companypkg.Store
+	CredentialRepo     *store.CredentialRepository
+	SyncRepo           *store.SyncRepository
+	XMLStore           files.XMLStore
+	CredentialProvider CredentialProvider
+}
+
+func NewSyncService(d Dependencies) *SyncService {
+	return &SyncService{
+
+		Log:                d.Log,
+		CompanyStore:       d.CompanyStore,
+		CredentialRepo:     d.CredentialRepo,
+		SyncRepo:           d.SyncRepo,
+		XMLStore:           d.XMLStore,
+		CredentialProvider: d.CredentialProvider,
+	}
+}
+
 // Pull synchronises fiscal documents for the given company from the ADN API.
-// It resolves the certificate password via App.CredentialProvider so that
+// It resolves the certificate password via the injected provider so that
 // neither the CLI nor Wails need to wire cert loading themselves.
-func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
+func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
 	if err != nil {
 		return PullResult{}, err
@@ -68,23 +98,21 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, err
 	}
 
-	a.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
+	s.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
 
-	// 1. Resolve company
-	company, err := a.companyByCNPJ(ctx, cleanedCNPJ)
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cleanedCNPJ)
 	if err != nil {
 		return PullResult{}, err
 	}
-	credential, err := a.credentialByID(ctx, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}
 
-	// 2. Obtain certificate password via the injected provider
 	if err := validateCertificatePath(credential.CertPath); err != nil {
 		return PullResult{}, err
 	}
-	pass, err := a.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
+	pass, err := s.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
 		RequestID:       nfse.GenerateID(),
 		CompanyID:       string(company.ID),
 		CompanyName:     company.Name,
@@ -97,8 +125,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, fmt.Errorf("obter senha do certificado: %w", err)
 	}
 
-	// 3. Load TLS certificate
-	a.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
+	s.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
 	loadedCert, err := loadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
@@ -113,7 +140,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	credential.NotAfter = &inspection.NotAfter
 	now := time.Now().UTC()
 	credential.InspectedAt = &now
-	if err := a.CredentialRepo.UpdateCredential(ctx, credential); err != nil {
+	if err := s.CredentialRepo.UpdateCredential(ctx, credential); err != nil {
 		return PullResult{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
 	}
 
@@ -122,20 +149,18 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		return PullResult{}, err
 	}
 
-	// 4. Build ADN client
 	apiClient, err := newADNClient(adn.ClientConfig{
 		BaseURL:     resolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
+		Log:         s.Log,
 	})
 	if err != nil {
 		return PullResult{}, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
 
-	// 5. Build sync service
-	a.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
-	svc := newSyncRunner(a.SyncRepo, apiClient, a.XMLStore, a.Log)
+	s.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
+	svc := newSyncRunner(s.SyncRepo, apiClient, s.XMLStore, s.Log)
 
-	// 6. Run sync, collecting progress into result counters
 	var result PullResult
 	result.CompanyName = company.Name
 	result.CNPJ = company.CNPJ
@@ -166,12 +191,11 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 
 	start := time.Now()
 	if err := svc.Sync(ctx, company, credential, string(consultationBasis), mode, progress); err != nil {
-		a.Log.ErrorContext(ctx, "Sincronização finalizada com erro", slog.String("error", err.Error()))
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
 	result.Duration = time.Since(start)
 
-	snapshot, err := a.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	snapshot, err := s.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
@@ -190,7 +214,7 @@ func (a *App) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 		result.DocumentsSaved = result.DocumentsFound
 	}
 
-	a.Log.InfoContext(
+	s.Log.InfoContext(
 		ctx, "Sincronização concluída com sucesso",
 		slog.Int("docs_found", result.DocumentsFound),
 		slog.Int("errors", result.Errors),
@@ -209,13 +233,13 @@ func parsePullMode(raw string) (nfse.SyncMode, error) {
 
 func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
-		return "", ErrCredentialNoOwner
+		return "", companypkg.ErrCredentialNoOwner
 	}
 	if company.Environment == "" {
-		return "", ErrCompanyNoEnvironment
+		return "", companypkg.ErrCompanyNoEnvironment
 	}
 	if company.CNPJRoot != credential.OwnerCNPJRoot {
-		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
+		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", companypkg.ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
 	}
 	if company.CNPJ == credential.OwnerCNPJ {
 		return nfse.ConsultationBasisExactCertificateCNPJ, nil

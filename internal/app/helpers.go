@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -18,24 +19,24 @@ func normalizeCNPJ(raw string) (string, error) {
 	return cnpj.Clean(raw), nil
 }
 
-func (a *App) companyByCNPJ(ctx context.Context, raw string) (*nfse.Company, error) {
+func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (*nfse.Company, error) {
 	cleanedCNPJ, err := normalizeCNPJ(raw)
 	if err != nil {
 		return nil, err
 	}
 
-	company, err := a.CompanyRepo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	comp, err := repo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, company.ErrCompanyNotFound) {
 			return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 		}
 		return nil, fmt.Errorf("buscar empresa: %w", err)
 	}
-	return company, nil
+	return comp, nil
 }
 
-func (a *App) credentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
-	credential, err := a.CredentialRepo.CredentialByID(ctx, id)
+func lookupCredentialByID(ctx context.Context, repo *store.CredentialRepository, id nfse.CredentialID) (*nfse.Credential, error) {
+	credential, err := repo.CredentialByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, fmt.Errorf("credencial não encontrada")

@@ -3,14 +3,23 @@ package app_test
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
+
+type credentialProviderStub struct{}
+
+func (c credentialProviderStub) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
+	return "test", nil
+}
 
 func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 	ctx := context.Background()
@@ -23,12 +32,18 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 	})
 
 	docRepo := store.NewDocumentRepository(db)
-	application := &app.App{
-		CompanyRepo:    store.NewCompanyRepository(db),
-		CredentialRepo: store.NewCredentialRepository(db),
-		SyncRepo:       store.NewSyncRepository(db),
-		DocumentReader: docRepo,
-		DocumentTracker: docRepo,
+	application, err := app.New(app.Dependencies{
+		Log:                slog.Default(),
+		CompanyStore:       company.NewStore(db),
+		CredentialRepo:     store.NewCredentialRepository(db),
+		SyncRepo:           store.NewSyncRepository(db),
+		DocumentRepo:       docRepo,
+		XMLStore:           files.NewBlobStore(t.TempDir()),
+		DataDir:            t.TempDir(),
+		CredentialProvider: credentialProviderStub{},
+	})
+	if err != nil {
+		t.Fatalf("falha ao criar app: %v", err)
 	}
 	return application, db
 }
@@ -46,12 +61,12 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 		CertPath: certPath,
 	}
 
-	err := application.AddCredential(ctx, credInput)
+	err := application.Credentials.AddCredential(ctx, credInput)
 	if err != nil {
 		t.Fatalf("AddCredential falhou: %v", err)
 	}
 
-	creds, err := application.ListCredentials(ctx)
+	creds, err := application.Credentials.ListCredentials(ctx)
 	if err != nil {
 		t.Fatalf("ListCredentials falhou: %v", err)
 	}
@@ -61,20 +76,20 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 	credID := creds[0].ID
 
 	// 2. Add Company
-	compInput := app.AddCompanyInput{
+	compInput := company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Teste",
 		Environment:     nfse.EnvironmentRestricted,
 		CredentialID:    string(credID),
 		SyncStartPolicy: nfse.SyncStartPolicyAll,
 	}
-	err = application.AddCompany(ctx, compInput)
+	err = application.Companies.AddCompany(ctx, compInput)
 	if err != nil {
 		t.Fatalf("AddCompany falhou: %v", err)
 	}
 
 	// 3. Validate
-	comps, err := application.ListCompanies(ctx)
+	comps, err := application.Companies.ListCompanies(ctx)
 	if err != nil {
 		t.Fatalf("ListCompanies falhou: %v", err)
 	}
@@ -95,9 +110,9 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	certPath, _ := filepath.Abs("app_integration_test.go")
 
 	// Setup base company
-	application.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
-	creds, _ := application.ListCredentials(ctx)
-	application.AddCompany(ctx, app.AddCompanyInput{
+	application.Credentials.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	creds, _ := application.Credentials.ListCredentials(ctx)
+	application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Sync",
 		Environment:     nfse.EnvironmentRestricted,
@@ -106,21 +121,21 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	})
 
 	// Act: Update to from_now
-	policyFromNow, dateFromNow, _ := app.ParseSyncStartPolicyInput("from_now", "")
-	updateInput := app.UpdateCompanyInput{
+	policyFromNow, dateFromNow, _ := company.ParseSyncStartPolicyInput("from_now", "")
+	updateInput := company.UpdateCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Sync",
 		Environment:     nfse.EnvironmentRestricted,
 		SyncStartPolicy: policyFromNow,
 		SyncStartDate:   dateFromNow,
 	}
-	err := application.UpdateCompany(ctx, updateInput)
+	err := application.Companies.UpdateCompany(ctx, updateInput)
 	if err != nil {
 		t.Fatalf("UpdateCompany falhou: %v", err)
 	}
 
 	// Assert
-	comps, _ := application.ListCompanies(ctx)
+	comps, _ := application.Companies.ListCompanies(ctx)
 	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyFromNow {
 		t.Errorf("esperava politica from_now, obteve %s", comps[0].SyncStartPolicy)
 	}
@@ -135,11 +150,11 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	}
 
 	// Act: Update back to all
-	policyAll, dateAll, _ := app.ParseSyncStartPolicyInput("all", "")
+	policyAll, dateAll, _ := company.ParseSyncStartPolicyInput("all", "")
 	updateInput.SyncStartPolicy = policyAll
 	updateInput.SyncStartDate = dateAll
-	application.UpdateCompany(ctx, updateInput)
-	comps, _ = application.ListCompanies(ctx)
+	application.Companies.UpdateCompany(ctx, updateInput)
+	comps, _ = application.Companies.ListCompanies(ctx)
 
 	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyAll {
 		t.Errorf("esperava politica all, obteve %s", comps[0].SyncStartPolicy)

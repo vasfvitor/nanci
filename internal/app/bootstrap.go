@@ -7,9 +7,12 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/danfse"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
@@ -34,27 +37,23 @@ type CredentialProvider interface {
 
 // App encapsulates the global dependencies of the application.
 type App struct {
-	Log                *slog.Logger
-	CompanyRepo        CompanyRepository
-	CredentialRepo     CredentialRepository
-	SyncRepo           SyncRepository
-	DocumentReader     DocumentReader
-	DocumentTracker    DocumentTracker
-	XMLStore           XMLStore
-	DataDir            string
-	CredentialProvider CredentialProvider
-	DANFSeRenderer     danfse.Renderer
+	Companies   *company.Manager
+	Credentials *CredentialService
+	Documents   *DocumentService
+	Exports     *ExportService
+	Status      *SyncStatusService
+	Query       *QueryService
+	Sync        *SyncService
 }
 
 // Dependencies contains the infrastructure required by App.
 type Dependencies struct {
 	Log                *slog.Logger
-	CompanyRepo        CompanyRepository
-	CredentialRepo     CredentialRepository
-	SyncRepo           SyncRepository
-	DocumentReader     DocumentReader
-	DocumentTracker    DocumentTracker
-	XMLStore           XMLStore
+	CompanyStore       *company.Store
+	CredentialRepo     *store.CredentialRepository
+	SyncRepo           *store.SyncRepository
+	DocumentRepo       *store.DocumentRepository
+	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
 	DANFSeRenderer     danfse.Renderer
@@ -65,16 +64,14 @@ func New(deps Dependencies) (*App, error) {
 	switch {
 	case deps.Log == nil:
 		return nil, errors.New("app: logger is required")
-	case deps.CompanyRepo == nil:
+	case deps.CompanyStore == nil:
 		return nil, errors.New("app: company repository is required")
 	case deps.CredentialRepo == nil:
 		return nil, errors.New("app: credential repository is required")
 	case deps.SyncRepo == nil:
 		return nil, errors.New("app: sync repository is required")
-	case deps.DocumentReader == nil:
-		return nil, errors.New("app: document reader is required")
-	case deps.DocumentTracker == nil:
-		return nil, errors.New("app: document tracker is required")
+	case deps.DocumentRepo == nil:
+		return nil, errors.New("app: document repository is required")
 	case deps.XMLStore == nil:
 		return nil, errors.New("app: XML store is required")
 	case deps.DataDir == "":
@@ -84,16 +81,13 @@ func New(deps Dependencies) (*App, error) {
 	}
 
 	return &App{
-		Log:                deps.Log,
-		CompanyRepo:        deps.CompanyRepo,
-		CredentialRepo:     deps.CredentialRepo,
-		SyncRepo:           deps.SyncRepo,
-		DocumentReader:     deps.DocumentReader,
-		DocumentTracker:    deps.DocumentTracker,
-		XMLStore:           deps.XMLStore,
-		DataDir:            deps.DataDir,
-		CredentialProvider: deps.CredentialProvider,
-		DANFSeRenderer:     deps.DANFSeRenderer,
+		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialRepo, deps.SyncRepo),
+		Credentials: NewCredentialService(deps),
+		Documents:   NewDocumentService(deps),
+		Exports:     NewExportService(deps),
+		Status:      NewSyncStatusService(deps),
+		Query:       NewQueryService(deps),
+		Sync:        NewSyncService(deps),
 	}, nil
 }
 

@@ -27,15 +27,24 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
-// WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction
+// WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction.
+// It owns the passwordChans map and its mutex; the App delegates Submit/Cancel calls to it.
 type WailsCredentialProvider struct {
 	ctx           context.Context
 	passwordChans map[string]chan string
-	mu            *sync.Mutex
+	mu            sync.Mutex
 }
 
+func newWailsCredentialProvider() *WailsCredentialProvider {
+	return &WailsCredentialProvider{
+		passwordChans: make(map[string]chan string),
+	}
+}
+
+func (p *WailsCredentialProvider) setCtx(ctx context.Context) { p.ctx = ctx }
+
 // GetCertPassword asks the frontend for the certificate password and blocks until one is provided
-func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
+func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
 	ch := make(chan string, 1)
 
 	p.mu.Lock()
@@ -63,23 +72,50 @@ func (p WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.Ce
 	}
 }
 
+// SubmitPassword receives the password from the frontend dialog and unblocks GetCertPassword
+func (p *WailsCredentialProvider) SubmitPassword(reqID, password string) {
+	p.mu.Lock()
+	ch, ok := p.passwordChans[reqID]
+	p.mu.Unlock()
+
+	if ok {
+		select {
+		case ch <- password:
+		default:
+		}
+	}
+}
+
+// CancelPassword receives a cancellation from the frontend and unblocks GetCertPassword
+func (p *WailsCredentialProvider) CancelPassword(reqID string) {
+	p.mu.Lock()
+	ch, ok := p.passwordChans[reqID]
+	p.mu.Unlock()
+
+	if ok {
+		select {
+		case ch <- "":
+		default:
+		}
+	}
+}
+
 // App struct
 type App struct {
-	ctx           context.Context
-	core          *app.App
-	cleanup       func()
-	passwordChans map[string]chan string
-	mu            sync.Mutex
-	logLevel      *slog.LevelVar
-	logWriter     *rotatingFileWriter
-	logPath       string
+	ctx       context.Context
+	core      *app.App
+	cleanup   func()
+	cred      *WailsCredentialProvider
+	logLevel  *slog.LevelVar
+	logWriter *rotatingFileWriter
+	logPath   string
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		passwordChans: make(map[string]chan string),
-		logLevel:      new(slog.LevelVar),
+		cred:     newWailsCredentialProvider(),
+		logLevel: new(slog.LevelVar),
 	}
 }
 
@@ -87,6 +123,7 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.cred.setCtx(ctx)
 
 	if err := app.LoadRuntimeEnv(); err != nil {
 		fmt.Printf("failed to load runtime env: %v\n", err)
@@ -137,16 +174,12 @@ func (a *App) startup(ctx context.Context) {
 		CompanyRepo:     store.NewCompanyRepository(db),
 		CredentialRepo:  store.NewCredentialRepository(db),
 		SyncRepo:        store.NewSyncRepository(db),
-		DocumentReader:  docRepo,
-		DocumentTracker: docRepo,
+		DocumentRepo: docRepo,
+		
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
-			Fallback: WailsCredentialProvider{
-				ctx:           ctx,
-				passwordChans: a.passwordChans,
-				mu:            &a.mu,
-			},
+			Fallback: a.cred,
 		},
 		DANFSeRenderer: godanfsev2.New(),
 	})
@@ -172,30 +205,12 @@ func (a *App) shutdown(ctx context.Context) {
 
 // SubmitCertPassword receives the password from the frontend dialog and unblocks GetCertPassword
 func (a *App) SubmitCertPassword(reqID string, password string) {
-	a.mu.Lock()
-	ch, ok := a.passwordChans[reqID]
-	a.mu.Unlock()
-
-	if ok {
-		select {
-		case ch <- password:
-		default:
-		}
-	}
+	a.cred.SubmitPassword(reqID, password)
 }
 
 // CancelCertPassword receives a cancellation from the frontend and unblocks GetCertPassword
 func (a *App) CancelCertPassword(reqID string) {
-	a.mu.Lock()
-	ch, ok := a.passwordChans[reqID]
-	a.mu.Unlock()
-
-	if ok {
-		select {
-		case ch <- "":
-		default:
-		}
-	}
+	a.cred.CancelPassword(reqID)
 }
 
 // SelectCertificate opens a file dialog to select a .pfx or .p12 file
@@ -244,7 +259,7 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 		return err
 	}
 
-	return a.core.AddCompany(a.ctx, app.AddCompanyInput{
+	return a.core.Companies.AddCompany(a.ctx, app.AddCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		CredentialID:    input.CredentialID,
@@ -257,14 +272,14 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 }
 
 func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
-	return a.core.AddCredential(a.ctx, app.AddCredentialInput{
+	return a.core.Credentials.AddCredential(a.ctx, app.AddCredentialInput{
 		Label:    input.Label,
 		CertPath: input.CertPath,
 	})
 }
 
 func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
-	credentials, err := a.core.ListCredentials(a.ctx)
+	credentials, err := a.core.Credentials.ListCredentials(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -272,14 +287,14 @@ func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
 }
 
 func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) error {
-	return a.core.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
+	return a.core.Credentials.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
 		CredentialID: input.CredentialID,
 		CertPath:     input.CertPath,
 	})
 }
 
 func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {
-	return a.core.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
+	return a.core.Credentials.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
 		CredentialID: input.CredentialID,
 		Label:        input.Label,
 	})
@@ -299,7 +314,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 		}
 	}
 
-	return a.core.UpdateCompany(a.ctx, app.UpdateCompanyInput{
+	return a.core.Companies.UpdateCompany(a.ctx, app.UpdateCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		Environment:     environment,
@@ -309,14 +324,14 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 }
 
 func (a *App) AssignCredentialToCompany(input desktopapi.AssignCredentialInput) error {
-	return a.core.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
+	return a.core.Companies.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
 		CompanyCNPJ:  input.CompanyCNPJ,
 		CredentialID: input.CredentialID,
 	})
 }
 
 func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
-	companies, err := a.core.ListCompanies(a.ctx)
+	companies, err := a.core.Companies.ListCompanies(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +339,7 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 }
 
 func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
-	res, err := a.core.Pull(a.ctx, app.PullInput{
+	res, err := a.core.Sync.Pull(a.ctx, app.PullInput{
 		CNPJ: input.CNPJ,
 		Mode: input.Mode,
 	})
@@ -354,20 +369,20 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
-	return a.core.ResetSyncState(a.ctx, app.ResetSyncInput{
+	return a.core.Sync.ResetSyncState(a.ctx, app.ResetSyncInput{
 		CNPJ: input.CompanyCNPJ,
 	})
 }
 
 func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
-	return a.core.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
+	return a.core.Query.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
 		CNPJ:        input.CompanyCNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 	})
 }
 
 func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRow, error) {
-	documents, err := a.core.ListDocuments(a.ctx, app.ListInput{
+	documents, err := a.core.Documents.ListDocuments(a.ctx, app.ListInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
@@ -380,7 +395,7 @@ func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRo
 }
 
 func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEvent, error) {
-	events, err := a.core.ListEventsForDocument(a.ctx, documentID)
+	events, err := a.core.Documents.ListEventsForDocument(a.ctx, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +403,7 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 }
 
 func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
-	res, err := a.core.Status(a.ctx, cnpj)
+	res, err := a.core.Status.Status(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.StatusResult{}, err
 	}
@@ -414,7 +429,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
+	err := a.core.Exports.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -430,7 +445,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.ExportXML(a.ctx, app.ExportXMLInput{
+	err := a.core.Exports.ExportXML(a.ctx, app.ExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -455,7 +470,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 		ChavesAcesso: input.ChavesAcesso,
 	}
 
-	res, err := a.core.ExportDANFSeZIP(a.ctx, exportInput)
+	res, err := a.core.Exports.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
@@ -486,11 +501,11 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	var err error
 	switch format {
 	case "csv":
-		res, err = a.core.ExportCSV(a.ctx, exportInput)
+		res, err = a.core.Exports.ExportCSV(a.ctx, exportInput)
 	case "xlsx":
-		res, err = a.core.ExportXLSX(a.ctx, exportInput)
+		res, err = a.core.Exports.ExportXLSX(a.ctx, exportInput)
 	case "zip":
-		res, err = a.core.ExportZIP(a.ctx, exportInput)
+		res, err = a.core.Exports.ExportZIP(a.ctx, exportInput)
 	default:
 		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}
@@ -520,11 +535,11 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 		Competence: input.Competence,
 		Direction:  input.Direction,
 	}
-	return a.core.CountPendingExportDocuments(a.ctx, exportInput, format)
+	return a.core.Exports.CountPendingExportDocuments(a.ctx, exportInput, format)
 }
 
 func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
-	return a.core.MarkDocumentsViewed(a.ctx, app.ListInput{
+	return a.core.Documents.MarkDocumentsViewed(a.ctx, app.ListInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
@@ -533,6 +548,9 @@ func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
 }
 
 func formatExportError(err error) error {
+	if errors.Is(err, files.ErrBlobNotFound) {
+		return fmt.Errorf("%w. Dica: o XML do documento não foi encontrado no disco. Isso pode ocorrer se o arquivo foi apagado manualmente ou se a sincronização não baixou o XML corretamente. Resetar NSU nas configurações da empresa pode forçar o download novamente", err)
+	}
 	return err
 }
 
@@ -673,7 +691,7 @@ func (a *App) OpenLogsDirectory() error {
 }
 
 func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResult, error) {
-	res, err := a.core.TestConnection(a.ctx, companyCNPJ)
+	res, err := a.core.Query.TestConnection(a.ctx, companyCNPJ)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
 	}

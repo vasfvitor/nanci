@@ -1,13 +1,15 @@
-package app
+package company
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var (
@@ -15,6 +17,24 @@ var (
 	ErrCredentialNoOwner    = errors.New("o certificado não expõe um CNPJ proprietário utilizável para consulta")
 	ErrCompanyNoEnvironment = errors.New("a empresa não possui ambiente configurado")
 )
+
+type storeInterface interface {
+	CreateCompany(ctx context.Context, c *nfse.Company) error
+	ListCompanies(ctx context.Context) ([]nfse.Company, error)
+	CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error)
+	UpdateCompany(ctx context.Context, c *nfse.Company) error
+	AssignCredential(ctx context.Context, companyID nfse.CompanyID, credentialID nfse.CredentialID) error
+}
+
+type credentialProvider interface {
+	CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error)
+	CreateCredential(ctx context.Context, cred *nfse.Credential) error
+}
+
+type syncProvider interface {
+	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
+	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
+}
 
 // AddCompanyInput carries the data required to register a new company.
 type AddCompanyInput struct {
@@ -28,15 +48,45 @@ type AddCompanyInput struct {
 	SyncStartDate   *time.Time
 }
 
+// UpdateCompanyInput carries data to update a company
+type UpdateCompanyInput struct {
+	CNPJ            string
+	Name            string
+	Environment     nfse.Environment
+	SyncStartPolicy nfse.SyncStartPolicy
+	SyncStartDate   *time.Time
+}
+
+// AssignCredentialInput changes the active credential of a company.
+type AssignCredentialInput struct {
+	CompanyCNPJ  string
+	CredentialID string
+}
+
+// Manager owns the company use cases.
+type Manager struct {
+	store       storeInterface
+	credentials credentialProvider
+	syncs       syncProvider
+}
+
+func NewManager(s storeInterface, creds credentialProvider, syncs syncProvider) *Manager {
+	return &Manager{
+		store:       s,
+		credentials: creds,
+		syncs:       syncs,
+	}
+}
+
 // AddCompany registers a new company in the store.
-func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
+func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
 	if err != nil {
 		return err
 	}
 	root, _ := cnpj.Root(cleanedCNPJ)
 
-	credential, err := a.resolveCredentialForCompany(ctx, input)
+	credential, err := m.resolveCredentialForCompany(ctx, input)
 	if err != nil {
 		return err
 	}
@@ -54,7 +104,7 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		SyncStartDate:      input.SyncStartDate,
 	}
 
-	if err := a.CompanyRepo.CreateCompany(ctx, company); err != nil {
+	if err := m.store.CreateCompany(ctx, company); err != nil {
 		return fmt.Errorf("salvar empresa: %w", err)
 	}
 
@@ -62,13 +112,13 @@ func (a *App) AddCompany(ctx context.Context, input AddCompanyInput) error {
 }
 
 // ListCompanies returns all registered companies.
-func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
-	companies, err := a.CompanyRepo.ListCompanies(ctx)
+func (m *Manager) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+	companies, err := m.store.ListCompanies(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar empresas: %w", err)
 	}
 	for i := range companies {
-		snapshot, snapErr := a.SyncRepo.LatestSyncSnapshot(ctx, companies[i].ID, companies[i].Environment, companies[i].CNPJ)
+		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, companies[i].Environment, companies[i].CNPJ)
 		if snapErr != nil {
 			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
 		}
@@ -88,13 +138,13 @@ func (a *App) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 }
 
 // AssignCredentialToCompany changes the active credential for an existing company.
-func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredentialInput) error {
-	company, err := a.companyByCNPJ(ctx, input.CompanyCNPJ)
+func (m *Manager) AssignCredentialToCompany(ctx context.Context, input AssignCredentialInput) error {
+	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CompanyCNPJ)
 	if err != nil {
 		return err
 	}
 
-	credential, err := a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	credential, err := lookupCredentialByID(ctx, m.credentials, nfse.CredentialID(input.CredentialID))
 	if err != nil {
 		return err
 	}
@@ -103,15 +153,18 @@ func (a *App) AssignCredentialToCompany(ctx context.Context, input AssignCredent
 		return ErrCredentialMismatch
 	}
 
-	if err := a.CompanyRepo.AssignCredential(ctx, company.ID, credential.ID); err != nil {
+	if err := m.store.AssignCredential(ctx, company.ID, credential.ID); err != nil {
 		return fmt.Errorf("atribuir credencial: %w", err)
 	}
 	return nil
 }
 
-func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
+// resolveCredentialForCompany resolves the credential that should be
+// associated with a new company, either by ID or by creating a fresh
+// one from the cert path.
+func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
 	if input.CredentialID != "" {
-		return a.credentialByID(ctx, nfse.CredentialID(input.CredentialID))
+		return lookupCredentialByID(ctx, m.credentials, nfse.CredentialID(input.CredentialID))
 	}
 
 	if err := validateCertificatePath(input.CertPath); err != nil {
@@ -131,30 +184,21 @@ func (a *App) resolveCredentialForCompany(ctx context.Context, input AddCompanyI
 		}
 	}
 
-	if err := a.CredentialRepo.CreateCredential(ctx, credential); err != nil {
+	if err := m.credentials.CreateCredential(ctx, credential); err != nil {
 		return nil, fmt.Errorf("salvar credencial: %w", err)
 	}
 	return credential, nil
 }
 
-// UpdateCompanyInput carries data to update a company
-type UpdateCompanyInput struct {
-	CNPJ            string
-	Name            string
-	Environment     nfse.Environment
-	SyncStartPolicy nfse.SyncStartPolicy
-	SyncStartDate   *time.Time
-}
-
 // UpdateCompany updates the name and environment of an existing company.
-func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
-	company, err := a.companyByCNPJ(ctx, input.CNPJ)
+func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
+	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CNPJ)
 	if err != nil {
 		return err
 	}
 
 	if input.SyncStartPolicy != company.SyncStartPolicy || !sameDate(input.SyncStartDate, company.SyncStartDate) {
-		hasState, err := a.SyncRepo.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID})
+		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID})
 		if err != nil {
 			return fmt.Errorf("verificar estado de sincronização: %w", err)
 		}
@@ -168,7 +212,7 @@ func (a *App) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error
 	company.SyncStartPolicy = input.SyncStartPolicy
 	company.SyncStartDate = input.SyncStartDate
 
-	if err := a.CompanyRepo.UpdateCompany(ctx, company); err != nil {
+	if err := m.store.UpdateCompany(ctx, company); err != nil {
 		return fmt.Errorf("atualizar empresa: %w", err)
 	}
 
@@ -214,7 +258,7 @@ func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy,
 		}
 		return policy, &parsed, nil
 	default:
-		return "", nil, fmt.Errorf("invalid sync start policy: %s", policy)
+		return "", nil, fmt.Errorf("invalid sync start policy %q: %w", policy, nfse.ErrInvalidEnum)
 	}
 }
 
@@ -223,4 +267,52 @@ func sameDate(a, b *time.Time) bool {
 		return a == nil && b == nil
 	}
 	return a.Format("2006-01-02") == b.Format("2006-01-02")
+}
+
+func normalizeCNPJ(raw string) (string, error) {
+	if err := cnpj.Validate(raw); err != nil {
+		return "", fmt.Errorf("CNPJ inválido: %w", err)
+	}
+	return cnpj.Clean(raw), nil
+}
+
+func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*nfse.Company, error) {
+	cleanedCNPJ, err := normalizeCNPJ(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	company, err := repo.CompanyByCNPJ(ctx, cleanedCNPJ)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+		}
+		return nil, fmt.Errorf("buscar empresa: %w", err)
+	}
+	return company, nil
+}
+
+func lookupCredentialByID(ctx context.Context, repo credentialProvider, id nfse.CredentialID) (*nfse.Credential, error) {
+	credential, err := repo.CredentialByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, fmt.Errorf("credencial não encontrada")
+		}
+		return nil, fmt.Errorf("buscar credencial: %w", err)
+	}
+	return credential, nil
+}
+
+func validateCertificatePath(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("arquivo de certificado não encontrado: %s", path)
+		}
+		return fmt.Errorf("verificar certificado: %w", err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("caminho do certificado aponta para um diretório: %s", path)
+	}
+	return nil
 }

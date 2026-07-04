@@ -105,9 +105,9 @@ func TestParseDesktopLogLevelMapsSupportedValues(t *testing.T) {
 func TestFormatExportErrorAddsRecoveryHintOnlyForMissingFiles(t *testing.T) {
 	t.Parallel()
 
-	missing := formatExportError(files.ErrFileNotFound)
-	if !errors.Is(missing, files.ErrFileNotFound) {
-		t.Fatalf("expected ErrFileNotFound in wrapped error, got %v", missing)
+	missing := formatExportError(files.ErrBlobNotFound)
+	if !errors.Is(missing, files.ErrBlobNotFound) {
+		t.Fatalf("expected ErrBlobNotFound in wrapped error, got %v", missing)
 	}
 	if !strings.Contains(missing.Error(), "Resetar NSU") {
 		t.Fatalf("expected recovery hint for missing file, got %q", missing.Error())

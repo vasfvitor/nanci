@@ -11,7 +11,7 @@ func TestQueryNFSeEventsRejectsInvalidAccessKeyBeforeClientSetup(t *testing.T) {
 
 	application := &App{}
 
-	_, err := application.QueryNFSeEvents(context.Background(), QueryNFSeInput{
+	_, err := application.Query.QueryNFSeEvents(context.Background(), QueryNFSeInput{
 		CNPJ:        "11222333000181",
 		ChaveAcesso: strings.Repeat("1", 49) + "?",
 	})
