@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
@@ -69,7 +70,7 @@ func TestStore_CreateCompany(t *testing.T) {
 func TestCompanyStore(t *testing.T) {
 	db := openTestDB(t)
 	repo := company.NewStore(db)
-	credRepo := store.NewCredentialRepository(db)
+	credRepo := credential.NewStore(db)
 	ctx := context.Background()
 
 	cred := testCredential("cred-1")

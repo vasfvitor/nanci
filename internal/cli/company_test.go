@@ -12,6 +12,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/store"
 )
@@ -36,7 +37,7 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 	application, err := app.New(app.Dependencies{
 		Log:                slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
 		CompanyStore:        company.NewStore(db),
-		CredentialRepo:     store.NewCredentialRepository(db),
+		CredentialStore:    credential.NewStore(db),
 		SyncRepo:           store.NewSyncRepository(db),
 		DocumentRepo: docRepo,
 		

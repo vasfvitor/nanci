@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	companypkg "github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
@@ -67,7 +68,7 @@ type PullResult struct {
 type SyncService struct {
 	Log                *slog.Logger
 	CompanyStore       *companypkg.Store
-	CredentialRepo     *store.CredentialRepository
+	CredentialStore    *credential.Store
 	SyncRepo           *store.SyncRepository
 	XMLStore           files.XMLStore
 	CredentialProvider CredentialProvider
@@ -78,7 +79,7 @@ func NewSyncService(d Dependencies) *SyncService {
 
 		Log:                d.Log,
 		CompanyStore:       d.CompanyStore,
-		CredentialRepo:     d.CredentialRepo,
+		CredentialStore:    d.CredentialStore,
 		SyncRepo:           d.SyncRepo,
 		XMLStore:           d.XMLStore,
 		CredentialProvider: d.CredentialProvider,
@@ -104,7 +105,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 	if err != nil {
 		return PullResult{}, err
 	}
-	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}
@@ -140,7 +141,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 	credential.NotAfter = &inspection.NotAfter
 	now := time.Now().UTC()
 	credential.InspectedAt = &now
-	if err := s.CredentialRepo.UpdateCredential(ctx, credential); err != nil {
+	if err := s.CredentialStore.UpdateCredential(ctx, credential); err != nil {
 		return PullResult{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
 	}
 

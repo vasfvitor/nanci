@@ -11,6 +11,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -50,7 +51,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	companyStore := company.NewStore(db)
-	credentialRepo := store.NewCredentialRepository(db)
+	credentialStore := credential.NewStore(db)
 	comp := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
@@ -71,7 +72,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		Label:    "Credential",
 		CertPath: certPath,
 	}
-	if err := credentialRepo.CreateCredential(context.Background(), credential); err != nil {
+	if err := credentialStore.CreateCredential(context.Background(), credential); err != nil {
 		t.Fatal(err)
 	}
 
@@ -79,7 +80,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	application, err := New(Dependencies{
 		Log:                slog.New(slog.DiscardHandler),
 		CompanyStore:       companyStore,
-		CredentialRepo:     credentialRepo,
+		CredentialStore:    credentialStore,
 		SyncRepo:           store.NewSyncRepository(db),
 		DocumentRepo:       store.NewDocumentRepository(db),
 		XMLStore:           xmlStore,

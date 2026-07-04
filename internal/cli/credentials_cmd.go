@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 )
 
@@ -35,7 +35,7 @@ func newCredentialAddCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.Credentials.AddCredential(cmd.Context(), app.AddCredentialInput{
+			if err := application.Credentials.AddCredential(cmd.Context(), credential.AddCredentialInput{
 				Label:    label,
 				CertPath: path,
 			}); err != nil {
@@ -103,7 +103,7 @@ func newCredentialUpdatePathCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.Credentials.UpdateCredentialPath(cmd.Context(), app.UpdateCredentialPathInput{
+			if err := application.Credentials.UpdateCredentialPath(cmd.Context(), credential.UpdateCredentialPathInput{
 				CredentialID: id,
 				CertPath:     path,
 			}); err != nil {

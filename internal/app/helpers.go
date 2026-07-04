@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 func normalizeCNPJ(raw string) (string, error) {
@@ -35,15 +35,15 @@ func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (
 	return comp, nil
 }
 
-func lookupCredentialByID(ctx context.Context, repo *store.CredentialRepository, id nfse.CredentialID) (*nfse.Credential, error) {
-	credential, err := repo.CredentialByID(ctx, id)
+func lookupCredentialByID(ctx context.Context, repo *credential.Store, id nfse.CredentialID) (*nfse.Credential, error) {
+	cred, err := repo.CredentialByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, credential.ErrCredentialNotFound) {
 			return nil, fmt.Errorf("credencial não encontrada")
 		}
 		return nil, fmt.Errorf("buscar credencial: %w", err)
 	}
-	return credential, nil
+	return cred, nil
 }
 
 func validateCertificatePath(path string) error {

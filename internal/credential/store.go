@@ -1,4 +1,4 @@
-package store
+package credential
 
 import (
 	"context"
@@ -10,19 +10,21 @@ import (
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
-type CredentialRepository struct {
+var ErrCredentialNotFound = errors.New("credencial não encontrada")
+
+type Store struct {
 	db      *sql.DB
 	queries *sqlgen.Queries
 }
 
-func NewCredentialRepository(db *sql.DB) *CredentialRepository {
-	return &CredentialRepository{
+func NewStore(db *sql.DB) *Store {
+	return &Store{
 		db:      db,
 		queries: sqlgen.New(db),
 	}
 }
 
-func (r *CredentialRepository) CreateCredential(ctx context.Context, c *nfse.Credential) error {
+func (r *Store) CreateCredential(ctx context.Context, c *nfse.Credential) error {
 	now := time.Now().UTC()
 	nowRFC3339 := now.Format(time.RFC3339)
 
@@ -49,11 +51,11 @@ func (r *CredentialRepository) CreateCredential(ctx context.Context, c *nfse.Cre
 	return nil
 }
 
-func (r *CredentialRepository) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
+func (r *Store) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
 	row, err := r.queries.GetCredential(ctx, string(id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrCredentialNotFound
 		}
 		return nil, err
 	}
@@ -76,7 +78,7 @@ func (r *CredentialRepository) CredentialByID(ctx context.Context, id nfse.Crede
 	return c, nil
 }
 
-func (r *CredentialRepository) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
+func (r *Store) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
 	rows, err := r.queries.ListCredentials(ctx)
 	if err != nil {
 		return nil, err
@@ -104,11 +106,11 @@ func (r *CredentialRepository) ListCredentials(ctx context.Context) ([]nfse.Cred
 	return creds, nil
 }
 
-func (r *CredentialRepository) DeleteCredential(ctx context.Context, id nfse.CredentialID) error {
+func (r *Store) DeleteCredential(ctx context.Context, id nfse.CredentialID) error {
 	return r.queries.DeleteCredential(ctx, string(id))
 }
 
-func (r *CredentialRepository) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
+func (r *Store) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
 	now := time.Now().UTC()
 	err := r.queries.UpdateCredential(ctx, sqlgen.UpdateCredentialParams{
 		ID:                string(c.ID),

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/danfse"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
@@ -38,7 +39,7 @@ type CredentialProvider interface {
 // App encapsulates the global dependencies of the application.
 type App struct {
 	Companies   *company.Manager
-	Credentials *CredentialService
+	Credentials *credential.Manager
 	Documents   *DocumentService
 	Exports     *ExportService
 	Status      *SyncStatusService
@@ -50,7 +51,7 @@ type App struct {
 type Dependencies struct {
 	Log                *slog.Logger
 	CompanyStore       *company.Store
-	CredentialRepo     *store.CredentialRepository
+	CredentialStore    *credential.Store
 	SyncRepo           *store.SyncRepository
 	DocumentRepo       *store.DocumentRepository
 	XMLStore           files.XMLStore
@@ -66,7 +67,7 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: logger is required")
 	case deps.CompanyStore == nil:
 		return nil, errors.New("app: company repository is required")
-	case deps.CredentialRepo == nil:
+	case deps.CredentialStore == nil:
 		return nil, errors.New("app: credential repository is required")
 	case deps.SyncRepo == nil:
 		return nil, errors.New("app: sync repository is required")
@@ -81,8 +82,8 @@ func New(deps Dependencies) (*App, error) {
 	}
 
 	return &App{
-		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialRepo, deps.SyncRepo),
-		Credentials: NewCredentialService(deps),
+		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
+		Credentials: credential.NewManager(deps.CredentialStore),
 		Documents:   NewDocumentService(deps),
 		Exports:     NewExportService(deps),
 		Status:      NewSyncStatusService(deps),

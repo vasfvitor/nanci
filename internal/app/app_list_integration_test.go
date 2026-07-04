@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -16,7 +17,7 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	application.Credentials.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath})
 	creds, _ := application.Credentials.ListCredentials(ctx)
 
 	now := time.Now().Truncate(24 * time.Hour)
@@ -99,7 +100,7 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	application.Credentials.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath})
 	creds, _ := application.Credentials.ListCredentials(ctx)
 
 	application.Companies.AddCompany(ctx, company.AddCompanyInput{

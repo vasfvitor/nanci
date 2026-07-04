@@ -1,16 +1,34 @@
-package store
+package credential
 
 import (
 	"context"
+	"database/sql"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
-func TestCredentialRepository(t *testing.T) {
+func openTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	db, err := store.OpenDB(context.Background(), filepath.Join(t.TempDir(), "test.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
+	return db
+}
+
+func TestStore(t *testing.T) {
 	db := openTestDB(t)
-	repo := NewCredentialRepository(db)
+	repo := NewStore(db)
 	ctx := context.Background()
 
 	now := time.Now().UTC()
@@ -49,8 +67,8 @@ func TestCredentialRepository(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CredentialByID(ctx, "non-existent")
-	if err != ErrNotFound {
-		t.Errorf("Expected ErrNotFound, got %v", err)
+	if err != ErrCredentialNotFound {
+		t.Errorf("Expected ErrCredentialNotFound, got %v", err)
 	}
 
 	// List
@@ -84,7 +102,7 @@ func TestCredentialRepository(t *testing.T) {
 	}
 
 	_, err = repo.CredentialByID(ctx, cred.ID)
-	if err != ErrNotFound {
-		t.Errorf("Expected ErrNotFound, got %v", err)
+	if err != ErrCredentialNotFound {
+		t.Errorf("Expected ErrCredentialNotFound, got %v", err)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -35,7 +36,7 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 	application, err := app.New(app.Dependencies{
 		Log:                slog.Default(),
 		CompanyStore:       company.NewStore(db),
-		CredentialRepo:     store.NewCredentialRepository(db),
+		CredentialStore:    credential.NewStore(db),
 		SyncRepo:           store.NewSyncRepository(db),
 		DocumentRepo:       docRepo,
 		XMLStore:           files.NewBlobStore(t.TempDir()),
@@ -56,7 +57,7 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 	certPath, _ := filepath.Abs("app_integration_test.go")
 
 	// 1. Add Credential
-	credInput := app.AddCredentialInput{
+	credInput := credential.AddCredentialInput{
 		Label:    "Test Cert",
 		CertPath: certPath,
 	}
@@ -110,7 +111,7 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	certPath, _ := filepath.Abs("app_integration_test.go")
 
 	// Setup base company
-	application.Credentials.AddCredential(ctx, app.AddCredentialInput{Label: "L", CertPath: certPath})
+	_ = application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath})
 	creds, _ := application.Credentials.ListCredentials(ctx)
 	application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",

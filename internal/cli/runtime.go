@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
@@ -55,12 +56,12 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 		application, err := app.NewRuntime(app.Dependencies{
 			Log:             log,
 			CompanyStore:    company.NewStore(db),
-			CredentialRepo:  store.NewCredentialRepository(db),
+			CredentialStore: credential.NewStore(db),
 			SyncRepo:        store.NewSyncRepository(db),
-			DocumentRepo: docRepo,
-			
-			XMLStore:        files.NewBlobStore(dataDir),
-			DataDir:         dataDir,
+			DocumentRepo:    docRepo,
+
+			XMLStore: files.NewBlobStore(dataDir),
+			DataDir:  dataDir,
 			CredentialProvider: app.KeyringCredentialProvider{
 				Fallback: TerminalCredentialProvider{In: stdin, Out: stderr},
 			},

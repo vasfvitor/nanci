@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func TestCompanyRepository(t *testing.T) {
 	db := openTestDB(t)
 	repo := NewCompanyRepository(db)
-	credRepo := NewCredentialRepository(db)
+	credRepo := credential.NewStore(db)
 	ctx := context.Background()
 
 	cred := testCredential("cred-1")

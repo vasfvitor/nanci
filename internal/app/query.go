@@ -9,9 +9,9 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 type QueryNFSeInput struct {
@@ -23,7 +23,7 @@ type QueryNFSeInput struct {
 type QueryService struct {
 	Log                *slog.Logger
 	CompanyStore       *company.Store
-	CredentialRepo     *store.CredentialRepository
+	CredentialStore    *credential.Store
 	CredentialProvider CredentialProvider
 }
 
@@ -32,7 +32,7 @@ func NewQueryService(d Dependencies) *QueryService {
 
 		Log:                d.Log,
 		CompanyStore:       d.CompanyStore,
-		CredentialRepo:     d.CredentialRepo,
+		CredentialStore:    d.CredentialStore,
 		CredentialProvider: d.CredentialProvider,
 	}
 }
@@ -79,7 +79,7 @@ func (s *QueryService) buildClient(ctx context.Context, companyCNPJ string) (*ad
 		return nil, err
 	}
 
-	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 		return result, fmt.Errorf("empresa não encontrada: %w", err)
 	}
 
-	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
 	if err != nil {
 		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
 		return result, nil //nolint:nilerr // intentional: return diagnostic error info in result

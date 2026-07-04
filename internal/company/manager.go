@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var (
@@ -284,7 +284,7 @@ func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (
 
 	company, err := repo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, ErrCompanyNotFound) {
 			return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
 		}
 		return nil, fmt.Errorf("buscar empresa: %w", err)
@@ -293,14 +293,14 @@ func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (
 }
 
 func lookupCredentialByID(ctx context.Context, repo credentialProvider, id nfse.CredentialID) (*nfse.Credential, error) {
-	credential, err := repo.CredentialByID(ctx, id)
+	cred, err := repo.CredentialByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, credential.ErrCredentialNotFound) {
 			return nil, fmt.Errorf("credencial não encontrada")
 		}
 		return nil, fmt.Errorf("buscar credencial: %w", err)
 	}
-	return credential, nil
+	return cred, nil
 }
 
 func validateCertificatePath(path string) error {

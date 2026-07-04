@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -29,7 +30,7 @@ type StatusResult struct {
 // SyncStatusService computes the display-ready status for a company.
 type SyncStatusService struct {
 	CompanyStore   *company.Store
-	CredentialRepo *store.CredentialRepository
+	CredentialStore *credential.Store
 	SyncRepo       *store.SyncRepository
 	DocumentRepo   *store.DocumentRepository
 }
@@ -38,7 +39,7 @@ func NewSyncStatusService(d Dependencies) *SyncStatusService {
 	return &SyncStatusService{
 
 		CompanyStore:   d.CompanyStore,
-		CredentialRepo: d.CredentialRepo,
+		CredentialStore: d.CredentialStore,
 		SyncRepo:       d.SyncRepo,
 		DocumentRepo:   d.DocumentRepo,
 	}
@@ -50,7 +51,7 @@ func (s *SyncStatusService) Status(ctx context.Context, rawCNPJ string) (StatusR
 	if err != nil {
 		return StatusResult{}, err
 	}
-	credential, err := lookupCredentialByID(ctx, s.CredentialRepo, company.CredentialID)
+	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
 	if err != nil {
 		return StatusResult{}, err
 	}

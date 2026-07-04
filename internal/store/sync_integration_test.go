@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -14,7 +15,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	t.Parallel()
 
 	db := openTestDB(t)
-	credentials := NewCredentialRepository(db)
+	credentials := credential.NewStore(db)
 	companies := NewCompanyRepository(db)
 
 	first := testCredential("credential-1")
@@ -211,11 +212,11 @@ func testCompany(id, cnpj string, env nfse.Environment, credential *nfse.Credent
 func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *nfse.Company {
 	t.Helper()
 
-	credential := testCredential("credential-" + id)
-	if err := NewCredentialRepository(db).CreateCredential(context.Background(), credential); err != nil {
+	cred := testCredential("credential-" + id)
+	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := testCompany(id, cnpj, nfse.EnvironmentRestricted, credential)
+	company := testCompany(id, cnpj, nfse.EnvironmentRestricted, cred)
 	if err := NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
