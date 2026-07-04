@@ -19,14 +19,14 @@ type ListInput struct {
 
 // DocumentService owns the document list/view use cases.
 type DocumentService struct {
-	CompanyStore  *company.Store
+	CompanyStore *company.Store
 	DocumentRepo *store.DocumentRepository
 }
 
 func NewDocumentService(d Dependencies) *DocumentService {
 	return &DocumentService{
 
-		CompanyStore:  d.CompanyStore,
+		CompanyStore: d.CompanyStore,
 		DocumentRepo: d.DocumentRepo,
 	}
 }

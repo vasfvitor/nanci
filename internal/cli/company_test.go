@@ -15,6 +15,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // newInMemTestRoot builds a fresh root wired to an in-memory SQLite-backed
@@ -35,12 +36,12 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 
 	docRepo := store.NewDocumentRepository(db)
 	application, err := app.New(app.Dependencies{
-		Log:                slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
-		CompanyStore:        company.NewStore(db),
-		CredentialStore:    credential.NewStore(db),
-		SyncRepo:           store.NewSyncRepository(db),
-		DocumentRepo: docRepo,
-		
+		Log:             slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
+		CompanyStore:    company.NewStore(db),
+		CredentialStore: credential.NewStore(db),
+		SyncRepo:        sync.NewStore(db),
+		DocumentRepo:    docRepo,
+
 		XMLStore:           files.NewBlobStore(t.TempDir()),
 		DataDir:            t.TempDir(),
 		CredentialProvider: app.KeyringCredentialProvider{Fallback: TerminalCredentialProvider{In: os.Stdin, Out: os.Stderr}},

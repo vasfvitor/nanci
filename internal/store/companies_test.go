@@ -1,4 +1,4 @@
-package store
+package store_test
 
 import (
 	"context"
@@ -7,20 +7,22 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
 func TestCompanyRepository(t *testing.T) {
-	db := openTestDB(t)
-	repo := NewCompanyRepository(db)
+	db := storetest.OpenTestDB(t)
+	repo := store.NewCompanyRepository(db)
 	credRepo := credential.NewStore(db)
 	ctx := context.Background()
 
-	cred := testCredential("cred-1")
+	cred := storetest.TestCredential("cred-1")
 	if err := credRepo.CreateCredential(ctx, cred); err != nil {
 		t.Fatalf("failed to create credential: %v", err)
 	}
 
-	company := testCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
+	company := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
 
 	// Create
 	err := repo.CreateCompany(ctx, company)
@@ -49,7 +51,7 @@ func TestCompanyRepository(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CompanyByCNPJ(ctx, "00000000000000")
-	if err != ErrNotFound {
+	if err != store.ErrNotFound {
 		t.Errorf("Expected ErrNotFound, got %v", err)
 	}
 
@@ -83,7 +85,7 @@ func TestCompanyRepository(t *testing.T) {
 	}
 
 	// Assign Credential
-	cred2 := testCredential("cred-2")
+	cred2 := storetest.TestCredential("cred-2")
 	if err := credRepo.CreateCredential(ctx, cred2); err != nil {
 		t.Fatalf("failed to create credential: %v", err)
 	}
@@ -103,7 +105,7 @@ func TestCompanyRepository(t *testing.T) {
 
 	// Assign invalid credential to simulate ErrNotFound for AssignCredential
 	err = repo.AssignCredential(ctx, "non-existent-company", cred2.ID)
-	if err != ErrNotFound {
+	if err != store.ErrNotFound {
 		t.Errorf("Expected ErrNotFound for non-existent company assignment, got %v", err)
 	}
 }

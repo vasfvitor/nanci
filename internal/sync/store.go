@@ -1,4 +1,4 @@
-package store
+package sync
 
 import (
 	"context"
@@ -8,16 +8,17 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
-type SyncRepository struct {
+type Store struct {
 	db      *sql.DB
 	queries *sqlgen.Queries
 }
 
-func NewSyncRepository(db *sql.DB) *SyncRepository {
-	return &SyncRepository{
+func NewStore(db *sql.DB) *Store {
+	return &Store{
 		db:      db,
 		queries: sqlgen.New(db),
 	}
@@ -29,7 +30,7 @@ type executor interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
+func (r *Store) GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
 	state, err := r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
 	if err == nil {
 		return state, nil
@@ -64,7 +65,7 @@ func (r *SyncRepository) GetOrCreateState(ctx context.Context, params nfse.GetOr
 	return r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
 }
 
-func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParams) (nfse.SyncRun, error) {
+func (r *Store) StartRun(ctx context.Context, params nfse.StartRunParams) (nfse.SyncRun, error) {
 	now := time.Now().UTC()
 	runID := nfse.SyncRunID(nfse.GenerateID())
 
@@ -115,7 +116,7 @@ func (r *SyncRepository) StartRun(ctx context.Context, params nfse.StartRunParam
 	}, nil
 }
 
-func (r *SyncRepository) doApplyDocument(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
+func (r *Store) doApplyDocument(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	parseWarnings, err := json.Marshal(params.Document.ParseWarnings)
@@ -190,7 +191,7 @@ func (r *SyncRepository) doApplyDocument(ctx context.Context, tx executor, q *sq
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doApplyEvent(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
+func (r *Store) doApplyEvent(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	documentID, err := q.GetDocumentIDByAccessKey(ctx, string(params.Event.ChaveAcesso))
@@ -237,7 +238,7 @@ func (r *SyncRepository) doApplyEvent(ctx context.Context, tx executor, q *sqlge
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
 }
 
-func (r *SyncRepository) doPersistProgress(ctx context.Context, tx executor, params nfse.PersistSyncProgressParams) error {
+func (r *Store) doPersistProgress(ctx context.Context, tx executor, params nfse.PersistSyncProgressParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	lastSuccessAt := sql.NullString{}
 	lastErrorAt := sql.NullString{}
@@ -284,8 +285,8 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx executor, par
 		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
 	`,
 		params.LastProcessedNSU,
-		nullInt64FromPtr(params.LastFoundNSU),
-		nullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.LastFoundNSU),
 		params.LastEmptyStreak,
 		lastSuccessAt,
 		lastSuccessAt,
@@ -327,8 +328,8 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx executor, par
 		params.EmptyCount,
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
-		nullInt64FromPtr(params.LastFoundNSU),
-		nullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.LastFoundNSU),
 		string(params.RunID),
 	)
 	if err != nil {
@@ -338,7 +339,7 @@ func (r *SyncRepository) doPersistProgress(ctx context.Context, tx executor, par
 	return nil
 }
 
-func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
+func (r *Store) ApplyDocument(ctx context.Context, params nfse.ApplyDocumentParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
@@ -356,7 +357,7 @@ func (r *SyncRepository) ApplyDocument(ctx context.Context, params nfse.ApplyDoc
 	return outcome, nil
 }
 
-func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
+func (r *Store) ApplyEvent(ctx context.Context, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
@@ -374,7 +375,7 @@ func (r *SyncRepository) ApplyEvent(ctx context.Context, params nfse.ApplyEventP
 	return outcome, nil
 }
 
-func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.PersistSyncProgressParams) error {
+func (r *Store) PersistProgress(ctx context.Context, params nfse.PersistSyncProgressParams) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -388,7 +389,7 @@ func (r *SyncRepository) PersistProgress(ctx context.Context, params nfse.Persis
 	return tx.Commit()
 }
 
-func (r *SyncRepository) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
+func (r *Store) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
@@ -413,7 +414,7 @@ func (r *SyncRepository) ApplyDocumentAndProgress(ctx context.Context, params nf
 	return outcome, nil
 }
 
-func (r *SyncRepository) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) (nfse.ApplyOutcome, error) {
+func (r *Store) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) (nfse.ApplyOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
@@ -465,7 +466,7 @@ func eventHashMissing(ctx context.Context, tx executor, rawHash string) (bool, e
 	return false, nil
 }
 
-func (r *SyncRepository) FinishRun(ctx context.Context, params nfse.FinishRunParams) error {
+func (r *Store) FinishRun(ctx context.Context, params nfse.FinishRunParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE sync_runs
@@ -489,13 +490,13 @@ func (r *SyncRepository) FinishRun(ctx context.Context, params nfse.FinishRunPar
 		params.EmptyCount,
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
-		nullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.LastFoundNSU),
 		string(params.RunID),
 	)
 	return err
 }
 
-func (r *SyncRepository) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error) {
+func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error) {
 	var snapshot nfse.SyncSnapshot
 
 	state, err := r.getSyncState(ctx, companyID, environment, consultationCNPJ)
@@ -517,7 +518,7 @@ func (r *SyncRepository) LatestSyncSnapshot(ctx context.Context, companyID nfse.
 	return snapshot, nil
 }
 
-func (r *SyncRepository) ResetSyncState(ctx context.Context, params nfse.ResetSyncStateParams) error {
+func (r *Store) ResetSyncState(ctx context.Context, params nfse.ResetSyncStateParams) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -535,7 +536,7 @@ func (r *SyncRepository) ResetSyncState(ctx context.Context, params nfse.ResetSy
 	return tx.Commit()
 }
 
-func (r *SyncRepository) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
+func (r *Store) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
 	var exists int
 	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM sync_state WHERE company_id = ? LIMIT 1`, string(params.CompanyID)).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -547,7 +548,7 @@ func (r *SyncRepository) HasSyncState(ctx context.Context, params nfse.HasSyncSt
 	return true, nil
 }
 
-func (r *SyncRepository) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID) error {
+func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE companies
@@ -561,7 +562,7 @@ func (r *SyncRepository) MarkInitialSyncCompleted(ctx context.Context, companyID
 	return err
 }
 
-func (r *SyncRepository) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
+func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
 	var exists int
 	err := r.db.QueryRowContext(ctx, `
 		SELECT 1
@@ -579,7 +580,7 @@ func (r *SyncRepository) CompanyDocumentExistsByAccessKey(ctx context.Context, c
 	return true, nil
 }
 
-func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
+func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
 			company_id, environment, consultation_cnpj,
@@ -615,9 +616,9 @@ func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.Compan
 		return nil, err
 	}
 
-	state.LastFoundNSU = ptrFromNullInt64(lastFound)
-	state.LastSuccessAt = parseNullableTime(lastSuccessAt)
-	state.LastErrorAt = parseNullableTime(lastErrorAt)
+	state.LastFoundNSU = store.PtrFromNullInt64(lastFound)
+	state.LastSuccessAt = store.ParseNullableTime(lastSuccessAt)
+	state.LastErrorAt = store.ParseNullableTime(lastErrorAt)
 	state.LastErrorCode = lastErrorCode.String
 	state.LastErrorMessage = lastErrorMessage.String
 	state.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
@@ -625,7 +626,7 @@ func (r *SyncRepository) getSyncState(ctx context.Context, companyID nfse.Compan
 	return &state, nil
 }
 
-func (r *SyncRepository) latestRun(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncRun, error) {
+func (r *Store) latestRun(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncRun, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
 			id, company_id, credential_id, environment, credential_cnpj, consultation_cnpj,
@@ -680,8 +681,8 @@ func (r *SyncRepository) latestRun(ctx context.Context, companyID nfse.CompanyID
 		run.StopReason = nfse.SyncStopReason(stopReason.String)
 	}
 	run.StartedAt, _ = time.Parse(time.RFC3339, startedAt)
-	run.FinishedAt = parseNullableTime(finishedAt)
-	run.LastFoundNSU = ptrFromNullInt64(lastFound)
+	run.FinishedAt = store.ParseNullableTime(finishedAt)
+	run.LastFoundNSU = store.PtrFromNullInt64(lastFound)
 	return &run, nil
 }
 

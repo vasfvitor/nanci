@@ -96,7 +96,7 @@ func companyFromRow(row sqlgen.Company) *nfse.Company {
 		Environment:        nfse.Environment(row.Environment),
 		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
 		SyncStartDate:      parseNullableDate(row.SyncStartDate),
-		InitialSyncDoneAt:  parseNullableTime(row.InitialSyncCompletedAt),
+		InitialSyncDoneAt:  ParseNullableTime(row.InitialSyncCompletedAt),
 	}
 	c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
 	c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)

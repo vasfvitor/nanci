@@ -12,6 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 type QueryNFSeInput struct {
@@ -108,7 +109,7 @@ func (s *QueryService) buildClient(ctx context.Context, companyCNPJ string) (*ad
 
 	tlsCert := loadedCert.TLS
 	apiClient, err := adn.NewClient(adn.ClientConfig{
-		BaseURL:     resolveEnvironmentURL(company.Environment),
+		BaseURL:     sync.ResolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
 		Log:         s.Log,
 	})

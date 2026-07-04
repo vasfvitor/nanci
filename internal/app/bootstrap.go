@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,27 +13,16 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
 
 // CertPasswordRequest carries the context needed to ask for a certificate password.
-type CertPasswordRequest struct {
-	RequestID       string
-	CompanyID       string
-	CompanyName     string
-	TargetCNPJ      string
-	CredentialID    string
-	CredentialLabel string
-	CertPath        string
-}
+type CertPasswordRequest = sync.CertPasswordRequest
 
 // CredentialProvider abstracts how certificate passwords are obtained.
-// The CLI implements this via terminal prompts; Wails will implement it via
-// a frontend dialog. internal/app must never import golang.org/x/term.
-type CredentialProvider interface {
-	GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error)
-}
+type CredentialProvider = sync.CredentialProvider
 
 // App encapsulates the global dependencies of the application.
 type App struct {
@@ -42,9 +30,8 @@ type App struct {
 	Credentials *credential.Manager
 	Documents   *DocumentService
 	Exports     *ExportService
-	Status      *SyncStatusService
 	Query       *QueryService
-	Sync        *SyncService
+	SyncManager *sync.Manager
 }
 
 // Dependencies contains the infrastructure required by App.
@@ -52,7 +39,7 @@ type Dependencies struct {
 	Log                *slog.Logger
 	CompanyStore       *company.Store
 	CredentialStore    *credential.Store
-	SyncRepo           *store.SyncRepository
+	SyncRepo           *sync.Store
 	DocumentRepo       *store.DocumentRepository
 	XMLStore           files.XMLStore
 	DataDir            string
@@ -86,9 +73,16 @@ func New(deps Dependencies) (*App, error) {
 		Credentials: credential.NewManager(deps.CredentialStore),
 		Documents:   NewDocumentService(deps),
 		Exports:     NewExportService(deps),
-		Status:      NewSyncStatusService(deps),
 		Query:       NewQueryService(deps),
-		Sync:        NewSyncService(deps),
+		SyncManager: &sync.Manager{
+			Log:                deps.Log,
+			CompanyProvider:    deps.CompanyStore,
+			CredentialProvider: deps.CredentialStore,
+			DocProvider:        deps.DocumentRepo,
+			SyncRepo:           deps.SyncRepo,
+			XMLStore:           deps.XMLStore,
+			PassProvider:       deps.CredentialProvider,
+		},
 	}, nil
 }
 

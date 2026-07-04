@@ -2,32 +2,15 @@ package credential
 
 import (
 	"context"
-	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
-func openTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	db, err := store.OpenDB(context.Background(), filepath.Join(t.TempDir(), "test.db"), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("close database: %v", err)
-		}
-	})
-	return db
-}
-
 func TestStore(t *testing.T) {
-	db := openTestDB(t)
+	db := storetest.OpenTestDB(t)
 	repo := NewStore(db)
 	ctx := context.Background()
 

@@ -2,52 +2,17 @@ package company_test
 
 import (
 	"context"
-	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
-func openTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := store.OpenDB(context.Background(), filepath.Join(t.TempDir(), "test.db"), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { db.Close() })
-	return db
-}
-
-func testCredential(id string) *nfse.Credential {
-	return &nfse.Credential{
-		ID:            nfse.CredentialID(id),
-		Label:         "Certificate",
-		CertPath:      `C:\certs\company.pfx`,
-		OwnerCNPJ:     "11222333000181",
-		OwnerCNPJRoot: "11222333",
-	}
-}
-
-func testCompany(id, cnpj string, env nfse.Environment, credential *nfse.Credential) *nfse.Company {
-	return &nfse.Company{
-		ID:                 nfse.CompanyID(id),
-		CNPJ:               cnpj,
-		CNPJRoot:           cnpj[:8],
-		Name:               id,
-		CredentialID:       credential.ID,
-		CredentialLabel:    credential.Label,
-		CredentialCertPath: credential.CertPath,
-		Environment:        env,
-	}
-}
-
 func TestStore_CreateCompany(t *testing.T) {
-	db := openTestDB(t)
+	db := storetest.OpenTestDB(t)
 	s := company.NewStore(db)
 
 	c := &nfse.Company{
@@ -68,17 +33,17 @@ func TestStore_CreateCompany(t *testing.T) {
 }
 
 func TestCompanyStore(t *testing.T) {
-	db := openTestDB(t)
+	db := storetest.OpenTestDB(t)
 	repo := company.NewStore(db)
 	credRepo := credential.NewStore(db)
 	ctx := context.Background()
 
-	cred := testCredential("cred-1")
+	cred := storetest.TestCredential("cred-1")
 	if err := credRepo.CreateCredential(ctx, cred); err != nil {
 		t.Fatalf("failed to create credential: %v", err)
 	}
 
-	comp := testCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
+	comp := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
 
 	// Create
 	err := repo.CreateCompany(ctx, comp)
@@ -141,7 +106,7 @@ func TestCompanyStore(t *testing.T) {
 	}
 
 	// Assign Credential
-	cred2 := testCredential("cred-2")
+	cred2 := storetest.TestCredential("cred-2")
 	if err := credRepo.CreateCredential(ctx, cred2); err != nil {
 		t.Fatalf("failed to create credential: %v", err)
 	}

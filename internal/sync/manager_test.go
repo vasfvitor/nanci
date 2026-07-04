@@ -1,4 +1,4 @@
-package app
+package sync
 
 import (
 	"context"
@@ -15,15 +15,33 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
+	dbstore "github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
-type syncRunnerStub struct {
-	sync func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error
+type dummyCompanyProvider struct {
+	company *nfse.Company
 }
 
-func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
-	return s.sync(ctx, company, credential, consultationBasis, mode, progress)
+func (d *dummyCompanyProvider) CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error) {
+	return d.company, nil
+}
+
+type dummyCredentialProvider struct {
+	credential *nfse.Credential
+}
+
+func (d *dummyCredentialProvider) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
+	return d.credential, nil
+}
+func (d *dummyCredentialProvider) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
+	return nil
+}
+
+type dummyDocumentProvider struct{}
+
+func (d *dummyDocumentProvider) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
+	return nil, nil
 }
 
 type providerStub struct{}
@@ -43,16 +61,20 @@ func (s *captureXMLStore) Store(hash string, data []byte) error {
 
 func (s *captureXMLStore) Get(string) ([]byte, error) { return nil, nil }
 
+type syncRunnerStub struct {
+	sync func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error
+}
+
+func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
+	return s.sync(ctx, company, credential, consultationBasis, mode, progress)
+}
+
 func TestPullUsesInjectedXMLStore(t *testing.T) {
-	dataDir := t.TempDir()
-	db, err := store.OpenDB(context.Background(), filepath.Join(dataDir, "test.db"), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
+	db := storetest.OpenTestDB(t)
 	companyStore := company.NewStore(db)
 	credentialStore := credential.NewStore(db)
-	comp := &nfse.Company{ //nolint:gosec // intentional: mock test credentials
+
+	comp := &nfse.Company{ //nolint:gosec
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",
@@ -63,32 +85,30 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	if err := companyStore.CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
 	}
+
 	certPath := filepath.Join(t.TempDir(), "cert.pfx")
 	if err := os.WriteFile(certPath, []byte("stub"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	credential := &nfse.Credential{
+
+	cred := &nfse.Credential{
 		ID:       "credential-1",
 		Label:    "Credential",
 		CertPath: certPath,
 	}
-	if err := credentialStore.CreateCredential(context.Background(), credential); err != nil {
+	if err := credentialStore.CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
 
-	xmlStore := &captureXMLStore{}
-	application, err := New(Dependencies{
+	xmlStoreVal := &captureXMLStore{}
+	mgr := &Manager{
 		Log:                slog.New(slog.DiscardHandler),
-		CompanyStore:       companyStore,
-		CredentialStore:    credentialStore,
-		SyncRepo:           store.NewSyncRepository(db),
-		DocumentRepo:       store.NewDocumentRepository(db),
-		XMLStore:           xmlStore,
-		DataDir:            dataDir,
-		CredentialProvider: providerStub{},
-	})
-	if err != nil {
-		t.Fatal(err)
+		CompanyProvider:    companyStore,
+		CredentialProvider: credentialStore,
+		DocProvider:        dbstore.NewDocumentRepository(db),
+		SyncRepo:           NewStore(db),
+		XMLStore:           xmlStoreVal,
+		PassProvider:       providerStub{},
 	}
 
 	originalLoadPKCS12 := loadPKCS12
@@ -119,7 +139,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 
 	var receivedStore files.XMLStore
-	newSyncRunner = func(repo *store.SyncRepository, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
+	newSyncRunner = func(repo *Store, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
 		receivedStore = store
 		return syncRunnerStub{
 			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
@@ -131,15 +151,15 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		}
 	}
 
-	result, err := application.Sync.Pull(context.Background(), PullInput{CNPJ: "11222333000181"})
+	result, err := mgr.Pull(context.Background(), PullInput{CNPJ: "11222333000181"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if receivedStore != xmlStore {
+	if receivedStore != xmlStoreVal {
 		t.Fatal("expected Pull to pass the injected XMLStore to the sync service")
 	}
-	if len(xmlStore.storeCalls) != 1 || xmlStore.storeCalls[0] != "hash-1" {
-		t.Fatalf("unexpected XMLStore usage: %v", xmlStore.storeCalls)
+	if len(xmlStoreVal.storeCalls) != 1 || xmlStoreVal.storeCalls[0] != "hash-1" {
+		t.Fatalf("unexpected XMLStore usage: %v", xmlStoreVal.storeCalls)
 	}
 	if result.DocumentsFound != 1 {
 		t.Fatalf("DocumentsFound = %d, want 1", result.DocumentsFound)

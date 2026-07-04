@@ -266,8 +266,8 @@ func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updat
 	if err := decodeWarnings(parseWarnings, &d.ParseWarnings); err != nil {
 		return fmt.Errorf("document parse_warnings: %w", err)
 	}
-	d.FirstSeenNSU = ptrFromNullInt64(firstSeen)
-	d.LastSeenNSU = ptrFromNullInt64(lastSeen)
+	d.FirstSeenNSU = PtrFromNullInt64(firstSeen)
+	d.LastSeenNSU = PtrFromNullInt64(lastSeen)
 	d.FirstSyncedAt, err = parseRequiredTime("company document first_synced_at", firstSyncedAt)
 	if err != nil {
 		return err

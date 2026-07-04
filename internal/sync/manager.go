@@ -1,46 +1,81 @@
-package app
+package sync
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	companypkg "github.com/vasfvitor/nanci/internal/company"
-	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/store"
-	syncrun "github.com/vasfvitor/nanci/internal/syncrun"
 )
-
-type syncRunner interface {
-	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
-}
-
-// newSyncRunner wires the orchestrator with the wider concrete needed by
-// syncrun.SyncRepository (8 methods). The app's own SyncSnapshotStore
-// uses a 3-method consumer interface, but the orchestrator still needs the
-// full 8-method surface; *store.SyncRepository satisfies both structurally.
-var newSyncRunner = func(repo *store.SyncRepository, client *adn.Client, xmlStore files.XMLStore, log *slog.Logger) syncRunner {
-	return syncrun.NewSyncService(repo, client, xmlStore, log)
-}
 
 var (
 	loadPKCS12   = cert.LoadPKCS12
 	newADNClient = adn.NewClient
 )
 
-// PullInput is the input for the Pull use case.
+// CertPasswordRequest carries the context needed to ask for a certificate password.
+type CertPasswordRequest struct {
+	RequestID       string
+	CompanyID       string
+	CompanyName     string
+	TargetCNPJ      string
+	CredentialID    string
+	CredentialLabel string
+	CertPath        string
+}
+
+type CredentialProvider interface {
+	GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error)
+}
+
+type companyProvider interface {
+	CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error)
+}
+
+type credentialProvider interface {
+	CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error)
+	UpdateCredential(ctx context.Context, c *nfse.Credential) error
+}
+
+type documentProvider interface {
+	CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error)
+}
+
+// xmlStore reuses files.XMLStore
+type xmlStore interface {
+	files.XMLStore
+}
+
+type syncRunner interface {
+	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
+}
+
+var newSyncRunner = func(repo *Store, client *adn.Client, xStore files.XMLStore, log *slog.Logger) syncRunner {
+	return NewSyncService(repo, client, xStore, log)
+}
+
+type Manager struct {
+	Log                *slog.Logger
+	CompanyProvider    companyProvider
+	CredentialProvider credentialProvider
+	DocProvider        documentProvider
+	SyncRepo           *Store
+	XMLStore           xmlStore
+	PassProvider       CredentialProvider
+}
+
 type PullInput struct {
 	CNPJ string
 	Mode string
 }
 
-// PullResult summarises a completed sync run.
 type PullResult struct {
 	CompanyName              string
 	CNPJ                     string
@@ -62,34 +97,7 @@ type PullResult struct {
 	Duration                 time.Duration
 }
 
-// SyncService owns the sync lifecycle use cases: Pull (run a sync) and
-// ResetSyncState (clear the cursor). It depends on the certificate, the
-// ADN client constructor, and the orchestrator runner.
-type SyncService struct {
-	Log                *slog.Logger
-	CompanyStore       *companypkg.Store
-	CredentialStore    *credential.Store
-	SyncRepo           *store.SyncRepository
-	XMLStore           files.XMLStore
-	CredentialProvider CredentialProvider
-}
-
-func NewSyncService(d Dependencies) *SyncService {
-	return &SyncService{
-
-		Log:                d.Log,
-		CompanyStore:       d.CompanyStore,
-		CredentialStore:    d.CredentialStore,
-		SyncRepo:           d.SyncRepo,
-		XMLStore:           d.XMLStore,
-		CredentialProvider: d.CredentialProvider,
-	}
-}
-
-// Pull synchronises fiscal documents for the given company from the ADN API.
-// It resolves the certificate password via the injected provider so that
-// neither the CLI nor Wails need to wire cert loading themselves.
-func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, error) {
+func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error) {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
 	if err != nil {
 		return PullResult{}, err
@@ -99,13 +107,13 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 		return PullResult{}, err
 	}
 
-	s.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
+	m.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
 
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cleanedCNPJ)
+	company, err := m.CompanyProvider.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return PullResult{}, err
 	}
-	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
+	credential, err := m.CredentialProvider.CredentialByID(ctx, company.CredentialID)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}
@@ -113,7 +121,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 	if err := validateCertificatePath(credential.CertPath); err != nil {
 		return PullResult{}, err
 	}
-	pass, err := s.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
+	pass, err := m.PassProvider.GetCertPassword(ctx, CertPasswordRequest{
 		RequestID:       nfse.GenerateID(),
 		CompanyID:       string(company.ID),
 		CompanyName:     company.Name,
@@ -126,7 +134,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 		return PullResult{}, fmt.Errorf("obter senha do certificado: %w", err)
 	}
 
-	s.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
+	m.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
 	loadedCert, err := loadPKCS12(credential.CertPath, pass)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
@@ -141,7 +149,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 	credential.NotAfter = &inspection.NotAfter
 	now := time.Now().UTC()
 	credential.InspectedAt = &now
-	if err := s.CredentialStore.UpdateCredential(ctx, credential); err != nil {
+	if err := m.CredentialProvider.UpdateCredential(ctx, credential); err != nil {
 		return PullResult{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
 	}
 
@@ -151,16 +159,16 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 	}
 
 	apiClient, err := newADNClient(adn.ClientConfig{
-		BaseURL:     resolveEnvironmentURL(company.Environment),
+		BaseURL:     ResolveEnvironmentURL(company.Environment),
 		Certificate: &tlsCert,
-		Log:         s.Log,
+		Log:         m.Log,
 	})
 	if err != nil {
 		return PullResult{}, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
 
-	s.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
-	svc := newSyncRunner(s.SyncRepo, apiClient, s.XMLStore, s.Log)
+	m.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
+	svc := newSyncRunner(m.SyncRepo, apiClient, m.XMLStore, m.Log)
 
 	var result PullResult
 	result.CompanyName = company.Name
@@ -196,7 +204,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 	}
 	result.Duration = time.Since(start)
 
-	snapshot, err := s.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
@@ -215,7 +223,7 @@ func (s *SyncService) Pull(ctx context.Context, input PullInput) (PullResult, er
 		result.DocumentsSaved = result.DocumentsFound
 	}
 
-	s.Log.InfoContext(
+	m.Log.InfoContext(
 		ctx, "Sincronização concluída com sucesso",
 		slog.Int("docs_found", result.DocumentsFound),
 		slog.Int("errors", result.Errors),
@@ -248,7 +256,7 @@ func validateConsultationCompatibility(company *nfse.Company, credential *nfse.C
 	return nfse.ConsultationBasisSameRootCertificate, nil
 }
 
-func resolveEnvironmentURL(env nfse.Environment) string {
+func ResolveEnvironmentURL(env nfse.Environment) string {
 	switch env {
 	case nfse.EnvironmentProduction:
 		return adn.BaseURLProduction
@@ -257,4 +265,114 @@ func resolveEnvironmentURL(env nfse.Environment) string {
 	default:
 		return ""
 	}
+}
+
+type StatusResult struct {
+	CompanyName        string
+	CNPJ               string
+	Environment        string
+	ConsultationCNPJ   string
+	CredentialCNPJ     string
+	CredentialNotAfter *time.Time
+	LastProcessedNSU   int64
+	LastFoundNSU       *int64
+	LastSyncAt         *time.Time
+	LastRunStatus      string
+	LastRunStopReason  string
+	TotalEmitidas      int64
+	TotalTomadas       int64
+}
+
+func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
+	cleanedCNPJ, err := normalizeCNPJ(rawCNPJ)
+	if err != nil {
+		return StatusResult{}, err
+	}
+	company, err := m.CompanyProvider.CompanyByCNPJ(ctx, cleanedCNPJ)
+	if err != nil {
+		return StatusResult{}, err
+	}
+	credential, err := m.CredentialProvider.CredentialByID(ctx, company.CredentialID)
+	if err != nil {
+		return StatusResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
+	}
+	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	if err != nil {
+		return StatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
+	}
+
+	counts, err := m.DocProvider.CountDocumentsByRole(ctx, company.ID)
+	if err != nil {
+		return StatusResult{}, fmt.Errorf("contar documentos: %w", err)
+	}
+
+	result := StatusResult{
+		CompanyName:        company.Name,
+		CNPJ:               company.CNPJ,
+		Environment:        string(company.Environment),
+		ConsultationCNPJ:   company.CNPJ,
+		CredentialCNPJ:     credential.OwnerCNPJ,
+		CredentialNotAfter: credential.NotAfter,
+		TotalEmitidas:      counts["prestada"],
+		TotalTomadas:       counts["tomada"],
+	}
+	if snapshot.State != nil {
+		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
+		result.LastFoundNSU = snapshot.State.LastFoundNSU
+		if snapshot.State.LastSuccessAt != nil {
+			result.LastSyncAt = snapshot.State.LastSuccessAt
+		}
+	}
+	if snapshot.Run != nil {
+		result.LastRunStatus = string(snapshot.Run.Status)
+		result.LastRunStopReason = string(snapshot.Run.StopReason)
+		if snapshot.Run.FinishedAt != nil {
+			result.LastSyncAt = snapshot.Run.FinishedAt
+		}
+	}
+	return result, nil
+}
+
+func normalizeCNPJ(raw string) (string, error) {
+	if err := cnpj.Validate(raw); err != nil {
+		return "", fmt.Errorf("CNPJ inválido: %w", err)
+	}
+	return cnpj.Clean(raw), nil
+}
+
+func validateCertificatePath(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("arquivo de certificado não encontrado: %s", path)
+		}
+		return fmt.Errorf("verificar certificado: %w", err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("caminho do certificado aponta para um diretório: %s", path)
+	}
+	return nil
+}
+
+type ResetSyncInput struct {
+	CNPJ string
+}
+
+func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
+	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	if err != nil {
+		return err
+	}
+	company, err := m.CompanyProvider.CompanyByCNPJ(ctx, cleanedCNPJ)
+	if err != nil {
+		return err
+	}
+
+	if err := m.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{
+		CompanyID: company.ID,
+	}); err != nil {
+		return fmt.Errorf("resetar estado de sincronização: %w", err)
+	}
+
+	return nil
 }

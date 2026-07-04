@@ -1,28 +1,30 @@
-package store
+package sync_test
 
 import (
 	"context"
 	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	t.Parallel()
 
-	db := openTestDB(t)
+	db := storetest.OpenTestDB(t)
 	credentials := credential.NewStore(db)
-	companies := NewCompanyRepository(db)
+	companies := store.NewCompanyRepository(db)
 
-	first := testCredential("credential-1")
+	first := storetest.TestCredential("credential-1")
 	if err := credentials.CreateCredential(context.Background(), first); err != nil {
 		t.Fatal(err)
 	}
-	company := testCompany("company-1", "11222333000181", nfse.EnvironmentRestricted, first)
+	company := storetest.TestCompany("company-1", "11222333000181", nfse.EnvironmentRestricted, first)
 	if err := companies.CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +35,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	}
 	assertCompanyCredential(t, stored, first, nfse.EnvironmentRestricted)
 
-	second := testCredential("credential-2")
+	second := storetest.TestCredential("credential-2")
 	second.Label = "Production certificate"
 	second.CertPath = `C:\certs\production.pfx`
 	if err := credentials.CreateCredential(context.Background(), second); err != nil {
@@ -53,9 +55,9 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 func TestDocumentUpsertUsesCanonicalIDAndListsRelations(t *testing.T) {
 	t.Parallel()
 
-	db := openTestDB(t)
-	syncRepo := NewSyncRepository(db)
-	documentRepo := NewDocumentRepository(db)
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
+	documentRepo := store.NewDocumentRepository(db)
 	firstCompany := seedCompany(t, db, "company-1", "11222333000181")
 	secondCompany := seedCompany(t, db, "company-2", "11222333000262")
 
@@ -122,9 +124,9 @@ func TestDocumentUpsertUsesCanonicalIDAndListsRelations(t *testing.T) {
 func TestEventsUpdateStatusAndLinkWhenDocumentArrives(t *testing.T) {
 	t.Parallel()
 
-	db := openTestDB(t)
-	syncRepo := NewSyncRepository(db)
-	documentRepo := NewDocumentRepository(db)
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
+	documentRepo := store.NewDocumentRepository(db)
 	company := seedCompany(t, db, "company-1", "11222333000181")
 	accessKey := nfse.AccessKey("12345678901234567890123456789012345678901234567890")
 
@@ -171,53 +173,15 @@ func TestEventsUpdateStatusAndLinkWhenDocumentArrives(t *testing.T) {
 	}
 }
 
-func openTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	db, err := OpenDB(context.Background(), filepath.Join(t.TempDir(), "test.db"), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("close database: %v", err)
-		}
-	})
-	return db
-}
-
-func testCredential(id string) *nfse.Credential {
-	return &nfse.Credential{
-		ID:            nfse.CredentialID(id),
-		Label:         "Certificate",
-		CertPath:      `C:\certs\company.pfx`,
-		OwnerCNPJ:     "11222333000181",
-		OwnerCNPJRoot: "11222333",
-	}
-}
-
-func testCompany(id, cnpj string, env nfse.Environment, credential *nfse.Credential) *nfse.Company {
-	return &nfse.Company{
-		ID:                 nfse.CompanyID(id),
-		CNPJ:               cnpj,
-		CNPJRoot:           cnpj[:8],
-		Name:               id,
-		CredentialID:       credential.ID,
-		CredentialLabel:    credential.Label,
-		CredentialCertPath: credential.CertPath,
-		Environment:        env,
-	}
-}
-
 func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *nfse.Company {
 	t.Helper()
 
-	cred := testCredential("credential-" + id)
+	cred := storetest.TestCredential("credential-" + id)
 	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := testCompany(id, cnpj, nfse.EnvironmentRestricted, cred)
-	if err := NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
+	company := storetest.TestCompany(id, cnpj, nfse.EnvironmentRestricted, cred)
+	if err := store.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
 	return company
@@ -243,7 +207,7 @@ func testDocument(id, accessKey, hash string) nfse.Document {
 	}
 }
 
-func applyDocument(t *testing.T, repo *SyncRepository, companyID nfse.CompanyID, document nfse.Document, nsu int64) {
+func applyDocument(t *testing.T, repo *sync.Store, companyID nfse.CompanyID, document nfse.Document, nsu int64) {
 	t.Helper()
 	_, err := repo.ApplyDocument(context.Background(), nfse.ApplyDocumentParams{
 		Document: document,
@@ -259,7 +223,7 @@ func applyDocument(t *testing.T, repo *SyncRepository, companyID nfse.CompanyID,
 	}
 }
 
-func applyEvent(t *testing.T, repo *SyncRepository, event nfse.Event, companyID nfse.CompanyID, nsu int64) {
+func applyEvent(t *testing.T, repo *sync.Store, event nfse.Event, companyID nfse.CompanyID, nsu int64) {
 	t.Helper()
 	if _, err := repo.ApplyEvent(context.Background(), nfse.ApplyEventParams{
 		Event:     event,
@@ -294,8 +258,8 @@ func assertDocumentStatus(t *testing.T, db *sql.DB, accessKey nfse.AccessKey, wa
 func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	t.Parallel()
 
-	db := openTestDB(t)
-	syncRepo := NewSyncRepository(db)
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
 	company := seedCompany(t, db, "company-1", "11222333000181")
 
 	// Initialize the sync state first so the UPDATE statement has a row to update.
@@ -325,7 +289,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 			Environment:      nfse.EnvironmentRestricted,
 			ConsultationCNPJ: "11222333000181",
 			LastProcessedNSU: 10,
-			LastFoundNSU:     int64Ptr(10),
+			LastFoundNSU:     storetest.Int64Ptr(10),
 		},
 	}
 
@@ -339,7 +303,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	// But we change LastFoundNSU to verify that the progress update commits successfully.
 	p.DocumentParams.NSU = 10
 	p.ProgressParams.LastProcessedNSU = 10
-	p.ProgressParams.LastFoundNSU = int64Ptr(999)
+	p.ProgressParams.LastFoundNSU = storetest.Int64Ptr(999)
 
 	// Should not fail due to unique constraint, but should INSERT OR IGNORE the doc and UPDATE the progress
 	if _, err := syncRepo.ApplyDocumentAndProgress(context.Background(), p); err != nil {
@@ -375,3 +339,5 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 		t.Fatalf("expected progress LastFoundNSU=999, got %d", f)
 	}
 }
+
+// Removed duplicated int64Ptr

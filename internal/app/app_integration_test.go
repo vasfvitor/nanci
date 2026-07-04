@@ -14,6 +14,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 type credentialProviderStub struct{}
@@ -37,7 +38,7 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 		Log:                slog.Default(),
 		CompanyStore:       company.NewStore(db),
 		CredentialStore:    credential.NewStore(db),
-		SyncRepo:           store.NewSyncRepository(db),
+		SyncRepo:           sync.NewStore(db),
 		DocumentRepo:       docRepo,
 		XMLStore:           files.NewBlobStore(t.TempDir()),
 		DataDir:            t.TempDir(),
@@ -143,8 +144,9 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	if comps[0].SyncStartDate == nil {
 		t.Error("esperava SyncStartDate preenchido para from_now, mas veio nil")
 	} else {
-		expectedDate := time.Now().Truncate(24 * time.Hour)
-		actualDate := comps[0].SyncStartDate.Truncate(24 * time.Hour)
+		now := time.Now()
+		expectedDate, _ := time.Parse("2006-01-02", now.Format("2006-01-02"))
+		actualDate := *comps[0].SyncStartDate
 		if !actualDate.Equal(expectedDate) {
 			t.Errorf("esperava SyncStartDate %v, obteve %v", expectedDate, actualDate)
 		}

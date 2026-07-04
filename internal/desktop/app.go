@@ -18,6 +18,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	"github.com/vasfvitor/nanci/internal/files"
@@ -26,6 +27,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction.
@@ -173,8 +175,8 @@ func (a *App) startup(ctx context.Context) {
 	coreApp, err := app.NewRuntime(app.Dependencies{
 		Log:             log,
 		CompanyStore:    company.NewStore(db),
-		CredentialRepo:  store.NewCredentialRepository(db),
-		SyncRepo:        store.NewSyncRepository(db),
+		CredentialStore: credential.NewStore(db),
+		SyncRepo:        nsync.NewStore(db),
 		DocumentRepo: docRepo,
 		
 		XMLStore:        files.NewBlobStore(dataDir),
@@ -273,7 +275,7 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 }
 
 func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
-	return a.core.Credentials.AddCredential(a.ctx, app.AddCredentialInput{
+	return a.core.Credentials.AddCredential(a.ctx, credential.AddCredentialInput{
 		Label:    input.Label,
 		CertPath: input.CertPath,
 	})
@@ -288,14 +290,14 @@ func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
 }
 
 func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) error {
-	return a.core.Credentials.UpdateCredentialPath(a.ctx, app.UpdateCredentialPathInput{
+	return a.core.Credentials.UpdateCredentialPath(a.ctx, credential.UpdateCredentialPathInput{
 		CredentialID: input.CredentialID,
 		CertPath:     input.CertPath,
 	})
 }
 
 func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {
-	return a.core.Credentials.UpdateCredentialData(a.ctx, app.UpdateCredentialDataInput{
+	return a.core.Credentials.UpdateCredentialData(a.ctx, credential.UpdateCredentialDataInput{
 		CredentialID: input.CredentialID,
 		Label:        input.Label,
 	})
@@ -340,7 +342,7 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 }
 
 func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
-	res, err := a.core.Sync.Pull(a.ctx, app.PullInput{
+	res, err := a.core.SyncManager.Pull(a.ctx, nsync.PullInput{
 		CNPJ: input.CNPJ,
 		Mode: input.Mode,
 	})
@@ -370,7 +372,7 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
-	return a.core.Sync.ResetSyncState(a.ctx, app.ResetSyncInput{
+	return a.core.SyncManager.ResetSyncState(a.ctx, nsync.ResetSyncInput{
 		CNPJ: input.CompanyCNPJ,
 	})
 }
@@ -404,7 +406,7 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 }
 
 func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
-	res, err := a.core.Status.Status(a.ctx, cnpj)
+	res, err := a.core.SyncManager.Status(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.StatusResult{}, err
 	}

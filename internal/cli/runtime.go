@@ -14,6 +14,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // prodAppFactory returns the production AppFactory: it opens a real SQLite
@@ -57,7 +58,7 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 			Log:             log,
 			CompanyStore:    company.NewStore(db),
 			CredentialStore: credential.NewStore(db),
-			SyncRepo:        store.NewSyncRepository(db),
+			SyncRepo:        sync.NewStore(db),
 			DocumentRepo:    docRepo,
 
 			XMLStore: files.NewBlobStore(dataDir),
