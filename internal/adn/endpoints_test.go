@@ -74,8 +74,8 @@ func TestClient_FetchDocuments_SerializesOptionalLote(t *testing.T) {
 		expected string
 	}{
 		{name: "omitted by default", lote: nil, expected: ""},
-		{name: "explicit true", lote: boolPtr(true), expected: "true"},
-		{name: "explicit false", lote: boolPtr(false), expected: "false"},
+		{name: "explicit true", lote: new(true), expected: "true"},
+		{name: "explicit false", lote: new(false), expected: "false"},
 	}
 
 	for _, tt := range tests {
@@ -454,5 +454,5 @@ func newRestrictedTestClient(t *testing.T, baseURL string) *Client {
 }
 
 func boolPtr(v bool) *bool {
-	return &v
+	return new(v)
 }

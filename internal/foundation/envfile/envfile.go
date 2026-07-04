@@ -93,8 +93,8 @@ func parseLine(line string) (key, value string, ok bool, err error) {
 	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 		return "", "", false, nil
 	}
-	if strings.HasPrefix(trimmed, "export ") {
-		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "export "))
+	if after, ok0 := strings.CutPrefix(trimmed, "export "); ok0 {
+		trimmed = strings.TrimSpace(after)
 	}
 
 	key, value, found := strings.Cut(trimmed, "=")

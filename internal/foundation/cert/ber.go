@@ -155,7 +155,7 @@ func (p *berParser) readObject(offset, depth int) (asn1Object, int, error) {
 		if p.data[offset] == 0 {
 			p.changed = true
 		}
-		for i := 0; i < numberOfBytes; i++ {
+		for range numberOfBytes {
 			if length > (math.MaxInt-int(p.data[offset]))/256 {
 				return nil, 0, errors.New("ber2der: ASN.1 length overflows int")
 			}
