@@ -17,6 +17,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	"github.com/vasfvitor/nanci/internal/files"
@@ -171,7 +172,7 @@ func (a *App) startup(ctx context.Context) {
 
 	coreApp, err := app.NewRuntime(app.Dependencies{
 		Log:             log,
-		CompanyRepo:     store.NewCompanyRepository(db),
+		CompanyStore:    company.NewStore(db),
 		CredentialRepo:  store.NewCredentialRepository(db),
 		SyncRepo:        store.NewSyncRepository(db),
 		DocumentRepo: docRepo,
@@ -254,12 +255,12 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 	if err != nil {
 		return err
 	}
-	policy, date, err := app.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+	policy, date, err := company.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
 	if err != nil {
 		return err
 	}
 
-	return a.core.Companies.AddCompany(a.ctx, app.AddCompanyInput{
+	return a.core.Companies.AddCompany(a.ctx, company.AddCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		CredentialID:    input.CredentialID,
@@ -308,13 +309,13 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 	policy := nfse.SyncStartPolicyFromNow
 	var date *time.Time
 	if input.SyncStartPolicy != "" {
-		policy, date, err = app.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
+		policy, date, err = company.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
 		if err != nil {
 			return err
 		}
 	}
 
-	return a.core.Companies.UpdateCompany(a.ctx, app.UpdateCompanyInput{
+	return a.core.Companies.UpdateCompany(a.ctx, company.UpdateCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		Environment:     environment,
@@ -324,7 +325,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 }
 
 func (a *App) AssignCredentialToCompany(input desktopapi.AssignCredentialInput) error {
-	return a.core.Companies.AssignCredentialToCompany(a.ctx, app.AssignCredentialInput{
+	return a.core.Companies.AssignCredentialToCompany(a.ctx, company.AssignCredentialInput{
 		CompanyCNPJ:  input.CompanyCNPJ,
 		CredentialID: input.CredentialID,
 	})
