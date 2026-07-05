@@ -64,47 +64,9 @@ color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" 
         color="warning" icon="done_all" label="Marcar Vistos" :disable="loading" :loading="loading" dense
         flat @click="markViewed" />
 
-      <q-btn-dropdown
-color="secondary" label="Exportar" :disable="exporting || documents.length === 0"
-        :loading="exporting" dense flat>
-        <q-list dense>
-          <q-item v-close-popup clickable @click="exportData('csv')">
-            <q-item-section avatar>
-              <q-icon name="table_view" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Exportar CSV</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item v-close-popup clickable @click="exportData('xlsx')">
-            <q-item-section avatar>
-              <q-icon name="grid_on" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Exportar XLSX</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item v-close-popup clickable @click="exportData('zip')">
-            <q-item-section avatar>
-              <q-icon name="folder_zip" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Exportar XMLs (ZIP)</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item v-close-popup clickable @click="exportDanfseZip">
-            <q-item-section avatar>
-              <q-icon name="picture_as_pdf" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Exportar DANFSes (ZIP)</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-btn-dropdown>
+      <q-btn
+        color="secondary" label="Exportar" :disable="exporting || documents.length === 0"
+        :loading="exporting" dense flat @click="openExportDialog" />
     </div>
 
     <q-table
@@ -391,6 +353,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { copyToClipboard, date, useQuasar, type QTableColumn } from 'quasar'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
+import ExportDialog from '../components/ExportDialog.vue'
 import { useDocuments } from '@/composables/useDocuments'
 import {
   formatChaveAcesso,
@@ -743,38 +706,47 @@ async function search() {
   }
 }
 
-async function exportData(format: ExportFormat) {
-  if (selected.value.length > 0) {
-    const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
-    if (chaves.length === 0) { notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida'); return }
-    try {
-      const result = await documentsApi.exportDocuments(format, false, '', chaves)
-      notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
-      selected.value = [] // clear selection
-    } catch (error) {
-      notifyError('Erro ao exportar', error)
-    }
-    return
-  }
-
+function openExportDialog() {
   $q.dialog({
-    title: 'Exportar Documentos',
-    message: 'Todos os documentos ou apenas os que não foram exportados:',
-    options: {
-      type: 'checkbox',
-      model: ['incremental'],
-      items: [
-        { label: 'Exportar somente novos', value: 'incremental', color: 'primary' }
-      ]
-    },
-    cancel: true,
-    persistent: true
-  }).onOk(async (data: string[]) => {
-    const incremental = data.includes('incremental')
+    component: ExportDialog,
+    componentProps: {
+      selectedCount: selected.value.length
+    }
+  }).onOk(async (data: { format: string; incremental: boolean }) => {
+    const { format, incremental } = data
+
+    // Scenario 1: Items were selected manually
+    if (selected.value.length > 0) {
+      const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
+      if (chaves.length === 0) { 
+        notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida')
+        return 
+      }
+      try {
+        let result: ExportResult | undefined | null
+        if (format === 'danfse-zip') {
+          result = await documentsApi.exportDANFSeZIP(false, '', chaves)
+        } else {
+          result = await documentsApi.exportDocuments(format as ExportFormat, false, '', chaves)
+        }
+        notifyExportSuccess(`Arquivo gerado`, result)
+        selected.value = [] // clear selection
+      } catch (error) {
+        notifyError('Erro ao exportar', error)
+      }
+      return
+    }
+
+    // Scenario 2: No specific items selected, use incremental and filters
     try {
-      const result = await documentsApi.exportDocuments(format, incremental)
-      notifyExportSuccess(`Arquivo ${format.toUpperCase()}`, result)
-      // refresh view
+      let result: ExportResult | undefined | null
+      if (format === 'danfse-zip') {
+        result = await documentsApi.exportDANFSeZIP(incremental)
+      } else {
+        result = await documentsApi.exportDocuments(format as ExportFormat, incremental)
+      }
+      notifyExportSuccess(`Arquivo gerado`, result)
+      
       if (incremental && filter.value.OnlyUnread) {
         await search()
       }
@@ -808,46 +780,6 @@ async function exportXML(chaveAcesso?: string) {
   } catch (error) {
     notifyError('Erro ao exportar XML', error)
   }
-}
-
-async function exportDanfseZip() {
-  if (selected.value.length > 0) {
-    const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
-    if (chaves.length === 0) { notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida'); return }
-    try {
-      const result = await documentsApi.exportDANFSeZIP(false, '', chaves)
-      notifyExportSuccess('ZIP de DANFSes', result)
-      selected.value = []
-    } catch (error) {
-      notifyError('Erro ao exportar ZIP de DANFSes', error)
-    }
-    return
-  }
-
-  $q.dialog({
-    title: 'Exportar DANFSes',
-    message: 'Todos os documentos ou apenas os que não foram exportados:',
-    options: {
-      type: 'checkbox',
-      model: ['incremental'],
-      items: [
-        { label: 'Exportar somente novos', value: 'incremental', color: 'primary' }
-      ]
-    },
-    cancel: true,
-    persistent: true
-  }).onOk(async (data: string[]) => {
-    const incremental = data.includes('incremental')
-    try {
-      const result = await documentsApi.exportDANFSeZIP(incremental)
-      notifyExportSuccess('ZIP de DANFSes', result)
-      if (incremental && filter.value.OnlyUnread) {
-        await search()
-      }
-    } catch (error) {
-      notifyError('Erro ao exportar ZIP de DANFSes', error)
-    }
-  })
 }
 
 async function markViewed() {
