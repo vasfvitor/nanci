@@ -206,6 +206,9 @@ v-model="filterText" class="document-search-input"
 
       <template #body="props">
         <q-tr :props="props">
+          <q-td auto-width>
+            <q-checkbox v-model="props.selected" />
+          </q-td>
           <q-td v-for="col in props.cols" :key="col.name" :props="props">
             <template v-if="col.name === 'actions'">
               <div class="row no-wrap items-center justify-center q-gutter-x-xs">
@@ -297,7 +300,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
         </q-tr>
 
         <q-tr v-if="props.expand" :props="props" :class="['detail-container-borders', $q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
-          <q-td :colspan="props.cols.length" class="q-pa-md">
+          <q-td :colspan="props.cols.length + 1" class="q-pa-md">
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-7">
                 <div class="text-subtitle2 text-primary q-mb-xs">
