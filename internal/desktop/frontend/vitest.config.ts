@@ -13,5 +13,8 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     include: ['src/**/*.{test,spec}.ts'],
+    env: {
+      TZ: 'America/Sao_Paulo',
+    },
   },
 })

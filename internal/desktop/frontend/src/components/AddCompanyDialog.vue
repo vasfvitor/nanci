@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useQuasar } from 'quasar'
+import { date, useQuasar } from 'quasar'
 import { desktopClient } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
 
@@ -251,9 +251,9 @@ function resolveSyncStartInput(): { policy: SyncStartPolicy; date: string } | nu
   }
 }
 
-function addYears(date: Date, years: number) {
-  const copy = new Date(date)
+function addYears(from: Date, years: number) {
+  const copy = new Date(from)
   copy.setFullYear(copy.getFullYear() + years)
-  return copy.toISOString().slice(0, 10)
+  return date.formatDate(copy, 'YYYY-MM-DD')
 }
 </script>
