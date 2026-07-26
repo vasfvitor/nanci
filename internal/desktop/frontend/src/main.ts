@@ -46,6 +46,11 @@ myApp.use(Quasar, {
 
 const consoleStore = useConsoleStore(pinia)
 consoleStore.initLogListeners()
-consoleStore.syncInitialLogLevel()
+consoleStore.syncInitialLogLevel().catch((error: unknown) => {
+  Notify.create({
+    type: 'negative',
+    message: 'Não foi possível aplicar o nível de log inicial: ' + String(error),
+  })
+})
 
 myApp.mount('#app')

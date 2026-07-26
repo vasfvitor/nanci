@@ -136,6 +136,7 @@ watch(
   async (val) => {
     isOpen.value = val
     if (val) {
+      resetForm()
       await loadCredentials()
     }
   }
@@ -209,21 +210,25 @@ async function submit() {
     $q.notify({ type: 'positive', message: 'Empresa adicionada com sucesso!' })
     emit('added')
     isOpen.value = false
-    form.value = {
-      CNPJ: '',
-      Name: '',
-      CredentialID: credentialOptions.value[0]?.value || '',
-      CredentialLabel: '',
-      CertPath: '',
-      Environment: 'producao_restrita',
-    }
-    syncStartChoice.value = 'from_now'
-    customSyncStartDate.value = ''
+    resetForm()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + String(err) })
   } finally {
     loading.value = false
   }
+}
+
+function resetForm() {
+  form.value = {
+    CNPJ: '',
+    Name: '',
+    CredentialID: credentialOptions.value[0]?.value || '',
+    CredentialLabel: '',
+    CertPath: '',
+    Environment: 'producao_restrita',
+  }
+  syncStartChoice.value = 'from_now'
+  customSyncStartDate.value = ''
 }
 
 function resolveSyncStartInput(): { policy: SyncStartPolicy; date: string } | null {

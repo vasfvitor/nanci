@@ -55,12 +55,19 @@ watch(
   () => props.modelValue,
   (val) => {
     isOpen.value = val
+    if (val) {
+      resetForm()
+    }
   }
 )
 
 watch(isOpen, (val) => {
   emit('update:modelValue', val)
 })
+
+function resetForm() {
+  form.value = { Label: '', CertPath: '' }
+}
 
 async function selectCert() {
   try {
@@ -88,7 +95,7 @@ async function submit() {
     $q.notify({ type: 'positive', message: 'Credencial adicionada com sucesso!' })
     emit('added')
     isOpen.value = false
-    form.value = { Label: '', CertPath: '' }
+    resetForm()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + String(err) })
   } finally {

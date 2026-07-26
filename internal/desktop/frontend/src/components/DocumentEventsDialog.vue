@@ -94,6 +94,7 @@ watch(isOpen, (newVal) => {
 })
 
 async function loadEvents() {
+  events.value = []
   loading.value = true
   try {
     const res = await loadDocumentEvents(props.documentId)
