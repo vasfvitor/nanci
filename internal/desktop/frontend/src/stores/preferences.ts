@@ -1,6 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
+const defaultRowsPerPage = 25
+
+function readRowsPerPage() {
+  const stored = localStorage.getItem('nanci:documents:rowsPerPage')
+  if (stored === null) return defaultRowsPerPage
+
+  const parsed = Number(stored)
+  if (!Number.isInteger(parsed) || parsed < 0) return defaultRowsPerPage
+
+  return parsed
+}
+
 export const usePreferencesStore = defineStore('preferences', () => {
   const savedDark = localStorage.getItem('darkMode')
   let initialDark: boolean | 'auto' = 'auto'
@@ -11,7 +23,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   const darkMode = ref<boolean | 'auto'>(initialDark)
-  const rowsPerPage = ref<number>(Number(localStorage.getItem('nanci:documents:rowsPerPage')) || 25)
+  const rowsPerPage = ref<number>(readRowsPerPage())
 
   watch(darkMode, (val) => {
     localStorage.setItem('darkMode', String(val))

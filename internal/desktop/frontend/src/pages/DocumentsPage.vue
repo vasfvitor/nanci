@@ -528,6 +528,17 @@ watch(filterText, () => {
   pagination.value.page = 1
 })
 
+watch(documents, (rows) => {
+  if (selected.value.length === 0) {
+    return
+  }
+
+  const availableKeys = new Set(rows.map((row) => row.RelationID))
+  selected.value = selected.value.filter(
+    (row) => row.RelationID && availableKeys.has(row.RelationID)
+  )
+})
+
 onMounted(() => {
   void loadCompanies()
 })

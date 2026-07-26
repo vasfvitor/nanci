@@ -109,7 +109,7 @@ function scrollLogsToBottom() {
   })
 }
 
-watch(() => filteredLogEntries.value.length, scrollLogsToBottom)
+watch(filteredLogEntries, scrollLogsToBottom)
 watch(model, (open) => {
   if (open) {
     scrollLogsToBottom()
