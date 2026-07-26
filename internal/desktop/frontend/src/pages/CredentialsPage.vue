@@ -8,7 +8,7 @@
       flat
       bordered
       dense
-      :loading="false"
+      :loading="loading"
       no-data-label="Nenhuma credencial cadastrada."
     >
       <template #top-right>
@@ -82,7 +82,7 @@ import type { CredentialSummary } from '@/types/desktop'
 
 const $q = useQuasar()
 const credentialsApi = useCredentials()
-const { credentials } = credentialsApi
+const { credentials, loading } = credentialsApi
 const showAddDialog = ref(false)
 const showEditDialog = ref(false)
 const selectedCredentialToEdit = ref<CredentialSummary | null>(null)

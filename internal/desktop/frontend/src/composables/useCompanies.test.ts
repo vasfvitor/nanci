@@ -20,6 +20,48 @@ describe('useCompanies', () => {
     vi.clearAllMocks()
   })
 
+  it('reports loading for a single list load', async () => {
+    let resolveList!: (value: never[]) => void
+    vi.mocked(desktopClient.listCompanies).mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve
+      }) as ReturnType<typeof desktopClient.listCompanies>
+    )
+
+    const companies = useCompanies()
+    expect(companies.loading.value).toBe(false)
+
+    const pending = companies.loadCompanies()
+    expect(companies.loading.value).toBe(true)
+
+    resolveList([])
+    await pending
+    expect(companies.loading.value).toBe(false)
+  })
+
+  it('stays loading until the outer reload finishes, not the first inner load', async () => {
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+
+    let resolveCompanies!: (value: never[]) => void
+    vi.mocked(desktopClient.listCompanies).mockReturnValue(
+      new Promise((resolve) => {
+        resolveCompanies = resolve
+      }) as ReturnType<typeof desktopClient.listCompanies>
+    )
+
+    const companies = useCompanies()
+    const pending = companies.reloadData()
+
+    // Credentials resolve first; the slower companies load must keep it true.
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(companies.loading.value).toBe(true)
+
+    resolveCompanies([])
+    await pending
+    expect(companies.loading.value).toBe(false)
+  })
+
   it('preserves in-flight sync state across composable instances', async () => {
     let resolvePull!: (value: PullResult) => void
     vi.mocked(desktopClient.pull).mockReturnValue(

@@ -8,7 +8,7 @@
       flat
       bordered
       dense
-      :loading="false"
+      :loading="loading"
       no-data-label="Nenhuma empresa cadastrada."
     >
       <template #top-right>
@@ -138,7 +138,7 @@ const router = useRouter()
 const consoleStore = useConsoleStore()
 const { debugEnabled } = storeToRefs(consoleStore)
 const companiesApi = useCompanies()
-const { companies, credentials, isSyncingCompany } = companiesApi
+const { companies, credentials, loading, isSyncingCompany } = companiesApi
 const showAddDialog = ref(false)
 const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)

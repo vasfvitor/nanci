@@ -82,6 +82,26 @@ describe('CompaniesPage credential assignment', () => {
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
   })
 
+  it('drives the table loading indicator while companies load', async () => {
+    let resolveList!: (value: never[]) => void
+    vi.mocked(desktopClient.listCompanies).mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve
+      }) as ReturnType<typeof desktopClient.listCompanies>
+    )
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const table = wrapper.getComponent({ name: 'QTable' })
+    expect(table.props('loading')).toBe(true)
+
+    resolveList([])
+    await flushPromises()
+
+    expect(table.props('loading')).toBe(false)
+  })
+
   it('rolls the select back to the stored credential when assignment fails', async () => {
     vi.mocked(desktopClient.assignCredential).mockRejectedValue(new Error('boom'))
 

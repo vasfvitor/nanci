@@ -1,4 +1,4 @@
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
@@ -9,25 +9,35 @@ export function useCompanies() {
   const { syncing, syncingCNPJs } = storeToRefs(syncStore)
   const companies = shallowRef<CompanySummary[]>([])
   const credentials = shallowRef<CredentialSummary[]>([])
-  const loading = ref(false)
+
+  const pendingLoads = ref(0)
+  const loading = computed(() => pendingLoads.value > 0)
+
+  async function trackLoad<T>(operation: () => Promise<T>): Promise<T> {
+    pendingLoads.value++
+    try {
+      return await operation()
+    } finally {
+      pendingLoads.value--
+    }
+  }
 
   async function loadCredentials() {
-    credentials.value = await desktopClient.listCredentials()
-    return credentials.value
+    return trackLoad(async () => {
+      credentials.value = await desktopClient.listCredentials()
+      return credentials.value
+    })
   }
 
   async function loadCompanies() {
-    companies.value = await desktopClient.listCompanies()
-    return companies.value
+    return trackLoad(async () => {
+      companies.value = await desktopClient.listCompanies()
+      return companies.value
+    })
   }
 
   async function reloadData() {
-    loading.value = true
-    try {
-      await Promise.all([loadCredentials(), loadCompanies()])
-    } finally {
-      loading.value = false
-    }
+    await Promise.all([loadCredentials(), loadCompanies()])
   }
 
   async function assignCredential(companyCNPJ: string, credentialID: string) {
