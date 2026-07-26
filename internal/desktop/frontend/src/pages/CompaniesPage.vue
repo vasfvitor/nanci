@@ -201,14 +201,17 @@ async function reloadData() {
 }
 
 async function assignCredential(cnpj: string) {
-  try {
-    const credId = selectedCredentials.value[cnpj]
-    if (!credId) return
+  const credId = selectedCredentials.value[cnpj]
+  if (!credId) return
 
+  const previousCredId = companies.value.find((company) => company.CNPJ === cnpj)?.CredentialID ?? ''
+
+  try {
     await companiesApi.assignCredential(cnpj, credId)
     $q.notify({ type: 'positive', message: 'Credencial atribuída com sucesso.' })
     await loadCompanies()
   } catch (err) {
+    selectedCredentials.value[cnpj] = previousCredId
     $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + String(err) })
   }
 }
