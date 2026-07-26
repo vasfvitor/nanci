@@ -1,5 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 import { useQuery } from './useQuery'
 import { desktopClient } from '@/platform/wails/client'
 
@@ -50,6 +52,41 @@ describe('useQuery', () => {
     await expect(query.runQuery()).resolves.toBe('')
 
     expect(desktopClient.queryNFSeEvents).not.toHaveBeenCalled()
+  })
+
+  it('ignores a superseded document fetch when the CNPJ changes again', async () => {
+    const documentFor = (chave: string) => ({
+      ChaveAcesso: chave,
+      ServiceValue: 100,
+      CompanyRole: 'prestada',
+      TomadorName: 'Tomador',
+      PrestadorName: 'Prestador',
+    })
+
+    let resolveSlow!: (value: unknown) => void
+    vi.mocked(desktopClient.listDocuments)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSlow = resolve
+        }) as never
+      )
+      .mockResolvedValueOnce([documentFor('2'.repeat(50))] as never)
+
+    const query = useQuery()
+
+    query.form.value.cnpj = '111'
+    await nextTick()
+    query.form.value.cnpj = '222'
+    await nextTick()
+    await flushPromises()
+
+    expect(query.documentOptions.value.map((option) => option.value)).toEqual(['2'.repeat(50)])
+
+    // The first request finally lands, after its CNPJ was already replaced.
+    resolveSlow([documentFor('1'.repeat(50))])
+    await flushPromises()
+
+    expect(query.documentOptions.value.map((option) => option.value)).toEqual(['2'.repeat(50)])
   })
 
   it('keeps loading state across composable instances while a query is pending', async () => {

@@ -12,9 +12,13 @@ export function useQuery() {
   const allDocumentOptions = ref<{ label: string; value: string; description?: string }[]>([])
   const documentOptions = ref<{ label: string; value: string; description?: string }[]>([])
 
+  let latestDocumentRequest = 0
+
   watch(
     () => form.value.cnpj,
     async (newCnpj) => {
+      const requestID = ++latestDocumentRequest
+
       if (!newCnpj) {
         allDocumentOptions.value = []
         documentOptions.value = []
@@ -22,6 +26,8 @@ export function useQuery() {
       }
       try {
         const docs = await desktopClient.listDocuments({ CNPJ: newCnpj, Competence: '', Direction: '', OnlyUnread: false })
+        if (requestID !== latestDocumentRequest) return
+
         allDocumentOptions.value = docs.map((d) => {
           const pureKey = d.ChaveAcesso.replace(/\D/g, '')
           const shortKey = pureKey.length >= 6 ? pureKey.slice(-6) : pureKey
