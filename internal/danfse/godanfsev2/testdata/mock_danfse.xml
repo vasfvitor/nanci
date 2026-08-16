@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS355030826048BJSEBRKWX5Z541700000000000459123847291">
+    <xLocEmi>São Paulo</xLocEmi>
+    <xLocPrestacao>São Paulo</xLocPrestacao>
+    <nNFSe>459123</nNFSe>
+    <cLocIncid>3550308</cLocIncid>
+    <xLocIncid>São Paulo</xLocIncid>
+    <xTribNac>Análise e desenvolvimento de sistemas.</xTribNac>
+    <verAplic>EmissorWeb_1.6.0.0</verAplic>
+    <ambGer>2</ambGer>
+    <tpEmis>1</tpEmis>
+    <procEmi>2</procEmi>
+    <cStat>100</cStat>
+    <dhProc>2026-04-30T23:03:04-03:00</dhProc>
+    <nDFSe>99827364</nDFSe>
+    <emit>
+      <CNPJ>8BJSEBRKWX5Z54</CNPJ>
+      <xNome>PRESTADOR DE TESTE LTDA</xNome>
+      <enderNac>
+        <xLgr>AVENIDA PAULISTA</xLgr>
+        <nro>1578</nro>
+        <xBairro>BELA VISTA</xBairro>
+        <cMun>3550308</cMun>
+        <UF>SP</UF>
+        <CEP>01310200</CEP>
+      </enderNac>
+      <fone>11999999999</fone>
+      <email>prestador@exemplo.com</email>
+    </emit>
+    <valores>
+      <vLiq>14500.50</vLiq>
+    </valores>
+    <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+      <infDPS Id="DPS355030826048BJSEBRKWX5Z541700000000000459123847291">
+        <tpAmb>1</tpAmb>
+        <dhEmi>2026-04-30T23:03:04-03:00</dhEmi>
+        <verAplic>EmissorWeb_1.6.0.0</verAplic>
+        <serie>70000</serie>
+        <nDPS>459123</nDPS>
+        <dCompet>2026-04-30</dCompet>
+        <tpEmit>1</tpEmit>
+        <cLocEmi>3550308</cLocEmi>
+        <prest>
+          <CNPJ>8BJSEBRKWX5Z54</CNPJ>
+          <fone>11999999999</fone>
+          <email>teste@exemplo.com</email>
+          <regTrib>
+            <opSimpNac>3</opSimpNac>
+            <regApTribSN>1</regApTribSN>
+            <regEspTrib>0</regEspTrib>
+          </regTrib>
+        </prest>
+        <toma>
+          <CNPJ>58APBW6N000109</CNPJ>
+          <xNome>TOMADOR DE TESTE LTDA</xNome>
+          <end>
+            <endNac>
+              <cMun>3550308</cMun>
+              <CEP>04538133</CEP>
+            </endNac>
+            <xLgr>AVENIDA BRIGADEIRO FARIA LIMA</xLgr>
+            <nro>3477</nro>
+            <xCpl>ANDAR 18</xCpl>
+            <xBairro>ITAIM BIBI</xBairro>
+          </end>
+        </toma>
+        <serv>
+          <locPrest>
+            <cLocPrestacao>3550308</cLocPrestacao>
+          </locPrest>
+          <cServ>
+            <cTribNac>010101</cTribNac>
+            <xDescServ>Consultoria técnica em infraestrutura de TI e provisionamento de recursos em nuvem. Referente ao mês vigente. Pagamento via PIX: chave teste@exemplo.com</xDescServ>
+          </cServ>
+        </serv>
+        <valores>
+          <vServPrest>
+            <vServ>14500.50</vServ>
+          </vServPrest>
+          <trib>
+            <tribMun>
+              <tribISSQN>1</tribISSQN>
+              <tpRetISSQN>1</tpRetISSQN>
+            </tribMun>
+            <tribFed>
+              <piscofins>
+                <CST>00</CST>
+              </piscofins>
+            </tribFed>
+            <totTrib>
+              <pTotTribSN>6.00</pTotTribSN>
+            </totTrib>
+          </trib>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

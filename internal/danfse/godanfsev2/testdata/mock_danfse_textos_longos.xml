@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fixture da issue #2: todo campo de texto variável do DANFSe preenchido com
+  conteúdo acima do que a coluna comporta (nomes, endereços, e-mails, municípios,
+  descrições, informações complementares e chave de acesso). Serve para verificar,
+  via pdftotext -bbox, que nenhum texto invade a coluna vizinha ou a borda da
+  página — o remédio prescrito pela NT 008/2026 v1.02, item 2.1, é truncar com
+  reticências mantendo a fonte.
+
+  Todos os blocos opcionais (tomador, destinatário e intermediário) estão
+  preenchidos para que nenhuma linha do leiaute fique sem exercício.
+-->
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS3550308260488888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888">
+    <xLocEmi>Vila Bela da Santíssima Trindade do Sul do Estado</xLocEmi>
+    <xLocPrestacao>Vila Bela da Santíssima Trindade do Sul do Estado</xLocPrestacao>
+    <nNFSe>459123</nNFSe>
+    <cLocIncid>3550308</cLocIncid>
+    <xLocIncid>Vila Bela da Santíssima Trindade do Sul do Estado</xLocIncid>
+    <xTribNac>Análise, desenvolvimento, manutenção, sustentação, hospedagem e operação assistida de sistemas de informação, incluindo consultoria especializada em arquitetura de software, integração de plataformas e governança de dados corporativos.</xTribNac>
+    <verAplic>EmissorWeb_1.6.0.0</verAplic>
+    <ambGer>2</ambGer>
+    <tpEmis>1</tpEmis>
+    <procEmi>2</procEmi>
+    <cStat>100</cStat>
+    <dhProc>2026-04-30T23:03:04-03:00</dhProc>
+    <nDFSe>99827364</nDFSe>
+    <emit>
+      <CNPJ>8BJSEBRKWX5Z54</CNPJ>
+      <xNome>COMPANHIA BRASILEIRA DE DESENVOLVIMENTO DE SISTEMAS DE INFORMACAO E SERVICOS DIGITAIS DE ALTA COMPLEXIDADE SOCIEDADE ANONIMA DE CAPITAL FECHADO LTDA</xNome>
+      <enderNac>
+        <xLgr>AVENIDA PROFESSOR DOUTOR FRANCISCO DE ASSIS RODRIGUES MONTEIRO DE BARROS FILHO</xLgr>
+        <nro>158788</nro>
+        <xCpl>CONJUNTO COMERCIAL 1802 TORRE NORTE DO EDIFICIO EMPRESARIAL</xCpl>
+        <xBairro>JARDIM DAS ORQUIDEAS DA SERRA DO MAR PAULISTA</xBairro>
+        <cMun>3550308</cMun>
+        <UF>SP</UF>
+        <CEP>01310200</CEP>
+      </enderNac>
+      <fone>11999999999</fone>
+      <email>departamento.de.faturamento.e.cobranca.eletronica@companhiabrasileiradesistemas.com.br</email>
+    </emit>
+    <valores>
+      <vLiq>14500.50</vLiq>
+    </valores>
+    <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+      <infDPS Id="DPS355030826048BJSEBRKWX5Z541700000000000459123847291">
+        <tpAmb>1</tpAmb>
+        <dhEmi>2026-04-30T23:03:04-03:00</dhEmi>
+        <verAplic>EmissorWeb_1.6.0.0</verAplic>
+        <serie>70000</serie>
+        <nDPS>459123</nDPS>
+        <dCompet>2026-04-30</dCompet>
+        <tpEmit>1</tpEmit>
+        <cLocEmi>3550308</cLocEmi>
+        <prest>
+          <CNPJ>8BJSEBRKWX5Z54</CNPJ>
+          <IM>123456789012345678901234567890</IM>
+          <fone>11999999999</fone>
+          <email>teste@exemplo.com</email>
+          <regTrib>
+            <opSimpNac>3</opSimpNac>
+            <regApTribSN>1</regApTribSN>
+            <regEspTrib>0</regEspTrib>
+          </regTrib>
+        </prest>
+        <toma>
+          <CNPJ>58APBW6N000109</CNPJ>
+          <xNome>ORGANIZACAO NACIONAL DE TOMADORES DE SERVICOS TECNOLOGICOS E ADMINISTRATIVOS DO SUDESTE BRASILEIRO SOCIEDADE EMPRESARIA LIMITADA</xNome>
+          <IM>987654321098765432109876543210</IM>
+          <fone>11988888888</fone>
+          <email>contas.a.pagar.setor.de.notas.fiscais.eletronicas@organizacaonacionaldetomadores.com.br</email>
+          <end>
+            <endNac>
+              <cMun>3550308</cMun>
+              <CEP>04538133</CEP>
+            </endNac>
+            <xLgr>AVENIDA BRIGADEIRO FARIA LIMA ESQUINA COM A RUA DOS TRES IRMAOS E ALAMEDA SANTOS</xLgr>
+            <nro>347799</nro>
+            <xCpl>ANDAR 18 SALA 1802 BLOCO B CONJUNTO EMPRESARIAL TORRE SUL</xCpl>
+            <xBairro>ITAIM BIBI PROXIMO AO PARQUE DO POVO E AO SHOPPING</xBairro>
+          </end>
+        </toma>
+        <interm>
+          <CNPJ>12345678000199</CNPJ>
+          <xNome>INTERMEDIARIA NACIONAL DE OPERACOES DIGITAIS E PLATAFORMAS DE PAGAMENTO ELETRONICO DO MERCADO BRASILEIRO SOCIEDADE ANONIMA</xNome>
+          <IM>112233445566778899001122334455</IM>
+          <fone>11977777777</fone>
+          <email>compliance.e.regulatorio.notas.fiscais@intermediarianacionaldeoperacoesdigitais.com.br</email>
+          <end>
+            <endNac>
+              <cMun>3550308</cMun>
+              <CEP>01452000</CEP>
+            </endNac>
+            <xLgr>RUA DOUTOR RENATO PAES DE BARROS COM ACESSO PELA AVENIDA DAS NACOES UNIDAS</xLgr>
+            <nro>101010</nro>
+            <xCpl>TORRE OESTE ANDAR 25 CONJUNTO 2504 E 2505 INTEGRADOS</xCpl>
+            <xBairro>VILA OLIMPIA REGIAO DA AVENIDA ENGENHEIRO LUIS CARLOS BERRINI</xBairro>
+          </end>
+        </interm>
+        <serv>
+          <locPrest>
+            <cLocPrestacao>3550308</cLocPrestacao>
+            <xLocPrestacao>Vila Bela da Santíssima Trindade do Sul</xLocPrestacao>
+            <cPaisPrestacao>BR</cPaisPrestacao>
+          </locPrest>
+          <cServ>
+            <cTribNac>010101</cTribNac>
+            <cTribMun>999888777666</cTribMun>
+            <cNBS>123456789012</cNBS>
+            <xDescServ>Consultoria técnica especializada em infraestrutura de tecnologia da informação, provisionamento de recursos computacionais em nuvem pública e privada, monitoramento contínuo de disponibilidade, resposta a incidentes de segurança cibernética, gestão de identidades e acessos, automação de esteiras de integração e entrega contínua, revisão de arquitetura de microsserviços, otimização de consultas em bancos de dados relacionais e analíticos, além de treinamento das equipes internas do contratante. Referente ao mês vigente e aos serviços residuais do mês anterior conforme aditivo contratual número 4472/2026. Pagamento via PIX: chave teste@exemplo.com. Nota: este texto existe para exercitar o limite de duas linhas do bloco de descrição do serviço no DANFSe.</xDescServ>
+          </cServ>
+          <infoCompl>
+            <xOutInf>Inf. Cont.: contrato de prestação de serviços continuados número 4472/2026 firmado entre as partes com vigência de doze meses contados da data de assinatura, renovável automaticamente por iguais períodos salvo manifestação em contrário de qualquer das partes com antecedência mínima de noventa dias | Doc. Ref.: ordem de compra 998877, medição mensal 04/2026, relatório de horas técnicas anexo ao processo administrativo 2026.0001.4472, termo de aceite provisório assinado eletronicamente | Cod. Obra: 12345678901234567890 | Insc. Imob.: 09876543210987654321 | Cod. Evt.: 555444333222111 | Doc. Tec.: laudo técnico de conformidade 2026/0447 emitido pelo responsável técnico da contratada | Núm. Ped.: 77665544332211 | Item Ped.: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009 e 0010 | Inf. A. T. Mun.: o serviço foi executado integralmente dentro do território do município de incidência, não havendo destacamento de equipe para outras unidades federativas durante o período de competência | Observações adicionais do emitente para fins de conferência interna do departamento fiscal e do setor de contas a pagar do tomador, mantidas neste campo por exigência do fluxo interno de aprovação de despesas e do manual de procedimentos contábeis vigente na organização, cuja versão mais recente foi publicada no portal corporativo em janeiro de 2026 e distribuída a todas as áreas envolvidas no processo de contratação, execução, fiscalização e pagamento dos serviços descritos nesta nota fiscal de serviço eletrônica de padrão nacional | Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012: Federais: R$ 1.234,56 ; Estaduais: R$ 0,00 ; Municipais: R$ 435,02</xOutInf>
+          </infoCompl>
+        </serv>
+        <IBSCBS>
+          <dest>
+            <CNPJ>99887766000155</CNPJ>
+            <xNome>DESTINATARIA CONSOLIDADA DE OPERACOES INTERESTADUAIS E SERVICOS COMPARTILHADOS DO GRUPO ECONOMICO NACIONAL SOCIEDADE LIMITADA</xNome>
+            <fone>11966666666</fone>
+            <email>recebimento.de.documentos.fiscais.eletronicos@destinatariaconsolidadadeoperacoes.com.br</email>
+            <end>
+              <endNac>
+                <cMun>3550308</cMun>
+                <CEP>05425070</CEP>
+              </endNac>
+              <xLgr>RUA HARMONIA COM ENTRADA PELA RUA GIRASSOL E SAIDA PARA A RUA FIDALGA VILA MADALENA</xLgr>
+              <nro>202020</nro>
+              <xCpl>GALPAO A MODULOS 1 2 3 E 4 COM DOCA DE CARGA E DESCARGA</xCpl>
+              <xBairro>VILA MADALENA REGIAO OESTE DA CIDADE DE SAO PAULO</xBairro>
+            </end>
+          </dest>
+          <cIndOp>123456</cIndOp>
+          <cLocalidadeIncid>3550308</cLocalidadeIncid>
+          <xLocalidadeIncid>Vila Bela da Santíssima Trindade do Sul do Estado</xLocalidadeIncid>
+        </IBSCBS>
+        <valores>
+          <vServPrest>
+            <vServ>14500.50</vServ>
+          </vServPrest>
+          <trib>
+            <tribMun>
+              <tribISSQN>1</tribISSQN>
+              <cLocIncid>3550308</cLocIncid>
+              <xLocIncid>Vila Bela da Santíssima Trindade do Sul do Estado</xLocIncid>
+              <cPaisResult>BR</cPaisResult>
+              <tpImunidade>1</tpImunidade>
+              <exigSusp>
+                <tpSusp>1</tpSusp>
+                <nProcesso>0001234-56.2026.8.26.0100.999888777</nProcesso>
+              </exigSusp>
+              <tpRetISSQN>1</tpRetISSQN>
+            </tribMun>
+            <tribFed>
+              <piscofins>
+                <CST>00</CST>
+                <tpRetPisCofins>1</tpRetPisCofins>
+              </piscofins>
+            </tribFed>
+            <totTrib>
+              <pTotTribSN>6.00</pTotTribSN>
+            </totTrib>
+          </trib>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>
