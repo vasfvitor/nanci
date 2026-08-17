@@ -177,12 +177,12 @@ func (a *App) startup(ctx context.Context) {
 		CompanyStore:    company.NewStore(db),
 		CredentialStore: credential.NewStore(db),
 		SyncRepo:        nsync.NewStore(db),
-		DocumentRepo: docRepo,
-		
+		DocumentRepo:    docRepo,
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
 			Fallback: a.cred,
+			Log:      log,
 		},
 		DANFSeRenderer: godanfsev2.New(),
 	})

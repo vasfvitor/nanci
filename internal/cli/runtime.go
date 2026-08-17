@@ -65,6 +65,7 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 			DataDir:  dataDir,
 			CredentialProvider: app.KeyringCredentialProvider{
 				Fallback: TerminalCredentialProvider{In: stdin, Out: stderr},
+				Log:      log,
 			},
 			DANFSeRenderer: godanfsev2.New(),
 		})
