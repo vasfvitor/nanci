@@ -2,6 +2,7 @@ package adn
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -142,7 +143,7 @@ func TestClient_RawGet_NoDocuments(t *testing.T) {
 
 	var dest map[string]any
 	err = client.RawGet(context.Background(), "/no-docs", &dest)
-	if err != ErrNoDocumentsLocated {
+	if !errors.Is(err, ErrNoDocumentsLocated) {
 		t.Errorf("expected ErrNoDocumentsLocated, got %v", err)
 	}
 }

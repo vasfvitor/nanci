@@ -452,7 +452,3 @@ func newRestrictedTestClient(t *testing.T, baseURL string) *Client {
 	}
 	return client
 }
-
-func boolPtr(v bool) *bool {
-	return new(v)
-}

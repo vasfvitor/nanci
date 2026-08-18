@@ -13,8 +13,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sethvargo/go-retry"
+
+	"github.com/vasfvitor/nanci/internal/foundation/logger"
 )
 
 const (
@@ -23,6 +26,12 @@ const (
 
 	MaxJSONResponseBytes = 20 * 1024 * 1024 // 20 MiB
 	MaxErrorBodyBytes    = 64 * 1024        // 64 KiB
+
+	// maxErrorLogBodyBytes caps the error body attached to Error-level log
+	// records; the full body (up to MaxErrorBodyBytes) is only logged at trace.
+	maxErrorLogBodyBytes = 2 * 1024
+	// maxTraceBodyBytes caps response bodies logged at trace level.
+	maxTraceBodyBytes = 256 * 1024
 )
 
 type APIError struct {
@@ -44,8 +53,10 @@ type noDocumentsResponse struct {
 	Erros               []responseError   `json:"Erros"`
 }
 
+// Error keeps the message bounded: the full body stays in Body, but the
+// message (which ends up in logs and the UI) only carries a prefix.
 func (e *APIError) Error() string {
-	return fmt.Errorf("ADN API error %s %s: status %d, body: %s", e.Method, e.URL, e.StatusCode, e.Body).Error()
+	return fmt.Sprintf("ADN API error %s %s: status %d, body: %s", e.Method, e.URL, e.StatusCode, truncateForLog([]byte(e.Body), maxErrorLogBodyBytes))
 }
 
 // RawGet performs a GET request to an arbitrary relative path and decodes the JSON into dest.
@@ -158,7 +169,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 	for {
 		start := time.Now()
 		if c.log != nil {
-			c.log.Log(ctx, slog.Level(-8), "ADN API Request", slog.String("method", method), slog.String("path", path))
+			c.log.Log(ctx, logger.LevelTrace, "ADN API Request", slog.String("method", method), slog.String("path", sanitizeURL(path)))
 		}
 
 		var reqBody io.Reader
@@ -181,7 +192,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 			}
 			if retryErr := c.waitForRetry(ctx, backoff, &APIError{
 				Method:    method,
-				URL:       u,
+				URL:       sanitizeURL(u),
 				Body:      fmt.Sprintf("transport error: %v", err),
 				Retryable: true,
 			}); retryErr != nil {
@@ -199,12 +210,12 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 				bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, MaxJSONResponseBytes+1))
 
 				if c.log != nil {
-					// Quick sanitization to hide giant XML chunks in logs
-					logBody := string(bodyBytes)
-					if len(logBody) > 2000 {
-						logBody = logBody[:2000] + "... (truncated)"
+					// Bodies carry base64 XML with fiscal data; keep them out of
+					// debug logs and only expose them at trace level.
+					c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("url", sanitizeURL(u)), slog.Int("status", resp.StatusCode), slog.Int("body_bytes", len(bodyBytes)), slog.Duration("latency", time.Since(start)))
+					if c.log.Enabled(ctx, logger.LevelTrace) {
+						c.log.Log(ctx, logger.LevelTrace, "ADN API Response Body", slog.String("method", method), slog.String("url", sanitizeURL(u)), slog.String("body", truncateForLog(bodyBytes, maxTraceBodyBytes)))
 					}
-					c.log.DebugContext(ctx, "ADN API Response", slog.String("method", method), slog.String("url", u), slog.Int("status", resp.StatusCode), slog.String("body", logBody), slog.Duration("latency", time.Since(start)))
 				}
 				if dest != nil {
 					if err := json.Unmarshal(bodyBytes, dest); err != nil {
@@ -220,7 +231,7 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 			if resp.StatusCode == http.StatusNotFound {
 				if isNoDocumentsResponse(errBodyBytes) {
 					if c.log != nil {
-						c.log.DebugContext(ctx, "ADN API empty result", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode))
+						c.log.DebugContext(ctx, "ADN API empty result", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.Int("status", resp.StatusCode))
 					}
 					return ErrNoDocumentsLocated
 				}
@@ -230,7 +241,10 @@ func (c *Client) request(ctx context.Context, method, path string, bodyProvider 
 			}
 
 			if c.log != nil {
-				c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", path), slog.Int("status", resp.StatusCode), slog.String("body", string(errBodyBytes)), slog.Duration("latency", time.Since(start)))
+				c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.Int("status", resp.StatusCode), slog.String("body", truncateForLog(errBodyBytes, maxErrorLogBodyBytes)), slog.Duration("latency", time.Since(start)))
+				if len(errBodyBytes) > maxErrorLogBodyBytes && c.log.Enabled(ctx, logger.LevelTrace) {
+					c.log.Log(ctx, logger.LevelTrace, "ADN API Error Response Body", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.String("body", truncateForLog(errBodyBytes, maxTraceBodyBytes)))
+				}
 			}
 
 			retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"), c.retry.MaxDelay)
@@ -281,7 +295,7 @@ func (c *Client) waitForRetry(ctx context.Context, backoff retry.Backoff, apiErr
 func (c *Client) newAPIError(method, url string, statusCode int, body string, retryable bool, retryAfter time.Duration) *APIError {
 	return &APIError{
 		Method:     method,
-		URL:        url,
+		URL:        sanitizeURL(url),
 		StatusCode: statusCode,
 		Body:       body,
 		Retryable:  retryable,
@@ -350,4 +364,44 @@ func isRetryableStatus(status int) bool {
 		status == http.StatusTooEarly || // 425
 		status == http.StatusTooManyRequests || // 429
 		(status >= 500 && status <= 599) // 5xx
+}
+
+// truncateForLog shortens body for log output without splitting a UTF-8
+// sequence, marking the cut so readers know the record is partial.
+func truncateForLog(body []byte, limit int) string {
+	if len(body) <= limit {
+		return string(body)
+	}
+	cut := limit
+	for cut > 0 && !utf8.RuneStart(body[cut]) {
+		cut--
+	}
+	return string(body[:cut]) + "... (truncated)"
+}
+
+// sanitizeURL masks the cnpjConsulta query parameter so log records do not
+// carry the consulted CNPJ in clear. Other parts of the URL are unchanged.
+func sanitizeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	q := u.Query()
+	v := q.Get("cnpjConsulta")
+	if v == "" {
+		return raw
+	}
+	q.Set("cnpjConsulta", maskIdentifier(v))
+	// Encode percent-escapes '*'; keep the mask readable in log output.
+	u.RawQuery = strings.ReplaceAll(q.Encode(), "%2A", "*")
+	return u.String()
+}
+
+// maskIdentifier keeps the first and last two characters of v and stars the
+// rest, so masked values stay recognisable without being reusable.
+func maskIdentifier(v string) string {
+	if len(v) <= 4 {
+		return strings.Repeat("*", len(v))
+	}
+	return v[:2] + strings.Repeat("*", len(v)-4) + v[len(v)-2:]
 }
