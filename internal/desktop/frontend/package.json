@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "lint": "eslint \"src/**/*.{ts,vue}\" --fix",
-    "lint:check": "eslint \"src/**/*.{ts,vue}\"",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "format": "prettier --write .",
     "preview": "vite preview",
     "check-contrast": "jiti scripts/check-contrast.ts",
@@ -49,7 +49,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "8.60.0",
     "vite": "8.0.12",
-    "vitest": "4.0.15",
+    "vitest": "4.1.10",
     "vue-eslint-parser": "10.3.0",
     "vue-tsc": "3.2.8"
   },

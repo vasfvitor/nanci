@@ -549,7 +549,7 @@ async function installWailsMock(context: BrowserContext) {
               ConsultationBasis: 'prestador/tomador',
               Status: 'success',
               StopReason: 'no-more-nsu',
-              LastCheckedNSU: 1024,
+              LastProcessedNSU: 1024,
               LastFoundNSU: 55,
               EmptyStreak: 0,
               DocumentsFound: 3,
