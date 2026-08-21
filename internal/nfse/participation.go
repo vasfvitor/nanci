@@ -1,8 +1,6 @@
 package nfse
 
 import (
-	"strings"
-
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 )
 
@@ -29,12 +27,13 @@ func ClassifyCompanyParticipation(doc *Document, companyCNPJ string) CompanyPart
 	return CompanyParticipation{CompanyRole: CompanyRole("none"), VisibilityReason: VisibilityReason("unknown")}
 }
 
+// getRootSafely returns the 8-character root of a CNPJ, or an empty string when
+// the value is not a syntactically valid CNPJ. It delegates to foundation/cnpj so
+// that punctuation, casing and alphanumeric CNPJs are all handled in one place.
 func getRootSafely(c string) string {
-	c = strings.ReplaceAll(c, ".", "")
-	c = strings.ReplaceAll(c, "-", "")
-	c = strings.ReplaceAll(c, "/", "")
-	if len(c) >= 8 {
-		return c[:8]
+	root, err := cnpj.Root(c)
+	if err != nil {
+		return ""
 	}
-	return ""
+	return root
 }

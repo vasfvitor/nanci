@@ -10,10 +10,10 @@ import (
 var (
 	cnpjRegex = regexp.MustCompile(`^[A-Z0-9]{14}$`)
 
-	ErrInvalidLength           = errors.New("CNPJ deve ter 14 caracteres")
-	ErrInvalidFormat           = errors.New("CNPJ deve conter apenas letras e números")
-	ErrInvalidCheckDigits      = errors.New("CNPJ numérico com dígitos verificadores inválidos")
-	ErrAlphanumericUnsupported = errors.New("CNPJ alfanumérico ainda não é suportado nesta versão")
+	ErrInvalidLength        = errors.New("CNPJ deve ter 14 caracteres")
+	ErrInvalidFormat        = errors.New("CNPJ deve conter apenas letras e números")
+	ErrNonNumericCheckDigit = errors.New("os dois últimos caracteres do CNPJ devem ser numéricos")
+	ErrInvalidCheckDigits   = errors.New("CNPJ com dígitos verificadores inválidos")
 )
 
 var (
@@ -29,21 +29,19 @@ func Clean(cnpj string) string {
 	return strings.ToUpper(strings.TrimSpace(cnpj))
 }
 
-// Validate enforces the current rollout policy:
-// numeric CNPJ must pass DV validation; alphanumeric identifiers are rejected
-// until official support is implemented end to end.
+// Validate checks the syntax and the two check digits of a CNPJ.
+// Numeric and alphanumeric CNPJs are both accepted, following the rule from
+// Instrução Normativa RFB 2.229/2024: the first 12 characters may be letters or
+// digits and the last 2 are always numeric check digits.
 func Validate(cnpj string) error {
 	cleaned := Clean(cnpj)
 	if err := validateSyntax(cleaned); err != nil {
 		return err
 	}
-	if isNumeric(cleaned) {
-		if !isValidNumericCNPJ(cleaned) {
-			return ErrInvalidCheckDigits
-		}
-		return nil
+	if !hasValidCheckDigits(cleaned) {
+		return ErrInvalidCheckDigits
 	}
-	return ErrAlphanumericUnsupported
+	return nil
 }
 
 // Root extracts the first 8 characters from a syntactically valid CNPJ token.
@@ -71,23 +69,16 @@ func validateSyntax(cleaned string) error {
 	if !cnpjRegex.MatchString(cleaned) {
 		return ErrInvalidFormat
 	}
+	if !isDigit(cleaned[12]) || !isDigit(cleaned[13]) {
+		return ErrNonNumericCheckDigit
+	}
 	return nil
 }
 
-func isNumeric(cleaned string) bool {
-	for _, r := range cleaned {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
-}
-
-func isValidNumericCNPJ(cleaned string) bool {
-	if len(cleaned) != 14 {
-		return false
-	}
-	if allSameDigits(cleaned) {
+// hasValidCheckDigits recomputes both check digits and compares them with the
+// ones carried by cleaned, which must already have passed validateSyntax.
+func hasValidCheckDigits(cleaned string) bool {
+	if allSameCharacters(cleaned) {
 		return false
 	}
 	first := calculateCheckDigit(cleaned[:12], firstCheckDigitWeights)
@@ -95,7 +86,11 @@ func isValidNumericCNPJ(cleaned string) bool {
 	return int(cleaned[12]-'0') == first && int(cleaned[13]-'0') == second
 }
 
-func allSameDigits(cleaned string) bool {
+func isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
+func allSameCharacters(cleaned string) bool {
 	for i := 1; i < len(cleaned); i++ {
 		if cleaned[i] != cleaned[0] {
 			return false
@@ -104,6 +99,10 @@ func allSameDigits(cleaned string) bool {
 	return true
 }
 
+// calculateCheckDigit applies the mod-11 rule over the character values defined
+// by the tax authority: each character is worth its ASCII code minus 48, so
+// '0'..'9' are worth 0..9 and 'A'..'Z' are worth 17..42. Numeric CNPJs are just
+// the special case where every character is a digit.
 func calculateCheckDigit(base string, weights []int) int {
 	sum := 0
 	for i := 0; i < len(base); i++ {

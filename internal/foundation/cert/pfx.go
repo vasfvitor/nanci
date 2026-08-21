@@ -8,10 +8,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
-	"strings"
 	"time"
 
 	"software.sslmate.com/src/go-pkcs12"
+
+	cnpjpkg "github.com/vasfvitor/nanci/internal/foundation/cnpj"
 )
 
 var (
@@ -187,20 +188,12 @@ func cnpjFromValue(value any) string {
 		return ""
 	}
 
-	normalized := normalizeCNPJToken(text)
-	if len(normalized) == 14 {
-		return normalized
+	// A CNPJ carried by a certificate may be punctuated and, since Instrução
+	// Normativa RFB 2.229/2024, may contain letters. Root doubles as the
+	// syntax check, so letters are preserved instead of stripped.
+	cleaned := cnpjpkg.Clean(text)
+	if _, err := cnpjpkg.Root(cleaned); err != nil {
+		return ""
 	}
-	return ""
-}
-
-func normalizeCNPJToken(value string) string {
-	var normalized strings.Builder
-	normalized.Grow(14)
-	for _, r := range strings.TrimSpace(value) {
-		if r >= '0' && r <= '9' {
-			normalized.WriteRune(r)
-		}
-	}
-	return normalized.String()
+	return cleaned
 }

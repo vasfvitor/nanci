@@ -77,7 +77,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&cnpj, "cnpj", "c", "", "CNPJ da empresa (numérico com DV válido; alfanumérico ainda não suportado)")
+	cmd.Flags().StringVarP(&cnpj, "cnpj", "c", "", "CNPJ da empresa, numérico ou alfanumérico, com DV válido")
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Nome ou Razão Social")
 	cmd.Flags().StringVarP(&cert, "cert", "p", "", "Caminho para o certificado .pfx/.p12")
 	cmd.Flags().StringVar(&credentialID, "credential-id", "", "ID de uma credencial existente")
