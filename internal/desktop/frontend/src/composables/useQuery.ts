@@ -62,7 +62,8 @@ export function useQuery() {
     const needle = value.toLowerCase()
     companyOptions.value = allOptions.value.filter(
       (option) =>
-        option.label.toLowerCase().includes(needle) || option.value.includes(needle)
+        option.label.toLowerCase().includes(needle) ||
+        option.value.toLowerCase().includes(needle)
     )
   }
 

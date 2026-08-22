@@ -9,7 +9,7 @@
         <q-input
           v-model="form.CNPJ"
           label="CNPJ"
-          hint="Use um CNPJ numérico com DV válido. CNPJ alfanumérico ainda não está liberado nesta versão."
+          hint="Informe o CNPJ com DV válido, numérico ou alfanumérico."
           outlined
           dense
         />

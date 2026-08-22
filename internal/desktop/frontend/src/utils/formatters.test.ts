@@ -15,6 +15,9 @@ import {
 describe('formatters', () => {
   it('formats CNPJ and CPF values', () => {
     expect(formatCpfCnpj('12345678000199')).toBe('12.345.678/0001-99')
+    expect(formatCpfCnpj('12ABC34501DE35')).toBe('12.ABC.345/01DE-35')
+    expect(formatCpfCnpj('12.abc.345/01de-35')).toBe('12.ABC.345/01DE-35')
+    expect(formatCpfCnpj('12ABC34501DEXX')).toBe('12ABC34501DEXX')
     expect(formatCpfCnpj('12345678901')).toBe('123.456.789-01')
     expect(formatCpfCnpj('ABC')).toBe('ABC')
   })

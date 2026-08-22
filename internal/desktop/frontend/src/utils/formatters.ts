@@ -1,9 +1,14 @@
+const cnpjPattern = /^([A-Z0-9]{2})([A-Z0-9]{3})([A-Z0-9]{3})([A-Z0-9]{4})(\d{2})$/
+
 export function formatCpfCnpj(value: string | null | undefined) {
   if (!value) return ''
-  const digits = value.replace(/\D/g, '')
-  if (digits.length === 14) {
-    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+  // CNPJs may carry letters in the first 12 positions (IN RFB 2.229/2024);
+  // the check digits are always numeric.
+  const alnum = value.replace(/[^0-9A-Za-z]/g, '').toUpperCase()
+  if (alnum.length === 14 && cnpjPattern.test(alnum)) {
+    return alnum.replace(cnpjPattern, '$1.$2.$3/$4-$5')
   }
+  const digits = value.replace(/\D/g, '')
   if (digits.length === 11) {
     return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
   }
