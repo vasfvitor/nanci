@@ -101,6 +101,7 @@ func (s *QueryService) buildClient(ctx context.Context, companyCNPJ string) (*ad
 	if err != nil {
 		return nil, fmt.Errorf("senha do certificado: %w", err)
 	}
+	defer cert.ZeroBytes(pass)
 
 	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
 	if err != nil {

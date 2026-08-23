@@ -61,7 +61,7 @@ func TestExtractOwnerCNPJFromSubjectAltNameOtherName(t *testing.T) {
 }
 
 func TestLoadPKCS12_FileNotFound(t *testing.T) {
-	_, err := LoadPKCS12("non_existent_file.pfx", "password")
+	_, err := LoadPKCS12("non_existent_file.pfx", []byte("password"))
 	if !errors.Is(err, ErrCertFileNotFound) {
 		t.Errorf("expected ErrCertFileNotFound, got %v", err)
 	}
@@ -76,7 +76,7 @@ func TestLoadPKCS12_InvalidData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = LoadPKCS12(invalidFile, "password")
+	_, err = LoadPKCS12(invalidFile, []byte("password"))
 	if err == nil {
 		t.Error("expected error for invalid PFX data, got nil")
 	}
@@ -88,7 +88,7 @@ func TestLoadPKCS12_ValidMockCert(t *testing.T) {
 		t.Skip("Mock cert not found, skipping. Run 'go run gen/mock_cert.go' to generate it.")
 	}
 
-	loaded, err := LoadPKCS12(mockPfxPath, "mockdata")
+	loaded, err := LoadPKCS12(mockPfxPath, []byte("mockdata"))
 	if err != nil {
 		t.Fatalf("LoadPKCS12 failed on valid mock cert: %v", err)
 	}
@@ -107,6 +107,51 @@ func TestLoadPKCS12_ValidMockCert(t *testing.T) {
 
 	if loaded.Inspection.FingerprintSHA256 == "" {
 		t.Error("expected non-empty FingerprintSHA256")
+	}
+}
+
+func TestZeroBytes(t *testing.T) {
+	b := []byte("mockdata")
+	ZeroBytes(b)
+	if !bytes.Equal(b, make([]byte, len("mockdata"))) {
+		t.Errorf("ZeroBytes left %x, want all zeros", b)
+	}
+
+	// A slice header pointing into a larger array must only clear its own view.
+	backing := []byte("0123456789")
+	ZeroBytes(backing[2:5])
+	if want := "01\x00\x00\x0056789"; string(backing) != want {
+		t.Errorf("ZeroBytes(backing[2:5]) = %q, want %q", backing, want)
+	}
+
+	// Must not panic on the empty and nil cases.
+	ZeroBytes([]byte{})
+	ZeroBytes(nil)
+}
+
+// TestLoadPKCS12_DoesNotModifyPassword pins the contract that LoadPKCS12 leaves
+// the caller's password buffer alone, so zeroing it stays the caller's job.
+func TestLoadPKCS12_DoesNotModifyPassword(t *testing.T) {
+	mockPfxPath := filepath.Join("testdata", "cert_a1_mock_70860312000150.pfx")
+	if _, err := os.Stat(mockPfxPath); os.IsNotExist(err) {
+		t.Skip("Mock cert not found, skipping. Run 'go run gen/mock_cert.go' to generate it.")
+	}
+
+	password := []byte("mockdata")
+	loaded, err := LoadPKCS12(mockPfxPath, password)
+	if err != nil {
+		t.Fatalf("LoadPKCS12 failed on valid mock cert: %v", err)
+	}
+	if loaded.TLS.PrivateKey == nil {
+		t.Error("expected PrivateKey to be populated, got nil")
+	}
+	if !bytes.Equal(password, []byte("mockdata")) {
+		t.Fatalf("LoadPKCS12 modified the caller's password buffer: %q", password)
+	}
+
+	ZeroBytes(password)
+	if !bytes.Equal(password, make([]byte, len("mockdata"))) {
+		t.Errorf("password = %x after ZeroBytes, want all zeros", password)
 	}
 }
 
@@ -130,7 +175,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loaded, err := LoadPKCS12(berFile, "mockdata")
+	loaded, err := LoadPKCS12(berFile, []byte("mockdata"))
 	if err != nil {
 		t.Fatalf("LoadPKCS12 failed on BER mock cert: %v", err)
 	}
@@ -143,7 +188,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 		t.Errorf("expected OwnerCNPJ to be 70860312000150, got %q", loaded.Inspection.OwnerCNPJ)
 	}
 
-	if _, err := LoadPKCS12(berFile, "wrong-password"); !errors.Is(err, ErrInvalidPass) {
+	if _, err := LoadPKCS12(berFile, []byte("wrong-password")); !errors.Is(err, ErrInvalidPass) {
 		t.Fatalf("expected ErrInvalidPass for wrong password, got %v", err)
 	}
 
@@ -153,7 +198,7 @@ func TestLoadPKCS12_ValidMockCert_BER(t *testing.T) {
 	if err := os.WriteFile(tamperedFile, tampered, 0o600); err != nil { //nolint:gosec // intentional: test file writing
 		t.Fatal(err)
 	}
-	if _, err := LoadPKCS12(tamperedFile, "mockdata"); !errors.Is(err, ErrInvalidPass) {
+	if _, err := LoadPKCS12(tamperedFile, []byte("mockdata")); !errors.Is(err, ErrInvalidPass) {
 		t.Fatalf("expected ErrInvalidPass for tampered authenticated content, got %v", err)
 	}
 }
@@ -165,7 +210,7 @@ func TestLoadPKCS12_ExternalAcceptance(t *testing.T) {
 		t.Skip("set NANCI_TEST_PFX_PATH and NANCI_CERT_PASSWORD to test an external certificate")
 	}
 
-	loaded, err := LoadPKCS12(path, password)
+	loaded, err := LoadPKCS12(path, []byte(password))
 	if err != nil {
 		t.Fatalf("LoadPKCS12 failed on external certificate: %v", err)
 	}
@@ -176,7 +221,7 @@ func TestLoadPKCS12_ExternalAcceptance(t *testing.T) {
 		t.Fatal("expected external certificate owner CNPJ to be populated")
 	}
 
-	if _, err := LoadPKCS12(path, password+"-wrong"); !errors.Is(err, ErrInvalidPass) {
+	if _, err := LoadPKCS12(path, []byte(password+"-wrong")); !errors.Is(err, ErrInvalidPass) {
 		t.Fatalf("expected ErrInvalidPass for external certificate wrong password, got %v", err)
 	}
 }

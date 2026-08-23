@@ -26,11 +26,15 @@ func mockCertPath(t *testing.T) string {
 type fallbackStub struct {
 	pass  string
 	calls int
+	// returned keeps the slice handed to the caller so tests can assert it was
+	// zeroed when the provider rejected it.
+	returned []byte
 }
 
-func (s *fallbackStub) GetCertPassword(context.Context, CertPasswordRequest) (string, error) {
+func (s *fallbackStub) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
 	s.calls++
-	return s.pass, nil
+	s.returned = []byte(s.pass)
+	return s.returned, nil
 }
 
 // stubKeyring replaces the keyring seams for the duration of the test.
@@ -54,7 +58,7 @@ func TestKeyringCredentialProvider_UsesStoredPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCertPassword: %v", err)
 	}
-	if pass != mockCertPassword {
+	if string(pass) != mockCertPassword {
 		t.Fatalf("pass = %q, want %q", pass, mockCertPassword)
 	}
 	if fallback.calls != 0 {
@@ -80,7 +84,7 @@ func TestKeyringCredentialProvider_FallsBackWhenStoredPasswordInvalid(t *testing
 	if err != nil {
 		t.Fatalf("GetCertPassword: %v", err)
 	}
-	if pass != mockCertPassword || fallback.calls != 1 {
+	if string(pass) != mockCertPassword || fallback.calls != 1 {
 		t.Fatalf("pass = %q, fallback calls = %d; want %q and 1", pass, fallback.calls, mockCertPassword)
 	}
 	if saved != mockCertPassword {
@@ -105,7 +109,7 @@ func TestKeyringCredentialProvider_WarnsWhenSaveFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCertPassword: %v", err)
 	}
-	if pass != mockCertPassword {
+	if string(pass) != mockCertPassword {
 		t.Fatalf("pass = %q, want %q", pass, mockCertPassword)
 	}
 	out := logBuf.String()
@@ -129,5 +133,8 @@ func TestKeyringCredentialProvider_RejectsInvalidFallbackPassword(t *testing.T) 
 	}
 	if setCalls != 0 {
 		t.Fatalf("keyring.Set called %d times for an invalid password, want 0", setCalls)
+	}
+	if !bytes.Equal(fallback.returned, make([]byte, len("wrong"))) {
+		t.Fatalf("rejected password left in memory: %q", fallback.returned)
 	}
 }

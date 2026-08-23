@@ -19,8 +19,8 @@ import (
 
 type credentialProviderStub struct{}
 
-func (c credentialProviderStub) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
-	return "test", nil
+func (c credentialProviderStub) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) ([]byte, error) {
+	return []byte("test"), nil
 }
 
 func setupTestApp(t *testing.T) (*app.App, *sql.DB) {

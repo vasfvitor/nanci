@@ -46,8 +46,8 @@ func (d *dummyDocumentProvider) CountDocumentsByRole(ctx context.Context, compan
 
 type providerStub struct{}
 
-func (providerStub) GetCertPassword(context.Context, CertPasswordRequest) (string, error) {
-	return "secret", nil
+func (providerStub) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+	return []byte("secret"), nil
 }
 
 type captureXMLStore struct {
@@ -120,7 +120,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		newSyncRunner = originalNewSyncRunner
 	})
 
-	loadPKCS12 = func(string, string) (cert.LoadedCertificate, error) {
+	loadPKCS12 = func(string, []byte) (cert.LoadedCertificate, error) {
 		now := time.Now().UTC()
 		return cert.LoadedCertificate{
 			TLS: tls.Certificate{},

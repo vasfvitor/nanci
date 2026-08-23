@@ -475,6 +475,13 @@ func DecodeChain(pfxData []byte, password string) (privateKey interface{}, certi
 		return nil, nil, nil, err
 	}
 
+	return decodeChain(pfxData, encodedPassword)
+}
+
+// decodeChain holds the body of DecodeChain, taking the password already
+// encoded as a zero-terminated BMP string. Local nanci fork: split out so
+// DecodeChainBytes can share it. See README.nanci.md.
+func decodeChain(pfxData, encodedPassword []byte) (privateKey interface{}, certificate *x509.Certificate, caCerts []*x509.Certificate, err error) {
 	bags, encodedPassword, err := getSafeContents(pfxData, encodedPassword, 1, 2)
 	if err != nil {
 		return nil, nil, nil, err

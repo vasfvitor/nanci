@@ -38,8 +38,21 @@ type LoadedCertificate struct {
 	Inspection Inspection
 }
 
+// ZeroBytes overwrites every byte of b with zero, clearing sensitive data such
+// as a certificate password from memory. Callers that hold a password should
+// call it (usually deferred) as soon as they are done with the password.
+func ZeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}
+
 // LoadPKCS12 reads a .pfx or .p12 file, parses it into a tls.Certificate, and extracts inspection metadata.
-func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
+//
+// The password is a []byte rather than a string so the caller can zero it after
+// use; LoadPKCS12 does not modify or retain it, so zeroing stays the caller's
+// responsibility.
+func LoadPKCS12(path string, password []byte) (LoadedCertificate, error) {
 	pfxData, err := os.ReadFile(path) //nolint:gosec // intentional: path is explicitly selected by the local user
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -50,7 +63,7 @@ func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
 
 	// Decode DER directly. If the input uses BER forms unsupported by Go's
 	// encoding/asn1 package, normalize them and retry with MAC verification intact.
-	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(pfxData, password)
+	privateKey, certificate, caCerts, err := pkcs12.DecodeChainBytes(pfxData, password)
 	if err != nil {
 		if errors.Is(err, pkcs12.ErrIncorrectPassword) {
 			return LoadedCertificate{}, ErrInvalidPass
@@ -58,7 +71,7 @@ func LoadPKCS12(path string, password string) (LoadedCertificate, error) {
 
 		derData, changed, normalizeErr := normalizePKCS12BER(pfxData)
 		if normalizeErr == nil && changed {
-			privateKey, certificate, caCerts, err = pkcs12.DecodeChain(derData, password)
+			privateKey, certificate, caCerts, err = pkcs12.DecodeChainBytes(derData, password)
 		}
 
 		if err != nil {

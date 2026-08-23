@@ -31,8 +31,12 @@ type CertPasswordRequest struct {
 	CertPath        string
 }
 
+// CredentialProvider obtains the password of a certificate.
+//
+// The password is returned as a []byte so it can be zeroed after use; the
+// caller owns the returned slice and should defer cert.ZeroBytes on it.
 type CredentialProvider interface {
-	GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error)
+	GetCertPassword(ctx context.Context, req CertPasswordRequest) ([]byte, error)
 }
 
 type companyProvider interface {
@@ -133,6 +137,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("obter senha do certificado: %w", err)
 	}
+	defer cert.ZeroBytes(pass)
 
 	m.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
 	loadedCert, err := loadPKCS12(credential.CertPath, pass)

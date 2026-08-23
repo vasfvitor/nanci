@@ -30,17 +30,23 @@ type KeyringCredentialProvider struct {
 }
 
 // GetCertPassword implements CredentialProvider.
-func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req CertPasswordRequest) (string, error) {
+//
+// The OS keyring API is string-based, so the password crosses that boundary as
+// an unzeroable string. Everywhere else it is a []byte, and the caller owns the
+// returned slice: it should zero it with cert.ZeroBytes once done.
+func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req CertPasswordRequest) ([]byte, error) {
 	log := p.logger()
 
 	// 1. Try to get the password from the OS keyring
-	pass, err := keyringGet(keyringService, req.CredentialID)
+	stored, err := keyringGet(keyringService, req.CredentialID)
 	switch {
-	case err == nil && pass != "":
+	case err == nil && stored != "":
 		// Verify if the retrieved password actually works for this certificate
-		if _, err := cert.LoadPKCS12(req.CertPath, pass); err == nil {
-			return pass, nil
+		storedPass := []byte(stored)
+		if _, err := cert.LoadPKCS12(req.CertPath, storedPass); err == nil {
+			return storedPass, nil
 		}
+		cert.ZeroBytes(storedPass)
 		log.DebugContext(ctx, "senha do keyring não abre o certificado; solicitando nova senha",
 			slog.String("credential_id", req.CredentialID),
 			slog.String("cert_path", req.CertPath))
@@ -51,23 +57,24 @@ func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req Cert
 	}
 
 	// 2. Fall back to the wrapped provider (CLI or Wails)
-	pass, err = p.Fallback.GetCertPassword(ctx, req)
+	pass, err := p.Fallback.GetCertPassword(ctx, req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 3. Verify the user-provided password before saving it
 	if _, err := cert.LoadPKCS12(req.CertPath, pass); err != nil {
+		cert.ZeroBytes(pass)
 		if errors.Is(err, cert.ErrInvalidPass) {
-			return "", fmt.Errorf("senha inválida para o certificado")
+			return nil, fmt.Errorf("senha inválida para o certificado")
 		}
-		return "", fmt.Errorf("erro ao verificar senha: %w", err)
+		return nil, fmt.Errorf("erro ao verificar senha: %w", err)
 	}
 
 	// 4. Save the valid password to the keyring for future use. Failure is not
 	// fatal, but it means the user will be prompted again on every run, so
 	// make it visible.
-	if err := keyringSet(keyringService, req.CredentialID, pass); err != nil {
+	if err := keyringSet(keyringService, req.CredentialID, string(pass)); err != nil {
 		log.WarnContext(ctx, "falha ao salvar senha no keyring; a senha será solicitada novamente",
 			slog.String("credential_id", req.CredentialID),
 			slog.String("cert_path", req.CertPath),

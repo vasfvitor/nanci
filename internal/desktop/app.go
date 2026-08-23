@@ -23,6 +23,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
+	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -34,21 +35,22 @@ import (
 // It owns the passwordChans map and its mutex; the App delegates Submit/Cancel calls to it.
 type WailsCredentialProvider struct {
 	ctx           context.Context
-	passwordChans map[string]chan string
+	passwordChans map[string]chan []byte
 	mu            sync.Mutex
 }
 
 func newWailsCredentialProvider() *WailsCredentialProvider {
 	return &WailsCredentialProvider{
-		passwordChans: make(map[string]chan string),
+		passwordChans: make(map[string]chan []byte),
 	}
 }
 
 func (p *WailsCredentialProvider) setCtx(ctx context.Context) { p.ctx = ctx }
 
-// GetCertPassword asks the frontend for the certificate password and blocks until one is provided
-func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) (string, error) {
-	ch := make(chan string, 1)
+// GetCertPassword asks the frontend for the certificate password and blocks until one is provided.
+// The caller owns the returned slice and should zero it with cert.ZeroBytes once done.
+func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) ([]byte, error) {
+	ch := make(chan []byte, 1)
 
 	p.mu.Lock()
 	p.passwordChans[req.RequestID] = ch
@@ -66,26 +68,34 @@ func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.C
 	// Block until the password is submitted by the frontend
 	select {
 	case pass := <-ch:
-		if pass == "" {
-			return "", app.ErrOperationCanceled
+		// CancelPassword sends nil; an empty submission means the same thing.
+		if len(pass) == 0 {
+			return nil, app.ErrOperationCanceled
 		}
 		return pass, nil
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
-// SubmitPassword receives the password from the frontend dialog and unblocks GetCertPassword
+// SubmitPassword receives the password from the frontend dialog and unblocks GetCertPassword.
+// Wails marshals the password from JS as a string, so the copy taken here is the
+// first one that can be zeroed; the string itself cannot be.
 func (p *WailsCredentialProvider) SubmitPassword(reqID, password string) {
 	p.mu.Lock()
 	ch, ok := p.passwordChans[reqID]
 	p.mu.Unlock()
 
-	if ok {
-		select {
-		case ch <- password:
-		default:
-		}
+	if !ok {
+		return
+	}
+
+	pass := []byte(password)
+	select {
+	case ch <- pass:
+	default:
+		// Nobody is waiting any more; do not leave the password in memory.
+		cert.ZeroBytes(pass)
 	}
 }
 
@@ -95,11 +105,13 @@ func (p *WailsCredentialProvider) CancelPassword(reqID string) {
 	ch, ok := p.passwordChans[reqID]
 	p.mu.Unlock()
 
-	if ok {
-		select {
-		case ch <- "":
-		default:
-		}
+	if !ok {
+		return
+	}
+
+	select {
+	case ch <- nil:
+	default:
 	}
 }
 
