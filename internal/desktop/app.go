@@ -622,7 +622,7 @@ func exportRotatedLogs(savePath string, basePath string) error {
 	if err != nil {
 		return fmt.Errorf("criar arquivo de exportação: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	archive := zip.NewWriter(file)
 
@@ -648,7 +648,8 @@ func exportRotatedLogs(savePath string, basePath string) error {
 		if err != nil {
 			return fmt.Errorf("criar entrada zip %s: %w", path, err)
 		}
-		if _, err := entry.Write(content); err != nil {
+		// Logs on disk keep CNPJs in clear; the exported copy is masked.
+		if _, err := entry.Write(sanitizeLogContent(content)); err != nil {
 			return fmt.Errorf("escrever entrada zip %s: %w", path, err)
 		}
 		added++
