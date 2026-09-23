@@ -384,13 +384,21 @@ func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
 		t.Errorf("manifestacao = %s, want nao_realizada", got)
 	}
 
-	_, err = env.app.NFe.RegisterManifestation(ctx, NFeManifestationInput{
-		CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "nao_realizada", Justificativa: justificativa,
-	})
-	if err == nil || !strings.Contains(err.Error(), "já tem") {
-		t.Errorf("repeating the same manifestação: %v, want refused", err)
+	// Once a conclusive manifestação is registered, every conclusive type
+	// is refused before the password prompt, the same one included.
+	for _, in := range []NFeManifestationInput{
+		{Tipo: "nao_realizada", Justificativa: justificativa},
+		{Tipo: "confirmacao"},
+		{Tipo: "desconhecimento"},
+	} {
+		in.CNPJ, in.ChaveAcesso = nfeTestCNPJ, nfeChaveProc
+		_, err = env.app.NFe.RegisterManifestation(ctx, in)
+		const want = "NF-e já possui manifestação conclusiva (Operação não realizada)"
+		if err == nil || err.Error() != want {
+			t.Errorf("%s after nao_realizada: %v, want %q", in.Tipo, err, want)
+		}
 	}
-	if len(env.passwords.requests) != 1 {
-		t.Errorf("password prompts = %d, want still 1", len(env.passwords.requests))
+	if len(env.passwords.requests) != 1 || len(fake.lotes) != 1 {
+		t.Errorf("password prompts = %d, lotes = %d; want still 1 and 1", len(env.passwords.requests), len(fake.lotes))
 	}
 }

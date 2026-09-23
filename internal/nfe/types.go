@@ -236,3 +236,32 @@ func (m Manifestacao) Valid() bool {
 func (m Manifestacao) String() string {
 	return string(m)
 }
+
+// Label returns the manifestação state shown to the user.
+func (m Manifestacao) Label() string {
+	switch m {
+	case ManifestacaoNenhuma:
+		return "Sem manifestação"
+	case ManifestacaoCiencia:
+		return "Ciência"
+	case ManifestacaoConfirmada:
+		return "Confirmada"
+	case ManifestacaoDesconhecida:
+		return "Desconhecida"
+	case ManifestacaoNaoRealizada:
+		return "Operação não realizada"
+	default:
+		return string(m)
+	}
+}
+
+// Conclusive reports whether m comes from a conclusive manifestação:
+// confirmação, desconhecimento or operação não realizada.
+func (m Manifestacao) Conclusive() bool {
+	switch m {
+	case ManifestacaoConfirmada, ManifestacaoDesconhecida, ManifestacaoNaoRealizada:
+		return true
+	default:
+		return false
+	}
+}

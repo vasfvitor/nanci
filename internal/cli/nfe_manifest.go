@@ -152,6 +152,9 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 					return fmt.Errorf("erro: a NF-e %s não pode ser manifestada pela empresa (papel %s, situação %s)",
 						chave, doc.CompanyRole, doc.Situacao)
 				}
+				if reason := nfe.ConclusiveBlockReason(doc.Manifestacao); reason != "" {
+					return errors.New("erro: " + reason)
+				}
 
 				_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", tipo.Label(), tipo.TpEvento())
 				_, _ = fmt.Fprintf(out, "Chave de acesso: %s\n", doc.ChaveAcesso)

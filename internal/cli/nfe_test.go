@@ -243,6 +243,51 @@ func TestNFeManifestationDryRunSendsNothing(t *testing.T) {
 	}
 }
 
+func TestNFeManifestarDryRunRefusesSecondConclusive(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	registeredAt := time.Date(2026, 9, 10, 15, 0, 0, 0, time.UTC)
+	err := env.repo.RecordManifestations(context.Background(), []nfe.ManifestationRecord{{
+		CompanyID:    env.company.ID,
+		CompanyCNPJ:  env.company.CNPJ,
+		IDLote:       "1",
+		TpAmb:        "1",
+		ChaveAcesso:  nfeChaveProc,
+		TpEvento:     nfe.TpEventoConfirmacao,
+		NSeqEvento:   1,
+		EventAt:      &registeredAt,
+		Status:       nfe.ManifestationStatusRegistrada,
+		CStat:        "135",
+		Protocolo:    "891260000000099",
+		RegisteredAt: &registeredAt,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded := env.manifestationCount()
+
+	for _, args := range [][]string{
+		{"--tipo", "confirmacao"},
+		{"--tipo", "desconhecimento"},
+		{"--tipo", "nao-realizada", "--justificativa", "mercadoria devolvida ao emitente"},
+	} {
+		err := env.run(append([]string{"nfe", "manifestar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc}, args...)...)
+		const want = "erro: NF-e já possui manifestação conclusiva (Confirmada)"
+		if err == nil || err.Error() != want {
+			t.Errorf("manifestar %v = %v, want %q", args, err, want)
+		}
+		if strings.Contains(env.out.String(), "Nada foi enviado") {
+			t.Errorf("manifestar %v printed a simulation:\n%s", args, env.out.String())
+		}
+	}
+	if env.passwords.requests != 0 {
+		t.Errorf("password requests = %d, want 0", env.passwords.requests)
+	}
+	if n := env.manifestationCount(); n != recorded {
+		t.Errorf("manifestações recorded = %d, want %d", n, recorded)
+	}
+}
+
 func TestNFeList_PrintsColumns(t *testing.T) {
 	env := newNFeTestRoot(t)
 	env.seed("resnfe-cancelada.xml", 1)

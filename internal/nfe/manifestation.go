@@ -241,6 +241,16 @@ func TacitlyConfirmed(doc CompanyDocument, now time.Time) bool {
 	return !due.IsZero() && now.After(due)
 }
 
+// ConclusiveBlockReason says why a conclusive manifestação cannot be sent
+// on a document whose manifestação is m, or "" when it can. nanci sends at
+// most one conclusive manifestação per NF-e, whatever its type.
+func ConclusiveBlockReason(m Manifestacao) string {
+	if m.Conclusive() {
+		return "NF-e já possui manifestação conclusiva (" + m.Label() + ")"
+	}
+	return ""
+}
+
 // Justificativa length limits for Operação não Realizada (xJust).
 const (
 	JustificativaMinLength = 15

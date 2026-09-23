@@ -165,8 +165,8 @@ func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (N
 
 // RegisterManifestation sends one conclusive manifestação (confirmação,
 // desconhecimento or operação não realizada). Tipo, justificativa, the
-// company's role and the NF-e situação are checked before the password
-// prompt. The deadline is not checked: SEFAZ decides (cStat 596). An event
+// company's role, the NF-e situação and the absence of an earlier conclusive
+// manifestação are checked before the password prompt. The deadline is not checked: SEFAZ decides (cStat 596). An event
 // SEFAZ answered is returned without error, whatever its outcome. A request
 // without answer, or an answer that could not be recorded, is an error; the
 // outcome is returned with it.
@@ -194,8 +194,8 @@ func (s *NFeService) RegisterManifestation(ctx context.Context, in NFeManifestat
 	if reason := manifestationBlockReason(doc); reason != "" {
 		return NFeEventOutcome{}, fmt.Errorf("NF-e %s: %s", doc.ChaveAcesso, reason)
 	}
-	if doc.Manifestacao == manifestacaoAfter(tipo) {
-		return NFeEventOutcome{}, fmt.Errorf("NF-e %s já tem %s registrada", doc.ChaveAcesso, tipo.Label())
+	if reason := nfe.ConclusiveBlockReason(doc.Manifestacao); reason != "" {
+		return NFeEventOutcome{}, errors.New(reason)
 	}
 
 	sender, err := s.newSender(ctx, comp, "Assinatura: "+tipo.Label())
@@ -335,21 +335,6 @@ func parseConclusiveManifestation(raw string) (nfe.ManifestationType, error) {
 		return "", errors.New("a ciência da operação é enviada pela ciência em lote")
 	default:
 		return "", fmt.Errorf("tipo de manifestação inválido %q: use confirmacao, desconhecimento ou nao_realizada", raw)
-	}
-}
-
-// manifestacaoAfter is the manifestação state a registered event of tipo
-// leads to.
-func manifestacaoAfter(tipo nfe.ManifestationType) nfe.Manifestacao {
-	switch tipo {
-	case nfe.ManifestationConfirmacao:
-		return nfe.ManifestacaoConfirmada
-	case nfe.ManifestationDesconhecimento:
-		return nfe.ManifestacaoDesconhecida
-	case nfe.ManifestationNaoRealizada:
-		return nfe.ManifestacaoNaoRealizada
-	default:
-		return nfe.ManifestacaoCiencia
 	}
 }
 
