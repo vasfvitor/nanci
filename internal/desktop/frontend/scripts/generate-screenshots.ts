@@ -787,7 +787,7 @@ const screenshots: ScreenshotSpec[] = [
       await page.click('button:has-text("Registrar ciência (2)")')
       await page.waitForSelector('text=Registrar ciência da operação', { timeout: 3000 })
       await page.click('.q-dialog .q-expansion-item:has-text("Não serão enviadas")')
-      await page.waitForSelector('.q-dialog >> text=Nota cancelada', { timeout: 3000 })
+      await page.waitForSelector('.q-dialog >> text=NF-e cancelada', { timeout: 3000 })
       await page.waitForTimeout(300) // espera a animação da expansão
     },
   },
