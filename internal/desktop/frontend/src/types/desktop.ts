@@ -243,6 +243,8 @@ export type ListNFeInput = {
   Manifestacao: NFeManifestacao | ''
   Role: NFeRole | ''
   EmitenteCNPJ: string
+  // ChavesAcesso limits the list to these notes; empty or absent lists all.
+  ChavesAcesso?: string[]
 }
 
 export type NFeRow = {

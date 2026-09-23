@@ -5,7 +5,7 @@ import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/typ
 export type NFeTab = 'notas' | 'pendencias'
 
 // The store holds NF-e page state that outlives the page. Composables write
-// plain state through storeToRefs; only setRows carries logic.
+// plain state through storeToRefs; only setRows and patchRow carry logic.
 export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const filter = ref<ListNFeInput>({
     CNPJ: '',
@@ -58,6 +58,19 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     })
   }
 
+  // patchRow swaps the note with chave for its fresh row, or drops it when
+  // fresh is null because the note no longer matches the filters. The
+  // selection follows the same way.
+  function patchRow(chave: string, fresh: NFeRow | null) {
+    const patch = (list: NFeRow[]) =>
+      list.flatMap((row) => {
+        if (row.ChaveAcesso !== chave) return [row]
+        return fresh ? [fresh] : []
+      })
+    rows.value = patch(rows.value)
+    selected.value = patch(selected.value)
+  }
+
   function isChaveBusy(chave: string) {
     return Boolean(cienciaInFlight.value?.includes(chave)) || manifestationInFlight.value.has(chave)
   }
@@ -77,6 +90,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     manifestationInFlight,
     resettingCNPJ,
     setRows,
+    patchRow,
     isChaveBusy,
   }
 })

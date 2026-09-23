@@ -49,6 +49,15 @@ export function useNFeLoaders() {
     }
   }
 
+  // reloadNote fetches one listed note with the current filters and patches
+  // it in the list; a note that no longer matches them leaves the list, as a
+  // full search would do.
+  async function reloadNote(chaveAcesso: string) {
+    const input = { ...store.listInput, ChavesAcesso: [chaveAcesso] }
+    const result = await desktopClient.listNFe(input)
+    if (isSelected(input.CNPJ)) store.patchRow(chaveAcesso, result[0] ?? null)
+  }
+
   // refresh reloads notes, status and pendências after work that already
   // happened: a sync, a reset or an event registered at SEFAZ. It also runs
   // after a failed pull, because the status then carries the block reason.
@@ -58,5 +67,18 @@ export function useNFeLoaders() {
     await Promise.allSettled([search(), loadStatus(cnpj), loadPending(cnpj)])
   }
 
-  return { search, loadStatus, loadPending, refresh }
+  // refreshNote is refresh after an event on one note: only that note is
+  // reloaded when it is listed. An unlisted note may now match the filters,
+  // so then the whole list is searched again.
+  async function refreshNote(cnpj: string, chaveAcesso: string) {
+    if (!isSelected(cnpj)) return
+    const listed = store.rows.some((row) => row.ChaveAcesso === chaveAcesso)
+    await Promise.allSettled([
+      listed ? reloadNote(chaveAcesso) : search(),
+      loadStatus(cnpj),
+      loadPending(cnpj),
+    ])
+  }
+
+  return { search, loadStatus, loadPending, refresh, refreshNote }
 }

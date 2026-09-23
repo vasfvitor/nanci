@@ -775,15 +775,7 @@ func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 }
 
 func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error) {
-	documents, err := a.core.NFe.ListDocuments(a.ctx, nfeListInput(input))
-	if err != nil {
-		return nil, desktopError(err)
-	}
-	return desktopapi.NFeRows(documents), nil
-}
-
-func nfeListInput(input desktopapi.ListNFeInput) app.NFeListInput {
-	return app.NFeListInput{
+	documents, err := a.core.NFe.ListDocuments(a.ctx, app.NFeListInput{
 		CNPJ:         input.CNPJ,
 		Competence:   input.Competence,
 		Situacao:     input.Situacao,
@@ -791,7 +783,12 @@ func nfeListInput(input desktopapi.ListNFeInput) app.NFeListInput {
 		Role:         input.Role,
 		Manifestacao: input.Manifestacao,
 		EmitenteCNPJ: input.EmitenteCNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+	})
+	if err != nil {
+		return nil, desktopError(err)
 	}
+	return desktopapi.NFeRows(documents), nil
 }
 
 func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {

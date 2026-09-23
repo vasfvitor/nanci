@@ -54,6 +54,21 @@ describe('nfeDocuments store', () => {
     })
   })
 
+  it('patches one row and the selection, or drops it when it no longer matches', () => {
+    const store = useNFeDocumentsStore()
+    store.setRows([nfeRow('a'), nfeRow('b')])
+    store.selected = [nfeRow('a'), nfeRow('b')]
+
+    const freshA = nfeRow('a', { Manifestacao: 'confirmada' })
+    store.patchRow('a', freshA)
+    expect(store.rows).toEqual([freshA, nfeRow('b')])
+    expect(store.selected).toEqual([freshA, nfeRow('b')])
+
+    store.patchRow('b', null)
+    expect(store.rows).toEqual([freshA])
+    expect(store.selected).toEqual([freshA])
+  })
+
   it('prunes the selection by chave and swaps in the fresh rows', () => {
     const store = useNFeDocumentsStore()
     store.setRows([nfeRow('a'), nfeRow('b')])

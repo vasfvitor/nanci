@@ -513,6 +513,7 @@ export namespace desktopapi {
 	    Manifestacao: string;
 	    Role: string;
 	    EmitenteCNPJ: string;
+	    ChavesAcesso: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ListNFeInput(source);
@@ -527,6 +528,7 @@ export namespace desktopapi {
 	        this.Manifestacao = source["Manifestacao"];
 	        this.Role = source["Role"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
 	export class NFeSkipped {

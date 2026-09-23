@@ -167,6 +167,39 @@ describe('useNFeManifestation', () => {
     expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
   })
 
+  it('reloads only the manifested note when it is listed', async () => {
+    const store = useNFeDocumentsStore()
+    store.setRows([nfeRow('a'), nfeRow('b')])
+    const fresh = { ...nfeRow('a'), Manifestacao: 'confirmada' as const }
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([fresh])
+    vi.mocked(desktopClient.registerManifestation).mockResolvedValue({
+      ChaveAcesso: 'a',
+      Status: 'registrada',
+    } as NFeEventResult)
+
+    await useNFeManifestation().registerManifestation('a', '210200')
+
+    expect(desktopClient.listNFe).toHaveBeenCalledTimes(1)
+    expect(desktopClient.listNFe).toHaveBeenCalledWith({ ...store.listInput, ChavesAcesso: ['a'] })
+    expect(store.rows).toEqual([fresh, nfeRow('b')])
+    expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
+  })
+
+  it('searches the whole list when the manifested note is not listed', async () => {
+    const store = useNFeDocumentsStore()
+    store.setRows([nfeRow('b')])
+    vi.mocked(desktopClient.registerManifestation).mockResolvedValue({
+      ChaveAcesso: 'a',
+      Status: 'registrada',
+    } as NFeEventResult)
+
+    await useNFeManifestation().registerManifestation('a', '210200')
+
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(store.listInput)
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['a'])
+  })
+
   it('clears the manifestação marker when the call fails and drops justificativa for other tipos', async () => {
     vi.mocked(desktopClient.registerManifestation).mockRejectedValue(new Error('boom'))
 

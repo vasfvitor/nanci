@@ -494,7 +494,7 @@ describe('NF-e client calls', () => {
 
     expect(PullNFe).toHaveBeenCalledWith({ CNPJ: '123' })
     expect(StatusNFe).toHaveBeenCalledWith('123')
-    expect(ListNFe).toHaveBeenCalledWith(listInput)
+    expect(ListNFe).toHaveBeenCalledWith({ ...listInput, ChavesAcesso: [] })
     expect(ListNFeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave })
     expect(ListPendingManifestations).toHaveBeenNthCalledWith(1, { CNPJ: '123', DueWithinDays: 0 })
     expect(ListPendingManifestations).toHaveBeenNthCalledWith(2, { CNPJ: '123', DueWithinDays: 10 })

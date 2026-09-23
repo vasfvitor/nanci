@@ -11,7 +11,7 @@ export function useNFeManifestation() {
   const store = useNFeDocumentsStore()
   const { selected, pending, pendingLoading, cienciaInFlight, manifestationInFlight } =
     storeToRefs(store)
-  const { loadPending, refresh } = useNFeLoaders()
+  const { loadPending, refresh, refreshNote } = useNFeLoaders()
 
   // planCiencia asks the backend which notes a ciência would send. It sends
   // nothing and asks for no password.
@@ -60,7 +60,7 @@ export function useNFeManifestation() {
       manifestationInFlight.value.delete(chaveAcesso)
     }
 
-    await refresh(cnpj)
+    await refreshNote(cnpj, chaveAcesso)
     return result
   }
 

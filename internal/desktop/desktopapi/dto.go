@@ -355,6 +355,7 @@ type ListNFeInput struct {
 	Manifestacao string // nenhuma | ciencia | confirmada | desconhecida | nao_realizada
 	Role         string // destinatario | emitente | transportador | autorizado | none
 	EmitenteCNPJ string
+	ChavesAcesso []string
 }
 
 type NFeRow struct {

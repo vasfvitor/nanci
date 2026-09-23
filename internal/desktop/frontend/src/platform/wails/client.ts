@@ -663,7 +663,7 @@ export const desktopClient = {
     return mapNFeStatus(res)
   },
   async listNFe(input: ListNFeInput): Promise<NFeRow[]> {
-    const res = await callWails(() => ListNFe(input))
+    const res = await callWails(() => ListNFe({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] }))
     return (res || []).map(mapNFeRow)
   },
   async listNFeEvents(cnpj: string, chaveAcesso: string): Promise<NFeEvent[]> {
