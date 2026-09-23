@@ -391,6 +391,34 @@ func TestNFeAlreadyRegisteredManifestation(t *testing.T) {
 	}
 }
 
+// A ciência answered with 655 (conclusive manifestação already at SEFAZ) is
+// recorded as a rejected attempt and must not look like a registered event.
+func TestNFeCienciaAfterConclusiveIsNotAnEvent(t *testing.T) {
+	f := newNFeFixture(t)
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
+
+	late := manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusRejeitada, time.Now())
+	late.CStat, late.XMotivo = "655", "Rejeicao: Ciencia da Operacao informada apos a manifestacao final"
+	late.Protocolo, late.RegisteredAt, late.ProcEventoRawHash = "", nil, ""
+	f.record(late)
+
+	if events := f.events(nfeKeyProc); len(events) != 0 {
+		t.Errorf("events = %+v, want none", events)
+	}
+	if got := f.companyDocument("mock", nfeKeyProc); got.Manifestacao != nfe.ManifestacaoNenhuma {
+		t.Errorf("manifestacao = %s, want nenhuma", got.Manifestacao)
+	}
+	var status, cStat string
+	err := f.db.QueryRowContext(context.Background(),
+		`SELECT status, c_stat FROM nfe_manifestations WHERE company_id = 'mock'`).Scan(&status, &cStat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != nfe.ManifestationStatusRejeitada || cStat != "655" {
+		t.Errorf("attempt = (%s, %s), want (rejeitada, 655)", status, cStat)
+	}
+}
+
 // seedFilterDocuments stores, for company mock (destinatário):
 //
 //	procnfe.xml           completa  autorizada  2026-09-01

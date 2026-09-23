@@ -214,25 +214,27 @@ func TestNFeRegisterCienciaSendsLotesOfTwenty(t *testing.T) {
 
 func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {
 	env := newNFeTestEnv(t)
-	chaves := env.seedResumos(3)
+	chaves := env.seedResumos(4)
 	fake := useFakeSEFAZ(t)
 	fake.cStats = map[string]int{
 		chaves[0]: sefaz.CStatEventoVinculado,
 		chaves[1]: sefaz.CStatDuplicidadeEvento,
 		chaves[2]: sefaz.CStatCienciaNFeCancelada,
+		chaves[3]: sefaz.CStatCienciaAposManifestacao,
 	}
 
 	summary, err := env.app.NFe.RegisterCiencia(context.Background(), NFeCienciaInput{CNPJ: nfeTestCNPJ, ChavesAcesso: chaves})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if summary.Registered != 1 || summary.AlreadyRegistered != 1 || summary.Rejected != 1 || summary.NotSent != 0 {
+	if summary.Registered != 1 || summary.AlreadyRegistered != 1 || summary.Rejected != 2 || summary.NotSent != 0 {
 		t.Errorf("summary = %+v", summary)
 	}
 	want := []struct{ status, cStat string }{
 		{NFeOutcomeRegistrada, "135"},
 		{NFeOutcomeJaRegistrada, "573"},
 		{NFeOutcomeRejeitada, "650"},
+		{NFeOutcomeRejeitada, "655"},
 	}
 	for i, o := range summary.Outcomes {
 		if o.ChaveAcesso != chaves[i] || o.Status != want[i].status || o.CStat != want[i].cStat || o.TpEvento != nfe.TpEventoCiencia {
@@ -252,10 +254,20 @@ func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {
 	if got := env.manifestacao(chaves[2]); got != nfe.ManifestacaoNenhuma {
 		t.Errorf("rejected manifestacao = %s", got)
 	}
+	// 655: SEFAZ did not register the ciência, so no event is stored.
+	if got := env.manifestacao(chaves[3]); got != nfe.ManifestacaoNenhuma {
+		t.Errorf("655 manifestacao = %s, want nenhuma", got)
+	}
+	if motivo := summary.Outcomes[3].XMotivo; !strings.HasPrefix(motivo, "NF-e já possui manifestação conclusiva") {
+		t.Errorf("655 XMotivo = %q", motivo)
+	}
+	if events, err := env.app.NFe.ListEvents(context.Background(), nfeTestCNPJ, chaves[3]); err != nil || len(events) != 0 {
+		t.Errorf("655 events = %+v, %v; want none", events, err)
+	}
 	wantStatuses := map[string]int{
 		nfe.ManifestationStatusRegistrada:   1,
 		nfe.ManifestationStatusJaRegistrada: 1,
-		nfe.ManifestationStatusRejeitada:    1,
+		nfe.ManifestationStatusRejeitada:    2,
 	}
 	if got := env.manifestationStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
 		t.Errorf("stored statuses = %v, want %v", got, wantStatuses)

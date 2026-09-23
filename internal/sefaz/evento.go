@@ -63,11 +63,11 @@ func IsRegistered(cStat int) bool {
 	return cStat == CStatEventoVinculado || cStat == CStatEventoNaoVinculado
 }
 
-// IsAlreadyDone reports whether cStat means nothing is left to do for the
-// evento: it was registered before (573) or a later manifestação made a
-// ciência pointless (655).
+// IsAlreadyDone reports whether cStat means the same evento was registered
+// before (573). A ciência sent after a conclusive manifestação (655) is not
+// already done: SEFAZ did not register it, so it is a rejection.
 func IsAlreadyDone(cStat int) bool {
-	return cStat == CStatDuplicidadeEvento || cStat == CStatCienciaAposManifestacao
+	return cStat == CStatDuplicidadeEvento
 }
 
 // Evento is one manifestação do destinatário to sign and send.

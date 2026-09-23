@@ -21,7 +21,7 @@ import (
 // statuses stored for answered events.
 const (
 	NFeOutcomeRegistrada   = nfe.ManifestationStatusRegistrada   // SEFAZ registered the event (135/136)
-	NFeOutcomeJaRegistrada = nfe.ManifestationStatusJaRegistrada // nothing left to do (573, 655)
+	NFeOutcomeJaRegistrada = nfe.ManifestationStatusJaRegistrada // the same event was registered before (573)
 	NFeOutcomeRejeitada    = nfe.ManifestationStatusRejeitada    // SEFAZ refused the event; see CStat and XMotivo
 	NFeOutcomeNaoEnviada   = "nao_enviada"                       // the lote got no SEFAZ answer, or was never sent
 )
@@ -464,7 +464,7 @@ func (e *eventSender) send(ctx context.Context, eventos []sefaz.Evento) ([]NFeEv
 			TpEvento:     record.TpEvento,
 			Status:       record.Status,
 			CStat:        record.CStat,
-			XMotivo:      record.XMotivo,
+			XMotivo:      outcomeMotivo(result.CStat, record.XMotivo),
 			Protocolo:    record.Protocolo,
 			RegisteredAt: record.RegisteredAt,
 		})
@@ -505,8 +505,20 @@ func (e *eventSender) keepXML(ctx context.Context, data []byte) string {
 	return hash
 }
 
+// outcomeMotivo is the XMotivo reported for an evento. A ciência answered
+// with 655 is a rejection whose reason is spelled out: SEFAZ already holds a
+// conclusive manifestação that nanci may not have pulled yet.
+func outcomeMotivo(cStat int, xMotivo string) string {
+	if cStat == sefaz.CStatCienciaAposManifestacao {
+		return "NF-e já possui manifestação conclusiva: " + xMotivo
+	}
+	return xMotivo
+}
+
 // manifestationStatus maps an evento cStat to the stored status, which is
-// also the outcome reported for it.
+// also the outcome reported for it. Only 135/136 and 573 store an event;
+// everything else, 655 included, is a rejection and leaves the
+// manifestação unchanged.
 func manifestationStatus(cStat int) string {
 	switch {
 	case sefaz.IsRegistered(cStat):

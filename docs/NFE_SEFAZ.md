@@ -82,7 +82,9 @@ Manifestações conclusivas são definitivas na SEFAZ e o Nanci não as desfaz.
 - **Ciência em lote.** Pode ser enviada para várias notas de uma vez (`nfe ciencia`), em lotes de até 20 eventos, pedindo a senha do certificado uma vez só. Sem confirmação explícita nada é enviado. Depois de registrada, o XML completo chega num pull seguinte e o resumo é substituído.
 - **Conclusivas nota a nota.** `nfe manifestar` envia um evento por vez. Tipo, justificativa, papel e situação são validados antes de pedir a senha.
 
-Resultados por nota: `registrada` (`cStat` 135/136), `já registrada` (573 duplicidade, ou 655 ciência depois de uma manifestação conclusiva), `rejeitada` (outro `cStat`, com o `xMotivo` da SEFAZ) e `não enviada` (o lote não teve resposta). Um lote sem resposta HTTP é reenviado uma vez; se ele já tinha chegado, a SEFAZ responde 573 e a nota conta como já registrada. Se continuar sem resposta, o envio dos lotes seguintes é interrompido e as notas não enviadas podem ser enviadas de novo.
+Resultados por nota: `registrada` (`cStat` 135/136), `já registrada` (573 duplicidade), `rejeitada` (outro `cStat`, com o `xMotivo` da SEFAZ) e `não enviada` (o lote não teve resposta). Um lote sem resposta HTTP é reenviado uma vez; se ele já tinha chegado, a SEFAZ responde 573 e a nota conta como já registrada. Se continuar sem resposta, o envio dos lotes seguintes é interrompido e as notas não enviadas podem ser enviadas de novo.
+
+Uma ciência respondida com 655 conta como rejeitada, com a mensagem "NF-e já possui manifestação conclusiva". A SEFAZ não registrou a ciência, então o Nanci não grava evento nem muda a manifestação da nota.
 
 ### Prazos
 

@@ -92,6 +92,9 @@ func TestEnviarEventos_MatchesEachRetEvento(t *testing.T) {
 	if IsRegistered(result.Eventos[2].CStat) || IsAlreadyDone(result.Eventos[2].CStat) {
 		t.Errorf("650 must be a rejection")
 	}
+	if IsRegistered(CStatCienciaAposManifestacao) || IsAlreadyDone(CStatCienciaAposManifestacao) {
+		t.Errorf("655 must be a rejection: SEFAZ did not register the ciência")
+	}
 
 	// The request carries the signed eventos verbatim, straight in nfeDadosMsg.
 	requests := fake.captured()
