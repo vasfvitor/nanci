@@ -14,7 +14,7 @@ function row(overrides: Partial<NFeRow> = {}): NFeRow {
     ChaveAcesso: '35240912345678000199550010000123451123456789',
     Serie: '1',
     Numero: '12345',
-    Protocol: '',
+    Protocolo: '',
     TipoOperacao: '1',
     EmitenteCNPJ: '12345678000199',
     EmitenteName: 'Fornecedor',
@@ -60,7 +60,7 @@ describe('cienciaBlockReason', () => {
 
 describe('conclusiveBlockReason', () => {
   it('allows conclusive events before and after ciência', () => {
-    for (const tipo of ['confirmacao', 'desconhecimento', 'nao_realizada'] as const) {
+    for (const tipo of ['210200', '210220', '210240'] as const) {
       expect(conclusiveBlockReason(row({ Manifestacao: 'nenhuma' }), tipo)).toBeNull()
       expect(conclusiveBlockReason(row({ Manifestacao: 'ciencia' }), tipo)).toBeNull()
     }
@@ -68,32 +68,32 @@ describe('conclusiveBlockReason', () => {
 
   it('does not block on a past conclusive deadline', () => {
     const expired = row({ Manifestacao: 'ciencia', ConclusiveDue: '2020-01-01T00:00:00Z' })
-    expect(conclusiveBlockReason(expired, 'confirmacao')).toBeNull()
+    expect(conclusiveBlockReason(expired, '210200')).toBeNull()
   })
 
   it('blocks the same conclusive event twice', () => {
-    expect(conclusiveBlockReason(row({ Manifestacao: 'confirmada' }), 'confirmacao')).toBe(
+    expect(conclusiveBlockReason(row({ Manifestacao: 'confirmada' }), '210200')).toBe(
       'Esta manifestação já foi registrada'
     )
-    expect(conclusiveBlockReason(row({ Manifestacao: 'nao_realizada' }), 'nao_realizada')).toBe(
+    expect(conclusiveBlockReason(row({ Manifestacao: 'nao_realizada' }), '210240')).toBe(
       'Esta manifestação já foi registrada'
     )
   })
 
   it('blocks a different conclusive event after one is registered', () => {
-    expect(conclusiveBlockReason(row({ Manifestacao: 'confirmada' }), 'desconhecimento')).toBe(
+    expect(conclusiveBlockReason(row({ Manifestacao: 'confirmada' }), '210220')).toBe(
       'Já possui manifestação conclusiva'
     )
-    expect(conclusiveBlockReason(row({ Manifestacao: 'desconhecida' }), 'confirmacao')).toBe(
+    expect(conclusiveBlockReason(row({ Manifestacao: 'desconhecida' }), '210200')).toBe(
       'Já possui manifestação conclusiva'
     )
   })
 
   it('applies the destinatário and situação rules', () => {
-    expect(conclusiveBlockReason(row({ CompanyRole: 'emitente' }), 'confirmacao')).toBe(
+    expect(conclusiveBlockReason(row({ CompanyRole: 'emitente' }), '210200')).toBe(
       'Somente o destinatário pode manifestar'
     )
-    expect(conclusiveBlockReason(row({ Situacao: 'cancelada' }), 'desconhecimento')).toBe(
+    expect(conclusiveBlockReason(row({ Situacao: 'cancelada' }), '210220')).toBe(
       'Nota cancelada'
     )
   })

@@ -3,8 +3,9 @@
     <q-card style="min-width: 350px">
       <q-card-section>
         <div class="text-h6">Senha do Certificado</div>
+        <div v-if="requestData?.Purpose" class="text-caption text-app-muted">Finalidade: {{ requestData.Purpose }}</div>
         <div class="text-caption text-app-muted">Empresa: {{ requestData?.CompanyName }}</div>
-        <div class="text-caption text-app-muted">CNPJ consultado: {{ requestData?.TargetCNPJ }}</div>
+        <div class="text-caption text-app-muted">CNPJ: {{ requestData?.TargetCNPJ }}</div>
         <div class="text-caption text-app-muted">Credencial: {{ requestData?.CredentialLabel }}</div>
         <div class="text-caption text-app-muted">Arquivo: {{ requestData?.CertPath }}</div>
       </q-card-section>
@@ -32,6 +33,7 @@ interface CertPasswordRequest {
   TargetCNPJ: string
   CredentialLabel: string
   CertPath: string
+  Purpose?: string
 }
 
 const requests = ref<CertPasswordRequest[]>([])

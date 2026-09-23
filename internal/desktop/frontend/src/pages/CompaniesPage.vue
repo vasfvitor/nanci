@@ -130,6 +130,7 @@ import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useConsoleStore } from '@/stores/console'
 import { useCompanies } from '@/composables/useCompanies'
+import { wailsErrorCode } from '@/platform/wails/client'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
 import type { CompanySummary } from '@/types/desktop'
 
@@ -227,8 +228,11 @@ async function syncCompany(cnpj: string) {
     })
     await loadCompanies()
   } catch (err) {
-    if (String(err).includes('ERR_CANCELED')) {
+    const code = wailsErrorCode(err)
+    if (code === 'canceled') {
       $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
+    } else if (code === 'sync_running') {
+      $q.notify({ type: 'warning', message: 'Sincronização já em andamento para esta empresa.' })
     } else {
       $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + String(err) })
     }

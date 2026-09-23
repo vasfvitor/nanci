@@ -18,11 +18,13 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/platform/wails/client', () => ({
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  wailsErrorCode: (await importOriginal<typeof import('@/platform/wails/client')>()).wailsErrorCode,
   desktopClient: {
     listCompanies: vi.fn(),
     listCredentials: vi.fn(),
     assignCredential: vi.fn(),
+    pull: vi.fn(),
     setLogLevel: vi.fn(),
   },
 }))
@@ -43,7 +45,13 @@ const company = {
   LastRunStopReason: '',
 }
 
-function mountPage() {
+// Render only the credential cell slot by default, which is what most tests drive.
+const credentialCellTable =
+  '<div><slot v-if="rows.length" name="body-cell-credencial" v-bind="{ row: rows[0] }" /></div>'
+const actionsCellTable =
+  '<div><slot v-if="rows.length" name="body-cell-acoes" v-bind="{ row: rows[0] }" /></div>'
+
+function mountPage(tableTemplate = credentialCellTable) {
   return shallowMount(CompaniesPage, {
     global: {
       stubs: {
@@ -57,12 +65,10 @@ function mountPage() {
           emits: ['update:modelValue'],
           template: '<div />',
         },
-        // Render only the credential cell slot, which is what this test drives.
         'q-table': {
           name: 'QTable',
           props: ['rows', 'loading'],
-          template:
-            '<div><slot v-if="rows.length" name="body-cell-credencial" v-bind="{ row: rows[0] }" /></div>',
+          template: tableTemplate,
         },
         AddCompanyDialog: { template: '<div />' },
         EditCompanyDialog: { template: '<div />' },
@@ -139,5 +145,46 @@ describe('CompaniesPage credential assignment', () => {
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'positive' })
     )
+  })
+})
+
+describe('CompaniesPage sync errors', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+  })
+
+  async function clickSync(error: Error) {
+    vi.mocked(desktopClient.pull).mockRejectedValue(error)
+    const wrapper = mountPage(actionsCellTable)
+    await flushPromises()
+
+    await wrapper.get('button[title="Sincronizar NFS-e"]').trigger('click')
+    await flushPromises()
+  }
+
+  it('warns instead of failing when a sync is already running', async () => {
+    await clickSync(new Error('ERR_SYNC_RUNNING: sincronização já em andamento'))
+
+    expect(notify).toHaveBeenCalledWith({
+      type: 'warning',
+      message: 'Sincronização já em andamento para esta empresa.',
+    })
+    expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'negative' }))
+  })
+
+  it('warns when the password prompt was cancelled', async () => {
+    await clickSync(new Error('ERR_CANCELED: operação cancelada'))
+
+    expect(notify).toHaveBeenCalledWith({ type: 'warning', message: 'Sincronização cancelada.' })
+  })
+
+  it('reports other sync errors as failures', async () => {
+    await clickSync(new Error('boom'))
+
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'negative' }))
   })
 })

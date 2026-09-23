@@ -5,18 +5,36 @@ import {
   mapCredentialSummary,
   mapDocumentEvent,
   mapDocumentRow,
+  mapNFeCienciaPlan,
+  mapNFeEvent,
+  mapNFeEventBatchResult,
+  mapNFePendingRow,
+  mapNFeRow,
+  mapNFeStatus,
+  mapPullNFeResult,
+  wailsErrorCode,
   WailsClientError,
 } from './client'
 import {
   ExportDANFSe,
   ExportDANFSeZIP,
   ExportDocuments,
+  ExportNFeXML,
+  ExportNFeZIP,
   ListCompanies,
   ListCredentials,
   ListDocuments,
   ListEventsForDocument,
+  ListNFe,
+  ListNFeEvents,
+  ListPendingManifestations,
+  PlanCiencia,
+  PullNFe,
+  RegisterCiencia,
+  RegisterManifestation,
   SelectCertificate,
   SelectSaveFile,
+  StatusNFe,
 } from '../../../wailsjs/go/main/App'
 
 vi.mock('../../../wailsjs/go/main/App', () => ({
@@ -27,17 +45,27 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ExportDANFSe: vi.fn(),
   ExportDANFSeZIP: vi.fn(),
   ExportDocuments: vi.fn(),
+  ExportNFeXML: vi.fn(),
+  ExportNFeZIP: vi.fn(),
   ListCompanies: vi.fn(),
   ListCredentials: vi.fn(),
   ListDocuments: vi.fn(),
   ListEventsForDocument: vi.fn(),
+  ListNFe: vi.fn(),
+  ListNFeEvents: vi.fn(),
+  ListPendingManifestations: vi.fn(),
+  PlanCiencia: vi.fn(),
   Pull: vi.fn(),
+  PullNFe: vi.fn(),
   QueryNFSeEvents: vi.fn(),
+  RegisterCiencia: vi.fn(),
+  RegisterManifestation: vi.fn(),
   ResetSyncState: vi.fn(),
   SelectCertificate: vi.fn(),
   SelectExportDirectory: vi.fn(),
   SelectSaveFile: vi.fn(),
   SetLogLevel: vi.fn(),
+  StatusNFe: vi.fn(),
   SubmitCertPassword: vi.fn(),
   UpdateCompany: vi.fn(),
   UpdateCredentialData: vi.fn(),
@@ -228,5 +256,333 @@ describe('desktop client calls', () => {
     vi.mocked(ListCompanies).mockRejectedValue(new Error('boom'))
     await expect(desktopClient.listCompanies()).rejects.toBeInstanceOf(WailsClientError)
     await expect(desktopClient.listCompanies()).rejects.toThrow('boom')
+  })
+})
+
+const chave = '35240912345678000199550010000123451123456789'
+
+describe('NF-e mappers', () => {
+  it('keeps cents, nullable dates, and known enum values of a row', () => {
+    const row = mapNFeRow({
+      ID: 'rel-1',
+      DocumentID: 'doc-1',
+      ChaveAcesso: chave,
+      Protocolo: '135240000000001',
+      TotalValue: 123456,
+      Situacao: 'autorizada',
+      Completeness: 'resumo',
+      Manifestacao: 'ciencia',
+      CompanyRole: 'destinatario',
+      AuthorizedAt: '2024-09-01T10:00:00Z',
+      ManifestacaoAt: null,
+      ViewedAt: null,
+      EventCount: 2,
+    })
+
+    expect(row).toMatchObject({
+      ID: 'rel-1',
+      DocumentID: 'doc-1',
+      ChaveAcesso: chave,
+      Protocolo: '135240000000001',
+      TotalValue: 123456,
+      Situacao: 'autorizada',
+      Completeness: 'resumo',
+      Manifestacao: 'ciencia',
+      CompanyRole: 'destinatario',
+      AuthorizedAt: '2024-09-01T10:00:00Z',
+      EventCount: 2,
+    })
+    expect(row.ManifestacaoAt).toBeNull()
+    expect(row.ViewedAt).toBeNull()
+    expect(row.CienciaDue).toBeNull()
+  })
+
+  it('maps unknown enum values to an empty string', () => {
+    const row = mapNFeRow({
+      Situacao: 'suspensa',
+      Completeness: 42,
+      Manifestacao: 'ciente',
+      CompanyRole: 'tomador',
+    })
+
+    expect(row.Situacao).toBe('')
+    expect(row.Completeness).toBe('')
+    expect(row.Manifestacao).toBe('')
+    expect(row.CompanyRole).toBe('')
+    expect(mapNFeStatus({ BlockedReason: 'sem_documentos' }).BlockedReason).toBe('')
+    expect(mapNFeEventBatchResult({ Results: [{ Status: 'registered' }] }).Results[0]?.Status).toBe('')
+  })
+
+  it('maps flat pending rows with their deadline fields', () => {
+    const pending = mapNFePendingRow({
+      ChaveAcesso: chave,
+      Kind: 'sem_ciencia',
+      Deadline: '2025-03-01T00:00:00Z',
+      DaysLeft: 5,
+      CienciaOverdue: true,
+      Expired: false,
+    })
+
+    expect(pending).toMatchObject({
+      ID: '',
+      ChaveAcesso: chave,
+      Kind: 'sem_ciencia',
+      Deadline: '2025-03-01T00:00:00Z',
+      DaysLeft: 5,
+      CienciaOverdue: true,
+      Expired: false,
+    })
+    expect(mapNFePendingRow({ Kind: 'outro' }).Kind).toBe('')
+  })
+
+  it('maps events, batch results, plans, status, and pull results', () => {
+    expect(
+      mapNFeEvent({
+        ID: 'evt-1',
+        TpEvento: '210210',
+        NSeqEvento: 1,
+        Description: 'Ciência da Operação',
+        Protocolo: '135',
+        Completeness: 'completa',
+        Registered: true,
+        SentByNanci: true,
+      })
+    ).toMatchObject({
+      ID: 'evt-1',
+      TpEvento: '210210',
+      NSeqEvento: 1,
+      Description: 'Ciência da Operação',
+      Protocolo: '135',
+      Completeness: 'completa',
+      Registered: true,
+      SentByNanci: true,
+    })
+
+    expect(
+      mapNFeEventBatchResult({
+        Results: [{ ChaveAcesso: chave, TpEvento: '210210', Status: 'rejeitada', CStat: '596' }],
+        Requested: 3,
+        Registered: 1,
+        AlreadyRegistered: 1,
+        Rejected: 1,
+        NotSent: 0,
+        Skipped: [{ ChaveAcesso: 'x', Reason: 'emitente' }],
+        Interrupted: '',
+      })
+    ).toEqual({
+      Results: [
+        {
+          ChaveAcesso: chave,
+          TpEvento: '210210',
+          Status: 'rejeitada',
+          CStat: '596',
+          XMotivo: '',
+          Protocolo: '',
+          RegisteredAt: null,
+        },
+      ],
+      Requested: 3,
+      Registered: 1,
+      AlreadyRegistered: 1,
+      Rejected: 1,
+      NotSent: 0,
+      Skipped: [{ ChaveAcesso: 'x', Reason: 'emitente' }],
+      Interrupted: '',
+    })
+    expect(mapNFeEventBatchResult({ Results: null, Skipped: null })).toMatchObject({
+      Results: [],
+      Skipped: [],
+    })
+
+    const plan = mapNFeCienciaPlan({
+      Eligible: [{ ChaveAcesso: chave, TotalValue: 100, Numero: '12345' }],
+      Skipped: [{ ChaveAcesso: 'y', Reason: 'já possui manifestação' }],
+      Lotes: 1,
+    })
+    expect(plan.Eligible).toHaveLength(1)
+    expect(plan.Eligible[0]).toMatchObject({ ChaveAcesso: chave, TotalValue: 100, Numero: '12345' })
+    expect(plan.Skipped).toEqual([{ ChaveAcesso: 'y', Reason: 'já possui manifestação' }])
+    expect(plan.Lotes).toBe(1)
+
+    const status = mapNFeStatus({
+      TpAmb: '2',
+      AmbienteLabel: 'Homologação',
+      LastCheckedNSU: 10,
+      MaxNSU: null,
+      NextAllowedAt: '2026-09-23T15:00:00Z',
+      BlockedReason: 'caught_up',
+      PendingCiencia: 4,
+      PendingConclusiva: 2,
+    })
+    expect(status).toMatchObject({
+      TpAmb: '2',
+      AmbienteLabel: 'Homologação',
+      LastCheckedNSU: 10,
+      MaxNSU: null,
+      NextAllowedAt: '2026-09-23T15:00:00Z',
+      BlockedReason: 'caught_up',
+      PendingCiencia: 4,
+      PendingConclusiva: 2,
+    })
+    expect(mapNFeStatus({ MaxNSU: 99 }).MaxNSU).toBe(99)
+
+    expect(
+      mapPullNFeResult({ UltNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
+    ).toMatchObject({ UltNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
+  })
+})
+
+describe('NF-e client calls', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('passes the Wails DTOs for NF-e calls', async () => {
+    vi.mocked(PullNFe).mockResolvedValue({ CNPJ: '123', ResumosSaved: 2 } as never)
+    vi.mocked(StatusNFe).mockResolvedValue({ CNPJ: '123' } as never)
+    vi.mocked(ListNFe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
+    vi.mocked(ListNFeEvents).mockResolvedValue(null as never)
+    vi.mocked(ListPendingManifestations).mockResolvedValue([{ ChaveAcesso: chave }] as never)
+    vi.mocked(PlanCiencia).mockResolvedValue({ Eligible: [], Skipped: [], Lotes: 0 } as never)
+    vi.mocked(RegisterCiencia).mockResolvedValue({ Registered: 1 } as never)
+    vi.mocked(RegisterManifestation).mockResolvedValue({ Status: 'registrada' } as never)
+
+    const listInput = {
+      CNPJ: '123',
+      Competence: '2024-09',
+      Situacao: '' as const,
+      Completeness: '' as const,
+      Manifestacao: '' as const,
+      Role: 'destinatario' as const,
+      EmitenteCNPJ: '',
+      OnlyUnread: false,
+    }
+
+    await expect(desktopClient.pullNFe('123')).resolves.toMatchObject({ ResumosSaved: 2 })
+    await expect(desktopClient.statusNFe('123')).resolves.toMatchObject({ CNPJ: '123' })
+    await expect(desktopClient.listNFe(listInput)).resolves.toMatchObject([
+      { ID: 'rel-1', Situacao: 'autorizada' },
+    ])
+    await expect(desktopClient.listNFeEvents('123', chave)).resolves.toEqual([])
+    await expect(desktopClient.listPendingManifestations('123')).resolves.toMatchObject([
+      { ChaveAcesso: chave },
+    ])
+    await desktopClient.listPendingManifestations('123', 10)
+    await expect(desktopClient.planCiencia('123', [chave])).resolves.toMatchObject({ Lotes: 0 })
+    await expect(desktopClient.registerCiencia('123', [chave])).resolves.toMatchObject({
+      Registered: 1,
+    })
+    await expect(
+      desktopClient.registerManifestation({
+        CNPJ: '123',
+        ChaveAcesso: chave,
+        Tipo: '210240',
+        Justificativa: 'mercadoria não recebida',
+      })
+    ).resolves.toMatchObject({ Status: 'registrada' })
+
+    expect(PullNFe).toHaveBeenCalledWith({ CNPJ: '123' })
+    expect(StatusNFe).toHaveBeenCalledWith('123')
+    expect(ListNFe).toHaveBeenCalledWith(listInput)
+    expect(ListNFeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave })
+    expect(ListPendingManifestations).toHaveBeenNthCalledWith(1, { CNPJ: '123', DueWithinDays: 0 })
+    expect(ListPendingManifestations).toHaveBeenNthCalledWith(2, { CNPJ: '123', DueWithinDays: 10 })
+    expect(PlanCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
+    expect(RegisterCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
+    expect(RegisterManifestation).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: chave,
+      Tipo: '210240',
+      Justificativa: 'mercadoria não recebida',
+    })
+  })
+
+  it('exports NF-e XML and ZIP to the path chosen in the save dialog', async () => {
+    vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
+    vi.mocked(ExportNFeXML).mockResolvedValue({ OutPath: 'C:\\out\\file', Format: 'xml' } as never)
+    vi.mocked(ExportNFeZIP).mockResolvedValue({
+      OutPath: 'C:\\out\\file',
+      Format: 'zip',
+      ExportedCount: 3,
+      SkippedResumos: 2,
+    } as never)
+
+    await desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
+    const zip = await desktopClient.exportNFeZIP({
+      CNPJ: '123',
+      Competence: '2024-09',
+      Role: '',
+      ChavesAcesso: [chave],
+      IncludeResumos: false,
+      Incremental: false,
+    })
+
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(1, 'Salvar XML da NF-e', `nfe_${chave}.xml`, '*.xml')
+    expect(vi.mocked(SelectSaveFile).mock.calls[1]?.[1]).toMatch(/^nfe_123_\d{4}_\d{2}_\d{2}_\d{6}\.zip$/)
+    expect(ExportNFeXML).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: chave,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(ExportNFeZIP).toHaveBeenCalledWith({
+      CNPJ: '123',
+      Competence: '2024-09',
+      Role: '',
+      ChavesAcesso: [chave],
+      IncludeResumos: false,
+      Incremental: false,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(zip).toEqual({
+      OutPath: 'C:\\out\\file',
+      Format: 'zip',
+      Incremental: false,
+      ExportedCount: 3,
+      SkippedResumos: 2,
+    })
+  })
+
+  it('returns null and skips NF-e exports when the save dialog is cancelled', async () => {
+    vi.mocked(SelectSaveFile).mockResolvedValue('')
+
+    await expect(desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })).resolves.toBeNull()
+    await expect(
+      desktopClient.exportNFeZIP({
+        CNPJ: '123',
+        Competence: '',
+        Role: '',
+        ChavesAcesso: [],
+        IncludeResumos: false,
+        Incremental: true,
+      })
+    ).resolves.toBeNull()
+
+    expect(ExportNFeXML).not.toHaveBeenCalled()
+    expect(ExportNFeZIP).not.toHaveBeenCalled()
+  })
+})
+
+describe('Wails error codes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it.each([
+    ['ERR_CANCELED: operação cancelada', 'canceled'],
+    ['ERR_SEFAZ_BLOCKED: consultas bloqueadas até 15:00', 'sefaz_blocked'],
+    ['ERR_SYNC_RUNNING: sincronização em andamento', 'sync_running'],
+    ['ERR_UNKNOWN: algo', ''],
+    ['falha de rede ERR_CANCELED:', ''],
+    ['boom', ''],
+  ])('parses %s', async (message, code) => {
+    vi.mocked(PullNFe).mockRejectedValue(message)
+
+    const error = await desktopClient.pullNFe('123').catch((err: unknown) => err)
+
+    expect(error).toBeInstanceOf(WailsClientError)
+    expect((error as WailsClientError).code).toBe(code)
+    expect((error as WailsClientError).message).toBe(message)
+    expect(wailsErrorCode(error)).toBe(code)
+    expect(wailsErrorCode(new Error(message))).toBe(code)
   })
 })

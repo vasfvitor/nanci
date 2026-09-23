@@ -228,7 +228,9 @@ export type NFeSituacao = 'autorizada' | 'denegada' | 'cancelada'
 export type NFeCompleteness = 'resumo' | 'completa'
 export type NFeManifestacao = 'nenhuma' | 'ciencia' | 'confirmada' | 'desconhecida' | 'nao_realizada'
 export type NFeRole = 'destinatario' | 'emitente' | 'transportador' | 'autorizado' | 'none'
-export type NFeConclusiveTipo = 'confirmacao' | 'desconhecimento' | 'nao_realizada'
+// NFeConclusiveTipo is the tpEvento code of a conclusive manifestação:
+// 210200 confirmação, 210220 desconhecimento, 210240 operação não realizada.
+export type NFeConclusiveTipo = '210200' | '210220' | '210240'
 export type NFeEventOutcome = 'registrada' | 'ja_registrada' | 'rejeitada' | 'nao_enviada'
 export type NFePendingKind = 'sem_ciencia' | 'sem_conclusiva'
 export type NFeBlockedReason = 'caught_up' | 'consumo_indevido' | 'rate_budget'
@@ -240,7 +242,8 @@ export type ListNFeInput = {
   Completeness: NFeCompleteness | ''
   Manifestacao: NFeManifestacao | ''
   Role: NFeRole | ''
-  EmitenteCNPJ?: string
+  EmitenteCNPJ: string
+  OnlyUnread: boolean
 }
 
 export type NFeRow = {
@@ -251,7 +254,7 @@ export type NFeRow = {
   Numero: string
   IssueDate?: ISODateValue
   AuthorizedAt?: ISODateValue
-  Protocol: string
+  Protocolo: string
   TipoOperacao: string
   EmitenteCNPJ: string
   EmitenteName: string
@@ -269,12 +272,19 @@ export type NFeRow = {
   EventCount: number
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
+  ViewedAt?: ISODateValue
+}
+
+export type NFeKeyInput = {
+  CNPJ: string
+  ChaveAcesso: string
 }
 
 export type NFeEvent = {
   ID: string
   TpEvento: string
   NSeqEvento: number
+  Description: string
   EventAt?: ISODateValue
   RegisteredAt?: ISODateValue
   Protocolo: string
@@ -283,9 +293,13 @@ export type NFeEvent = {
   Justificativa: string
   Correcao: string
   AutorCNPJ: string
+  Completeness: NFeCompleteness | ''
+  Registered: boolean
   SentByNanci: boolean
 }
 
+// NFePendingRow carries the NFeRow fields flat. The backend fills only part
+// of them, so pending rows are keyed by ChaveAcesso, not ID.
 export type NFePendingRow = NFeRow & {
   Kind: NFePendingKind | ''
   Deadline?: ISODateValue
@@ -294,9 +308,37 @@ export type NFePendingRow = NFeRow & {
   Expired: boolean
 }
 
+export type NFePendingInput = {
+  CNPJ: string
+  DueWithinDays: number
+}
+
 export type RegisterCienciaInput = {
   CNPJ: string
   ChavesAcesso: string[]
+}
+
+export type NFeCandidate = {
+  ChaveAcesso: string
+  Serie: string
+  Numero: string
+  EmitenteCNPJ: string
+  EmitenteName: string
+  IssueDate?: ISODateValue
+  TotalValue: number
+  CienciaDue?: ISODateValue
+  ConclusiveDue?: ISODateValue
+}
+
+export type NFeSkipped = {
+  ChaveAcesso: string
+  Reason: string
+}
+
+export type NFeCienciaPlan = {
+  Eligible: NFeCandidate[]
+  Skipped: NFeSkipped[]
+  Lotes: number
 }
 
 export type RegisterManifestationInput = {
@@ -308,17 +350,12 @@ export type RegisterManifestationInput = {
 
 export type NFeEventResult = {
   ChaveAcesso: string
-  TipoEvento: string
+  TpEvento: string
   Status: NFeEventOutcome | ''
   CStat: string
   XMotivo: string
-  Protocol: string
+  Protocolo: string
   RegisteredAt?: ISODateValue
-}
-
-export type NFeSkipped = {
-  ChaveAcesso: string
-  Reason: string
 }
 
 export type NFeEventBatchResult = {
@@ -327,38 +364,49 @@ export type NFeEventBatchResult = {
   Registered: number
   AlreadyRegistered: number
   Rejected: number
+  NotSent: number
   Skipped: NFeSkipped[]
   Interrupted: string
 }
 
 export type PullNFeInput = {
   CNPJ: string
-  Mode: string
 }
 
-export type PullNFeResult = PullResult & {
-  Source: SyncSource | ''
+export type PullNFeResult = {
+  CompanyName: string
+  CNPJ: string
+  Status: string
+  StopReason: string
   UltNSU: number
   MaxNSU: number
-  NextAllowedAt: string | null
+  CompletasSaved: number
+  ResumosSaved: number
+  EventsSaved: number
+  Errors: number
+  NextAllowedAt?: ISODateValue
   RequestsLastHour: number
   RequestBudget: number
+  Duration: number
 }
 
 export type NFeStatusResult = {
   CompanyName: string
   CNPJ: string
+  UF: string
   Environment: string
+  TpAmb: string
+  AmbienteLabel: string
   LastCheckedNSU: number
   MaxNSU: number | null
   LastSyncAt?: ISODateValue
   LastRunStatus: string
   LastRunStopReason: string
-  NextAllowedAt: string | null
+  InitialSyncDoneAt?: ISODateValue
+  NextAllowedAt?: ISODateValue
   BlockedReason: NFeBlockedReason | ''
   RequestsLastHour: number
   RequestBudget: number
-  InitialSyncDoneAt?: ISODateValue
   TotalDestinatario: number
   TotalEmitente: number
   TotalOutros: number
@@ -375,7 +423,16 @@ export type ExportNFeXMLInput = {
   OutPath: string
 }
 
-export type ExportNFeZIPInput = ListNFeInput & {
+export type ExportNFeZIPInput = {
+  CNPJ: string
+  Competence: string
+  Role: NFeRole | ''
   ChavesAcesso: string[]
+  IncludeResumos: boolean
+  Incremental: boolean
   OutPath: string
+}
+
+export type NFeExportResult = ExportResult & {
+  SkippedResumos: number
 }

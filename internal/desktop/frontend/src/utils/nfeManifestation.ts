@@ -9,9 +9,9 @@ export const JUSTIFICATIVA_MAX_LENGTH = 255
 type ManifestableRow = Pick<NFeRow, 'CompanyRole' | 'Situacao' | 'Manifestacao'>
 
 const conclusiveResult: Record<NFeConclusiveTipo, NFeManifestacao> = {
-  confirmacao: 'confirmada',
-  desconhecimento: 'desconhecida',
-  nao_realizada: 'nao_realizada',
+  '210200': 'confirmada',
+  '210220': 'desconhecida',
+  '210240': 'nao_realizada',
 }
 
 function noteBlockReason(row: ManifestableRow): string | null {
