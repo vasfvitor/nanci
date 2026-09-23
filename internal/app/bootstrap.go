@@ -52,7 +52,7 @@ type Dependencies struct {
 	CredentialStore    *credential.Store
 	SyncRepo           *sync.Store
 	DocumentRepo       *store.DocumentRepository
-	NFeRepo            NFeRepository
+	NFeRepo            *store.NFeRepository
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider

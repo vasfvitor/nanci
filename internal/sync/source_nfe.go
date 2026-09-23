@@ -33,20 +33,12 @@ type nfeFetcher interface {
 	DistNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error)
 }
 
-// NFeRepository is what the NF-e source writes to. *store.NFeRepository
-// satisfies it.
-type NFeRepository interface {
-	ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p store.ApplyNFeDocumentParams) (bool, error)
-	ApplyEventTx(ctx context.Context, tx *sql.Tx, p store.ApplyNFeEventParams) (bool, error)
-	CompanyDocumentExists(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error)
-}
-
 // nfeSource walks the NF-e distribution of the Ambiente Nacional
 // (NFeDistribuicaoDFe). It does not apply the company start policy: the
 // SEFAZ queue already holds only the last 90 days.
 type nfeSource struct {
 	client   nfeFetcher
-	repo     NFeRepository
+	repo     *store.NFeRepository
 	xml      files.XMLStore
 	log      *slog.Logger
 	cUFAutor int
@@ -54,7 +46,7 @@ type nfeSource struct {
 
 // NewNFeSource returns the Source for the NF-e distribution. cUFAutor is the
 // IBGE code of the company's UF.
-func NewNFeSource(client nfeFetcher, repo NFeRepository, xml files.XMLStore, log *slog.Logger, cUFAutor int) Source {
+func NewNFeSource(client nfeFetcher, repo *store.NFeRepository, xml files.XMLStore, log *slog.Logger, cUFAutor int) Source {
 	return &nfeSource{
 		client:   client,
 		repo:     repo,

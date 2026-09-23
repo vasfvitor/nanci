@@ -20,7 +20,6 @@ import (
 // NFeRepository is the NF-e storage the app uses. *store.NFeRepository
 // satisfies it.
 type NFeRepository interface {
-	sync.NFeRepository
 	ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) ([]nfe.CompanyDocument, error)
 	ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error)
 	ListEventsByChave(ctx context.Context, chave string) ([]nfe.Event, error)

@@ -16,6 +16,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/uf"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
+	"github.com/vasfvitor/nanci/internal/store"
 )
 
 var (
@@ -86,7 +87,7 @@ type Manager struct {
 	XMLStore           xmlStore
 	PassProvider       CredentialProvider
 	// NFeRepo stores the NF-e distribution; pulls with Source nfe need it.
-	NFeRepo NFeRepository
+	NFeRepo *store.NFeRepository
 
 	runningMu gosync.Mutex
 	running   map[string]bool // "companyID:source" pulls in flight in this process
