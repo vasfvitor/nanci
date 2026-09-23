@@ -479,6 +479,9 @@ type ResetSyncInput struct {
 	Source nfse.SyncSource
 }
 
+// ResetSyncState deletes the source's sync cursor so the next pull starts
+// over. It is refused with ErrSyncRunning while a pull of the same company and
+// source runs in this process.
 func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
 	if err != nil {
@@ -492,6 +495,11 @@ func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) erro
 	if err != nil {
 		return err
 	}
+	release, err := m.ReserveSource(company.ID, source)
+	if err != nil {
+		return err
+	}
+	defer release()
 
 	if err := m.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{
 		CompanyID: company.ID,

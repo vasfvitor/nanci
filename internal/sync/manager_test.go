@@ -292,6 +292,63 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 	}
 }
 
+func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	if _, err := mgr.SyncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+		CompanyID:        comp.ID,
+		Source:           nfse.SyncSourceNFSe,
+		Environment:      comp.Environment,
+		ConsultationCNPJ: comp.CNPJ,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.SyncRepo.MarkInitialSyncCompleted(ctx, comp.ID, nfse.SyncSourceNFSe); err != nil {
+		t.Fatal(err)
+	}
+
+	// An NFS-e pull holds the reservation for its whole run.
+	release, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); !errors.Is(err, ErrSyncRunning) {
+		t.Fatalf("reset during an NFS-e pull = %v, want ErrSyncRunning", err)
+	}
+	state, err := mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.InitialSyncDoneAt == nil {
+		t.Error("the refused reset cleared the NFS-e initial sync")
+	}
+	release()
+
+	// An NF-e pull does not hold the NFS-e cursor.
+	releaseNFe, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer releaseNFe()
+	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); err != nil {
+		t.Fatalf("reset after the NFS-e pull ended: %v", err)
+	}
+	state, err = mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.InitialSyncDoneAt != nil {
+		t.Errorf("NFS-e initial sync after reset = %v, want nil", state.InitialSyncDoneAt)
+	}
+
+	// The reset gives the reservation back.
+	releaseAgain, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatalf("reserve after reset: %v", err)
+	}
+	releaseAgain()
+}
+
 func TestPullRejectsSourcesWithoutALoop(t *testing.T) {
 	passwords := &countingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
