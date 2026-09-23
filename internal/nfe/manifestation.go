@@ -148,16 +148,20 @@ func eventTime(e Event) time.Time {
 }
 
 // Deadline constants, in days counted from the authorization of the NF-e.
-// nanci never blocks a manifestação locally because of them: sources disagree
-// on the conclusive deadline and SEFAZ has the final word (cStat 596). They
-// only drive warnings.
+// nanci never blocks a manifestação locally because of them: SEFAZ has the
+// final word and rejects a late event with cStat 596. They only drive
+// warnings.
 const (
 	// CienciaWarningDays is when an NF-e without any manifestação starts to
 	// show a warning.
 	CienciaWarningDays = 10
-	// ConclusiveDeadlineDays is the deadline shown for a conclusive
-	// manifestação.
-	ConclusiveDeadlineDays = 180
+	// ConclusiveDeadlineDays is the deadline for a conclusive manifestação
+	// (Confirmação, Desconhecimento or Operação não Realizada). Cláusula
+	// 15ª-C of Ajuste SINIEF 07/05, as amended by Ajuste SINIEF 14/2026 (in
+	// force since 2026-06-01), sets it at 90 days from the authorization;
+	// after that, without a conclusive event, the operation is deemed
+	// confirmed (§ 6º). Ciência does not stop that presumption.
+	ConclusiveDeadlineDays = 90
 	// ConclusiveWarningDays is how many days before ConclusiveDue the
 	// warning starts.
 	ConclusiveWarningDays = 30
@@ -203,6 +207,21 @@ func (d Deadlines) CienciaWarning(now time.Time) bool {
 // ConclusiveDue, or past it.
 func (d Deadlines) ConclusiveWarning(now time.Time) bool {
 	return !d.ConclusiveDue.IsZero() && !now.Before(d.ConclusiveDue.AddDate(0, 0, -ConclusiveWarningDays))
+}
+
+// TacitlyConfirmed reports whether the operation of doc is deemed confirmed
+// by law: the company is the destinatário of an authorized NF-e, it has no
+// conclusive manifestação, and now is past ConclusiveDue. A ciência does not
+// prevent it.
+func TacitlyConfirmed(doc CompanyDocument, now time.Time) bool {
+	if doc.CompanyRole != CompanyRoleDestinatario || doc.Situacao != SituacaoAutorizada {
+		return false
+	}
+	if doc.Manifestacao != ManifestacaoNenhuma && doc.Manifestacao != ManifestacaoCiencia {
+		return false
+	}
+	due := ManifestationDeadlines(doc.Document).ConclusiveDue
+	return !due.IsZero() && now.After(due)
 }
 
 // Justificativa length limits for Operação não Realizada (xJust).

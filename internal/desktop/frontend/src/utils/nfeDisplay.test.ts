@@ -4,6 +4,7 @@ import {
   blockedMessage,
   completenessColor,
   completenessLabel,
+  conclusiveDeadlineLabel,
   deadlineColor,
   deadlineLabel,
   manifestacaoColor,
@@ -119,6 +120,13 @@ describe('nfeDisplay', () => {
     expect(deadlineLabel(-3)).toBe('Vencido há 3 d')
     expect(deadlineLabel(0)).toBe('Vence hoje')
     expect(deadlineLabel(12)).toBe('12 d restantes')
+  })
+
+  it('describes a passed conclusive deadline as a tacit confirmation', () => {
+    expect(conclusiveDeadlineLabel(null)).toBe('Sem prazo')
+    expect(conclusiveDeadlineLabel(-1)).toBe('Confirmada tacitamente')
+    expect(conclusiveDeadlineLabel(0)).toBe('Vence hoje')
+    expect(conclusiveDeadlineLabel(12)).toBe('12 d restantes')
   })
 
   it('colors the ambiente by tpAmb', () => {

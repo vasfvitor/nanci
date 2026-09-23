@@ -69,7 +69,7 @@ func newNFePendentesCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 func pendingAlert(p app.NFePendingManifestation) string {
 	switch {
 	case p.Expired:
-		return "prazo expirado"
+		return "confirmada tacitamente (prazo expirado)"
 	case p.CienciaOverdue:
 		return "ciência atrasada"
 	default:

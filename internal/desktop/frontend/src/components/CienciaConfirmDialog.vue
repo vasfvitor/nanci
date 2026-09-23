@@ -60,8 +60,9 @@
           <template #avatar>
             <q-icon name="gavel" />
           </template>
-          A ciência da operação é um evento fiscal registrado na SEFAZ em nome da empresa. Ela não pode
-          ser cancelada e inicia o prazo de 180 dias para a manifestação conclusiva de cada nota.
+          A ciência da operação é um evento fiscal registrado na SEFAZ em nome da empresa e não pode ser
+          cancelada. Ela não interrompe o prazo de 90 dias da autorização para a manifestação conclusiva:
+          sem manifestação conclusiva nesse prazo, a operação é considerada confirmada.
         </q-banner>
 
         <q-checkbox

@@ -159,9 +159,14 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 					doc.Numero, doc.Serie, formatNFeDate(doc.IssueDate), doc.TotalValue.FormatBRL())
 				_, _ = fmt.Fprintf(out, "Emitente: %s %s\n", cnpj.Format(doc.EmitenteCNPJ), doc.EmitenteName)
 				_, _ = fmt.Fprintf(out, "Manifestação atual: %s\n", doc.Manifestacao)
+				now := time.Now()
 				due := nfe.ManifestationDeadlines(doc.Document).ConclusiveDue
 				if !due.IsZero() {
-					_, _ = fmt.Fprintf(out, "Prazo da manifestação conclusiva: %s (%s)\n", formatNFeDate(due), describeDaysLeft(due, time.Now()))
+					_, _ = fmt.Fprintf(out, "Prazo da manifestação conclusiva: %s (%s)\n", formatNFeDate(due), describeDaysLeft(due, now))
+				}
+				if nfe.TacitlyConfirmed(doc, now) {
+					_, _ = fmt.Fprintf(out, "Atenção: passados %d dias da autorização sem manifestação conclusiva, a operação já é considerada confirmada. A SEFAZ deve rejeitar o evento (cStat 596).\n",
+						nfe.ConclusiveDeadlineDays)
 				}
 				if justificativa != "" {
 					_, _ = fmt.Fprintf(out, "Justificativa: %s\n", justificativa)

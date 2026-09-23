@@ -138,7 +138,7 @@ func TestManifestationDeadlines(t *testing.T) {
 	if want := time.Date(2026, 9, 11, 9, 15, 42, 0, loc); !d.CienciaDue.Equal(want) {
 		t.Errorf("CienciaDue = %s, want %s", d.CienciaDue, want)
 	}
-	if want := time.Date(2027, 2, 28, 9, 15, 42, 0, loc); !d.ConclusiveDue.Equal(want) {
+	if want := time.Date(2026, 11, 30, 9, 15, 42, 0, loc); !d.ConclusiveDue.Equal(want) {
 		t.Errorf("ConclusiveDue = %s, want %s", d.ConclusiveDue, want)
 	}
 	if d.FromIssueDate {
@@ -186,6 +186,44 @@ func TestDeadlineWarnings(t *testing.T) {
 	var zero Deadlines
 	if zero.CienciaWarning(authorized) || zero.ConclusiveWarning(authorized) {
 		t.Error("zero deadlines should never warn")
+	}
+}
+
+func TestTacitlyConfirmed(t *testing.T) {
+	authorized := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	due := authorized.AddDate(0, 0, ConclusiveDeadlineDays)
+	base := CompanyDocument{
+		Document:     Document{AuthorizedAt: &authorized, Situacao: SituacaoAutorizada},
+		CompanyRole:  CompanyRoleDestinatario,
+		Manifestacao: ManifestacaoCiencia,
+	}
+	with := func(change func(*CompanyDocument)) CompanyDocument {
+		doc := base
+		change(&doc)
+		return doc
+	}
+
+	tests := []struct {
+		name string
+		doc  CompanyDocument
+		now  time.Time
+		want bool
+	}{
+		{"ciência, at the deadline", base, due, false},
+		{"ciência, past the deadline", base, due.Add(time.Second), true},
+		{"no manifestação, past the deadline", with(func(d *CompanyDocument) { d.Manifestacao = ManifestacaoNenhuma }), due.Add(time.Second), true},
+		{"confirmada", with(func(d *CompanyDocument) { d.Manifestacao = ManifestacaoConfirmada }), due.Add(time.Second), false},
+		{"desconhecida", with(func(d *CompanyDocument) { d.Manifestacao = ManifestacaoDesconhecida }), due.Add(time.Second), false},
+		{"emitente", with(func(d *CompanyDocument) { d.CompanyRole = CompanyRoleEmitente }), due.Add(time.Second), false},
+		{"cancelada", with(func(d *CompanyDocument) { d.Situacao = SituacaoCancelada }), due.Add(time.Second), false},
+		{"no dates", with(func(d *CompanyDocument) { d.AuthorizedAt = nil }), due.Add(time.Second), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := TacitlyConfirmed(tt.doc, tt.now); got != tt.want {
+				t.Errorf("TacitlyConfirmed = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

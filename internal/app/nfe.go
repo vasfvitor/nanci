@@ -324,7 +324,9 @@ type NFePendingManifestation struct {
 	ConclusiveDue  time.Time // the deadline shown; nanci never blocks on it
 	DaysLeft       int       // whole days until ConclusiveDue; negative once past
 	CienciaOverdue bool      // no manifestação and CienciaDue has passed
-	Expired        bool      // ConclusiveDue has passed
+	// Expired is true once ConclusiveDue has passed. The operation is then
+	// deemed confirmed by law (nfe.TacitlyConfirmed).
+	Expired bool
 }
 
 // ListPendingManifestations returns the company's pending manifestações,
@@ -379,7 +381,7 @@ func (s *NFeService) pendingManifestations(ctx context.Context, companyID nfse.C
 			ConclusiveDue:  deadlines.ConclusiveDue,
 			DaysLeft:       int(math.Floor(deadlines.ConclusiveDue.Sub(now).Hours() / 24)),
 			CienciaOverdue: kind == NFePendingSemCiencia && deadlines.CienciaWarning(now),
-			Expired:        !deadlines.ConclusiveDue.IsZero() && now.After(deadlines.ConclusiveDue),
+			Expired:        nfe.TacitlyConfirmed(doc, now),
 		})
 	}
 	slices.SortFunc(pending, func(a, b NFePendingManifestation) int {

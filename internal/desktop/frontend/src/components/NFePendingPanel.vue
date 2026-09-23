@@ -42,7 +42,7 @@
               square
               :color="cellProps.row.CienciaOverdue ? 'negative' : deadlineColor(daysUntil(cellProps.row.CienciaDue))"
               outline
-              :label="deadlineLabel(daysUntil(cellProps.row.CienciaDue))"
+              :label="cienciaChipLabel(cellProps.row)"
             />
             <div class="text-caption text-app-muted">{{ formatDate(cellProps.row.CienciaDue) }}</div>
           </q-td>
@@ -76,6 +76,15 @@
         Aguardando manifestação conclusiva ({{ semConclusiva.length }})
       </div>
 
+      <q-banner dense rounded class="q-mb-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'">
+        <template #avatar>
+          <q-icon name="gavel" />
+        </template>
+        Confirmação, desconhecimento ou operação não realizada podem ser registrados em até 90 dias da
+        autorização da nota. Passado esse prazo sem manifestação conclusiva, a operação é considerada
+        confirmada por lei, mesmo que a ciência tenha sido registrada.
+      </q-banner>
+
       <q-table
         :rows="semConclusiva"
         :columns="columns"
@@ -95,7 +104,7 @@
               square
               :color="deadlineColor(daysUntil(cellProps.row.Deadline))"
               outline
-              :label="deadlineLabel(daysUntil(cellProps.row.Deadline))"
+              :label="conclusiveChipLabel(cellProps.row)"
             />
             <div class="text-caption text-app-muted">{{ formatDate(cellProps.row.Deadline) }}</div>
           </q-td>
@@ -136,7 +145,12 @@ import {
   formatDate,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { deadlineColor, deadlineLabel } from '@/utils/nfeDisplay'
+import {
+  conclusiveDeadlineLabel,
+  deadlineColor,
+  deadlineLabel,
+  TACIT_CONFIRMATION_LABEL,
+} from '@/utils/nfeDisplay'
 
 const props = defineProps<{
   rows: NFePendingRow[]
@@ -193,6 +207,18 @@ const columns: QTableColumn<NFePendingRow>[] = [
   { name: 'prazo', label: 'Prazo', field: 'Deadline', align: 'left' },
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
+
+// A note without ciência can also pass the conclusive deadline; the row is
+// then Expired and the operation is already deemed confirmed.
+function cienciaChipLabel(row: NFePendingRow) {
+  if (row.Expired) return TACIT_CONFIRMATION_LABEL
+  return deadlineLabel(daysUntil(row.CienciaDue))
+}
+
+function conclusiveChipLabel(row: NFePendingRow) {
+  if (row.Expired) return TACIT_CONFIRMATION_LABEL
+  return conclusiveDeadlineLabel(daysUntil(row.Deadline))
+}
 
 function timeOf(value: ISODateValue) {
   if (!value) return Number.POSITIVE_INFINITY

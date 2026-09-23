@@ -349,11 +349,11 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 	}
 
 	first := pending[0]
-	if first.Kind != NFePendingSemCiencia || !first.CienciaOverdue || first.Expired || first.DaysLeft != 153 {
-		t.Errorf("first = kind %s, overdue %t, expired %t, days %d; want sem_ciencia, true, false, 153",
+	if first.Kind != NFePendingSemCiencia || !first.CienciaOverdue || first.Expired || first.DaysLeft != 63 {
+		t.Errorf("first = kind %s, overdue %t, expired %t, days %d; want sem_ciencia, true, false, 63",
 			first.Kind, first.CienciaOverdue, first.Expired, first.DaysLeft)
 	}
-	if want := mustTime(t, "2027-02-16T10:00:00-03:00"); !first.ConclusiveDue.Equal(want) {
+	if want := mustTime(t, "2026-11-18T10:00:00-03:00"); !first.ConclusiveDue.Equal(want) {
 		t.Errorf("ConclusiveDue = %s, want %s", first.ConclusiveDue, want)
 	}
 	second := pending[1]
@@ -362,15 +362,15 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 			second.Kind, second.CienciaOverdue, second.Manifestacao)
 	}
 
-	due, err := env.app.NFe.ListPendingManifestations(ctx, NFePendingInput{CNPJ: nfeTestCNPJ, DueWithinDays: 160})
+	due, err := env.app.NFe.ListPendingManifestations(ctx, NFePendingInput{CNPJ: nfeTestCNPJ, DueWithinDays: 70})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(due) != 1 || due[0].ChaveAcesso != early {
-		t.Errorf("due within 160 days = %+v, want only the 08-20 resumo", due)
+		t.Errorf("due within 70 days = %+v, want only the 08-20 resumo", due)
 	}
 
-	env.app.NFe.now = func() time.Time { return mustTime(t, "2027-03-01T12:00:00-03:00") }
+	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-12-01T12:00:00-03:00") }
 	expired, err := env.app.NFe.ListPendingManifestations(ctx, NFePendingInput{CNPJ: nfeTestCNPJ})
 	if err != nil {
 		t.Fatal(err)

@@ -89,7 +89,10 @@ Resultados por nota: `registrada` (`cStat` 135/136), `já registrada` (573 dupli
 Os prazos contam da autorização da NF-e (ou da emissão, quando a data de autorização não está disponível). São só avisos; o Nanci **não bloqueia** nenhuma manifestação por prazo.
 
 - **Ciência:** a nota sem nenhuma manifestação passa a ser marcada como "ciência atrasada" 10 dias após a autorização.
-- **Conclusiva:** o prazo exibido é autorização + 180 dias, com alerta a partir de 30 dias antes. As fontes públicas divergem entre 90 e 180 dias, então quem decide é a SEFAZ: um evento fora do prazo volta rejeitado com `cStat` 596 e o `xMotivo` é mostrado.
+- **Conclusiva:** Confirmação, Desconhecimento e Operação não Realizada podem ser registradas em até 90 dias da autorização, com alerta a partir de 30 dias antes. A SEFAZ rejeita um evento fora do prazo com `cStat` 596, e o `xMotivo` é mostrado.
+- **Confirmação tácita:** passados os 90 dias sem nenhum evento conclusivo, a operação é considerada ocorrida, com os mesmos efeitos da Confirmação da Operação. A Ciência da Operação não interrompe esse prazo nem impede a presunção. O Nanci mostra essas notas como "confirmada tacitamente" em `nfe pendentes` e na tela de pendências.
+
+Fontes: cláusula 15ª-C do Ajuste SINIEF 07/05, na redação dos Ajustes SINIEF 11/22 e 14/26 (este em vigor desde 1º de junho de 2026), e a NT 2020.001 v1.60 para a rejeição 596.
 
 As constantes ficam em `internal/nfe/manifestation.go`.
 

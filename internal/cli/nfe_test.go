@@ -303,3 +303,22 @@ func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 		t.Errorf("password requests = %d, want 0", env.passwords.requests)
 	}
 }
+
+func TestPendingAlert(t *testing.T) {
+	tests := []struct {
+		name string
+		p    app.NFePendingManifestation
+		want string
+	}{
+		{"expired", app.NFePendingManifestation{Expired: true, CienciaOverdue: true}, "confirmada tacitamente (prazo expirado)"},
+		{"ciência overdue", app.NFePendingManifestation{CienciaOverdue: true}, "ciência atrasada"},
+		{"on time", app.NFePendingManifestation{}, "-"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := pendingAlert(tt.p); got != tt.want {
+				t.Errorf("pendingAlert = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

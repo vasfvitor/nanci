@@ -349,7 +349,7 @@
                   outline
                   size="sm"
                   :color="deadlineColor(daysUntil(cellProps.row.ConclusiveDue))"
-                  :label="deadlineLabel(daysUntil(cellProps.row.ConclusiveDue))"
+                  :label="conclusiveDeadlineLabel(daysUntil(cellProps.row.ConclusiveDue))"
                   :title="`Prazo da manifestação conclusiva: ${formatDate(cellProps.row.ConclusiveDue)}`"
                 />
               </div>
@@ -415,8 +415,8 @@ import {
   completenessColor,
   completenessLabel,
   completenessLabels,
+  conclusiveDeadlineLabel,
   deadlineColor,
-  deadlineLabel,
   manifestacaoColor,
   manifestacaoLabel,
   manifestacaoLabels,

@@ -153,6 +153,15 @@ export function deadlineLabel(days: number | null) {
   return `${days} d restantes`
 }
 
+export const TACIT_CONFIRMATION_LABEL = 'Confirmada tacitamente'
+
+// conclusiveDeadlineLabel is deadlineLabel for the conclusive manifestação
+// deadline: once it has passed, the operation is deemed confirmed by law.
+export function conclusiveDeadlineLabel(days: number | null) {
+  if (days !== null && days < 0) return TACIT_CONFIRMATION_LABEL
+  return deadlineLabel(days)
+}
+
 // ambienteColor highlights production (tpAmb 1), where events are fiscal acts.
 export function ambienteColor(tpAmb: string) {
   if (tpAmb === '1') return 'negative'
