@@ -477,14 +477,20 @@ export function mapPullNFeResult(raw: unknown): PullNFeResult {
   }
 }
 
-function mapNFeExportResult(raw: unknown): NFeExportResult {
+function mapExportResult(raw: unknown): ExportResult {
   const item = asRawRecord(raw)
   return {
     OutPath: asString(item['OutPath']),
     Format: asString(item['Format']) as ExportResult['Format'],
     Incremental: asBoolean(item['Incremental']),
     ExportedCount: asNumber(item['ExportedCount']),
-    SkippedResumos: asNumber(item['SkippedResumos']),
+  }
+}
+
+function mapNFeExportResult(raw: unknown): NFeExportResult {
+  return {
+    ...mapExportResult(raw),
+    SkippedResumos: asNumber(asRawRecord(raw)['SkippedResumos']),
   }
 }
 
@@ -699,7 +705,7 @@ export const desktopClient = {
     const res = await callWails(() =>
       ExportNFeXML({ CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso, OutPath: outPath })
     )
-    return res as ExportResult
+    return mapExportResult(res)
   },
   async exportNFeZIP(
     input: Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }

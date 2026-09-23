@@ -507,7 +507,7 @@ describe('NF-e client calls', () => {
       SkippedResumos: 2,
     } as never)
 
-    await desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
+    const xml = await desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
     const zip = await desktopClient.exportNFeZIP({
       CNPJ: '123',
       Competence: '2024-09',
@@ -532,6 +532,12 @@ describe('NF-e client calls', () => {
       IncludeResumos: false,
       Incremental: false,
       OutPath: 'C:\\out\\file',
+    })
+    expect(xml).toEqual({
+      OutPath: 'C:\\out\\file',
+      Format: 'xml',
+      Incremental: false,
+      ExportedCount: 0,
     })
     expect(zip).toEqual({
       OutPath: 'C:\\out\\file',
