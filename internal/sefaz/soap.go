@@ -78,6 +78,7 @@ type Client struct {
 	// tlsConfig is the TLS configuration of the HTTP transport, kept for
 	// CheckTLS.
 	tlsConfig *tls.Config
+	log       *slog.Logger
 }
 
 func NewClient(cfg ClientConfig) (*Client, error) {
@@ -122,6 +123,7 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 		endpoints: endpoints,
 		timeout:   timeout,
 		tlsConfig: httpclient.NewTransport(cfg.Certificate, cfg.RootCAs).TLSClientConfig,
+		log:       cfg.Log,
 	}, nil
 }
 
@@ -164,6 +166,8 @@ func (c *Client) post(ctx context.Context, url, action string, body []byte, tran
 	}
 
 	if resp.StatusCode == http.StatusInternalServerError {
+		// httpclient logged the accepted 500 at Debug only.
+		c.logErrorResponse(ctx, url, resp.StatusCode, resp.Body)
 		if fault, ok := parseFault(resp.Body); ok {
 			fault.StatusCode = resp.StatusCode
 			return nil, &fault
@@ -171,6 +175,19 @@ func (c *Client) post(ctx context.Context, url, action string, body []byte, tran
 		return nil, c.http.NewStatusError(req.Method, url, resp.StatusCode, resp.Body)
 	}
 	return resp.Body, nil
+}
+
+// logErrorResponse logs an HTTP 500 answer at Error level with its body
+// redacted, as httpclient does for statuses it does not accept.
+func (c *Client) logErrorResponse(ctx context.Context, url string, status int, body []byte) {
+	if c.log == nil {
+		return
+	}
+	c.log.ErrorContext(ctx, "SEFAZ Error Response",
+		slog.String("method", http.MethodPost),
+		slog.String("url", url),
+		slog.Int("status", status),
+		slog.String("body", httpclient.TruncateForLog(RedactForLog(body), httpclient.MaxErrorLogBodyBytes)))
 }
 
 // isTransportError reports whether err means no HTTP response arrived.

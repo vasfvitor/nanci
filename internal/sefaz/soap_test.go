@@ -81,6 +81,33 @@ func TestPost_SOAPFaultIsNotRetried(t *testing.T) {
 	}
 }
 
+// httpclient logs an accepted HTTP 500 at Debug only, so a SOAP Fault must
+// be logged at Error level by the SEFAZ client, with the body redacted.
+func TestPost_SOAPFaultIsLoggedAsError(t *testing.T) {
+	faultWithCNPJ := strings.Replace(soapFault12, "Server was unable to process request.",
+		"Server was unable to process request.</soap:Text><soap:Text><CNPJ>"+testCNPJ+"</CNPJ>", 1)
+
+	var logs bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelError}))
+	client, _ := newFakeClient(t, http.StatusInternalServerError, faultWithCNPJ, ClientConfig{Log: log})
+
+	_, err := client.DistNSU(context.Background(), testCNPJ, 35, 0)
+	var fault *FaultError
+	if !errors.As(err, &fault) {
+		t.Fatalf("err = %v, want *FaultError", err)
+	}
+
+	out := logs.String()
+	for _, want := range []string{"level=ERROR", "SEFAZ Error Response", "status=500", "Server was unable to process request."} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, testCNPJ) {
+		t.Errorf("log leaks the CNPJ:\n%s", out)
+	}
+}
+
 func TestPost_ServerErrorsAreNotRetried(t *testing.T) {
 	tests := []struct {
 		name   string
