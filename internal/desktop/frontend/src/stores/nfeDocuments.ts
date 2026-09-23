@@ -52,6 +52,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const cienciaInFlight = shallowRef<CienciaInFlight | null>(null)
   const manifestationInFlight = ref<Record<string, NFeConclusiveTipo>>({})
   const lastCienciaResult = shallowRef<NFeEventBatchResult | null>(null)
+  // resettingCNPJ is the company whose NF-e reset is in flight, or ''.
+  const resettingCNPJ = shallowRef('')
 
   // setRows replaces the result set and keeps only the selected notes that are
   // still present, swapped for their fresh rows so eligibility is current.
@@ -121,6 +123,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     cienciaInFlight,
     manifestationInFlight,
     lastCienciaResult,
+    resettingCNPJ,
     setRows,
     setPending,
     setStatus,

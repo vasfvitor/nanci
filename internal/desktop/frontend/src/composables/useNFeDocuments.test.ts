@@ -4,7 +4,7 @@ import { useNFeDocuments } from './useNFeDocuments'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { NFeStatusResult, PullNFeResult } from '@/types/desktop'
+import type { NFeResetResult, NFeStatusResult, PullNFeResult } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -13,6 +13,7 @@ vi.mock('@/platform/wails/client', () => ({
     listNFeEvents: vi.fn(),
     statusNFe: vi.fn(),
     pullNFe: vi.fn(),
+    resetNFe: vi.fn(),
     exportNFeXML: vi.fn(),
     exportNFeZIP: vi.fn(),
   },
@@ -104,6 +105,42 @@ describe('useNFeDocuments', () => {
     expect(remountedPage.isSyncing.value).toBe(false)
     expect(desktopClient.listNFe).toHaveBeenCalled()
     expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+  })
+
+  it('keeps the NF-e reset visible to a second instance while it is pending', async () => {
+    let resolveReset!: (value: NFeResetResult) => void
+    vi.mocked(desktopClient.resetNFe).mockReturnValue(
+      new Promise((resolve) => {
+        resolveReset = resolve
+      })
+    )
+
+    const firstPage = useNFeDocuments()
+    firstPage.filter.value.CNPJ = '123'
+    const resetting = firstPage.resetNFe()
+
+    const remountedPage = useNFeDocuments()
+    expect(remountedPage.isResetting.value).toBe(true)
+    await expect(remountedPage.resetNFe()).resolves.toBeNull()
+    await expect(remountedPage.syncNFe()).resolves.toBeNull()
+    expect(desktopClient.resetNFe).toHaveBeenCalledTimes(1)
+    expect(desktopClient.pullNFe).not.toHaveBeenCalled()
+
+    resolveReset({ CNPJ: '123', CompanyDocuments: 2 } as NFeResetResult)
+    await expect(resetting).resolves.toMatchObject({ CompanyDocuments: 2 })
+
+    expect(remountedPage.isResetting.value).toBe(false)
+    expect(desktopClient.listNFe).toHaveBeenCalled()
+    expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+  })
+
+  it('does not reset while the NF-e sync runs', async () => {
+    const nfe = useNFeDocuments()
+    nfe.filter.value.CNPJ = '123'
+    useCompanySyncStore().startSync('123', 'nfe')
+
+    await expect(nfe.resetNFe()).resolves.toBeNull()
+    expect(desktopClient.resetNFe).not.toHaveBeenCalled()
   })
 
   it('clears the sync marker and refreshes the status when the pull fails', async () => {

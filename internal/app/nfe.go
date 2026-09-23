@@ -30,6 +30,8 @@ type NFeRepository interface {
 	MarkViewed(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) (int, error)
 	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error
 	RecordManifestations(ctx context.Context, items []nfe.ManifestationRecord) error
+	ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
+	PreviewResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
 }
 
 // sefazClient is the part of *sefaz.Client the NF-e use cases call.

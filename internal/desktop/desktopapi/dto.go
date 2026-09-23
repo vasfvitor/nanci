@@ -546,6 +546,18 @@ type NFeStatusResult struct {
 	CienciaOverdue    int
 }
 
+// NFeResetResult is what ResetNFe removed for one company. The manifestações
+// sent stay as the audit trail.
+type NFeResetResult struct {
+	CompanyName        string
+	CNPJ               string
+	CompanyDocuments   int // the company's notes
+	Documents          int // notes no other company sees
+	Events             int
+	ExportMarks        int
+	ManifestationsKept int
+}
+
 type ExportNFeXMLInput struct {
 	CNPJ        string
 	ChaveAcesso string

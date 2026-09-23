@@ -32,6 +32,7 @@ import {
   PullNFe,
   RegisterCiencia,
   RegisterManifestation,
+  ResetNFe,
   SelectCertificate,
   SelectSaveFile,
   StatusNFe,
@@ -60,6 +61,7 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   QueryNFSeEvents: vi.fn(),
   RegisterCiencia: vi.fn(),
   RegisterManifestation: vi.fn(),
+  ResetNFe: vi.fn(),
   ResetSyncState: vi.fn(),
   SelectCertificate: vi.fn(),
   SelectExportDirectory: vi.fn(),
@@ -440,6 +442,7 @@ describe('NF-e client calls', () => {
   it('passes the Wails DTOs for NF-e calls', async () => {
     vi.mocked(PullNFe).mockResolvedValue({ CNPJ: '123', ResumosSaved: 2 } as never)
     vi.mocked(StatusNFe).mockResolvedValue({ CNPJ: '123' } as never)
+    vi.mocked(ResetNFe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
     vi.mocked(ListNFe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
     vi.mocked(ListNFeEvents).mockResolvedValue(null as never)
     vi.mocked(ListPendingManifestations).mockResolvedValue([{ ChaveAcesso: chave }] as never)
@@ -460,6 +463,16 @@ describe('NF-e client calls', () => {
 
     await expect(desktopClient.pullNFe('123')).resolves.toMatchObject({ ResumosSaved: 2 })
     await expect(desktopClient.statusNFe('123')).resolves.toMatchObject({ CNPJ: '123' })
+    await expect(desktopClient.resetNFe('123')).resolves.toEqual({
+      CompanyName: '',
+      CNPJ: '123',
+      CompanyDocuments: 3,
+      Documents: 0,
+      Events: 0,
+      ExportMarks: 0,
+      ManifestationsKept: 0,
+    })
+    expect(ResetNFe).toHaveBeenCalledWith('123')
     await expect(desktopClient.listNFe(listInput)).resolves.toMatchObject([
       { ID: 'rel-1', Situacao: 'autorizada' },
     ])

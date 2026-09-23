@@ -31,6 +31,7 @@ import {
   QueryNFSeEvents,
   RegisterCiencia,
   RegisterManifestation,
+  ResetNFe,
   ResetSyncState,
   SelectCertificate,
   SelectExportDirectory,
@@ -75,6 +76,7 @@ import type {
   NFeManifestacao,
   NFePendingKind,
   NFePendingRow,
+  NFeResetResult,
   NFeRole,
   NFeRow,
   NFeSituacao,
@@ -494,6 +496,19 @@ function mapNFeExportResult(raw: unknown): NFeExportResult {
   }
 }
 
+export function mapNFeResetResult(raw: unknown): NFeResetResult {
+  const item = asRawRecord(raw)
+  return {
+    CompanyName: asString(item['CompanyName']),
+    CNPJ: asString(item['CNPJ']),
+    CompanyDocuments: asNumber(item['CompanyDocuments']),
+    Documents: asNumber(item['Documents']),
+    Events: asNumber(item['Events']),
+    ExportMarks: asNumber(item['ExportMarks']),
+    ManifestationsKept: asNumber(item['ManifestationsKept']),
+  }
+}
+
 function mapConnectionTestResult(raw: unknown): ConnectionTestResult {
   const item = asRawRecord(raw)
   return {
@@ -659,6 +674,11 @@ export const desktopClient = {
   async pullNFe(cnpj: string): Promise<PullNFeResult> {
     const res = await callWails(() => PullNFe({ CNPJ: cnpj }))
     return mapPullNFeResult(res)
+  },
+  // resetNFe removes the company's NF-e and resets its NF-e sync.
+  async resetNFe(cnpj: string): Promise<NFeResetResult> {
+    const res = await callWails(() => ResetNFe(cnpj))
+    return mapNFeResetResult(res)
   },
   async statusNFe(cnpj: string): Promise<NFeStatusResult> {
     const res = await callWails(() => StatusNFe(cnpj))

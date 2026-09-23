@@ -66,6 +66,8 @@ export function RegisterCiencia(arg1:desktopapi.RegisterCienciaInput):Promise<de
 
 export function RegisterManifestation(arg1:desktopapi.RegisterManifestationInput):Promise<desktopapi.NFeEventResult>;
 
+export function ResetNFe(arg1:string):Promise<desktopapi.NFeResetResult>;
+
 export function ResetSyncState(arg1:desktopapi.ResetSyncInput):Promise<void>;
 
 export function SelectCertificate():Promise<string>;

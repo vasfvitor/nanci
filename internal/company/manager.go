@@ -20,8 +20,8 @@ var (
 	ErrCompanyNoEnvironment = errors.New("a empresa não possui ambiente configurado")
 	// ErrEnvironmentLocked refuses an environment change once NF-e was
 	// synced: NF-e rows do not record their environment, so documents of
-	// both environments would mix.
-	ErrEnvironmentLocked = errors.New("não é possível alterar o ambiente depois que a sincronização de NF-e já começou; redefina o estado de sincronização NF-e primeiro")
+	// both environments would mix. The NF-e reset lifts it.
+	ErrEnvironmentLocked = errors.New("não é possível alterar o ambiente depois que a sincronização de NF-e já começou; use `nanci nfe reset` ou o botão Redefinir NF-e antes")
 )
 
 type storeInterface interface {

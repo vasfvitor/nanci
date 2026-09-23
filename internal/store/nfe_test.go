@@ -643,3 +643,94 @@ func TestNFeListEventsByChaves(t *testing.T) {
 		t.Errorf("ListEventsByChaves(nil) = %v, %v; want none", none, err)
 	}
 }
+
+func TestNFeResetCompany(t *testing.T) {
+	ctx := context.Background()
+	f := newNFeFixture(t)
+	// Only mock sees nfeKeyProc; mock and its emitente both see nfeKeyCancelada.
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
+	f.applyDocument("mock", cnpjMock, f.resNFe("resnfe-cancelada.xml", "hash-cancelada"), 2)
+	f.applyDocument("emitente", cnpjEmitente, f.resNFe("resnfe-cancelada.xml", "hash-cancelada"), 1)
+	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia")) // mock's own, on nfeKeyProc
+	f.applyEvent(f.procEvento("proceventonfe-cce.xml", "hash-cce"))         // by the emitente, on nfeKeyProc
+	f.applyEvent(f.procEvento("proceventonfe-cancelamento.xml", "hash-canc"))
+	confirmation := manifestation(nfe.TpEventoConfirmacao, nfe.ManifestationStatusRegistrada, time.Now())
+	orphan := manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusRegistrada, time.Now())
+	orphan.ChaveAcesso = nfeKeyDenegada // mock's own event without a document
+	f.record(confirmation, orphan)
+	docs, err := f.repo.ListCompanyDocuments(ctx, "mock", nfe.DocumentFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.repo.MarkExported(ctx, "mock", nfe.ExportKindXML, docs); err != nil {
+		t.Fatal(err)
+	}
+
+	want := nfe.ResetCounts{
+		CompanyDocuments:   2,
+		Documents:          1, // nfeKeyCancelada stays for the emitente
+		Events:             3, // ciência and confirmação on nfeKeyProc, and the orphan ciência
+		ExportMarks:        2,
+		ManifestationsKept: 2,
+	}
+	preview, err := f.repo.PreviewResetCompany(ctx, "mock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview != want {
+		t.Errorf("PreviewResetCompany = %+v, want %+v", preview, want)
+	}
+	if got := f.list("mock", nfe.DocumentFilter{}); len(got) != 2 {
+		t.Fatalf("documents after preview = %v, want both kept", got)
+	}
+
+	got, err := f.repo.ResetCompany(ctx, "mock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Errorf("ResetCompany = %+v, want %+v", got, want)
+	}
+
+	if docs := f.list("mock", nfe.DocumentFilter{}); len(docs) != 0 {
+		t.Errorf("mock documents after reset = %v, want none", docs)
+	}
+	if docs := f.list("emitente", nfe.DocumentFilter{}); !slices.Equal(docs, []string{nfeKeyCancelada}) {
+		t.Errorf("emitente documents after reset = %v, want the shared note", docs)
+	}
+	if got := f.companyDocument("emitente", nfeKeyCancelada).Situacao; got != nfe.SituacaoCancelada {
+		t.Errorf("shared note situação = %s, want cancelada", got)
+	}
+	if events := f.events(nfeKeyDenegada); len(events) != 0 {
+		t.Errorf("orphan own events after reset = %+v", events)
+	}
+	// The CC-e belongs to another registered company: kept, unlinked.
+	events := f.events(nfeKeyProc)
+	if len(events) != 1 || events[0].TpEvento != "110110" {
+		t.Fatalf("events of the removed note = %+v, want only the emitente's CC-e", events)
+	}
+	var linked int
+	if err := f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_events WHERE chave_acesso = ? AND nfe_document_id IS NOT NULL`, nfeKeyProc).Scan(&linked); err != nil {
+		t.Fatal(err)
+	}
+	if linked != 0 {
+		t.Errorf("events still linked to the removed document = %d", linked)
+	}
+
+	var manifestations, marks int
+	if err := f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_manifestations WHERE company_id = 'mock'`).Scan(&manifestations); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM company_nfe_export_marks WHERE company_id = 'mock'`).Scan(&marks); err != nil {
+		t.Fatal(err)
+	}
+	if manifestations != 2 || marks != 0 {
+		t.Errorf("(manifestations, export marks) after reset = (%d, %d), want (2, 0)", manifestations, marks)
+	}
+
+	// The note comes back whole when the distribution delivers it again.
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
+	if got := f.companyDocument("mock", nfeKeyProc); got.EventCount != 1 {
+		t.Errorf("events of the note delivered again = %d, want the CC-e relinked", got.EventCount)
+	}
+}

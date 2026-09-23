@@ -130,6 +130,10 @@ export function RegisterManifestation(arg1) {
   return window['go']['main']['App']['RegisterManifestation'](arg1);
 }
 
+export function ResetNFe(arg1) {
+  return window['go']['main']['App']['ResetNFe'](arg1);
+}
+
 export function ResetSyncState(arg1) {
   return window['go']['main']['App']['ResetSyncState'](arg1);
 }

@@ -367,3 +367,49 @@ func TestPendingAlert(t *testing.T) {
 		})
 	}
 }
+
+func TestNFeReset_DryRunThenConfirm(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	env.seed("proceventonfe-ciencia.xml", 2)
+	const now = "2026-09-20T10:00:00Z"
+	_, err := env.db.ExecContext(context.Background(), `
+		INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, created_at, updated_at)
+		VALUES (?, 'nfe', 'producao', ?, 2, ?, ?)
+	`, string(env.company.ID), env.company.CNPJ, now, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = env.run("company", "update", "-c", nfeTestCNPJ, "--env", "producao_restrita")
+	if err == nil || !strings.Contains(err.Error(), "use `nanci nfe reset` ou o botão Redefinir NF-e antes") {
+		t.Fatalf("company update --env before the reset = %v, want the lock pointing to nfe reset", err)
+	}
+
+	if err := env.run("nfe", "reset", "-c", nfeTestCNPJ); err != nil {
+		t.Fatalf("reset dry-run: %v", err)
+	}
+	got := env.out.String()
+	for _, want := range []string{"Notas da empresa (seriam removidos): 1", "Eventos (seriam removidos): 1", "Nada foi alterado. Use --confirmar"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("dry-run output lacks %q:\n%s", want, got)
+		}
+	}
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ); err != nil || !strings.Contains(env.out.String(), nfeChaveProc) {
+		t.Fatalf("the dry-run removed the note: %v\n%s", err, env.out.String())
+	}
+
+	if err := env.run("nfe", "reset", "-c", nfeTestCNPJ, "--confirmar"); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, "Notas da empresa (removidos): 1") {
+		t.Errorf("reset output:\n%s", got)
+	}
+	docs, err := env.repo.ListCompanyDocuments(context.Background(), env.company.ID, nfe.DocumentFilter{})
+	if err != nil || len(docs) != 0 {
+		t.Errorf("documents after the reset = %d, %v; want none", len(docs), err)
+	}
+	if err := env.run("company", "update", "-c", nfeTestCNPJ, "--env", "producao_restrita"); err != nil {
+		t.Errorf("company update --env after the reset: %v", err)
+	}
+}

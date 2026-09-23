@@ -369,6 +369,18 @@ export type NFeEventBatchResult = {
   Interrupted: string
 }
 
+// NFeResetResult is what ResetNFe removed. The manifestações sent stay as
+// the audit trail.
+export type NFeResetResult = {
+  CompanyName: string
+  CNPJ: string
+  CompanyDocuments: number
+  Documents: number
+  Events: number
+  ExportMarks: number
+  ManifestationsKept: number
+}
+
 export type PullNFeInput = {
   CNPJ: string
 }

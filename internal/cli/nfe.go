@@ -17,7 +17,7 @@ func newNFeCommand(env CommandEnv) *cobra.Command {
 	var cnpjFlag string
 	nfeCmd := &cobra.Command{
 		Use:   "nfe",
-		Short: "Sincroniza, lista, manifesta e exporta NF-e (modelo 55) da SEFAZ",
+		Short: "Sincroniza, lista, manifesta, exporta e redefine NF-e (modelo 55) da SEFAZ",
 	}
 	nfeCmd.PersistentFlags().StringVarP(&cnpjFlag, "cnpj", "c", "", "CNPJ da empresa")
 	_ = nfeCmd.MarkPersistentFlagRequired("cnpj")
@@ -30,6 +30,7 @@ func newNFeCommand(env CommandEnv) *cobra.Command {
 	nfeCmd.AddCommand(newNFePendentesCmd(env, &cnpjFlag))
 	nfeCmd.AddCommand(newNFeExportCmd(env, &cnpjFlag))
 	nfeCmd.AddCommand(newNFeTestarConexaoCmd(env, &cnpjFlag))
+	nfeCmd.AddCommand(newNFeResetCmd(env, &cnpjFlag))
 	return nfeCmd
 }
 

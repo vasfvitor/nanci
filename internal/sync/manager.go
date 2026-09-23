@@ -277,6 +277,14 @@ func (m *Manager) startPull(companyID nfse.CompanyID, source nfse.SyncSource) (f
 	}, nil
 }
 
+// ReserveSource keeps pulls of the (company, source) pair out while the
+// caller changes its data, as a running pull would; it fails with
+// ErrSyncRunning when a pull is in flight in this process. The returned func
+// ends the reservation.
+func (m *Manager) ReserveSource(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
+	return m.startPull(companyID, source)
+}
+
 // fillRequestLimits reports when the source may be queried again and how
 // much of its hourly budget is spent.
 func (m *Manager) fillRequestLimits(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, policy SourcePolicy, result *PullResult) error {

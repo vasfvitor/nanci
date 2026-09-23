@@ -11,11 +11,21 @@
       />
       <q-space />
       <q-btn
+        flat
+        color="negative"
+        icon="restart_alt"
+        label="Redefinir NF-e"
+        title="Remove as NF-e da empresa e reinicia a sincronização NF-e"
+        :loading="isResetting"
+        :disable="!filter.CNPJ || isSyncing"
+        @click="confirmResetNFe"
+      />
+      <q-btn
         color="primary"
         icon="sync"
         label="Sincronizar NF-e"
         :loading="isSyncing"
-        :disable="!filter.CNPJ || Boolean(syncBlockedUntil)"
+        :disable="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
         @click="syncNFe"
       />
     </div>
@@ -474,6 +484,7 @@ const {
   pagination,
   companyOptions,
   isSyncing,
+  isResetting,
   syncBlockedUntil,
 } = nfe
 const { pending, pendingLoading, cienciaInFlight, isChaveBusy } = manifestation
@@ -693,6 +704,47 @@ async function syncNFe() {
       $q.notify({ type: 'warning', message: 'Consultas bloqueadas no momento. Aguarde o horário indicado.' })
     } else {
       notifyError('Erro na sincronização da NF-e', error)
+    }
+  }
+}
+
+function confirmResetNFe() {
+  if (!filter.value.CNPJ) return
+  const notes =
+    (status.value?.TotalDestinatario ?? 0) +
+    (status.value?.TotalEmitente ?? 0) +
+    (status.value?.TotalOutros ?? 0)
+  $q.dialog({
+    title: 'Redefinir NF-e',
+    message:
+      `Remove as ${notes} NF-e de ${companyName.value}, com seus eventos e marcas de exportação, ` +
+      'e reinicia a sincronização NF-e desde o NSU 0. Notas vistas por outra empresa continuam para ela. ' +
+      'O histórico das manifestações enviadas é mantido, e as manifestações registradas na SEFAZ não são afetadas. ' +
+      'Depois disso o ambiente da empresa pode ser alterado.',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Redefinir', color: 'negative' },
+  }).onOk(() => {
+    void resetNFe()
+  })
+}
+
+async function resetNFe() {
+  try {
+    const result = await nfe.resetNFe()
+    if (!result) return
+    selected.value = []
+    $q.notify({
+      type: 'positive',
+      message: `NF-e redefinidas: ${result.CompanyDocuments} notas e ${result.Events} eventos removidos.`,
+      caption: `${result.ManifestationsKept} manifestações enviadas mantidas no histórico.`,
+    })
+    void loadPending()
+  } catch (error) {
+    if (wailsErrorCode(error) === 'sync_running') {
+      $q.notify({ type: 'warning', message: 'Aguarde a sincronização NF-e terminar antes de redefinir.' })
+    } else {
+      notifyError('Erro ao redefinir NF-e', error)
     }
   }
 }

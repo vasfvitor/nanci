@@ -929,6 +929,24 @@ func nfeExportInput(input desktopapi.ExportNFeZIPInput) app.NFeExportInput {
 	}
 }
 
+// ResetNFe removes the company's NF-e and resets its NF-e sync, which lets the
+// company environment change again.
+func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
+	res, err := a.core.NFe.Reset(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.NFeResetResult{}, desktopError(err)
+	}
+	return desktopapi.NFeResetResult{
+		CompanyName:        res.CompanyName,
+		CNPJ:               res.CNPJ,
+		CompanyDocuments:   res.CompanyDocuments,
+		Documents:          res.Documents,
+		Events:             res.Events,
+		ExportMarks:        res.ExportMarks,
+		ManifestationsKept: res.ManifestationsKept,
+	}, nil
+}
+
 func (a *App) TestNFeConnection(cnpj string) (desktopapi.ConnectionTestResult, error) {
 	res, err := a.core.NFe.TestConnection(a.ctx, cnpj)
 	if err != nil {

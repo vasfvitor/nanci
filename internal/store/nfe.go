@@ -837,3 +837,120 @@ func boolToInt(v bool) int64 {
 	}
 	return 0
 }
+
+// ResetCompany removes the company's NF-e view in one transaction: its
+// company_nfe_documents rows and export marks, the nfe_documents no other
+// company sees and their events, and the company's own events that have no
+// document. Events authored by another registered company are kept, unlinked
+// from a removed document. nfe_manifestations are kept as the audit trail,
+// and the XML blobs stay on disk. The sync cursor is not touched.
+func (r *NFeRepository) ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error) {
+	return r.resetCompany(ctx, companyID, true)
+}
+
+// PreviewResetCompany returns what ResetCompany would remove, changing
+// nothing.
+func (r *NFeRepository) PreviewResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error) {
+	return r.resetCompany(ctx, companyID, false)
+}
+
+// resetCompany runs the reset and commits it only when apply is set, so the
+// preview counts come from the same statements.
+func (r *NFeRepository) resetCompany(ctx context.Context, companyID nfse.CompanyID, apply bool) (nfe.ResetCounts, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	id := string(companyID)
+	var counts nfe.ResetCounts
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_manifestations WHERE company_id = ?`, id).Scan(&counts.ManifestationsKept); err != nil {
+		return nfe.ResetCounts{}, fmt.Errorf("count nfe manifestations: %w", err)
+	}
+
+	// The documents only this company sees go with its rows.
+	documentIDs, err := exclusiveDocumentIDs(ctx, tx, id)
+	if err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	documentIDsJSON, _ := json.Marshal(documentIDs) // a []string always marshals
+
+	exec := func(what, query string, args ...any) (int, error) {
+		res, err := tx.ExecContext(ctx, query, args...)
+		if err != nil {
+			return 0, fmt.Errorf("reset %s: %w", what, err)
+		}
+		n, err := res.RowsAffected()
+		return int(n), err
+	}
+
+	if counts.ExportMarks, err = exec("nfe export marks", `DELETE FROM company_nfe_export_marks WHERE company_id = ?`, id); err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	//nolint:misspell // autor_cnpj is the column name.
+	counts.Events, err = exec("nfe events", `
+		DELETE FROM nfe_events
+		WHERE autor_cnpj NOT IN (SELECT cnpj FROM companies WHERE id <> ?)
+			AND (
+				chave_acesso IN (SELECT chave_acesso FROM nfe_documents WHERE id IN (SELECT value FROM json_each(?)))
+				OR (
+					autor_cnpj = (SELECT cnpj FROM companies WHERE id = ?)
+					AND NOT EXISTS (SELECT 1 FROM nfe_documents d WHERE d.chave_acesso = nfe_events.chave_acesso)
+				)
+			)
+	`, id, string(documentIDsJSON), id)
+	if err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	if _, err := exec("kept nfe events", `
+		UPDATE nfe_events SET nfe_document_id = NULL
+		WHERE nfe_document_id IN (SELECT value FROM json_each(?))
+	`, string(documentIDsJSON)); err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	if counts.CompanyDocuments, err = exec("company nfe documents", `DELETE FROM company_nfe_documents WHERE company_id = ?`, id); err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	if counts.Documents, err = exec("nfe documents", `DELETE FROM nfe_documents WHERE id IN (SELECT value FROM json_each(?))`, string(documentIDsJSON)); err != nil {
+		return nfe.ResetCounts{}, err
+	}
+
+	if !apply {
+		return counts, nil
+	}
+	if err := tx.Commit(); err != nil {
+		return nfe.ResetCounts{}, err
+	}
+	return counts, nil
+}
+
+// exclusiveDocumentIDs returns the nfe_documents the company sees and no
+// other company does.
+func exclusiveDocumentIDs(ctx context.Context, tx *sql.Tx, companyID string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT cd.nfe_document_id FROM company_nfe_documents cd
+		WHERE cd.company_id = ?
+			AND NOT EXISTS (
+				SELECT 1 FROM company_nfe_documents other
+				WHERE other.nfe_document_id = cd.nfe_document_id AND other.company_id <> cd.company_id
+			)
+	`, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("list exclusive nfe documents: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan nfe document id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list exclusive nfe documents: %w", err)
+	}
+	return ids, nil
+}

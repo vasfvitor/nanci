@@ -20,7 +20,8 @@ function toDate(value: ISODateValue): Date | null {
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
   const syncStore = useCompanySyncStore()
-  const { filter, rows, selected, loading, exporting, status, activeTab } = storeToRefs(store)
+  const { filter, rows, selected, loading, exporting, status, activeTab, resettingCNPJ } =
+    storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
 
   const preferencesStore = usePreferencesStore()
@@ -42,6 +43,9 @@ export function useNFeDocuments() {
 
   const isSyncing = computed(
     () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'nfe')
+  )
+  const isResetting = computed(
+    () => Boolean(filter.value.CNPJ) && resettingCNPJ.value === filter.value.CNPJ
   )
 
   // now ticks when the SEFAZ block ends, so syncBlockedUntil clears itself
@@ -111,13 +115,29 @@ export function useNFeDocuments() {
   // companySync store so the button stays busy after navigating away and back.
   async function syncNFe() {
     const cnpj = filter.value.CNPJ
-    if (!cnpj || syncStore.isSyncing(cnpj, 'nfe')) return null
+    if (!cnpj || syncStore.isSyncing(cnpj, 'nfe') || resettingCNPJ.value === cnpj) return null
 
     syncStore.startSync(cnpj, 'nfe')
     try {
       return await desktopClient.pullNFe(cnpj)
     } finally {
       syncStore.finishSync(cnpj, 'nfe')
+      await refreshAfterSync(cnpj)
+    }
+  }
+
+  // resetNFe removes the company's NF-e and resets its NF-e sync. It never
+  // runs alongside a pull, and its in-flight marker lives in the store so the
+  // page stays busy after navigating away and back.
+  async function resetNFe() {
+    const cnpj = filter.value.CNPJ
+    if (!cnpj || resettingCNPJ.value || syncStore.isSyncing(cnpj, 'nfe')) return null
+
+    resettingCNPJ.value = cnpj
+    try {
+      return await desktopClient.resetNFe(cnpj)
+    } finally {
+      resettingCNPJ.value = ''
       await refreshAfterSync(cnpj)
     }
   }
@@ -177,11 +197,13 @@ export function useNFeDocuments() {
     pagination,
     companyOptions,
     isSyncing,
+    isResetting,
     syncBlockedUntil,
     loadCompanies,
     search,
     loadStatus,
     syncNFe,
+    resetNFe,
     exportXML,
     exportZIP,
     loadEvents,

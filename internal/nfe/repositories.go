@@ -40,6 +40,16 @@ type Counts struct {
 	PendingConclusiva int
 }
 
+// ResetCounts is what a company NF-e reset removes, or would remove, and the
+// manifestações it keeps.
+type ResetCounts struct {
+	CompanyDocuments   int // the company's rows in company_nfe_documents
+	Documents          int // nfe_documents no other company sees
+	Events             int // nfe_events of those documents, and the company's own events without a document
+	ExportMarks        int
+	ManifestationsKept int // nfe_manifestations stay as the audit trail of what was sent
+}
+
 // Statuses of an outbound manifestação, stored in nfe_manifestations.status.
 const (
 	ManifestationStatusRegistrada   = "registrada"

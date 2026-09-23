@@ -923,6 +923,30 @@ export namespace desktopapi {
 		    return a;
 		}
 	}
+	export class NFeResetResult {
+	    CompanyName: string;
+	    CNPJ: string;
+	    CompanyDocuments: number;
+	    Documents: number;
+	    Events: number;
+	    ExportMarks: number;
+	    ManifestationsKept: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeResetResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyName = source["CompanyName"];
+	        this.CNPJ = source["CNPJ"];
+	        this.CompanyDocuments = source["CompanyDocuments"];
+	        this.Documents = source["Documents"];
+	        this.Events = source["Events"];
+	        this.ExportMarks = source["ExportMarks"];
+	        this.ManifestationsKept = source["ManifestationsKept"];
+	    }
+	}
 	export class NFeRow {
 	    ID: string;
 	    DocumentID: string;

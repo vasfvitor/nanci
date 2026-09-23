@@ -36,6 +36,7 @@ vi.mock('@/platform/wails/client', () => ({
     planCiencia: vi.fn(),
     registerCiencia: vi.fn(),
     pullNFe: vi.fn(),
+    resetNFe: vi.fn(),
     exportNFeZIP: vi.fn(),
   },
 }))
@@ -310,5 +311,43 @@ describe('NFePage', () => {
 
     expect(buttonStartingWith(wrapper, 'Sincronizar NF-e').props('disable')).toBe(false)
     expect(wrapper.find('.q-banner-stub').exists()).toBe(false)
+  })
+
+  it('resets the company NF-e after the confirmation', async () => {
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ TotalDestinatario: 2, TotalEmitente: 1 }))
+    vi.mocked(desktopClient.resetNFe).mockResolvedValue({
+      CompanyName: 'Empresa Um',
+      CNPJ: company.CNPJ,
+      CompanyDocuments: 3,
+      Documents: 3,
+      Events: 4,
+      ExportMarks: 0,
+      ManifestationsKept: 1,
+    })
+
+    const wrapper = mountPage()
+    await flushPromises()
+    await buttonStartingWith(wrapper, 'Redefinir NF-e').trigger('click')
+
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Redefinir NF-e',
+        message: expect.stringContaining('as manifestações registradas na SEFAZ não são afetadas'),
+      })
+    )
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('Remove as 3 NF-e de Empresa Um') })
+    )
+    expect(desktopClient.resetNFe).not.toHaveBeenCalled()
+
+    vi.mocked(desktopClient.listNFe).mockClear()
+    okHandlers[0]?.(undefined)
+    await flushPromises()
+
+    expect(desktopClient.resetNFe).toHaveBeenCalledWith(company.CNPJ)
+    expect(desktopClient.listNFe).toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'positive', message: expect.stringContaining('3 notas e 4 eventos') })
+    )
   })
 })

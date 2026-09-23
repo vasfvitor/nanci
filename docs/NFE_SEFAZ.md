@@ -41,6 +41,8 @@ As chamadas são SOAP 1.2 sobre HTTPS com o certificado A1 da empresa.
 
 O ambiente segue o da empresa: `producao` usa produção (`tpAmb` 1) e `producao_restrita` usa homologação (`tpAmb` 2). Para trocar, use `nanci company update --cnpj <CNPJ> --env producao`. As URLs estão em `internal/sefaz/endpoints.go` e só podem ser substituídas pelo código (`sefaz.ClientConfig.Endpoints`, usado nos testes); não existe flag nem variável de ambiente para isso.
 
+As tabelas de NF-e não guardam o ambiente de cada nota. Por isso, depois da primeira sincronização de NF-e, o ambiente da empresa fica travado: notas de homologação se misturariam às pendências de produção. Para trocar de ambiente, redefina antes as NF-e da empresa com `nanci nfe reset --cnpj <CNPJ>` (sem `--confirmar` só mostra o que seria removido) ou com o botão "Redefinir NF-e" do aplicativo. A redefinição remove as notas da empresa, seus eventos e marcas de exportação, e volta o cursor ao NSU 0. Notas que outra empresa cadastrada também vê continuam para ela. O histórico das manifestações enviadas (`nfe_manifestations`, agora com o `tpAmb` de cada envio) é mantido, e as manifestações registradas na SEFAZ não são afetadas. Um bloqueio da SEFAZ em vigor continua valendo, e os XMLs baixados ficam no armazenamento de blobs. A NFS-e não tem essa trava, porque o estado de sincronização dela já é separado por ambiente.
+
 A distribuição exige o código IBGE da UF da empresa (`cUFAutor`). Cadastre a UF com `nanci company update --cnpj <CNPJ> --uf SP`; sem ela, `nfe pull` falha antes de pedir a senha.
 
 ## Requisitos de TLS
@@ -135,24 +137,29 @@ nanci.exe nfe pendentes --cnpj 12345678000199 --vencendo-em 30
 # 8. Exportar XML
 nanci.exe nfe export zip --cnpj 12345678000199 --competencia 2026-09 --out nfe.zip
 nanci.exe nfe export xml --cnpj 12345678000199 --chave <CHAVE>
+
+# 9. Redefinir as NF-e da empresa (por exemplo, antes de trocar de ambiente)
+nanci.exe nfe reset --cnpj 12345678000199
+nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 ```
 
 - `nfe ciencia` aceita `--chave` (repetível) ou `--todos-resumos`, nunca os dois. `--todos-resumos` seleciona os resumos autorizados em que a empresa é destinatária e que ainda não têm manifestação. A simulação lista as notas elegíveis, as ignoradas com o motivo e os prazos de cada uma.
-- `nfe manifestar` também é simulação sem `--confirmar`.
+- `nfe manifestar` também é simulação sem `--confirmar`. Depois de uma manifestação conclusiva, nenhuma outra conclusiva é aceita para a mesma nota.
+- `nfe reset` sem `--confirmar` mostra quantas notas, eventos e marcas de exportação seriam removidos e não altera nada.
 - `nfe export zip` grava `<competencia>/<papel>/<chave>-procNFe.xml` e os eventos completos em `<competencia>/<papel>/eventos/`. Resumos ficam de fora, a menos que se passe `--incluir-resumos`; `--incremental` exporta só o que ainda não foi exportado ou mudou (por exemplo, um resumo que virou completa). `nfe export xml` grava o `procNFe`, ou o `resNFe` de um resumo.
 
 ## Aplicativo desktop
 
-O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e o botão "Sincronizar NF-e". Na aba Notas é possível selecionar notas e usar "Registrar ciência", que abre um diálogo com as notas elegíveis, as ignoradas com o motivo e uma caixa de reconhecimento obrigatória antes do envio. As manifestações conclusivas são feitas nota a nota por um diálogo que pede o tipo, a justificativa quando exigida e uma revisão final. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade (por exemplo, "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)").
+O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e os botões "Sincronizar NF-e" e "Redefinir NF-e"; este pede confirmação e faz o mesmo que `nfe reset --confirmar`. Na aba Notas é possível selecionar notas e usar "Registrar ciência", que abre um diálogo com as notas elegíveis, as ignoradas com o motivo e uma caixa de reconhecimento obrigatória antes do envio. As manifestações conclusivas são feitas nota a nota por um diálogo que pede o tipo, a justificativa quando exigida e uma revisão final. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade (por exemplo, "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)").
 
 ## Modelo de dados
 
-Migrações `007` a `010` em `internal/store/migrations_v2/`:
+Migrações `007` a `011` em `internal/store/migrations_v2/`:
 
 - `nfe_documents`: uma linha por chave de acesso, com os campos extraídos, a situação (`autorizada`, `denegada`, `cancelada`), a completude (`resumo` ou `completa`) e o hash do XML bruto. Uma completa nunca é substituída por um resumo, e a situação só piora (cancelada > denegada > autorizada).
 - `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação, NSUs em que foi vista e marca de "vista".
 - `nfe_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`). Um `resEvento` é trocado pelo `procEventoNFe` quando este chega, e um evento enviado pelo Nanci se junta à cópia que volta pela distribuição.
-- `nfe_manifestations`: registro de cada envio de manifestação (lote, resultado, `cStat`, `xMotivo`, protocolo), inclusive falhas, para auditoria.
+- `nfe_manifestations`: registro de cada envio de manifestação (lote, `tpAmb`, resultado, `cStat`, `xMotivo`, protocolo), inclusive falhas, para auditoria. Envios anteriores à migração `011` ficam com `tpAmb` vazio.
 - `company_nfe_export_marks`: o que já foi exportado e com qual hash, para a exportação incremental.
 - `companies.uf`: a UF da empresa, enviada como `cUFAutor`.
 - `sync_state.failed_nsu` e `failed_nsu_attempts`: contagem de falhas no mesmo NSU.

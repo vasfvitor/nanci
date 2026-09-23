@@ -98,6 +98,7 @@ nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
 | `nfe manifestar` | Registra confirmação, desconhecimento ou operação não realizada de uma nota. |
 | `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. |
 | `nfe export zip` / `nfe export xml` | Exporta os XMLs em ZIP ou uma nota avulsa. |
+| `nfe reset` | Remove as NF-e da empresa e reinicia a sincronização NF-e; necessário antes de trocar o ambiente. Simulação sem `--confirmar`. |
 
 Detalhes de limites, prazos e TLS em [docs/NFE_SEFAZ.md](docs/NFE_SEFAZ.md).
 
