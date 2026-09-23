@@ -1,12 +1,10 @@
 import { computed, ref, shallowRef } from 'vue'
-import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import type { CompanySummary, CredentialSummary } from '@/types/desktop'
 
 export function useCompanies() {
   const syncStore = useCompanySyncStore()
-  const { syncing, syncingCNPJs } = storeToRefs(syncStore)
   const companies = shallowRef<CompanySummary[]>([])
   const credentials = shallowRef<CredentialSummary[]>([])
 
@@ -49,13 +47,13 @@ export function useCompanies() {
   }
 
   async function syncCompany(cnpj: string) {
-    syncStore.startSync(cnpj)
+    syncStore.startSync(cnpj, 'nfse')
     try {
       const result = await desktopClient.pull({ CNPJ: cnpj, Mode: '' })
       await loadCompanies()
       return result
     } finally {
-      syncStore.finishSync(cnpj)
+      syncStore.finishSync(cnpj, 'nfse')
     }
   }
 
@@ -68,9 +66,7 @@ export function useCompanies() {
     companies,
     credentials,
     loading,
-    syncing,
-    syncingCNPJs,
-    isSyncingCompany: syncStore.isSyncing,
+    isSyncingCompany: (cnpj: string) => syncStore.isSyncing(cnpj, 'nfse'),
     loadCompanies,
     loadCredentials,
     reloadData,

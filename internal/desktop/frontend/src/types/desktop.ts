@@ -169,6 +169,8 @@ export type AssignCredentialInput = {
   CredentialID: string
 }
 
+export type SyncSource = 'nfse' | 'nfe'
+
 export type PullInput = {
   CNPJ: string
   Mode: string

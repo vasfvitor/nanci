@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, vi } from 'vitest'
 import { useCompanies } from './useCompanies'
 import { desktopClient } from '@/platform/wails/client'
+import { useCompanySyncStore } from '@/stores/companySync'
 import type { PullResult } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
@@ -76,7 +77,7 @@ describe('useCompanies', () => {
 
     const remountedPage = useCompanies()
     expect(remountedPage.isSyncingCompany('123')).toBe(true)
-    expect(remountedPage.syncing.value).toBe('123')
+    expect(useCompanySyncStore().isSyncing('123', 'nfe')).toBe(false)
 
     resolvePull({
       CompanyName: 'Empresa',
@@ -101,6 +102,18 @@ describe('useCompanies', () => {
     await syncPromise
 
     expect(remountedPage.isSyncingCompany('123')).toBe(false)
-    expect(remountedPage.syncing.value).toBeNull()
+    expect(useCompanySyncStore().isAnySyncing('123')).toBe(false)
+  })
+
+  it('does not mark the NFS-e sync button while an NF-e sync runs', () => {
+    const companies = useCompanies()
+    const syncStore = useCompanySyncStore()
+
+    syncStore.startSync('123', 'nfe')
+
+    expect(companies.isSyncingCompany('123')).toBe(false)
+    expect(syncStore.isAnySyncing('123')).toBe(true)
+
+    syncStore.finishSync('123', 'nfe')
   })
 })

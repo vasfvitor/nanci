@@ -1,44 +1,48 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { SyncSource } from '@/types/desktop'
+
+function syncKey(cnpj: string, source: SyncSource) {
+  return `${source}:${cnpj}`
+}
 
 export const useCompanySyncStore = defineStore('companySync', () => {
   const activeSyncs = ref<Record<string, number>>({})
 
-  const syncingCNPJs = computed(() => Object.keys(activeSyncs.value))
-  const syncing = computed(() => syncingCNPJs.value[0] ?? null)
-
-  function isSyncing(cnpj: string) {
-    return Boolean(activeSyncs.value[cnpj])
+  function isSyncing(cnpj: string, source: SyncSource) {
+    return Boolean(activeSyncs.value[syncKey(cnpj, source)])
   }
 
-  function startSync(cnpj: string) {
+  function isAnySyncing(cnpj: string) {
+    return isSyncing(cnpj, 'nfse') || isSyncing(cnpj, 'nfe')
+  }
+
+  function startSync(cnpj: string, source: SyncSource) {
+    const key = syncKey(cnpj, source)
     activeSyncs.value = {
       ...activeSyncs.value,
-      [cnpj]: (activeSyncs.value[cnpj] ?? 0) + 1,
+      [key]: (activeSyncs.value[key] ?? 0) + 1,
     }
   }
 
-  function finishSync(cnpj: string) {
-    const next = { ...activeSyncs.value }
-    const count = next[cnpj] ?? 0
+  function finishSync(cnpj: string, source: SyncSource) {
+    const key = syncKey(cnpj, source)
+    const count = activeSyncs.value[key] ?? 0
 
     if (count <= 1) {
       activeSyncs.value = Object.fromEntries(
-        Object.entries(activeSyncs.value).filter(([activeCNPJ]) => activeCNPJ !== cnpj)
+        Object.entries(activeSyncs.value).filter(([activeKey]) => activeKey !== key)
       )
       return
-    } else {
-      next[cnpj] = count - 1
     }
 
-    activeSyncs.value = next
+    activeSyncs.value = { ...activeSyncs.value, [key]: count - 1 }
   }
 
   return {
     activeSyncs,
-    syncingCNPJs,
-    syncing,
     isSyncing,
+    isAnySyncing,
     startSync,
     finishSync,
   }

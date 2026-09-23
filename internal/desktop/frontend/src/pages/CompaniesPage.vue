@@ -86,7 +86,7 @@
             color="primary"
             icon="sync"
             :loading="isSyncingCompany(props.row.CNPJ)"
-            title="Sincronizar"
+            title="Sincronizar NFS-e"
             @click="syncCompany(props.row.CNPJ)"
           />
           <q-btn
