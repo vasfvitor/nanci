@@ -10,7 +10,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
-	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sync"
 )
@@ -22,19 +21,18 @@ type QueryNFSeInput struct {
 
 // QueryService owns the diagnostic and direct-query use cases.
 type QueryService struct {
-	Log                *slog.Logger
-	CompanyStore       *company.Store
-	CredentialStore    *credential.Store
-	CredentialProvider CredentialProvider
+	Log             *slog.Logger
+	CompanyStore    *company.Store
+	CredentialStore *credential.Store
+	Certificates    *sync.CertificateLoader
 }
 
-func NewQueryService(d Dependencies) *QueryService {
+func NewQueryService(d Dependencies, certificates *sync.CertificateLoader) *QueryService {
 	return &QueryService{
-
-		Log:                d.Log,
-		CompanyStore:       d.CompanyStore,
-		CredentialStore:    d.CredentialStore,
-		CredentialProvider: d.CredentialProvider,
+		Log:             d.Log,
+		CompanyStore:    d.CompanyStore,
+		CredentialStore: d.CredentialStore,
+		Certificates:    certificates,
 	}
 }
 
@@ -44,7 +42,7 @@ func (s *QueryService) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput
 		return "", err
 	}
 
-	apiClient, err := s.buildClient(ctx, input.CNPJ)
+	apiClient, err := s.buildClient(ctx, input.CNPJ, "Consulta direta")
 	if err != nil {
 		return "", err
 	}
@@ -74,44 +72,22 @@ func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path strin
 	return string(pretty), nil
 }
 
-func (s *QueryService) buildClient(ctx context.Context, companyCNPJ string) (*adn.Client, error) {
+// buildClient loads the company certificate, asking for its password with
+// purpose, and returns an ADN client that consults with it.
+func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose string) (*adn.Client, error) {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, companyCNPJ)
 	if err != nil {
 		return nil, err
 	}
 
-	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
+	loaded, err := s.Certificates.LoadForCompany(ctx, company, purpose)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateCertificatePath(credential.CertPath); err != nil {
-		return nil, err
-	}
-
-	pass, err := s.CredentialProvider.GetCertPassword(ctx, CertPasswordRequest{
-		RequestID:       nfse.GenerateID(),
-		CompanyID:       string(company.ID),
-		CompanyName:     company.Name,
-		TargetCNPJ:      company.CNPJ,
-		CredentialID:    string(credential.ID),
-		CredentialLabel: credential.Label,
-		CertPath:        credential.CertPath,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("senha do certificado: %w", err)
-	}
-	defer cert.ZeroBytes(pass)
-
-	loadedCert, err := cert.LoadPKCS12(credential.CertPath, pass)
-	if err != nil {
-		return nil, fmt.Errorf("carregar certificado: %w", err)
-	}
-
-	tlsCert := loadedCert.TLS
 	apiClient, err := adn.NewClient(adn.ClientConfig{
 		BaseURL:     sync.ResolveEnvironmentURL(company.Environment),
-		Certificate: &tlsCert,
+		Certificate: &loaded.TLS,
 		Log:         s.Log,
 	})
 	if err != nil {
@@ -157,7 +133,7 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 		}
 	}
 
-	apiClient, err := s.buildClient(ctx, companyCNPJ)
+	apiClient, err := s.buildClient(ctx, companyCNPJ, "Teste de conexão")
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Erro ao carregar certificado/senha: %v", err)
 		return result, nil

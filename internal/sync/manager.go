@@ -5,12 +5,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log/slog"
-	"os"
 	gosync "sync"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
-	companypkg "github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
@@ -31,6 +29,8 @@ type CertPasswordRequest struct {
 	CredentialID    string
 	CredentialLabel string
 	CertPath        string
+	// Purpose tells the user what the password is for, e.g. "Sincronização NFS-e".
+	Purpose string
 }
 
 // CredentialProvider obtains the password of a certificate.
@@ -148,53 +148,14 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 	defer release()
 
-	credential, err := m.CredentialProvider.CredentialByID(ctx, company.CredentialID)
-	if err != nil {
-		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
-	}
-
-	if err := validateCertificatePath(credential.CertPath); err != nil {
-		return PullResult{}, err
-	}
-	pass, err := m.PassProvider.GetCertPassword(ctx, CertPasswordRequest{
-		RequestID:       nfse.GenerateID(),
-		CompanyID:       string(company.ID),
-		CompanyName:     company.Name,
-		TargetCNPJ:      company.CNPJ,
-		CredentialID:    string(credential.ID),
-		CredentialLabel: credential.Label,
-		CertPath:        credential.CertPath,
-	})
-	if err != nil {
-		return PullResult{}, fmt.Errorf("obter senha do certificado: %w", err)
-	}
-	defer cert.ZeroBytes(pass)
-
-	m.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
-	loadedCert, err := loadPKCS12(credential.CertPath, pass)
-	if err != nil {
-		return PullResult{}, fmt.Errorf("carregar certificado: %w", err)
-	}
-	tlsCert := loadedCert.TLS
-	inspection := loadedCert.Inspection
-	credential.OwnerCNPJ = inspection.OwnerCNPJ
-	credential.OwnerCNPJRoot = inspection.OwnerCNPJRoot
-	credential.FingerprintSHA256 = inspection.FingerprintSHA256
-	credential.SubjectName = inspection.SubjectName
-	credential.NotBefore = &inspection.NotBefore
-	credential.NotAfter = &inspection.NotAfter
-	now := time.Now().UTC()
-	credential.InspectedAt = &now
-	if err := m.CredentialProvider.UpdateCredential(ctx, credential); err != nil {
-		return PullResult{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
-	}
-
-	consultationBasis, err := validateConsultationCompatibility(company, credential)
+	certificates := CertificateLoader{Log: m.Log, Credentials: m.CredentialProvider, Passwords: m.PassProvider}
+	loaded, err := certificates.LoadForCompany(ctx, company, "Sincronização "+sourceLabel(source))
 	if err != nil {
 		return PullResult{}, err
 	}
+	credential := loaded.Credential
 
-	src, err := newSource(company, tlsCert)
+	src, err := newSource(company, loaded.TLS)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -205,7 +166,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	result.CNPJ = company.CNPJ
 	result.CredentialLabel = credential.Label
 	result.CredentialCNPJ = credential.OwnerCNPJ
-	result.ConsultationBasis = string(consultationBasis)
+	result.ConsultationBasis = string(loaded.Basis)
 
 	progress := func(event nfse.ProgressEvent) {
 		if event.Errors > result.Errors {
@@ -229,7 +190,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 
 	start := time.Now()
-	if err := svc.Sync(ctx, company, credential, string(consultationBasis), mode, progress); err != nil {
+	if err := svc.Sync(ctx, company, credential, string(loaded.Basis), mode, progress); err != nil {
 		return PullResult{}, fmt.Errorf("sincronização: %w", err)
 	}
 	result.Duration = time.Since(start)
@@ -326,22 +287,6 @@ func parsePullMode(raw string) (nfse.SyncMode, error) {
 	return nfse.ParseSyncMode(raw)
 }
 
-func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {
-	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
-		return "", companypkg.ErrCredentialNoOwner
-	}
-	if company.Environment == "" {
-		return "", companypkg.ErrCompanyNoEnvironment
-	}
-	if company.CNPJRoot != credential.OwnerCNPJRoot {
-		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", companypkg.ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
-	}
-	if company.CNPJ == credential.OwnerCNPJ {
-		return nfse.ConsultationBasisExactCertificateCNPJ, nil
-	}
-	return nfse.ConsultationBasisSameRootCertificate, nil
-}
-
 func ResolveEnvironmentURL(env nfse.Environment) string {
 	switch env {
 	case nfse.EnvironmentProduction:
@@ -424,20 +369,6 @@ func normalizeCNPJ(raw string) (string, error) {
 		return "", fmt.Errorf("CNPJ inválido: %w", err)
 	}
 	return cnpj.Clean(raw), nil
-}
-
-func validateCertificatePath(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("arquivo de certificado não encontrado: %s", path)
-		}
-		return fmt.Errorf("verificar certificado: %w", err)
-	}
-	if info.IsDir() {
-		return fmt.Errorf("caminho do certificado aponta para um diretório: %s", path)
-	}
-	return nil
 }
 
 type ResetSyncInput struct {

@@ -40,6 +40,8 @@ type App struct {
 	Exports     *ExportService
 	Query       *QueryService
 	SyncManager *sync.Manager
+	// Certificates loads a company's certificate for any use case that consults the tax authority.
+	Certificates *sync.CertificateLoader
 }
 
 // Dependencies contains the infrastructure required by App.
@@ -76,12 +78,18 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: credential provider is required")
 	}
 
+	certificates := &sync.CertificateLoader{
+		Log:         deps.Log,
+		Credentials: deps.CredentialStore,
+		Passwords:   deps.CredentialProvider,
+	}
+
 	return &App{
 		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
 		Credentials: credential.NewManager(deps.CredentialStore),
 		Documents:   NewDocumentService(deps),
 		Exports:     NewExportService(deps),
-		Query:       NewQueryService(deps),
+		Query:       NewQueryService(deps, certificates),
 		SyncManager: &sync.Manager{
 			Log:                deps.Log,
 			CompanyProvider:    deps.CompanyStore,
@@ -91,6 +99,7 @@ func New(deps Dependencies) (*App, error) {
 			XMLStore:           deps.XMLStore,
 			PassProvider:       deps.CredentialProvider,
 		},
+		Certificates: certificates,
 	}, nil
 }
 
