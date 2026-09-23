@@ -127,7 +127,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			placeholders[i] = "?"
 			args = append(args, chave)
 		}
-		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ","))
+		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ",")) // #nosec G202 -- joins only "?" placeholders; values go through args.
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
@@ -362,7 +362,7 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 			placeholders[i] = "?"
 			args = append(args, chave)
 		}
-		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ","))
+		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ",")) // #nosec G202 -- joins only "?" placeholders; values go through args.
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
