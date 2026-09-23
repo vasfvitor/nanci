@@ -7,140 +7,91 @@ export const DEADLINE_THRESHOLDS: Record<DeadlineKind, { warning: number; urgent
   conclusiva: { warning: 30, urgent: 10 },
 }
 
-export const situacaoLabels: Record<string, string> = {
-  autorizada: 'Autorizada',
-  denegada: 'Denegada',
-  cancelada: 'Cancelada',
+type Display = { label: string; color: string }
+
+export type FilterOption = { label: string; value: string }
+
+// displayTable looks values up in table. An unknown value is shown as
+// unknownLabel(value) in grey, and an empty one as "Desconhecido".
+function displayTable(
+  table: Record<string, Display>,
+  unknownLabel: (value: string) => string = (value) => value
+) {
+  const find = (value: string) => (Object.hasOwn(table, value) ? table[value] : undefined)
+  return {
+    label: (value: string) => find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido'),
+    color: (value: string) => find(value)?.color ?? 'grey',
+    // options lists every known value for a filter, after an empty "all" entry.
+    options: (allLabel: string): FilterOption[] => [
+      { label: allLabel, value: '' },
+      ...Object.entries(table).map(([value, display]) => ({ label: display.label, value })),
+    ],
+  }
 }
 
-export const situacaoColors: Record<string, string> = {
-  autorizada: 'positive',
-  denegada: 'negative',
-  cancelada: 'negative',
-}
+const situacao = displayTable({
+  autorizada: { label: 'Autorizada', color: 'positive' },
+  denegada: { label: 'Denegada', color: 'negative' },
+  cancelada: { label: 'Cancelada', color: 'negative' },
+})
 
-export const completenessLabels: Record<string, string> = {
-  resumo: 'Resumo',
-  completa: 'Completa',
-}
+const completeness = displayTable({
+  resumo: { label: 'Resumo', color: 'warning' },
+  completa: { label: 'Completa', color: 'positive' },
+})
 
-export const completenessColors: Record<string, string> = {
-  resumo: 'warning',
-  completa: 'positive',
-}
+const manifestacao = displayTable({
+  nenhuma: { label: 'Sem manifestação', color: 'grey' },
+  ciencia: { label: 'Ciência', color: 'info' },
+  confirmada: { label: 'Confirmada', color: 'positive' },
+  desconhecida: { label: 'Desconhecida', color: 'negative' },
+  nao_realizada: { label: 'Operação não realizada', color: 'warning' },
+})
 
-export const manifestacaoLabels: Record<string, string> = {
-  nenhuma: 'Sem manifestação',
-  ciencia: 'Ciência',
-  confirmada: 'Confirmada',
-  desconhecida: 'Desconhecida',
-  nao_realizada: 'Operação não realizada',
-}
+const nfeRole = displayTable({
+  destinatario: { label: 'Destinatário', color: 'secondary' },
+  emitente: { label: 'Emitente', color: 'primary' },
+  transportador: { label: 'Transportador', color: 'accent' },
+  autorizado: { label: 'Autorizado', color: 'info' },
+  none: { label: 'Sem papel fiscal', color: 'grey' },
+})
 
-export const manifestacaoColors: Record<string, string> = {
-  nenhuma: 'grey',
-  ciencia: 'info',
-  confirmada: 'positive',
-  desconhecida: 'negative',
-  nao_realizada: 'warning',
-}
+const nfeEvent = displayTable(
+  {
+    '110111': { label: 'Cancelamento', color: 'negative' },
+    '110110': { label: 'Carta de Correção', color: 'info' },
+    '210210': { label: 'Ciência', color: 'info' },
+    '210200': { label: 'Confirmação', color: 'positive' },
+    '210220': { label: 'Desconhecimento', color: 'negative' },
+    '210240': { label: 'Operação não Realizada', color: 'warning' },
+  },
+  (tpEvento) => `Evento ${tpEvento}`
+)
 
-export const nfeRoleLabels: Record<string, string> = {
-  destinatario: 'Destinatário',
-  emitente: 'Emitente',
-  transportador: 'Transportador',
-  autorizado: 'Autorizado',
-  none: 'Sem papel fiscal',
-}
+const outcome = displayTable({
+  registrada: { label: 'Registrada', color: 'positive' },
+  ja_registrada: { label: 'Já registrada', color: 'info' },
+  rejeitada: { label: 'Rejeitada', color: 'negative' },
+  nao_enviada: { label: 'Não enviada', color: 'warning' },
+})
 
-export const nfeRoleColors: Record<string, string> = {
-  destinatario: 'secondary',
-  emitente: 'primary',
-  transportador: 'accent',
-  autorizado: 'info',
-  none: 'grey',
-}
+export const situacaoLabel = situacao.label
+export const situacaoColor = situacao.color
+export const completenessLabel = completeness.label
+export const completenessColor = completeness.color
+export const manifestacaoLabel = manifestacao.label
+export const manifestacaoColor = manifestacao.color
+export const nfeRoleLabel = nfeRole.label
+export const nfeRoleColor = nfeRole.color
+export const nfeEventLabel = nfeEvent.label
+export const nfeEventColor = nfeEvent.color
+export const outcomeLabel = outcome.label
+export const outcomeColor = outcome.color
 
-export const nfeEventLabels: Record<string, string> = {
-  '110111': 'Cancelamento',
-  '110110': 'Carta de Correção',
-  '210210': 'Ciência',
-  '210200': 'Confirmação',
-  '210220': 'Desconhecimento',
-  '210240': 'Operação não Realizada',
-}
-
-export const nfeEventColors: Record<string, string> = {
-  '110111': 'negative',
-  '110110': 'info',
-  '210210': 'info',
-  '210200': 'positive',
-  '210220': 'negative',
-  '210240': 'warning',
-}
-
-export const outcomeLabels: Record<string, string> = {
-  registrada: 'Registrada',
-  ja_registrada: 'Já registrada',
-  rejeitada: 'Rejeitada',
-  nao_enviada: 'Não enviada',
-}
-
-export const outcomeColors: Record<string, string> = {
-  registrada: 'positive',
-  ja_registrada: 'info',
-  rejeitada: 'negative',
-  nao_enviada: 'warning',
-}
-
-export function situacaoLabel(situacao: string) {
-  return situacaoLabels[situacao] || situacao || 'Desconhecido'
-}
-
-export function situacaoColor(situacao: string) {
-  return situacaoColors[situacao] || 'grey'
-}
-
-export function completenessLabel(completeness: string) {
-  return completenessLabels[completeness] || completeness || 'Desconhecido'
-}
-
-export function completenessColor(completeness: string) {
-  return completenessColors[completeness] || 'grey'
-}
-
-export function manifestacaoLabel(manifestacao: string) {
-  return manifestacaoLabels[manifestacao] || manifestacao || 'Desconhecido'
-}
-
-export function manifestacaoColor(manifestacao: string) {
-  return manifestacaoColors[manifestacao] || 'grey'
-}
-
-export function nfeRoleLabel(role: string) {
-  return nfeRoleLabels[role] || role || 'Desconhecido'
-}
-
-export function nfeRoleColor(role: string) {
-  return nfeRoleColors[role] || 'grey'
-}
-
-export function nfeEventLabel(tpEvento: string) {
-  if (!tpEvento) return 'Desconhecido'
-  return nfeEventLabels[tpEvento] || `Evento ${tpEvento}`
-}
-
-export function nfeEventColor(tpEvento: string) {
-  return nfeEventColors[tpEvento] || 'grey'
-}
-
-export function outcomeLabel(outcome: string) {
-  return outcomeLabels[outcome] || outcome || 'Desconhecido'
-}
-
-export function outcomeColor(outcome: string) {
-  return outcomeColors[outcome] || 'grey'
-}
+export const situacaoFilterOptions = situacao.options('Todas')
+export const completenessFilterOptions = completeness.options('Todas')
+export const manifestacaoFilterOptions = manifestacao.options('Todas')
+export const nfeRoleFilterOptions = nfeRole.options('Todos')
 
 // deadlineColor colors a days-left chip; days comes from daysUntil.
 export function deadlineColor(days: number | null, kind: DeadlineKind) {

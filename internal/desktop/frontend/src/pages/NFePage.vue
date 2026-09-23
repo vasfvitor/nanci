@@ -90,7 +90,7 @@
           <q-select
             v-model="filter.Situacao"
             class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="situacaoOptions"
+            :options="situacaoFilterOptions"
             label="Situação"
             emit-value
             map-options
@@ -102,7 +102,7 @@
           <q-select
             v-model="filter.Completeness"
             class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="completenessOptions"
+            :options="completenessFilterOptions"
             label="Completude"
             emit-value
             map-options
@@ -114,7 +114,7 @@
           <q-select
             v-model="filter.Manifestacao"
             class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="manifestacaoOptions"
+            :options="manifestacaoFilterOptions"
             label="Manifestação"
             emit-value
             map-options
@@ -126,7 +126,7 @@
           <q-select
             v-model="filter.Role"
             class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="roleOptions"
+            :options="nfeRoleFilterOptions"
             label="Papel"
             emit-value
             map-options
@@ -399,22 +399,20 @@ import {
   blockedMessage,
   completenessColor,
   completenessLabel,
-  completenessLabels,
+  completenessFilterOptions,
   conclusiveDeadlineLabel,
   deadlineColor,
   manifestacaoColor,
   manifestacaoLabel,
-  manifestacaoLabels,
+  manifestacaoFilterOptions,
   nfeRoleColor,
   nfeRoleLabel,
-  nfeRoleLabels,
+  nfeRoleFilterOptions,
   situacaoColor,
   situacaoLabel,
-  situacaoLabels,
+  situacaoFilterOptions,
 } from '@/utils/nfeDisplay'
 import { cienciaBlockReason, conclusiveBlockReason } from '@/utils/nfeManifestation'
-
-type SelectOption = { label: string; value: string }
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
@@ -441,11 +439,6 @@ const filterText = ref('')
 const planning = ref(false)
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
-
-const situacaoOptions = withAllOption('Todas', situacaoLabels)
-const completenessOptions = withAllOption('Todas', completenessLabels)
-const manifestacaoOptions = withAllOption('Todas', manifestacaoLabels)
-const roleOptions = withAllOption('Todos', nfeRoleLabels)
 
 const columns: QTableColumn<NFeRow>[] = [
   { name: 'acoes', label: 'Ações', field: () => '', align: 'center' },
@@ -526,13 +519,6 @@ watch(filterText, () => {
 onMounted(() => {
   void loadCompanies()
 })
-
-function withAllOption(allLabel: string, labels: Record<string, string>): SelectOption[] {
-  return [
-    { label: allLabel, value: '' },
-    ...Object.entries(labels).map(([value, label]) => ({ label, value })),
-  ]
-}
 
 async function loadCompanies() {
   try {

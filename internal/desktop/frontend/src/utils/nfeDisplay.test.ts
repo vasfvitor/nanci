@@ -17,7 +17,9 @@ import {
   nfeRoleLabel,
   outcomeColor,
   outcomeLabel,
+  nfeRoleFilterOptions,
   situacaoColor,
+  situacaoFilterOptions,
   situacaoLabel,
 } from './nfeDisplay'
 
@@ -88,6 +90,22 @@ describe('nfeDisplay', () => {
     expect(outcomeColor('ja_registrada')).toBe('info')
     expect(outcomeColor('rejeitada')).toBe('negative')
     expect(outcomeColor('nao_enviada')).toBe('warning')
+  })
+
+  it('lists filter options after an empty "all" entry', () => {
+    expect(situacaoFilterOptions).toEqual([
+      { label: 'Todas', value: '' },
+      { label: 'Autorizada', value: 'autorizada' },
+      { label: 'Denegada', value: 'denegada' },
+      { label: 'Cancelada', value: 'cancelada' },
+    ])
+    expect(nfeRoleFilterOptions[0]).toEqual({ label: 'Todos', value: '' })
+    expect(nfeRoleFilterOptions).toHaveLength(6)
+  })
+
+  it('ignores inherited object keys', () => {
+    expect(situacaoLabel('constructor')).toBe('constructor')
+    expect(situacaoColor('toString')).toBe('grey')
   })
 
   it('falls back for unknown and empty values', () => {
