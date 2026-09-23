@@ -93,6 +93,7 @@ describe('desktop client mappers', () => {
     expect(company.ID).toBe('company-1')
     expect(company.UF).toBe('SP')
     expect(mapCompanySummary({ ID: 'company-2' }).UF).toBe('')
+    expect(mapCompanySummary({ ID: 'company-2' }).LastSyncAt).toBeNull()
     expect(company.LastSyncAt).toBeNull()
     expect(company.LastFoundNSU).toBe(55)
     expect(company.SyncStartPolicy).toBe('since_date')
@@ -191,9 +192,16 @@ describe('desktop client calls', () => {
     } as never)
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\mock\\save\\path.ext')
 
-    await desktopClient.exportDANFSe({
-      CNPJ: '123',
-      ChaveAcesso: 'chave-1',
+    await expect(
+      desktopClient.exportDANFSe({
+        CNPJ: '123',
+        ChaveAcesso: 'chave-1',
+      })
+    ).resolves.toEqual({
+      OutPath: 'C:\\exports\\danfse.pdf',
+      Format: 'danfse',
+      Incremental: false,
+      ExportedCount: 0,
     })
     await desktopClient.exportDANFSeZIP({
       CNPJ: '123',

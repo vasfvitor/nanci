@@ -226,14 +226,14 @@ export function mapCompanySummary(raw: unknown): CompanySummary {
     Environment: asString(item['Environment']),
     UF: asString(item['UF']),
     LastFoundNSU: asNullableNumber(item['LastFoundNSU']),
-    LastSyncAt: item['LastSyncAt'] as CompanySummary['LastSyncAt'],
+    LastSyncAt: asDate(item['LastSyncAt']),
     SyncStartPolicy: asString(item['SyncStartPolicy']) as CompanySummary['SyncStartPolicy'],
-    SyncStartDate: item['SyncStartDate'] as CompanySummary['SyncStartDate'],
-    InitialSyncDoneAt: item['InitialSyncDoneAt'] as CompanySummary['InitialSyncDoneAt'],
+    SyncStartDate: asDate(item['SyncStartDate']),
+    InitialSyncDoneAt: asDate(item['InitialSyncDoneAt']),
     LastRunStatus: asString(item['LastRunStatus']),
     LastRunStopReason: asString(item['LastRunStopReason']),
-    CreatedAt: item['CreatedAt'] as CompanySummary['CreatedAt'],
-    UpdatedAt: item['UpdatedAt'] as CompanySummary['UpdatedAt'],
+    CreatedAt: asDate(item['CreatedAt']),
+    UpdatedAt: asDate(item['UpdatedAt']),
   }
 }
 
@@ -247,11 +247,11 @@ export function mapCredentialSummary(raw: unknown): CredentialSummary {
     OwnerCNPJRoot: asString(item['OwnerCNPJRoot']),
     FingerprintSHA256: asString(item['FingerprintSHA256']),
     SubjectName: asString(item['SubjectName']),
-    NotBefore: item['NotBefore'] as CredentialSummary['NotBefore'],
-    NotAfter: item['NotAfter'] as CredentialSummary['NotAfter'],
-    InspectedAt: item['InspectedAt'] as CredentialSummary['InspectedAt'],
-    CreatedAt: item['CreatedAt'] as CredentialSummary['CreatedAt'],
-    UpdatedAt: item['UpdatedAt'] as CredentialSummary['UpdatedAt'],
+    NotBefore: asDate(item['NotBefore']),
+    NotAfter: asDate(item['NotAfter']),
+    InspectedAt: asDate(item['InspectedAt']),
+    CreatedAt: asDate(item['CreatedAt']),
+    UpdatedAt: asDate(item['UpdatedAt']),
   }
 }
 
@@ -260,7 +260,7 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
   return {
     ID: asString(item['ID']),
     ChaveAcesso: asString(item['ChaveAcesso']),
-    IssueDate: item['IssueDate'] as DocumentRow['IssueDate'],
+    IssueDate: asDate(item['IssueDate']),
     Competence: asString(item['Competence']),
     PrestadorCNPJ: asString(item['PrestadorCNPJ']),
     PrestadorName: asString(item['PrestadorName']),
@@ -283,8 +283,8 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     ParseWarnings: asStringArray(item['ParseWarnings']),
     NFSeNumber: asString(item['NFSeNumber']),
     ServiceDescription: asString(item['ServiceDescription']),
-    CreatedAt: item['CreatedAt'] as DocumentRow['CreatedAt'],
-    UpdatedAt: item['UpdatedAt'] as DocumentRow['UpdatedAt'],
+    CreatedAt: asDate(item['CreatedAt']),
+    UpdatedAt: asDate(item['UpdatedAt']),
     RelationID: asString(item['RelationID']),
     CompanyID: asString(item['CompanyID']),
     DocumentID: asString(item['DocumentID']),
@@ -292,9 +292,9 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     VisibilityReason: asString(item['VisibilityReason']),
     FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
     LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
-    FirstSyncedAt: item['FirstSyncedAt'] as DocumentRow['FirstSyncedAt'],
-    LastSyncedAt: item['LastSyncedAt'] as DocumentRow['LastSyncedAt'],
-    ViewedAt: item['ViewedAt'] as DocumentRow['ViewedAt'],
+    FirstSyncedAt: asDate(item['FirstSyncedAt']),
+    LastSyncedAt: asDate(item['LastSyncedAt']),
+    ViewedAt: asDate(item['ViewedAt']),
   }
 }
 
@@ -551,7 +551,7 @@ export const desktopClient = {
         ChavesAcesso: input.ChavesAcesso || [],
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async exportDANFSe(input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfse_${input.ChaveAcesso}.pdf`
@@ -564,7 +564,7 @@ export const desktopClient = {
         OutPath: outPath,
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async exportXML(input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `nfse_${input.ChaveAcesso}.xml`
@@ -577,7 +577,7 @@ export const desktopClient = {
         OutPath: outPath,
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async exportDANFSeZIP(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfses_${input.CNPJ}_${Date.now()}.zip`
@@ -591,7 +591,7 @@ export const desktopClient = {
         ChavesAcesso: input.ChavesAcesso || [],
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async listCompanies(): Promise<CompanySummary[]> {
     const result = await callWails(() => ListCompanies())
