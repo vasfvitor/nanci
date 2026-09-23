@@ -372,11 +372,16 @@ type eventSender struct {
 	company *nfse.Company
 	client  sefazClient
 	signer  *sefaz.Signer
+	tpAmb   string
 }
 
 // newSender loads the company certificate once, asking for its password
 // with purpose.
 func (s *NFeService) newSender(ctx context.Context, comp *nfse.Company, purpose string) (*eventSender, error) {
+	tpAmb, err := sefaz.TpAmb(comp.Environment)
+	if err != nil {
+		return nil, err
+	}
 	loaded, err := s.Certificates.LoadForCompany(ctx, comp, purpose)
 	if err != nil {
 		return nil, err
@@ -393,7 +398,7 @@ func (s *NFeService) newSender(ctx context.Context, comp *nfse.Company, purpose 
 	if err != nil {
 		return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
 	}
-	return &eventSender{service: s, company: comp, client: client, signer: signer}, nil
+	return &eventSender{service: s, company: comp, client: client, signer: signer, tpAmb: tpAmb}, nil
 }
 
 // send sends one lote and records it. The error is set when SEFAZ gave no
@@ -468,6 +473,7 @@ func (e *eventSender) record(idLote string, ev sefaz.Evento) nfe.ManifestationRe
 		CompanyID:     e.company.ID,
 		CompanyCNPJ:   e.company.CNPJ,
 		IDLote:        idLote,
+		TpAmb:         e.tpAmb,
 		ChaveAcesso:   ev.ChaveAcesso,
 		TpEvento:      ev.TpEvento,
 		NSeqEvento:    ev.NSeqEvento,

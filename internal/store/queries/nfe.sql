@@ -120,8 +120,9 @@ ORDER BY COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento;
 -- name: InsertNFeManifestation :exec
 INSERT INTO nfe_manifestations (
     id, company_id, chave_acesso, tp_evento, n_seq_evento, justificativa, id_lote,
-    status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at,
+    tp_amb
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: MarkNFeExported :exec
 INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at)

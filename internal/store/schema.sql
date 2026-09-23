@@ -264,7 +264,8 @@ CREATE TABLE nfe_manifestations (
     registered_at TEXT,
     request_raw_hash TEXT,
     response_raw_hash TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    tp_amb TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX idx_nfe_manifestations_company_chave ON nfe_manifestations(company_id, chave_acesso);
 

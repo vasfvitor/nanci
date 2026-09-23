@@ -54,6 +54,7 @@ type ManifestationRecord struct {
 	CompanyID     nfse.CompanyID
 	CompanyCNPJ   string
 	IDLote        string
+	TpAmb         string // tpAmb the lote was sent to: 1 produção, 2 homologação
 	ChaveAcesso   string
 	TpEvento      string
 	NSeqEvento    int

@@ -212,6 +212,7 @@ type NfeManifestation struct {
 	RequestRawHash  sql.NullString
 	ResponseRawHash sql.NullString
 	CreatedAt       string
+	TpAmb           string
 }
 
 type SyncRequest struct {

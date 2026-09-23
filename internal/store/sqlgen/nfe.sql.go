@@ -74,8 +74,9 @@ func (q *Queries) GetNFeDocumentByChave(ctx context.Context, chaveAcesso string)
 const insertNFeManifestation = `-- name: InsertNFeManifestation :exec
 INSERT INTO nfe_manifestations (
     id, company_id, chave_acesso, tp_evento, n_seq_evento, justificativa, id_lote,
-    status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at,
+    tp_amb
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertNFeManifestationParams struct {
@@ -94,6 +95,7 @@ type InsertNFeManifestationParams struct {
 	RequestRawHash  sql.NullString
 	ResponseRawHash sql.NullString
 	CreatedAt       string
+	TpAmb           string
 }
 
 func (q *Queries) InsertNFeManifestation(ctx context.Context, arg InsertNFeManifestationParams) error {
@@ -113,6 +115,7 @@ func (q *Queries) InsertNFeManifestation(ctx context.Context, arg InsertNFeManif
 		arg.RequestRawHash,
 		arg.ResponseRawHash,
 		arg.CreatedAt,
+		arg.TpAmb,
 	)
 	return err
 }

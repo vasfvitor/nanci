@@ -353,6 +353,7 @@ func (r *NFeRepository) RecordManifestations(ctx context.Context, items []nfe.Ma
 			RequestRawHash:  nullString(item.RequestRawHash),
 			ResponseRawHash: nullString(item.ResponseRawHash),
 			CreatedAt:       now,
+			TpAmb:           item.TpAmb,
 		})
 		if err != nil {
 			return fmt.Errorf("record manifestação %s %s: %w", item.TpEvento, item.ChaveAcesso, err)

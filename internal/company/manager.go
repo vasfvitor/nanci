@@ -18,6 +18,10 @@ var (
 	ErrCredentialMismatch   = errors.New("a credencial informada não pertence à mesma raiz do CNPJ da empresa")
 	ErrCredentialNoOwner    = errors.New("o certificado não expõe um CNPJ proprietário utilizável para consulta")
 	ErrCompanyNoEnvironment = errors.New("a empresa não possui ambiente configurado")
+	// ErrEnvironmentLocked refuses an environment change once NF-e was
+	// synced: NF-e rows do not record their environment, so documents of
+	// both environments would mix.
+	ErrEnvironmentLocked = errors.New("não é possível alterar o ambiente depois que a sincronização de NF-e já começou; redefina o estado de sincronização NF-e primeiro")
 )
 
 type storeInterface interface {
@@ -205,7 +209,8 @@ func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*nfse.Comp
 }
 
 // UpdateCompany replaces the editable fields of an existing company: name,
-// environment, UF and, before the first sync, the initial sync policy.
+// UF, the environment until the first NF-e sync and, before the first NFS-e
+// sync, the initial sync policy.
 func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
 	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CNPJ)
 	if err != nil {
@@ -214,6 +219,18 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 	sigla, err := normalizeUF(input.UF)
 	if err != nil {
 		return err
+	}
+
+	// NFS-e keys its sync state by environment; NF-e does not, so only an
+	// NF-e cursor locks the environment.
+	if input.Environment != company.Environment {
+		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFe})
+		if err != nil {
+			return fmt.Errorf("verificar estado de sincronização: %w", err)
+		}
+		if hasState {
+			return ErrEnvironmentLocked
+		}
 	}
 
 	// The start policy only applies to NFS-e; an NF-e cursor does not lock it.

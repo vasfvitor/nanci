@@ -210,6 +210,16 @@ func TestNFeRegisterCienciaSendsLotesOfTwenty(t *testing.T) {
 	if got := env.manifestationStatuses(); got[nfe.ManifestationStatusRegistrada] != 45 || len(got) != 1 {
 		t.Errorf("stored statuses = %v, want 45 registrada", got)
 	}
+	var tpAmbs, withoutTpAmb int
+	err = env.db.QueryRowContext(context.Background(), `
+		SELECT COUNT(DISTINCT tp_amb), COUNT(*) FILTER (WHERE tp_amb <> ?) FROM nfe_manifestations
+	`, sefaz.TpAmbProducao).Scan(&tpAmbs, &withoutTpAmb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tpAmbs != 1 || withoutTpAmb != 0 {
+		t.Errorf("tp_amb: %d distinct values, %d rows not %s; want every row sent to produção", tpAmbs, withoutTpAmb, sefaz.TpAmbProducao)
+	}
 }
 
 func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {

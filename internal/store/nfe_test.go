@@ -343,6 +343,23 @@ func TestNFeOwnCienciaCollapsesWithDistributedCopy(t *testing.T) {
 	}
 }
 
+func TestNFeManifestationKeepsTpAmb(t *testing.T) {
+	f := newNFeFixture(t)
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
+
+	sent := manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusRegistrada, time.Now())
+	sent.TpAmb = "2"
+	f.record(sent)
+
+	var tpAmb string
+	if err := f.db.QueryRowContext(context.Background(), `SELECT tp_amb FROM nfe_manifestations WHERE company_id = 'mock'`).Scan(&tpAmb); err != nil {
+		t.Fatal(err)
+	}
+	if tpAmb != "2" {
+		t.Errorf("tp_amb = %q, want 2", tpAmb)
+	}
+}
+
 func TestNFeConclusiveAfterCiencia(t *testing.T) {
 	f := newNFeFixture(t)
 	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
