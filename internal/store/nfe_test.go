@@ -455,14 +455,6 @@ func TestNFeListFilters(t *testing.T) {
 	seedFilterDocuments(f)
 	f.record(manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusRegistrada, time.Now()))
 
-	viewed, err := f.repo.MarkViewed(context.Background(), "mock", nfe.DocumentFilter{Competence: "2026-08"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if viewed != 1 {
-		t.Errorf("MarkViewed = %d, want 1", viewed)
-	}
-
 	all := []string{nfeKeyDenegada, nfeKeyProc, nfeKeyCancelada}
 	tests := []struct {
 		name   string
@@ -479,7 +471,7 @@ func TestNFeListFilters(t *testing.T) {
 		{"emitente cnpj", nfe.DocumentFilter{EmitenteCNPJ: "11.222.333/0001-81"}, all},
 		{"emitente cnpj without match", nfe.DocumentFilter{EmitenteCNPJ: cnpjMock}, []string{}},
 		{"chaves", nfe.DocumentFilter{ChavesAcesso: []string{nfeKeyCancelada, nfeKeyDenegada}}, []string{nfeKeyDenegada, nfeKeyCancelada}},
-		{"only unread", nfe.DocumentFilter{OnlyUnread: true}, []string{nfeKeyDenegada, nfeKeyProc}},
+
 		{"pending manifestation", nfe.DocumentFilter{PendingManifestation: true}, []string{nfeKeyProc}},
 		{"limit", nfe.DocumentFilter{Limit: 1}, []string{nfeKeyDenegada}},
 	}

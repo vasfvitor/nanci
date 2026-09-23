@@ -286,7 +286,6 @@ describe('NF-e mappers', () => {
       CompanyRole: 'destinatario',
       AuthorizedAt: '2024-09-01T10:00:00Z',
       ManifestacaoAt: null,
-      ViewedAt: null,
       EventCount: 2,
     })
 
@@ -304,7 +303,6 @@ describe('NF-e mappers', () => {
       EventCount: 2,
     })
     expect(row.ManifestacaoAt).toBeNull()
-    expect(row.ViewedAt).toBeNull()
     expect(row.CienciaDue).toBeNull()
   })
 

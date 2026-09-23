@@ -22,7 +22,6 @@ type DocumentFilter struct {
 	Manifestacao Manifestacao
 	EmitenteCNPJ string
 	ChavesAcesso []string
-	OnlyUnread   bool
 	// PendingManifestation keeps authorized documents where the company is
 	// the destinatário and has no conclusive manifestação yet.
 	PendingManifestation bool

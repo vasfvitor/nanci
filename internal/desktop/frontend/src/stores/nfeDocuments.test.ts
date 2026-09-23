@@ -47,7 +47,6 @@ describe('nfeDocuments store', () => {
       Manifestacao: '',
       Role: 'destinatario',
       EmitenteCNPJ: '',
-      OnlyUnread: false,
     })
   })
 

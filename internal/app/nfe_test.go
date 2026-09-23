@@ -223,7 +223,7 @@ func (e *nfeTestEnv) seedFixtures() {
 	e.seed("procnfe-denegada.xml", 4)
 }
 
-func TestNFeListDocumentsFiltersAndMarkViewed(t *testing.T) {
+func TestNFeListDocumentsFilters(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()
 	ctx := context.Background()
@@ -257,18 +257,6 @@ func TestNFeListDocumentsFiltersAndMarkViewed(t *testing.T) {
 
 	if _, err := env.app.NFe.ListDocuments(ctx, NFeListInput{CNPJ: nfeTestCNPJ, Situacao: "rascunho"}); err == nil {
 		t.Error("an invalid situação was accepted")
-	}
-
-	changed, err := env.app.NFe.MarkViewed(ctx, NFeListInput{CNPJ: nfeTestCNPJ, Competence: "2026-09"})
-	if err != nil || changed != 2 {
-		t.Fatalf("MarkViewed = %d, %v, want 2", changed, err)
-	}
-	unread, err := env.app.NFe.ListDocuments(ctx, NFeListInput{CNPJ: nfeTestCNPJ, OnlyUnread: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := chavesOf(unread); !slices.Equal(got, []string{nfeChaveCancelada}) {
-		t.Errorf("unread = %v, want only the cancelada", got)
 	}
 
 	events, err := env.app.NFe.ListEvents(ctx, nfeTestCNPJ, nfeChaveProc)

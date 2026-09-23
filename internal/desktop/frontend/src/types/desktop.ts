@@ -243,7 +243,6 @@ export type ListNFeInput = {
   Manifestacao: NFeManifestacao | ''
   Role: NFeRole | ''
   EmitenteCNPJ: string
-  OnlyUnread: boolean
 }
 
 export type NFeRow = {
@@ -272,7 +271,6 @@ export type NFeRow = {
   EventCount: number
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
-  ViewedAt?: ISODateValue
 }
 
 export type NFeKeyInput = {

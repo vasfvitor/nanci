@@ -355,7 +355,6 @@ type ListNFeInput struct {
 	Manifestacao string // nenhuma | ciencia | confirmada | desconhecida | nao_realizada
 	Role         string // destinatario | emitente | transportador | autorizado | none
 	EmitenteCNPJ string
-	OnlyUnread   bool
 }
 
 type NFeRow struct {
@@ -384,7 +383,6 @@ type NFeRow struct {
 	EventCount       int
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
-	ViewedAt         *time.Time
 }
 
 // NFeKeyInput identifies one of the company's NF-e.
@@ -611,7 +609,6 @@ func NFeRows(documents []nfe.CompanyDocument) []NFeRow {
 			EventCount:       document.EventCount,
 			FirstSyncedAt:    document.FirstSyncedAt,
 			LastSyncedAt:     document.LastSyncedAt,
-			ViewedAt:         document.ViewedAt,
 		}
 	}
 	return out

@@ -513,7 +513,6 @@ export namespace desktopapi {
 	    Manifestacao: string;
 	    Role: string;
 	    EmitenteCNPJ: string;
-	    OnlyUnread: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListNFeInput(source);
@@ -528,7 +527,6 @@ export namespace desktopapi {
 	        this.Manifestacao = source["Manifestacao"];
 	        this.Role = source["Role"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
-	        this.OnlyUnread = source["OnlyUnread"];
 	    }
 	}
 	export class NFeCandidate {
@@ -857,8 +855,6 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
-	    // Go type: time
-	    ViewedAt?: any;
 	    Kind: string;
 	    // Go type: time
 	    Deadline?: any;
@@ -897,7 +893,6 @@ export namespace desktopapi {
 	        this.EventCount = source["EventCount"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
-	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
 	        this.Kind = source["Kind"];
 	        this.Deadline = this.convertValues(source["Deadline"], null);
 	        this.DaysLeft = source["DaysLeft"];
@@ -980,8 +975,6 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
-	    // Go type: time
-	    ViewedAt?: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new NFeRow(source);
@@ -1014,7 +1007,6 @@ export namespace desktopapi {
 	        this.EventCount = source["EventCount"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
-	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

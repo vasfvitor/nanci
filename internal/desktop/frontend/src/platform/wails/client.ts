@@ -335,7 +335,6 @@ export function mapNFeRow(raw: unknown): NFeRow {
     EventCount: asNumber(item['EventCount']),
     FirstSyncedAt: asDate(item['FirstSyncedAt']),
     LastSyncedAt: asDate(item['LastSyncedAt']),
-    ViewedAt: asDate(item['ViewedAt']),
   }
 }
 

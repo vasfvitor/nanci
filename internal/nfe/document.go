@@ -54,7 +54,6 @@ type CompanyDocument struct {
 	LastSeenNSU    *int64
 	FirstSyncedAt  time.Time
 	LastSyncedAt   time.Time
-	ViewedAt       *time.Time
 	// EventCount is how many events nanci holds for the chave.
 	EventCount int
 }

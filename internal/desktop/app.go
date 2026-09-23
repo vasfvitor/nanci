@@ -797,7 +797,6 @@ func nfeListInput(input desktopapi.ListNFeInput) app.NFeListInput {
 		Role:         input.Role,
 		Manifestacao: input.Manifestacao,
 		EmitenteCNPJ: input.EmitenteCNPJ,
-		OnlyUnread:   input.OnlyUnread,
 	}
 }
 

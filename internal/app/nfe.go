@@ -26,7 +26,6 @@ type NFeRepository interface {
 	ListEventsByChaves(ctx context.Context, chaves []string) ([]nfe.Event, error)
 	CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error)
 	CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error)
-	MarkViewed(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) (int, error)
 	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error
 	RecordManifestations(ctx context.Context, items []nfe.ManifestationRecord) error
 	ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
@@ -251,7 +250,6 @@ type NFeListInput struct {
 	Manifestacao string // nenhuma | ciencia | confirmada | desconhecida | nao_realizada
 	EmitenteCNPJ string
 	ChavesAcesso []string
-	OnlyUnread   bool
 	Limit        int // 0 means no limit
 }
 
@@ -268,20 +266,6 @@ func (s *NFeService) ListDocuments(ctx context.Context, in NFeListInput) ([]nfe.
 		return nil, fmt.Errorf("listar NF-e: %w", err)
 	}
 	return docs, nil
-}
-
-// MarkViewed marks the unread NF-e matching the filters (Limit is ignored)
-// as viewed and returns how many changed.
-func (s *NFeService) MarkViewed(ctx context.Context, in NFeListInput) (int, error) {
-	comp, filter, err := s.buildFilter(ctx, in)
-	if err != nil {
-		return 0, err
-	}
-	count, err := s.NFeRepo.MarkViewed(ctx, comp.ID, filter)
-	if err != nil {
-		return 0, fmt.Errorf("marcar NF-e como vistas: %w", err)
-	}
-	return count, nil
 }
 
 // ListEvents returns the events nanci holds for one of the company's NF-e,
@@ -446,7 +430,6 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 		Competence:   in.Competence,
 		EmitenteCNPJ: in.EmitenteCNPJ,
 		ChavesAcesso: in.ChavesAcesso,
-		OnlyUnread:   in.OnlyUnread,
 		Limit:        in.Limit,
 	}
 	if in.Situacao != "" {

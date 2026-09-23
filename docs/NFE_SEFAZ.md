@@ -119,7 +119,7 @@ nanci.exe nfe testar-conexao --cnpj 12345678000199
 nanci.exe nfe pull --cnpj 12345678000199
 nanci.exe nfe status --cnpj 12345678000199
 
-# 4. Listar (filtros: --competencia, --situacao, --tipo, --papel, --manifestacao, --emitente, --chave, --nao-vistas)
+# 4. Listar (filtros: --competencia, --situacao, --tipo, --papel, --manifestacao, --emitente, --chave)
 nanci.exe nfe list --cnpj 12345678000199 --tipo resumo
 
 # 5. Ciência da Operação: sem --confirmar só mostra o que seria enviado
@@ -157,7 +157,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 Migrações `007` a `011` em `internal/store/migrations_v2/`:
 
 - `nfe_documents`: uma linha por chave de acesso, com os campos extraídos, a situação (`autorizada`, `denegada`, `cancelada`), a completude (`resumo` ou `completa`) e o hash do XML bruto. Uma completa nunca é substituída por um resumo, e a situação só piora (cancelada > denegada > autorizada).
-- `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação, NSUs em que foi vista e marca de "vista".
+- `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação e NSUs em que foi vista. A coluna `viewed_at` continua no esquema, mas nenhum fluxo a preenche.
 - `nfe_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`). Um `resEvento` é trocado pelo `procEventoNFe` quando este chega, e um evento enviado pelo Nanci se junta à cópia que volta pela distribuição.
 - `nfe_manifestations`: registro de cada envio de manifestação (lote, `tpAmb`, resultado, `cStat`, `xMotivo`, protocolo), inclusive falhas, para auditoria. Envios anteriores à migração `011` ficam com `tpAmb` vazio.
 - `company_nfe_export_marks`: o que já foi exportado e com qual hash, para a exportação incremental.

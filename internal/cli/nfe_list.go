@@ -19,7 +19,6 @@ func newNFeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 		manifestacaoFlag string
 		emitenteFlag     string
 		chaveFlags       []string
-		naoVistasFlag    bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -40,7 +39,6 @@ func newNFeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				Manifestacao: manifestacaoFlag,
 				EmitenteCNPJ: cnpj.Clean(emitenteFlag),
 				ChavesAcesso: chaveFlags,
-				OnlyUnread:   naoVistasFlag,
 			})
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
@@ -79,6 +77,6 @@ func newNFeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 	cmd.Flags().StringVar(&manifestacaoFlag, "manifestacao", "", "Filtrar por manifestação (nenhuma, ciencia, confirmada, desconhecida, nao_realizada)")
 	cmd.Flags().StringVar(&emitenteFlag, "emitente", "", "Filtrar pelo CNPJ ou CPF do emitente")
 	cmd.Flags().StringSliceVar(&chaveFlags, "chave", nil, "Filtrar pela chave de acesso (pode repetir)")
-	cmd.Flags().BoolVar(&naoVistasFlag, "nao-vistas", false, "Listar apenas as NF-e ainda não vistas")
+
 	return cmd
 }

@@ -15,7 +15,6 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     Manifestacao: '',
     Role: '',
     EmitenteCNPJ: '',
-    OnlyUnread: false,
   })
 
   // listInput is the only place the ListNFe request is built from the filter.
@@ -28,7 +27,6 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     Manifestacao: filter.value.Manifestacao || '',
     Role: filter.value.Role || '',
     EmitenteCNPJ: filter.value.EmitenteCNPJ || '',
-    OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
   const rows = ref<NFeRow[]>([])
