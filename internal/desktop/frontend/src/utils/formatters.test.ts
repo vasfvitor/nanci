@@ -6,6 +6,7 @@ import {
   formatCurrencyCents,
   formatDate,
   formatNFeNumber,
+  formatTime,
 } from './formatters'
 import {
   roleColor,
@@ -86,6 +87,12 @@ describe('formatters', () => {
     expect(daysUntil(undefined)).toBeNull()
     expect(daysUntil('')).toBeNull()
     expect(daysUntil('not-a-date')).toBeNull()
+  })
+
+  it('formats local HH:MM times', () => {
+    expect(formatTime(new Date(2026, 8, 23, 14, 5))).toBe('14:05')
+    expect(formatTime(null, '-')).toBe('-')
+    expect(formatTime('not-a-date')).toBe('')
   })
 })
 

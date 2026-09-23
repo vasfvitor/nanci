@@ -77,3 +77,11 @@ export function daysUntil(value: string | Date | null | undefined, now: Date = n
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
   return Math.round((targetDay - today) / 86_400_000)
 }
+
+// formatTime prints a local HH:MM time, or fallback for empty/invalid values.
+export function formatTime(value: string | Date | null | undefined, fallback = '') {
+  if (!value) return fallback
+  const parsed = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(parsed.getTime())) return fallback
+  return parsed.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}

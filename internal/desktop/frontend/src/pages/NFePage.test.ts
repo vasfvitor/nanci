@@ -1,0 +1,281 @@
+import { flushPromises, shallowMount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import NFePage from './NFePage.vue'
+import CienciaConfirmDialog from '@/components/CienciaConfirmDialog.vue'
+import { desktopClient } from '@/platform/wails/client'
+import type { NFeCienciaPlan, NFeRow, NFeStatusResult } from '@/types/desktop'
+
+type OkHandler = (payload: unknown) => void
+
+const notify = vi.fn()
+const okHandlers: OkHandler[] = []
+const dialog = vi.fn(() => ({
+  onOk: (handler: OkHandler) => {
+    okHandlers.push(handler)
+  },
+}))
+
+vi.mock('quasar', () => ({
+  useQuasar: () => ({
+    dark: { isActive: false },
+    notify,
+    dialog,
+  }),
+  copyToClipboard: vi.fn(),
+  date: { formatDate: vi.fn(() => '2024-09') },
+}))
+
+vi.mock('@/platform/wails/client', () => ({
+  wailsErrorCode: () => '',
+  desktopClient: {
+    listCompanies: vi.fn(),
+    listNFe: vi.fn(),
+    statusNFe: vi.fn(),
+    listPendingManifestations: vi.fn(),
+    planCiencia: vi.fn(),
+    registerCiencia: vi.fn(),
+    pullNFe: vi.fn(),
+  },
+}))
+
+const company = {
+  ID: 'company-1',
+  CNPJ: '98765432000199',
+  CNPJRoot: '98765432',
+  Name: 'Empresa Um',
+  CredentialID: '',
+  CredentialLabel: '',
+  CredentialCertPath: '',
+  Environment: 'producao',
+  UF: 'SP',
+  LastFoundNSU: null,
+  SyncStartPolicy: 'from_now' as const,
+  LastRunStatus: '',
+  LastRunStopReason: '',
+}
+
+function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
+  return {
+    ID: `rel-${chave}`,
+    DocumentID: `doc-${chave}`,
+    ChaveAcesso: chave,
+    Serie: '1',
+    Numero: '1',
+    Protocolo: '',
+    TipoOperacao: '1',
+    EmitenteCNPJ: '12345678000199',
+    EmitenteName: 'Fornecedor',
+    EmitenteIE: '',
+    DestinatarioCNPJ: '',
+    DestinatarioName: '',
+    TotalValue: 100,
+    Situacao: 'autorizada',
+    Completeness: 'resumo',
+    Manifestacao: 'nenhuma',
+    CompanyRole: 'destinatario',
+    EventCount: 0,
+    ...overrides,
+  }
+}
+
+function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
+  return {
+    CompanyName: 'Empresa Um',
+    CNPJ: company.CNPJ,
+    UF: 'SP',
+    Environment: 'producao',
+    TpAmb: '1',
+    AmbienteLabel: 'Produção',
+    LastCheckedNSU: 10,
+    MaxNSU: 10,
+    LastRunStatus: 'completed',
+    LastRunStopReason: '',
+    NextAllowedAt: null,
+    BlockedReason: '',
+    RequestsLastHour: 1,
+    RequestBudget: 20,
+    TotalDestinatario: 0,
+    TotalEmitente: 0,
+    TotalOutros: 0,
+    TotalResumos: 0,
+    TotalCompletas: 0,
+    PendingCiencia: 0,
+    PendingConclusiva: 0,
+    CienciaOverdue: 0,
+    ...overrides,
+  }
+}
+
+const destinatario = nfeRow('a')
+const emitida = nfeRow('b', { CompanyRole: 'emitente' })
+
+function mountPage() {
+  return shallowMount(NFePage, {
+    global: {
+      stubs: {
+        'q-page': { template: '<div><slot /></div>' },
+        'q-tab-panels': { template: '<div><slot /></div>' },
+        'q-tab-panel': { template: '<div><slot /></div>' },
+        'q-banner': { template: '<div class="q-banner-stub"><slot /></div>' },
+        'q-btn': {
+          name: 'QBtn',
+          props: ['label', 'disable', 'loading'],
+          emits: ['click'],
+          template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
+        },
+        'q-table': {
+          name: 'QTable',
+          props: ['rows', 'selected', 'pagination'],
+          emits: ['update:selected', 'update:pagination'],
+          template: '<div />',
+        },
+        NFePendingPanel: { template: '<div />' },
+        NFeEventsDialog: { template: '<div />' },
+      },
+      directives: {
+        ClosePopup: {},
+      },
+    },
+  })
+}
+
+function buttonStartingWith(wrapper: ReturnType<typeof mountPage>, label: string) {
+  const found = wrapper
+    .findAllComponents({ name: 'QBtn' })
+    .find((btn) => String(btn.props('label') ?? '').startsWith(label))
+  if (!found) throw new Error(`button ${label} not found`)
+  return found
+}
+
+async function selectRows(wrapper: ReturnType<typeof mountPage>, rows: NFeRow[]) {
+  wrapper.getComponent({ name: 'QTable' }).vm.$emit('update:selected', rows)
+  await flushPromises()
+}
+
+describe('NFePage', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    okHandlers.length = 0
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida])
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
+    vi.mocked(desktopClient.listPendingManifestations).mockResolvedValue([])
+  })
+
+  it('keeps the ciência button disabled without an eligible selection', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const button = () => buttonStartingWith(wrapper, 'Registrar ciência')
+    expect(button().props('disable')).toBe(true)
+
+    await selectRows(wrapper, [emitida])
+    expect(button().props('label')).toBe('Registrar ciência (0)')
+    expect(button().props('disable')).toBe(true)
+
+    await selectRows(wrapper, [emitida, destinatario])
+    expect(button().props('label')).toBe('Registrar ciência (1)')
+    expect(button().props('disable')).toBe(false)
+  })
+
+  it('opens the confirm dialog with the eligible chaves from planCiencia', async () => {
+    const plan: NFeCienciaPlan = {
+      Eligible: [
+        {
+          ChaveAcesso: 'a',
+          Serie: '1',
+          Numero: '1',
+          EmitenteCNPJ: '12345678000199',
+          EmitenteName: 'Fornecedor',
+          TotalValue: 100,
+        },
+      ],
+      Skipped: [{ ChaveAcesso: 'b', Reason: 'Somente o destinatário pode manifestar' }],
+      Lotes: 1,
+    }
+    vi.mocked(desktopClient.planCiencia).mockResolvedValue(plan)
+    vi.mocked(desktopClient.registerCiencia).mockResolvedValue({
+      Results: [],
+      Requested: 1,
+      Registered: 1,
+      AlreadyRegistered: 0,
+      Rejected: 0,
+      NotSent: 0,
+      Skipped: [],
+      Interrupted: '',
+    })
+
+    const wrapper = mountPage()
+    await flushPromises()
+    await selectRows(wrapper, [destinatario, emitida])
+
+    await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.planCiencia).toHaveBeenCalledWith(company.CNPJ, ['a', 'b'])
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        component: CienciaConfirmDialog,
+        componentProps: expect.objectContaining({
+          cnpj: company.CNPJ,
+          environment: 'Produção',
+          tpAmb: '1',
+          plan,
+        }),
+      })
+    )
+
+    okHandlers[0]?.(['a'])
+    await flushPromises()
+
+    expect(desktopClient.registerCiencia).toHaveBeenCalledWith(company.CNPJ, ['a'])
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'positive',
+        actions: [expect.objectContaining({ label: 'Sincronizar agora' })],
+      })
+    )
+  })
+
+  it('does not open the dialog when planCiencia finds no eligible note', async () => {
+    vi.mocked(desktopClient.planCiencia).mockResolvedValue({
+      Eligible: [],
+      Skipped: [{ ChaveAcesso: 'a', Reason: 'Já possui manifestação' }],
+      Lotes: 0,
+    })
+
+    const wrapper = mountPage()
+    await flushPromises()
+    await selectRows(wrapper, [destinatario])
+
+    await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
+    await flushPromises()
+
+    expect(dialog).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
+  })
+
+  it('disables sync and explains the block while SEFAZ blocks the company', async () => {
+    const until = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(
+      status({ NextAllowedAt: until, BlockedReason: 'consumo_indevido' })
+    )
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(buttonStartingWith(wrapper, 'Sincronizar NF-e').props('disable')).toBe(true)
+    expect(wrapper.find('.q-banner-stub').text()).toContain('Consultas bloqueadas pela SEFAZ até')
+  })
+
+  it('enables sync when the company is not blocked', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(buttonStartingWith(wrapper, 'Sincronizar NF-e').props('disable')).toBe(false)
+    expect(wrapper.find('.q-banner-stub').exists()).toBe(false)
+  })
+})

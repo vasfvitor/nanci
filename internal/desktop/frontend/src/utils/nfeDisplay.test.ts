@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ambienteColor,
+  blockedMessage,
   completenessColor,
   completenessLabel,
   deadlineColor,
+  deadlineLabel,
   manifestacaoColor,
   manifestacaoLabel,
   nfeEventColor,
@@ -109,5 +112,34 @@ describe('nfeDisplay', () => {
     expect(deadlineColor(11)).toBe('warning')
     expect(deadlineColor(30)).toBe('warning')
     expect(deadlineColor(31)).toBe('grey')
+  })
+
+  it('describes days left', () => {
+    expect(deadlineLabel(null)).toBe('Sem prazo')
+    expect(deadlineLabel(-3)).toBe('Vencido há 3 d')
+    expect(deadlineLabel(0)).toBe('Vence hoje')
+    expect(deadlineLabel(12)).toBe('12 d restantes')
+  })
+
+  it('colors the ambiente by tpAmb', () => {
+    expect(ambienteColor('1')).toBe('negative')
+    expect(ambienteColor('2')).toBe('warning')
+    expect(ambienteColor('')).toBe('grey')
+  })
+
+  it('explains each block reason', () => {
+    const info = { RequestsLastHour: 20, RequestBudget: 20 }
+    expect(blockedMessage({ ...info, BlockedReason: 'caught_up' }, '14:32')).toBe(
+      'Sem novos documentos; próxima consulta a partir de 14:32'
+    )
+    expect(blockedMessage({ ...info, BlockedReason: 'consumo_indevido' }, '14:32')).toBe(
+      'Consultas bloqueadas pela SEFAZ até 14:32 (cStat 656)'
+    )
+    expect(blockedMessage({ ...info, BlockedReason: 'rate_budget' }, '14:32')).toBe(
+      'Limite de consultas por hora atingido (20/20); aguarde até 14:32'
+    )
+    expect(blockedMessage({ ...info, BlockedReason: '' }, '14:32')).toBe(
+      'Próxima consulta permitida a partir de 14:32'
+    )
   })
 })

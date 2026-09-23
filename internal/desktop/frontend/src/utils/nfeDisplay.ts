@@ -144,3 +144,39 @@ export function deadlineColor(days: number | null) {
   if (days <= DEADLINE_WARNING_DAYS) return 'warning'
   return 'grey'
 }
+
+// deadlineLabel describes the days left from daysUntil.
+export function deadlineLabel(days: number | null) {
+  if (days === null) return 'Sem prazo'
+  if (days < 0) return `Vencido há ${-days} d`
+  if (days === 0) return 'Vence hoje'
+  return `${days} d restantes`
+}
+
+// ambienteColor highlights production (tpAmb 1), where events are fiscal acts.
+export function ambienteColor(tpAmb: string) {
+  if (tpAmb === '1') return 'negative'
+  if (tpAmb === '2') return 'warning'
+  return 'grey'
+}
+
+export type NFeBlockInfo = {
+  BlockedReason: string
+  RequestsLastHour: number
+  RequestBudget: number
+}
+
+// blockedMessage explains why NF-e sync is paused; time is the HH:MM the
+// block ends.
+export function blockedMessage(info: NFeBlockInfo, time: string) {
+  switch (info.BlockedReason) {
+    case 'caught_up':
+      return `Sem novos documentos; próxima consulta a partir de ${time}`
+    case 'consumo_indevido':
+      return `Consultas bloqueadas pela SEFAZ até ${time} (cStat 656)`
+    case 'rate_budget':
+      return `Limite de consultas por hora atingido (${info.RequestsLastHour}/${info.RequestBudget}); aguarde até ${time}`
+    default:
+      return `Próxima consulta permitida a partir de ${time}`
+  }
+}
