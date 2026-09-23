@@ -15,14 +15,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
-// Outcomes of an outbound manifestação, stored in nfe_manifestations.status.
-const (
-	NFeManifestationRegistrada   = "registrada"
-	NFeManifestationJaRegistrada = "ja_registrada"
-	NFeManifestationRejeitada    = "rejeitada"
-	NFeManifestationErro         = "erro"
-)
-
 // NFeRepository stores NF-e documents, their events, each company's view of
 // them and the manifestações nanci sent.
 //
@@ -285,36 +277,12 @@ func (r *NFeRepository) MarkExported(ctx context.Context, companyID nfse.Company
 	return tx.Commit()
 }
 
-// RecordManifestationParams is the outcome of one event in a lote sent to
-// SEFAZ. Fields are plain values so the store does not depend on the SEFAZ
-// client.
-type RecordManifestationParams struct {
-	CompanyID     nfse.CompanyID
-	CompanyCNPJ   string
-	IDLote        string
-	ChaveAcesso   string
-	TpEvento      string
-	NSeqEvento    int
-	EventAt       *time.Time // dhEvento sent
-	Description   string     // descEvento sent
-	Justificativa string
-	Status        string // one of the NFeManifestation* constants
-	CStat         string
-	XMotivo       string
-	Protocolo     string
-	RegisteredAt  *time.Time
-
-	RequestRawHash    string
-	ResponseRawHash   string
-	ProcEventoRawHash string
-}
-
 // RecordManifestations stores the outcomes of one lote in one transaction.
 // Every item is kept in nfe_manifestations. A registered event is also
 // stored in nfe_events as a completa authored by the company; an event SEFAZ
 // reports as already registered is stored the same way unless nfe_events
 // already has it. Manifestação is then recomputed for the chave.
-func (r *NFeRepository) RecordManifestations(ctx context.Context, items []RecordManifestationParams) error {
+func (r *NFeRepository) RecordManifestations(ctx context.Context, items []nfe.ManifestationRecord) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -348,11 +316,11 @@ func (r *NFeRepository) RecordManifestations(ctx context.Context, items []Record
 			return fmt.Errorf("record manifestação %s %s: %w", item.TpEvento, item.ChaveAcesso, err)
 		}
 
-		if item.Status != NFeManifestationRegistrada && item.Status != NFeManifestationJaRegistrada {
+		if item.Status != nfe.ManifestationStatusRegistrada && item.Status != nfe.ManifestationStatusJaRegistrada {
 			continue
 		}
 		event := manifestationEvent(item)
-		if item.Status == NFeManifestationJaRegistrada {
+		if item.Status == nfe.ManifestationStatusJaRegistrada {
 			exists, err := eventExists(ctx, q, event)
 			if err != nil {
 				return err
@@ -371,7 +339,7 @@ func (r *NFeRepository) RecordManifestations(ctx context.Context, items []Record
 	return tx.Commit()
 }
 
-func manifestationEvent(item RecordManifestationParams) nfe.Event {
+func manifestationEvent(item nfe.ManifestationRecord) nfe.Event {
 	return nfe.Event{
 		ChaveAcesso:   nfe.AccessKey(item.ChaveAcesso),
 		TpEvento:      item.TpEvento,

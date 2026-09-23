@@ -23,7 +23,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -488,40 +487,22 @@ func TestNFeExportXMLZipLayoutAndIncrementalMarks(t *testing.T) {
 	}
 }
 
-type tlsCheckStub struct {
-	calls int
-	err   error
-}
-
-func (s *tlsCheckStub) CheckTLS(context.Context) error {
-	s.calls++
-	return s.err
-}
-
 func TestNFeTestConnectionOnlyChecksTLS(t *testing.T) {
 	env := newNFeTestEnv(t)
-	stub := &tlsCheckStub{}
-	original := newSEFAZClient
-	t.Cleanup(func() { newSEFAZClient = original })
-	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazClient, error) {
-		if cfg.Certificate == nil || cfg.Environment != nfse.EnvironmentProduction {
-			t.Errorf("client config = %+v", cfg)
-		}
-		return stub, nil
-	}
+	stub := useFakeSEFAZ(t)
 
 	result, err := env.app.NFe.TestConnection(context.Background(), nfeTestCNPJ)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.CertLoaded || !result.EndpointReached || stub.calls != 1 {
-		t.Errorf("result = %+v, TLS checks = %d", result, stub.calls)
+	if !result.CertLoaded || !result.EndpointReached || stub.tlsCalls != 1 || len(stub.lotes) != 0 {
+		t.Errorf("result = %+v, TLS checks = %d, lotes = %d", result, stub.tlsCalls, len(stub.lotes))
 	}
 	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Teste de conexão NF-e" {
 		t.Errorf("password requests = %+v", env.passwords.requests)
 	}
 
-	stub.err = errors.New("handshake failed")
+	stub.tlsErr = errors.New("handshake failed")
 	result, err = env.app.NFe.TestConnection(context.Background(), nfeTestCNPJ)
 	if err != nil {
 		t.Fatal(err)

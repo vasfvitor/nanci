@@ -28,11 +28,13 @@ type NFeRepository interface {
 	CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error)
 	MarkViewed(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) (int, error)
 	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error
+	RecordManifestations(ctx context.Context, items []nfe.ManifestationRecord) error
 }
 
 // sefazClient is the part of *sefaz.Client the NF-e use cases call.
 type sefazClient interface {
 	CheckTLS(ctx context.Context) error
+	EnviarEventos(ctx context.Context, signer *sefaz.Signer, idLote string, eventos []sefaz.Evento) (sefaz.LoteResult, error)
 }
 
 // newSEFAZClient builds the SEFAZ client; tests swap it.
@@ -46,8 +48,8 @@ const (
 	NFePendingSemConclusiva = "sem_conclusiva" // ciência, but no conclusive manifestação
 )
 
-// NFeService owns the NF-e use cases: pull, status, list, pending
-// manifestações, export and the connection test.
+// NFeService owns the NF-e use cases: pull, status, list, manifestação do
+// destinatário, pending manifestações, export and the connection test.
 type NFeService struct {
 	Log          *slog.Logger
 	CompanyStore *company.Store

@@ -1,0 +1,374 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/vasfvitor/nanci/internal/nfe"
+	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sefaz"
+)
+
+// fakeSEFAZ answers EnviarEventos with real signed eventos and a scripted
+// cStat per chave (135 when not scripted).
+type fakeSEFAZ struct {
+	t        *testing.T
+	clients  int // clients created through newSEFAZClient
+	tlsErr   error
+	tlsCalls int
+	lotes    [][]sefaz.Evento
+	cStats   map[string]int
+	failLote map[int]error // 0-based lote index -> transport error
+}
+
+func (f *fakeSEFAZ) CheckTLS(context.Context) error {
+	f.tlsCalls++
+	return f.tlsErr
+}
+
+func (f *fakeSEFAZ) EnviarEventos(_ context.Context, signer *sefaz.Signer, idLote string, eventos []sefaz.Evento) (sefaz.LoteResult, error) {
+	index := len(f.lotes)
+	f.lotes = append(f.lotes, eventos)
+	if err := f.failLote[index]; err != nil {
+		return sefaz.LoteResult{}, err
+	}
+
+	result := sefaz.LoteResult{IDLote: idLote, CStat: sefaz.CStatLoteProcessado}
+	for i, ev := range eventos {
+		signed, err := signer.SignEvento(ev, sefaz.TpAmbProducao)
+		if err != nil {
+			f.t.Fatalf("sign evento: %v", err)
+		}
+		cStat, ok := f.cStats[ev.ChaveAcesso]
+		if !ok {
+			cStat = sefaz.CStatEventoVinculado
+		}
+		registeredAt := time.Date(2026, 9, 20, 10, 0, i, 0, time.UTC)
+		protocolo := ""
+		if sefaz.IsRegistered(cStat) {
+			protocolo = fmt.Sprintf("8912600%08d", index*100+i)
+		}
+		ret := fmt.Sprintf(`<retEvento versao="1.00"><infEvento><cStat>%d</cStat><chNFe>%s</chNFe><tpEvento>%s</tpEvento><nProt>%s</nProt></infEvento></retEvento>`,
+			cStat, ev.ChaveAcesso, ev.TpEvento, protocolo)
+		result.Eventos = append(result.Eventos, sefaz.EventoResult{
+			ChaveAcesso:  ev.ChaveAcesso,
+			TpEvento:     ev.TpEvento,
+			NSeqEvento:   ev.NSeqEvento,
+			CStat:        cStat,
+			XMotivo:      fmt.Sprintf("resposta %d", cStat),
+			Protocolo:    protocolo,
+			DhRegEvento:  &registeredAt,
+			SignedEvento: signed,
+			RetEvento:    []byte(ret),
+		})
+	}
+	return result, nil
+}
+
+func (f *fakeSEFAZ) loteSizes() []int {
+	sizes := make([]int, 0, len(f.lotes))
+	for _, lote := range f.lotes {
+		sizes = append(sizes, len(lote))
+	}
+	return sizes
+}
+
+// useFakeSEFAZ makes every SEFAZ client of the test the returned fake.
+func useFakeSEFAZ(t *testing.T) *fakeSEFAZ {
+	t.Helper()
+	fake := &fakeSEFAZ{t: t}
+	original := newSEFAZClient
+	t.Cleanup(func() { newSEFAZClient = original })
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazClient, error) {
+		if cfg.Certificate == nil || cfg.Environment != nfse.EnvironmentProduction {
+			t.Errorf("client config = %+v", cfg)
+		}
+		fake.clients++
+		return fake, nil
+	}
+	return fake
+}
+
+// seedResumos stores count resumos addressed to the company and returns
+// their chaves.
+func (e *nfeTestEnv) seedResumos(count int) []string {
+	e.t.Helper()
+	chaves := make([]string, 0, count)
+	for n := 100; n < 100+count; n++ {
+		chaves = append(chaves, e.seedResumo(n, "2026-09-01T09:15:42-03:00", "11222333000181"))
+	}
+	return chaves
+}
+
+func (e *nfeTestEnv) manifestationStatuses() map[string]int {
+	e.t.Helper()
+	rows, err := e.db.QueryContext(context.Background(), `SELECT status, COUNT(*) FROM nfe_manifestations GROUP BY status`)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	statuses := make(map[string]int)
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			e.t.Fatal(err)
+		}
+		statuses[status] = count
+	}
+	if err := rows.Err(); err != nil {
+		e.t.Fatal(err)
+	}
+	return statuses
+}
+
+func (e *nfeTestEnv) manifestacao(chave string) nfe.Manifestacao {
+	e.t.Helper()
+	docs, err := e.app.NFe.ListDocuments(context.Background(), NFeListInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{chave}})
+	if err != nil || len(docs) != 1 {
+		e.t.Fatalf("document %s: %d rows, %v", chave, len(docs), err)
+	}
+	return docs[0].Manifestacao
+}
+
+func TestNFePlanCienciaNeedsNoNetworkOrPassword(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seedFixtures()
+	eligible := env.seedResumo(10, "2026-08-20T10:00:00-03:00", "11222333000181")
+	emitida := env.seedResumo(11, "2026-08-21T10:00:00-03:00", nfeTestCNPJ)
+	unknown := testChave(t, 12)
+	fake := useFakeSEFAZ(t)
+
+	plan, err := env.app.NFe.PlanCiencia(context.Background(), NFeCienciaInput{
+		CNPJ:         nfeTestCNPJ,
+		ChavesAcesso: []string{eligible, nfeChaveProc, nfeChaveCancelada, emitida, unknown, "123", eligible},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Eligible) != 1 || plan.Eligible[0].ChaveAcesso != eligible || plan.Lotes != 1 {
+		t.Fatalf("eligible = %+v, lotes %d; want only %s", plan.Eligible, plan.Lotes, eligible)
+	}
+	wantSkipped := []NFeSkipped{
+		{ChaveAcesso: "123", Reason: "chave de acesso inválida"},
+		{ChaveAcesso: eligible, Reason: "chave repetida"},
+		{ChaveAcesso: nfeChaveProc, Reason: "já manifestada (ciencia)"},
+		{ChaveAcesso: nfeChaveCancelada, Reason: "NF-e cancelada"},
+		{ChaveAcesso: emitida, Reason: "a empresa não é a destinatária"},
+		{ChaveAcesso: unknown, Reason: "não encontrada para a empresa"},
+	}
+	if !slices.Equal(plan.Skipped, wantSkipped) {
+		t.Errorf("skipped =\n%+v\nwant\n%+v", plan.Skipped, wantSkipped)
+	}
+
+	all, err := env.app.NFe.PlanCiencia(context.Background(), NFeCienciaInput{CNPJ: nfeTestCNPJ, AllResumos: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all.Eligible) != 1 || all.Eligible[0].ChaveAcesso != eligible {
+		t.Errorf("all resumos = %+v, want only %s", all.Eligible, eligible)
+	}
+	if len(env.passwords.requests) != 0 || fake.clients != 0 {
+		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), fake.clients)
+	}
+}
+
+func TestNFeRegisterCienciaSendsLotesOfTwenty(t *testing.T) {
+	env := newNFeTestEnv(t)
+	chaves := env.seedResumos(45)
+	fake := useFakeSEFAZ(t)
+
+	summary, err := env.app.NFe.RegisterCiencia(context.Background(), NFeCienciaInput{CNPJ: nfeTestCNPJ, AllResumos: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fake.loteSizes(); !slices.Equal(got, []int{20, 20, 5}) {
+		t.Errorf("lote sizes = %v, want [20 20 5]", got)
+	}
+	if summary.Requested != 45 || summary.Registered != 45 || summary.Interrupted != "" || len(summary.Outcomes) != 45 {
+		t.Errorf("summary = requested %d, registered %d, interrupted %q, outcomes %d",
+			summary.Requested, summary.Registered, summary.Interrupted, len(summary.Outcomes))
+	}
+	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Assinatura: Ciência da Operação (45 notas)" {
+		t.Errorf("password requests = %+v, want one for 45 notas", env.passwords.requests)
+	}
+	for _, ev := range fake.lotes[0] {
+		if ev.TpEvento != nfe.TpEventoCiencia || ev.CNPJ != nfeTestCNPJ || ev.NSeqEvento != 1 {
+			t.Fatalf("evento = %+v", ev)
+		}
+	}
+	for _, chave := range chaves {
+		if got := env.manifestacao(chave); got != nfe.ManifestacaoCiencia {
+			t.Fatalf("%s manifestacao = %s, want ciencia", chave, got)
+		}
+	}
+	if got := env.manifestationStatuses(); got[nfe.ManifestationStatusRegistrada] != 45 || len(got) != 1 {
+		t.Errorf("stored statuses = %v, want 45 registrada", got)
+	}
+}
+
+func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {
+	env := newNFeTestEnv(t)
+	chaves := env.seedResumos(3)
+	fake := useFakeSEFAZ(t)
+	fake.cStats = map[string]int{
+		chaves[0]: sefaz.CStatEventoVinculado,
+		chaves[1]: sefaz.CStatDuplicidadeEvento,
+		chaves[2]: sefaz.CStatCienciaNFeCancelada,
+	}
+
+	summary, err := env.app.NFe.RegisterCiencia(context.Background(), NFeCienciaInput{CNPJ: nfeTestCNPJ, ChavesAcesso: chaves})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.Registered != 1 || summary.AlreadyRegistered != 1 || summary.Rejected != 1 || summary.NotSent != 0 {
+		t.Errorf("summary = %+v", summary)
+	}
+	want := []struct{ status, cStat string }{
+		{NFeOutcomeRegistrada, "135"},
+		{NFeOutcomeJaRegistrada, "573"},
+		{NFeOutcomeRejeitada, "650"},
+	}
+	for i, o := range summary.Outcomes {
+		if o.ChaveAcesso != chaves[i] || o.Status != want[i].status || o.CStat != want[i].cStat || o.TpEvento != nfe.TpEventoCiencia {
+			t.Errorf("outcome %d = %+v, want %s/%s", i, o, want[i].status, want[i].cStat)
+		}
+	}
+	if summary.Outcomes[0].Protocolo == "" || summary.Outcomes[0].RegisteredAt == nil {
+		t.Errorf("registered outcome = %+v, want protocolo and time", summary.Outcomes[0])
+	}
+
+	if got := env.manifestacao(chaves[0]); got != nfe.ManifestacaoCiencia {
+		t.Errorf("registered manifestacao = %s", got)
+	}
+	if got := env.manifestacao(chaves[1]); got != nfe.ManifestacaoCiencia {
+		t.Errorf("already registered manifestacao = %s", got)
+	}
+	if got := env.manifestacao(chaves[2]); got != nfe.ManifestacaoNenhuma {
+		t.Errorf("rejected manifestacao = %s", got)
+	}
+	wantStatuses := map[string]int{
+		nfe.ManifestationStatusRegistrada:   1,
+		nfe.ManifestationStatusJaRegistrada: 1,
+		nfe.ManifestationStatusRejeitada:    1,
+	}
+	if got := env.manifestationStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
+		t.Errorf("stored statuses = %v, want %v", got, wantStatuses)
+	}
+	events, err := env.app.NFe.ListEvents(context.Background(), nfeTestCNPJ, chaves[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || !events[0].SentByNanci || events[0].RawHash == "" {
+		t.Errorf("events = %+v, want the sent ciência with its procEventoNFe", events)
+	}
+	if _, err := env.xml.Get(events[0].RawHash); err != nil {
+		t.Errorf("procEventoNFe blob: %v", err)
+	}
+}
+
+func TestNFeRegisterCienciaTransportFailureInterruptsWithoutError(t *testing.T) {
+	env := newNFeTestEnv(t)
+	chaves := env.seedResumos(45)
+	fake := useFakeSEFAZ(t)
+	fake.failLote = map[int]error{1: errors.New("connection reset by peer")}
+
+	summary, err := env.app.NFe.RegisterCiencia(context.Background(), NFeCienciaInput{CNPJ: nfeTestCNPJ, AllResumos: true})
+	if err != nil {
+		t.Fatalf("RegisterCiencia error = %v, want the failure in the summary", err)
+	}
+	if len(fake.lotes) != 2 {
+		t.Errorf("lotes sent = %d, want 2 (the third is never sent)", len(fake.lotes))
+	}
+	if summary.Registered != 20 || summary.NotSent != 25 || !strings.Contains(summary.Interrupted, "connection reset by peer") {
+		t.Errorf("summary = registered %d, not sent %d, interrupted %q", summary.Registered, summary.NotSent, summary.Interrupted)
+	}
+	for _, o := range summary.Outcomes[20:] {
+		if o.Status != NFeOutcomeNaoEnviada {
+			t.Fatalf("outcome after the failure = %+v, want nao_enviada", o)
+		}
+	}
+
+	registered := 0
+	for _, chave := range chaves {
+		if env.manifestacao(chave) == nfe.ManifestacaoCiencia {
+			registered++
+		}
+	}
+	if registered != 20 {
+		t.Errorf("documents with ciência = %d, want 20", registered)
+	}
+	wantStatuses := map[string]int{nfe.ManifestationStatusRegistrada: 20, nfe.ManifestationStatusErro: 20}
+	if got := env.manifestationStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
+		t.Errorf("stored statuses = %v, want %v", got, wantStatuses)
+	}
+}
+
+func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seedFixtures()
+	emitida := env.seedResumo(11, "2026-08-21T10:00:00-03:00", nfeTestCNPJ)
+	fake := useFakeSEFAZ(t)
+	ctx := context.Background()
+
+	tests := []struct {
+		name string
+		in   NFeManifestationInput
+		want string
+	}{
+		{"não realizada without justificativa", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "210240"}, "justificativa inválida"},
+		{"não realizada with a short justificativa", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "nao_realizada", Justificativa: "curta"}, "justificativa inválida"},
+		{"justificativa on confirmação", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "confirmacao", Justificativa: "mercadoria recebida conforme pedido"}, "justificativa só é aceita"},
+		{"ciência", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "210210"}, "ciência em lote"},
+		{"unknown tipo", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "aceite"}, "tipo de manifestação inválido"},
+		{"emitente role", NFeManifestationInput{ChaveAcesso: emitida, Tipo: "confirmacao"}, "não é a destinatária"},
+		{"cancelada", NFeManifestationInput{ChaveAcesso: nfeChaveCancelada, Tipo: "desconhecimento"}, "NF-e cancelada"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.in.CNPJ = nfeTestCNPJ
+			_, err := env.app.NFe.RegisterManifestation(ctx, tc.in)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+	if len(env.passwords.requests) != 0 || len(fake.lotes) != 0 {
+		t.Fatalf("password prompts = %d, lotes = %d; want none before validation passes", len(env.passwords.requests), len(fake.lotes))
+	}
+
+	justificativa := "Mercadoria nunca foi entregue no endereço"
+	outcome, err := env.app.NFe.RegisterManifestation(ctx, NFeManifestationInput{
+		CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "nao-realizada", Justificativa: justificativa,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.Status != NFeOutcomeRegistrada || outcome.TpEvento != nfe.TpEventoNaoRealizada {
+		t.Errorf("outcome = %+v", outcome)
+	}
+	if len(fake.lotes) != 1 || len(fake.lotes[0]) != 1 || fake.lotes[0][0].XJust != justificativa {
+		t.Errorf("lotes = %+v", fake.lotes)
+	}
+	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Assinatura: Operação não Realizada" {
+		t.Errorf("password requests = %+v", env.passwords.requests)
+	}
+	if got := env.manifestacao(nfeChaveProc); got != nfe.ManifestacaoNaoRealizada {
+		t.Errorf("manifestacao = %s, want nao_realizada", got)
+	}
+
+	_, err = env.app.NFe.RegisterManifestation(ctx, NFeManifestationInput{
+		CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "nao_realizada", Justificativa: justificativa,
+	})
+	if err == nil || !strings.Contains(err.Error(), "já tem") {
+		t.Errorf("repeating the same manifestação: %v, want refused", err)
+	}
+	if len(env.passwords.requests) != 1 {
+		t.Errorf("password prompts = %d, want still 1", len(env.passwords.requests))
+	}
+}

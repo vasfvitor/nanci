@@ -154,7 +154,7 @@ func (f *nfeFixture) events(chave string) []nfe.Event {
 	return events
 }
 
-func (f *nfeFixture) record(items ...store.RecordManifestationParams) {
+func (f *nfeFixture) record(items ...nfe.ManifestationRecord) {
 	f.t.Helper()
 	if err := f.repo.RecordManifestations(context.Background(), items); err != nil {
 		f.t.Fatalf("RecordManifestations: %v", err)
@@ -178,8 +178,8 @@ func chaves(docs []nfe.CompanyDocument) []string {
 	return out
 }
 
-func manifestation(tpEvento, status string, registeredAt time.Time) store.RecordManifestationParams {
-	return store.RecordManifestationParams{
+func manifestation(tpEvento, status string, registeredAt time.Time) nfe.ManifestationRecord {
+	return nfe.ManifestationRecord{
 		CompanyID:         "mock",
 		CompanyCNPJ:       "70.860.312/0001-50",
 		IDLote:            "1",
@@ -304,7 +304,7 @@ func TestNFeOwnCienciaCollapsesWithDistributedCopy(t *testing.T) {
 	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
 
 	registeredAt := time.Date(2026, 9, 2, 10, 0, 5, 0, time.FixedZone("-03", -3*3600))
-	f.record(manifestation(nfe.TpEventoCiencia, store.NFeManifestationRegistrada, registeredAt))
+	f.record(manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusRegistrada, registeredAt))
 
 	got := f.companyDocument("mock", nfeKeyProc)
 	if got.Manifestacao != nfe.ManifestacaoCiencia {
@@ -349,10 +349,10 @@ func TestNFeConclusiveAfterCiencia(t *testing.T) {
 	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia"))
 
 	confirmedAt := time.Date(2026, 9, 10, 15, 0, 0, 0, time.UTC)
-	rejected := manifestation(nfe.TpEventoDesconhecimento, store.NFeManifestationRejeitada, confirmedAt.Add(time.Hour))
+	rejected := manifestation(nfe.TpEventoDesconhecimento, nfe.ManifestationStatusRejeitada, confirmedAt.Add(time.Hour))
 	rejected.CStat, rejected.XMotivo, rejected.RegisteredAt = "596", "Rejeicao: prazo", nil
 	f.record(
-		manifestation(nfe.TpEventoConfirmacao, store.NFeManifestationRegistrada, confirmedAt),
+		manifestation(nfe.TpEventoConfirmacao, nfe.ManifestationStatusRegistrada, confirmedAt),
 		rejected,
 	)
 
@@ -373,7 +373,7 @@ func TestNFeAlreadyRegisteredManifestation(t *testing.T) {
 	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
 	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-distributed"))
 
-	dup := manifestation(nfe.TpEventoCiencia, store.NFeManifestationJaRegistrada, time.Now())
+	dup := manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusJaRegistrada, time.Now())
 	dup.CStat, dup.Protocolo, dup.RegisteredAt, dup.ProcEventoRawHash = "573", "", nil, ""
 	f.record(dup)
 
@@ -408,7 +408,7 @@ func seedFilterDocuments(f *nfeFixture) {
 func TestNFeListFilters(t *testing.T) {
 	f := newNFeFixture(t)
 	seedFilterDocuments(f)
-	f.record(manifestation(nfe.TpEventoCiencia, store.NFeManifestationRegistrada, time.Now()))
+	f.record(manifestation(nfe.TpEventoCiencia, nfe.ManifestationStatusRegistrada, time.Now()))
 
 	viewed, err := f.repo.MarkViewed(context.Background(), "mock", nfe.DocumentFilter{Competence: "2026-08"})
 	if err != nil {
@@ -491,7 +491,7 @@ func TestNFePendingManifestation(t *testing.T) {
 	}
 
 	// A conclusive manifestação ends the pendency.
-	f.record(manifestation(nfe.TpEventoConfirmacao, store.NFeManifestationRegistrada, time.Now()))
+	f.record(manifestation(nfe.TpEventoConfirmacao, nfe.ManifestationStatusRegistrada, time.Now()))
 	if got := f.list("mock", pending); len(got) != 0 {
 		t.Errorf("pending after confirmação = %v, want none", got)
 	}
