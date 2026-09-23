@@ -39,6 +39,7 @@ type App struct {
 	Documents   *DocumentService
 	Exports     *ExportService
 	Query       *QueryService
+	NFe         *NFeService
 	SyncManager *sync.Manager
 	// Certificates loads a company's certificate for any use case that consults the tax authority.
 	Certificates *sync.CertificateLoader
@@ -51,7 +52,7 @@ type Dependencies struct {
 	CredentialStore    *credential.Store
 	SyncRepo           *sync.Store
 	DocumentRepo       *store.DocumentRepository
-	NFeRepo            sync.NFeRepository
+	NFeRepo            NFeRepository
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -71,6 +72,8 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: sync repository is required")
 	case deps.DocumentRepo == nil:
 		return nil, errors.New("app: document repository is required")
+	case deps.NFeRepo == nil:
+		return nil, errors.New("app: NF-e repository is required")
 	case deps.XMLStore == nil:
 		return nil, errors.New("app: XML store is required")
 	case deps.DataDir == "":
@@ -85,22 +88,25 @@ func New(deps Dependencies) (*App, error) {
 		Passwords:   deps.CredentialProvider,
 	}
 
+	syncManager := &sync.Manager{
+		Log:                deps.Log,
+		CompanyProvider:    deps.CompanyStore,
+		CredentialProvider: deps.CredentialStore,
+		DocProvider:        deps.DocumentRepo,
+		SyncRepo:           deps.SyncRepo,
+		XMLStore:           deps.XMLStore,
+		PassProvider:       deps.CredentialProvider,
+		NFeRepo:            deps.NFeRepo,
+	}
+
 	return &App{
-		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
-		Credentials: credential.NewManager(deps.CredentialStore),
-		Documents:   NewDocumentService(deps),
-		Exports:     NewExportService(deps),
-		Query:       NewQueryService(deps, certificates),
-		SyncManager: &sync.Manager{
-			Log:                deps.Log,
-			CompanyProvider:    deps.CompanyStore,
-			CredentialProvider: deps.CredentialStore,
-			DocProvider:        deps.DocumentRepo,
-			SyncRepo:           deps.SyncRepo,
-			XMLStore:           deps.XMLStore,
-			PassProvider:       deps.CredentialProvider,
-			NFeRepo:            deps.NFeRepo,
-		},
+		Companies:    company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
+		Credentials:  credential.NewManager(deps.CredentialStore),
+		Documents:    NewDocumentService(deps),
+		Exports:      NewExportService(deps),
+		Query:        NewQueryService(deps, certificates),
+		NFe:          NewNFeService(deps, certificates, syncManager),
+		SyncManager:  syncManager,
 		Certificates: certificates,
 	}, nil
 }

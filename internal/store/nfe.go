@@ -23,9 +23,6 @@ const (
 	NFeManifestationErro         = "erro"
 )
 
-// NFeExportKindXML is the only export kind tracked for NF-e.
-const NFeExportKindXML = "xml"
-
 // NFeRepository stores NF-e documents, their events, each company's view of
 // them and the manifestações nanci sent.
 //
@@ -155,33 +152,15 @@ func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID nfs
 	return count > 0, nil
 }
 
-// NFeFilter selects company NF-e rows. Zero values do not filter.
-type NFeFilter struct {
-	Competence   string // "YYYY-MM"
-	Situacao     nfe.Situacao
-	Completeness nfe.Completeness
-	Role         nfe.CompanyRole
-	Manifestacao nfe.Manifestacao
-	EmitenteCNPJ string
-	ChavesAcesso []string
-	OnlyUnread   bool
-	// IssueDateGTE keeps documents issued on or after this day.
-	IssueDateGTE *time.Time
-	// PendingManifestation keeps authorized documents where the company is
-	// the destinatário and has no conclusive manifestação yet.
-	PendingManifestation bool
-	Limit                int
-}
-
 // ListCompanyDocuments returns the company's NF-e, newest issue date first.
-func (r *NFeRepository) ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f NFeFilter) ([]nfe.CompanyDocument, error) {
+func (r *NFeRepository) ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) ([]nfe.CompanyDocument, error) {
 	return r.listCompanyDocuments(ctx, companyID, f, "")
 }
 
 // ListPendingExport returns the rows ListCompanyDocuments would return that
 // were never exported with this kind, or whose raw hash changed since (for
 // example after a resumo was upgraded to completa).
-func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f NFeFilter, kind string) ([]nfe.CompanyDocument, error) {
+func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error) {
 	if kind == "" {
 		return nil, errors.New("export kind is required")
 	}
@@ -191,7 +170,7 @@ func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID nfse.Co
 // CompanyDocumentByChave returns ErrNotFound when the company does not see
 // the chave.
 func (r *NFeRepository) CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error) {
-	docs, err := r.listCompanyDocuments(ctx, companyID, NFeFilter{ChavesAcesso: []string{chave}, Limit: 1}, "")
+	docs, err := r.listCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: []string{chave}, Limit: 1}, "")
 	if err != nil {
 		return nil, err
 	}
@@ -210,20 +189,9 @@ func (r *NFeRepository) ListEventsByChave(ctx context.Context, chave string) ([]
 	return eventsFromRows(rows)
 }
 
-// NFeCounts summarizes one company's NF-e.
-type NFeCounts struct {
-	ByRole    map[nfe.CompanyRole]int
-	Resumos   int
-	Completas int
-	// PendingCiencia counts authorized documents addressed to the company
-	// without any manifestação.
-	PendingCiencia int
-	// PendingConclusiva counts authorized documents addressed to the company
-	// with ciência but no conclusive manifestação.
-	PendingConclusiva int
-}
-
-func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.CompanyID) (NFeCounts, error) {
+// CountSummary counts the company's NF-e by role, completeness and pending
+// manifestação.
+func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error) {
 	const query = `
 		SELECT
 			cd.company_role,
@@ -239,16 +207,16 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.Company
 	`
 	rows, err := r.db.QueryContext(ctx, query, string(companyID))
 	if err != nil {
-		return NFeCounts{}, fmt.Errorf("count nfe documents: %w", err)
+		return nfe.Counts{}, fmt.Errorf("count nfe documents: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
-	counts := NFeCounts{ByRole: make(map[nfe.CompanyRole]int)}
+	counts := nfe.Counts{ByRole: make(map[nfe.CompanyRole]int)}
 	for rows.Next() {
 		var role string
 		var total, resumos, completas, pendingCiencia, pendingConclusiva int
 		if err := rows.Scan(&role, &total, &resumos, &completas, &pendingCiencia, &pendingConclusiva); err != nil {
-			return NFeCounts{}, fmt.Errorf("scan nfe counts: %w", err)
+			return nfe.Counts{}, fmt.Errorf("scan nfe counts: %w", err)
 		}
 		counts.ByRole[nfe.CompanyRole(role)] = total
 		counts.Resumos += resumos
@@ -257,14 +225,14 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.Company
 		counts.PendingConclusiva += pendingConclusiva
 	}
 	if err := rows.Err(); err != nil {
-		return NFeCounts{}, fmt.Errorf("iterate nfe counts: %w", err)
+		return nfe.Counts{}, fmt.Errorf("iterate nfe counts: %w", err)
 	}
 	return counts, nil
 }
 
 // MarkViewed sets viewed_at on the unread rows matching the filter (Limit is
 // ignored) and returns how many rows changed.
-func (r *NFeRepository) MarkViewed(ctx context.Context, companyID nfse.CompanyID, f NFeFilter) (int, error) {
+func (r *NFeRepository) MarkViewed(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) (int, error) {
 	query := `
 		UPDATE company_nfe_documents
 		SET viewed_at = ?
@@ -554,7 +522,7 @@ const nfeCompanyDocumentColumns = `
 
 // listCompanyDocuments runs the single company NF-e query. A non-empty
 // exportKind keeps only rows pending export for that kind.
-func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f NFeFilter, exportKind string) ([]nfe.CompanyDocument, error) {
+func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, exportKind string) ([]nfe.CompanyDocument, error) {
 	query := `SELECT ` + nfeCompanyDocumentColumns + `
 		FROM company_nfe_documents cd
 		INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id`
@@ -602,7 +570,7 @@ func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID nfse
 // buildNFeFilterSQL returns the WHERE conditions for f over the aliases cd
 // (company_nfe_documents) and d (nfe_documents), and their arguments. Limit
 // is left to the caller.
-func buildNFeFilterSQL(companyID nfse.CompanyID, f NFeFilter) (string, []any) {
+func buildNFeFilterSQL(companyID nfse.CompanyID, f nfe.DocumentFilter) (string, []any) {
 	where := "cd.company_id = ?"
 	args := []any{string(companyID)}
 

@@ -108,7 +108,7 @@ func (h *nfeTestHelper) setNFeCursor(nsu int64) {
 
 func (h *nfeTestHelper) documents() map[string]nfe.CompanyDocument {
 	h.t.Helper()
-	docs, err := h.repo.ListCompanyDocuments(context.Background(), h.company.ID, dbstore.NFeFilter{})
+	docs, err := h.repo.ListCompanyDocuments(context.Background(), h.company.ID, nfe.DocumentFilter{})
 	if err != nil {
 		h.t.Fatal(err)
 	}

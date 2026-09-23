@@ -161,7 +161,7 @@ func (f *nfeFixture) record(items ...store.RecordManifestationParams) {
 	}
 }
 
-func (f *nfeFixture) list(companyID string, filter store.NFeFilter) []string {
+func (f *nfeFixture) list(companyID string, filter nfe.DocumentFilter) []string {
 	f.t.Helper()
 	docs, err := f.repo.ListCompanyDocuments(context.Background(), nfse.CompanyID(companyID), filter)
 	if err != nil {
@@ -410,7 +410,7 @@ func TestNFeListFilters(t *testing.T) {
 	seedFilterDocuments(f)
 	f.record(manifestation(nfe.TpEventoCiencia, store.NFeManifestationRegistrada, time.Now()))
 
-	viewed, err := f.repo.MarkViewed(context.Background(), "mock", store.NFeFilter{Competence: "2026-08"})
+	viewed, err := f.repo.MarkViewed(context.Background(), "mock", nfe.DocumentFilter{Competence: "2026-08"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,24 +422,24 @@ func TestNFeListFilters(t *testing.T) {
 	all := []string{nfeKeyDenegada, nfeKeyProc, nfeKeyCancelada}
 	tests := []struct {
 		name   string
-		filter store.NFeFilter
+		filter nfe.DocumentFilter
 		want   []string
 	}{
-		{"no filter, newest first", store.NFeFilter{}, all},
-		{"competence", store.NFeFilter{Competence: "2026-08"}, []string{nfeKeyCancelada}},
-		{"situacao", store.NFeFilter{Situacao: nfe.SituacaoDenegada}, []string{nfeKeyDenegada}},
-		{"completeness", store.NFeFilter{Completeness: nfe.CompletenessResumo}, []string{nfeKeyCancelada}},
-		{"role", store.NFeFilter{Role: nfe.CompanyRoleDestinatario}, all},
-		{"role without match", store.NFeFilter{Role: nfe.CompanyRoleEmitente}, []string{}},
-		{"manifestacao", store.NFeFilter{Manifestacao: nfe.ManifestacaoCiencia}, []string{nfeKeyProc}},
-		{"emitente cnpj", store.NFeFilter{EmitenteCNPJ: "11.222.333/0001-81"}, all},
-		{"emitente cnpj without match", store.NFeFilter{EmitenteCNPJ: cnpjMock}, []string{}},
-		{"chaves", store.NFeFilter{ChavesAcesso: []string{nfeKeyCancelada, nfeKeyDenegada}}, []string{nfeKeyDenegada, nfeKeyCancelada}},
-		{"only unread", store.NFeFilter{OnlyUnread: true}, []string{nfeKeyDenegada, nfeKeyProc}},
-		{"issue date floor", store.NFeFilter{IssueDateGTE: &issueFloor}, []string{nfeKeyDenegada}},
-		{"issue date floor is inclusive", store.NFeFilter{IssueDateGTE: new(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC))}, []string{nfeKeyDenegada, nfeKeyProc}},
-		{"pending manifestation", store.NFeFilter{PendingManifestation: true}, []string{nfeKeyProc}},
-		{"limit", store.NFeFilter{Limit: 1}, []string{nfeKeyDenegada}},
+		{"no filter, newest first", nfe.DocumentFilter{}, all},
+		{"competence", nfe.DocumentFilter{Competence: "2026-08"}, []string{nfeKeyCancelada}},
+		{"situacao", nfe.DocumentFilter{Situacao: nfe.SituacaoDenegada}, []string{nfeKeyDenegada}},
+		{"completeness", nfe.DocumentFilter{Completeness: nfe.CompletenessResumo}, []string{nfeKeyCancelada}},
+		{"role", nfe.DocumentFilter{Role: nfe.CompanyRoleDestinatario}, all},
+		{"role without match", nfe.DocumentFilter{Role: nfe.CompanyRoleEmitente}, []string{}},
+		{"manifestacao", nfe.DocumentFilter{Manifestacao: nfe.ManifestacaoCiencia}, []string{nfeKeyProc}},
+		{"emitente cnpj", nfe.DocumentFilter{EmitenteCNPJ: "11.222.333/0001-81"}, all},
+		{"emitente cnpj without match", nfe.DocumentFilter{EmitenteCNPJ: cnpjMock}, []string{}},
+		{"chaves", nfe.DocumentFilter{ChavesAcesso: []string{nfeKeyCancelada, nfeKeyDenegada}}, []string{nfeKeyDenegada, nfeKeyCancelada}},
+		{"only unread", nfe.DocumentFilter{OnlyUnread: true}, []string{nfeKeyDenegada, nfeKeyProc}},
+		{"issue date floor", nfe.DocumentFilter{IssueDateGTE: &issueFloor}, []string{nfeKeyDenegada}},
+		{"issue date floor is inclusive", nfe.DocumentFilter{IssueDateGTE: new(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC))}, []string{nfeKeyDenegada, nfeKeyProc}},
+		{"pending manifestation", nfe.DocumentFilter{PendingManifestation: true}, []string{nfeKeyProc}},
+		{"limit", nfe.DocumentFilter{Limit: 1}, []string{nfeKeyDenegada}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -449,7 +449,7 @@ func TestNFeListFilters(t *testing.T) {
 		})
 	}
 
-	if got := f.list("emitente", store.NFeFilter{Role: nfe.CompanyRoleEmitente}); !slices.Equal(got, []string{nfeKeyProc}) {
+	if got := f.list("emitente", nfe.DocumentFilter{Role: nfe.CompanyRoleEmitente}); !slices.Equal(got, []string{nfeKeyProc}) {
 		t.Errorf("emitente company rows = %v", got)
 	}
 }
@@ -457,7 +457,7 @@ func TestNFeListFilters(t *testing.T) {
 func TestNFePendingManifestation(t *testing.T) {
 	f := newNFeFixture(t)
 	seedFilterDocuments(f)
-	pending := store.NFeFilter{PendingManifestation: true}
+	pending := nfe.DocumentFilter{PendingManifestation: true}
 
 	// Autorizada without manifestação: pending. Cancelada and denegada: never.
 	if got := f.list("mock", pending); !slices.Equal(got, []string{nfeKeyProc}) {
@@ -477,7 +477,7 @@ func TestNFePendingManifestation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := store.NFeCounts{
+	want := nfe.Counts{
 		ByRole:            map[nfe.CompanyRole]int{nfe.CompanyRoleDestinatario: 3},
 		Resumos:           1,
 		Completas:         2,
@@ -516,7 +516,7 @@ func TestNFeExportMarks(t *testing.T) {
 
 	pending := func() []nfe.CompanyDocument {
 		t.Helper()
-		docs, err := f.repo.ListPendingExport(ctx, "mock", store.NFeFilter{}, store.NFeExportKindXML)
+		docs, err := f.repo.ListPendingExport(ctx, "mock", nfe.DocumentFilter{}, nfe.ExportKindXML)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -527,7 +527,7 @@ func TestNFeExportMarks(t *testing.T) {
 	if !slices.Equal(chaves(docs), []string{nfeKeyProc}) {
 		t.Fatalf("pending before export = %v", chaves(docs))
 	}
-	if err := f.repo.MarkExported(ctx, "mock", store.NFeExportKindXML, docs); err != nil {
+	if err := f.repo.MarkExported(ctx, "mock", nfe.ExportKindXML, docs); err != nil {
 		t.Fatal(err)
 	}
 	if docs := pending(); len(docs) != 0 {
@@ -540,14 +540,14 @@ func TestNFeExportMarks(t *testing.T) {
 	if len(docs) != 1 || docs[0].RawHash != "hash-completa" {
 		t.Fatalf("pending after upgrade = %+v", docs)
 	}
-	if err := f.repo.MarkExported(ctx, "mock", store.NFeExportKindXML, docs); err != nil {
+	if err := f.repo.MarkExported(ctx, "mock", nfe.ExportKindXML, docs); err != nil {
 		t.Fatal(err)
 	}
 	if docs := pending(); len(docs) != 0 {
 		t.Errorf("pending after second export = %v, want none", chaves(docs))
 	}
 
-	if _, err := f.repo.ListPendingExport(ctx, "mock", store.NFeFilter{}, ""); err == nil {
+	if _, err := f.repo.ListPendingExport(ctx, "mock", nfe.DocumentFilter{}, ""); err == nil {
 		t.Error("ListPendingExport without a kind should fail")
 	}
 }

@@ -21,9 +21,9 @@ import (
 var nfeRequestDelay = 2 * time.Second
 
 const (
-	// nfeRequestsPerHour is the SEFAZ limit per CNPJ; going over it gets
+	// NFeRequestsPerHour is the SEFAZ limit per CNPJ; going over it gets
 	// cStat 656 and an hour of blocking.
-	nfeRequestsPerHour = 20
+	NFeRequestsPerHour = 20
 	// nfeWaitAfterStop is how long SEFAZ wants us to wait after catching up
 	// (cStat 137, or ultNSU = maxNSU) and after cStat 656.
 	nfeWaitAfterStop = time.Hour
@@ -69,7 +69,7 @@ func (s *nfeSource) Kind() nfse.SyncSource {
 }
 
 func (s *nfeSource) Policy() SourcePolicy {
-	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: nfeRequestsPerHour}
+	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: NFeRequestsPerHour}
 }
 
 // Fetch asks for the documents after cursor and turns the cStat into the
