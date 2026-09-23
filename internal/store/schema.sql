@@ -217,6 +217,7 @@ CREATE TABLE company_nfe_documents (
 );
 CREATE INDEX idx_company_nfe_documents_viewed ON company_nfe_documents(company_id, viewed_at);
 CREATE INDEX idx_company_nfe_documents_manifestacao ON company_nfe_documents(company_id, manifestacao);
+CREATE INDEX idx_company_nfe_documents_document ON company_nfe_documents(nfe_document_id);
 
 -- One row per (chave, tpEvento, nSeqEvento): a resEvento upgrades in place to
 -- its procEventoNFe, and an event sent by nanci collapses with its later

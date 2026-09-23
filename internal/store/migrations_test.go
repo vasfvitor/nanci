@@ -301,6 +301,53 @@ func TestMigration011AddsManifestationTpAmb(t *testing.T) {
 	}
 }
 
+func TestMigration012IndexesCompanyNFeDocumentsByDocument(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 11); err != nil {
+		t.Fatalf("migrate to version 11: %v", err)
+	}
+	countIndex := func() int {
+		t.Helper()
+		var n int
+		err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM sqlite_master
+			WHERE type = 'index' AND name = 'idx_company_nfe_documents_document'
+		`).Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 12); err != nil {
+		t.Fatalf("migrate to version 12: %v", err)
+	}
+	if n := countIndex(); n != 1 {
+		t.Errorf("idx_company_nfe_documents_document after up = %d, want 1", n)
+	}
+
+	if _, err := provider.DownTo(ctx, 11); err != nil {
+		t.Fatalf("migrate down to version 11: %v", err)
+	}
+	if n := countIndex(); n != 0 {
+		t.Errorf("idx_company_nfe_documents_document after down = %d, want 0", n)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 	t.Helper()
 	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {
