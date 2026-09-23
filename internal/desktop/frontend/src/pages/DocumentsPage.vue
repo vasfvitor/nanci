@@ -10,34 +10,7 @@ v-model="filter.CNPJ" class="col-12 col-md-3" :options="companyOptions" label="E
         map-options outlined dense options-dense :disable="loading" @update:model-value="handleCompanyChange" />
 
       <div class="col-12 col-md-3">
-        <div class="row no-wrap items-center q-gutter-xs">
-          <q-btn
-color="grey-7" icon="chevron_left" dense flat round :disable="loading || !filter.Competence"
-            title="Competência anterior" aria-label="Competência anterior" @click="shiftCompetence(-1)" />
-
-          <q-input
-v-model="filter.Competence" class="col" label="Competência" outlined dense clearable mask="####-##"
-            :disable="loading">
-            <template #append>
-              <q-icon name="event" class="cursor-pointer">
-                <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
-                  <q-date
-v-model="filter.Competence" minimal mask="YYYY-MM" emit-immediately default-view="Months"
-                    years-in-month-view @update:model-value="onDateChange">
-                    <div class="row items-center justify-end">
-                      <q-btn label="Mês Atual" color="primary" flat @click="setToday" />
-                      <q-btn v-close-popup label="Fechar" color="primary" flat />
-                    </div>
-                  </q-date>
-                </q-popup-proxy>
-              </q-icon>
-            </template>
-          </q-input>
-
-          <q-btn
-color="grey-7" icon="chevron_right" dense flat round :disable="loading || !filter.Competence"
-            title="Próxima competência" aria-label="Próxima competência" @click="shiftCompetence(1)" />
-        </div>
+        <CompetencePicker v-model="filter.Competence" :disable="loading" />
       </div>
 
       <q-select
@@ -351,7 +324,8 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { date, useQuasar, type QTableColumn } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
+import CompetencePicker from '../components/CompetencePicker.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import { useDocuments } from '@/composables/useDocuments'
@@ -431,8 +405,6 @@ const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
 const filterText = ref('')
 const selected = ref<DocumentRow[]>([])
-
-const datePopup = ref<{ hide: () => void } | null>(null)
 
 const directionOptions: SelectOption<Direction>[] = [
   { label: 'Todos', value: '' },
@@ -552,34 +524,6 @@ function hasEvents(document: DocumentRow): boolean {
 
 function formatChave(chave?: string): string {
   return chave ? formatChaveAcesso(chave) : '-'
-}
-
-function onDateChange(_value: string, reason: string) {
-  if (reason === 'month') {
-    datePopup.value?.hide()
-  }
-}
-
-function setToday() {
-  filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
-  datePopup.value?.hide()
-}
-
-function shiftCompetence(monthDelta: number) {
-  if (!filter.value.Competence) {
-    filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
-  }
-
-  const [yearText, monthText] = filter.value.Competence.split('-')
-  const year = Number(yearText)
-  const month = Number(monthText)
-
-  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return
-  }
-
-  const next = new Date(year, month - 1 + monthDelta, 1)
-  filter.value.Competence = date.formatDate(next, 'YYYY-MM')
 }
 
 function parseRouteQueryParam(param: unknown): string {

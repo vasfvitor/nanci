@@ -84,63 +84,7 @@
           />
 
           <div class="col-12 col-sm-6 col-md-3" title="Competência pelo mês de emissão">
-            <div class="row no-wrap items-center q-gutter-xs">
-              <q-btn
-                color="grey-7"
-                icon="chevron_left"
-                dense
-                flat
-                round
-                :disable="loading || !filter.Competence"
-                title="Competência anterior"
-                aria-label="Competência anterior"
-                @click="shiftCompetence(-1)"
-              />
-
-              <q-input
-                v-model="filter.Competence"
-                class="col"
-                label="Competência"
-                outlined
-                dense
-                clearable
-                mask="####-##"
-                :disable="loading"
-              >
-                <template #append>
-                  <q-icon name="event" class="cursor-pointer">
-                    <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
-                      <q-date
-                        v-model="filter.Competence"
-                        minimal
-                        mask="YYYY-MM"
-                        emit-immediately
-                        default-view="Months"
-                        years-in-month-view
-                        @update:model-value="onDateChange"
-                      >
-                        <div class="row items-center justify-end">
-                          <q-btn label="Mês Atual" color="primary" flat @click="setToday" />
-                          <q-btn v-close-popup label="Fechar" color="primary" flat />
-                        </div>
-                      </q-date>
-                    </q-popup-proxy>
-                  </q-icon>
-                </template>
-              </q-input>
-
-              <q-btn
-                color="grey-7"
-                icon="chevron_right"
-                dense
-                flat
-                round
-                :disable="loading || !filter.Competence"
-                title="Próxima competência"
-                aria-label="Próxima competência"
-                @click="shiftCompetence(1)"
-              />
-            </div>
+            <CompetencePicker v-model="filter.Competence" :disable="loading" />
           </div>
 
           <q-select
@@ -418,8 +362,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { date, useQuasar, type QTableColumn } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
 import CienciaConfirmDialog from '../components/CienciaConfirmDialog.vue'
+import CompetencePicker from '../components/CompetencePicker.vue'
 import ManifestacaoDialog from '../components/ManifestacaoDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
@@ -496,7 +441,6 @@ const filterText = ref('')
 const planning = ref(false)
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
-const datePopup = ref<{ hide: () => void } | null>(null)
 
 const situacaoOptions = withAllOption('Todas', situacaoLabels)
 const completenessOptions = withAllOption('Todas', completenessLabels)
@@ -588,33 +532,6 @@ function withAllOption(allLabel: string, labels: Record<string, string>): Select
     { label: allLabel, value: '' },
     ...Object.entries(labels).map(([value, label]) => ({ label, value })),
   ]
-}
-
-function onDateChange(_value: string, reason: string) {
-  if (reason === 'month') {
-    datePopup.value?.hide()
-  }
-}
-
-function setToday() {
-  filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
-  datePopup.value?.hide()
-}
-
-function shiftCompetence(monthDelta: number) {
-  if (!filter.value.Competence) {
-    filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
-  }
-
-  const [yearText, monthText] = filter.value.Competence.split('-')
-  const year = Number(yearText)
-  const month = Number(monthText)
-  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return
-  }
-
-  const next = new Date(year, month - 1 + monthDelta, 1)
-  filter.value.Competence = date.formatDate(next, 'YYYY-MM')
 }
 
 async function loadCompanies() {
