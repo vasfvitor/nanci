@@ -111,8 +111,8 @@ func TestMigration007KeysSyncStateAndRunsBySource(t *testing.T) {
 		t.Error("second running nfse run for the same company was accepted")
 	}
 
-	if _, err := provider.Down(ctx); err != nil {
-		t.Fatalf("migrate down: %v", err)
+	if _, err := provider.DownTo(ctx, 6); err != nil {
+		t.Fatalf("migrate down to version 6: %v", err)
 	}
 	var stateRows int
 	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sync_state WHERE company_id = 'comp-1' AND last_checked_nsu = 42`).Scan(&stateRows); err != nil {
@@ -120,6 +120,82 @@ func TestMigration007KeysSyncStateAndRunsBySource(t *testing.T) {
 	}
 	if stateRows != 1 {
 		t.Errorf("sync_state rows after down = %d, want 1", stateRows)
+	}
+}
+
+func TestMigration008AddsNFeTables(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 7); err != nil {
+		t.Fatalf("migrate to version 7: %v", err)
+	}
+
+	nfeTables := []string{"nfe_documents", "company_nfe_documents", "nfe_events", "nfe_manifestations", "company_nfe_export_marks"}
+	countTables := func() int {
+		t.Helper()
+		var n int
+		err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM sqlite_master
+			WHERE type = 'table' AND name IN (?, ?, ?, ?, ?)
+		`, nfeTables[0], nfeTables[1], nfeTables[2], nfeTables[3], nfeTables[4]).Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 8); err != nil {
+		t.Fatalf("migrate to version 8: %v", err)
+	}
+	if n := countTables(); n != len(nfeTables) {
+		t.Errorf("NF-e tables after up = %d, want %d", n, len(nfeTables))
+	}
+
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	mustExec(t, db, `
+		INSERT INTO nfe_documents (id, chave_acesso, modelo, serie, numero, issue_date, competence, protocolo,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name,
+			transportador_cnpj, tp_nf, fin_nfe, nat_op, situacao, completeness, layout_version, raw_hash,
+			created_at, updated_at)
+		VALUES ('doc-1', '35260911222333000181550010000012341123456787', '55', '1', '1234', ?, '2026-09', '',
+			'11222333000181', 'Emitente', '', 'SP', '', '', '', '1', '', '', 'autorizada', 'resumo', '1.01', 'hash',
+			?, ?)
+	`, now, now, now)
+	mustExec(t, db, `
+		INSERT INTO company_nfe_documents (relation_id, company_id, nfe_document_id, company_role, visibility_reason,
+			first_synced_at, last_synced_at)
+		VALUES ('rel-1', 'comp-1', 'doc-1', 'destinatario', 'resumo_destinatario', ?, ?)
+	`, now, now)
+	var manifestacao string
+	if err := db.QueryRowContext(ctx, `SELECT manifestacao FROM company_nfe_documents WHERE relation_id = 'rel-1'`).Scan(&manifestacao); err != nil {
+		t.Fatal(err)
+	}
+	if manifestacao != "nenhuma" {
+		t.Errorf("default manifestacao = %q, want nenhuma", manifestacao)
+	}
+
+	if _, err := provider.DownTo(ctx, 7); err != nil {
+		t.Fatalf("migrate down to version 7: %v", err)
+	}
+	if n := countTables(); n != 0 {
+		t.Errorf("NF-e tables after down = %d, want 0", n)
 	}
 }
 

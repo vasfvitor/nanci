@@ -48,9 +48,13 @@ type CompanyDocument struct {
 	CompanyRole      CompanyRole
 	VisibilityReason VisibilityReason
 	Manifestacao     Manifestacao
-	FirstSeenNSU     *int64
-	LastSeenNSU      *int64
-	FirstSyncedAt    time.Time
-	LastSyncedAt     time.Time
-	ViewedAt         *time.Time
+	// ManifestacaoAt is when the event that set Manifestacao was registered.
+	ManifestacaoAt *time.Time
+	FirstSeenNSU   *int64
+	LastSeenNSU    *int64
+	FirstSyncedAt  time.Time
+	LastSyncedAt   time.Time
+	ViewedAt       *time.Time
+	// EventCount is how many events nanci holds for the chave.
+	EventCount int
 }

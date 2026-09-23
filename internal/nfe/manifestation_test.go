@@ -93,6 +93,42 @@ func TestManifestacaoFromEvents(t *testing.T) {
 	}
 }
 
+func TestManifestacaoAndTimeFromEvents(t *testing.T) {
+	at := func(day int) *time.Time {
+		v := time.Date(2026, 9, day, 10, 0, 0, 0, time.UTC)
+		return &v
+	}
+	event := func(tp EventType, day int) Event {
+		return Event{Type: tp, AutorCNPJ: cnpjMock, RegisteredAt: at(day), Registered: true}
+	}
+
+	tests := []struct {
+		name    string
+		events  []Event
+		want    Manifestacao
+		wantDay int // 0 means nil
+	}{
+		{"no events", nil, ManifestacaoNenhuma, 0},
+		{"earliest ciencia", []Event{event(EventTypeCiencia, 4), event(EventTypeCiencia, 2)}, ManifestacaoCiencia, 2},
+		{"latest conclusive", []Event{event(EventTypeCiencia, 2), event(EventTypeConfirmacao, 5), event(EventTypeDesconhecimento, 7)}, ManifestacaoDesconhecida, 7},
+		{"ciencia without time", []Event{{Type: EventTypeCiencia, AutorCNPJ: cnpjMock, Registered: true}}, ManifestacaoCiencia, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotAt := ManifestacaoAndTimeFromEvents(tt.events, cnpjMock)
+			if got != tt.want {
+				t.Errorf("manifestacao = %q, want %q", got, tt.want)
+			}
+			switch {
+			case tt.wantDay == 0 && gotAt != nil:
+				t.Errorf("time = %s, want nil", gotAt)
+			case tt.wantDay != 0 && (gotAt == nil || !gotAt.Equal(*at(tt.wantDay))):
+				t.Errorf("time = %v, want day %d", gotAt, tt.wantDay)
+			}
+		})
+	}
+}
+
 func TestManifestationDeadlines(t *testing.T) {
 	loc := time.FixedZone("-03", -3*60*60)
 	authorized := time.Date(2026, 9, 1, 9, 15, 42, 0, loc)

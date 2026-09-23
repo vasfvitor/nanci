@@ -102,6 +102,8 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 		ev.Description = xEvento
 	}
 
+	ev.CStat = cStat
+	ev.XMotivo = xMotivo
 	switch cStat {
 	case "135", "136", "155":
 		ev.Registered = true

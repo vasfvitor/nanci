@@ -21,7 +21,12 @@ type Event struct {
 	// Registered is true when SEFAZ accepted the event: always for a
 	// resEvento, and for a procEventoNFe only when retEvento carries one of
 	// the registration cStat codes.
-	Registered    bool
+	Registered bool
+	// CStat and XMotivo are the retEvento answer, empty for a resEvento.
+	CStat   string
+	XMotivo string
+	// SentByNanci is true when nanci signed and sent the event itself.
+	SentByNanci   bool
 	RawHash       string
 	ParseWarnings []string
 }

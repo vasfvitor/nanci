@@ -77,9 +77,18 @@ func (t ManifestationType) DescEvento() string {
 // count. The latest conclusive event (confirmação, desconhecimento, operação
 // não realizada) wins; without one, any ciência gives ManifestacaoCiencia.
 func ManifestacaoFromEvents(events []Event, companyCNPJ string) Manifestacao {
+	m, _ := ManifestacaoAndTimeFromEvents(events, companyCNPJ)
+	return m
+}
+
+// ManifestacaoAndTimeFromEvents is ManifestacaoFromEvents plus the time of
+// the event that set the state: the latest conclusive event, or else the
+// earliest ciência. The time is nil for ManifestacaoNenhuma and for an event
+// without registration or event time.
+func ManifestacaoAndTimeFromEvents(events []Event, companyCNPJ string) (Manifestacao, *time.Time) {
 	company := cnpj.Clean(companyCNPJ)
 	result := ManifestacaoNenhuma
-	var latestConclusive time.Time
+	var latestConclusive, earliestCiencia time.Time
 	hasConclusive := false
 
 	for _, e := range events {
@@ -89,6 +98,9 @@ func ManifestacaoFromEvents(events []Event, companyCNPJ string) Manifestacao {
 		var conclusive Manifestacao
 		switch e.Type {
 		case EventTypeCiencia:
+			if at := eventTime(e); earliestCiencia.IsZero() || (!at.IsZero() && at.Before(earliestCiencia)) {
+				earliestCiencia = at
+			}
 			if !hasConclusive {
 				result = ManifestacaoCiencia
 			}
@@ -109,7 +121,18 @@ func ManifestacaoFromEvents(events []Event, companyCNPJ string) Manifestacao {
 			hasConclusive = true
 		}
 	}
-	return result
+
+	var at time.Time
+	switch {
+	case hasConclusive:
+		at = latestConclusive
+	case result == ManifestacaoCiencia:
+		at = earliestCiencia
+	}
+	if at.IsZero() {
+		return result, nil
+	}
+	return result, &at
 }
 
 // eventTime is the moment used to order events: the registration time when
