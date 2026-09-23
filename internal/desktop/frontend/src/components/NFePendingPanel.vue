@@ -144,6 +144,7 @@ import {
   formatCurrencyCents,
   formatDate,
   formatNFeNumber,
+  parseDate,
 } from '@/utils/formatters'
 import {
   conclusiveDeadlineLabel,
@@ -226,8 +227,6 @@ function conclusiveChipLabel(row: NFePendingRow) {
 }
 
 function timeOf(value: ISODateValue) {
-  if (!value) return Number.POSITIVE_INFINITY
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
+  return parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY
 }
 </script>

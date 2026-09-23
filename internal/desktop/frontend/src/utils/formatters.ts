@@ -15,18 +15,20 @@ export function formatCpfCnpj(value: string | null | undefined) {
   return value
 }
 
-export function formatDate(value: string | Date | null | undefined) {
-  if (!value) return ''
+// parseDate turns a backend date into a Date, or null when value is empty or
+// invalid.
+export function parseDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null
   const parsed = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('pt-BR')
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+export function formatDate(value: string | Date | null | undefined) {
+  return parseDate(value)?.toLocaleDateString('pt-BR') ?? ''
 }
 
 export function formatDateTime(value: string | Date | null | undefined, fallback = '-') {
-  if (!value) return fallback
-  const parsed = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(parsed.getTime())) return fallback
-  return parsed.toLocaleString('pt-BR')
+  return parseDate(value)?.toLocaleString('pt-BR') ?? fallback
 }
 
 export function formatCurrencyCents(value: number | null | undefined) {
@@ -70,9 +72,8 @@ export function formatNFeNumber(numero: string | null | undefined, serie?: strin
 // daysUntil counts whole local calendar days from now until value: 0 for
 // today, negative when the date has passed, null when value is empty or invalid.
 export function daysUntil(value: string | Date | null | undefined, now: Date = new Date()) {
-  if (!value) return null
-  const target = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(target.getTime()) || Number.isNaN(now.getTime())) return null
+  const target = parseDate(value)
+  if (!target || Number.isNaN(now.getTime())) return null
   const targetDay = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate())
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
   return Math.round((targetDay - today) / 86_400_000)
@@ -80,8 +81,5 @@ export function daysUntil(value: string | Date | null | undefined, now: Date = n
 
 // formatTime prints a local HH:MM time, or fallback for empty/invalid values.
 export function formatTime(value: string | Date | null | undefined, fallback = '') {
-  if (!value) return fallback
-  const parsed = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(parsed.getTime())) return fallback
-  return parsed.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? fallback
 }

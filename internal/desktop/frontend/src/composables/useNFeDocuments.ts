@@ -4,17 +4,12 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { usePreferencesStore } from '@/stores/preferences'
-import type { CompanySummary, ISODateValue } from '@/types/desktop'
+import type { CompanySummary } from '@/types/desktop'
+import { parseDate } from '@/utils/formatters'
 
 export type NFeExportZIPOptions = {
   includeResumos?: boolean
   incremental?: boolean
-}
-
-function toDate(value: ISODateValue): Date | null {
-  if (!value) return null
-  const parsed = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 export function useNFeDocuments() {
@@ -58,7 +53,7 @@ export function useNFeDocuments() {
     (value) => {
       now.value = Date.now()
       clearTimeout(unblockTimer)
-      const until = toDate(value)
+      const until = parseDate(value)
       if (until && until.getTime() > now.value) {
         unblockTimer = setTimeout(() => {
           now.value = Date.now()
@@ -73,7 +68,7 @@ export function useNFeDocuments() {
   }
 
   const syncBlockedUntil = computed(() => {
-    const until = toDate(status.value?.NextAllowedAt)
+    const until = parseDate(status.value?.NextAllowedAt)
     return until && until.getTime() > now.value ? until : null
   })
 

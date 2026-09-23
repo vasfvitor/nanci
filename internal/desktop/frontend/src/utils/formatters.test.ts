@@ -7,6 +7,7 @@ import {
   formatDate,
   formatNFeNumber,
   formatTime,
+  parseDate,
 } from './formatters'
 import {
   roleColor,
@@ -29,6 +30,17 @@ describe('formatters', () => {
   it('handles invalid and empty dates', () => {
     expect(formatDate('not-a-date')).toBe('')
     expect(formatDate(null)).toBe('')
+  })
+
+  it('parses backend dates and rejects empty or invalid values', () => {
+    const date = new Date(2026, 0, 2)
+    expect(parseDate(date)).toBe(date)
+    expect(parseDate('2026-01-02T03:04:05Z')?.toISOString()).toBe('2026-01-02T03:04:05.000Z')
+    expect(parseDate('')).toBeNull()
+    expect(parseDate(null)).toBeNull()
+    expect(parseDate(undefined)).toBeNull()
+    expect(parseDate('not-a-date')).toBeNull()
+    expect(parseDate(new Date(Number.NaN))).toBeNull()
   })
 
   it('formats integer cents as BRL', () => {
