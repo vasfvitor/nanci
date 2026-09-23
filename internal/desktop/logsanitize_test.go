@@ -52,7 +52,7 @@ func TestExportRotatedLogsMasksCNPJs(t *testing.T) {
 		t.Fatalf("exportRotatedLogs: %v", err)
 	}
 
-	onDisk, err := os.ReadFile(logPath)
+	onDisk, err := os.ReadFile(filepath.Clean(logPath))
 	if err != nil {
 		t.Fatalf("read log: %v", err)
 	}

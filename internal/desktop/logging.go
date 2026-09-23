@@ -39,7 +39,7 @@ func desktopLogDir() (string, error) {
 		return "", fmt.Errorf("data dir: %w", err)
 	}
 	logDir := filepath.Join(dataDir, "logs")
-	if err := os.MkdirAll(logDir, 0o755); err != nil {
+	if err := os.MkdirAll(logDir, 0o750); err != nil {
 		return "", fmt.Errorf("ensure log dir: %w", err)
 	}
 	return logDir, nil
@@ -101,7 +101,7 @@ func (w *rotatingFileWriter) Close() error {
 }
 
 func (w *rotatingFileWriter) openCurrent() error {
-	file, err := os.OpenFile(w.basePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(w.basePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600) // #nosec G703 -- basePath is the app's own log file under the data dir.
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
@@ -138,11 +138,11 @@ func (w *rotatingFileWriter) rotate() error {
 			}
 		}
 
-		if err := os.Rename(w.basePath, rotatedLogPath(w.basePath, 1)); err != nil && !os.IsNotExist(err) {
+		if err := os.Rename(w.basePath, rotatedLogPath(w.basePath, 1)); err != nil && !os.IsNotExist(err) { // #nosec G703 -- basePath is the app's own log file under the data dir.
 			return fmt.Errorf("rotate current log: %w", err)
 		}
 	} else {
-		if err := os.Remove(w.basePath); err != nil && !os.IsNotExist(err) {
+		if err := os.Remove(w.basePath); err != nil && !os.IsNotExist(err) { // #nosec G703 -- basePath is the app's own log file under the data dir.
 			return fmt.Errorf("remove current log: %w", err)
 		}
 	}

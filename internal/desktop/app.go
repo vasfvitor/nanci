@@ -63,7 +63,7 @@ func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.C
 	}()
 
 	// Notify the frontend to show the password dialog
-	runtime.EventsEmit(p.ctx, "request-cert-password", req)
+	runtime.EventsEmit(p.ctx, "request-cert-password", req) //nolint:contextcheck // Wails runtime calls need the app context from startup; ctx only bounds the wait.
 
 	// Block until the password is submitted by the frontend
 	select {
@@ -534,9 +534,10 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 
 func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, error) {
 	format := strings.ToLower(strings.TrimSpace(input.Format))
-	if format == "zip" {
+	switch format {
+	case "zip":
 		format = "xml"
-	} else if format == "danfse-zip" {
+	case "danfse-zip":
 		format = "danfse"
 	}
 
@@ -579,19 +580,6 @@ func parseDesktopLogLevel(level string) slog.Level {
 	}
 }
 
-func exportExtension(format string) (string, error) {
-	switch format {
-	case "csv":
-		return ".csv", nil
-	case "xlsx":
-		return ".xlsx", nil
-	case "zip":
-		return ".zip", nil
-	default:
-		return "", fmt.Errorf("formato de exportação inválido: %s", format)
-	}
-}
-
 func (a *App) ExportLogs() (string, error) {
 	if a.logPath == "" {
 		return "", fmt.Errorf("logger de desktop não configurado")
@@ -613,7 +601,7 @@ func (a *App) ExportLogs() (string, error) {
 }
 
 func exportRotatedLogs(savePath string, basePath string) error {
-	file, err := os.Create(savePath)
+	file, err := os.Create(savePath) // #nosec G304 -- the user picks savePath in the save dialog.
 	if err != nil {
 		return fmt.Errorf("criar arquivo de exportação: %w", err)
 	}
@@ -634,7 +622,7 @@ func exportRotatedLogs(savePath string, basePath string) error {
 			continue
 		}
 
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // #nosec G304 -- path is one of the app's own rotated log files.
 		if err != nil {
 			return fmt.Errorf("ler log %s: %w", path, err)
 		}
@@ -673,15 +661,15 @@ func (a *App) GetDataDirectory() (string, error) {
 }
 
 func openDir(dir string) error {
-	var cmd *exec.Cmd
+	opener := "xdg-open" // linux, freebsd, etc.
 	switch goruntime.GOOS {
 	case "windows":
-		cmd = exec.Command("explorer", dir)
+		opener = "explorer"
 	case "darwin":
-		cmd = exec.Command("open", dir)
-	default: // linux, freebsd, etc.
-		cmd = exec.Command("xdg-open", dir)
+		opener = "open"
 	}
+	// #nosec G204 -- fixed opener per OS; dir is the app's data or log directory, passed without a shell.
+	cmd := exec.Command(opener, dir) //nolint:noctx // fire-and-forget launch of the file browser; nothing to cancel.
 	return cmd.Start()
 }
 

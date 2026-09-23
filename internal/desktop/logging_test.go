@@ -32,7 +32,7 @@ func TestRotatingFileWriterRotatesAndPreservesBackups(t *testing.T) {
 		}
 	}
 
-	currentContent, err := os.ReadFile(basePath)
+	currentContent, err := os.ReadFile(filepath.Clean(basePath))
 	if err != nil {
 		t.Fatalf("ReadFile(current): %v", err)
 	}
@@ -115,7 +115,7 @@ func TestFormatExportErrorAddsRecoveryHintOnlyForMissingFiles(t *testing.T) {
 
 	renderErr := errors.New("renderizar DANFSe: renderer exploded")
 	formatted := formatExportError(renderErr)
-	if formatted != renderErr {
+	if formatted != renderErr { //nolint:errorlint // identity check: the error must come back unwrapped.
 		t.Fatalf("expected non-file error to be returned unchanged")
 	}
 	if strings.Contains(formatted.Error(), "Resetar NSU") {
