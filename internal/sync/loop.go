@@ -14,6 +14,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -472,7 +473,7 @@ type envelopeProcessResult struct {
 func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (envelopeProcessResult, error) {
 	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", env.NSU))
 
-	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
+	payload, err := gzipxml.Decode(env.PayloadBase64(), gzipxml.Limits{
 		CompressedBytes:   5 * 1024 * 1024,
 		UncompressedBytes: 20 * 1024 * 1024,
 	})
@@ -532,7 +533,7 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (envelopeProcessResult, error) {
 	s.log.Log(ctx, slog.Level(-8), "Processando evento", slog.Int64("nsu", env.NSU))
 
-	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
+	payload, err := gzipxml.Decode(env.PayloadBase64(), gzipxml.Limits{
 		CompressedBytes:   5 * 1024 * 1024,
 		UncompressedBytes: 20 * 1024 * 1024,
 	})

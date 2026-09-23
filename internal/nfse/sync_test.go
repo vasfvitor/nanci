@@ -1,9 +1,6 @@
 package nfse_test
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"testing"
 	"time"
 
@@ -89,54 +86,5 @@ func TestSyncMode(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestDecodePayload(t *testing.T) {
-	// Create a dummy XML payload and compress it
-	xmlData := []byte("<xml>test</xml>")
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	_, _ = gz.Write(xmlData)
-	_ = gz.Close()
-
-	payloadBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
-
-	limits := nfse.PayloadLimits{
-		CompressedBytes:   1024,
-		UncompressedBytes: 1024,
-	}
-
-	decoded, err := nfse.DecodePayload(payloadBase64, limits)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if string(decoded.XML) != string(xmlData) {
-		t.Errorf("Expected XML %s, got %s", string(xmlData), string(decoded.XML))
-	}
-	if decoded.SHA256 == "" {
-		t.Errorf("Expected a SHA256 hash, got empty string")
-	}
-}
-
-func TestDecodePayload_ExceedsLimits(t *testing.T) {
-	// Create a dummy XML payload and compress it
-	xmlData := []byte("<xml>test data that exceeds the limit</xml>")
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	_, _ = gz.Write(xmlData)
-	_ = gz.Close()
-
-	payloadBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
-
-	limits := nfse.PayloadLimits{
-		CompressedBytes:   10, // Intentionally small
-		UncompressedBytes: 10,
-	}
-
-	_, err := nfse.DecodePayload(payloadBase64, limits)
-	if err == nil {
-		t.Fatalf("Expected error due to size limits, got nil")
 	}
 }
