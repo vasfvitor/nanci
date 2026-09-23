@@ -369,7 +369,18 @@ function minutesFromNow(minutes: number) {
   return new Date(now + minutes * 60_000).toISOString()
 }
 
-function mockNFeRow(fields: Record<string, unknown>) {
+type MockNFeFields = {
+  ID: string
+  ChaveAcesso: string
+  Numero: string
+  IssueDate: string
+  Protocolo: string
+  EmitenteCNPJ: string
+  EmitenteName: string
+  TotalValue: number
+}
+
+function mockNFeRow<T extends MockNFeFields>(fields: T) {
   return {
     DocumentID: '',
     Serie: '1',
