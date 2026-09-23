@@ -217,3 +217,162 @@ export type ConnectionTestResult = {
   responseDetail: string
   statusExplanation: string
 }
+
+// NF-e (modelo 55). Enum fields allow '' so an unknown backend value never
+// reads as a real fiscal state.
+
+export type NFeSituacao = 'autorizada' | 'denegada' | 'cancelada'
+export type NFeCompleteness = 'resumo' | 'completa'
+export type NFeManifestacao = 'nenhuma' | 'ciencia' | 'confirmada' | 'desconhecida' | 'nao_realizada'
+export type NFeRole = 'destinatario' | 'emitente' | 'transportador' | 'autorizado' | 'none'
+export type NFeConclusiveTipo = 'confirmacao' | 'desconhecimento' | 'nao_realizada'
+export type NFeEventOutcome = 'registrada' | 'ja_registrada' | 'rejeitada' | 'nao_enviada'
+export type NFePendingKind = 'sem_ciencia' | 'sem_conclusiva'
+export type NFeBlockedReason = 'caught_up' | 'consumo_indevido' | 'rate_budget'
+
+export type ListNFeInput = {
+  CNPJ: string
+  Competence: string
+  Situacao: NFeSituacao | ''
+  Completeness: NFeCompleteness | ''
+  Manifestacao: NFeManifestacao | ''
+  Role: NFeRole | ''
+  EmitenteCNPJ?: string
+}
+
+export type NFeRow = {
+  ID: string
+  DocumentID: string
+  ChaveAcesso: string
+  Serie: string
+  Numero: string
+  IssueDate?: ISODateValue
+  AuthorizedAt?: ISODateValue
+  Protocol: string
+  TipoOperacao: string
+  EmitenteCNPJ: string
+  EmitenteName: string
+  EmitenteIE: string
+  DestinatarioCNPJ: string
+  DestinatarioName: string
+  TotalValue: number
+  Situacao: NFeSituacao | ''
+  Completeness: NFeCompleteness | ''
+  Manifestacao: NFeManifestacao | ''
+  ManifestacaoAt?: ISODateValue
+  CienciaDue?: ISODateValue
+  ConclusiveDue?: ISODateValue
+  CompanyRole: NFeRole | ''
+  EventCount: number
+  FirstSyncedAt?: ISODateValue
+  LastSyncedAt?: ISODateValue
+}
+
+export type NFeEvent = {
+  ID: string
+  TpEvento: string
+  NSeqEvento: number
+  EventAt?: ISODateValue
+  RegisteredAt?: ISODateValue
+  Protocolo: string
+  CStat: string
+  XMotivo: string
+  Justificativa: string
+  Correcao: string
+  AutorCNPJ: string
+  SentByNanci: boolean
+}
+
+export type NFePendingRow = NFeRow & {
+  Kind: NFePendingKind | ''
+  Deadline?: ISODateValue
+  DaysLeft: number
+  CienciaOverdue: boolean
+  Expired: boolean
+}
+
+export type RegisterCienciaInput = {
+  CNPJ: string
+  ChavesAcesso: string[]
+}
+
+export type RegisterManifestationInput = {
+  CNPJ: string
+  ChaveAcesso: string
+  Tipo: NFeConclusiveTipo
+  Justificativa: string
+}
+
+export type NFeEventResult = {
+  ChaveAcesso: string
+  TipoEvento: string
+  Status: NFeEventOutcome | ''
+  CStat: string
+  XMotivo: string
+  Protocol: string
+  RegisteredAt?: ISODateValue
+}
+
+export type NFeSkipped = {
+  ChaveAcesso: string
+  Reason: string
+}
+
+export type NFeEventBatchResult = {
+  Results: NFeEventResult[]
+  Requested: number
+  Registered: number
+  AlreadyRegistered: number
+  Rejected: number
+  Skipped: NFeSkipped[]
+  Interrupted: string
+}
+
+export type PullNFeInput = {
+  CNPJ: string
+  Mode: string
+}
+
+export type PullNFeResult = PullResult & {
+  Source: SyncSource | ''
+  UltNSU: number
+  MaxNSU: number
+  NextAllowedAt: string | null
+  RequestsLastHour: number
+  RequestBudget: number
+}
+
+export type NFeStatusResult = {
+  CompanyName: string
+  CNPJ: string
+  Environment: string
+  LastCheckedNSU: number
+  MaxNSU: number | null
+  LastSyncAt?: ISODateValue
+  LastRunStatus: string
+  LastRunStopReason: string
+  NextAllowedAt: string | null
+  BlockedReason: NFeBlockedReason | ''
+  RequestsLastHour: number
+  RequestBudget: number
+  InitialSyncDoneAt?: ISODateValue
+  TotalDestinatario: number
+  TotalEmitente: number
+  TotalOutros: number
+  TotalResumos: number
+  TotalCompletas: number
+  PendingCiencia: number
+  PendingConclusiva: number
+  CienciaOverdue: number
+}
+
+export type ExportNFeXMLInput = {
+  CNPJ: string
+  ChaveAcesso: string
+  OutPath: string
+}
+
+export type ExportNFeZIPInput = ListNFeInput & {
+  ChavesAcesso: string[]
+  OutPath: string
+}

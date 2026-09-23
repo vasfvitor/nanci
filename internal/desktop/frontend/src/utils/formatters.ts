@@ -42,3 +42,38 @@ export function formatChaveAcesso(chave: string) {
   const clean = chave.replace(/^NFS/i, '')
   return clean.length > 10 ? `...${clean.slice(-10)}` : clean
 }
+
+// formatChaveNFe prints a 44-character NF-e access key in the DANFE layout:
+// 11 groups of 4 separated by spaces. Anything else is returned unchanged.
+export function formatChaveNFe(chave: string | null | undefined) {
+  if (!chave) return ''
+  const clean = chave.replace(/\s/g, '')
+  if (clean.length !== 44) return chave
+  return (clean.match(/.{4}/g) ?? []).join(' ')
+}
+
+// formatNFeNumber prints the note number zero-padded to 9 digits and grouped
+// by thousands, followed by the série: "000.012.345 / série 1".
+export function formatNFeNumber(numero: string | null | undefined, serie?: string | null) {
+  const digits = (numero ?? '').trim()
+  let formatted = digits
+  if (/^\d{1,9}$/.test(digits)) {
+    formatted = digits.padStart(9, '0').replace(/^(\d{3})(\d{3})(\d{3})$/, '$1.$2.$3')
+  }
+
+  const serieValue = (serie ?? '').trim()
+  if (!serieValue) return formatted
+  const serieLabel = /^\d+$/.test(serieValue) ? String(Number(serieValue)) : serieValue
+  return formatted ? `${formatted} / série ${serieLabel}` : `série ${serieLabel}`
+}
+
+// daysUntil counts whole local calendar days from now until value: 0 for
+// today, negative when the date has passed, null when value is empty or invalid.
+export function daysUntil(value: string | Date | null | undefined, now: Date = new Date()) {
+  if (!value) return null
+  const target = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(target.getTime()) || Number.isNaN(now.getTime())) return null
+  const targetDay = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate())
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((targetDay - today) / 86_400_000)
+}
