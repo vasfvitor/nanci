@@ -475,14 +475,21 @@ const columns: QTableColumn<NFeRow>[] = [
   { name: 'papel', label: 'Papel', field: 'CompanyRole', align: 'left' },
 ]
 
+// searchIndex normalizes the searchable fields once per result set, not on
+// every keystroke.
+const searchIndex = computed(() =>
+  rows.value.map((row) => ({
+    row,
+    fields: [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName].map(normalizeText),
+  }))
+)
+
 const filteredRows = computed(() => {
   const query = normalizeText(filterText.value)
   if (!query) return rows.value
-  return rows.value.filter((row) =>
-    [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName].some((value) =>
-      normalizeText(value).includes(query)
-    )
-  )
+  return searchIndex.value
+    .filter(({ fields }) => fields.some((field) => field.includes(query)))
+    .map(({ row }) => row)
 })
 
 const eligibleSelection = computed(() => selected.value.filter((row) => !cienciaBlockReason(row)))

@@ -174,6 +174,27 @@ describe('NFePage', () => {
     vi.mocked(desktopClient.listPendingManifestations).mockResolvedValue([])
   })
 
+  it('filters the notes by accent- and case-insensitive text', async () => {
+    const acentuada = nfeRow('c', { EmitenteName: 'São João Ltda' })
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida, acentuada])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const table = () => wrapper.getComponent({ name: 'QTable' })
+    const search = wrapper
+      .findAllComponents({ name: 'QInput' })
+      .find((input) => String(input.props('placeholder') ?? '').startsWith('Filtrar'))
+    expect(table().props('rows')).toHaveLength(3)
+
+    search?.vm.$emit('update:modelValue', 'SAO JOAO')
+    await flushPromises()
+    expect(table().props('rows')).toEqual([acentuada])
+
+    search?.vm.$emit('update:modelValue', 'b')
+    await flushPromises()
+    expect(table().props('rows')).toEqual([emitida])
+  })
+
   it('keeps the ciência button disabled without an eligible selection', async () => {
     const wrapper = mountPage()
     await flushPromises()
