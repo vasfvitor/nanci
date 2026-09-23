@@ -151,6 +151,13 @@ export function deadlineColor(days: number | null, kind: DeadlineKind) {
   return 'grey'
 }
 
+// badgeColor is the fill of a badge of color. In light mode the info blue
+// is too light for white text, so it uses a darker shade.
+export function badgeColor(color: string, dark: boolean) {
+  if (!dark && color === 'info') return 'light-blue-9'
+  return color
+}
+
 // badgeTextColor picks a readable text color for a filled badge of color.
 // In dark mode every palette color is light, so text is dark; in light mode
 // only warning and grey are too light for white text.

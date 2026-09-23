@@ -5,7 +5,7 @@
         <div class="text-h6">Manifestação do destinatário</div>
         <q-space />
         <q-badge
-          :color="ambienteColor(tpAmb)"
+          :color="badgeColor(ambienteColor(tpAmb), $q.dark.isActive)"
           :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
           class="text-weight-bold q-pa-sm"
         >
@@ -60,7 +60,7 @@
           <div class="row items-center q-gutter-sm">
             <span class="text-weight-medium">Evento:</span>
             <q-badge
-              :color="nfeEventColor(tipo ?? '')"
+              :color="badgeColor(nfeEventColor(tipo ?? ''), $q.dark.isActive)"
               :text-color="badgeTextColor(nfeEventColor(tipo ?? ''), $q.dark.isActive)"
               :label="selectedLabel"
             />
@@ -108,7 +108,7 @@ import {
   formatCurrencyCents,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
+import { ambienteColor, badgeColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
 import {
   conclusiveBlockReason,
   JUSTIFICATIVA_MAX_LENGTH,

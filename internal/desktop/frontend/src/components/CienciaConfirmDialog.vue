@@ -5,7 +5,7 @@
         <div class="text-h6">Registrar ciência da operação</div>
         <q-space />
         <q-badge
-          :color="ambienteColor(tpAmb)"
+          :color="badgeColor(ambienteColor(tpAmb), $q.dark.isActive)"
           :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
           class="text-weight-bold q-pa-sm"
         >
@@ -99,7 +99,7 @@ import {
   formatCurrencyCents,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, badgeTextColor } from '@/utils/nfeDisplay'
+import { ambienteColor, badgeColor, badgeTextColor } from '@/utils/nfeDisplay'
 
 const props = defineProps<{
   companyName: string

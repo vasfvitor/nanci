@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ambienteColor,
+  badgeColor,
   badgeTextColor,
   blockedMessage,
   completenessColor,
@@ -123,6 +124,12 @@ describe('nfeDisplay', () => {
     expect(deadlineColor(4, 'ciencia')).toBe('warning')
     expect(deadlineColor(10, 'ciencia')).toBe('warning')
     expect(deadlineColor(11, 'ciencia')).toBe('grey')
+  })
+
+  it('darkens info badges in light mode only', () => {
+    expect(badgeColor('info', false)).toBe('light-blue-9')
+    expect(badgeColor('info', true)).toBe('info')
+    expect(badgeColor('warning', false)).toBe('warning')
   })
 
   it('picks a readable badge text color', () => {

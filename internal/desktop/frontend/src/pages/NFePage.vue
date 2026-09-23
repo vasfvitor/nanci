@@ -4,7 +4,7 @@
       <h5 class="q-my-none">NF-e (Modelo 55)</h5>
       <q-badge
         v-if="status"
-        :color="ambienteColor(status.TpAmb)"
+        :color="badgeColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
         :text-color="badgeTextColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
         :label="status.AmbienteLabel || 'Ambiente desconhecido'"
         class="text-weight-bold"
@@ -338,7 +338,7 @@
           <template #body-cell-situacao="cellProps">
             <q-td :props="cellProps">
               <q-badge
-                :color="situacaoColor(cellProps.row.Situacao)"
+                :color="badgeColor(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
                 :text-color="badgeTextColor(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
                 :label="situacaoLabel(cellProps.row.Situacao)"
               />
@@ -348,7 +348,7 @@
           <template #body-cell-completude="cellProps">
             <q-td :props="cellProps">
               <q-badge
-                :color="completenessColor(cellProps.row.Completeness)"
+                :color="badgeColor(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
                 :text-color="badgeTextColor(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
                 :label="completenessLabel(cellProps.row.Completeness)"
               />
@@ -360,7 +360,7 @@
               <div class="row no-wrap items-center q-gutter-x-xs">
                 <q-spinner v-if="isChaveBusy(cellProps.row.ChaveAcesso)" size="xs" color="primary" />
                 <q-badge
-                  :color="manifestacaoColor(cellProps.row.Manifestacao)"
+                  :color="badgeColor(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
                   :text-color="badgeTextColor(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
                   :label="manifestacaoLabel(cellProps.row.Manifestacao)"
                 />
@@ -381,7 +381,7 @@
           <template #body-cell-papel="cellProps">
             <q-td :props="cellProps">
               <q-badge
-                :color="nfeRoleColor(cellProps.row.CompanyRole)"
+                :color="badgeColor(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
                 :text-color="badgeTextColor(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
                 :label="nfeRoleLabel(cellProps.row.CompanyRole)"
               />
@@ -437,6 +437,7 @@ import {
 } from '@/utils/formatters'
 import {
   ambienteColor,
+  badgeColor,
   badgeTextColor,
   blockedMessage,
   completenessColor,
