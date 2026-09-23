@@ -97,7 +97,7 @@ func (s *nfeSource) Fetch(ctx context.Context, company *nfse.Company, cursor int
 	case sefaz.CStatDocumentoLocalizado:
 		batch.Items = make([]Item, 0, len(resp.Docs))
 		for _, doc := range resp.Docs {
-			kind := doc.Kind()
+			kind := nfe.ClassifySchema(doc.Schema)
 			batch.Items = append(batch.Items, Item{
 				NSU:     doc.NSU,
 				Schema:  doc.Schema,

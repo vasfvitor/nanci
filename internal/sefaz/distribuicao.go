@@ -56,11 +56,6 @@ type DocZip struct {
 	Content string
 }
 
-// Kind classifies the document by its schema name.
-func (d DocZip) Kind() nfe.SchemaKind {
-	return nfe.ClassifySchema(d.Schema)
-}
-
 // DistNSU asks for the documents after ultNSU (distNSU), the normal way to
 // walk the queue. cUFAutor is the IBGE code of the company's UF.
 func (c *Client) DistNSU(ctx context.Context, cnpjValue string, cUFAutor int, ultNSU int64) (DistResult, error) {

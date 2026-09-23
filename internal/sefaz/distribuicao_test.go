@@ -169,8 +169,8 @@ func TestDistNSU_DocumentsFound(t *testing.T) {
 	}
 	for i, f := range fixtures {
 		doc := result.Docs[i]
-		if doc.NSU != int64(101+i) || doc.Schema != f.schema || doc.Kind() != f.kind {
-			t.Errorf("doc %d = NSU %d schema %q kind %v", i, doc.NSU, doc.Schema, doc.Kind())
+		if kind := nfe.ClassifySchema(doc.Schema); doc.NSU != int64(101+i) || doc.Schema != f.schema || kind != f.kind {
+			t.Errorf("doc %d = NSU %d schema %q kind %v", i, doc.NSU, doc.Schema, kind)
 		}
 		decoded, err := gzipxml.Decode(doc.Content, gzipxml.Limits{CompressedBytes: 1 << 20, UncompressedBytes: 1 << 20})
 		if err != nil {
