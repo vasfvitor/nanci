@@ -129,24 +129,22 @@ func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src 
 		return ItemOutcome{}, &ProcessingError{Op: "decode document", NSU: item.NSU, Schema: item.Schema, Err: err}
 	}
 
-	switch kind := nfe.ClassifySchema(item.Schema); kind {
-	case nfe.SchemaResNFe, nfe.SchemaProcNFe:
-		return s.processDocument(ctx, company, item, kind, payload, commit)
-	case nfe.SchemaResEvento, nfe.SchemaProcEventoNFe:
-		return s.processEvent(ctx, company, item, kind, payload, commit)
+	switch nfe.ClassifySchema(item.Schema) {
+	case nfe.SchemaResNFe:
+		return s.processDocument(ctx, company, item, nfe.ParseResNFe, payload, commit)
+	case nfe.SchemaProcNFe:
+		return s.processDocument(ctx, company, item, nfe.ParseProcNFe, payload, commit)
+	case nfe.SchemaResEvento:
+		return s.processEvent(ctx, company, item, nfe.ParseResEvento, payload, commit)
+	case nfe.SchemaProcEventoNFe:
+		return s.processEvent(ctx, company, item, nfe.ParseProcEventoNFe, payload, commit)
 	default:
 		return s.processUnsupported(ctx, item, payload, commit)
 	}
 }
 
-func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, item Item, kind nfe.SchemaKind, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
-	var doc nfe.Document
-	var err error
-	if kind == nfe.SchemaProcNFe {
-		doc, err = nfe.ParseProcNFe(payload.XML)
-	} else {
-		doc, err = nfe.ParseResNFe(payload.XML)
-	}
+func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+	doc, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse document", item, payload, err)
 	}
@@ -175,14 +173,8 @@ func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, 
 // processEvent stores an event. An event for a chave the company does not
 // see yet is skipped by policy, unless the company authored it (its own
 // manifestação): that one is kept and linked when the document arrives.
-func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, item Item, kind nfe.SchemaKind, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
-	var ev nfe.Event
-	var err error
-	if kind == nfe.SchemaProcEventoNFe {
-		ev, err = nfe.ParseProcEventoNFe(payload.XML)
-	} else {
-		ev, err = nfe.ParseResEvento(payload.XML)
-	}
+func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+	ev, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse event", item, payload, err)
 	}
