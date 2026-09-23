@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
+	"github.com/vasfvitor/nanci/internal/foundation/redact"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -111,7 +112,7 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 		Retry:      httpclient.RetryConfig{MaxRetries: 0},
 		Log:        cfg.Log,
 		LogLabel:   "SEFAZ",
-		RedactBody: RedactForLog,
+		RedactBody: redact.MaskXMLIdentifiers,
 	})
 	if err != nil {
 		return nil, err
@@ -187,7 +188,7 @@ func (c *Client) logErrorResponse(ctx context.Context, url string, status int, b
 		slog.String("method", http.MethodPost),
 		slog.String("url", url),
 		slog.Int("status", status),
-		slog.String("body", httpclient.TruncateForLog(RedactForLog(body), httpclient.MaxErrorLogBodyBytes)))
+		slog.String("body", httpclient.TruncateForLog(redact.MaskXMLIdentifiers(body), httpclient.MaxErrorLogBodyBytes)))
 }
 
 // isTransportError reports whether err means no HTTP response arrived.

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
+	"github.com/vasfvitor/nanci/internal/foundation/redact"
 )
 
 const (
@@ -220,7 +221,7 @@ func sanitizeURL(raw string) string {
 	if v == "" {
 		return raw
 	}
-	q.Set("cnpjConsulta", httpclient.MaskIdentifier(v))
+	q.Set("cnpjConsulta", redact.MaskIdentifier(v))
 	// Encode percent-escapes '*'; keep the mask readable in log output.
 	u.RawQuery = strings.ReplaceAll(q.Encode(), "%2A", "*")
 	return u.String()

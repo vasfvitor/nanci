@@ -10,7 +10,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
-	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
+	"github.com/vasfvitor/nanci/internal/foundation/redact"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -114,7 +114,7 @@ func shouldSkipDocumentByInitialPolicy(company *nfse.Company, src SourceState, i
 // identifiers of companies, people and documents masked. It masks the whole
 // document first so the cut cannot leave half an element unmasked.
 func xmlPreview(data []byte) string {
-	preview := strings.TrimSpace(string(httpclient.MaskXMLIdentifiers(data)))
+	preview := strings.TrimSpace(string(redact.MaskXMLIdentifiers(data)))
 	preview = strings.ReplaceAll(preview, "\r", " ")
 	preview = strings.ReplaceAll(preview, "\n", " ")
 	preview = strings.ReplaceAll(preview, "\t", " ")

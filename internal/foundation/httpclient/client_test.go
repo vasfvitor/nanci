@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
+	"github.com/vasfvitor/nanci/internal/foundation/redact"
 )
 
 func newTestClient(t *testing.T, cfg Config) *Client {
@@ -194,7 +195,7 @@ func TestDo_MaxBytes(t *testing.T) {
 func TestDo_RedactsBodiesInLogsAndErrors(t *testing.T) {
 	const secret = "12345678000195"
 	redact := func(b []byte) []byte {
-		return bytes.ReplaceAll(b, []byte(secret), []byte(MaskIdentifier(secret)))
+		return bytes.ReplaceAll(b, []byte(secret), []byte(redact.MaskIdentifier(secret)))
 	}
 
 	t.Run("trace response body", func(t *testing.T) {
