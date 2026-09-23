@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
     <div class="row items-center justify-between q-mb-md">
-      <h5 class="q-my-none">Documentos Fiscais</h5>
+      <h5 class="q-my-none">NFS-e</h5>
     </div>
 
     <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
@@ -78,7 +78,7 @@ v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocum
         <div class="column full-width q-gutter-y-sm">
           <div class="row items-center justify-between full-width">
             <div class="text-subtitle1 text-weight-bold">
-              Documentos Fiscais Carregados
+              Notas fiscais de serviço
             </div>
 
             <q-input

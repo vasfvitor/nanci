@@ -653,14 +653,14 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Documentos' },
-  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Documentos' },
+  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Notas fiscais de serviço' },
+  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Notas fiscais de serviço' },
 
   {
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'light',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Abre a expansão da primeira nota fiscal
       await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
@@ -671,7 +671,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'dark',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Abre a expansão da primeira nota fiscal
       await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
@@ -683,7 +683,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'light',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
       // Pode ser o primeiro botão de histórico que encontrar
@@ -699,7 +699,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'dark',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
       // Pode ser o primeiro botão de histórico que encontrar

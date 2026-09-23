@@ -76,7 +76,7 @@
             round
             color="secondary"
             icon="description"
-            title="Ver documentos"
+            title="Ver NFS-e"
             @click="openDocuments(props.row.CNPJ)"
           />
           <q-btn
