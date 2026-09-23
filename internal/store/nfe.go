@@ -793,19 +793,6 @@ func eventsFromRows(rows []sqlgen.NfeEvent) ([]nfe.Event, error) {
 	return events, nil
 }
 
-// parseOptionalTime returns nil for NULL or an empty string.
-func parseOptionalTime(field string, value sql.NullString) (*time.Time, error) {
-	var result *time.Time
-	if value.Valid && value.String != "" {
-		t, err := parseRequiredTime(field, value.String)
-		if err != nil {
-			return nil, err
-		}
-		result = &t
-	}
-	return result, nil
-}
-
 func encodeWarnings(warnings []string) (sql.NullString, error) {
 	if len(warnings) == 0 {
 		return sql.NullString{}, nil

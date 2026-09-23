@@ -276,14 +276,8 @@ func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updat
 	if err != nil {
 		return err
 	}
-	if viewedAt.Valid && viewedAt.String != "" {
-		parsedViewedAt, err := parseRequiredTime("company document viewed_at", viewedAt.String)
-		if err != nil {
-			return err
-		}
-		d.ViewedAt = &parsedViewedAt
-	}
-	return nil
+	d.ViewedAt, err = parseOptionalTime("company document viewed_at", viewedAt)
+	return err
 }
 
 func parseRequiredTime(field, value string) (time.Time, error) {
@@ -292,6 +286,19 @@ func parseRequiredTime(field, value string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("%s: %w", field, err)
 	}
 	return parsed, nil
+}
+
+// parseOptionalTime returns nil for NULL or an empty string.
+func parseOptionalTime(field string, value sql.NullString) (*time.Time, error) {
+	var result *time.Time
+	if value.Valid && value.String != "" {
+		t, err := parseRequiredTime(field, value.String)
+		if err != nil {
+			return nil, err
+		}
+		result = &t
+	}
+	return result, nil
 }
 
 func decodeWarnings(value sql.NullString, dst *[]string) error {
