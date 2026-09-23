@@ -127,6 +127,15 @@ func TestRoot(t *testing.T) {
 	}
 }
 
+func TestRootOrEmpty(t *testing.T) {
+	if got := RootOrEmpty("45.723.174/0001-10"); got != "45723174" {
+		t.Errorf("RootOrEmpty(valid) = %q, want 45723174", got)
+	}
+	if got := RootOrEmpty("123.456.789-09"); got != "" {
+		t.Errorf("RootOrEmpty(CPF) = %q, want empty", got)
+	}
+}
+
 func TestFormat(t *testing.T) {
 	tests := []struct {
 		input    string

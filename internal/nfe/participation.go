@@ -42,9 +42,9 @@ func ClassifyParticipation(doc *Document, companyCNPJ string) Participation {
 	}
 
 	parties := append([]string{doc.DestinatarioCNPJ, doc.EmitenteCNPJ, doc.TransportadorCNPJ}, doc.AutorizadosCNPJ...)
-	if companyRoot := rootOf(company); companyRoot != "" {
+	if companyRoot := cnpj.RootOrEmpty(company); companyRoot != "" {
 		for _, party := range parties {
-			if rootOf(party) == companyRoot {
+			if cnpj.RootOrEmpty(party) == companyRoot {
 				return Participation{CompanyRoleNone, VisibilityReasonSameRootOnly}
 			}
 		}
@@ -56,14 +56,4 @@ func ClassifyParticipation(doc *Document, companyCNPJ string) Participation {
 // document number after removing punctuation.
 func sameParty(company, party string) bool {
 	return company != "" && company == cnpj.Clean(party)
-}
-
-// rootOf returns the 8-character CNPJ root, or "" when value is not a CNPJ
-// (for example a CPF or an idEstrangeiro).
-func rootOf(value string) string {
-	root, err := cnpj.Root(value)
-	if err != nil {
-		return ""
-	}
-	return root
 }

@@ -53,6 +53,16 @@ func Root(cnpj string) (string, error) {
 	return cleaned[:8], nil
 }
 
+// RootOrEmpty returns the root of value, or "" when value is not a
+// syntactically valid CNPJ (a CPF, for instance).
+func RootOrEmpty(value string) string {
+	root, err := Root(value)
+	if err != nil {
+		return ""
+	}
+	return root
+}
+
 // Format applies the XX.XXX.XXX/XXXX-XX mask to the CNPJ token.
 func Format(cnpj string) string {
 	cleaned := Clean(cnpj)

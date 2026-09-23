@@ -17,23 +17,12 @@ func ClassifyCompanyParticipation(doc *Document, companyCNPJ string) CompanyPart
 		return CompanyParticipation{CompanyRole: CompanyRole("intermediario"), VisibilityReason: VisibilityReason("exact_intermediario")}
 	}
 
-	companyRoot := getRootSafely(companyCNPJValue)
-	if companyRoot != "" && (companyRoot == getRootSafely(doc.PrestadorCNPJ) ||
-		companyRoot == getRootSafely(doc.TomadorCNPJ) ||
-		companyRoot == getRootSafely(doc.IntermediarioCNPJ)) {
+	companyRoot := cnpj.RootOrEmpty(companyCNPJValue)
+	if companyRoot != "" && (companyRoot == cnpj.RootOrEmpty(doc.PrestadorCNPJ) ||
+		companyRoot == cnpj.RootOrEmpty(doc.TomadorCNPJ) ||
+		companyRoot == cnpj.RootOrEmpty(doc.IntermediarioCNPJ)) {
 		return CompanyParticipation{CompanyRole: CompanyRole("none"), VisibilityReason: VisibilityReason("same_root_only")}
 	}
 
 	return CompanyParticipation{CompanyRole: CompanyRole("none"), VisibilityReason: VisibilityReason("unknown")}
-}
-
-// getRootSafely returns the 8-character root of a CNPJ, or an empty string when
-// the value is not a syntactically valid CNPJ. It delegates to foundation/cnpj so
-// that punctuation, casing and alphanumeric CNPJs are all handled in one place.
-func getRootSafely(c string) string {
-	root, err := cnpj.Root(c)
-	if err != nil {
-		return ""
-	}
-	return root
 }
