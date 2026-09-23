@@ -62,6 +62,7 @@ linters:
         domain:
           files:
             - "**/internal/nfse/**/*.go"
+            - "**/internal/nfe/**/*.go"
             - "!**/*_test.go"
           deny:
             - pkg: "github.com/vasfvitor/nanci/internal/app"
