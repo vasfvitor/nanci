@@ -45,6 +45,7 @@ func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) 
 		SyncStartPolicy:        string(syncStartPolicy),
 		SyncStartDate:          nullableTime(c.SyncStartDate, dateOnlyLayout),
 		InitialSyncCompletedAt: nullableTime(c.InitialSyncDoneAt, time.RFC3339),
+		Uf:                     c.UF,
 		CreatedAt:              now.Format(time.RFC3339),
 		UpdatedAt:              now.Format(time.RFC3339),
 	})
@@ -94,6 +95,7 @@ func companyFromRow(row sqlgen.Company) *nfse.Company {
 		CredentialLabel:    row.CredentialLabel.String,
 		CredentialCertPath: row.CredentialCertPath.String,
 		Environment:        nfse.Environment(row.Environment),
+		UF:                 row.Uf,
 		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
 		SyncStartDate:      parseNullableDate(row.SyncStartDate),
 		InitialSyncDoneAt:  ParseNullableTime(row.InitialSyncCompletedAt),
@@ -127,6 +129,7 @@ func (r *CompanyRepository) UpdateCompany(ctx context.Context, c *nfse.Company) 
 		Environment:     string(c.Environment),
 		SyncStartPolicy: string(c.SyncStartPolicy),
 		SyncStartDate:   nullableTime(c.SyncStartDate, dateOnlyLayout),
+		Uf:              c.UF,
 		UpdatedAt:       now,
 		ID:              string(c.ID),
 	})

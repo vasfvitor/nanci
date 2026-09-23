@@ -9,6 +9,7 @@ export type CompanySummary = {
   CredentialLabel: string
   CredentialCertPath: string
   Environment: string
+  UF: string
   LastFoundNSU: number | null
   LastSyncAt?: ISODateValue
   SyncStartPolicy: SyncStartPolicy
@@ -137,6 +138,7 @@ export type AddCompanyInput = {
   CredentialLabel: string
   CertPath: string
   Environment: string
+  UF: string
   SyncStartPolicy: SyncStartPolicy
   SyncStartDate: string
 }
@@ -150,6 +152,7 @@ export type UpdateCompanyInput = {
   CNPJ: string
   Name: string
   Environment: string
+  UF: string
   SyncStartPolicy: SyncStartPolicy
   SyncStartDate: string
 }

@@ -56,9 +56,12 @@ describe('desktop client mappers', () => {
       InitialSyncDoneAt: null,
       LastRunStatus: 'completed',
       LastRunStopReason: 'empty_limit',
+      UF: 'SP',
     })
 
     expect(company.ID).toBe('company-1')
+    expect(company.UF).toBe('SP')
+    expect(mapCompanySummary({ ID: 'company-2' }).UF).toBe('')
     expect(company.LastSyncAt).toBeNull()
     expect(company.LastFoundNSU).toBe(55)
     expect(company.SyncStartPolicy).toBe('since_date')

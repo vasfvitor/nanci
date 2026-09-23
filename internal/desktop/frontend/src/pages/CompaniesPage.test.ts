@@ -36,6 +36,7 @@ const company = {
   CredentialLabel: 'Certificado A',
   CredentialCertPath: 'C:\\a.pfx',
   Environment: 'producao',
+  UF: '',
   LastFoundNSU: null,
   SyncStartPolicy: 'from_now' as const,
   LastRunStatus: '',

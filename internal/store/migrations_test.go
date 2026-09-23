@@ -199,6 +199,54 @@ func TestMigration008AddsNFeTables(t *testing.T) {
 	}
 }
 
+func TestMigration009AddsCompanyUF(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 8); err != nil {
+		t.Fatalf("migrate to version 8: %v", err)
+	}
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+
+	if _, err := provider.UpTo(ctx, 9); err != nil {
+		t.Fatalf("migrate to version 9: %v", err)
+	}
+	var uf string
+	if err := db.QueryRowContext(ctx, `SELECT uf FROM companies WHERE id = 'comp-1'`).Scan(&uf); err != nil {
+		t.Fatalf("read companies.uf: %v", err)
+	}
+	if uf != "" {
+		t.Errorf("uf of an existing company = %q, want empty", uf)
+	}
+
+	if _, err := provider.DownTo(ctx, 8); err != nil {
+		t.Fatalf("migrate down to version 8: %v", err)
+	}
+	var companies int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM companies`).Scan(&companies); err != nil {
+		t.Fatalf("read companies after down: %v", err)
+	}
+	if companies != 1 {
+		t.Errorf("companies after down = %d, want 1", companies)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 	t.Helper()
 	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {

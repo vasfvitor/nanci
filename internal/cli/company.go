@@ -21,6 +21,7 @@ func newCompanyCommand(env CommandEnv) *cobra.Command {
 	}
 
 	companyCmd.AddCommand(newCompanyAddCmd(env))
+	companyCmd.AddCommand(newCompanyUpdateCmd(env))
 	companyCmd.AddCommand(newCompanyListCmd(env))
 	companyCmd.AddCommand(newCompanyAssignCredentialCmd(env))
 	return companyCmd
@@ -32,6 +33,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 		name            string
 		cert            string
 		envName         string
+		uf              string
 		credentialID    string
 		credentialLabel string
 		syncStartPolicy string
@@ -66,6 +68,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 				CredentialLabel: credentialLabel,
 				CertPath:        cert,
 				Environment:     environment,
+				UF:              uf,
 				SyncStartPolicy: policy,
 				SyncStartDate:   date,
 			}); err != nil {
@@ -83,12 +86,72 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 	cmd.Flags().StringVar(&credentialID, "credential-id", "", "ID de uma credencial existente")
 	cmd.Flags().StringVar(&credentialLabel, "credential-label", "", "Rótulo da nova credencial quando criada inline")
 	cmd.Flags().StringVarP(&envName, "env", "e", "producao_restrita", "Ambiente: producao ou producao_restrita")
+	cmd.Flags().StringVar(&uf, "uf", "", "Sigla da UF da empresa (ex.: SP), usada na distribuição de NF-e")
 	cmd.Flags().StringVar(&syncStartPolicy, "sync-start-policy", "from_now", "Política inicial: all, since_date ou from_now")
 	cmd.Flags().StringVar(&syncStartDate, "sync-start-date", "", "Data de corte inicial YYYY-MM-DD para since_date")
 	cmd.Flags().BoolVar(&last12Months, "last-12-months", false, "Atalho para importar somente os últimos 12 meses no primeiro sync")
 	cmd.Flags().BoolVar(&last5Years, "last-5-years", false, "Atalho para importar somente os últimos 5 anos no primeiro sync")
 	_ = cmd.MarkFlagRequired("cnpj")
 	_ = cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+// newCompanyUpdateCmd changes the name, environment or UF of a company.
+// Flags left out keep the stored value.
+func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
+	var (
+		cnpj    string
+		name    string
+		envName string
+		uf      string
+	)
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Atualiza nome, ambiente ou UF de uma empresa",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			application, cleanup, err := env.AppFactory(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("inicializar: %w", err)
+			}
+			defer cleanup()
+
+			current, err := application.Companies.CompanyByCNPJ(cmd.Context(), cnpj)
+			if err != nil {
+				return fmt.Errorf("erro ao atualizar empresa: %w", err)
+			}
+			input := company.UpdateCompanyInput{
+				CNPJ:            current.CNPJ,
+				Name:            current.Name,
+				Environment:     current.Environment,
+				UF:              current.UF,
+				SyncStartPolicy: current.SyncStartPolicy,
+				SyncStartDate:   current.SyncStartDate,
+			}
+			if cmd.Flags().Changed("name") {
+				input.Name = name
+			}
+			if cmd.Flags().Changed("env") {
+				input.Environment, err = nfse.ParseEnvironment(envName)
+				if err != nil {
+					return fmt.Errorf("erro no ambiente: %w", err)
+				}
+			}
+			if cmd.Flags().Changed("uf") {
+				input.UF = uf
+			}
+
+			if err := application.Companies.UpdateCompany(cmd.Context(), input); err != nil {
+				return fmt.Errorf("erro ao atualizar empresa: %w", err)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Empresa %s atualizada com sucesso.\n", cnpjpkg.Format(current.CNPJ))
+			return nil
+		},
+	}
+	cmd.Flags().StringVarP(&cnpj, "cnpj", "c", "", "CNPJ da empresa")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "Novo nome ou Razão Social")
+	cmd.Flags().StringVarP(&envName, "env", "e", "", "Novo ambiente: producao ou producao_restrita")
+	cmd.Flags().StringVar(&uf, "uf", "", "Sigla da UF da empresa (ex.: SP); vazio remove")
+	_ = cmd.MarkFlagRequired("cnpj")
 	return cmd
 }
 
@@ -114,10 +177,10 @@ func newCompanyListCmd(env CommandEnv) *cobra.Command {
 			}
 
 			out := cmd.OutOrStdout()
-			_, _ = fmt.Fprintf(out, "%-20s %-24s %-18s %-15s\n", "CNPJ", "Nome", "Credencial", "Ambiente")
+			_, _ = fmt.Fprintf(out, "%-20s %-24s %-18s %-18s %-3s\n", "CNPJ", "Nome", "Credencial", "Ambiente", "UF")
 			_, _ = fmt.Fprintln(out, "------------------------------------------------------------------------------------------------")
 			for _, c := range companies {
-				_, _ = fmt.Fprintf(out, "%-20s %-24s %-18s %-15s\n", cnpjpkg.Format(c.CNPJ), c.Name, c.CredentialLabel, c.Environment)
+				_, _ = fmt.Fprintf(out, "%-20s %-24s %-18s %-18s %-3s\n", cnpjpkg.Format(c.CNPJ), c.Name, c.CredentialLabel, c.Environment, c.UF)
 			}
 			return nil
 		},

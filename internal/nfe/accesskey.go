@@ -3,9 +3,11 @@ package nfe
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/foundation/uf"
 )
 
 // ErrInvalidAccessKey is returned by ParseAccessKey. The message carries the
@@ -97,7 +99,12 @@ func (k AccessKey) UFCode() string {
 // UF returns the state abbreviation of the issuing state, e.g. "SP", or an
 // empty string when the code is unknown.
 func (k AccessKey) UF() string {
-	return ufByCode[k.UFCode()]
+	code, err := strconv.Atoi(k.UFCode())
+	if err != nil {
+		return ""
+	}
+	sigla, _ := uf.Sigla(code)
+	return sigla
 }
 
 // EmitenteCNPJ returns the CNPJ slot. For an emitente identified by CPF the
@@ -126,13 +133,4 @@ func (k AccessKey) slice(start, end int) string {
 		return ""
 	}
 	return string(k[start:end])
-}
-
-// ufByCode maps IBGE state codes to state abbreviations.
-var ufByCode = map[string]string{
-	"11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP", "17": "TO",
-	"21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE", "29": "BA",
-	"31": "MG", "32": "ES", "33": "RJ", "35": "SP",
-	"41": "PR", "42": "SC", "43": "RS",
-	"50": "MS", "51": "MT", "52": "GO", "53": "DF",
 }

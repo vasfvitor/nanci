@@ -22,6 +22,7 @@ type Company struct {
 	InitialSyncCompletedAt sql.NullString
 	CreatedAt              string
 	UpdatedAt              string
+	Uf                     string
 }
 
 type CompanyDocument struct {

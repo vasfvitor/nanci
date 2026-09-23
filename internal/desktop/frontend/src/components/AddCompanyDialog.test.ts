@@ -28,7 +28,12 @@ function mountDialog() {
         'q-card-actions': { template: '<div><slot /></div>' },
         'q-separator': { template: '<div />' },
         'q-btn': { name: 'QBtn', props: ['label'], template: '<button />' },
-        'q-select': { template: '<div />' },
+        'q-select': {
+          name: 'QSelect',
+          props: ['modelValue', 'label'],
+          emits: ['update:modelValue'],
+          template: '<div />',
+        },
         'q-option-group': {
           name: 'QOptionGroup',
           props: ['modelValue', 'options'],
@@ -97,6 +102,47 @@ describe('AddCompanyDialog', () => {
         SyncStartDate: '2025-07-26',
       })
     )
+  })
+
+  it('sends the selected UF, and an empty one after clearing', async () => {
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
+      { ID: 'cred-1', Label: 'Certificado A' },
+    ] as never)
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    const inputs = wrapper.findAllComponents({ name: 'QInput' })
+    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
+    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
+    const ufSelect = wrapper
+      .findAllComponents({ name: 'QSelect' })
+      .find((select) => select.props('label') === 'UF (opcional)')
+    expect(ufSelect?.props('modelValue')).toBe('')
+
+    const save = () =>
+      wrapper
+        .findAllComponents({ name: 'QBtn' })
+        .find((button) => button.props('label') === 'Salvar')
+        ?.trigger('click')
+
+    ufSelect?.vm.$emit('update:modelValue', 'SP')
+    await flushPromises()
+    await save()
+    await flushPromises()
+    expect(desktopClient.addCompany).toHaveBeenLastCalledWith(expect.objectContaining({ UF: 'SP' }))
+
+    // Saving closes and resets the form; reopen and clear the select.
+    await wrapper.setProps({ modelValue: false })
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
+    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
+    ufSelect?.vm.$emit('update:modelValue', null)
+    await flushPromises()
+    await save()
+    await flushPromises()
+    expect(desktopClient.addCompany).toHaveBeenLastCalledWith(expect.objectContaining({ UF: '' }))
   })
 
   it('clears an abandoned form when reopened after cancelling', async () => {

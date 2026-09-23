@@ -24,6 +24,16 @@
           dense
         />
 
+        <q-select
+          v-model="form.UF"
+          :options="ufOptions"
+          label="UF (opcional)"
+          hint="Necessária para buscar NF-e na SEFAZ."
+          clearable
+          outlined
+          dense
+        />
+
         <q-separator />
 
         <q-select
@@ -71,6 +81,7 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { desktopClient } from '@/platform/wails/client'
 import type { CompanySummary, SyncStartPolicy } from '@/types/desktop'
+import { UF_SIGLAS } from '@/utils/uf'
 
 const props = defineProps<{
   modelValue: boolean
@@ -85,11 +96,14 @@ const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)
 const loading = ref(false)
+const ufOptions = [...UF_SIGLAS]
 
 const form = ref({
   CNPJ: '',
   Name: '',
   Environment: 'producao',
+  // q-select sets null when cleared.
+  UF: '' as string | null,
   SyncStartPolicy: 'from_now' as SyncStartPolicy,
   SyncStartDate: '',
 })
@@ -114,6 +128,7 @@ watch(
       form.value.CNPJ = props.companyData.CNPJ || ''
       form.value.Name = props.companyData.Name || ''
       form.value.Environment = props.companyData.Environment || 'producao'
+      form.value.UF = props.companyData.UF || ''
       form.value.SyncStartPolicy = props.companyData.SyncStartPolicy || 'from_now'
       form.value.SyncStartDate = formatInputDate(props.companyData.SyncStartDate)
     }
@@ -140,6 +155,7 @@ async function submit() {
       CNPJ: form.value.CNPJ,
       Name: form.value.Name,
       Environment: form.value.Environment,
+      UF: form.value.UF ?? '',
       SyncStartPolicy: form.value.SyncStartPolicy,
       SyncStartDate: syncStartDateForSubmit(),
     })

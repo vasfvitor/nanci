@@ -281,6 +281,7 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 		CredentialLabel: input.CredentialLabel,
 		CertPath:        input.CertPath,
 		Environment:     environment,
+		UF:              input.UF,
 		SyncStartPolicy: policy,
 		SyncStartDate:   date,
 	})
@@ -333,6 +334,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		Environment:     environment,
+		UF:              input.UF,
 		SyncStartPolicy: policy,
 		SyncStartDate:   date,
 	})

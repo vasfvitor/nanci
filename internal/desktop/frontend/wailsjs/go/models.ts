@@ -7,6 +7,7 @@ export namespace desktopapi {
 	    CredentialLabel: string;
 	    CertPath: string;
 	    Environment: string;
+	    UF: string;
 	    SyncStartPolicy: string;
 	    SyncStartDate: string;
 	
@@ -22,6 +23,7 @@ export namespace desktopapi {
 	        this.CredentialLabel = source["CredentialLabel"];
 	        this.CertPath = source["CertPath"];
 	        this.Environment = source["Environment"];
+	        this.UF = source["UF"];
 	        this.SyncStartPolicy = source["SyncStartPolicy"];
 	        this.SyncStartDate = source["SyncStartDate"];
 	    }
@@ -79,6 +81,7 @@ export namespace desktopapi {
 	    CredentialLabel: string;
 	    CredentialCertPath: string;
 	    Environment: string;
+	    UF: string;
 	    LastFoundNSU?: number;
 	    // Go type: time
 	    LastSyncAt?: any;
@@ -108,6 +111,7 @@ export namespace desktopapi {
 	        this.CredentialLabel = source["CredentialLabel"];
 	        this.CredentialCertPath = source["CredentialCertPath"];
 	        this.Environment = source["Environment"];
+	        this.UF = source["UF"];
 	        this.LastFoundNSU = source["LastFoundNSU"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
 	        this.SyncStartPolicy = source["SyncStartPolicy"];
@@ -607,6 +611,7 @@ export namespace desktopapi {
 	    CNPJ: string;
 	    Name: string;
 	    Environment: string;
+	    UF: string;
 	    SyncStartPolicy: string;
 	    SyncStartDate: string;
 	
@@ -619,6 +624,7 @@ export namespace desktopapi {
 	        this.CNPJ = source["CNPJ"];
 	        this.Name = source["Name"];
 	        this.Environment = source["Environment"];
+	        this.UF = source["UF"];
 	        this.SyncStartPolicy = source["SyncStartPolicy"];
 	        this.SyncStartDate = source["SyncStartDate"];
 	    }

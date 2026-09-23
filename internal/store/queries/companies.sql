@@ -8,8 +8,8 @@ SELECT * FROM companies ORDER BY name ASC;
 INSERT INTO companies (
     id, cnpj, cnpj_root, name, credential_id, credential_label,
     credential_cert_path, environment, sync_start_policy,
-    sync_start_date, initial_sync_completed_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    sync_start_date, initial_sync_completed_at, created_at, updated_at, uf
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: AssignCredentialToCompany :execrows
 UPDATE companies
@@ -35,5 +35,6 @@ SET name = ?,
     environment = ?,
     sync_start_policy = ?,
     sync_start_date = ?,
+    uf = ?,
     updated_at = ?
 WHERE id = ?;

@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/foundation/uf"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -44,6 +46,7 @@ type AddCompanyInput struct {
 	CredentialLabel string
 	CertPath        string
 	Environment     nfse.Environment
+	UF              string // optional state sigla, e.g. "SP"
 	SyncStartPolicy nfse.SyncStartPolicy
 	SyncStartDate   *time.Time
 }
@@ -53,6 +56,7 @@ type UpdateCompanyInput struct {
 	CNPJ            string
 	Name            string
 	Environment     nfse.Environment
+	UF              string // optional state sigla, e.g. "SP"
 	SyncStartPolicy nfse.SyncStartPolicy
 	SyncStartDate   *time.Time
 }
@@ -85,6 +89,10 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		return err
 	}
 	root, _ := cnpj.Root(cleanedCNPJ)
+	sigla, err := normalizeUF(input.UF)
+	if err != nil {
+		return err
+	}
 
 	credential, err := m.resolveCredentialForCompany(ctx, input)
 	if err != nil {
@@ -100,6 +108,7 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		CredentialLabel:    credential.Label,
 		CredentialCertPath: credential.CertPath,
 		Environment:        input.Environment,
+		UF:                 sigla,
 		SyncStartPolicy:    input.SyncStartPolicy,
 		SyncStartDate:      input.SyncStartDate,
 	}
@@ -190,9 +199,19 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 	return credential, nil
 }
 
-// UpdateCompany updates the name and environment of an existing company.
+// CompanyByCNPJ returns one registered company.
+func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*nfse.Company, error) {
+	return lookupCompanyByCNPJ(ctx, m.store, rawCNPJ)
+}
+
+// UpdateCompany replaces the editable fields of an existing company: name,
+// environment, UF and, before the first sync, the initial sync policy.
 func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
 	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CNPJ)
+	if err != nil {
+		return err
+	}
+	sigla, err := normalizeUF(input.UF)
 	if err != nil {
 		return err
 	}
@@ -209,6 +228,7 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 
 	company.Name = input.Name
 	company.Environment = input.Environment
+	company.UF = sigla
 	company.SyncStartPolicy = input.SyncStartPolicy
 	company.SyncStartDate = input.SyncStartDate
 
@@ -274,6 +294,16 @@ func normalizeCNPJ(raw string) (string, error) {
 		return "", fmt.Errorf("CNPJ inválido: %w", err)
 	}
 	return cnpj.Clean(raw), nil
+}
+
+// normalizeUF trims and upper-cases a state sigla. Empty is allowed and
+// means the UF is unknown.
+func normalizeUF(raw string) (string, error) {
+	sigla := strings.ToUpper(strings.TrimSpace(raw))
+	if sigla != "" && !uf.Valid(sigla) {
+		return "", fmt.Errorf("UF inválida %q: use uma sigla como SP, RJ ou MG", raw)
+	}
+	return sigla, nil
 }
 
 func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*nfse.Company, error) {

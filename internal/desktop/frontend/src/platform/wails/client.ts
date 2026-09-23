@@ -114,6 +114,7 @@ export function mapCompanySummary(raw: unknown): CompanySummary {
     CredentialLabel: asString(item['CredentialLabel']),
     CredentialCertPath: asString(item['CredentialCertPath']),
     Environment: asString(item['Environment']),
+    UF: asString(item['UF']),
     LastFoundNSU: asNullableNumber(item['LastFoundNSU']),
     LastSyncAt: item['LastSyncAt'] as CompanySummary['LastSyncAt'],
     SyncStartPolicy: asString(item['SyncStartPolicy']) as CompanySummary['SyncStartPolicy'],

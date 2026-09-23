@@ -32,6 +32,7 @@ type CompanySummary struct {
 	CredentialLabel    string
 	CredentialCertPath string
 	Environment        string
+	UF                 string
 	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	SyncStartPolicy    string
@@ -114,6 +115,7 @@ type AddCompanyInput struct {
 	CredentialLabel string
 	CertPath        string
 	Environment     string // "producao" | "producao_restrita"
+	UF              string // state sigla such as "SP"; empty when unknown
 	SyncStartPolicy string // "all" | "since_date" | "from_now"
 	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
 }
@@ -122,6 +124,7 @@ type UpdateCompanyInput struct {
 	CNPJ            string
 	Name            string
 	Environment     string // "producao" | "producao_restrita"
+	UF              string // state sigla such as "SP"; empty when unknown
 	SyncStartPolicy string // "all" | "since_date" | "from_now"
 	SyncStartDate   string // "YYYY-MM-DD" when SyncStartPolicy is since_date
 }
@@ -229,6 +232,7 @@ func CompanySummaries(companies []nfse.Company) []CompanySummary {
 			CredentialLabel:    company.CredentialLabel,
 			CredentialCertPath: company.CredentialCertPath,
 			Environment:        string(company.Environment),
+			UF:                 company.UF,
 			LastFoundNSU:       company.LastFoundNSU,
 			LastSyncAt:         company.LastSyncAt,
 			SyncStartPolicy:    string(company.SyncStartPolicy),

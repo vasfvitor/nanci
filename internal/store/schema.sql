@@ -11,7 +11,8 @@ CREATE TABLE companies (
     sync_start_date TEXT,
     initial_sync_completed_at TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    uf TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE credentials (
