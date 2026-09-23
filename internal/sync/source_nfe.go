@@ -162,7 +162,7 @@ func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, 
 	}
 	outcome, err := commit(ctx, func(tx *sql.Tx) (ItemOutcome, error) {
 		inserted, err := s.repo.ApplyDocumentTx(ctx, tx, params)
-		return ItemOutcome{Inserted: inserted, Completeness: doc.Completeness}, err
+		return ItemOutcome{Inserted: inserted, Partial: doc.Completeness == nfe.CompletenessResumo}, err
 	})
 	if err != nil {
 		return ItemOutcome{}, fmt.Errorf("db apply nfe document failed: %w", err)

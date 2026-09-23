@@ -76,13 +76,19 @@ func (s *nfseSource) Fetch(ctx context.Context, company *nfse.Company, cursor in
 		NextCursor: cursor,
 	}
 	for _, env := range resp.Docs {
+		var attrs []slog.Attr
+		if env.DocumentType != "" {
+			attrs = append(attrs, slog.String("tipo_documento", env.DocumentType))
+		}
+		if env.EventType != "" {
+			attrs = append(attrs, slog.String("tipo_evento", env.EventType))
+		}
 		batch.Items = append(batch.Items, Item{
-			NSU:       env.NSU,
-			Schema:    env.Schema,
-			Payload:   env.PayloadBase64(),
-			IsEvent:   env.IsEvent(),
-			DocType:   env.DocumentType,
-			EventType: env.EventType,
+			NSU:      env.NSU,
+			Schema:   env.Schema,
+			Payload:  env.PayloadBase64(),
+			IsEvent:  env.IsEvent(),
+			LogAttrs: attrs,
 		})
 		batch.NextCursor = max(batch.NextCursor, env.NSU)
 	}
@@ -119,8 +125,7 @@ func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company,
 			Op:         "parse document",
 			NSU:        item.NSU,
 			Schema:     item.Schema,
-			DocType:    item.DocType,
-			EventType:  item.EventType,
+			Attrs:      item.LogAttrs,
 			XMLPreview: xmlPreview(payload.XML),
 			RawHash:    keepUnparsedXML(ctx, s.xml, s.log, payload),
 			Err:        err,
@@ -178,8 +183,7 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 			Op:         "parse event",
 			NSU:        item.NSU,
 			Schema:     item.Schema,
-			DocType:    item.DocType,
-			EventType:  item.EventType,
+			Attrs:      item.LogAttrs,
 			XMLPreview: xmlPreview(payload.XML),
 			RawHash:    keepUnparsedXML(ctx, s.xml, s.log, payload),
 			Err:        err,

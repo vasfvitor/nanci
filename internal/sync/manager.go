@@ -115,8 +115,8 @@ type PullResult struct {
 	EventsFound              int
 	DocumentsSaved           int
 	EventsSaved              int
-	CompletasSaved           int // NF-e procNFe stored
-	ResumosSaved             int // NF-e resNFe stored
+	FullDocumentsSaved       int // documents stored whole (NF-e procNFe, every NFS-e)
+	PartialDocumentsSaved    int // documents stored as a summary (NF-e resNFe)
 	DocumentsSkippedByPolicy int
 	EventsSkippedByPolicy    int
 	Errors                   int
@@ -201,11 +201,11 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 		if event.EventsSkippedByPolicy > result.EventsSkippedByPolicy {
 			result.EventsSkippedByPolicy = event.EventsSkippedByPolicy
 		}
-		if event.CompletasSaved > result.CompletasSaved {
-			result.CompletasSaved = event.CompletasSaved
+		if event.FullDocumentsSaved > result.FullDocumentsSaved {
+			result.FullDocumentsSaved = event.FullDocumentsSaved
 		}
-		if event.ResumosSaved > result.ResumosSaved {
-			result.ResumosSaved = event.ResumosSaved
+		if event.PartialDocumentsSaved > result.PartialDocumentsSaved {
+			result.PartialDocumentsSaved = event.PartialDocumentsSaved
 		}
 	}
 

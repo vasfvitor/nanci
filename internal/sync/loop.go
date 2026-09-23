@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -186,8 +185,8 @@ type syncRuntimeState struct {
 	documentsSkippedPolicy int
 	eventsSkippedPolicy    int
 	unsupported            int
-	completasSaved         int
-	resumosSaved           int
+	documentsFull          int // documents stored whole, inserted or not
+	documentsPartial       int // documents stored as a summary, inserted or not
 	emptyCount             int
 	consecutiveEmpty       int
 	errorsCount            int
@@ -433,11 +432,12 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 	default:
 		runState.documentsSkippedDup++
 	}
-	switch outcome.Completeness {
-	case nfe.CompletenessCompleta:
-		runState.completasSaved++
-	case nfe.CompletenessResumo:
-		runState.resumosSaved++
+	if !outcome.IsEvent && !outcome.SkippedByPolicy && !outcome.Unsupported {
+		if outcome.Partial {
+			runState.documentsPartial++
+		} else {
+			runState.documentsFull++
+		}
 	}
 	runState.lastProcessedNSU = item.NSU
 	runState.lastFoundNSU = nextLastFoundNSU
@@ -499,8 +499,8 @@ func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncR
 		EventsSaved:              runState.eventsInserted,
 		DocumentsSkippedByPolicy: runState.documentsSkippedPolicy,
 		EventsSkippedByPolicy:    runState.eventsSkippedPolicy,
-		CompletasSaved:           runState.completasSaved,
-		ResumosSaved:             runState.resumosSaved,
+		FullDocumentsSaved:       runState.documentsFull,
+		PartialDocumentsSaved:    runState.documentsPartial,
 		DocsInBatch:              docsInBatch,
 		Errors:                   runState.errorsCount,
 		Message:                  fmt.Sprintf("cursor=%d fetched=%d ultNSU=%d maxNSU=%d inserted=%d events=%d stale=%d duplicate=%d skipped_policy=%d/%d", cursor, docsInBatch, batch.UltNSU, batch.MaxNSU, runState.documentsInserted, runState.eventsInserted, runState.documentsSkippedStale, runState.documentsSkippedDup, runState.documentsSkippedPolicy, runState.eventsSkippedPolicy),
@@ -534,8 +534,7 @@ type ProcessingError struct {
 	Op         string // "decode document" | "parse document" | "decode event" | "parse event"
 	NSU        int64
 	Schema     string
-	DocType    string
-	EventType  string
+	Attrs      []slog.Attr // source details, such as the ADN tipo_documento
 	XMLPreview string
 	RawHash    string // blob of the raw XML, saved when the payload decoded
 	Err        error
@@ -547,11 +546,8 @@ func (e *ProcessingError) Error() string {
 	if e.Schema != "" {
 		fmt.Fprintf(&b, ", schema=%s", e.Schema)
 	}
-	if e.DocType != "" {
-		fmt.Fprintf(&b, ", tipo_documento=%s", e.DocType)
-	}
-	if e.EventType != "" {
-		fmt.Fprintf(&b, ", tipo_evento=%s", e.EventType)
+	for _, attr := range e.Attrs {
+		fmt.Fprintf(&b, ", %s=%s", attr.Key, attr.Value)
 	}
 	if e.XMLPreview != "" {
 		fmt.Fprintf(&b, ", xml_preview=%s", e.XMLPreview)
@@ -574,12 +570,7 @@ func (e *ProcessingError) LogValue() slog.Value {
 	if e.Schema != "" {
 		attrs = append(attrs, slog.String("schema", e.Schema))
 	}
-	if e.DocType != "" {
-		attrs = append(attrs, slog.String("tipo_documento", e.DocType))
-	}
-	if e.EventType != "" {
-		attrs = append(attrs, slog.String("tipo_evento", e.EventType))
-	}
+	attrs = append(attrs, e.Attrs...)
 	if e.XMLPreview != "" {
 		attrs = append(attrs, slog.String("xml_preview", e.XMLPreview))
 	}

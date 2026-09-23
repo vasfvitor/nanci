@@ -11,18 +11,18 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/redact"
-	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // Item is one distributed document or event, still base64+gzip encoded.
 type Item struct {
-	NSU       int64
-	Schema    string // ADN "Schema" or SEFAZ docZip@schema, e.g. "resNFe_v1.01.xsd"
-	Payload   string // base64 of the gzipped XML
-	IsEvent   bool
-	DocType   string // ADN TipoDocumento; empty for SEFAZ
-	EventType string // ADN TipoEvento; empty for SEFAZ
+	NSU     int64
+	Schema  string // ADN "Schema" or SEFAZ docZip@schema, e.g. "resNFe_v1.01.xsd"
+	Payload string // base64 of the gzipped XML
+	IsEvent bool
+	// LogAttrs are source details reported with a processing error, such as
+	// the ADN tipo_documento.
+	LogAttrs []slog.Attr
 }
 
 // Batch is one distribution response, already interpreted by the source.
@@ -42,9 +42,9 @@ type ItemOutcome struct {
 	IsEvent         bool
 	SkippedByPolicy bool
 	Unsupported     bool // unknown schema: checkpointed and counted, never fails the run
-	// Completeness is set when the item stored an NF-e document: resumo for
-	// a resNFe, completa for a procNFe. Empty for events and NFS-e.
-	Completeness nfe.Completeness
+	// Partial is set when the item stored a summary of a document rather
+	// than the document itself (an NF-e resumo).
+	Partial bool
 }
 
 // CommitFunc runs write in one transaction together with the item's sync checkpoint.

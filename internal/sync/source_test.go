@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -21,5 +23,23 @@ func TestXMLPreviewMasksNFSeIdentifiersBeforeTheCut(t *testing.T) {
 	}
 	if !strings.Contains(got, "<CNPJ>11******...(truncated)") {
 		t.Errorf("preview lacks the masked CNPJ: %s", got)
+	}
+}
+
+func TestProcessingErrorReportsSourceAttrs(t *testing.T) {
+	err := &ProcessingError{
+		Op:     "parse document",
+		NSU:    7,
+		Schema: "NFSe",
+		Attrs:  []slog.Attr{slog.String("tipo_documento", "NFSE"), slog.String("tipo_evento", "CANCELAMENTO")},
+		Err:    errors.New("bad xml"),
+	}
+	const want = "parse document failed (nsu=7, schema=NFSe, tipo_documento=NFSE, tipo_evento=CANCELAMENTO): bad xml"
+	if got := err.Error(); got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+	group := err.LogValue().Group()
+	if last := group[len(group)-1]; last.Key != "tipo_evento" || last.Value.String() != "CANCELAMENTO" {
+		t.Errorf("LogValue ends with %v, want tipo_evento=CANCELAMENTO", last)
 	}
 }
