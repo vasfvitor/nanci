@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="isOpen">
+  <q-dialog v-model="open">
     <q-card class="nfe-events-dialog">
       <q-card-section class="row items-center q-pb-none">
         <div>
@@ -51,28 +51,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import { useNFeDocuments } from '@/composables/useNFeDocuments'
+import { useNFeEvents } from '@/composables/useNFeEvents'
 import type { NFeEvent } from '@/types/desktop'
 import { formatChaveNFe, formatDateTime } from '@/utils/formatters'
 import { badgeColor, badgeTextColor, nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
 
+const open = defineModel<boolean>({ required: true })
+
 const props = defineProps<{
-  modelValue: boolean
   cnpj: string
   chaveAcesso: string
 }>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-}>()
-
 const $q = useQuasar()
-const { loadEvents: loadNFeEvents } = useNFeDocuments()
-const isOpen = ref(props.modelValue)
-const loading = ref(false)
-const events = ref<NFeEvent[]>([])
+const { events, loading, load } = useNFeEvents()
 
 const columns: QTableColumn<NFeEvent>[] = [
   {
@@ -100,29 +94,17 @@ function eventDetail(row: NFeEvent) {
   return row.Justificativa || row.Correcao || row.Description || '—'
 }
 
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    isOpen.value = newVal
-    if (newVal && props.chaveAcesso) {
-      void loadEvents()
-    }
+watch(open, (isOpen) => {
+  if (isOpen && props.chaveAcesso) {
+    void loadEvents()
   }
-)
-
-watch(isOpen, (newVal) => {
-  emit('update:modelValue', newVal)
 })
 
 async function loadEvents() {
-  events.value = []
-  loading.value = true
   try {
-    events.value = await loadNFeEvents(props.chaveAcesso, props.cnpj)
+    await load(props.cnpj, props.chaveAcesso)
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar eventos: ' + String(err) })
-  } finally {
-    loading.value = false
   }
 }
 </script>

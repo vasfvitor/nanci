@@ -10,7 +10,6 @@ vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     listCompanies: vi.fn(),
     listNFe: vi.fn(),
-    listNFeEvents: vi.fn(),
     listPendingManifestations: vi.fn(),
     statusNFe: vi.fn(),
     pullNFe: vi.fn(),
@@ -207,14 +206,5 @@ describe('useNFeDocuments', () => {
       IncludeResumos: false,
       Incremental: false,
     })
-  })
-
-  it('loads events for the selected company', async () => {
-    const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
-
-    await nfe.loadEvents('chave-1')
-
-    expect(desktopClient.listNFeEvents).toHaveBeenCalledWith('123', 'chave-1')
   })
 })

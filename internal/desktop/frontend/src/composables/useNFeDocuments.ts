@@ -129,10 +129,6 @@ export function useNFeDocuments() {
     }
   }
 
-  async function loadEvents(chaveAcesso: string, cnpj: string = filter.value.CNPJ) {
-    return desktopClient.listNFeEvents(cnpj, chaveAcesso)
-  }
-
   return {
     filter,
     rows,
@@ -153,6 +149,5 @@ export function useNFeDocuments() {
     resetNFe,
     exportXML,
     exportZIP,
-    loadEvents,
   }
 }
