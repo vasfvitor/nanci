@@ -494,12 +494,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{
-		OutPath:       res.OutPath,
-		Format:        res.Format,
-		Incremental:   res.Incremental,
-		ExportedCount: res.ExportedCount,
-	}, nil
+	return desktopapi.ExportResult(res), nil
 }
 
 func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
@@ -534,12 +529,7 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 		return desktopapi.ExportResult{}, err
 	}
 
-	return desktopapi.ExportResult{
-		OutPath:       res.OutPath,
-		Format:        res.Format,
-		Incremental:   res.Incremental,
-		ExportedCount: res.ExportedCount,
-	}, nil
+	return desktopapi.ExportResult(res), nil
 }
 
 func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, error) {
@@ -900,12 +890,7 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 		return desktopapi.NFeExportResult{}, desktopError(err)
 	}
 	return desktopapi.NFeExportResult{
-		ExportResult: desktopapi.ExportResult{
-			OutPath:       res.OutPath,
-			Format:        res.Format,
-			Incremental:   res.Incremental,
-			ExportedCount: res.ExportedCount,
-		},
+		ExportResult:   desktopapi.ExportResult(res.ExportResult),
 		SkippedResumos: res.SkippedResumos,
 	}, nil
 }
