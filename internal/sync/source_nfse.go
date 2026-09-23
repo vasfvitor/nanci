@@ -122,6 +122,7 @@ func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company,
 			DocType:    item.DocType,
 			EventType:  item.EventType,
 			XMLPreview: xmlPreview(payload.XML),
+			RawHash:    s.keepUnparsedXML(ctx, payload),
 			Err:        err,
 		}
 	}
@@ -182,6 +183,7 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 			DocType:    item.DocType,
 			EventType:  item.EventType,
 			XMLPreview: xmlPreview(payload.XML),
+			RawHash:    s.keepUnparsedXML(ctx, payload),
 			Err:        err,
 		}
 	}
@@ -224,4 +226,15 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 		return ItemOutcome{}, fmt.Errorf("db apply event failed: %w", err)
 	}
 	return outcome, nil
+}
+
+// keepUnparsedXML saves the XML of an item that failed to parse, so it can
+// be inspected once the loop gives up on it. It returns the blob hash, or ""
+// when the save failed.
+func (s *nfseSource) keepUnparsedXML(ctx context.Context, payload gzipxml.Decoded) string {
+	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
+		s.log.WarnContext(ctx, "Falha ao salvar XML não interpretado", slog.Any("err", err))
+		return ""
+	}
+	return payload.SHA256
 }

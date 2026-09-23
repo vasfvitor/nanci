@@ -145,18 +145,20 @@ type SyncRun struct {
 }
 
 type SyncState struct {
-	CompanyID        string
-	Source           string
-	Environment      string
-	ConsultationCnpj string
-	LastCheckedNsu   int64
-	LastFoundNsu     sql.NullInt64
-	MaxNsu           sql.NullInt64
-	LastEmptyStreak  int64
-	LastSuccessAt    sql.NullString
-	LastErrorAt      sql.NullString
-	LastErrorCode    sql.NullString
-	LastErrorMessage sql.NullString
-	CreatedAt        string
-	UpdatedAt        string
+	CompanyID         string
+	Source            string
+	Environment       string
+	ConsultationCnpj  string
+	LastCheckedNsu    int64
+	LastFoundNsu      sql.NullInt64
+	MaxNsu            sql.NullInt64
+	LastEmptyStreak   int64
+	LastSuccessAt     sql.NullString
+	LastErrorAt       sql.NullString
+	LastErrorCode     sql.NullString
+	LastErrorMessage  sql.NullString
+	CreatedAt         string
+	UpdatedAt         string
+	FailedNsu         sql.NullInt64
+	FailedNsuAttempts int64
 }

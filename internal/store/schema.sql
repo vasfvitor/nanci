@@ -140,6 +140,8 @@ CREATE TABLE sync_state (
     last_error_message TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    failed_nsu INTEGER,
+    failed_nsu_attempts INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (company_id, source, environment, consultation_cnpj)
 );
 

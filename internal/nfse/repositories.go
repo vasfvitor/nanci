@@ -72,6 +72,7 @@ type PersistSyncProgressParams struct {
 	ConsultationCNPJ      string
 	LastProcessedNSU      int64
 	LastFoundNSU          *int64
+	MaxNSU                *int64 // highest NSU the source reports; nil keeps the stored value
 	LastEmptyStreak       int
 	CheckedCount          int
 	DocumentsFound        int

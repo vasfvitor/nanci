@@ -3,9 +3,11 @@ package sync
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
+	gosync "sync"
 	"testing"
 	"time"
 
@@ -168,6 +170,150 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 	if result.DocumentsFound != 1 {
 		t.Fatalf("DocumentsFound = %d, want 1", result.DocumentsFound)
+	}
+}
+
+type countingProvider struct {
+	mu    gosync.Mutex
+	calls int
+}
+
+func (p *countingProvider) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.calls++
+	return []byte("secret"), nil
+}
+
+func (p *countingProvider) callCount() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.calls
+}
+
+// newPullTestManager returns a Manager over a real database whose certificate
+// loading and ADN client are stubbed, plus its only company.
+func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *nfse.Company) {
+	t.Helper()
+	db := storetest.OpenTestDB(t)
+	companyStore := company.NewStore(db)
+	credentialStore := credential.NewStore(db)
+
+	comp := &nfse.Company{ //nolint:gosec
+		ID:           "company-1",
+		CNPJ:         "11222333000181",
+		CNPJRoot:     "11222333",
+		Name:         "Company",
+		CredentialID: "credential-1",
+		Environment:  nfse.EnvironmentProduction,
+	}
+	if err := companyStore.CreateCompany(context.Background(), comp); err != nil {
+		t.Fatal(err)
+	}
+	certPath := filepath.Join(t.TempDir(), "cert.pfx")
+	if err := os.WriteFile(certPath, []byte("stub"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := credentialStore.CreateCredential(context.Background(), &nfse.Credential{ID: "credential-1", Label: "Credential", CertPath: certPath}); err != nil {
+		t.Fatal(err)
+	}
+
+	originalLoadPKCS12 := loadPKCS12
+	originalNewADNClient := newADNClient
+	originalNewSyncRunner := newSyncRunner
+	t.Cleanup(func() {
+		loadPKCS12 = originalLoadPKCS12
+		newADNClient = originalNewADNClient
+		newSyncRunner = originalNewSyncRunner
+	})
+	loadPKCS12 = func(string, []byte) (cert.LoadedCertificate, error) {
+		now := time.Now().UTC()
+		return cert.LoadedCertificate{Inspection: cert.Inspection{
+			OwnerCNPJ:     "11222333000181",
+			OwnerCNPJRoot: "11222333",
+			NotBefore:     now,
+			NotAfter:      now.Add(24 * time.Hour),
+		}}, nil
+	}
+	newADNClient = func(adn.ClientConfig) (*adn.Client, error) {
+		return &adn.Client{}, nil
+	}
+
+	return &Manager{
+		Log:                slog.New(slog.DiscardHandler),
+		CompanyProvider:    companyStore,
+		CredentialProvider: credentialStore,
+		DocProvider:        dbstore.NewDocumentRepository(db),
+		SyncRepo:           NewStore(db),
+		XMLStore:           &captureXMLStore{},
+		PassProvider:       passwords,
+	}, comp
+}
+
+func TestPullReturnsBlockedErrorBeforePasswordPrompt(t *testing.T) {
+	passwords := &countingProvider{}
+	mgr, comp := newPullTestManager(t, passwords)
+	until := time.Now().Add(time.Hour)
+	if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, nfse.SyncSourceNFSe, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ})
+	var blocked *BlockedError
+	if !errors.As(err, &blocked) || !errors.Is(err, ErrSourceBlocked) {
+		t.Fatalf("Pull error = %v, want *BlockedError", err)
+	}
+	if blocked.Reason != nfse.SyncStopReasonConsumoIndevido {
+		t.Errorf("Reason = %q, want consumo_indevido", blocked.Reason)
+	}
+	if got := passwords.callCount(); got != 0 {
+		t.Errorf("password prompts = %d, want 0", got)
+	}
+}
+
+func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
+	passwords := &countingProvider{}
+	mgr, comp := newPullTestManager(t, passwords)
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
+		return syncRunnerStub{
+			sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+				close(started)
+				<-release
+				return nil
+			},
+		}
+	}
+
+	firstErr := make(chan error, 1)
+	go func() {
+		_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ})
+		firstErr <- err
+	}()
+	<-started
+
+	if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ}); !errors.Is(err, ErrSyncRunning) {
+		t.Errorf("second Pull error = %v, want ErrSyncRunning", err)
+	}
+	if got := passwords.callCount(); got != 1 {
+		t.Errorf("password prompts = %d, want 1 (the second pull must not prompt)", got)
+	}
+
+	close(release)
+	if err := <-firstErr; err != nil {
+		t.Fatalf("first Pull: %v", err)
+	}
+
+	// Once the first pull ends, the pair is free again.
+	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
+		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+			return nil
+		}}
+	}
+	if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ}); err != nil {
+		t.Fatalf("third Pull: %v", err)
 	}
 }
 

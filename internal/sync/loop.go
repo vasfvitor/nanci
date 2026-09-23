@@ -12,6 +12,10 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
+// maxItemAttempts is how many runs in a row may fail to decode or parse the
+// same NSU before the loop skips it as unsupported.
+const maxItemAttempts = 3
+
 // SyncService walks one Source by NSU and records the run.
 type SyncService struct {
 	store  *Store
@@ -47,6 +51,9 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	sourceState, err := s.store.SourceState(ctx, company.ID, kind)
 	if err != nil {
 		return fmt.Errorf("failed to load source state: %w", err)
+	}
+	if err := checkBlocked(kind, sourceState, time.Now()); err != nil {
+		return err
 	}
 	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
 		slog.String("cnpj", company.CNPJ),
@@ -111,6 +118,16 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		default:
 		}
 
+		budgetLeft, err := s.spendRequest(ctx, company)
+		if err != nil {
+			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
+			return err
+		}
+		if !budgetLeft {
+			stopReason = nfse.SyncStopReasonRateBudget
+			break
+		}
+
 		batch, err := s.processBatch(ctx, company, cursor, &runState, progress)
 		if err != nil {
 			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
@@ -161,6 +178,7 @@ type syncRuntimeState struct {
 	runID                  nfse.SyncRunID
 	lastProcessedNSU       int64
 	lastFoundNSU           *int64
+	maxNSU                 *int64
 	checkedCount           int
 	documentsInserted      int
 	eventsInserted         int
@@ -212,6 +230,44 @@ func persistFailure(err error) *syncFailure {
 	}
 }
 
+// spendRequest enforces the source's hourly request budget before a fetch.
+// It records the request before it is sent, so failed attempts count too.
+// It returns false, and blocks the source until the oldest request in the
+// window expires, when the budget is exhausted.
+func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (bool, error) {
+	limit := s.source.Policy().RequestsPerHour
+	if limit <= 0 {
+		return true, nil
+	}
+	kind := s.source.Kind()
+
+	now := time.Now().UTC()
+	count, oldest, err := s.store.RequestsSince(ctx, company.ID, kind, now.Add(-time.Hour))
+	if err != nil {
+		return false, persistFailure(fmt.Errorf("failed to read request budget: %w", err))
+	}
+	if count >= limit {
+		until := now.Add(time.Hour)
+		if oldest != nil {
+			until = oldest.Add(time.Hour)
+		}
+		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, until, nfse.SyncStopReasonRateBudget); err != nil {
+			return false, persistFailure(fmt.Errorf("failed to block source after request budget: %w", err))
+		}
+		s.log.WarnContext(ctx, "Limite de consultas por hora atingido",
+			slog.String("source", string(kind)),
+			slog.Int("requests_last_hour", count),
+			slog.Int("limit", limit),
+			slog.Time("next_allowed_at", until))
+		return false, nil
+	}
+
+	if err := s.store.RecordRequest(ctx, company.ID, kind, now); err != nil {
+		return false, persistFailure(fmt.Errorf("failed to record request: %w", err))
+	}
+	return true, nil
+}
+
 // progressParams is the run checkpoint as it stands in runState.
 func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntimeState) nfse.PersistSyncProgressParams {
 	return nfse.PersistSyncProgressParams{
@@ -222,6 +278,7 @@ func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntim
 		ConsultationCNPJ:      company.CNPJ,
 		LastProcessedNSU:      runState.lastProcessedNSU,
 		LastFoundNSU:          runState.lastFoundNSU,
+		MaxNSU:                runState.maxNSU,
 		LastEmptyStreak:       runState.consecutiveEmpty,
 		CheckedCount:          runState.checkedCount,
 		DocumentsFound:        runState.documentsInserted,
@@ -250,6 +307,10 @@ func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, c
 
 	runState.checkedCount++
 	runState.documentsReturned += len(batch.Items)
+	if batch.MaxNSU > 0 {
+		maxNSU := batch.MaxNSU
+		runState.maxNSU = &maxNSU
+	}
 
 	processedAny := false
 	for _, item := range batch.Items {
@@ -264,18 +325,29 @@ func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, c
 		processedAny = true
 	}
 
+	// Item commits already checkpointed the run. An empty or all-stale batch
+	// still counts, and a source may move the cursor past its last item
+	// (NF-e returns ultNSU).
+	needsCheckpoint := !processedAny
 	if len(batch.Items) == 0 {
 		runState.emptyCount++
 		runState.consecutiveEmpty++
-		if err := s.store.PersistProgress(ctx, s.progressParams(company, runState)); err != nil {
-			return Batch{}, persistFailure(fmt.Errorf("failed to persist sync progress on empty batch: %w", err))
-		}
 	} else {
 		runState.consecutiveEmpty = 0
-		if !processedAny {
-			if err := s.store.PersistProgress(ctx, s.progressParams(company, runState)); err != nil {
-				return Batch{}, persistFailure(fmt.Errorf("failed to persist sync progress on non-advancing batch: %w", err))
-			}
+	}
+	if batch.NextCursor > runState.lastProcessedNSU {
+		runState.lastProcessedNSU = batch.NextCursor
+		needsCheckpoint = true
+	}
+	if needsCheckpoint {
+		if err := s.store.PersistProgress(ctx, s.progressParams(company, runState)); err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to persist batch checkpoint: %w", err))
+		}
+	}
+
+	if batch.WaitUntil != nil {
+		if err := s.store.SetBlockedUntil(ctx, company.ID, s.source.Kind(), *batch.WaitUntil, batch.StopReason); err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to record source wait: %w", err))
 		}
 	}
 
@@ -324,6 +396,9 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 	outcome, err := s.source.ProcessItem(ctx, company, runState.source, item, commit)
 	if err != nil {
 		runState.errorsCount++
+		outcome, err = s.skipPoisonItem(ctx, company, item, err, commit)
+	}
+	if err != nil {
 		failed := s.progressParams(company, runState)
 		failed.MarkSuccess = false
 		failed.ErrorCode = "process_error"
@@ -361,6 +436,44 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 	runState.lastProcessedNSU = item.NSU
 	runState.lastFoundNSU = nextLastFoundNSU
 	return nil
+}
+
+// skipPoisonItem gives up on an item that failed to decode or parse
+// maxItemAttempts runs in a row: it commits the item as unsupported so one
+// bad document cannot stall the source. Any other failure, or an earlier
+// attempt, is returned unchanged.
+func (s *SyncService) skipPoisonItem(ctx context.Context, company *nfse.Company, item Item, processErr error, commit CommitFunc) (ItemOutcome, error) {
+	var parseErr *ProcessingError
+	if !errors.As(processErr, &parseErr) {
+		return ItemOutcome{}, processErr
+	}
+
+	attempts, err := s.store.RecordItemFailure(ctx, nfse.GetOrCreateSyncStateParams{
+		CompanyID:        company.ID,
+		Source:           s.source.Kind(),
+		Environment:      company.Environment,
+		ConsultationCNPJ: company.CNPJ,
+	}, item.NSU)
+	if err != nil {
+		return ItemOutcome{}, errors.Join(processErr, fmt.Errorf("record item failure: %w", err))
+	}
+	if attempts < maxItemAttempts {
+		return ItemOutcome{}, processErr
+	}
+
+	outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
+		return ItemOutcome{Unsupported: true, IsEvent: item.IsEvent}, nil
+	})
+	if err != nil {
+		return ItemOutcome{}, fmt.Errorf("persist unsupported item progress failed: %w", err)
+	}
+	s.log.WarnContext(ctx, "Documento ignorado após falhas repetidas de leitura",
+		slog.String("source", string(s.source.Kind())),
+		slog.Int64("nsu", item.NSU),
+		slog.Int("attempts", attempts),
+		slog.String("raw_hash", parseErr.RawHash),
+		slog.Any("err", parseErr))
+	return outcome, nil
 }
 
 func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, cursor int64, batch Batch) {
@@ -416,6 +529,7 @@ type ProcessingError struct {
 	DocType    string
 	EventType  string
 	XMLPreview string
+	RawHash    string // blob of the raw XML, saved when the payload decoded
 	Err        error
 }
 
@@ -460,6 +574,9 @@ func (e *ProcessingError) LogValue() slog.Value {
 	}
 	if e.XMLPreview != "" {
 		attrs = append(attrs, slog.String("xml_preview", e.XMLPreview))
+	}
+	if e.RawHash != "" {
+		attrs = append(attrs, slog.String("raw_hash", e.RawHash))
 	}
 	return slog.GroupValue(attrs...)
 }

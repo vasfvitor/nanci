@@ -266,6 +266,10 @@ func (r *Store) doPersistProgress(ctx context.Context, tx executor, params nfse.
 				WHEN ? IS NOT NULL THEN ?
 				ELSE last_found_nsu
 			END,
+			max_nsu = CASE
+				WHEN ? IS NOT NULL THEN ?
+				ELSE max_nsu
+			END,
 			last_empty_streak = ?,
 			last_success_at = CASE
 				WHEN ? IS NOT NULL THEN ?
@@ -291,6 +295,8 @@ func (r *Store) doPersistProgress(ctx context.Context, tx executor, params nfse.
 		params.LastProcessedNSU,
 		store.NullInt64FromPtr(params.LastFoundNSU),
 		store.NullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.MaxNSU),
+		store.NullInt64FromPtr(params.MaxNSU),
 		params.LastEmptyStreak,
 		lastSuccessAt,
 		lastSuccessAt,
@@ -692,6 +698,31 @@ func (r *Store) RequestsSince(ctx context.Context, companyID nfse.CompanyID, sou
 		return 0, nil, err
 	}
 	return count, store.ParseNullableTime(oldest), nil
+}
+
+// RecordItemFailure counts one decode or parse failure of the item at nsu
+// and returns how many times in a row that NSU has failed. A failure at a
+// different NSU starts the count over.
+func (r *Store) RecordItemFailure(ctx context.Context, key nfse.GetOrCreateSyncStateParams, nsu int64) (int, error) {
+	var attempts int
+	err := r.db.QueryRowContext(ctx, `
+		UPDATE sync_state
+		SET
+			failed_nsu_attempts = CASE WHEN failed_nsu = ? THEN failed_nsu_attempts + 1 ELSE 1 END,
+			failed_nsu = ?,
+			updated_at = ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
+		RETURNING failed_nsu_attempts
+	`,
+		nsu,
+		nsu,
+		time.Now().UTC().Format(time.RFC3339),
+		string(key.CompanyID),
+		string(key.Source),
+		string(key.Environment),
+		key.ConsultationCNPJ,
+	).Scan(&attempts)
+	return attempts, err
 }
 
 func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {

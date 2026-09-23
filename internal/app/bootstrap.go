@@ -18,6 +18,14 @@ import (
 
 var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
 
+// ErrSourceBlocked matches a pull refused because the source asked to wait;
+// errors.As with *sync.BlockedError gives the time and the reason.
+var ErrSourceBlocked = sync.ErrSourceBlocked
+
+// ErrSyncRunning matches a pull refused because the same company and source
+// are already syncing in this process.
+var ErrSyncRunning = sync.ErrSyncRunning
+
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest = sync.CertPasswordRequest
 

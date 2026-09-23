@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	gosync "sync"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
@@ -77,6 +78,9 @@ type Manager struct {
 	SyncRepo           *Store
 	XMLStore           xmlStore
 	PassProvider       CredentialProvider
+
+	runningMu gosync.Mutex
+	running   map[string]bool // "companyID:source" pulls in flight in this process
 }
 
 type PullInput struct {
@@ -131,6 +135,19 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err != nil {
 		return PullResult{}, err
 	}
+	sourceState, err := m.SyncRepo.SourceState(ctx, company.ID, source)
+	if err != nil {
+		return PullResult{}, fmt.Errorf("carregar estado da origem: %w", err)
+	}
+	if err := checkBlocked(source, sourceState, time.Now()); err != nil {
+		return PullResult{}, err
+	}
+	release, err := m.startPull(company.ID, source)
+	if err != nil {
+		return PullResult{}, err
+	}
+	defer release()
+
 	credential, err := m.CredentialProvider.CredentialByID(ctx, company.CredentialID)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
@@ -244,6 +261,30 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	)
 
 	return result, nil
+}
+
+// startPull marks the (company, source) pull as running in this process and
+// returns the func that clears the mark. A second pull of the same pair gets
+// ErrSyncRunning instead of interrupting the first. This does not guard
+// against another process; StartRun cleans up after a crashed one.
+func (m *Manager) startPull(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
+	key := string(companyID) + ":" + string(source)
+
+	m.runningMu.Lock()
+	defer m.runningMu.Unlock()
+	if m.running[key] {
+		return nil, fmt.Errorf("%w (%s)", ErrSyncRunning, sourceLabel(source))
+	}
+	if m.running == nil {
+		m.running = make(map[string]bool)
+	}
+	m.running[key] = true
+
+	return func() {
+		m.runningMu.Lock()
+		defer m.runningMu.Unlock()
+		delete(m.running, key)
+	}, nil
 }
 
 // sourceFactoryFor returns how to build the source. It fails before any
