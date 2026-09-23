@@ -394,50 +394,43 @@ func (r *Store) PersistProgress(ctx context.Context, params nfse.PersistSyncProg
 	return tx.Commit()
 }
 
-func (r *Store) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
+// ApplyWithProgress runs write and the item's sync checkpoint in one
+// transaction. An inserted document (not an event) is added to the run's
+// documents_found before the checkpoint is written.
+func (r *Store) ApplyWithProgress(ctx context.Context, progress nfse.PersistSyncProgressParams, write func(tx *sql.Tx) (ItemOutcome, error)) (ItemOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nfse.ApplyOutcome{}, err
+		return ItemOutcome{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	outcome, err := r.doApplyDocument(ctx, tx, r.queries.WithTx(tx), params.DocumentParams)
+	outcome, err := write(tx)
 	if err != nil {
-		return nfse.ApplyOutcome{}, err
+		return ItemOutcome{}, err
 	}
-	progressParams := params.ProgressParams
-	if outcome.Inserted {
-		progressParams.DocumentsFound++
+	if outcome.Inserted && !outcome.IsEvent {
+		progress.DocumentsFound++
 	}
-	if err := r.doPersistProgress(ctx, tx, progressParams); err != nil {
-		return nfse.ApplyOutcome{}, err
+	if err := r.doPersistProgress(ctx, tx, progress); err != nil {
+		return ItemOutcome{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nfse.ApplyOutcome{}, err
+		return ItemOutcome{}, err
 	}
 	return outcome, nil
 }
 
-func (r *Store) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) (nfse.ApplyOutcome, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+// ApplyDocumentAndProgress stores a document and its sync checkpoint in one transaction.
+func (r *Store) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
+	outcome, err := r.ApplyWithProgress(ctx, params.ProgressParams, func(tx *sql.Tx) (ItemOutcome, error) {
+		applied, err := r.doApplyDocument(ctx, tx, r.queries.WithTx(tx), params.DocumentParams)
+		return ItemOutcome{Inserted: applied.Inserted}, err
+	})
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
 	}
-	defer func() { _ = tx.Rollback() }()
-
-	outcome, err := r.doApplyEvent(ctx, tx, r.queries.WithTx(tx), params.EventParams)
-	if err != nil {
-		return nfse.ApplyOutcome{}, err
-	}
-	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
-		return nfse.ApplyOutcome{}, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nfse.ApplyOutcome{}, err
-	}
-	return outcome, nil
+	return nfse.ApplyOutcome{Inserted: outcome.Inserted}, nil
 }
 
 func companyDocumentMissing(ctx context.Context, tx executor, companyID, documentID string) (bool, error) {

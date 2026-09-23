@@ -139,8 +139,13 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 
 	var receivedStore files.XMLStore
-	newSyncRunner = func(repo *Store, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
-		receivedStore = store
+	newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
+		nfseSrc, ok := src.(*nfseSource)
+		if !ok {
+			t.Fatalf("source = %T, want *nfseSource", src)
+		}
+		receivedStore = nfseSrc.xml
+		store := nfseSrc.xml
 		return syncRunnerStub{
 			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
 				if progress != nil {

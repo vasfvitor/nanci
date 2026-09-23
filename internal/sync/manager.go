@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"os"
@@ -61,9 +62,12 @@ type syncRunner interface {
 	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
 }
 
-var newSyncRunner = func(repo *Store, client *adn.Client, xStore files.XMLStore, log *slog.Logger) syncRunner {
-	return NewSyncService(repo, client, xStore, log)
+var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
+	return NewSyncService(repo, src, log)
 }
+
+// sourceFactory builds the Source of one pull once the certificate is loaded.
+type sourceFactory func(company *nfse.Company, tlsCert tls.Certificate) (Source, error)
 
 type Manager struct {
 	Log                *slog.Logger
@@ -116,8 +120,9 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err != nil {
 		return PullResult{}, err
 	}
-	if source != nfse.SyncSourceNFSe {
-		return PullResult{}, fmt.Errorf("origem de sincronização %q ainda não suportada", source)
+	newSource, err := m.sourceFactoryFor(source)
+	if err != nil {
+		return PullResult{}, err
 	}
 
 	m.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
@@ -172,17 +177,11 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 		return PullResult{}, err
 	}
 
-	apiClient, err := newADNClient(adn.ClientConfig{
-		BaseURL:     ResolveEnvironmentURL(company.Environment),
-		Certificate: &tlsCert,
-		Log:         m.Log,
-	})
+	src, err := newSource(company, tlsCert)
 	if err != nil {
-		return PullResult{}, fmt.Errorf("configurar cliente ADN: %w", err)
+		return PullResult{}, err
 	}
-
-	m.Log.DebugContext(ctx, "Construindo cliente ADN e SyncService")
-	svc := newSyncRunner(m.SyncRepo, apiClient, m.XMLStore, m.Log)
+	svc := newSyncRunner(m.SyncRepo, src, m.Log)
 
 	var result PullResult
 	result.CompanyName = company.Name
@@ -245,6 +244,29 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	)
 
 	return result, nil
+}
+
+// sourceFactoryFor returns how to build the source. It fails before any
+// password prompt for a source that cannot be pulled yet.
+func (m *Manager) sourceFactoryFor(source nfse.SyncSource) (sourceFactory, error) {
+	switch source {
+	case nfse.SyncSourceNFSe:
+		return m.newNFSeSource, nil
+	default:
+		return nil, fmt.Errorf("origem de sincronização %q ainda não disponível", source)
+	}
+}
+
+func (m *Manager) newNFSeSource(company *nfse.Company, tlsCert tls.Certificate) (Source, error) {
+	apiClient, err := newADNClient(adn.ClientConfig{
+		BaseURL:     ResolveEnvironmentURL(company.Environment),
+		Certificate: &tlsCert,
+		Log:         m.Log,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configurar cliente ADN: %w", err)
+	}
+	return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
 }
 
 // resolveSyncSource defaults an empty source to NFS-e, the source every

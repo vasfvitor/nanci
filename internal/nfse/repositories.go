@@ -64,11 +64,6 @@ type ApplyDocumentAndProgressParams struct {
 	ProgressParams PersistSyncProgressParams
 }
 
-type ApplyEventAndProgressParams struct {
-	EventParams    ApplyEventParams
-	ProgressParams PersistSyncProgressParams
-}
-
 type PersistSyncProgressParams struct {
 	CompanyID             CompanyID
 	Source                SyncSource

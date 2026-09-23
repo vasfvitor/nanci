@@ -15,6 +15,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
@@ -291,6 +292,11 @@ func (h *testHelper) markInitialSyncDone(t *testing.T, doneAt time.Time) {
 	h.company.InitialSyncDoneAt = &doneAt
 }
 
+// newNFSeService builds the sync loop over the NFS-e source, fed by fetcher.
+func (h *testHelper) newNFSeService(fetcher documentFetcher, xmlStore files.XMLStore) *SyncService {
+	return NewSyncService(h.store, NewNFSeSource(fetcher, h.store, xmlStore, discardLogger()), discardLogger())
+}
+
 type mockFetcher struct {
 	handler  func(adn.DistributionRequest) (*adn.DocumentResponse, error)
 	requests []adn.DistributionRequest
@@ -338,7 +344,7 @@ func TestSyncServiceSuccessFinishesOnceAsCompleted(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -366,7 +372,7 @@ func TestSyncServiceNormalModeUsesPersistedCursorWithoutRevisit(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -396,7 +402,7 @@ func TestSyncServiceFetchFailureFinishesOnceAsFailed(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
 	if err == nil {
@@ -418,7 +424,7 @@ func TestSyncServiceCancellationFinishesOnceAsInterrupted(t *testing.T) {
 		},
 	}
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	err := svc.Sync(ctx, h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
 	if !errors.Is(err, context.Canceled) {
@@ -457,7 +463,7 @@ func TestSyncServiceProcessingFailurePersistsConsultedCheckpointBeforeFailing(t 
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
 	if err == nil {
@@ -496,7 +502,7 @@ func TestSyncServiceProcessesEventFromTipoEventoMetadata(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -529,7 +535,7 @@ func TestSyncServiceProcessesBatchInAscendingNSUOrder(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -573,7 +579,7 @@ func TestSyncServiceAdvancesCursorAcrossBatchesWithoutIncrementingRequestNSU(t *
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -618,7 +624,7 @@ func TestSyncServiceSkipsStaleDocumentsAndAdvancesToFreshNSU(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -655,7 +661,7 @@ func TestSyncServiceAdvancesCursorOnDuplicateAboveCurrentCursor(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -698,7 +704,7 @@ func TestSyncServiceSkipsDocumentBeforeInitialSyncCutoffAndAdvancesCursor(t *tes
 	defer func() { syncRequestDelay = originalDelay }()
 
 	xmlStore := &mockXMLStore{}
-	svc := NewSyncService(h.store, fetcher, xmlStore, discardLogger())
+	svc := h.newNFSeService(fetcher, xmlStore)
 	cutoff := mustDate(t, "2025-01-01")
 	h.company.SyncStartPolicy = nfse.SyncStartPolicySinceDate
 	h.company.SyncStartDate = &cutoff
@@ -729,7 +735,7 @@ func TestSyncServiceContinuesBootstrapAfterPartialRunWithAdvancedCursor(t *testi
 	h.company.SyncStartPolicy = nfse.SyncStartPolicySinceDate
 	h.company.SyncStartDate = &cutoff
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	fetcher.handler = func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
@@ -781,7 +787,7 @@ func TestSyncServiceProcessesOldDocumentAfterInitialBootstrapCompleted(t *testin
 	h.company.SyncStartPolicy = nfse.SyncStartPolicySinceDate
 	h.company.SyncStartDate = &cutoff
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -816,7 +822,7 @@ func TestSyncServiceSkipsEventWithoutLocalDocument(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -844,7 +850,7 @@ func TestSyncServiceStopsOnNonAdvancingBatch(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -873,7 +879,7 @@ func TestSyncServiceBreaksGracefullyOnEmptyList(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
@@ -903,7 +909,7 @@ func TestSyncServiceApplyDocumentAndProgressIsAtomic(t *testing.T) {
 	syncRequestDelay = 0
 	defer func() { syncRequestDelay = originalDelay }()
 
-	svc := NewSyncService(h.store, fetcher, &mockXMLStore{}, discardLogger())
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
 
 	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeFirstSetup, nil); err != nil {
 		t.Fatalf("expected sync success, got %v", err)
