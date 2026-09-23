@@ -41,8 +41,6 @@ type App struct {
 	Query       *QueryService
 	NFe         *NFeService
 	SyncManager *sync.Manager
-	// Certificates loads a company's certificate for any use case that consults the tax authority.
-	Certificates *sync.CertificateLoader
 }
 
 // Dependencies contains the infrastructure required by App.
@@ -95,19 +93,18 @@ func New(deps Dependencies) (*App, error) {
 		DocProvider:        deps.DocumentRepo,
 		SyncRepo:           deps.SyncRepo,
 		XMLStore:           deps.XMLStore,
-		PassProvider:       deps.CredentialProvider,
+		Certificates:       certificates,
 		NFeRepo:            deps.NFeRepo,
 	}
 
 	return &App{
-		Companies:    company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
-		Credentials:  credential.NewManager(deps.CredentialStore),
-		Documents:    NewDocumentService(deps),
-		Exports:      NewExportService(deps),
-		Query:        NewQueryService(deps, certificates),
-		NFe:          NewNFeService(deps, certificates, syncManager),
-		SyncManager:  syncManager,
-		Certificates: certificates,
+		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
+		Credentials: credential.NewManager(deps.CredentialStore),
+		Documents:   NewDocumentService(deps),
+		Exports:     NewExportService(deps),
+		Query:       NewQueryService(deps, certificates),
+		NFe:         NewNFeService(deps, certificates, syncManager),
+		SyncManager: syncManager,
 	}, nil
 }
 

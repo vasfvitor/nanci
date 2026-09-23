@@ -110,7 +110,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		DocProvider:        dbstore.NewDocumentRepository(db),
 		SyncRepo:           NewStore(db),
 		XMLStore:           xmlStoreVal,
-		PassProvider:       providerStub{},
+		Certificates:       &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: providerStub{}},
 	}
 
 	originalLoadPKCS12 := loadPKCS12
@@ -246,7 +246,7 @@ func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *
 		DocProvider:        dbstore.NewDocumentRepository(db),
 		SyncRepo:           NewStore(db),
 		XMLStore:           &captureXMLStore{},
-		PassProvider:       passwords,
+		Certificates:       &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: passwords},
 	}, comp
 }
 

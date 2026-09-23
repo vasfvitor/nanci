@@ -17,7 +17,6 @@ import (
 // LoadedCredential is a company's certificate, loaded and checked against
 // the company it consults for.
 type LoadedCredential struct {
-	Company    *nfse.Company
 	Credential *nfse.Credential
 	TLS        tls.Certificate // PrivateKey is a crypto.Signer (RSA for ICP-Brasil A1)
 	Basis      nfse.ConsultationBasis
@@ -84,7 +83,6 @@ func (l *CertificateLoader) LoadForCompany(ctx context.Context, company *nfse.Co
 	}
 
 	return LoadedCredential{
-		Company:    company,
 		Credential: credential,
 		TLS:        loaded.TLS,
 		Basis:      basis,

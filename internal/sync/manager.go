@@ -85,7 +85,8 @@ type Manager struct {
 	DocProvider        documentProvider
 	SyncRepo           *Store
 	XMLStore           xmlStore
-	PassProvider       CredentialProvider
+	// Certificates loads the certificate of each pull.
+	Certificates *CertificateLoader
 	// NFeRepo stores the NF-e distribution; pulls with Source nfe need it.
 	NFeRepo *store.NFeRepository
 
@@ -165,8 +166,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 	defer release()
 
-	certificates := CertificateLoader{Log: m.Log, Credentials: m.CredentialProvider, Passwords: m.PassProvider}
-	loaded, err := certificates.LoadForCompany(ctx, company, "Sincronização "+sourceLabel(source))
+	loaded, err := m.Certificates.LoadForCompany(ctx, company, "Sincronização "+sourceLabel(source))
 	if err != nil {
 		return PullResult{}, err
 	}
