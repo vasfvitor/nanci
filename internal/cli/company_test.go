@@ -52,17 +52,18 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 	if err != nil {
 		t.Fatalf("app.New: %v", err)
 	}
+	root, out := newTestRootForApp(application)
+	return root, out, &bytes.Buffer{}
+}
 
-	factoryCalled := false
+// newTestRootForApp builds a fresh root whose AppFactory always returns
+// application, and whose stdout is the returned buffer.
+func newTestRootForApp(application *app.App) (*cobra.Command, *bytes.Buffer) {
 	factory := func(ctx context.Context) (*app.App, func(), error) {
-		if factoryCalled {
-			return application, func() {}, nil
-		}
-		factoryCalled = true
 		return application, func() {}, nil
 	}
 
-	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	out := &bytes.Buffer{}
 	v, tr := false, false
 	root := NewRootCommand(CommandEnv{
 		In:         os.Stdin,
@@ -72,7 +73,7 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 		Verbose:    &v,
 		Trace:      &tr,
 	})
-	return root, out, errOut
+	return root, out
 }
 
 // TestCompanyList_EmptyDB_PrintsNoCompanies asserts the company list subcommand

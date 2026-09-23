@@ -10,9 +10,12 @@ import (
 func NewRootCommand(env CommandEnv) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "nanci",
-		Short: "CLI para sincronização de XMLs de NFS-e Nacional",
+		Short: "CLI para sincronização de XMLs de NFS-e Nacional e NF-e",
 		Long: `nanci (nfse-sync) sincroniza documentos fiscais da API ADN (NFS-e Nacional)
-usando certificado digital A1. Suporta extração de retenções e relatórios.`,
+usando certificado digital A1. Suporta extração de retenções e relatórios.
+
+Com "nanci nfe", baixa NF-e (modelo 55) da distribuição DF-e da SEFAZ e
+registra a manifestação do destinatário.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -31,6 +34,7 @@ usando certificado digital A1. Suporta extração de retenções e relatórios.`
 	root.AddCommand(newCredentialCommand(env))
 	root.AddCommand(newExportCommand(env))
 	root.AddCommand(newListCommand(env))
+	root.AddCommand(newNFeCommand(env))
 	root.AddCommand(newPullCommand(env))
 	root.AddCommand(newStatusCommand(env))
 	return root
