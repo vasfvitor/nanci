@@ -446,10 +446,6 @@ func TestNFeExportXMLZipLayoutAndIncrementalMarks(t *testing.T) {
 		t.Errorf("temp file left behind: %v", err)
 	}
 
-	pending, err := env.app.NFe.CountPendingExports(ctx, NFeExportInput{CNPJ: nfeTestCNPJ})
-	if err != nil || pending != 0 {
-		t.Errorf("CountPendingExports = %d, %v, want 0", pending, err)
-	}
 	second := filepath.Join(outDir, "again.zip")
 	res, err = env.app.NFe.ExportXMLZip(ctx, NFeExportInput{CNPJ: nfeTestCNPJ, Incremental: true, OutPath: second})
 	if err != nil {

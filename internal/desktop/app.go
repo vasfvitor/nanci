@@ -788,11 +788,6 @@ func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error
 	return desktopapi.NFeRows(documents), nil
 }
 
-func (a *App) MarkNFeViewed(input desktopapi.ListNFeInput) (int, error) {
-	count, err := a.core.NFe.MarkViewed(a.ctx, nfeListInput(input))
-	return count, desktopError(err)
-}
-
 func nfeListInput(input desktopapi.ListNFeInput) app.NFeListInput {
 	return app.NFeListInput{
 		CNPJ:         input.CNPJ,
@@ -885,25 +880,7 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	res, err := a.core.NFe.ExportXMLZip(a.ctx, nfeExportInput(input))
-	if err != nil {
-		return desktopapi.NFeExportResult{}, desktopError(err)
-	}
-	return desktopapi.NFeExportResult{
-		ExportResult:   desktopapi.ExportResult(res.ExportResult),
-		SkippedResumos: res.SkippedResumos,
-	}, nil
-}
-
-// CountPendingNFeExports counts the NF-e an incremental ExportNFeZIP with the
-// same filters would export.
-func (a *App) CountPendingNFeExports(input desktopapi.ExportNFeZIPInput) (int, error) {
-	count, err := a.core.NFe.CountPendingExports(a.ctx, nfeExportInput(input))
-	return count, desktopError(err)
-}
-
-func nfeExportInput(input desktopapi.ExportNFeZIPInput) app.NFeExportInput {
-	return app.NFeExportInput{
+	res, err := a.core.NFe.ExportXMLZip(a.ctx, app.NFeExportInput{
 		CNPJ:           input.CNPJ,
 		Competence:     input.Competence,
 		Role:           input.Role,
@@ -911,7 +888,14 @@ func nfeExportInput(input desktopapi.ExportNFeZIPInput) app.NFeExportInput {
 		IncludeResumos: input.IncludeResumos,
 		Incremental:    input.Incremental,
 		OutPath:        input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.NFeExportResult{}, desktopError(err)
 	}
+	return desktopapi.NFeExportResult{
+		ExportResult:   desktopapi.ExportResult(res.ExportResult),
+		SkippedResumos: res.SkippedResumos,
+	}, nil
 }
 
 // ResetNFe removes the company's NF-e and resets its NF-e sync, which lets the
@@ -930,12 +914,4 @@ func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
 		ExportMarks:        res.ExportMarks,
 		ManifestationsKept: res.ManifestationsKept,
 	}, nil
-}
-
-func (a *App) TestNFeConnection(cnpj string) (desktopapi.ConnectionTestResult, error) {
-	res, err := a.core.NFe.TestConnection(a.ctx, cnpj)
-	if err != nil {
-		return desktopapi.ConnectionTestResult{}, desktopError(err)
-	}
-	return desktopapi.ConnectionTestResult(res), nil
 }

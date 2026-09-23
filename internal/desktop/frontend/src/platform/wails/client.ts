@@ -4,7 +4,6 @@ import {
   AssignCredentialToCompany,
   CancelCertPassword,
   CountPendingExports,
-  CountPendingNFeExports,
   ExportDANFSe,
   ExportDANFSeZIP,
   ExportDocuments,
@@ -22,7 +21,6 @@ import {
   ListNFeEvents,
   ListPendingManifestations,
   MarkDocumentsViewed,
-  MarkNFeViewed,
   OpenDataDirectory,
   OpenLogsDirectory,
   PlanCiencia,
@@ -40,7 +38,6 @@ import {
   StatusNFe,
   SubmitCertPassword,
   TestConnection,
-  TestNFeConnection,
   UpdateCompany,
   UpdateCredentialData,
   UpdateCredentialPath,
@@ -693,9 +690,6 @@ export const desktopClient = {
     const res = await callWails(() => ListNFe(input))
     return (res || []).map(mapNFeRow)
   },
-  markNFeViewed(input: ListNFeInput): Promise<number> {
-    return callWails(() => MarkNFeViewed(input))
-  },
   async listNFeEvents(cnpj: string, chaveAcesso: string): Promise<NFeEvent[]> {
     const res = await callWails(() => ListNFeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
     return (res || []).map(mapNFeEvent)
@@ -753,12 +747,5 @@ export const desktopClient = {
       })
     )
     return mapNFeExportResult(res)
-  },
-  countPendingNFeExports(input: ExportNFeZIPInput): Promise<number> {
-    return callWails(() => CountPendingNFeExports(input))
-  },
-  async testNFeConnection(cnpj: string): Promise<ConnectionTestResult> {
-    const res = await callWails(() => TestNFeConnection(cnpj))
-    return mapConnectionTestResult(res)
   },
 }

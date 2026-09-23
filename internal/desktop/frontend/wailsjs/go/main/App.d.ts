@@ -12,8 +12,6 @@ export function CancelCertPassword(arg1:string):Promise<void>;
 
 export function CountPendingExports(arg1:desktopapi.ExportDocumentsInput):Promise<number>;
 
-export function CountPendingNFeExports(arg1:desktopapi.ExportNFeZIPInput):Promise<number>;
-
 export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
 
 export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
@@ -47,8 +45,6 @@ export function ListNFeEvents(arg1:desktopapi.NFeKeyInput):Promise<Array<desktop
 export function ListPendingManifestations(arg1:desktopapi.NFePendingInput):Promise<Array<desktopapi.NFePendingRow>>;
 
 export function MarkDocumentsViewed(arg1:desktopapi.ListInput):Promise<number>;
-
-export function MarkNFeViewed(arg1:desktopapi.ListNFeInput):Promise<number>;
 
 export function OpenDataDirectory():Promise<void>;
 
@@ -85,8 +81,6 @@ export function StatusNFe(arg1:string):Promise<desktopapi.NFeStatusResult>;
 export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
 
 export function TestConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
-
-export function TestNFeConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
 
 export function UpdateCompany(arg1:desktopapi.UpdateCompanyInput):Promise<void>;
 

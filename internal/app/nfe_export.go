@@ -93,21 +93,6 @@ func (s *NFeService) ExportXMLZip(ctx context.Context, in NFeExportInput) (NFeEx
 	return res, nil
 }
 
-// CountPendingExports counts the NF-e an incremental ExportXMLZip with the
-// same filters would export.
-func (s *NFeService) CountPendingExports(ctx context.Context, in NFeExportInput) (int, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
-	if err != nil {
-		return 0, err
-	}
-	in.Incremental = true
-	docs, _, err := s.exportDocuments(ctx, comp.ID, in)
-	if err != nil {
-		return 0, err
-	}
-	return len(docs), nil
-}
-
 // ExportXML writes the stored XML of one of the company's NF-e (procNFe, or
 // resNFe for a resumo) to in.OutPath and marks it as exported.
 func (s *NFeService) ExportXML(ctx context.Context, in NFeExportXMLInput) error {
