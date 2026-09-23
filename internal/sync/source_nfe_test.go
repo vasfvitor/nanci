@@ -1,8 +1,10 @@
 package sync
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -309,6 +311,59 @@ func TestNFeSourceSkipsUnknownSchemaAndAdvances(t *testing.T) {
 		t.Errorf("stored blobs = %d, want the unknown payload kept", len(h.xml.stored))
 	}
 	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+}
+
+// A document that fails to parse is reported with an XML preview; the
+// identifiers in it must not reach the error or the log in clear.
+func TestNFeSourceParseFailureRedactsXMLPreview(t *testing.T) {
+	h := newNFeTestHelper(t)
+	const (
+		emitenteCNPJ = "11222333000181"
+		emitenteName = "DISTRIBUIDORA FICTICIA"
+	)
+	broken := `<resNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01"><chNFe>` + nfeChaveProc + `</chNFe>` +
+		`<CNPJ>` + emitenteCNPJ + `</CNPJ><xNome>` + emitenteName + `</xNome><IE>111222333444</IE><vNF>10.00`
+	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{
+		0: {CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 1, MaxNSU: 1, Docs: []sefaz.DocZip{
+			{NSU: 1, Schema: "resNFe_v1.01.xsd", Content: mustEncodeGzipBase64(t, broken)},
+		}},
+	}}
+
+	var logs bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&logs, nil))
+	svc := NewSyncService(h.store, NewNFeSource(fetcher, h.repo, h.xml, log, 35), log)
+	// The item is skipped, and the failure logged, on the last attempt.
+	for attempt := 1; attempt <= maxItemAttempts; attempt++ {
+		err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
+		if attempt < maxItemAttempts {
+			var parseErr *ProcessingError
+			if !errors.As(err, &parseErr) {
+				t.Fatalf("attempt %d: error = %v, want a ProcessingError", attempt, err)
+			}
+			if !strings.Contains(err.Error(), "xml_preview=") {
+				t.Fatalf("attempt %d: error lacks the XML preview: %v", attempt, err)
+			}
+			for _, clear := range []string{emitenteCNPJ, emitenteName, nfeChaveProc} {
+				if strings.Contains(err.Error(), clear) {
+					t.Errorf("attempt %d: error leaks %q: %v", attempt, clear, err)
+				}
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("attempt %d: %v", attempt, err)
+		}
+	}
+
+	got := logs.String()
+	if !strings.Contains(got, `"xml_preview":`) || !strings.Contains(got, "<CNPJ>11**********81</CNPJ>") {
+		t.Fatalf("log lacks the masked XML preview:\n%s", got)
+	}
+	for _, clear := range []string{emitenteCNPJ, emitenteName, nfeChaveProc} {
+		if strings.Contains(got, clear) {
+			t.Errorf("log leaks %q:\n%s", clear, got)
+		}
+	}
 }
 
 func TestNFeSourceNenhumDocumentoNeverMovesCursorBack(t *testing.T) {

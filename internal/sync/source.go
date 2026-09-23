@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -79,8 +80,11 @@ func shouldSkipDocumentByInitialPolicy(company *nfse.Company, src SourceState, i
 	return issueDate.Format("2006-01-02") < company.SyncStartDate.Format("2006-01-02")
 }
 
+// xmlPreview is the start of data for error messages and logs, with the
+// identifiers of companies, people and documents masked. It masks the whole
+// document first so the cut cannot leave half an element unmasked.
 func xmlPreview(data []byte) string {
-	preview := strings.TrimSpace(string(data))
+	preview := strings.TrimSpace(string(httpclient.MaskXMLIdentifiers(data)))
 	preview = strings.ReplaceAll(preview, "\r", " ")
 	preview = strings.ReplaceAll(preview, "\n", " ")
 	preview = strings.ReplaceAll(preview, "\t", " ")
