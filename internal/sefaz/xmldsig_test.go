@@ -7,7 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1" //nolint:gosec // G505: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -161,7 +161,7 @@ func verifySignedEvento(t *testing.T, signed []byte, leaf *x509.Certificate) {
 	if embedded := strings.Replace(canonicalInf, ` xmlns="`+nfeNamespace+`"`, "", 1); !strings.Contains(string(signed), embedded) {
 		t.Errorf("infEvento is not embedded in canonical form:\ncanonical %s\n   signed %s", embedded, signed)
 	}
-	digest := sha1.Sum([]byte(canonicalInf)) //nolint:gosec // G401: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	digest := sha1.Sum([]byte(canonicalInf))
 	if got := base64.StdEncoding.EncodeToString(digest[:]); got != parsed.Signature.SignedInfo.Reference.DigestValue {
 		t.Errorf("DigestValue = %s, recomputed %s", parsed.Signature.SignedInfo.Reference.DigestValue, got)
 	}
@@ -177,7 +177,7 @@ func verifySignedEvento(t *testing.T, signed []byte, leaf *x509.Certificate) {
 	if err != nil {
 		t.Fatalf("decode SignatureValue: %v", err)
 	}
-	signedInfoSum := sha1.Sum([]byte(canonicalize(t, signed, "SignedInfo", xmldsigNamespace))) //nolint:gosec // G401: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	signedInfoSum := sha1.Sum([]byte(canonicalize(t, signed, "SignedInfo", xmldsigNamespace)))
 	publicKey, ok := leaf.PublicKey.(*rsa.PublicKey)
 	if !ok {
 		t.Fatal("leaf public key is not RSA")
@@ -196,7 +196,7 @@ func TestInfEventoDigest_RealEvent(t *testing.T) {
 		t.Fatalf("read fixture: %v", err)
 	}
 
-	digest := sha1.Sum([]byte(canonicalize(t, realEvent, "infEvento", nfeNamespace))) //nolint:gosec // G401: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	digest := sha1.Sum([]byte(canonicalize(t, realEvent, "infEvento", nfeNamespace)))
 	if got := base64.StdEncoding.EncodeToString(digest[:]); got != wantDigest {
 		t.Fatalf("test canonicalizer digest = %s, want %s", got, wantDigest)
 	}
@@ -222,7 +222,7 @@ func TestInfEventoDigest_RealEvent(t *testing.T) {
 	if !bytes.Contains(realEvent, []byte(infEvento)) {
 		t.Errorf("built infEvento is not byte-identical to the real one:\n%s", infEvento)
 	}
-	built := sha1.Sum([]byte(`<infEvento xmlns="` + nfeNamespace + `"` + strings.TrimPrefix(infEvento, "<infEvento"))) //nolint:gosec // G401: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	built := sha1.Sum([]byte(`<infEvento xmlns="` + nfeNamespace + `"` + strings.TrimPrefix(infEvento, "<infEvento")))
 	if got := base64.StdEncoding.EncodeToString(built[:]); got != wantDigest {
 		t.Errorf("built infEvento digest = %s, want %s", got, wantDigest)
 	}

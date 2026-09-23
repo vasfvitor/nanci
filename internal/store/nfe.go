@@ -188,7 +188,6 @@ func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string)
 	if len(chaves) == 0 {
 		return nil, nil
 	}
-	//nolint:misspell // autor_cnpj is the column name.
 	const query = `
 		SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
 			registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
@@ -867,7 +866,6 @@ func (r *NFeRepository) resetCompany(ctx context.Context, companyID nfse.Company
 	if counts.ExportMarks, err = exec("nfe export marks", `DELETE FROM company_nfe_export_marks WHERE company_id = ?`, id); err != nil {
 		return nfe.ResetCounts{}, err
 	}
-	//nolint:misspell // autor_cnpj is the column name.
 	counts.Events, err = exec("nfe events", `
 		DELETE FROM nfe_events
 		WHERE autor_cnpj NOT IN (SELECT cnpj FROM companies WHERE id <> ?)

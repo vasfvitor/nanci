@@ -47,6 +47,14 @@ linters:
     # slog consistency
     - sloglint
 
+  exclusions:
+    rules:
+      # RSA-SHA1 is mandated by the NF-e XMLDSig profile.
+      - path: internal/sefaz/
+        linters:
+          - gosec
+        text: "G401|G505"
+
   settings:
     depguard:
       rules:
@@ -75,6 +83,7 @@ linters:
     misspell:
       ignore-rules:
         - adn
+        - autor
         - correspondente
 
     errcheck:

@@ -5,7 +5,7 @@ package sefaz
 import (
 	"crypto"
 	"crypto/rsa"
-	"crypto/sha1" //nolint:gosec // G505: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	"crypto/sha1"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
@@ -47,10 +47,10 @@ func (s *Signer) SignEvento(e Evento, tpAmb string) ([]byte, error) {
 	}
 
 	canonicalInfEvento := `<infEvento xmlns="` + nfeNamespace + `"` + infEvento[len("<infEvento"):]
-	digest := sha1.Sum([]byte(canonicalInfEvento)) //nolint:gosec // G401: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	digest := sha1.Sum([]byte(canonicalInfEvento))
 	digestValue := base64.StdEncoding.EncodeToString(digest[:])
 
-	signed := sha1.Sum([]byte(signedInfo(id, digestValue, true))) //nolint:gosec // G401: RSA-SHA1 is mandated by the NF-e XMLDSig profile
+	signed := sha1.Sum([]byte(signedInfo(id, digestValue, true)))
 	signature, err := rsa.SignPKCS1v15(nil, s.key, crypto.SHA1, signed[:])
 	if err != nil {
 		return nil, err
