@@ -65,30 +65,19 @@ describe('nfeDocuments store', () => {
   it('tracks ciência and manifestação markers per chave', () => {
     const store = useNFeDocumentsStore()
 
-    store.startCiencia('123', ['a', 'b'])
-    expect(store.cienciaInFlight).toEqual({ cnpj: '123', chaves: ['a', 'b'] })
+    store.cienciaInFlight = ['a', 'b']
     expect(store.isChaveBusy('a')).toBe(true)
     expect(store.isChaveBusy('c')).toBe(false)
 
-    store.finishCiencia()
-    expect(store.cienciaInFlight).toBeNull()
+    store.cienciaInFlight = null
     expect(store.isChaveBusy('a')).toBe(false)
 
-    store.startManifestation('c', '210200')
-    store.startManifestation('d', '210240')
-    expect(store.manifestationInFlight).toEqual({ c: '210200', d: '210240' })
+    store.manifestationInFlight.add('c')
+    store.manifestationInFlight.add('d')
     expect(store.isChaveBusy('c')).toBe(true)
 
-    store.finishManifestation('c')
-    expect(store.manifestationInFlight).toEqual({ d: '210240' })
+    store.manifestationInFlight.delete('c')
     expect(store.isChaveBusy('c')).toBe(false)
     expect(store.isChaveBusy('d')).toBe(true)
-  })
-
-  it('clears the selection', () => {
-    const store = useNFeDocumentsStore()
-    store.selected = [nfeRow('a')]
-    store.clearSelection()
-    expect(store.selected).toEqual([])
   })
 })

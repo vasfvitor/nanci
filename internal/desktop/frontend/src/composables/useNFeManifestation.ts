@@ -8,19 +8,19 @@ import type { NFeConclusiveTipo } from '@/types/desktop'
 // nfeDocuments store and the follow-up refresh does not depend on the page.
 export function useNFeManifestation() {
   const store = useNFeDocumentsStore()
-  const { pending, pendingLoading, cienciaInFlight, manifestationInFlight, lastCienciaResult } =
+  const { selected, status, pending, pendingLoading, cienciaInFlight, manifestationInFlight } =
     storeToRefs(store)
 
   async function loadPending(cnpj: string = store.filter.CNPJ) {
     if (!cnpj) {
-      store.setPending([])
+      pending.value = []
       return []
     }
     pendingLoading.value = true
     try {
       const rows = await desktopClient.listPendingManifestations(cnpj)
       if (store.filter.CNPJ === cnpj) {
-        store.setPending(rows)
+        pending.value = rows
       }
       return rows
     } finally {
@@ -39,18 +39,17 @@ export function useNFeManifestation() {
   async function registerCiencia(chavesAcesso: string[]) {
     const cnpj = store.filter.CNPJ
     if (!cnpj || chavesAcesso.length === 0) return null
-    if (store.cienciaInFlight || chavesAcesso.some((chave) => store.isChaveBusy(chave))) return null
+    if (cienciaInFlight.value || chavesAcesso.some((chave) => store.isChaveBusy(chave))) return null
 
-    store.startCiencia(cnpj, chavesAcesso)
+    cienciaInFlight.value = [...chavesAcesso]
     let result
     try {
       result = await desktopClient.registerCiencia(cnpj, chavesAcesso)
     } finally {
-      store.finishCiencia()
+      cienciaInFlight.value = null
     }
 
-    store.setLastCienciaResult(result)
-    store.clearSelection()
+    selected.value = []
     await refresh(cnpj)
     return result
   }
@@ -63,7 +62,7 @@ export function useNFeManifestation() {
     const cnpj = store.filter.CNPJ
     if (!cnpj || store.isChaveBusy(chaveAcesso)) return null
 
-    store.startManifestation(chaveAcesso, tipo)
+    manifestationInFlight.value.add(chaveAcesso)
     let result
     try {
       result = await desktopClient.registerManifestation({
@@ -73,7 +72,7 @@ export function useNFeManifestation() {
         Justificativa: tipo === '210240' ? justificativa.trim() : '',
       })
     } finally {
-      store.finishManifestation(chaveAcesso)
+      manifestationInFlight.value.delete(chaveAcesso)
     }
 
     await refresh(cnpj)
@@ -90,8 +89,8 @@ export function useNFeManifestation() {
       desktopClient.listNFe(input).then((rows) => {
         if (store.filter.CNPJ === cnpj) store.setRows(rows)
       }),
-      desktopClient.statusNFe(cnpj).then((status) => {
-        if (store.filter.CNPJ === cnpj) store.setStatus(status)
+      desktopClient.statusNFe(cnpj).then((result) => {
+        if (store.filter.CNPJ === cnpj) status.value = result
       }),
       loadPending(cnpj),
     ])
@@ -102,7 +101,6 @@ export function useNFeManifestation() {
     pendingLoading,
     cienciaInFlight,
     manifestationInFlight,
-    lastCienciaResult,
     isChaveBusy: (chaveAcesso: string) => store.isChaveBusy(chaveAcesso),
     loadPending,
     planCiencia,

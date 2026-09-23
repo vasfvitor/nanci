@@ -1,21 +1,11 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
-import type {
-  ListNFeInput,
-  NFeConclusiveTipo,
-  NFeEventBatchResult,
-  NFePendingRow,
-  NFeRow,
-  NFeStatusResult,
-} from '@/types/desktop'
+import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
 
 export type NFeTab = 'notas' | 'pendencias'
 
-export type CienciaInFlight = {
-  cnpj: string
-  chaves: string[]
-}
-
+// The store holds NF-e page state that outlives the page. Composables write
+// plain state through storeToRefs; only setRows carries logic.
 export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const filter = ref<ListNFeInput>({
     CNPJ: '',
@@ -49,9 +39,11 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const activeTab = shallowRef<NFeTab>('notas')
   const pending = ref<NFePendingRow[]>([])
   const pendingLoading = shallowRef(false)
-  const cienciaInFlight = shallowRef<CienciaInFlight | null>(null)
-  const manifestationInFlight = ref<Record<string, NFeConclusiveTipo>>({})
-  const lastCienciaResult = shallowRef<NFeEventBatchResult | null>(null)
+  // cienciaInFlight holds the chaves of the ciência being sent, or null.
+  const cienciaInFlight = shallowRef<string[] | null>(null)
+  // manifestationInFlight holds the chaves whose conclusive manifestação is
+  // being sent.
+  const manifestationInFlight = ref(new Set<string>())
   // resettingCNPJ is the company whose NF-e reset is in flight, or ''.
   const resettingCNPJ = shallowRef('')
 
@@ -68,45 +60,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     })
   }
 
-  function setPending(next: NFePendingRow[]) {
-    pending.value = next
-  }
-
-  function setStatus(next: NFeStatusResult | null) {
-    status.value = next
-  }
-
-  function setLastCienciaResult(result: NFeEventBatchResult | null) {
-    lastCienciaResult.value = result
-  }
-
-  function clearSelection() {
-    selected.value = []
-  }
-
-  function startCiencia(cnpj: string, chaves: string[]) {
-    cienciaInFlight.value = { cnpj, chaves: [...chaves] }
-  }
-
-  function finishCiencia() {
-    cienciaInFlight.value = null
-  }
-
-  function startManifestation(chave: string, tipo: NFeConclusiveTipo) {
-    manifestationInFlight.value = { ...manifestationInFlight.value, [chave]: tipo }
-  }
-
-  function finishManifestation(chave: string) {
-    manifestationInFlight.value = Object.fromEntries(
-      Object.entries(manifestationInFlight.value).filter(([key]) => key !== chave)
-    )
-  }
-
   function isChaveBusy(chave: string) {
-    return (
-      Boolean(cienciaInFlight.value?.chaves.includes(chave)) ||
-      Boolean(manifestationInFlight.value[chave])
-    )
+    return Boolean(cienciaInFlight.value?.includes(chave)) || manifestationInFlight.value.has(chave)
   }
 
   return {
@@ -122,17 +77,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     pendingLoading,
     cienciaInFlight,
     manifestationInFlight,
-    lastCienciaResult,
     resettingCNPJ,
     setRows,
-    setPending,
-    setStatus,
-    setLastCienciaResult,
-    clearSelection,
-    startCiencia,
-    finishCiencia,
-    startManifestation,
-    finishManifestation,
     isChaveBusy,
   }
 })

@@ -81,12 +81,12 @@ export function useNFeDocuments() {
   async function loadStatus() {
     const cnpj = filter.value.CNPJ
     if (!cnpj) {
-      store.setStatus(null)
+      status.value = null
       return null
     }
     const result = await desktopClient.statusNFe(cnpj)
     if (store.filter.CNPJ === cnpj) {
-      store.setStatus(result)
+      status.value = result
     }
     return result
   }

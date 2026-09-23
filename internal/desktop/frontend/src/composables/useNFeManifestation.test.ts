@@ -91,7 +91,7 @@ describe('useNFeManifestation', () => {
     const sending = firstPage.registerCiencia(['a', 'b'])
 
     const remountedPage = useNFeManifestation()
-    expect(remountedPage.cienciaInFlight.value).toEqual({ cnpj: '123', chaves: ['a', 'b'] })
+    expect(remountedPage.cienciaInFlight.value).toEqual(['a', 'b'])
     expect(remountedPage.isChaveBusy('a')).toBe(true)
     expect(remountedPage.isChaveBusy('z')).toBe(false)
 
@@ -105,7 +105,6 @@ describe('useNFeManifestation', () => {
 
     expect(remountedPage.cienciaInFlight.value).toBeNull()
     expect(remountedPage.isChaveBusy('a')).toBe(false)
-    expect(remountedPage.lastCienciaResult.value).toEqual(batch)
     expect(store.selected).toEqual([])
     expect(desktopClient.listNFe).toHaveBeenCalledWith(store.listInput)
     expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
@@ -127,7 +126,6 @@ describe('useNFeManifestation', () => {
 
     expect(manifestation.cienciaInFlight.value).toBeNull()
     expect(manifestation.isChaveBusy('a')).toBe(false)
-    expect(manifestation.lastCienciaResult.value).toBeNull()
     expect(store.selected).toHaveLength(1)
   })
 
@@ -148,7 +146,7 @@ describe('useNFeManifestation', () => {
     const sending = firstPage.registerManifestation('a', '210240', '  mercadoria não entregue  ')
 
     const remountedPage = useNFeManifestation()
-    expect(remountedPage.manifestationInFlight.value).toEqual({ a: '210240' })
+    expect(remountedPage.manifestationInFlight.value).toEqual(new Set(['a']))
     expect(remountedPage.isChaveBusy('a')).toBe(true)
     await expect(remountedPage.registerManifestation('a', '210200')).resolves.toBeNull()
     await expect(remountedPage.registerCiencia(['a'])).resolves.toBeNull()
