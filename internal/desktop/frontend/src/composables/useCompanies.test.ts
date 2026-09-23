@@ -102,7 +102,7 @@ describe('useCompanies', () => {
     await syncPromise
 
     expect(remountedPage.isSyncingCompany('123')).toBe(false)
-    expect(useCompanySyncStore().isAnySyncing('123')).toBe(false)
+    expect(useCompanySyncStore().isSyncing('123', 'nfse')).toBe(false)
   })
 
   it('does not mark the NFS-e sync button while an NF-e sync runs', () => {
@@ -112,7 +112,7 @@ describe('useCompanies', () => {
     syncStore.startSync('123', 'nfe')
 
     expect(companies.isSyncingCompany('123')).toBe(false)
-    expect(syncStore.isAnySyncing('123')).toBe(true)
+    expect(syncStore.isSyncing('123', 'nfe')).toBe(true)
 
     syncStore.finishSync('123', 'nfe')
   })

@@ -13,10 +13,6 @@ export const useCompanySyncStore = defineStore('companySync', () => {
     return Boolean(activeSyncs.value[syncKey(cnpj, source)])
   }
 
-  function isAnySyncing(cnpj: string) {
-    return isSyncing(cnpj, 'nfse') || isSyncing(cnpj, 'nfe')
-  }
-
   function startSync(cnpj: string, source: SyncSource) {
     const key = syncKey(cnpj, source)
     activeSyncs.value = {
@@ -42,7 +38,6 @@ export const useCompanySyncStore = defineStore('companySync', () => {
   return {
     activeSyncs,
     isSyncing,
-    isAnySyncing,
     startSync,
     finishSync,
   }

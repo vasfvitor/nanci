@@ -47,23 +47,6 @@ describe('company sync store', () => {
     expect(store.isSyncing('123', 'nfse')).toBe(true)
   })
 
-  it('reports whether any source is syncing for a company', () => {
-    const store = useCompanySyncStore()
-
-    expect(store.isAnySyncing('123')).toBe(false)
-
-    store.startSync('123', 'nfe')
-    expect(store.isAnySyncing('123')).toBe(true)
-    expect(store.isAnySyncing('456')).toBe(false)
-
-    store.finishSync('123', 'nfe')
-    store.startSync('123', 'nfse')
-    expect(store.isAnySyncing('123')).toBe(true)
-
-    store.finishSync('123', 'nfse')
-    expect(store.isAnySyncing('123')).toBe(false)
-  })
-
   it('ignores finishing a sync that was never started', () => {
     const store = useCompanySyncStore()
 
