@@ -86,7 +86,7 @@ func (s *ExportService) ExportXLSX(ctx context.Context, input ExportInput) (Expo
 // ExportZIP packs the raw XML files for the matching documents into input.OutPath.
 func (s *ExportService) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "xml", func(docs []nfse.CompanyDocument, tempPath string) error {
-		return report.GenerateZIP(report.BuildRows(docs), s.XMLStore, tempPath)
+		return report.GenerateZIP(report.NFSeZipEntries(report.BuildRows(docs)), s.XMLStore, tempPath)
 	})
 }
 

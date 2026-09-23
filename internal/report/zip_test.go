@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"errors"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/files"
@@ -31,7 +32,7 @@ func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 		},
 	}
 
-	if err := GenerateZIP(BuildRows(documents), store, outPath); err != nil {
+	if err := GenerateZIP(NFSeZipEntries(BuildRows(documents)), store, outPath); err != nil {
 		t.Fatalf("GenerateZIP: %v", err)
 	}
 
@@ -69,11 +70,27 @@ func TestGenerateZIPFailsWhenBlobIsMissing(t *testing.T) {
 		},
 	}
 
-	err := GenerateZIP(BuildRows(documents), store, outPath)
+	err := GenerateZIP(NFSeZipEntries(BuildRows(documents)), store, outPath)
 	if err == nil {
 		t.Fatal("expected missing blob error")
 	}
 	if !errors.Is(err, files.ErrBlobNotFound) {
 		t.Fatalf("expected ErrBlobNotFound, got %v", err)
+	}
+}
+
+func TestNFSeZipEntriesSkipsDocumentsWithoutXML(t *testing.T) {
+	rows := BuildRows([]nfse.CompanyDocument{
+		{Document: nfse.Document{ChaveAcesso: "A", Competence: "2026-06", RawHash: "hash-a"}, CompanyRole: "tomada"},
+		{Document: nfse.Document{ChaveAcesso: "B", Competence: "2026-06"}, CompanyRole: "tomada"},
+		{Document: nfse.Document{ChaveAcesso: "C", RawHash: "hash-c"}, CompanyRole: ""},
+	})
+	got := NFSeZipEntries(rows)
+	want := []ZipEntry{
+		{Path: "2026-06/tomada/A.xml", RawHash: "hash-a"},
+		{Path: "sem-papel-fiscal/C.xml", RawHash: "hash-c"},
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("entries = %+v, want %+v", got, want)
 	}
 }

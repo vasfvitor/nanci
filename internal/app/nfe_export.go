@@ -88,7 +88,7 @@ func (s *NFeService) ExportXMLZip(ctx context.Context, in NFeExportInput) (NFeEx
 	tempPath := strings.TrimSuffix(in.OutPath, ext) + ".tmp" + ext
 	defer func() { _ = os.Remove(tempPath) }()
 
-	if err := report.GenerateNFeZIP(report.BuildNFeZipEntries(docs, eventsByChave), s.XMLStore, tempPath); err != nil {
+	if err := report.GenerateZIP(report.NFeZipEntries(docs, eventsByChave), s.XMLStore, tempPath); err != nil {
 		return res, fmt.Errorf("gerar arquivo: %w", err)
 	}
 	if err := os.Rename(tempPath, in.OutPath); err != nil {
