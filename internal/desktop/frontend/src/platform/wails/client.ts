@@ -396,11 +396,6 @@ export function mapNFeEventBatchResult(raw: unknown): NFeEventBatchResult {
   const item = asRawRecord(raw)
   return {
     Results: asArray(item['Results']).map(mapNFeEventResult),
-    Requested: asNumber(item['Requested']),
-    Registered: asNumber(item['Registered']),
-    AlreadyRegistered: asNumber(item['AlreadyRegistered']),
-    Rejected: asNumber(item['Rejected']),
-    NotSent: asNumber(item['NotSent']),
     Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
     Interrupted: asString(item['Interrupted']),
   }
@@ -426,7 +421,6 @@ export function mapNFeCienciaPlan(raw: unknown): NFeCienciaPlan {
   return {
     Eligible: asArray(item['Eligible']).map(mapNFeCandidate),
     Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
-    Lotes: asNumber(item['Lotes']),
   }
 }
 

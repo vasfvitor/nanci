@@ -54,8 +54,9 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 					return nil
 				}
 
+				lotes := (len(plan.Eligible) + sefaz.MaxEventosPorLote - 1) / sefaz.MaxEventosPorLote
 				_, _ = fmt.Fprintf(out, "NF-e elegíveis para a Ciência da Operação: %d (%d lote(s) de até %d)\n",
-					len(plan.Eligible), plan.Lotes, sefaz.MaxEventosPorLote)
+					len(plan.Eligible), lotes, sefaz.MaxEventosPorLote)
 				w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 				_, _ = fmt.Fprintln(w, "CHAVE DE ACESSO\tEMITENTE\tNOME EMITENTE\tEMISSÃO\tVALOR (R$)\tCIÊNCIA ATÉ\tCONCLUSIVA ATÉ")
 				_, _ = fmt.Fprintln(w, "---------------\t--------\t-------------\t-------\t----------\t-----------\t--------------")
@@ -82,8 +83,13 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			}
 			printNFeOutcomes(out, summary.Outcomes)
 			printNFeSkipped(out, summary.Skipped)
+			counts := make(map[string]int)
+			for _, o := range summary.Outcomes {
+				counts[o.Status]++
+			}
 			_, _ = fmt.Fprintf(out, "\nSolicitadas: %d | Registradas: %d | Já registradas: %d | Rejeitadas: %d | Não enviadas: %d\n",
-				summary.Requested, summary.Registered, summary.AlreadyRegistered, summary.Rejected, summary.NotSent)
+				len(summary.Outcomes), counts[app.NFeOutcomeRegistrada], counts[app.NFeOutcomeJaRegistrada],
+				counts[app.NFeOutcomeRejeitada], counts[app.NFeOutcomeNaoEnviada])
 			if summary.Interrupted != "" {
 				_, _ = fmt.Fprintf(out, "Aviso: o envio foi interrompido (%s). As NF-e não enviadas podem ser enviadas de novo.\n", summary.Interrupted)
 			}

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { NFeRow } from '@/types/desktop'
+import type { NFeEventResult, NFeRow } from '@/types/desktop'
 import {
   cienciaBlockReason,
   conclusiveBlockReason,
+  countOutcomes,
   validateJustificativa,
 } from './nfeManifestation'
 
@@ -110,5 +111,29 @@ describe('validateJustificativa', () => {
   it('rejects empty values', () => {
     expect(validateJustificativa('')).toBe('A justificativa deve ter pelo menos 15 caracteres')
     expect(validateJustificativa(null)).toBe('A justificativa deve ter pelo menos 15 caracteres')
+  })
+})
+
+describe('countOutcomes', () => {
+  it('counts results by outcome, unknown ones as not sent', () => {
+    const result = (Status: NFeEventResult['Status']): NFeEventResult => ({
+      ChaveAcesso: '',
+      TpEvento: '210210',
+      Status,
+      CStat: '',
+      XMotivo: '',
+      Protocolo: '',
+    })
+    expect(
+      countOutcomes([
+        result('registrada'),
+        result('registrada'),
+        result('ja_registrada'),
+        result('rejeitada'),
+        result('nao_enviada'),
+        result(''),
+      ])
+    ).toEqual({ registrada: 2, ja_registrada: 1, rejeitada: 1, nao_enviada: 2 })
+    expect(countOutcomes([])).toEqual({ registrada: 0, ja_registrada: 0, rejeitada: 0, nao_enviada: 0 })
   })
 })

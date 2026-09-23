@@ -151,8 +151,8 @@ func TestNFePlanCienciaNeedsNoNetworkOrPassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Eligible) != 1 || plan.Eligible[0].ChaveAcesso != eligible || plan.Lotes != 1 {
-		t.Fatalf("eligible = %+v, lotes %d; want only %s", plan.Eligible, plan.Lotes, eligible)
+	if len(plan.Eligible) != 1 || plan.Eligible[0].ChaveAcesso != eligible {
+		t.Fatalf("eligible = %+v, want only %s", plan.Eligible, eligible)
 	}
 	wantSkipped := []NFeSkipped{
 		{ChaveAcesso: "123", Reason: "chave de acesso inválida"},
@@ -190,9 +190,9 @@ func TestNFeRegisterCienciaSendsLotesOfTwenty(t *testing.T) {
 	if got := fake.loteSizes(); !slices.Equal(got, []int{20, 20, 5}) {
 		t.Errorf("lote sizes = %v, want [20 20 5]", got)
 	}
-	if summary.Requested != 45 || summary.Registered != 45 || summary.Interrupted != "" || len(summary.Outcomes) != 45 {
-		t.Errorf("summary = requested %d, registered %d, interrupted %q, outcomes %d",
-			summary.Requested, summary.Registered, summary.Interrupted, len(summary.Outcomes))
+	counts := outcomeCounts(summary.Outcomes)
+	if counts[NFeOutcomeRegistrada] != 45 || summary.Interrupted != "" || len(summary.Outcomes) != 45 {
+		t.Errorf("summary = counts %v, interrupted %q, outcomes %d", counts, summary.Interrupted, len(summary.Outcomes))
 	}
 	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Assinatura: Ciência da Operação (45 notas)" {
 		t.Errorf("password requests = %+v, want one for 45 notas", env.passwords.requests)
@@ -237,8 +237,9 @@ func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if summary.Registered != 1 || summary.AlreadyRegistered != 1 || summary.Rejected != 2 || summary.NotSent != 0 {
-		t.Errorf("summary = %+v", summary)
+	counts := outcomeCounts(summary.Outcomes)
+	if counts[NFeOutcomeRegistrada] != 1 || counts[NFeOutcomeJaRegistrada] != 1 || counts[NFeOutcomeRejeitada] != 2 || counts[NFeOutcomeNaoEnviada] != 0 {
+		t.Errorf("counts = %v, summary = %+v", counts, summary)
 	}
 	want := []struct{ status, cStat string }{
 		{NFeOutcomeRegistrada, "135"},
@@ -307,8 +308,9 @@ func TestNFeRegisterCienciaTransportFailureInterruptsWithoutError(t *testing.T) 
 	if len(fake.lotes) != 2 {
 		t.Errorf("lotes sent = %d, want 2 (the third is never sent)", len(fake.lotes))
 	}
-	if summary.Registered != 20 || summary.NotSent != 25 || !strings.Contains(summary.Interrupted, "connection reset by peer") {
-		t.Errorf("summary = registered %d, not sent %d, interrupted %q", summary.Registered, summary.NotSent, summary.Interrupted)
+	counts := outcomeCounts(summary.Outcomes)
+	if counts[NFeOutcomeRegistrada] != 20 || counts[NFeOutcomeNaoEnviada] != 25 || !strings.Contains(summary.Interrupted, "connection reset by peer") {
+		t.Errorf("summary = counts %v, interrupted %q", counts, summary.Interrupted)
 	}
 	for _, o := range summary.Outcomes[20:] {
 		if o.Status != NFeOutcomeNaoEnviada {
@@ -445,4 +447,13 @@ func TestNFePlanManifestationNeedsNoNetworkOrPassword(t *testing.T) {
 	if len(env.passwords.requests) != 0 || fake.clients != 0 {
 		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), fake.clients)
 	}
+}
+
+// outcomeCounts counts the outcomes by status.
+func outcomeCounts(outcomes []NFeEventOutcome) map[string]int {
+	counts := make(map[string]int)
+	for _, o := range outcomes {
+		counts[o.Status]++
+	}
+	return counts
 }

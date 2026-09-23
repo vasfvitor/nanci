@@ -41,11 +41,6 @@ function nfeRow(chave: string): NFeRow {
 
 const batch: NFeEventBatchResult = {
   Results: [],
-  Requested: 2,
-  Registered: 2,
-  AlreadyRegistered: 0,
-  Rejected: 0,
-  NotSent: 0,
   Skipped: [],
   Interrupted: '',
 }

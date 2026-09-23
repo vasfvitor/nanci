@@ -413,7 +413,7 @@ import {
   situacaoLabel,
   situacaoFilterOptions,
 } from '@/utils/nfeDisplay'
-import { cienciaBlockReason, conclusiveBlockReason } from '@/utils/nfeManifestation'
+import { cienciaBlockReason, conclusiveBlockReason, countOutcomes } from '@/utils/nfeManifestation'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
@@ -703,10 +703,11 @@ async function sendCiencia(chavesAcesso: string[]) {
 }
 
 function notifyCienciaResult(result: NFeEventBatchResult) {
-  const hasProblems = result.Rejected > 0 || result.NotSent > 0 || Boolean(result.Interrupted)
+  const counts = countOutcomes(result.Results)
+  const hasProblems = counts.rejeitada > 0 || counts.nao_enviada > 0 || Boolean(result.Interrupted)
   $q.notify({
     type: hasProblems ? 'warning' : 'positive',
-    message: `Ciência: ${result.Registered} registradas, ${result.AlreadyRegistered} já registradas, ${result.Rejected} rejeitadas, ${result.NotSent} não enviadas.`,
+    message: `Ciência: ${counts.registrada} registradas, ${counts.ja_registrada} já registradas, ${counts.rejeitada} rejeitadas, ${counts.nao_enviada} não enviadas.`,
     caption: 'O XML completo chega na próxima sincronização.',
     timeout: 10000,
     actions: [

@@ -370,11 +370,6 @@ describe('NF-e mappers', () => {
     expect(
       mapNFeEventBatchResult({
         Results: [{ ChaveAcesso: chave, TpEvento: '210210', Status: 'rejeitada', CStat: '596' }],
-        Requested: 3,
-        Registered: 1,
-        AlreadyRegistered: 1,
-        Rejected: 1,
-        NotSent: 0,
         Skipped: [{ ChaveAcesso: 'x', Reason: 'emitente' }],
         Interrupted: '',
       })
@@ -390,11 +385,6 @@ describe('NF-e mappers', () => {
           RegisteredAt: null,
         },
       ],
-      Requested: 3,
-      Registered: 1,
-      AlreadyRegistered: 1,
-      Rejected: 1,
-      NotSent: 0,
       Skipped: [{ ChaveAcesso: 'x', Reason: 'emitente' }],
       Interrupted: '',
     })
@@ -406,12 +396,10 @@ describe('NF-e mappers', () => {
     const plan = mapNFeCienciaPlan({
       Eligible: [{ ChaveAcesso: chave, TotalValue: 100, Numero: '12345' }],
       Skipped: [{ ChaveAcesso: 'y', Reason: 'já possui manifestação' }],
-      Lotes: 1,
     })
     expect(plan.Eligible).toHaveLength(1)
     expect(plan.Eligible[0]).toMatchObject({ ChaveAcesso: chave, TotalValue: 100, Numero: '12345' })
     expect(plan.Skipped).toEqual([{ ChaveAcesso: 'y', Reason: 'já possui manifestação' }])
-    expect(plan.Lotes).toBe(1)
 
     const status = mapNFeStatus({
       TpAmb: '2',
@@ -452,8 +440,8 @@ describe('NF-e client calls', () => {
     vi.mocked(ListNFe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
     vi.mocked(ListNFeEvents).mockResolvedValue(null as never)
     vi.mocked(ListPendingManifestations).mockResolvedValue([{ ChaveAcesso: chave }] as never)
-    vi.mocked(PlanCiencia).mockResolvedValue({ Eligible: [], Skipped: [], Lotes: 0 } as never)
-    vi.mocked(RegisterCiencia).mockResolvedValue({ Registered: 1 } as never)
+    vi.mocked(PlanCiencia).mockResolvedValue({ Eligible: [], Skipped: [] } as never)
+    vi.mocked(RegisterCiencia).mockResolvedValue({ Interrupted: 'timeout' } as never)
     vi.mocked(RegisterManifestation).mockResolvedValue({ Status: 'registrada' } as never)
 
     const listInput = {
@@ -464,7 +452,6 @@ describe('NF-e client calls', () => {
       Manifestacao: '' as const,
       Role: 'destinatario' as const,
       EmitenteCNPJ: '',
-      OnlyUnread: false,
     }
 
     await expect(desktopClient.pullNFe('123')).resolves.toMatchObject({ ResumosSaved: 2 })
@@ -487,9 +474,9 @@ describe('NF-e client calls', () => {
       { ChaveAcesso: chave },
     ])
     await desktopClient.listPendingManifestations('123', 10)
-    await expect(desktopClient.planCiencia('123', [chave])).resolves.toMatchObject({ Lotes: 0 })
+    await expect(desktopClient.planCiencia('123', [chave])).resolves.toEqual({ Eligible: [], Skipped: [] })
     await expect(desktopClient.registerCiencia('123', [chave])).resolves.toMatchObject({
-      Registered: 1,
+      Interrupted: 'timeout',
     })
     await expect(
       desktopClient.registerManifestation({

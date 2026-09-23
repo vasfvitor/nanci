@@ -1,4 +1,4 @@
-import type { NFeConclusiveTipo, NFeRow } from '@/types/desktop'
+import type { NFeConclusiveTipo, NFeEventOutcome, NFeEventResult, NFeRow } from '@/types/desktop'
 
 // Rules that enable or disable manifestação actions in the UI. The backend
 // enforces them again, and SEFAZ has the final word on deadlines.
@@ -48,4 +48,12 @@ export function validateJustificativa(text: string | null | undefined): string |
     return `A justificativa deve ter no máximo ${JUSTIFICATIVA_MAX_LENGTH} caracteres`
   }
   return null
+}
+
+// countOutcomes counts ciência results by outcome. A result with an unknown
+// status counts as not sent.
+export function countOutcomes(results: readonly NFeEventResult[]): Record<NFeEventOutcome, number> {
+  const counts = { registrada: 0, ja_registrada: 0, rejeitada: 0, nao_enviada: 0 }
+  for (const result of results) counts[result.Status || 'nao_enviada']++
+  return counts
 }

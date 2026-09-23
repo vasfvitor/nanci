@@ -459,7 +459,6 @@ type NFeSkipped struct {
 type NFeCienciaPlan struct {
 	Eligible []NFeCandidate
 	Skipped  []NFeSkipped
-	Lotes    int
 }
 
 // RegisterManifestationInput is one conclusive manifestação.
@@ -483,14 +482,11 @@ type NFeEventResult struct {
 	RegisteredAt *time.Time
 }
 
+// NFeEventBatchResult is the result of RegisterCiencia: one result per
+// eligible chave, in the order sent.
 type NFeEventBatchResult struct {
-	Results           []NFeEventResult
-	Requested         int
-	Registered        int
-	AlreadyRegistered int
-	Rejected          int
-	NotSent           int
-	Skipped           []NFeSkipped
+	Results []NFeEventResult
+	Skipped []NFeSkipped
 	// Interrupted is the error that stopped the sending; the lotes after it
 	// were not sent. Empty when every lote was sent.
 	Interrupted string
@@ -685,7 +681,6 @@ func NFeCienciaPlanDTO(plan app.NFeCienciaPlan) NFeCienciaPlan {
 	return NFeCienciaPlan{
 		Eligible: eligible,
 		Skipped:  nfeSkipped(plan.Skipped),
-		Lotes:    plan.Lotes,
 	}
 }
 
@@ -695,14 +690,9 @@ func NFeEventBatch(summary app.NFeManifestationSummary) NFeEventBatchResult {
 		results[i] = NFeEventResult(outcome)
 	}
 	return NFeEventBatchResult{
-		Results:           results,
-		Requested:         summary.Requested,
-		Registered:        summary.Registered,
-		AlreadyRegistered: summary.AlreadyRegistered,
-		Rejected:          summary.Rejected,
-		NotSent:           summary.NotSent,
-		Skipped:           nfeSkipped(summary.Skipped),
-		Interrupted:       summary.Interrupted,
+		Results:     results,
+		Skipped:     nfeSkipped(summary.Skipped),
+		Interrupted: summary.Interrupted,
 	}
 }
 

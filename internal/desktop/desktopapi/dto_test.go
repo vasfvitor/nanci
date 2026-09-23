@@ -112,11 +112,6 @@ func TestNFePendingRows(t *testing.T) {
 func TestNFeEventBatch(t *testing.T) {
 	registeredAt := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
 	got := NFeEventBatch(app.NFeManifestationSummary{
-		Requested:         4,
-		Registered:        1,
-		AlreadyRegistered: 1,
-		Rejected:          1,
-		NotSent:           1,
 		Outcomes: []app.NFeEventOutcome{
 			{ChaveAcesso: "a", TpEvento: "210210", Status: app.NFeOutcomeRegistrada, CStat: "135", Protocolo: "p1", RegisteredAt: &registeredAt},
 			{ChaveAcesso: "b", TpEvento: "210210", Status: app.NFeOutcomeJaRegistrada, CStat: "573"},
@@ -127,9 +122,6 @@ func TestNFeEventBatch(t *testing.T) {
 		Interrupted: "timeout",
 	})
 
-	if got.Requested != 4 || got.Registered != 1 || got.AlreadyRegistered != 1 || got.Rejected != 1 || got.NotSent != 1 {
-		t.Errorf("counts = %+v", got)
-	}
 	if got.Interrupted != "timeout" {
 		t.Errorf("Interrupted = %q", got.Interrupted)
 	}
@@ -163,7 +155,6 @@ func TestNFeCienciaPlanDTO(t *testing.T) {
 	got := NFeCienciaPlanDTO(app.NFeCienciaPlan{
 		Eligible: []app.NFeCandidate{{ChaveAcesso: "a", TotalValue: nfse.NewMoneyFromCents(5050), CienciaDue: due}},
 		Skipped:  []app.NFeSkipped{{ChaveAcesso: "b", Reason: "NF-e cancelada"}},
-		Lotes:    1,
 	})
 	if len(got.Eligible) != 1 || got.Eligible[0].TotalValue != 5050 {
 		t.Fatalf("Eligible = %+v", got.Eligible)
@@ -171,7 +162,7 @@ func TestNFeCienciaPlanDTO(t *testing.T) {
 	if got.Eligible[0].CienciaDue == nil || got.Eligible[0].ConclusiveDue != nil {
 		t.Errorf("CienciaDue = %v, ConclusiveDue = %v", got.Eligible[0].CienciaDue, got.Eligible[0].ConclusiveDue)
 	}
-	if len(got.Skipped) != 1 || got.Skipped[0].Reason != "NF-e cancelada" || got.Lotes != 1 {
+	if len(got.Skipped) != 1 || got.Skipped[0].Reason != "NF-e cancelada" {
 		t.Errorf("plan = %+v", got)
 	}
 }

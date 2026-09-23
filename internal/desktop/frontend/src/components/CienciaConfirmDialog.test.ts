@@ -38,7 +38,6 @@ const plan: NFeCienciaPlan = {
     },
   ],
   Skipped: [{ ChaveAcesso: '35240998765432000199550010000000031000000031', Reason: 'Nota cancelada' }],
-  Lotes: 1,
 }
 
 function mountDialog() {
@@ -112,7 +111,6 @@ describe('CienciaConfirmDialog', () => {
     const wrapper = mountDialog()
     expect(wrapper.text()).toContain('Nota cancelada')
     expect(wrapper.text()).toContain('2 notas')
-    expect(wrapper.text()).toContain('1 lote')
     expect(wrapper.text()).toContain('Produção')
   })
 })

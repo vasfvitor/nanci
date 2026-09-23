@@ -60,7 +60,6 @@ type NFeSkipped struct {
 type NFeCienciaPlan struct {
 	Eligible []NFeCandidate
 	Skipped  []NFeSkipped
-	Lotes    int // lotes of up to sefaz.MaxEventosPorLote eventos
 }
 
 // NFeEventOutcome is the result of one manifestação event.
@@ -74,15 +73,11 @@ type NFeEventOutcome struct {
 	RegisteredAt *time.Time
 }
 
-// NFeManifestationSummary is the result of RegisterCiencia.
+// NFeManifestationSummary is the result of RegisterCiencia: one outcome per
+// eligible chave, in the order sent.
 type NFeManifestationSummary struct {
-	Requested         int // eligible chaves
-	Registered        int
-	AlreadyRegistered int
-	Rejected          int
-	NotSent           int
-	Outcomes          []NFeEventOutcome
-	Skipped           []NFeSkipped
+	Outcomes []NFeEventOutcome
+	Skipped  []NFeSkipped
 	// Interrupted is the error that stopped the sending, such as a transport
 	// failure; the lotes after it were not sent. Empty when every lote was
 	// sent.
@@ -150,10 +145,7 @@ func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (N
 		return NFeManifestationSummary{}, err
 	}
 
-	summary := NFeManifestationSummary{
-		Requested: len(plan.Eligible),
-		Skipped:   plan.Skipped,
-	}
+	summary := NFeManifestationSummary{Skipped: plan.Skipped}
 	for lote := range slices.Chunk(plan.Eligible, sefaz.MaxEventosPorLote) {
 		eventos := make([]sefaz.Evento, 0, len(lote))
 		for _, c := range lote {
@@ -168,18 +160,6 @@ func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (N
 			}
 		} else {
 			outcomes = notSentOutcomes(eventos)
-		}
-		for _, o := range outcomes {
-			switch o.Status {
-			case NFeOutcomeRegistrada:
-				summary.Registered++
-			case NFeOutcomeJaRegistrada:
-				summary.AlreadyRegistered++
-			case NFeOutcomeRejeitada:
-				summary.Rejected++
-			default:
-				summary.NotSent++
-			}
 		}
 		summary.Outcomes = append(summary.Outcomes, outcomes...)
 	}
@@ -302,7 +282,6 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 			return nil, NFeCienciaPlan{}, err
 		}
 	}
-	plan.Lotes = (len(plan.Eligible) + sefaz.MaxEventosPorLote - 1) / sefaz.MaxEventosPorLote
 	return comp, plan, nil
 }
 

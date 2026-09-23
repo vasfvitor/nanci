@@ -222,16 +222,19 @@ describe('NFePage', () => {
         },
       ],
       Skipped: [{ ChaveAcesso: 'b', Reason: 'Somente o destinatário pode manifestar' }],
-      Lotes: 1,
     }
     vi.mocked(desktopClient.planCiencia).mockResolvedValue(plan)
     vi.mocked(desktopClient.registerCiencia).mockResolvedValue({
-      Results: [],
-      Requested: 1,
-      Registered: 1,
-      AlreadyRegistered: 0,
-      Rejected: 0,
-      NotSent: 0,
+      Results: [
+        {
+          ChaveAcesso: 'a',
+          TpEvento: '210210',
+          Status: 'registrada',
+          CStat: '135',
+          XMotivo: '',
+          Protocolo: '1',
+        },
+      ],
       Skipped: [],
       Interrupted: '',
     })
@@ -297,7 +300,6 @@ describe('NFePage', () => {
     vi.mocked(desktopClient.planCiencia).mockResolvedValue({
       Eligible: [],
       Skipped: [{ ChaveAcesso: 'a', Reason: 'Já possui manifestação' }],
-      Lotes: 0,
     })
 
     const wrapper = mountPage()

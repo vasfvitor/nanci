@@ -4,8 +4,8 @@
       <q-card-section>
         <div class="text-h6">Resultado da ciência</div>
         <div class="text-caption text-app-muted">
-          {{ result.Registered }} registradas · {{ result.AlreadyRegistered }} já registradas ·
-          {{ result.Rejected }} rejeitadas · {{ result.NotSent }} não enviadas
+          {{ counts.registrada }} registradas · {{ counts.ja_registrada }} já registradas ·
+          {{ counts.rejeitada }} rejeitadas · {{ counts.nao_enviada }} não enviadas
         </div>
       </q-card-section>
 
@@ -56,6 +56,7 @@ import { useDialogPluginComponent, useQuasar, type QTableColumn } from 'quasar'
 import type { NFeEventBatchResult, NFeEventResult } from '@/types/desktop'
 import { formatChaveNFe } from '@/utils/formatters'
 import { badgeColor, badgeTextColor, outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
+import { countOutcomes } from '@/utils/nfeManifestation'
 
 const props = defineProps<{
   result: NFeEventBatchResult
@@ -68,6 +69,8 @@ defineEmits<{
 
 const $q = useQuasar()
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent()
+
+const counts = computed(() => countOutcomes(props.result.Results))
 
 const problemResults = computed(() =>
   props.result.Results.filter(

@@ -124,8 +124,7 @@ const eligibleSummary = computed(() => {
   const count = props.plan.Eligible.length
   const total = props.plan.Eligible.reduce((sum, note) => sum + note.TotalValue, 0)
   const notes = count === 1 ? '1 nota' : `${count} notas`
-  const lotes = props.plan.Lotes === 1 ? '1 lote' : `${props.plan.Lotes} lotes`
-  return `${notes} · total ${formatCurrencyCents(total)} · ${lotes}`
+  return `${notes} · total ${formatCurrencyCents(total)}`
 })
 
 function onOKClick() {

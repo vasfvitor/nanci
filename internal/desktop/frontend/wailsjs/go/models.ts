@@ -595,7 +595,6 @@ export namespace desktopapi {
 	export class NFeCienciaPlan {
 	    Eligible: NFeCandidate[];
 	    Skipped: NFeSkipped[];
-	    Lotes: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new NFeCienciaPlan(source);
@@ -605,7 +604,6 @@ export namespace desktopapi {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Eligible = this.convertValues(source["Eligible"], NFeCandidate);
 	        this.Skipped = this.convertValues(source["Skipped"], NFeSkipped);
-	        this.Lotes = source["Lotes"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -731,11 +729,6 @@ export namespace desktopapi {
 	}
 	export class NFeEventBatchResult {
 	    Results: NFeEventResult[];
-	    Requested: number;
-	    Registered: number;
-	    AlreadyRegistered: number;
-	    Rejected: number;
-	    NotSent: number;
 	    Skipped: NFeSkipped[];
 	    Interrupted: string;
 	
@@ -746,11 +739,6 @@ export namespace desktopapi {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Results = this.convertValues(source["Results"], NFeEventResult);
-	        this.Requested = source["Requested"];
-	        this.Registered = source["Registered"];
-	        this.AlreadyRegistered = source["AlreadyRegistered"];
-	        this.Rejected = source["Rejected"];
-	        this.NotSent = source["NotSent"];
 	        this.Skipped = this.convertValues(source["Skipped"], NFeSkipped);
 	        this.Interrupted = source["Interrupted"];
 	    }

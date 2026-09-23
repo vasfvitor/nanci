@@ -336,7 +336,6 @@ export type NFeSkipped = {
 export type NFeCienciaPlan = {
   Eligible: NFeCandidate[]
   Skipped: NFeSkipped[]
-  Lotes: number
 }
 
 export type RegisterManifestationInput = {
@@ -356,13 +355,9 @@ export type NFeEventResult = {
   RegisteredAt?: ISODateValue
 }
 
+// NFeEventBatchResult holds one result per eligible chave, in the order sent.
 export type NFeEventBatchResult = {
   Results: NFeEventResult[]
-  Requested: number
-  Registered: number
-  AlreadyRegistered: number
-  Rejected: number
-  NotSent: number
   Skipped: NFeSkipped[]
   Interrupted: string
 }
