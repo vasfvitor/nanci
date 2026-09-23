@@ -11,6 +11,7 @@ vi.mock('@/platform/wails/client', () => ({
     listCompanies: vi.fn(),
     listNFe: vi.fn(),
     listNFeEvents: vi.fn(),
+    listPendingManifestations: vi.fn(),
     statusNFe: vi.fn(),
     pullNFe: vi.fn(),
     resetNFe: vi.fn(),
@@ -54,6 +55,7 @@ describe('useNFeDocuments', () => {
     vi.clearAllMocks()
     vi.mocked(desktopClient.listNFe).mockResolvedValue([])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
+    vi.mocked(desktopClient.listPendingManifestations).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -105,6 +107,7 @@ describe('useNFeDocuments', () => {
     expect(remountedPage.isSyncing.value).toBe(false)
     expect(desktopClient.listNFe).toHaveBeenCalled()
     expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
   })
 
   it('keeps the NF-e reset visible to a second instance while it is pending', async () => {

@@ -577,7 +577,6 @@ async function syncNFe() {
       type: 'positive',
       message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.UltNSU}/${result.MaxNSU}).`,
     })
-    void loadPending()
   } catch (error) {
     const code = wailsErrorCode(error)
     if (code === 'canceled') {
@@ -623,7 +622,6 @@ async function resetNFe() {
       message: `NF-e redefinidas: ${result.CompanyDocuments} notas e ${result.Events} eventos removidos.`,
       caption: `${result.ManifestationsKept} manifestações enviadas mantidas no histórico.`,
     })
-    void loadPending()
   } catch (error) {
     if (wailsErrorCode(error) === 'sync_running') {
       $q.notify({ type: 'warning', message: 'Aguarde a sincronização NF-e terminar antes de redefinir.' })

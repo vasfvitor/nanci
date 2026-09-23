@@ -1,6 +1,7 @@
 import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { companyOption } from '@/composables/useCompanies'
+import { useNFeLoaders } from '@/composables/useNFeLoaders'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
@@ -16,6 +17,7 @@ export type NFeExportZIPOptions = {
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
   const syncStore = useCompanySyncStore()
+  const { search, loadStatus, refresh } = useNFeLoaders()
   const { filter, rows, selected, loading, exporting, status, activeTab, resettingCNPJ } =
     storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
@@ -63,34 +65,6 @@ export function useNFeDocuments() {
     return companies
   }
 
-  async function search() {
-    const input = store.listInput
-    if (!input.CNPJ) return []
-    loading.value = true
-    try {
-      const result = await desktopClient.listNFe(input)
-      if (store.filter.CNPJ === input.CNPJ) {
-        store.setRows(result)
-      }
-      return result
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function loadStatus() {
-    const cnpj = filter.value.CNPJ
-    if (!cnpj) {
-      status.value = null
-      return null
-    }
-    const result = await desktopClient.statusNFe(cnpj)
-    if (store.filter.CNPJ === cnpj) {
-      status.value = result
-    }
-    return result
-  }
-
   // syncNFe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
   async function syncNFe() {
@@ -102,7 +76,7 @@ export function useNFeDocuments() {
       return await desktopClient.pullNFe(cnpj)
     } finally {
       syncStore.finishSync(cnpj, 'nfe')
-      await refreshAfterSync(cnpj)
+      await refresh(cnpj)
     }
   }
 
@@ -118,15 +92,8 @@ export function useNFeDocuments() {
       return await desktopClient.resetNFe(cnpj)
     } finally {
       resettingCNPJ.value = ''
-      await refreshAfterSync(cnpj)
+      await refresh(cnpj)
     }
-  }
-
-  // refreshAfterSync also runs after a failed pull, because the status then
-  // carries the block reason. Its own errors must not hide the pull result.
-  async function refreshAfterSync(cnpj: string) {
-    if (store.filter.CNPJ !== cnpj) return
-    await Promise.allSettled([search(), loadStatus()])
   }
 
   async function exportXML(chaveAcesso: string) {
