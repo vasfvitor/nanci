@@ -189,19 +189,15 @@ type retEvento struct {
 
 // parseRetEnvEvento fills results with the retEvento answers in body.
 func parseRetEnvEvento(body []byte, results []EventoResult) (LoteResult, error) {
-	raw, err := findElement(body, "retEnvEvento")
-	if err != nil {
-		return LoteResult{}, err
-	}
 	var lote retEnvEvento
-	if err := xml.Unmarshal(raw, &lote); err != nil {
-		return LoteResult{}, fmt.Errorf("parse retEnvEvento: %w", err)
+	if err := decodeElement(body, "retEnvEvento", &lote); err != nil {
+		return LoteResult{}, err
 	}
 	if lote.CStat != CStatLoteProcessado {
 		return LoteResult{}, &RejectionError{CStat: lote.CStat, XMotivo: strings.TrimSpace(lote.XMotivo)}
 	}
 
-	rawEventos, err := findElements(raw, "retEvento")
+	rawEventos, err := findElements(body, "retEvento")
 	if err != nil {
 		return LoteResult{}, err
 	}

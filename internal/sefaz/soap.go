@@ -207,12 +207,8 @@ type soapFault struct {
 
 // parseFault reads the Fault in body; ok is false when there is none.
 func parseFault(body []byte) (fault FaultError, ok bool) {
-	raw, err := findElement(body, "Fault")
-	if err != nil {
-		return FaultError{}, false
-	}
 	var f soapFault
-	if err := xml.Unmarshal(raw, &f); err != nil {
+	if err := decodeElement(body, "Fault", &f); err != nil {
 		return FaultError{}, false
 	}
 	fault = FaultError{Code: f.Code, Reason: f.Reason}
@@ -253,14 +249,25 @@ func findElements(body []byte, local string) ([][]byte, error) {
 	}
 }
 
-// findElement returns the raw bytes of the first element named local.
-func findElement(body []byte, local string) ([]byte, error) {
-	found, err := findElements(body, local)
-	if err != nil {
-		return nil, err
+// decodeElement decodes the first element named local, whatever its
+// namespace prefix, into v.
+func decodeElement(body []byte, local string, v any) error {
+	d := xml.NewDecoder(bytes.NewReader(body))
+	for {
+		tok, err := d.Token()
+		if errors.Is(err, io.EOF) {
+			return fmt.Errorf("SEFAZ response has no %s element", local)
+		}
+		if err != nil {
+			return fmt.Errorf("parse SEFAZ response: %w", err)
+		}
+		el, ok := tok.(xml.StartElement)
+		if !ok || el.Name.Local != local {
+			continue
+		}
+		if err := d.DecodeElement(v, &el); err != nil {
+			return fmt.Errorf("parse %s: %w", local, err)
+		}
+		return nil
 	}
-	if len(found) == 0 {
-		return nil, fmt.Errorf("SEFAZ response has no %s element", local)
-	}
-	return found[0], nil
 }

@@ -4,7 +4,6 @@ package sefaz
 
 import (
 	"context"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"strconv"
@@ -149,13 +148,10 @@ type retDistDFeInt struct {
 // parseRetDistDFeInt reads the retDistDFeInt element out of the SOAP
 // response, whatever the prefixes around it.
 func parseRetDistDFeInt(body []byte) (DistResult, error) {
-	raw, err := findElement(body, "retDistDFeInt")
+	var ret retDistDFeInt
+	err := decodeElement(body, "retDistDFeInt", &ret)
 	if err != nil {
 		return DistResult{}, err
-	}
-	var ret retDistDFeInt
-	if err := xml.Unmarshal(raw, &ret); err != nil {
-		return DistResult{}, fmt.Errorf("parse retDistDFeInt: %w", err)
 	}
 
 	switch ret.CStat {

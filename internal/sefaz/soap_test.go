@@ -241,7 +241,8 @@ func TestFindElements(t *testing.T) {
 		}
 	}
 
-	if _, err := findElement(body, "missing"); err == nil {
+	var v struct{}
+	if err := decodeElement(body, "missing", &v); err == nil {
 		t.Error("expected error for a missing element")
 	}
 	if _, err := findElements([]byte("<a><b></a>"), "b"); err == nil {
