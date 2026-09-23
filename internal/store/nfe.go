@@ -819,8 +819,10 @@ func boolToInt(v bool) int64 {
 // company_nfe_documents rows and export marks, the nfe_documents no other
 // company sees and their events, and the company's own events that have no
 // document. Events authored by another registered company are kept, unlinked
-// from a removed document. nfe_manifestations are kept as the audit trail,
-// and the XML blobs stay on disk. The sync cursor is not touched.
+// from a removed document. The company's NF-e sync cursor and initial-sync
+// flag are reset in the same transaction, so the next pull starts over from
+// NSU 0. nfe_manifestations are kept as the audit trail, and the XML blobs
+// stay on disk.
 func (r *NFeRepository) ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error) {
 	return r.resetCompany(ctx, companyID, true)
 }
@@ -895,6 +897,9 @@ func (r *NFeRepository) resetCompany(ctx context.Context, companyID nfse.Company
 
 	if !apply {
 		return counts, nil
+	}
+	if err := ResetSyncStateTx(ctx, tx, nfse.ResetSyncStateParams{CompanyID: companyID, Source: nfse.SyncSourceNFe}); err != nil {
+		return nfe.ResetCounts{}, fmt.Errorf("reset nfe sync state: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return nfe.ResetCounts{}, err

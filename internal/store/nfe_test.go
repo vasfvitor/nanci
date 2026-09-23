@@ -667,9 +667,25 @@ func TestNFeResetCompany(t *testing.T) {
 		ExportMarks:        2,
 		ManifestationsKept: 2,
 	}
+	mustExec(t, f.db, `
+		INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, created_at, updated_at)
+		VALUES ('mock', 'nfe', 'producao', ?, 42, '2026-09-01T00:00:00Z', '2026-09-01T00:00:00Z')
+	`, cnpjMock)
+	cursors := func() int {
+		t.Helper()
+		var n int
+		if err := f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sync_state WHERE company_id = 'mock' AND source = 'nfe'`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
 	preview, err := f.repo.PreviewResetCompany(ctx, "mock")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if n := cursors(); n != 1 {
+		t.Errorf("nfe cursors after preview = %d, want 1", n)
 	}
 	if preview != want {
 		t.Errorf("PreviewResetCompany = %+v, want %+v", preview, want)
@@ -684,6 +700,9 @@ func TestNFeResetCompany(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("ResetCompany = %+v, want %+v", got, want)
+	}
+	if n := cursors(); n != 0 {
+		t.Errorf("nfe cursors after reset = %d, want 0", n)
 	}
 
 	if docs := f.list("mock", nfe.DocumentFilter{}); len(docs) != 0 {

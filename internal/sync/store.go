@@ -532,26 +532,9 @@ func (r *Store) ResetSyncState(ctx context.Context, params nfse.ResetSyncStatePa
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM sync_state WHERE company_id = ? AND source = ?`,
-		string(params.CompanyID), string(params.Source),
-	); err != nil {
+	if err := store.ResetSyncStateTx(ctx, tx, params); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE company_sync_sources
-		SET initial_sync_completed_at = NULL, updated_at = ?
-		WHERE company_id = ? AND source = ?
-	`, now, string(params.CompanyID), string(params.Source)); err != nil {
-		return err
-	}
-	if params.Source == nfse.SyncSourceNFSe {
-		if _, err := tx.ExecContext(ctx, `UPDATE companies SET initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
-			return err
-		}
-	}
-
 	return tx.Commit()
 }
 

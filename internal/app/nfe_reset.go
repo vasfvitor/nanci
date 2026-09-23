@@ -30,13 +30,11 @@ func (s *NFeService) PreviewReset(ctx context.Context, cnpj string) (NFeResetRes
 	return resetResult(comp, counts), nil
 }
 
-// Reset removes the company's NF-e documents, events and export marks, then
-// its NF-e sync cursor and initial-sync flag, so the next pull starts over
-// from NSU 0. The manifestações nanci sent stay as the audit trail, and a
-// SEFAZ block stays in place. No NF-e pull of the company may run meanwhile.
-//
-// The documents go first: if the cursor reset then fails, the environment
-// stays locked and running Reset again finishes the job.
+// Reset removes, in one transaction, the company's NF-e documents, events and
+// export marks, and its NF-e sync cursor and initial-sync flag, so the next
+// pull starts over from NSU 0. The manifestações nanci sent stay as the audit
+// trail, and a SEFAZ block stays in place. No NF-e pull of the company may
+// run meanwhile.
 func (s *NFeService) Reset(ctx context.Context, cnpj string) (NFeResetResult, error) {
 	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
@@ -52,12 +50,7 @@ func (s *NFeService) Reset(ctx context.Context, cnpj string) (NFeResetResult, er
 	if err != nil {
 		return NFeResetResult{}, fmt.Errorf("redefinir NF-e: %w", err)
 	}
-	result := resetResult(comp, counts)
-	err = s.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: comp.ID, Source: nfse.SyncSourceNFe})
-	if err != nil {
-		return result, fmt.Errorf("as NF-e foram removidas, mas o estado de sincronização não foi redefinido; execute a redefinição novamente: %w", err)
-	}
-	return result, nil
+	return resetResult(comp, counts), nil
 }
 
 func resetResult(comp *nfse.Company, counts nfe.ResetCounts) NFeResetResult {
