@@ -144,7 +144,6 @@ import {
   formatCurrencyCents,
   formatDate,
   formatNFeNumber,
-  parseDate,
 } from '@/utils/formatters'
 import {
   conclusiveDeadlineLabel,
@@ -169,11 +168,8 @@ const $q = useQuasar()
 
 const semCiencia = computed(() => props.rows.filter((row) => row.Kind === 'sem_ciencia'))
 
-const semConclusiva = computed(() =>
-  props.rows
-    .filter((row) => row.Kind === 'sem_conclusiva')
-    .sort((a, b) => timeOf(a.Deadline) - timeOf(b.Deadline))
-)
+// The backend lists pending rows nearest conclusive deadline first.
+const semConclusiva = computed(() => props.rows.filter((row) => row.Kind === 'sem_conclusiva'))
 
 const columns: QTableColumn<NFePendingRow>[] = [
   {
@@ -224,9 +220,5 @@ function cienciaChipColor(row: NFePendingRow) {
 function conclusiveChipLabel(row: NFePendingRow) {
   if (row.Expired) return TACIT_CONFIRMATION_LABEL
   return conclusiveDeadlineLabel(daysUntil(row.Deadline))
-}
-
-function timeOf(value: ISODateValue) {
-  return parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY
 }
 </script>

@@ -61,4 +61,14 @@ describe('NFePendingPanel', () => {
     expect(wrapper.text()).toMatch(/até 90 dias da\s+autorização/)
     expect(wrapper.text()).toMatch(/confirmada por lei/)
   })
+
+  it('keeps the backend order of conclusive rows', () => {
+    const wrapper = mountPanel([
+      row('first', { Deadline: daysFromNow(5) }),
+      row('second', { Deadline: daysFromNow(40) }),
+    ])
+
+    const order = wrapper.findAll('[data-chave]').map((item) => item.attributes('data-chave'))
+    expect(order).toEqual(['first', 'second'])
+  })
 })
