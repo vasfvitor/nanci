@@ -114,11 +114,7 @@ func shouldSkipDocumentByInitialPolicy(company *nfse.Company, src SourceState, i
 // identifiers of companies, people and documents masked. It masks the whole
 // document first so the cut cannot leave half an element unmasked.
 func xmlPreview(data []byte) string {
-	preview := strings.TrimSpace(string(redact.MaskXMLIdentifiers(data)))
-	preview = strings.ReplaceAll(preview, "\r", " ")
-	preview = strings.ReplaceAll(preview, "\n", " ")
-	preview = strings.ReplaceAll(preview, "\t", " ")
-	preview = strings.Join(strings.Fields(preview), " ")
+	preview := strings.Join(strings.Fields(string(redact.MaskXMLIdentifiers(data))), " ")
 	if len(preview) > 400 {
 		return preview[:400] + "...(truncated)"
 	}
