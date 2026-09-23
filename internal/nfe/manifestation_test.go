@@ -40,18 +40,21 @@ func TestManifestationType(t *testing.T) {
 		})
 	}
 
-	aliases := map[string]ManifestationType{
-		"210200":          ManifestationConfirmacao,
-		" Confirmacao ":   ManifestationConfirmacao,
-		"nao-realizada":   ManifestationNaoRealizada,
-		"NAO_REALIZADA":   ManifestationNaoRealizada,
-		"210240":          ManifestationNaoRealizada,
-		"210210":          ManifestationCiencia,
-		"desconhecimento": ManifestationDesconhecimento,
+	aliases := []struct {
+		raw  string
+		want ManifestationType
+	}{
+		{"210200", ManifestationConfirmacao},
+		{" Confirmacao ", ManifestationConfirmacao},
+		{"nao-realizada", ManifestationNaoRealizada},
+		{"NAO_REALIZADA", ManifestationNaoRealizada},
+		{"210240", ManifestationNaoRealizada},
+		{"210210", ManifestationCiencia},
+		{"desconhecimento", ManifestationDesconhecimento},
 	}
-	for raw, want := range aliases {
-		if got, err := ParseManifestationType(raw); err != nil || got != want {
-			t.Errorf("ParseManifestationType(%q) = %q, %v, want %q", raw, got, err, want)
+	for _, tt := range aliases {
+		if got, err := ParseManifestationType(tt.raw); err != nil || got != tt.want {
+			t.Errorf("ParseManifestationType(%q) = %q, %v, want %q", tt.raw, got, err, tt.want)
 		}
 	}
 	for _, raw := range []string{"cancelamento", "110111", ""} {
