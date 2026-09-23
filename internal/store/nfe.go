@@ -188,6 +188,7 @@ func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string)
 	if len(chaves) == 0 {
 		return nil, nil
 	}
+	//nolint:misspell // autor_cnpj is the column name.
 	const query = `
 		SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
 			registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
