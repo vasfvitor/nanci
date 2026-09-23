@@ -75,9 +75,6 @@ var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
 	return NewSyncService(repo, src, log)
 }
 
-// sourceFactory builds the Source of one pull once the certificate is loaded.
-type sourceFactory func(tlsCert tls.Certificate) (Source, error)
-
 type Manager struct {
 	Log                *slog.Logger
 	CompanyProvider    companyProvider
@@ -149,8 +146,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err != nil {
 		return PullResult{}, err
 	}
-	newSource, err := m.sourceFactoryFor(company, source)
-	if err != nil {
+	if err := m.checkSource(company, source); err != nil {
 		return PullResult{}, err
 	}
 	sourceState, err := m.SyncRepo.SourceState(ctx, company.ID, source)
@@ -172,7 +168,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 	credential := loaded.Credential
 
-	src, err := newSource(loaded.TLS)
+	src, err := m.newSource(company, source, loaded.TLS)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -316,52 +312,54 @@ func (m *Manager) SourceLimits(ctx context.Context, companyID nfse.CompanyID, so
 	return limits, nil
 }
 
-// sourceFactoryFor returns how to build the source for the company. It
-// fails before any password prompt for a source that cannot be pulled.
-func (m *Manager) sourceFactoryFor(company *nfse.Company, source nfse.SyncSource) (sourceFactory, error) {
+// checkSource fails, before any password prompt, when the company cannot be
+// pulled from source.
+func (m *Manager) checkSource(company *nfse.Company, source nfse.SyncSource) error {
 	switch source {
 	case nfse.SyncSourceNFSe:
-		return func(tlsCert tls.Certificate) (Source, error) {
-			return m.newNFSeSource(company, tlsCert)
-		}, nil
+		return nil
 	case nfse.SyncSourceNFe:
 		if m.NFeRepo == nil {
-			return nil, errors.New("repositório de NF-e não configurado")
+			return errors.New("repositório de NF-e não configurado")
 		}
+		_, err := companyUFCode(company)
+		return err
+	default:
+		return fmt.Errorf("origem de sincronização %q ainda não disponível", source)
+	}
+}
+
+// newSource builds the Source of one pull once the certificate is loaded.
+// checkSource must have accepted company and source.
+func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCert tls.Certificate) (Source, error) {
+	switch source {
+	case nfse.SyncSourceNFSe:
+		apiClient, err := newADNClient(adn.ClientConfig{
+			BaseURL:     ResolveEnvironmentURL(company.Environment),
+			Certificate: &tlsCert,
+			Log:         m.Log,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("configurar cliente ADN: %w", err)
+		}
+		return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
+	case nfse.SyncSourceNFe:
 		cUFAutor, err := companyUFCode(company)
 		if err != nil {
 			return nil, err
 		}
-		return func(tlsCert tls.Certificate) (Source, error) {
-			return m.newNFeSource(company, tlsCert, cUFAutor)
-		}, nil
+		client, err := newSEFAZClient(sefaz.ClientConfig{
+			Environment: company.Environment,
+			Certificate: &tlsCert,
+			Log:         m.Log,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
+		}
+		return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
 	default:
 		return nil, fmt.Errorf("origem de sincronização %q ainda não disponível", source)
 	}
-}
-
-func (m *Manager) newNFSeSource(company *nfse.Company, tlsCert tls.Certificate) (Source, error) {
-	apiClient, err := newADNClient(adn.ClientConfig{
-		BaseURL:     ResolveEnvironmentURL(company.Environment),
-		Certificate: &tlsCert,
-		Log:         m.Log,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("configurar cliente ADN: %w", err)
-	}
-	return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
-}
-
-func (m *Manager) newNFeSource(company *nfse.Company, tlsCert tls.Certificate, cUFAutor int) (Source, error) {
-	client, err := newSEFAZClient(sefaz.ClientConfig{
-		Environment: company.Environment,
-		Certificate: &tlsCert,
-		Log:         m.Log,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
-	}
-	return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
 }
 
 // companyUFCode returns the IBGE code of the company's UF, which the NF-e
