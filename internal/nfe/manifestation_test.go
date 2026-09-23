@@ -12,11 +12,12 @@ func TestManifestationType(t *testing.T) {
 		tipo       ManifestationType
 		tpEvento   string
 		descEvento string
+		label      string
 	}{
-		{ManifestationCiencia, "210210", "Ciencia da Operacao"},
-		{ManifestationConfirmacao, "210200", "Confirmacao da Operacao"},
-		{ManifestationDesconhecimento, "210220", "Desconhecimento da Operacao"},
-		{ManifestationNaoRealizada, "210240", "Operacao nao Realizada"},
+		{ManifestationCiencia, "210210", "Ciencia da Operacao", "Ciência da Operação"},
+		{ManifestationConfirmacao, "210200", "Confirmacao da Operacao", "Confirmação da Operação"},
+		{ManifestationDesconhecimento, "210220", "Desconhecimento da Operacao", "Desconhecimento da Operação"},
+		{ManifestationNaoRealizada, "210240", "Operacao nao Realizada", "Operação não Realizada"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.tipo.String(), func(t *testing.T) {
@@ -30,6 +31,9 @@ func TestManifestationType(t *testing.T) {
 			if got := tt.tipo.DescEvento(); got != tt.descEvento {
 				t.Errorf("DescEvento() = %q, want %q", got, tt.descEvento)
 			}
+			if got := tt.tipo.Label(); got != tt.label {
+				t.Errorf("Label() = %q, want %q", got, tt.label)
+			}
 			// The parser maps the code back to the same kind of event.
 			if EventTypeFromTpEvento(tt.tpEvento) == EventTypeUnknown {
 				t.Errorf("EventTypeFromTpEvento(%q) is unknown", tt.tpEvento)
@@ -40,8 +44,8 @@ func TestManifestationType(t *testing.T) {
 	if _, err := ParseManifestationType("cancelamento"); err == nil {
 		t.Error("ParseManifestationType(cancelamento) should fail")
 	}
-	if ManifestationType("x").TpEvento() != "" || ManifestationType("x").DescEvento() != "" {
-		t.Error("invalid type should have empty TpEvento and DescEvento")
+	if ManifestationType("x").TpEvento() != "" || ManifestationType("x").DescEvento() != "" || ManifestationType("x").Label() != "" {
+		t.Error("invalid type should have empty TpEvento, DescEvento and Label")
 	}
 }
 

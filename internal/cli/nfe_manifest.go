@@ -153,7 +153,7 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 						chave, doc.CompanyRole, doc.Situacao)
 				}
 
-				_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", nfeManifestationLabel(tipo), tipo.TpEvento())
+				_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", tipo.Label(), tipo.TpEvento())
 				_, _ = fmt.Fprintf(out, "Chave de acesso: %s\n", doc.ChaveAcesso)
 				_, _ = fmt.Fprintf(out, "Número: %s | Série: %s | Emissão: %s | Valor (R$): %s\n",
 					doc.Numero, doc.Serie, formatNFeDate(doc.IssueDate), doc.TotalValue.FormatBRL())
@@ -210,17 +210,6 @@ func parseTipoManifestacao(raw string) (nfe.ManifestationType, error) {
 		return nfe.ManifestationNaoRealizada, nil
 	default:
 		return "", fmt.Errorf("tipo de manifestação inválido %q: use confirmacao, desconhecimento ou nao-realizada", raw)
-	}
-}
-
-func nfeManifestationLabel(tipo nfe.ManifestationType) string {
-	switch tipo {
-	case nfe.ManifestationConfirmacao:
-		return "Confirmação da Operação"
-	case nfe.ManifestationDesconhecimento:
-		return "Desconhecimento da Operação"
-	default:
-		return "Operação não Realizada"
 	}
 }
 

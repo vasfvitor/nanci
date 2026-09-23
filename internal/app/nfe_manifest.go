@@ -195,10 +195,10 @@ func (s *NFeService) RegisterManifestation(ctx context.Context, in NFeManifestat
 		return NFeEventOutcome{}, fmt.Errorf("NF-e %s: %s", doc.ChaveAcesso, reason)
 	}
 	if doc.Manifestacao == manifestacaoAfter(tipo) {
-		return NFeEventOutcome{}, fmt.Errorf("NF-e %s já tem %s registrada", doc.ChaveAcesso, manifestationLabel(tipo))
+		return NFeEventOutcome{}, fmt.Errorf("NF-e %s já tem %s registrada", doc.ChaveAcesso, tipo.Label())
 	}
 
-	sender, err := s.newSender(ctx, comp, "Assinatura: "+manifestationLabel(tipo))
+	sender, err := s.newSender(ctx, comp, "Assinatura: "+tipo.Label())
 	if err != nil {
 		return NFeEventOutcome{}, err
 	}
@@ -350,19 +350,6 @@ func manifestacaoAfter(tipo nfe.ManifestationType) nfe.Manifestacao {
 		return nfe.ManifestacaoNaoRealizada
 	default:
 		return nfe.ManifestacaoCiencia
-	}
-}
-
-func manifestationLabel(tipo nfe.ManifestationType) string {
-	switch tipo {
-	case nfe.ManifestationConfirmacao:
-		return "Confirmação da Operação"
-	case nfe.ManifestationDesconhecimento:
-		return "Desconhecimento da Operação"
-	case nfe.ManifestationNaoRealizada:
-		return "Operação não Realizada"
-	default:
-		return "Ciência da Operação"
 	}
 }
 

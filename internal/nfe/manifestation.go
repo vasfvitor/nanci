@@ -72,6 +72,23 @@ func (t ManifestationType) DescEvento() string {
 	}
 }
 
+// Label returns the name of the event shown to the user, or "" for an
+// invalid type.
+func (t ManifestationType) Label() string {
+	switch t {
+	case ManifestationCiencia:
+		return "Ciência da Operação"
+	case ManifestationConfirmacao:
+		return "Confirmação da Operação"
+	case ManifestationDesconhecimento:
+		return "Desconhecimento da Operação"
+	case ManifestationNaoRealizada:
+		return "Operação não Realizada"
+	default:
+		return ""
+	}
+}
+
 // ManifestacaoFromEvents derives the manifestação state of one company from
 // the events of a document. Only registered events authored by companyCNPJ
 // count. The latest conclusive event (confirmação, desconhecimento, operação
