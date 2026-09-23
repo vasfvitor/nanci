@@ -367,8 +367,6 @@ const (
 	SyncStopReasonConsumoIndevido SyncStopReason = "consumo_indevido"
 	// SyncStopReasonRateBudget means the local hourly request budget is exhausted.
 	SyncStopReasonRateBudget SyncStopReason = "rate_budget"
-	// SyncStopReasonWaitingInterval means the source asked us to wait before the next pull.
-	SyncStopReasonWaitingInterval SyncStopReason = "waiting_interval"
 )
 
 func ParseSyncStopReason(val string) (SyncStopReason, error) {
@@ -382,7 +380,7 @@ func ParseSyncStopReason(val string) (SyncStopReason, error) {
 func (r SyncStopReason) Valid() bool {
 	switch r {
 	case SyncStopReasonEmptyLimit, SyncStopReasonContextCanceled, SyncStopReasonFetchError, SyncStopReasonProcessError,
-		SyncStopReasonCaughtUp, SyncStopReasonConsumoIndevido, SyncStopReasonRateBudget, SyncStopReasonWaitingInterval:
+		SyncStopReasonCaughtUp, SyncStopReasonConsumoIndevido, SyncStopReasonRateBudget:
 		return true
 	default:
 		return false
