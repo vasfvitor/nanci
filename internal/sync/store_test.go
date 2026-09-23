@@ -471,7 +471,6 @@ func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
 	}
 	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFe, false)
 	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, true)
-	assertHasSyncState(t, syncRepo, company.ID, "", true)
 
 	if err := syncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe}); err != nil {
 		t.Fatal(err)
@@ -479,7 +478,7 @@ func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
 	if companyInitialSyncSet(t, db, company.ID) {
 		t.Error("companies.initial_sync_completed_at survived an nfse reset")
 	}
-	assertHasSyncState(t, syncRepo, company.ID, "", false)
+	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, false)
 }
 
 func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {

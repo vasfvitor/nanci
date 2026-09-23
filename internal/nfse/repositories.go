@@ -108,8 +108,7 @@ type ResetSyncStateParams struct {
 	Source    SyncSource
 }
 
-// HasSyncStateParams asks whether the company has a sync cursor. Source is
-// optional: when empty, a cursor of any source counts.
+// HasSyncStateParams asks whether the company has a sync cursor for Source.
 type HasSyncStateParams struct {
 	CompanyID CompanyID
 	Source    SyncSource

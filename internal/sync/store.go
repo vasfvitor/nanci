@@ -538,18 +538,14 @@ func (r *Store) ResetSyncState(ctx context.Context, params nfse.ResetSyncStatePa
 	return tx.Commit()
 }
 
-// HasSyncState reports whether the company has a sync cursor. An empty
-// params.Source matches a cursor of any source.
+// HasSyncState reports whether the company has a sync cursor for
+// params.Source.
 func (r *Store) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
-	query := `SELECT 1 FROM sync_state WHERE company_id = ? LIMIT 1`
-	args := []any{string(params.CompanyID)}
-	if params.Source != "" {
-		query = `SELECT 1 FROM sync_state WHERE company_id = ? AND source = ? LIMIT 1`
-		args = append(args, string(params.Source))
-	}
-
 	var exists int
-	err := r.db.QueryRowContext(ctx, query, args...).Scan(&exists)
+	err := r.db.QueryRowContext(ctx,
+		`SELECT 1 FROM sync_state WHERE company_id = ? AND source = ? LIMIT 1`,
+		string(params.CompanyID), string(params.Source),
+	).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
