@@ -159,15 +159,15 @@ func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID nfse.Co
 	return r.listCompanyDocuments(ctx, companyID, f, kind)
 }
 
-// CompanyDocumentByChave returns ErrNotFound when the company does not see
-// the chave.
+// CompanyDocumentByChave returns nfe.ErrDocumentNotFound when the company
+// does not see the chave.
 func (r *NFeRepository) CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error) {
 	docs, err := r.listCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: []string{chave}, Limit: 1}, "")
 	if err != nil {
 		return nil, err
 	}
 	if len(docs) == 0 {
-		return nil, ErrNotFound
+		return nil, nfe.ErrDocumentNotFound
 	}
 	return &docs[0], nil
 }
@@ -611,11 +611,6 @@ func buildNFeFilterSQL(companyID nfse.CompanyID, f nfe.DocumentFilter) (string, 
 	}
 	if f.OnlyUnread {
 		where += " AND cd.viewed_at IS NULL"
-	}
-	if f.IssueDateGTE != nil {
-		// issue_date is RFC 3339, so its date prefix compares as text.
-		where += " AND d.issue_date >= ?"
-		args = append(args, f.IssueDateGTE.Format("2006-01-02"))
 	}
 	if f.PendingManifestation {
 		where += " AND cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao IN ('nenhuma', 'ciencia')"

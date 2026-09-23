@@ -26,6 +26,7 @@ type NFeRepository interface {
 	ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error)
 	ListEventsByChave(ctx context.Context, chave string) ([]nfe.Event, error)
 	ListEventsByChaves(ctx context.Context, chaves []string) ([]nfe.Event, error)
+	CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error)
 	CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error)
 	MarkViewed(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) (int, error)
 	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error
@@ -481,12 +482,12 @@ func (s *NFeService) companyDocument(ctx context.Context, companyID nfse.Company
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("chave de acesso inválida: %w", err)
 	}
-	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: []string{string(chave)}, Limit: 1})
+	doc, err := s.NFeRepo.CompanyDocumentByChave(ctx, companyID, string(chave))
+	if errors.Is(err, nfe.ErrDocumentNotFound) {
+		return nfe.CompanyDocument{}, fmt.Errorf("NF-e %s não encontrada para a empresa", chave)
+	}
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("buscar NF-e: %w", err)
 	}
-	if len(docs) == 0 {
-		return nfe.CompanyDocument{}, fmt.Errorf("NF-e %s não encontrada para a empresa", chave)
-	}
-	return docs[0], nil
+	return *doc, nil
 }

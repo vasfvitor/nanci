@@ -1,6 +1,7 @@
 package nfe
 
 import (
+	"errors"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -8,6 +9,9 @@ import (
 
 // ExportKindXML is the only export kind tracked for NF-e.
 const ExportKindXML = "xml"
+
+// ErrDocumentNotFound is returned when the company does not see a chave.
+var ErrDocumentNotFound = errors.New("NF-e not found for the company")
 
 // DocumentFilter selects company NF-e rows. Zero values do not filter.
 type DocumentFilter struct {
@@ -19,8 +23,6 @@ type DocumentFilter struct {
 	EmitenteCNPJ string
 	ChavesAcesso []string
 	OnlyUnread   bool
-	// IssueDateGTE keeps documents issued on or after this day.
-	IssueDateGTE *time.Time
 	// PendingManifestation keeps authorized documents where the company is
 	// the destinatário and has no conclusive manifestação yet.
 	PendingManifestation bool

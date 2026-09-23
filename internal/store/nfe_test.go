@@ -463,7 +463,6 @@ func TestNFeListFilters(t *testing.T) {
 		t.Errorf("MarkViewed = %d, want 1", viewed)
 	}
 
-	issueFloor := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
 	all := []string{nfeKeyDenegada, nfeKeyProc, nfeKeyCancelada}
 	tests := []struct {
 		name   string
@@ -481,8 +480,6 @@ func TestNFeListFilters(t *testing.T) {
 		{"emitente cnpj without match", nfe.DocumentFilter{EmitenteCNPJ: cnpjMock}, []string{}},
 		{"chaves", nfe.DocumentFilter{ChavesAcesso: []string{nfeKeyCancelada, nfeKeyDenegada}}, []string{nfeKeyDenegada, nfeKeyCancelada}},
 		{"only unread", nfe.DocumentFilter{OnlyUnread: true}, []string{nfeKeyDenegada, nfeKeyProc}},
-		{"issue date floor", nfe.DocumentFilter{IssueDateGTE: &issueFloor}, []string{nfeKeyDenegada}},
-		{"issue date floor is inclusive", nfe.DocumentFilter{IssueDateGTE: new(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC))}, []string{nfeKeyDenegada, nfeKeyProc}},
 		{"pending manifestation", nfe.DocumentFilter{PendingManifestation: true}, []string{nfeKeyProc}},
 		{"limit", nfe.DocumentFilter{Limit: 1}, []string{nfeKeyDenegada}},
 	}
@@ -607,8 +604,8 @@ func TestNFeCompanyDocumentLookup(t *testing.T) {
 	if err != nil || exists {
 		t.Errorf("CompanyDocumentExists(emitente) = %v, %v", exists, err)
 	}
-	if _, err := f.repo.CompanyDocumentByChave(ctx, "emitente", nfeKeyProc); !errors.Is(err, store.ErrNotFound) {
-		t.Errorf("CompanyDocumentByChave(emitente) error = %v, want ErrNotFound", err)
+	if _, err := f.repo.CompanyDocumentByChave(ctx, "emitente", nfeKeyProc); !errors.Is(err, nfe.ErrDocumentNotFound) {
+		t.Errorf("CompanyDocumentByChave(emitente) error = %v, want ErrDocumentNotFound", err)
 	}
 }
 
