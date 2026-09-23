@@ -139,7 +139,7 @@ describe('ManifestacaoDialog', () => {
       ['210220', true],
       ['210240', true],
     ])
-    expect(wrapper.text()).toContain('Esta manifestação já foi registrada')
+    expect(wrapper.text()).toContain('Já possui manifestação conclusiva')
 
     wrapper.getComponent({ name: 'QOptionGroup' }).vm.$emit('update:modelValue', '210200')
     await wrapper.vm.$nextTick()

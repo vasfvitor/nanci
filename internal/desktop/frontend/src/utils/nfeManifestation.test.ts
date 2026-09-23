@@ -3,7 +3,6 @@ import type { NFeRow } from '@/types/desktop'
 import {
   cienciaBlockReason,
   conclusiveBlockReason,
-  splitCienciaSelection,
   validateJustificativa,
 } from './nfeManifestation'
 
@@ -60,42 +59,28 @@ describe('cienciaBlockReason', () => {
 
 describe('conclusiveBlockReason', () => {
   it('allows conclusive events before and after ciência', () => {
-    for (const tipo of ['210200', '210220', '210240'] as const) {
-      expect(conclusiveBlockReason(row({ Manifestacao: 'nenhuma' }), tipo)).toBeNull()
-      expect(conclusiveBlockReason(row({ Manifestacao: 'ciencia' }), tipo)).toBeNull()
-    }
+    expect(conclusiveBlockReason(row({ Manifestacao: 'nenhuma' }))).toBeNull()
+    expect(conclusiveBlockReason(row({ Manifestacao: 'ciencia' }))).toBeNull()
   })
 
   it('does not block on a past conclusive deadline', () => {
     const expired = row({ Manifestacao: 'ciencia', ConclusiveDue: '2020-01-01T00:00:00Z' })
-    expect(conclusiveBlockReason(expired, '210200')).toBeNull()
+    expect(conclusiveBlockReason(expired)).toBeNull()
   })
 
-  it('blocks the same conclusive event twice', () => {
-    expect(conclusiveBlockReason(row({ Manifestacao: 'confirmada' }), '210200')).toBe(
-      'Esta manifestação já foi registrada'
-    )
-    expect(conclusiveBlockReason(row({ Manifestacao: 'nao_realizada' }), '210240')).toBe(
-      'Esta manifestação já foi registrada'
-    )
-  })
-
-  it('blocks a different conclusive event after one is registered', () => {
-    expect(conclusiveBlockReason(row({ Manifestacao: 'confirmada' }), '210220')).toBe(
-      'Já possui manifestação conclusiva'
-    )
-    expect(conclusiveBlockReason(row({ Manifestacao: 'desconhecida' }), '210200')).toBe(
-      'Já possui manifestação conclusiva'
-    )
+  it('blocks every conclusive event once one is registered', () => {
+    for (const manifestacao of ['confirmada', 'desconhecida', 'nao_realizada'] as const) {
+      expect(conclusiveBlockReason(row({ Manifestacao: manifestacao }))).toBe(
+        'Já possui manifestação conclusiva'
+      )
+    }
   })
 
   it('applies the destinatário and situação rules', () => {
-    expect(conclusiveBlockReason(row({ CompanyRole: 'emitente' }), '210200')).toBe(
+    expect(conclusiveBlockReason(row({ CompanyRole: 'emitente' }))).toBe(
       'Somente o destinatário pode manifestar'
     )
-    expect(conclusiveBlockReason(row({ Situacao: 'cancelada' }), '210220')).toBe(
-      'Nota cancelada'
-    )
+    expect(conclusiveBlockReason(row({ Situacao: 'cancelada' }))).toBe('Nota cancelada')
   })
 })
 
@@ -125,27 +110,5 @@ describe('validateJustificativa', () => {
   it('rejects empty values', () => {
     expect(validateJustificativa('')).toBe('A justificativa deve ter pelo menos 15 caracteres')
     expect(validateJustificativa(null)).toBe('A justificativa deve ter pelo menos 15 caracteres')
-  })
-})
-
-describe('splitCienciaSelection', () => {
-  it('separates eligible rows from skipped rows with reasons', () => {
-    const eligible = row({ ID: 'ok' })
-    const emitente = row({ ID: 'emitente', CompanyRole: 'emitente' })
-    const cancelada = row({ ID: 'cancelada', Situacao: 'cancelada' })
-    const ciente = row({ ID: 'ciente', Manifestacao: 'ciencia' })
-
-    const result = splitCienciaSelection([eligible, emitente, cancelada, ciente])
-
-    expect(result.eligible).toEqual([eligible])
-    expect(result.skipped).toEqual([
-      { row: emitente, reason: 'Somente o destinatário pode manifestar' },
-      { row: cancelada, reason: 'Nota cancelada' },
-      { row: ciente, reason: 'Já possui manifestação' },
-    ])
-  })
-
-  it('handles an empty selection', () => {
-    expect(splitCienciaSelection([])).toEqual({ eligible: [], skipped: [] })
   })
 })

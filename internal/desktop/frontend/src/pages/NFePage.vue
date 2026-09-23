@@ -274,10 +274,10 @@
               >
                 <q-menu auto-close>
                   <q-list dense class="nfe-row-menu">
-                    <q-item clickable :disable="manifestReason(cellProps.row) !== null" @click="openManifestacao(cellProps.row)">
+                    <q-item clickable :disable="conclusiveBlockReason(cellProps.row) !== null" @click="openManifestacao(cellProps.row)">
                       <q-item-section>
                         <q-item-label>Manifestar…</q-item-label>
-                        <q-item-label v-if="manifestReason(cellProps.row)" caption>{{ manifestReason(cellProps.row) }}</q-item-label>
+                        <q-item-label v-if="conclusiveBlockReason(cellProps.row)" caption>{{ conclusiveBlockReason(cellProps.row) }}</q-item-label>
                       </q-item-section>
                     </q-item>
                     <q-item
@@ -465,7 +465,7 @@ import {
   situacaoLabel,
   situacaoLabels,
 } from '@/utils/nfeDisplay'
-import { cienciaBlockReason, conclusiveBlockReason, splitCienciaSelection } from '@/utils/nfeManifestation'
+import { cienciaBlockReason, conclusiveBlockReason } from '@/utils/nfeManifestation'
 
 type SelectOption = { label: string; value: string }
 
@@ -545,7 +545,7 @@ const filteredRows = computed(() => {
   )
 })
 
-const eligibleSelection = computed(() => splitCienciaSelection(selected.value).eligible)
+const eligibleSelection = computed(() => selected.value.filter((row) => !cienciaBlockReason(row)))
 
 const pendingCount = computed(
   () => (status.value?.PendingCiencia ?? 0) + (status.value?.PendingConclusiva ?? 0)
@@ -593,12 +593,6 @@ function normalizeText(value: unknown): string {
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .trim()
-}
-
-function manifestReason(row: NFeRow): string | null {
-  const tipos: NFeConclusiveTipo[] = ['210200', '210220', '210240']
-  const reasons = tipos.map((tipo) => conclusiveBlockReason(row, tipo))
-  return reasons.every((reason) => reason !== null) ? reasons[0] ?? null : null
 }
 
 function errorMessage(error: unknown): string {

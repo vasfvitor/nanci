@@ -110,6 +110,7 @@ import {
 } from '@/utils/formatters'
 import { ambienteColor, badgeColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
 import {
+  CONCLUSIVE_TIPOS,
   conclusiveBlockReason,
   JUSTIFICATIVA_MAX_LENGTH,
   JUSTIFICATIVA_MIN_LENGTH,
@@ -136,14 +137,15 @@ const tipoLabels: Record<NFeConclusiveTipo, string> = {
   '210240': 'Operação não realizada',
 }
 
-const tipos: NFeConclusiveTipo[] = ['210200', '210220', '210240']
-
-const options = computed(() =>
-  tipos.map((value) => {
-    const reason = conclusiveBlockReason(props.note, value)
-    return { value, label: tipoLabels[value], disable: reason !== null, reason }
-  })
-)
+const options = computed(() => {
+  const reason = conclusiveBlockReason(props.note)
+  return CONCLUSIVE_TIPOS.map((value) => ({
+    value,
+    label: tipoLabels[value],
+    disable: reason !== null,
+    reason,
+  }))
+})
 
 const blockedOptions = computed(() => options.value.filter((option) => option.disable))
 
