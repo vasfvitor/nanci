@@ -128,6 +128,9 @@ func (h *testHelper) assertSingleFinishRun(wantStatus nfse.SyncStatus, wantReaso
 			h.t.Fatal(err)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		h.t.Fatal(err)
+	}
 	if count != 1 {
 		h.t.Fatalf("expected exactly 1 sync run, got %d", count)
 	}
@@ -244,6 +247,9 @@ func (h *testHelper) getAppliedNSUOrder() []int64 {
 			h.t.Fatal(err)
 		}
 		nsus = append(nsus, nsu)
+	}
+	if err := rows.Err(); err != nil {
+		h.t.Fatal(err)
 	}
 	return nsus
 }

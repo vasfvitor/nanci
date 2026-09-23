@@ -2,6 +2,7 @@ package company_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -76,7 +77,7 @@ func TestCompanyStore(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CompanyByCNPJ(ctx, "00000000000000")
-	if err != company.ErrCompanyNotFound {
+	if !errors.Is(err, company.ErrCompanyNotFound) {
 		t.Errorf("Expected ErrCompanyNotFound, got %v", err)
 	}
 
@@ -134,7 +135,7 @@ func TestCompanyStore(t *testing.T) {
 
 	// Assign invalid credential to simulate ErrCompanyNotFound for AssignCredential
 	err = repo.AssignCredential(ctx, "non-existent-company", cred2.ID)
-	if err != company.ErrCompanyNotFound {
+	if !errors.Is(err, company.ErrCompanyNotFound) {
 		t.Errorf("Expected ErrCompanyNotFound for non-existent company assignment, got %v", err)
 	}
 }

@@ -30,7 +30,9 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 		t.Fatalf("falha ao abrir db em memoria: %v", err)
 	}
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil {
+			t.Errorf("fechar db: %v", err)
+		}
 	})
 
 	docRepo := store.NewDocumentRepository(db)
@@ -113,15 +115,19 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	certPath, _ := filepath.Abs("app_integration_test.go")
 
 	// Setup base company
-	_ = application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath})
+	if err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
+		t.Fatalf("AddCredential: %v", err)
+	}
 	creds, _ := application.Credentials.ListCredentials(ctx)
-	application.Companies.AddCompany(ctx, company.AddCompanyInput{
+	if err := application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Sync",
 		Environment:     nfse.EnvironmentRestricted,
 		CredentialID:    string(creds[0].ID),
 		SyncStartPolicy: "all",
-	})
+	}); err != nil {
+		t.Fatalf("AddCompany: %v", err)
+	}
 
 	// Act: Update to from_now
 	policyFromNow, dateFromNow, _ := company.ParseSyncStartPolicyInput("from_now", "")
@@ -157,7 +163,9 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	policyAll, dateAll, _ := company.ParseSyncStartPolicyInput("all", "")
 	updateInput.SyncStartPolicy = policyAll
 	updateInput.SyncStartDate = dateAll
-	application.Companies.UpdateCompany(ctx, updateInput)
+	if err := application.Companies.UpdateCompany(ctx, updateInput); err != nil {
+		t.Fatalf("UpdateCompany: %v", err)
+	}
 	comps, _ = application.Companies.ListCompanies(ctx)
 
 	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyAll {

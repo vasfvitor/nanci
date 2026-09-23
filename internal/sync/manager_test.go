@@ -21,31 +21,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
-type dummyCompanyProvider struct {
-	company *nfse.Company
-}
-
-func (d *dummyCompanyProvider) CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error) {
-	return d.company, nil
-}
-
-type dummyCredentialProvider struct {
-	credential *nfse.Credential
-}
-
-func (d *dummyCredentialProvider) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
-	return d.credential, nil
-}
-func (d *dummyCredentialProvider) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
-	return nil
-}
-
-type dummyDocumentProvider struct{}
-
-func (d *dummyDocumentProvider) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
-	return nil, nil
-}
-
 type providerStub struct{}
 
 func (providerStub) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {

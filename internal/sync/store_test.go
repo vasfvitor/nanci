@@ -343,8 +343,6 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	}
 }
 
-// Removed duplicated int64Ptr
-
 func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 	t.Parallel()
 

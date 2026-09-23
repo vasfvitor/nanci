@@ -50,10 +50,8 @@ func TestSyncStatus(t *testing.T) {
 				if status != tt.expected {
 					t.Errorf("Expected %s, got %s", tt.expected, status)
 				}
-			} else {
-				if err == nil {
-					t.Errorf("Expected error for input %s, got nil", tt.input)
-				}
+			} else if err == nil {
+				t.Errorf("Expected error for input %s, got nil", tt.input)
 			}
 		})
 	}
@@ -80,10 +78,8 @@ func TestSyncMode(t *testing.T) {
 				if mode != tt.expected {
 					t.Errorf("Expected %s, got %s", tt.expected, mode)
 				}
-			} else {
-				if err == nil {
-					t.Errorf("Expected error for input %s, got nil", tt.input)
-				}
+			} else if err == nil {
+				t.Errorf("Expected error for input %s, got nil", tt.input)
 			}
 		})
 	}

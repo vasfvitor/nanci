@@ -46,7 +46,7 @@ func TestManager_AddCredential(t *testing.T) {
 	// Create a temporary file to act as the certificate path
 	tmpDir := t.TempDir()
 	certPath := filepath.Join(tmpDir, "test.pfx")
-	err := os.WriteFile(certPath, []byte("dummy cert data"), 0644)
+	err := os.WriteFile(certPath, []byte("dummy cert data"), 0o600)
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestManager_AddCredential(t *testing.T) {
 func TestManager_UpdateCredentialPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	certPath := filepath.Join(tmpDir, "test.pfx")
-	err := os.WriteFile(certPath, []byte("dummy cert data"), 0644)
+	err := os.WriteFile(certPath, []byte("dummy cert data"), 0o600)
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}

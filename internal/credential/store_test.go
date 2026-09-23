@@ -2,6 +2,7 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestStore(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CredentialByID(ctx, "non-existent")
-	if err != ErrCredentialNotFound {
+	if !errors.Is(err, ErrCredentialNotFound) {
 		t.Errorf("Expected ErrCredentialNotFound, got %v", err)
 	}
 
@@ -85,7 +86,7 @@ func TestStore(t *testing.T) {
 	}
 
 	_, err = repo.CredentialByID(ctx, cred.ID)
-	if err != ErrCredentialNotFound {
+	if !errors.Is(err, ErrCredentialNotFound) {
 		t.Errorf("Expected ErrCredentialNotFound, got %v", err)
 	}
 }
