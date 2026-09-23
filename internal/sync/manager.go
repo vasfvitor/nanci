@@ -109,7 +109,7 @@ type PullResult struct {
 	StopReason               string
 	LastProcessedNSU         int64 // the cursor; for NF-e, the last ultNSU
 	LastFoundNSU             *int64
-	MaxNSU                   int64 // highest NSU the source reported; 0 when unknown
+	MaxNSU                   *int64 // highest NSU the source reported; nil when unknown
 	EmptyStreak              int
 	DocumentsFound           int
 	EventsFound              int
@@ -223,9 +223,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
 		result.LastFoundNSU = snapshot.State.LastFoundNSU
 		result.EmptyStreak = snapshot.State.LastEmptyStreak
-		if snapshot.State.MaxNSU != nil {
-			result.MaxNSU = *snapshot.State.MaxNSU
-		}
+		result.MaxNSU = snapshot.State.MaxNSU
 	}
 	if snapshot.Run != nil {
 		result.Status = string(snapshot.Run.Status)

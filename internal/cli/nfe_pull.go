@@ -51,11 +51,7 @@ func printNFePullResult(out io.Writer, result app.NFePullResult) {
 	}
 	_, _ = fmt.Fprintln(out)
 
-	maxNSU := "-"
-	if result.MaxNSU > 0 {
-		maxNSU = formatNSU(result.MaxNSU)
-	}
-	_, _ = fmt.Fprintf(out, "NSU consultado: %s / máximo: %s\n", formatNSU(result.UltNSU), maxNSU)
+	_, _ = fmt.Fprintf(out, "NSU consultado: %s / máximo: %s\n", formatNSU(result.UltNSU), formatMaxNSU(result.MaxNSU))
 	_, _ = fmt.Fprintf(out, "NF-e completas salvas: %d | Resumos salvos: %d | Eventos salvos: %d | Erros: %d\n",
 		result.CompletasSaved, result.ResumosSaved, result.EventsSaved, result.Errors)
 	_, _ = fmt.Fprintf(out, "Consultas na última hora: %d/%d\n", result.RequestsLastHour, result.RequestBudget)

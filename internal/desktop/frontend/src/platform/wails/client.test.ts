@@ -436,6 +436,7 @@ describe('NF-e mappers', () => {
     expect(
       mapPullNFeResult({ UltNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
     ).toMatchObject({ UltNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
+    expect(mapPullNFeResult({ MaxNSU: null }).MaxNSU).toBeNull()
   })
 })
 

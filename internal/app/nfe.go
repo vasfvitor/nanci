@@ -83,7 +83,7 @@ type NFePullResult struct {
 	Status           string // completed | failed | interrupted
 	StopReason       string // caught_up | consumo_indevido | rate_budget | ...
 	UltNSU           int64  // cursor after the pull
-	MaxNSU           int64  // highest NSU SEFAZ reported; 0 when unknown
+	MaxNSU           *int64 // highest NSU SEFAZ reported; nil when unknown
 	CompletasSaved   int
 	ResumosSaved     int
 	EventsSaved      int
@@ -126,7 +126,7 @@ type NFeStatusResult struct {
 	UF                string
 	TpAmb             string // "1" produção, "2" homologação
 	LastNSU           int64
-	MaxNSU            int64 // 0 when unknown
+	MaxNSU            *int64 // nil when unknown
 	LastSyncAt        *time.Time
 	LastRunStatus     string
 	LastRunStopReason string
@@ -171,9 +171,7 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	}
 	if snapshot.State != nil {
 		result.LastNSU = snapshot.State.LastProcessedNSU
-		if snapshot.State.MaxNSU != nil {
-			result.MaxNSU = *snapshot.State.MaxNSU
-		}
+		result.MaxNSU = snapshot.State.MaxNSU
 		result.LastSyncAt = snapshot.State.LastSuccessAt
 	}
 	if snapshot.Run != nil {

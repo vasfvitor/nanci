@@ -506,7 +506,7 @@ type PullNFeResult struct {
 	Status           string // completed | failed | interrupted
 	StopReason       string // caught_up | consumo_indevido | rate_budget | ...
 	UltNSU           int64
-	MaxNSU           int64 // 0 when unknown
+	MaxNSU           *int64 // nil when unknown
 	CompletasSaved   int
 	ResumosSaved     int
 	EventsSaved      int

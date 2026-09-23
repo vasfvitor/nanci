@@ -52,6 +52,14 @@ func formatNSU(nsu int64) string {
 	return fmt.Sprintf("%015d", nsu)
 }
 
+// formatMaxNSU prints the highest NSU SEFAZ reported, or "-" when unknown.
+func formatMaxNSU(nsu *int64) string {
+	if nsu == nil {
+		return "-"
+	}
+	return formatNSU(*nsu)
+}
+
 // truncateText cuts s to at most n characters.
 func truncateText(s string, n int) string {
 	runes := []rune(s)

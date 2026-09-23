@@ -1135,7 +1135,7 @@ export namespace desktopapi {
 	    Status: string;
 	    StopReason: string;
 	    UltNSU: number;
-	    MaxNSU: number;
+	    MaxNSU?: number;
 	    CompletasSaved: number;
 	    ResumosSaved: number;
 	    EventsSaved: number;

@@ -30,11 +30,7 @@ func newNFeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			_, _ = fmt.Fprintf(out, "Ambiente: %s (tpAmb %s) | UF: %s\n", ambienteLabel(result.TpAmb), result.TpAmb, dashIfEmpty(result.UF))
 
 			_, _ = fmt.Fprintln(out, "\nSincronização:")
-			maxNSU := "-"
-			if result.MaxNSU > 0 {
-				maxNSU = formatNSU(result.MaxNSU)
-			}
-			_, _ = fmt.Fprintf(out, "  Último NSU: %s / máximo: %s\n", formatNSU(result.LastNSU), maxNSU)
+			_, _ = fmt.Fprintf(out, "  Último NSU: %s / máximo: %s\n", formatNSU(result.LastNSU), formatMaxNSU(result.MaxNSU))
 			if result.LastSyncAt != nil {
 				_, _ = fmt.Fprintf(out, "  Última sincronização: %s\n", result.LastSyncAt.Local().Format("2006-01-02 15:04:05"))
 			}

@@ -583,7 +583,7 @@ async function syncNFe() {
     if (!result) return
     $q.notify({
       type: 'positive',
-      message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.UltNSU}/${result.MaxNSU}).`,
+      message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.UltNSU}/${result.MaxNSU ?? '—'}).`,
     })
   } catch (error) {
     const code = wailsErrorCode(error)

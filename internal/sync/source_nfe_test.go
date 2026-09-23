@@ -470,8 +470,8 @@ func TestPullNFeReportsLimitsAndBlocksAfterConsumoIndevido(t *testing.T) {
 	if result.Source != nfse.SyncSourceNFe || result.Status != string(nfse.SyncStatusCompleted) || result.StopReason != string(nfse.SyncStopReasonConsumoIndevido) {
 		t.Errorf("result source/status/reason = %s/%s/%s", result.Source, result.Status, result.StopReason)
 	}
-	if result.LastProcessedNSU != 1 || result.MaxNSU != 3 {
-		t.Errorf("cursor/max = %d/%d, want 1/3", result.LastProcessedNSU, result.MaxNSU)
+	if result.LastProcessedNSU != 1 || result.MaxNSU == nil || *result.MaxNSU != 3 {
+		t.Errorf("cursor/max = %d/%v, want 1/3", result.LastProcessedNSU, result.MaxNSU)
 	}
 	if result.PartialDocumentsSaved != 1 || result.FullDocumentsSaved != 0 {
 		t.Errorf("resumos/completas = %d/%d, want 1/0", result.PartialDocumentsSaved, result.FullDocumentsSaved)

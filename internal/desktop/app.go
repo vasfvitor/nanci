@@ -748,17 +748,13 @@ func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 	if err != nil {
 		return desktopapi.NFeStatusResult{}, desktopError(err)
 	}
-	var maxNSU *int64
-	if res.MaxNSU > 0 {
-		maxNSU = &res.MaxNSU
-	}
 	return desktopapi.NFeStatusResult{
 		CompanyName:       res.CompanyName,
 		CNPJ:              res.CNPJ,
 		UF:                res.UF,
 		TpAmb:             res.TpAmb,
 		LastCheckedNSU:    res.LastNSU,
-		MaxNSU:            maxNSU,
+		MaxNSU:            res.MaxNSU,
 		LastSyncAt:        res.LastSyncAt,
 		LastRunStatus:     res.LastRunStatus,
 		LastRunStopReason: res.LastRunStopReason,

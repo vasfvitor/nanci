@@ -466,7 +466,7 @@ export function mapPullNFeResult(raw: unknown): PullNFeResult {
     Status: asString(item['Status']),
     StopReason: asString(item['StopReason']),
     UltNSU: asNumber(item['UltNSU']),
-    MaxNSU: asNumber(item['MaxNSU']),
+    MaxNSU: asNullableNumber(item['MaxNSU']),
     CompletasSaved: asNumber(item['CompletasSaved']),
     ResumosSaved: asNumber(item['ResumosSaved']),
     EventsSaved: asNumber(item['EventsSaved']),

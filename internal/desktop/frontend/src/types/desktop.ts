@@ -389,7 +389,7 @@ export type PullNFeResult = {
   Status: string
   StopReason: string
   UltNSU: number
-  MaxNSU: number
+  MaxNSU: number | null
   CompletasSaved: number
   ResumosSaved: number
   EventsSaved: number
