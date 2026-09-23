@@ -399,7 +399,10 @@ function mockNFeRow<T extends MockNFeFields>(fields: T) {
     EventCount: 0,
     FirstSyncedAt: daysFromNow(-1),
     LastSyncedAt: daysFromNow(-1),
-    ViewedAt: null,
+    DaysLeft: null,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
     ...fields,
   }
 }
@@ -417,6 +420,8 @@ const mockNFeRows = [
     Manifestacao: 'confirmada',
     ManifestacaoAt: daysFromNow(-10),
     EventCount: 2,
+    CienciaBlockReason: 'já manifestada (confirmada)',
+    ConclusiveBlockReason: 'NF-e já possui manifestação conclusiva (Confirmada)',
   }),
   mockNFeRow({
     ID: 'nfe-2',
@@ -455,7 +460,9 @@ const mockNFeRows = [
     Manifestacao: 'ciencia',
     ManifestacaoAt: daysFromNow(-155),
     ConclusiveDue: daysFromNow(25),
+    DaysLeft: 25,
     EventCount: 1,
+    CienciaBlockReason: 'já manifestada (ciencia)',
   }),
   mockNFeRow({
     ID: 'nfe-5',
@@ -469,6 +476,8 @@ const mockNFeRows = [
     DestinatarioName: 'Agropecuária Campo Verde Ltda',
     TotalValue: 215000,
     CompanyRole: 'emitente',
+    CienciaBlockReason: 'a empresa não é a destinatária',
+    ConclusiveBlockReason: 'a empresa não é a destinatária',
   }),
   mockNFeRow({
     ID: 'nfe-6',
@@ -482,6 +491,8 @@ const mockNFeRows = [
     Situacao: 'cancelada',
     Completeness: 'resumo',
     EventCount: 1,
+    CienciaBlockReason: 'NF-e cancelada',
+    ConclusiveBlockReason: 'NF-e cancelada',
   }),
   mockNFeRow({
     ID: 'nfe-7',
@@ -495,29 +506,29 @@ const mockNFeRows = [
     Manifestacao: 'ciencia',
     ManifestacaoAt: daysFromNow(-90),
     ConclusiveDue: daysFromNow(90),
+    DaysLeft: 90,
     EventCount: 1,
+    CienciaBlockReason: 'já manifestada (ciencia)',
   }),
 ]
 
 function mockNFePendingRow(id: string, fields: Record<string, unknown>) {
   const row = mockNFeRows.find((item) => item.ID === id)
-  return { ...row, DaysLeft: 0, CienciaOverdue: false, Expired: false, ...fields }
+  return { ...row, CienciaOverdue: false, ...fields }
 }
 
 const mockNFePending = [
-  mockNFePendingRow('nfe-2', { Kind: 'sem_ciencia', Deadline: daysFromNow(7), DaysLeft: 7 }),
-  mockNFePendingRow('nfe-3', { Kind: 'sem_ciencia', Deadline: daysFromNow(2), DaysLeft: 2 }),
-  mockNFePendingRow('nfe-4', { Kind: 'sem_conclusiva', Deadline: daysFromNow(25), DaysLeft: 25 }),
-  mockNFePendingRow('nfe-7', { Kind: 'sem_conclusiva', Deadline: daysFromNow(90), DaysLeft: 90 }),
+  mockNFePendingRow('nfe-2', { Kind: 'sem_ciencia', ConclusiveDue: daysFromNow(7), DaysLeft: 7 }),
+  mockNFePendingRow('nfe-3', { Kind: 'sem_ciencia', ConclusiveDue: daysFromNow(2), DaysLeft: 2 }),
+  mockNFePendingRow('nfe-4', { Kind: 'sem_conclusiva' }),
+  mockNFePendingRow('nfe-7', { Kind: 'sem_conclusiva' }),
 ]
 
 const mockNFeStatus = {
   CompanyName: 'ACME Tecnologia e Serviços LTDA',
   CNPJ: '12345678000100',
   UF: 'SP',
-  Environment: 'producao',
   TpAmb: '1',
-  AmbienteLabel: 'Produção',
   LastCheckedNSU: 1843,
   MaxNSU: 1843,
   LastSyncAt: minutesFromNow(-95),
@@ -548,19 +559,8 @@ const mockNFeBlockedStatus = {
 }
 
 const mockNFeCienciaPlan = {
-  Eligible: [mockNFeRows[1], mockNFeRows[2]].map((row) => ({
-    ChaveAcesso: row.ChaveAcesso,
-    Serie: row.Serie,
-    Numero: row.Numero,
-    EmitenteCNPJ: row.EmitenteCNPJ,
-    EmitenteName: row.EmitenteName,
-    IssueDate: row.IssueDate,
-    TotalValue: row.TotalValue,
-    CienciaDue: row.CienciaDue,
-    ConclusiveDue: row.ConclusiveDue,
-  })),
-  Skipped: [{ ChaveAcesso: mockNFeRows[5].ChaveAcesso, Reason: 'Nota cancelada' }],
-  Lotes: 1,
+  Eligible: [mockNFeRows[1], mockNFeRows[2]],
+  Skipped: [{ ChaveAcesso: mockNFeRows[5].ChaveAcesso, Reason: 'NF-e cancelada' }],
 }
 
 const mockNFeEvents = [
@@ -823,19 +823,16 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             ExportXML: async () => ({ OutPath: 'C:\\exports\\nfs.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
             ExportLogs: async () => undefined,
             CountPendingExports: async () => 0,
-            CountPendingNFeExports: async () => 0,
             ExportNFeXML: async () => ({ OutPath: 'C:\\exports\\nfe.xml', ExportedCount: 1, SkippedResumos: 0 }),
             ExportNFeZIP: async () => ({ OutPath: 'C:\\exports\\nfe.zip', ExportedCount: 4, SkippedResumos: 3 }),
             ListNFe: async () => nfe.rows,
             ListNFeEvents: async () => nfe.events,
             ListPendingManifestations: async () => nfe.pending,
-            MarkNFeViewed: async () => 0,
             PlanCiencia: async () => nfe.cienciaPlan,
             PullNFe: async () => ({ CompanyName: nfe.status.CompanyName, CNPJ: nfe.status.CNPJ, Status: 'success' }),
-            RegisterCiencia: async () => ({ Results: [], Requested: 0, Registered: 0, AlreadyRegistered: 0, Rejected: 0, NotSent: 0, Skipped: [] }),
+            RegisterCiencia: async () => ({ Results: [], Skipped: [], Interrupted: '' }),
             RegisterManifestation: async () => ({ Status: 'registrada', CStat: '135', Protocolo: '135260000000001' }),
             StatusNFe: async () => nfe.status,
-            TestNFeConnection: async () => ({}),
             MarkDocumentsViewed: async () => 0,
             ListCompanies: async () => companies,
             ListCredentials: async () => credentials,
