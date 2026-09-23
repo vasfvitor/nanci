@@ -25,17 +25,23 @@ func NFSeZipEntries(rows []ReportRow) []ZipEntry {
 		if row.RawHash == "" {
 			continue
 		}
-		roleFolder := string(row.CompanyRole)
-		if roleFolder == "" || roleFolder == "none" {
-			roleFolder = "sem-papel-fiscal"
-		}
-		entryPath := path.Join(roleFolder, row.ChaveAcesso+".xml")
-		if row.Competence != "" {
-			entryPath = path.Join(row.Competence, entryPath)
-		}
+		entryPath := path.Join(RoleFolder(row.Competence, string(row.CompanyRole)), row.ChaveAcesso+".xml")
 		entries = append(entries, ZipEntry{Path: entryPath, RawHash: row.RawHash})
 	}
 	return entries
+}
+
+// RoleFolder is the archive folder of a document: <competencia>/<papel>, or
+// just <papel> when the competência is unknown. A document without a fiscal
+// role goes to "sem-papel-fiscal".
+func RoleFolder(competence, role string) string {
+	if role == "" || role == "none" {
+		role = "sem-papel-fiscal"
+	}
+	if competence == "" {
+		return role
+	}
+	return path.Join(competence, role)
 }
 
 // GenerateZIP writes the entries into a new ZIP archive at outPath.

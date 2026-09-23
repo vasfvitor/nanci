@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/danfse"
@@ -115,16 +115,7 @@ func (s *ExportService) ExportDANFSeZIP(ctx context.Context, input ExportInput) 
 				return fmt.Errorf("gerar DANFSe %s: %w", doc.ChaveAcesso, err)
 			}
 
-			roleFolder := string(doc.CompanyRole)
-			if roleFolder == "" || roleFolder == "none" {
-				roleFolder = "sem-papel-fiscal"
-			}
-			var entryPath string
-			if doc.Competence != "" {
-				entryPath = filepath.ToSlash(filepath.Join(doc.Competence, roleFolder, string(doc.ChaveAcesso)+".pdf"))
-			} else {
-				entryPath = filepath.ToSlash(filepath.Join(roleFolder, string(doc.ChaveAcesso)+".pdf"))
-			}
+			entryPath := path.Join(report.RoleFolder(doc.Competence, string(doc.CompanyRole)), string(doc.ChaveAcesso)+".pdf")
 
 			writer, err := zipWriter.Create(entryPath)
 			if err != nil {

@@ -15,7 +15,7 @@ import (
 func NFeZipEntries(docs []nfe.CompanyDocument, eventsByChave map[string][]nfe.Event) []ZipEntry {
 	var entries []ZipEntry
 	for _, doc := range docs {
-		folder := nfeFolder(doc)
+		folder := RoleFolder(doc.Competence, string(doc.CompanyRole))
 		chave := string(doc.ChaveAcesso)
 
 		suffix := "-procNFe.xml"
@@ -35,15 +35,4 @@ func NFeZipEntries(docs []nfe.CompanyDocument, eventsByChave map[string][]nfe.Ev
 		}
 	}
 	return entries
-}
-
-func nfeFolder(doc nfe.CompanyDocument) string {
-	role := string(doc.CompanyRole)
-	if role == "" || doc.CompanyRole == nfe.CompanyRoleNone {
-		role = "sem-papel-fiscal"
-	}
-	if doc.Competence == "" {
-		return role
-	}
-	return path.Join(doc.Competence, role)
 }
