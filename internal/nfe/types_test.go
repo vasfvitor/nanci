@@ -35,8 +35,6 @@ func TestEnumParsers(t *testing.T) {
 		{"situacao", func(v string) error { _, err := ParseSituacao(v); return err }, "cancelada"},
 		{"completeness", func(v string) error { _, err := ParseCompleteness(v); return err }, "resumo"},
 		{"company role", func(v string) error { _, err := ParseCompanyRole(v); return err }, "transportador"},
-		{"visibility reason", func(v string) error { _, err := ParseVisibilityReason(v); return err }, "resumo_destinatario"},
-		{"event type", func(v string) error { _, err := ParseEventType(v); return err }, "carta_correcao"},
 		{"manifestacao", func(v string) error { _, err := ParseManifestacao(v); return err }, "nao_realizada"},
 	}
 	for _, tt := range valid {

@@ -34,10 +34,6 @@ func (t ManifestationType) Valid() bool {
 	return t.TpEvento() != ""
 }
 
-func (t ManifestationType) String() string {
-	return string(t)
-}
-
 // TpEvento returns the tpEvento code, or "" for an invalid type.
 func (t ManifestationType) TpEvento() string {
 	switch t {
@@ -89,17 +85,11 @@ func (t ManifestationType) Label() string {
 	}
 }
 
-// ManifestacaoFromEvents derives the manifestação state of one company from
-// the events of a document. Only registered events authored by companyCNPJ
-// count. The latest conclusive event (confirmação, desconhecimento, operação
-// não realizada) wins; without one, any ciência gives ManifestacaoCiencia.
-func ManifestacaoFromEvents(events []Event, companyCNPJ string) Manifestacao {
-	m, _ := ManifestacaoAndTimeFromEvents(events, companyCNPJ)
-	return m
-}
-
-// ManifestacaoAndTimeFromEvents is ManifestacaoFromEvents plus the time of
-// the event that set the state: the latest conclusive event, or else the
+// ManifestacaoAndTimeFromEvents derives the manifestação state of one
+// company from the events of a document, and the time of the event that set
+// it. Only registered events authored by companyCNPJ count. The latest
+// conclusive event (confirmação, desconhecimento, operação não realizada)
+// wins; without one, any ciência gives ManifestacaoCiencia, timed by the
 // earliest ciência. The time is nil for ManifestacaoNenhuma and for an event
 // without registration or event time.
 func ManifestacaoAndTimeFromEvents(events []Event, companyCNPJ string) (Manifestacao, *time.Time) {
@@ -179,9 +169,6 @@ const (
 	// after that, without a conclusive event, the operation is deemed
 	// confirmed (§ 6º). Ciência does not stop that presumption.
 	ConclusiveDeadlineDays = 90
-	// ConclusiveWarningDays is how many days before ConclusiveDue the
-	// warning starts.
-	ConclusiveWarningDays = 30
 )
 
 // Deadlines are the manifestação dates of one NF-e. Both are zero when the
@@ -189,41 +176,29 @@ const (
 type Deadlines struct {
 	CienciaDue    time.Time
 	ConclusiveDue time.Time
-	// FromIssueDate is true when AuthorizedAt was missing and the dates
-	// count from IssueDate instead.
-	FromIssueDate bool
 }
 
 // ManifestationDeadlines computes the deadlines from AuthorizedAt, falling
 // back to IssueDate.
 func ManifestationDeadlines(doc Document) Deadlines {
 	var start time.Time
-	fromIssueDate := false
 	switch {
 	case doc.AuthorizedAt != nil:
 		start = *doc.AuthorizedAt
 	case !doc.IssueDate.IsZero():
 		start = doc.IssueDate
-		fromIssueDate = true
 	default:
 		return Deadlines{}
 	}
 	return Deadlines{
 		CienciaDue:    start.AddDate(0, 0, CienciaWarningDays),
 		ConclusiveDue: start.AddDate(0, 0, ConclusiveDeadlineDays),
-		FromIssueDate: fromIssueDate,
 	}
 }
 
 // CienciaWarning reports whether now is on or after CienciaDue.
 func (d Deadlines) CienciaWarning(now time.Time) bool {
 	return !d.CienciaDue.IsZero() && !now.Before(d.CienciaDue)
-}
-
-// ConclusiveWarning reports whether now is within ConclusiveWarningDays of
-// ConclusiveDue, or past it.
-func (d Deadlines) ConclusiveWarning(now time.Time) bool {
-	return !d.ConclusiveDue.IsZero() && !now.Before(d.ConclusiveDue.AddDate(0, 0, -ConclusiveWarningDays))
 }
 
 // TacitlyConfirmed reports whether the operation of doc is deemed confirmed
@@ -257,13 +232,11 @@ const (
 	JustificativaMaxLength = 255
 )
 
-// ErrInvalidJustificativa is returned by ValidateJustificativa.
-var ErrInvalidJustificativa = errors.New("invalid justificativa")
-
 // ValidateJustificativa cleans xJust (control characters become spaces,
 // whitespace runs collapse to one space, ends are trimmed) and checks it
 // against tipo. Operação não Realizada requires 15 to 255 characters; every
-// other type rejects a non-empty justificativa. It returns the cleaned text.
+// other type rejects a non-empty justificativa. It returns the cleaned text,
+// or an error whose message can be shown to the user.
 func ValidateJustificativa(tipo ManifestationType, xJust string) (string, error) {
 	if !tipo.Valid() {
 		return "", fmt.Errorf("invalid manifestation type %q: %w", tipo, nfse.ErrInvalidEnum)
@@ -273,13 +246,12 @@ func ValidateJustificativa(tipo ManifestationType, xJust string) (string, error)
 
 	if tipo != ManifestationNaoRealizada {
 		if length > 0 {
-			return "", fmt.Errorf("%w: only %s accepts a justificativa", ErrInvalidJustificativa, ManifestationNaoRealizada)
+			return "", errors.New("justificativa só é aceita para operação não realizada")
 		}
 		return "", nil
 	}
 	if length < JustificativaMinLength || length > JustificativaMaxLength {
-		return "", fmt.Errorf("%w: must have %d to %d characters, got %d",
-			ErrInvalidJustificativa, JustificativaMinLength, JustificativaMaxLength, length)
+		return "", fmt.Errorf("justificativa inválida: informe de %d a %d caracteres", JustificativaMinLength, JustificativaMaxLength)
 	}
 	return cleaned, nil
 }

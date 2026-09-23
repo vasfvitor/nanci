@@ -117,11 +117,7 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			}
 			justificativa, err := nfe.ValidateJustificativa(tipo, justificativaFlag)
 			if err != nil {
-				if tipo == nfe.ManifestationNaoRealizada {
-					return fmt.Errorf("--justificativa é obrigatória para nao-realizada: informe de %d a %d caracteres",
-						nfe.JustificativaMinLength, nfe.JustificativaMaxLength)
-				}
-				return errors.New("--justificativa só é aceita com --tipo nao-realizada")
+				return err
 			}
 			chave, err := nfe.ParseAccessKey(chaveFlag)
 			if err != nil {

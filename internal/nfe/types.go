@@ -35,10 +35,6 @@ func (s Situacao) Valid() bool {
 	}
 }
 
-func (s Situacao) String() string {
-	return string(s)
-}
-
 // Completeness tells whether nanci holds only the summary (resNFe/resEvento)
 // or the full signed XML (procNFe/procEventoNFe).
 type Completeness string
@@ -63,10 +59,6 @@ func (c Completeness) Valid() bool {
 	default:
 		return false
 	}
-}
-
-func (c Completeness) String() string {
-	return string(c)
 }
 
 // CompanyRole is the part a managed company plays in an NF-e.
@@ -97,10 +89,6 @@ func (r CompanyRole) Valid() bool {
 	}
 }
 
-func (r CompanyRole) String() string {
-	return string(r)
-}
-
 // VisibilityReason explains why a company can see an NF-e.
 type VisibilityReason string
 
@@ -114,14 +102,6 @@ const (
 	VisibilityReasonUnknown            VisibilityReason = "unknown"
 )
 
-func ParseVisibilityReason(val string) (VisibilityReason, error) {
-	r := VisibilityReason(val)
-	if !r.Valid() {
-		return "", fmt.Errorf("invalid visibility reason %q: %w", val, nfse.ErrInvalidEnum)
-	}
-	return r, nil
-}
-
 func (r VisibilityReason) Valid() bool {
 	switch r {
 	case VisibilityReasonExactDestinatario, VisibilityReasonExactEmitente, VisibilityReasonExactTransportador,
@@ -131,10 +111,6 @@ func (r VisibilityReason) Valid() bool {
 	default:
 		return false
 	}
-}
-
-func (r VisibilityReason) String() string {
-	return string(r)
 }
 
 // tpEvento codes used by nanci.
@@ -182,14 +158,6 @@ func EventTypeFromTpEvento(tp string) EventType {
 	}
 }
 
-func ParseEventType(val string) (EventType, error) {
-	t := EventType(val)
-	if !t.Valid() {
-		return "", fmt.Errorf("invalid event type %q: %w", val, nfse.ErrInvalidEnum)
-	}
-	return t, nil
-}
-
 func (t EventType) Valid() bool {
 	switch t {
 	case EventTypeCancelamento, EventTypeCartaCorrecao, EventTypeCiencia, EventTypeConfirmacao,
@@ -198,10 +166,6 @@ func (t EventType) Valid() bool {
 	default:
 		return false
 	}
-}
-
-func (t EventType) String() string {
-	return string(t)
 }
 
 // Manifestacao is the current manifestação do destinatário state of an NF-e
@@ -231,10 +195,6 @@ func (m Manifestacao) Valid() bool {
 	default:
 		return false
 	}
-}
-
-func (m Manifestacao) String() string {
-	return string(m)
 }
 
 // Label returns the manifestação state shown to the user.

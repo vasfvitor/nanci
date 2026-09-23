@@ -177,10 +177,7 @@ func (s *NFeService) RegisterManifestation(ctx context.Context, in NFeManifestat
 	}
 	xJust, err := nfe.ValidateJustificativa(tipo, in.Justificativa)
 	if err != nil {
-		if tipo == nfe.ManifestationNaoRealizada {
-			return NFeEventOutcome{}, fmt.Errorf("justificativa inválida: informe de %d a %d caracteres", nfe.JustificativaMinLength, nfe.JustificativaMaxLength)
-		}
-		return NFeEventOutcome{}, fmt.Errorf("justificativa só é aceita para operação não realizada")
+		return NFeEventOutcome{}, err
 	}
 
 	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)

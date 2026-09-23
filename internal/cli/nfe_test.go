@@ -202,8 +202,8 @@ func TestNFeManifestar_ValidatesJustificativa(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			args := append([]string{"nfe", "manifestar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc}, tc.args...)
 			err := env.run(args...)
-			if err == nil || !strings.Contains(err.Error(), "--justificativa") {
-				t.Errorf("Execute = %v, want a --justificativa error", err)
+			if err == nil || !strings.Contains(err.Error(), "justificativa") {
+				t.Errorf("Execute = %v, want a justificativa error", err)
 			}
 		})
 	}

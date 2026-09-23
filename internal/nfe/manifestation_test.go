@@ -1,7 +1,6 @@
 package nfe
 
 import (
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +19,7 @@ func TestManifestationType(t *testing.T) {
 		{ManifestationNaoRealizada, "210240", "Operacao nao Realizada", "Operação não Realizada"},
 	}
 	for _, tt := range tests {
-		t.Run(tt.tipo.String(), func(t *testing.T) {
+		t.Run(string(tt.tipo), func(t *testing.T) {
 			parsed, err := ParseManifestationType(string(tt.tipo))
 			if err != nil || parsed != tt.tipo {
 				t.Fatalf("ParseManifestationType(%q) = %q, %v", tt.tipo, parsed, err)
@@ -49,7 +48,7 @@ func TestManifestationType(t *testing.T) {
 	}
 }
 
-func TestManifestacaoFromEvents(t *testing.T) {
+func TestManifestacaoPrecedence(t *testing.T) {
 	at := func(day int) *time.Time {
 		v := time.Date(2026, 9, day, 10, 0, 0, 0, time.UTC)
 		return &v
@@ -90,8 +89,8 @@ func TestManifestacaoFromEvents(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ManifestacaoFromEvents(tt.events, "70.860.312/0001-50"); got != tt.want {
-				t.Errorf("ManifestacaoFromEvents = %q, want %q", got, tt.want)
+			if got, _ := ManifestacaoAndTimeFromEvents(tt.events, "70.860.312/0001-50"); got != tt.want {
+				t.Errorf("ManifestacaoAndTimeFromEvents = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -145,12 +144,8 @@ func TestManifestationDeadlines(t *testing.T) {
 	if want := time.Date(2026, 11, 30, 9, 15, 42, 0, loc); !d.ConclusiveDue.Equal(want) {
 		t.Errorf("ConclusiveDue = %s, want %s", d.ConclusiveDue, want)
 	}
-	if d.FromIssueDate {
-		t.Error("FromIssueDate should be false when AuthorizedAt is set")
-	}
-
 	fallback := ManifestationDeadlines(Document{IssueDate: issued})
-	if !fallback.FromIssueDate || !fallback.CienciaDue.Equal(issued.AddDate(0, 0, CienciaWarningDays)) {
+	if !fallback.CienciaDue.Equal(issued.AddDate(0, 0, CienciaWarningDays)) {
 		t.Errorf("fallback deadlines = %+v", fallback)
 	}
 
@@ -164,31 +159,25 @@ func TestDeadlineWarnings(t *testing.T) {
 	d := ManifestationDeadlines(Document{AuthorizedAt: &authorized})
 
 	tests := []struct {
-		name           string
-		now            time.Time
-		wantCiencia    bool
-		wantConclusive bool
+		name        string
+		now         time.Time
+		wantCiencia bool
 	}{
-		{"just authorized", authorized, false, false},
-		{"one second before ciência warning", d.CienciaDue.Add(-time.Second), false, false},
-		{"ciência warning", d.CienciaDue, true, false},
-		{"one second before conclusive warning", d.ConclusiveDue.AddDate(0, 0, -ConclusiveWarningDays).Add(-time.Second), true, false},
-		{"conclusive warning", d.ConclusiveDue.AddDate(0, 0, -ConclusiveWarningDays), true, true},
-		{"past conclusive deadline", d.ConclusiveDue.AddDate(0, 0, 1), true, true},
+		{"just authorized", authorized, false},
+		{"one second before ciência warning", d.CienciaDue.Add(-time.Second), false},
+		{"ciência warning", d.CienciaDue, true},
+		{"past conclusive deadline", d.ConclusiveDue.AddDate(0, 0, 1), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := d.CienciaWarning(tt.now); got != tt.wantCiencia {
 				t.Errorf("CienciaWarning = %v, want %v", got, tt.wantCiencia)
 			}
-			if got := d.ConclusiveWarning(tt.now); got != tt.wantConclusive {
-				t.Errorf("ConclusiveWarning = %v, want %v", got, tt.wantConclusive)
-			}
 		})
 	}
 
 	var zero Deadlines
-	if zero.CienciaWarning(authorized) || zero.ConclusiveWarning(authorized) {
+	if zero.CienciaWarning(authorized) {
 		t.Error("zero deadlines should never warn")
 	}
 }
@@ -281,7 +270,11 @@ func TestValidateJustificativa(t *testing.T) {
 	}
 
 	_, err := ValidateJustificativa(ManifestationNaoRealizada, "curta")
-	if !errors.Is(err, ErrInvalidJustificativa) {
-		t.Errorf("error = %v, want ErrInvalidJustificativa", err)
+	if want := "justificativa inválida: informe de 15 a 255 caracteres"; err == nil || err.Error() != want {
+		t.Errorf("error = %v, want %q", err, want)
+	}
+	_, err = ValidateJustificativa(ManifestationConfirmacao, "mercadoria não recebida no prazo")
+	if want := "justificativa só é aceita para operação não realizada"; err == nil || err.Error() != want {
+		t.Errorf("error = %v, want %q", err, want)
 	}
 }
