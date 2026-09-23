@@ -160,7 +160,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err := checkBlocked(source, sourceState, time.Now()); err != nil {
 		return PullResult{}, err
 	}
-	release, err := m.startPull(company.ID, source)
+	release, err := m.ReserveSource(company.ID, source)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -240,9 +240,13 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if result.DocumentsSaved == 0 {
 		result.DocumentsSaved = result.DocumentsFound
 	}
-	if err := m.fillRequestLimits(ctx, company.ID, source, src.Policy(), &result); err != nil {
+	limits, err := m.SourceLimits(ctx, company.ID, source)
+	if err != nil {
 		return PullResult{}, err
 	}
+	result.NextAllowedAt = limits.NextAllowedAt
+	result.RequestsLastHour = limits.RequestsLastHour
+	result.RequestBudget = limits.RequestBudget
 
 	m.Log.InfoContext(
 		ctx, "Sincronização concluída com sucesso",
@@ -254,11 +258,13 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	return result, nil
 }
 
-// startPull marks the (company, source) pull as running in this process and
-// returns the func that clears the mark. A second pull of the same pair gets
-// ErrSyncRunning instead of interrupting the first. This does not guard
-// against another process; StartRun cleans up after a crashed one.
-func (m *Manager) startPull(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
+// ReserveSource marks the (company, source) pair as busy in this process, as
+// a running pull does, and returns the func that clears the mark. Pull holds
+// it for the whole run; callers that change the source's data hold it to keep
+// pulls out. A second reservation of the same pair gets ErrSyncRunning
+// instead of interrupting the first. This does not guard against another
+// process; StartRun cleans up after a crashed one.
+func (m *Manager) ReserveSource(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
 	key := string(companyID) + ":" + string(source)
 
 	m.runningMu.Lock()
@@ -278,32 +284,36 @@ func (m *Manager) startPull(companyID nfse.CompanyID, source nfse.SyncSource) (f
 	}, nil
 }
 
-// ReserveSource keeps pulls of the (company, source) pair out while the
-// caller changes its data, as a running pull would; it fails with
-// ErrSyncRunning when a pull is in flight in this process. The returned func
-// ends the reservation.
-func (m *Manager) ReserveSource(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
-	return m.startPull(companyID, source)
+// SourceLimits is when a source may be queried again and how much of its
+// hourly request budget is spent.
+type SourceLimits struct {
+	NextAllowedAt    *time.Time          // set while the source must not be queried
+	BlockedReason    nfse.SyncStopReason // why NextAllowedAt is set
+	RequestsLastHour int
+	RequestBudget    int // requests allowed per hour; 0 means unlimited
 }
 
-// fillRequestLimits reports when the source may be queried again and how
-// much of its hourly budget is spent.
-func (m *Manager) fillRequestLimits(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, policy SourcePolicy, result *PullResult) error {
+// SourceLimits reports the request limits of the company's source now.
+func (m *Manager) SourceLimits(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) (SourceLimits, error) {
 	now := time.Now().UTC()
 	state, err := m.SyncRepo.SourceState(ctx, companyID, source)
 	if err != nil {
-		return fmt.Errorf("carregar estado da origem: %w", err)
+		return SourceLimits{}, fmt.Errorf("carregar estado da origem: %w", err)
 	}
+	var limits SourceLimits
 	if state.BlockedUntil != nil && now.Before(*state.BlockedUntil) {
-		result.NextAllowedAt = state.BlockedUntil
+		limits.NextAllowedAt = state.BlockedUntil
+		limits.BlockedReason = state.BlockedReason
 	}
 	count, _, err := m.SyncRepo.RequestsSince(ctx, companyID, source, now.Add(-time.Hour))
 	if err != nil {
-		return fmt.Errorf("contar consultas da última hora: %w", err)
+		return SourceLimits{}, fmt.Errorf("contar consultas da última hora: %w", err)
 	}
-	result.RequestsLastHour = count
-	result.RequestBudget = policy.RequestsPerHour
-	return nil
+	limits.RequestsLastHour = count
+	if source == nfse.SyncSourceNFe {
+		limits.RequestBudget = NFeRequestsPerHour
+	}
+	return limits, nil
 }
 
 // sourceFactoryFor returns how to build the source for the company. It

@@ -168,7 +168,6 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 		Environment:   string(comp.Environment),
 		TpAmb:         tpAmb,
 		AmbienteLabel: "Homologação",
-		RequestBudget: sync.NFeRequestsPerHour,
 	}
 	if tpAmb == sefaz.TpAmbProducao {
 		result.AmbienteLabel = "Produção"
@@ -198,15 +197,14 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 		return NFeStatusResult{}, fmt.Errorf("carregar estado da origem: %w", err)
 	}
 	result.InitialSyncDoneAt = sourceState.InitialSyncDoneAt
-	if sourceState.BlockedUntil != nil && now.Before(*sourceState.BlockedUntil) {
-		result.NextAllowedAt = sourceState.BlockedUntil
-		result.BlockedReason = string(sourceState.BlockedReason)
-	}
-	requests, _, err := s.SyncRepo.RequestsSince(ctx, comp.ID, nfse.SyncSourceNFe, now.Add(-time.Hour))
+	limits, err := s.SyncManager.SourceLimits(ctx, comp.ID, nfse.SyncSourceNFe)
 	if err != nil {
-		return NFeStatusResult{}, fmt.Errorf("contar consultas da última hora: %w", err)
+		return NFeStatusResult{}, err
 	}
-	result.RequestsLastHour = requests
+	result.NextAllowedAt = limits.NextAllowedAt
+	result.BlockedReason = string(limits.BlockedReason)
+	result.RequestsLastHour = limits.RequestsLastHour
+	result.RequestBudget = limits.RequestBudget
 
 	counts, err := s.NFeRepo.CountSummary(ctx, comp.ID)
 	if err != nil {

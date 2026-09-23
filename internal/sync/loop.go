@@ -53,9 +53,6 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	if err != nil {
 		return fmt.Errorf("failed to load source state: %w", err)
 	}
-	if err := checkBlocked(kind, sourceState, time.Now()); err != nil {
-		return err
-	}
 	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
 		slog.String("cnpj", company.CNPJ),
 		slog.String("source", string(kind)),

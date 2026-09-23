@@ -176,19 +176,13 @@ func TestSourceLoopWaitUntilBlocksNextSyncWithoutRun(t *testing.T) {
 		t.Errorf("blocked_reason = %q, want consumo_indevido", state.BlockedReason)
 	}
 
-	err = h.runSource(src)
+	err = checkBlocked(nfse.SyncSourceNFe, state, time.Now())
 	var blocked *BlockedError
 	if !errors.As(err, &blocked) || !errors.Is(err, ErrSourceBlocked) {
-		t.Fatalf("second Sync error = %v, want *BlockedError", err)
+		t.Fatalf("checkBlocked = %v, want *BlockedError", err)
 	}
 	if blocked.Source != nfse.SyncSourceNFe || !blocked.Until.Equal(waitUntil) || blocked.Reason != nfse.SyncStopReasonConsumoIndevido {
 		t.Errorf("BlockedError = %+v", blocked)
-	}
-	if got := h.countRows(`SELECT COUNT(*) FROM sync_runs WHERE source = 'nfe'`); got != 1 {
-		t.Errorf("nfe runs = %d, want 1 (a blocked Sync must not start a run)", got)
-	}
-	if len(src.cursors) != 1 {
-		t.Errorf("fetches = %d, want 1", len(src.cursors))
 	}
 }
 
@@ -239,8 +233,8 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 		t.Fatalf("source state = %+v, want blocked until %v for rate_budget", state, oldest.Add(time.Hour))
 	}
 
-	if err := h.runSource(src); !errors.Is(err, ErrSourceBlocked) {
-		t.Fatalf("next Sync error = %v, want ErrSourceBlocked", err)
+	if err := checkBlocked(nfse.SyncSourceNFe, state, time.Now()); !errors.Is(err, ErrSourceBlocked) {
+		t.Fatalf("checkBlocked after the budget = %v, want ErrSourceBlocked", err)
 	}
 }
 
