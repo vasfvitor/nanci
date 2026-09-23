@@ -36,6 +36,7 @@ vi.mock('@/platform/wails/client', () => ({
     planCiencia: vi.fn(),
     registerCiencia: vi.fn(),
     pullNFe: vi.fn(),
+    exportNFeZIP: vi.fn(),
   },
 }))
 
@@ -128,7 +129,13 @@ function mountPage() {
           name: 'QTable',
           props: ['rows', 'selected', 'pagination'],
           emits: ['update:selected', 'update:pagination'],
-          template: '<div />',
+          template: '<div><slot name="top" /></div>',
+        },
+        'q-input': {
+          name: 'QInput',
+          props: ['modelValue', 'placeholder'],
+          emits: ['update:modelValue'],
+          template: '<div><slot /></div>',
         },
         NFePendingPanel: { template: '<div />' },
         NFeEventsDialog: { template: '<div />' },
@@ -237,6 +244,32 @@ describe('NFePage', () => {
         type: 'positive',
         actions: [expect.objectContaining({ label: 'Sincronizar agora' })],
       })
+    )
+  })
+
+  it('exports the rows the grid shows when nothing is selected', async () => {
+    vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue(null)
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const search = wrapper
+      .findAllComponents({ name: 'QInput' })
+      .find((input) => String(input.props('placeholder') ?? '').startsWith('Filtrar'))
+    if (!search) throw new Error('search input not found')
+    search.vm.$emit('update:modelValue', 'b')
+    await flushPromises()
+
+    await buttonStartingWith(wrapper, 'Exportar XML (ZIP)').trigger('click')
+    await flushPromises()
+    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
+      expect.objectContaining({ CNPJ: company.CNPJ, Competence: '', Role: '', ChavesAcesso: ['b'] })
+    )
+
+    await selectRows(wrapper, [destinatario])
+    await buttonStartingWith(wrapper, 'Exportar XML (ZIP)').trigger('click')
+    await flushPromises()
+    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
+      expect.objectContaining({ ChavesAcesso: ['a'] })
     )
   })
 

@@ -193,7 +193,7 @@
             color="secondary"
             icon="folder_zip"
             label="Exportar XML (ZIP)"
-            :disable="exporting || rows.length === 0"
+            :disable="exporting || filteredRows.length === 0"
             :loading="exporting"
             dense
             flat
@@ -828,10 +828,13 @@ async function exportXML(chaveAcesso: string) {
   }
 }
 
+// exportZIP exports the selected rows, or else every row the grid shows
+// after the filters and the text search.
 async function exportZIP() {
-  const chavesAcesso = selected.value.map((row) => row.ChaveAcesso)
+  const target = selected.value.length > 0 ? selected.value : filteredRows.value
+  const chavesAcesso = target.map((row) => row.ChaveAcesso)
   try {
-    const result = await nfe.exportZIP({ chavesAcesso })
+    const result = await nfe.exportZIP(chavesAcesso)
     if (!result) return
     const skipped =
       result.SkippedResumos > 0

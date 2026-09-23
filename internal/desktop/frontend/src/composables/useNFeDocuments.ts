@@ -7,7 +7,6 @@ import { usePreferencesStore } from '@/stores/preferences'
 import type { CompanySummary, ISODateValue } from '@/types/desktop'
 
 export type NFeExportZIPOptions = {
-  chavesAcesso?: string[]
   includeResumos?: boolean
   incremental?: boolean
 }
@@ -143,16 +142,18 @@ export function useNFeDocuments() {
     }
   }
 
-  async function exportZIP(options: NFeExportZIPOptions = {}) {
-    if (exporting.value) return null
+  // exportZIP exports exactly the given chaves, the rows the user sees or
+  // selected. Competence and Role are left empty: the grid may hold the
+  // result of an earlier search, and an empty list would export everything.
+  async function exportZIP(chavesAcesso: string[], options: NFeExportZIPOptions = {}) {
+    if (exporting.value || chavesAcesso.length === 0) return null
     exporting.value = true
     try {
-      const input = store.listInput
       return await desktopClient.exportNFeZIP({
-        CNPJ: input.CNPJ,
-        Competence: input.Competence,
-        Role: input.Role,
-        ChavesAcesso: options.chavesAcesso ?? [],
+        CNPJ: store.listInput.CNPJ,
+        Competence: '',
+        Role: '',
+        ChavesAcesso: chavesAcesso,
         IncludeResumos: options.includeResumos ?? false,
         Incremental: options.incremental ?? false,
       })

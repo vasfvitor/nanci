@@ -141,20 +141,28 @@ describe('useNFeDocuments', () => {
     expect(nfe.syncBlockedUntil.value).toBeNull()
   })
 
-  it('exports XML and ZIP with the current filter', async () => {
+  it('does not export a ZIP without chaves', async () => {
+    const nfe = useNFeDocuments()
+    nfe.filter.value.CNPJ = '123'
+
+    await expect(nfe.exportZIP([])).resolves.toBeNull()
+    expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
+  })
+
+  it('exports XML and ZIP for the given chaves', async () => {
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
     nfe.filter.value.Competence = '2024-09'
     nfe.filter.value.Role = 'destinatario'
 
     await nfe.exportXML('chave-1')
-    await nfe.exportZIP({ chavesAcesso: ['chave-1'] })
+    await nfe.exportZIP(['chave-1'])
 
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-1' })
     expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith({
       CNPJ: '123',
-      Competence: '2024-09',
-      Role: 'destinatario',
+      Competence: '',
+      Role: '',
       ChavesAcesso: ['chave-1'],
       IncludeResumos: false,
       Incremental: false,
