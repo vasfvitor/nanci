@@ -3,10 +3,8 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"math"
-	"strings"
+	"io"
 	"text/tabwriter"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -111,14 +109,6 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 		Use:   "manifestar",
 		Short: "Registra confirmação, desconhecimento ou operação não realizada (simulação sem --confirmar)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			tipo, err := parseTipoManifestacao(tipoFlag)
-			if err != nil {
-				return err
-			}
-			justificativa, err := nfe.ValidateJustificativa(tipo, justificativaFlag)
-			if err != nil {
-				return err
-			}
 			chave, err := nfe.ParseAccessKey(chaveFlag)
 			if err != nil {
 				return fmt.Errorf("chave de acesso inválida: %w", err)
@@ -131,55 +121,26 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			defer cleanup()
 
 			out := cmd.OutOrStdout()
+			input := app.NFeManifestationInput{
+				CNPJ:          *cnpjFlag,
+				ChaveAcesso:   string(chave),
+				Tipo:          tipoFlag,
+				Justificativa: justificativaFlag,
+			}
 			if !confirmarFlag {
-				docs, err := application.NFe.ListDocuments(cmd.Context(), app.NFeListInput{
-					CNPJ:         *cnpjFlag,
-					ChavesAcesso: []string{string(chave)},
-					Limit:        1,
-				})
+				plan, err := application.NFe.PlanManifestation(cmd.Context(), input)
 				if err != nil {
 					return fmt.Errorf("erro: %w", err)
 				}
-				if len(docs) == 0 {
-					return fmt.Errorf("erro: NF-e %s não encontrada para a empresa", chave)
+				if plan.BlockReason != "" {
+					return errors.New("erro: " + plan.BlockReason)
 				}
-				doc := docs[0]
-				if doc.CompanyRole != nfe.CompanyRoleDestinatario || doc.Situacao != nfe.SituacaoAutorizada {
-					return fmt.Errorf("erro: a NF-e %s não pode ser manifestada pela empresa (papel %s, situação %s)",
-						chave, doc.CompanyRole, doc.Situacao)
-				}
-				if reason := nfe.ConclusiveBlockReason(doc.Manifestacao); reason != "" {
-					return errors.New("erro: " + reason)
-				}
-
-				_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", tipo.Label(), tipo.TpEvento())
-				_, _ = fmt.Fprintf(out, "Chave de acesso: %s\n", doc.ChaveAcesso)
-				_, _ = fmt.Fprintf(out, "Número: %s | Série: %s | Emissão: %s | Valor (R$): %s\n",
-					doc.Numero, doc.Serie, formatNFeDate(doc.IssueDate), doc.TotalValue.FormatBRL())
-				_, _ = fmt.Fprintf(out, "Emitente: %s %s\n", cnpj.Format(doc.EmitenteCNPJ), doc.EmitenteName)
-				_, _ = fmt.Fprintf(out, "Manifestação atual: %s\n", doc.Manifestacao)
-				now := time.Now()
-				due := nfe.ManifestationDeadlines(doc.Document).ConclusiveDue
-				if !due.IsZero() {
-					_, _ = fmt.Fprintf(out, "Prazo da manifestação conclusiva: %s (%s)\n", formatNFeDate(due), describeDaysLeft(due, now))
-				}
-				if nfe.TacitlyConfirmed(doc, now) {
-					_, _ = fmt.Fprintf(out, "Atenção: passados %d dias da autorização sem manifestação conclusiva, a operação já é considerada confirmada. A SEFAZ deve rejeitar o evento (cStat 596).\n",
-						nfe.ConclusiveDeadlineDays)
-				}
-				if justificativa != "" {
-					_, _ = fmt.Fprintf(out, "Justificativa: %s\n", justificativa)
-				}
+				printNFeManifestationPlan(out, plan)
 				_, _ = fmt.Fprintln(out, "\nNada foi enviado. Use --confirmar para registrar a manifestação.")
 				return nil
 			}
 
-			outcome, err := application.NFe.RegisterManifestation(cmd.Context(), app.NFeManifestationInput{
-				CNPJ:          *cnpjFlag,
-				ChaveAcesso:   string(chave),
-				Tipo:          string(tipo),
-				Justificativa: justificativaFlag,
-			})
+			outcome, err := application.NFe.RegisterManifestation(cmd.Context(), input)
 			if outcome.ChaveAcesso != "" {
 				printNFeOutcomes(out, []app.NFeEventOutcome{outcome})
 			}
@@ -198,26 +159,28 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 	return cmd
 }
 
-// parseTipoManifestacao reads the --tipo flag of `nfe manifestar`.
-func parseTipoManifestacao(raw string) (nfe.ManifestationType, error) {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "confirmacao":
-		return nfe.ManifestationConfirmacao, nil
-	case "desconhecimento":
-		return nfe.ManifestationDesconhecimento, nil
-	case "nao-realizada", "nao_realizada":
-		return nfe.ManifestationNaoRealizada, nil
-	default:
-		return "", fmt.Errorf("tipo de manifestação inválido %q: use confirmacao, desconhecimento ou nao-realizada", raw)
+// printNFeManifestationPlan prints what `nfe manifestar --confirmar` would
+// send.
+func printNFeManifestationPlan(out io.Writer, plan app.NFeManifestationPlan) {
+	doc := plan.Document
+	_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", plan.Tipo.Label(), plan.Tipo.TpEvento())
+	_, _ = fmt.Fprintf(out, "Chave de acesso: %s\n", doc.ChaveAcesso)
+	_, _ = fmt.Fprintf(out, "Número: %s | Série: %s | Emissão: %s | Valor (R$): %s\n",
+		doc.Numero, doc.Serie, formatNFeDate(doc.IssueDate), doc.TotalValue.FormatBRL())
+	_, _ = fmt.Fprintf(out, "Emitente: %s %s\n", cnpj.Format(doc.EmitenteCNPJ), doc.EmitenteName)
+	_, _ = fmt.Fprintf(out, "Manifestação atual: %s\n", doc.Manifestacao)
+	if !plan.ConclusiveDue.IsZero() {
+		daysLeft := fmt.Sprintf("faltam %d dia(s)", plan.DaysLeft)
+		if plan.DaysLeft < 0 {
+			daysLeft = fmt.Sprintf("vencido há %d dia(s)", -plan.DaysLeft)
+		}
+		_, _ = fmt.Fprintf(out, "Prazo da manifestação conclusiva: %s (%s)\n", formatNFeDate(plan.ConclusiveDue), daysLeft)
 	}
-}
-
-// describeDaysLeft says how many whole days are left until due, or how long
-// ago it passed.
-func describeDaysLeft(due, now time.Time) string {
-	days := int(math.Floor(due.Sub(now).Hours() / 24))
-	if days < 0 {
-		return fmt.Sprintf("vencido há %d dia(s)", -days)
+	if plan.TacitlyConfirmed {
+		_, _ = fmt.Fprintf(out, "Atenção: passados %d dias da autorização sem manifestação conclusiva, a operação já é considerada confirmada. A SEFAZ deve rejeitar o evento (cStat 596).\n",
+			nfe.ConclusiveDeadlineDays)
 	}
-	return fmt.Sprintf("faltam %d dia(s)", days)
+	if plan.Justificativa != "" {
+		_, _ = fmt.Fprintf(out, "Justificativa: %s\n", plan.Justificativa)
+	}
 }

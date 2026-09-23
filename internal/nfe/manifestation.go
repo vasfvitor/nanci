@@ -22,12 +22,22 @@ const (
 	ManifestationNaoRealizada    ManifestationType = "nao_realizada"
 )
 
+// ParseManifestationType reads a manifestação type by name or by tpEvento
+// code, ignoring case and surrounding spaces. "nao-realizada" is accepted as
+// nao_realizada.
 func ParseManifestationType(val string) (ManifestationType, error) {
-	t := ManifestationType(val)
-	if !t.Valid() {
+	switch strings.ToLower(strings.TrimSpace(val)) {
+	case string(ManifestationCiencia), TpEventoCiencia:
+		return ManifestationCiencia, nil
+	case string(ManifestationConfirmacao), TpEventoConfirmacao:
+		return ManifestationConfirmacao, nil
+	case string(ManifestationDesconhecimento), TpEventoDesconhecimento:
+		return ManifestationDesconhecimento, nil
+	case string(ManifestationNaoRealizada), "nao-realizada", TpEventoNaoRealizada:
+		return ManifestationNaoRealizada, nil
+	default:
 		return "", fmt.Errorf("invalid manifestation type %q: %w", val, nfse.ErrInvalidEnum)
 	}
-	return t, nil
 }
 
 func (t ManifestationType) Valid() bool {

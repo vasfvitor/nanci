@@ -40,8 +40,24 @@ func TestManifestationType(t *testing.T) {
 		})
 	}
 
-	if _, err := ParseManifestationType("cancelamento"); err == nil {
-		t.Error("ParseManifestationType(cancelamento) should fail")
+	aliases := map[string]ManifestationType{
+		"210200":          ManifestationConfirmacao,
+		" Confirmacao ":   ManifestationConfirmacao,
+		"nao-realizada":   ManifestationNaoRealizada,
+		"NAO_REALIZADA":   ManifestationNaoRealizada,
+		"210240":          ManifestationNaoRealizada,
+		"210210":          ManifestationCiencia,
+		"desconhecimento": ManifestationDesconhecimento,
+	}
+	for raw, want := range aliases {
+		if got, err := ParseManifestationType(raw); err != nil || got != want {
+			t.Errorf("ParseManifestationType(%q) = %q, %v, want %q", raw, got, err, want)
+		}
+	}
+	for _, raw := range []string{"cancelamento", "110111", ""} {
+		if _, err := ParseManifestationType(raw); err == nil {
+			t.Errorf("ParseManifestationType(%q) should fail", raw)
+		}
 	}
 	if ManifestationType("x").TpEvento() != "" || ManifestationType("x").DescEvento() != "" || ManifestationType("x").Label() != "" {
 		t.Error("invalid type should have empty TpEvento, DescEvento and Label")

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"slices"
 	"time"
 
@@ -387,7 +386,7 @@ func (s *NFeService) pendingManifestations(ctx context.Context, companyID nfse.C
 			Manifestacao:   string(doc.Manifestacao),
 			CienciaDue:     deadlines.CienciaDue,
 			ConclusiveDue:  deadlines.ConclusiveDue,
-			DaysLeft:       int(math.Floor(deadlines.ConclusiveDue.Sub(now).Hours() / 24)),
+			DaysLeft:       daysLeft(deadlines.ConclusiveDue, now),
 			CienciaOverdue: kind == NFePendingSemCiencia && deadlines.CienciaWarning(now),
 			Expired:        nfe.TacitlyConfirmed(doc, now),
 		})

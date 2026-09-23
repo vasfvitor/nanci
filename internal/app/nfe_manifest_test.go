@@ -402,3 +402,47 @@ func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
 		t.Errorf("password prompts = %d, lotes = %d; want still 1 and 1", len(env.passwords.requests), len(fake.lotes))
 	}
 }
+
+func TestNFePlanManifestationNeedsNoNetworkOrPassword(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seedFixtures()
+	emitida := env.seedResumo(11, "2026-08-21T10:00:00-03:00", nfeTestCNPJ)
+	fake := useFakeSEFAZ(t)
+	ctx := context.Background()
+	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-09-15T12:00:00-03:00") }
+
+	plan, err := env.app.NFe.PlanManifestation(ctx, NFeManifestationInput{
+		CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "nao-realizada", Justificativa: "  Mercadoria nunca\tfoi entregue  ",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Tipo != nfe.ManifestationNaoRealizada || plan.Justificativa != "Mercadoria nunca foi entregue" ||
+		string(plan.Document.ChaveAcesso) != nfeChaveProc || plan.BlockReason != "" {
+		t.Errorf("plan = %+v", plan)
+	}
+	if plan.ConclusiveDue.IsZero() || plan.DaysLeft <= 0 || plan.TacitlyConfirmed {
+		t.Errorf("deadline = %s, days left %d, tacitly confirmed %v", plan.ConclusiveDue, plan.DaysLeft, plan.TacitlyConfirmed)
+	}
+
+	env.app.NFe.now = func() time.Time { return mustTime(t, "2027-01-15T12:00:00-03:00") }
+	late, err := env.app.NFe.PlanManifestation(ctx, NFeManifestationInput{CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "confirmacao"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if late.DaysLeft >= 0 || !late.TacitlyConfirmed || late.BlockReason != "" {
+		t.Errorf("late plan: days left %d, tacitly confirmed %v, block %q", late.DaysLeft, late.TacitlyConfirmed, late.BlockReason)
+	}
+
+	blocked, err := env.app.NFe.PlanManifestation(ctx, NFeManifestationInput{CNPJ: nfeTestCNPJ, ChaveAcesso: emitida, Tipo: "confirmacao"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "NF-e " + emitida + ": a empresa não é a destinatária"; blocked.BlockReason != want {
+		t.Errorf("BlockReason = %q, want %q", blocked.BlockReason, want)
+	}
+
+	if len(env.passwords.requests) != 0 || fake.clients != 0 {
+		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), fake.clients)
+	}
+}
