@@ -33,7 +33,11 @@
         >
           <template #body-cell-status="cellProps">
             <q-td :props="cellProps">
-              <q-badge :color="outcomeColor(cellProps.row.Status)" :label="outcomeLabel(cellProps.row.Status)" />
+              <q-badge
+                :color="outcomeColor(cellProps.row.Status)"
+                :text-color="badgeTextColor(outcomeColor(cellProps.row.Status), $q.dark.isActive)"
+                :label="outcomeLabel(cellProps.row.Status)"
+              />
             </q-td>
           </template>
         </q-table>
@@ -51,7 +55,7 @@ import { computed } from 'vue'
 import { useDialogPluginComponent, useQuasar, type QTableColumn } from 'quasar'
 import type { NFeEventBatchResult, NFeEventResult } from '@/types/desktop'
 import { formatChaveNFe } from '@/utils/formatters'
-import { outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
+import { badgeTextColor, outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
 
 const props = defineProps<{
   result: NFeEventBatchResult

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ambienteColor,
+  badgeTextColor,
   blockedMessage,
   completenessColor,
   completenessLabel,
@@ -105,14 +106,32 @@ describe('nfeDisplay', () => {
     expect(outcomeColor('other')).toBe('grey')
   })
 
-  it('colors deadlines by days left', () => {
-    expect(deadlineColor(null)).toBe('grey')
-    expect(deadlineColor(-1)).toBe('negative')
-    expect(deadlineColor(0)).toBe('negative')
-    expect(deadlineColor(10)).toBe('negative')
-    expect(deadlineColor(11)).toBe('warning')
-    expect(deadlineColor(30)).toBe('warning')
-    expect(deadlineColor(31)).toBe('grey')
+  it('colors conclusive deadlines by days left', () => {
+    expect(deadlineColor(null, 'conclusiva')).toBe('grey')
+    expect(deadlineColor(-1, 'conclusiva')).toBe('negative')
+    expect(deadlineColor(0, 'conclusiva')).toBe('negative')
+    expect(deadlineColor(10, 'conclusiva')).toBe('negative')
+    expect(deadlineColor(11, 'conclusiva')).toBe('warning')
+    expect(deadlineColor(30, 'conclusiva')).toBe('warning')
+    expect(deadlineColor(31, 'conclusiva')).toBe('grey')
+  })
+
+  it('colors ciência deadlines with tighter thresholds', () => {
+    expect(deadlineColor(null, 'ciencia')).toBe('grey')
+    expect(deadlineColor(-1, 'ciencia')).toBe('negative')
+    expect(deadlineColor(3, 'ciencia')).toBe('negative')
+    expect(deadlineColor(4, 'ciencia')).toBe('warning')
+    expect(deadlineColor(10, 'ciencia')).toBe('warning')
+    expect(deadlineColor(11, 'ciencia')).toBe('grey')
+  })
+
+  it('picks a readable badge text color', () => {
+    expect(badgeTextColor('warning', false)).toBe('dark')
+    expect(badgeTextColor('grey', false)).toBe('dark')
+    expect(badgeTextColor('info', false)).toBe('white')
+    expect(badgeTextColor('positive', false)).toBe('white')
+    expect(badgeTextColor('info', true)).toBe('dark')
+    expect(badgeTextColor('positive', true)).toBe('dark')
   })
 
   it('describes days left', () => {

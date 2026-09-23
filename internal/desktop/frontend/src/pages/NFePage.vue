@@ -5,6 +5,7 @@
       <q-badge
         v-if="status"
         :color="ambienteColor(status.TpAmb)"
+        :text-color="badgeTextColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
         :label="status.AmbienteLabel || 'Ambiente desconhecido'"
         class="text-weight-bold"
       />
@@ -34,10 +35,24 @@
       {{ blockedText }}
     </q-banner>
 
-    <q-tabs v-model="activeTab" dense align="left" active-color="primary" indicator-color="primary" class="q-mb-md">
+    <q-tabs
+      v-model="activeTab"
+      dense
+      inline-label
+      align="left"
+      active-color="primary"
+      indicator-color="primary"
+      class="q-mb-md"
+    >
       <q-tab name="notas" label="Notas" />
       <q-tab name="pendencias" label="Pendências">
-        <q-badge v-if="pendingCount > 0" color="negative" floating>{{ pendingCount }}</q-badge>
+        <q-badge
+          v-if="pendingCount > 0"
+          color="negative"
+          :text-color="badgeTextColor('negative', $q.dark.isActive)"
+          class="q-ml-sm"
+          :label="pendingCount"
+        />
       </q-tab>
     </q-tabs>
 
@@ -46,7 +61,7 @@
         <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
           <q-select
             v-model="filter.CNPJ"
-            class="col-12 col-md-3"
+            class="col-12 col-md-4"
             :options="companyOptions"
             label="Empresa"
             emit-value
@@ -58,7 +73,7 @@
             @update:model-value="handleCompanyChange"
           />
 
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-sm-6 col-md-3" title="Competência pelo mês de emissão">
             <div class="row no-wrap items-center q-gutter-xs">
               <q-btn
                 color="grey-7"
@@ -75,7 +90,7 @@
               <q-input
                 v-model="filter.Competence"
                 class="col"
-                label="Competência (emissão)"
+                label="Competência"
                 outlined
                 dense
                 clearable
@@ -120,7 +135,7 @@
 
           <q-select
             v-model="filter.Situacao"
-            class="col-6 col-md-1"
+            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
             :options="situacaoOptions"
             label="Situação"
             emit-value
@@ -132,7 +147,7 @@
           />
           <q-select
             v-model="filter.Completeness"
-            class="col-6 col-md-1"
+            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
             :options="completenessOptions"
             label="Completude"
             emit-value
@@ -144,7 +159,7 @@
           />
           <q-select
             v-model="filter.Manifestacao"
-            class="col-6 col-md-2"
+            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
             :options="manifestacaoOptions"
             label="Manifestação"
             emit-value
@@ -156,7 +171,7 @@
           />
           <q-select
             v-model="filter.Role"
-            class="col-6 col-md-1"
+            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
             :options="roleOptions"
             label="Papel"
             emit-value
@@ -210,6 +225,7 @@
           selection="multiple"
           :loading="loading"
           no-data-label="Nenhuma NF-e encontrada."
+          class="nfe-table"
           binary-state-sort
           flat
           bordered
@@ -313,7 +329,7 @@
           <template #body-cell-emitente="cellProps">
             <q-td :props="cellProps">
               <div class="text-weight-medium text-mono">{{ formatCpfCnpj(cellProps.row.EmitenteCNPJ) || '-' }}</div>
-              <div class="text-caption text-app-muted ellipsis partner-name" :title="cellProps.row.EmitenteName">
+              <div class="text-caption text-app-muted partner-name" :title="cellProps.row.EmitenteName">
                 {{ cellProps.row.EmitenteName || '-' }}
               </div>
             </q-td>
@@ -321,7 +337,11 @@
 
           <template #body-cell-situacao="cellProps">
             <q-td :props="cellProps">
-              <q-badge :color="situacaoColor(cellProps.row.Situacao)" :label="situacaoLabel(cellProps.row.Situacao)" />
+              <q-badge
+                :color="situacaoColor(cellProps.row.Situacao)"
+                :text-color="badgeTextColor(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
+                :label="situacaoLabel(cellProps.row.Situacao)"
+              />
             </q-td>
           </template>
 
@@ -329,6 +349,7 @@
             <q-td :props="cellProps">
               <q-badge
                 :color="completenessColor(cellProps.row.Completeness)"
+                :text-color="badgeTextColor(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
                 :label="completenessLabel(cellProps.row.Completeness)"
               />
             </q-td>
@@ -340,6 +361,7 @@
                 <q-spinner v-if="isChaveBusy(cellProps.row.ChaveAcesso)" size="xs" color="primary" />
                 <q-badge
                   :color="manifestacaoColor(cellProps.row.Manifestacao)"
+                  :text-color="badgeTextColor(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
                   :label="manifestacaoLabel(cellProps.row.Manifestacao)"
                 />
                 <q-chip
@@ -348,7 +370,7 @@
                   square
                   outline
                   size="sm"
-                  :color="deadlineColor(daysUntil(cellProps.row.ConclusiveDue))"
+                  :color="deadlineColor(daysUntil(cellProps.row.ConclusiveDue), 'conclusiva')"
                   :label="conclusiveDeadlineLabel(daysUntil(cellProps.row.ConclusiveDue))"
                   :title="`Prazo da manifestação conclusiva: ${formatDate(cellProps.row.ConclusiveDue)}`"
                 />
@@ -358,7 +380,11 @@
 
           <template #body-cell-papel="cellProps">
             <q-td :props="cellProps">
-              <q-badge :color="nfeRoleColor(cellProps.row.CompanyRole)" :label="nfeRoleLabel(cellProps.row.CompanyRole)" />
+              <q-badge
+                :color="nfeRoleColor(cellProps.row.CompanyRole)"
+                :text-color="badgeTextColor(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
+                :label="nfeRoleLabel(cellProps.row.CompanyRole)"
+              />
             </q-td>
           </template>
         </q-table>
@@ -411,6 +437,7 @@ import {
 } from '@/utils/formatters'
 import {
   ambienteColor,
+  badgeTextColor,
   blockedMessage,
   completenessColor,
   completenessLabel,
@@ -855,9 +882,14 @@ async function exportZIP() {
 </script>
 
 <style scoped>
-:deep(.q-table td) {
-  white-space: normal;
-  word-break: break-word;
+/* Values stay on one line and the table scrolls sideways; only the emitente
+   name wraps. */
+.nfe-table :deep(td) {
+  white-space: nowrap;
+}
+
+.nfe-filter-select {
+  min-width: 140px;
 }
 
 .nfe-search-input {
@@ -866,7 +898,10 @@ async function exportZIP() {
 }
 
 .partner-name {
-  max-width: 200px;
+  min-width: 220px;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .nfe-row-menu {

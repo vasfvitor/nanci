@@ -25,7 +25,11 @@
         >
           <template #body-cell-tipo="cellProps">
             <q-td :props="cellProps">
-              <q-badge :color="nfeEventColor(cellProps.row.TpEvento)" :label="nfeEventLabel(cellProps.row.TpEvento)" />
+              <q-badge
+                :color="nfeEventColor(cellProps.row.TpEvento)"
+                :text-color="badgeTextColor(nfeEventColor(cellProps.row.TpEvento), $q.dark.isActive)"
+                :label="nfeEventLabel(cellProps.row.TpEvento)"
+              />
               <div class="text-caption text-app-muted text-mono">{{ cellProps.row.TpEvento }}</div>
             </q-td>
           </template>
@@ -52,7 +56,7 @@ import { useQuasar, type QTableColumn } from 'quasar'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import type { NFeEvent } from '@/types/desktop'
 import { formatChaveNFe, formatDateTime } from '@/utils/formatters'
-import { nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
+import { badgeTextColor, nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
 
 const props = defineProps<{
   modelValue: boolean

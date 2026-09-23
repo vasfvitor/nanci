@@ -1,6 +1,11 @@
-// Days left before a manifestação deadline at which the UI starts warning.
-export const DEADLINE_WARNING_DAYS = 30
-export const DEADLINE_URGENT_DAYS = 10
+export type DeadlineKind = 'ciencia' | 'conclusiva'
+
+// Days left before a deadline at which a chip turns warning, then urgent.
+// The ciência window is only 10 days, so it gets tighter thresholds.
+export const DEADLINE_THRESHOLDS: Record<DeadlineKind, { warning: number; urgent: number }> = {
+  ciencia: { warning: 10, urgent: 3 },
+  conclusiva: { warning: 30, urgent: 10 },
+}
 
 export const situacaoLabels: Record<string, string> = {
   autorizada: 'Autorizada',
@@ -138,11 +143,20 @@ export function outcomeColor(outcome: string) {
 }
 
 // deadlineColor colors a days-left chip; days comes from daysUntil.
-export function deadlineColor(days: number | null) {
+export function deadlineColor(days: number | null, kind: DeadlineKind) {
   if (days === null) return 'grey'
-  if (days <= DEADLINE_URGENT_DAYS) return 'negative'
-  if (days <= DEADLINE_WARNING_DAYS) return 'warning'
+  const thresholds = DEADLINE_THRESHOLDS[kind]
+  if (days <= thresholds.urgent) return 'negative'
+  if (days <= thresholds.warning) return 'warning'
   return 'grey'
+}
+
+// badgeTextColor picks a readable text color for a filled badge of color.
+// In dark mode every palette color is light, so text is dark; in light mode
+// only warning and grey are too light for white text.
+export function badgeTextColor(color: string, dark: boolean) {
+  if (dark || color === 'warning' || color === 'grey') return 'dark'
+  return 'white'
 }
 
 // deadlineLabel describes the days left from daysUntil.

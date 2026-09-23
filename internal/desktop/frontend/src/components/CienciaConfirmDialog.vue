@@ -4,7 +4,11 @@
       <q-card-section class="row items-center q-gutter-sm">
         <div class="text-h6">Registrar ciência da operação</div>
         <q-space />
-        <q-badge :color="ambienteColor(tpAmb)" class="text-weight-bold q-pa-sm">
+        <q-badge
+          :color="ambienteColor(tpAmb)"
+          :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
+          class="text-weight-bold q-pa-sm"
+        >
           {{ environment || 'Ambiente desconhecido' }}
         </q-badge>
       </q-card-section>
@@ -95,7 +99,7 @@ import {
   formatCurrencyCents,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor } from '@/utils/nfeDisplay'
+import { ambienteColor, badgeTextColor } from '@/utils/nfeDisplay'
 
 const props = defineProps<{
   companyName: string

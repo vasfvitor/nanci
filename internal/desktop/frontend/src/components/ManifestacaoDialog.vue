@@ -4,7 +4,11 @@
       <q-card-section class="row items-center q-gutter-sm">
         <div class="text-h6">Manifestação do destinatário</div>
         <q-space />
-        <q-badge :color="ambienteColor(tpAmb)" class="text-weight-bold q-pa-sm">
+        <q-badge
+          :color="ambienteColor(tpAmb)"
+          :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
+          class="text-weight-bold q-pa-sm"
+        >
           {{ environment || 'Ambiente desconhecido' }}
         </q-badge>
       </q-card-section>
@@ -55,7 +59,11 @@
         <q-card-section class="q-pt-none">
           <div class="row items-center q-gutter-sm">
             <span class="text-weight-medium">Evento:</span>
-            <q-badge :color="nfeEventColor(tipo ?? '')" :label="selectedLabel" />
+            <q-badge
+              :color="nfeEventColor(tipo ?? '')"
+              :text-color="badgeTextColor(nfeEventColor(tipo ?? ''), $q.dark.isActive)"
+              :label="selectedLabel"
+            />
             <span class="text-caption text-app-muted text-mono">{{ tipo }}</span>
           </div>
           <div v-if="tipo === '210240'" class="q-mt-sm">
@@ -100,7 +108,7 @@ import {
   formatCurrencyCents,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, nfeEventColor } from '@/utils/nfeDisplay'
+import { ambienteColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
 import {
   conclusiveBlockReason,
   JUSTIFICATIVA_MAX_LENGTH,

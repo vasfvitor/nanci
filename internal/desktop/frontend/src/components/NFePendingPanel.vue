@@ -40,7 +40,7 @@
             <q-chip
               dense
               square
-              :color="cellProps.row.CienciaOverdue ? 'negative' : deadlineColor(daysUntil(cellProps.row.CienciaDue))"
+              :color="cienciaChipColor(cellProps.row)"
               outline
               :label="cienciaChipLabel(cellProps.row)"
             />
@@ -102,7 +102,7 @@
             <q-chip
               dense
               square
-              :color="deadlineColor(daysUntil(cellProps.row.Deadline))"
+              :color="deadlineColor(daysUntil(cellProps.row.Deadline), 'conclusiva')"
               outline
               :label="conclusiveChipLabel(cellProps.row)"
             />
@@ -213,6 +213,11 @@ const columns: QTableColumn<NFePendingRow>[] = [
 function cienciaChipLabel(row: NFePendingRow) {
   if (row.Expired) return TACIT_CONFIRMATION_LABEL
   return deadlineLabel(daysUntil(row.CienciaDue))
+}
+
+function cienciaChipColor(row: NFePendingRow) {
+  if (row.CienciaOverdue || row.Expired) return 'negative'
+  return deadlineColor(daysUntil(row.CienciaDue), 'ciencia')
 }
 
 function conclusiveChipLabel(row: NFePendingRow) {
