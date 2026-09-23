@@ -362,8 +362,8 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 		Mode:   input.Mode,
 		Source: nfse.SyncSourceNFSe,
 	})
-	if err != nil && errors.Is(err, app.ErrOperationCanceled) {
-		return desktopapi.PullResult{}, fmt.Errorf("ERR_CANCELED: %w", err)
+	if err != nil {
+		return desktopapi.PullResult{}, desktopError(err)
 	}
 	return desktopapi.PullResult{
 		CompanyName:              res.CompanyName,
@@ -384,7 +384,7 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 		EventsSkippedByPolicy:    res.EventsSkippedByPolicy,
 		Errors:                   res.Errors,
 		Duration:                 res.Duration,
-	}, err
+	}, nil
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
@@ -726,4 +726,213 @@ func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResul
 		ResponseDetail:    res.ResponseDetail,
 		StatusExplanation: res.StatusExplanation,
 	}, nil
+}
+
+// --- NF-e ---
+
+func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
+	res, err := a.core.NFe.Pull(a.ctx, input.CNPJ)
+	if err != nil {
+		return desktopapi.PullNFeResult{}, desktopError(err)
+	}
+	return desktopapi.PullNFeResult{
+		CompanyName:      res.CompanyName,
+		CNPJ:             res.CNPJ,
+		Status:           res.Status,
+		StopReason:       res.StopReason,
+		UltNSU:           res.UltNSU,
+		MaxNSU:           res.MaxNSU,
+		CompletasSaved:   res.CompletasSaved,
+		ResumosSaved:     res.ResumosSaved,
+		EventsSaved:      res.EventsSaved,
+		Errors:           res.Errors,
+		NextAllowedAt:    res.NextAllowedAt,
+		RequestsLastHour: res.RequestsLastHour,
+		RequestBudget:    res.RequestBudget,
+		Duration:         res.Duration,
+	}, nil
+}
+
+func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
+	res, err := a.core.NFe.Status(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.NFeStatusResult{}, desktopError(err)
+	}
+	var maxNSU *int64
+	if res.MaxNSU > 0 {
+		maxNSU = &res.MaxNSU
+	}
+	return desktopapi.NFeStatusResult{
+		CompanyName:       res.CompanyName,
+		CNPJ:              res.CNPJ,
+		UF:                res.UF,
+		Environment:       res.Environment,
+		TpAmb:             res.TpAmb,
+		AmbienteLabel:     res.AmbienteLabel,
+		LastCheckedNSU:    res.LastNSU,
+		MaxNSU:            maxNSU,
+		LastSyncAt:        res.LastSyncAt,
+		LastRunStatus:     res.LastRunStatus,
+		LastRunStopReason: res.LastRunStopReason,
+		InitialSyncDoneAt: res.InitialSyncDoneAt,
+		NextAllowedAt:     res.NextAllowedAt,
+		BlockedReason:     res.BlockedReason,
+		RequestsLastHour:  res.RequestsLastHour,
+		RequestBudget:     res.RequestBudget,
+		TotalDestinatario: res.TotalDestinatario,
+		TotalEmitente:     res.TotalEmitente,
+		TotalOutros:       res.TotalOutros,
+		TotalResumos:      res.TotalResumos,
+		TotalCompletas:    res.TotalCompletas,
+		PendingCiencia:    res.PendingCiencia,
+		PendingConclusiva: res.PendingConclusiva,
+		CienciaOverdue:    res.CienciaOverdue,
+	}, nil
+}
+
+func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error) {
+	documents, err := a.core.NFe.ListDocuments(a.ctx, nfeListInput(input))
+	if err != nil {
+		return nil, desktopError(err)
+	}
+	return desktopapi.NFeRows(documents), nil
+}
+
+func (a *App) MarkNFeViewed(input desktopapi.ListNFeInput) (int, error) {
+	count, err := a.core.NFe.MarkViewed(a.ctx, nfeListInput(input))
+	return count, desktopError(err)
+}
+
+func nfeListInput(input desktopapi.ListNFeInput) app.NFeListInput {
+	return app.NFeListInput{
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Situacao:     input.Situacao,
+		Completeness: input.Completeness,
+		Role:         input.Role,
+		Manifestacao: input.Manifestacao,
+		EmitenteCNPJ: input.EmitenteCNPJ,
+		OnlyUnread:   input.OnlyUnread,
+	}
+}
+
+func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {
+	events, err := a.core.NFe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
+	if err != nil {
+		return nil, desktopError(err)
+	}
+	return desktopapi.NFeEvents(events), nil
+}
+
+func (a *App) ListPendingManifestations(input desktopapi.NFePendingInput) ([]desktopapi.NFePendingRow, error) {
+	pending, err := a.core.NFe.ListPendingManifestations(a.ctx, app.NFePendingInput{
+		CNPJ:          input.CNPJ,
+		DueWithinDays: input.DueWithinDays,
+	})
+	if err != nil {
+		return nil, desktopError(err)
+	}
+	return desktopapi.NFePendingRows(pending), nil
+}
+
+// PlanCiencia lists which NF-e RegisterCiencia would send and which it would
+// skip. It sends nothing and asks for no password.
+func (a *App) PlanCiencia(input desktopapi.RegisterCienciaInput) (desktopapi.NFeCienciaPlan, error) {
+	plan, err := a.core.NFe.PlanCiencia(a.ctx, app.NFeCienciaInput{
+		CNPJ:         input.CNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+	})
+	if err != nil {
+		return desktopapi.NFeCienciaPlan{}, desktopError(err)
+	}
+	return desktopapi.NFeCienciaPlanDTO(plan), nil
+}
+
+// RegisterCiencia sends Ciência da Operação for the eligible NF-e. Failures
+// after sending started are reported per chave in the result, not as an error.
+func (a *App) RegisterCiencia(input desktopapi.RegisterCienciaInput) (desktopapi.NFeEventBatchResult, error) {
+	summary, err := a.core.NFe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
+		CNPJ:         input.CNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+	})
+	if err != nil {
+		return desktopapi.NFeEventBatchResult{}, desktopError(err)
+	}
+	return desktopapi.NFeEventBatch(summary), nil
+}
+
+func (a *App) RegisterManifestation(input desktopapi.RegisterManifestationInput) (desktopapi.NFeEventResult, error) {
+	outcome, err := a.core.NFe.RegisterManifestation(a.ctx, app.NFeManifestationInput{
+		CNPJ:          input.CNPJ,
+		ChaveAcesso:   input.ChaveAcesso,
+		Tipo:          input.Tipo,
+		Justificativa: input.Justificativa,
+	})
+	if err != nil {
+		return desktopapi.NFeEventResult{}, desktopError(err)
+	}
+	return desktopapi.NFeEventResult(outcome), nil
+}
+
+func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.ExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	err := a.core.NFe.ExportXML(a.ctx, app.NFeExportXMLInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, desktopError(err)
+	}
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+}
+
+func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	res, err := a.core.NFe.ExportXMLZip(a.ctx, nfeExportInput(input))
+	if err != nil {
+		return desktopapi.NFeExportResult{}, desktopError(err)
+	}
+	return desktopapi.NFeExportResult{
+		ExportResult: desktopapi.ExportResult{
+			OutPath:       res.OutPath,
+			Format:        res.Format,
+			Incremental:   res.Incremental,
+			ExportedCount: res.ExportedCount,
+		},
+		SkippedResumos: res.SkippedResumos,
+	}, nil
+}
+
+// CountPendingNFeExports counts the NF-e an incremental ExportNFeZIP with the
+// same filters would export.
+func (a *App) CountPendingNFeExports(input desktopapi.ExportNFeZIPInput) (int, error) {
+	count, err := a.core.NFe.CountPendingExports(a.ctx, nfeExportInput(input))
+	return count, desktopError(err)
+}
+
+func nfeExportInput(input desktopapi.ExportNFeZIPInput) app.NFeExportInput {
+	return app.NFeExportInput{
+		CNPJ:           input.CNPJ,
+		Competence:     input.Competence,
+		Role:           input.Role,
+		ChavesAcesso:   input.ChavesAcesso,
+		IncludeResumos: input.IncludeResumos,
+		Incremental:    input.Incremental,
+		OutPath:        input.OutPath,
+	}
+}
+
+func (a *App) TestNFeConnection(cnpj string) (desktopapi.ConnectionTestResult, error) {
+	res, err := a.core.NFe.TestConnection(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.ConnectionTestResult{}, desktopError(err)
+	}
+	return desktopapi.ConnectionTestResult(res), nil
 }

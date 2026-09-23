@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -337,4 +338,379 @@ type ConnectionTestResult struct {
 	ResponseCode      string `json:"responseCode"`
 	ResponseDetail    string `json:"responseDetail"`
 	StatusExplanation string `json:"statusExplanation"`
+}
+
+// --- NF-e ---
+//
+// Enum fields carry the app-layer strings unchanged (situação, completude,
+// manifestação, papel, outcome), in Portuguese. Money is in cents. A deadline
+// is nil when the NF-e has neither an authorization nor an issue date.
+
+// ListNFeInput filters a company's NF-e. Empty fields do not filter.
+type ListNFeInput struct {
+	CNPJ         string
+	Competence   string // "YYYY-MM" of the issue date
+	Situacao     string // autorizada | denegada | cancelada
+	Completeness string // resumo | completa
+	Manifestacao string // nenhuma | ciencia | confirmada | desconhecida | nao_realizada
+	Role         string // destinatario | emitente | transportador | autorizado | none
+	EmitenteCNPJ string
+	OnlyUnread   bool
+}
+
+type NFeRow struct {
+	ID               string // company-document relation id
+	DocumentID       string
+	ChaveAcesso      string
+	Serie            string
+	Numero           string
+	IssueDate        time.Time
+	AuthorizedAt     *time.Time
+	Protocolo        string
+	TipoOperacao     string // tpNF: "0" entrada, "1" saída
+	EmitenteCNPJ     string
+	EmitenteName     string
+	EmitenteIE       string
+	DestinatarioCNPJ string
+	DestinatarioName string
+	TotalValue       int64
+	Situacao         string
+	Completeness     string
+	Manifestacao     string
+	ManifestacaoAt   *time.Time
+	CienciaDue       *time.Time
+	ConclusiveDue    *time.Time
+	CompanyRole      string
+	EventCount       int
+	FirstSyncedAt    time.Time
+	LastSyncedAt     time.Time
+	ViewedAt         *time.Time
+}
+
+// NFeKeyInput identifies one of the company's NF-e.
+type NFeKeyInput struct {
+	CNPJ        string
+	ChaveAcesso string
+}
+
+type NFeEvent struct {
+	ID            string
+	TpEvento      string // 110111, 110110, 210210, 210200, 210220, 210240, ...
+	NSeqEvento    int
+	Description   string
+	EventAt       *time.Time
+	RegisteredAt  *time.Time
+	Protocolo     string
+	CStat         string
+	XMotivo       string
+	Justificativa string
+	Correcao      string
+	AutorCNPJ     string
+	Completeness  string
+	Registered    bool
+	SentByNanci   bool
+}
+
+type NFePendingInput struct {
+	CNPJ string
+	// DueWithinDays keeps rows whose conclusive deadline is at most this many
+	// days away; 0 keeps every row.
+	DueWithinDays int
+}
+
+// NFePendingRow is an NF-e still waiting for a manifestação. Only the fields
+// the pending list carries are set: ID, DocumentID, Protocolo, destinatário,
+// EventCount and the sync timestamps stay empty. Pending rows are always
+// authorized NF-e addressed to the company.
+type NFePendingRow struct {
+	NFeRow
+	Kind           string     // sem_ciencia | sem_conclusiva
+	Deadline       *time.Time // the conclusive deadline
+	DaysLeft       int        // negative once past
+	CienciaOverdue bool
+	Expired        bool
+}
+
+// RegisterCienciaInput selects the NF-e for Ciência da Operação.
+type RegisterCienciaInput struct {
+	CNPJ         string
+	ChavesAcesso []string
+}
+
+// NFeCandidate is an NF-e that can receive Ciência da Operação.
+type NFeCandidate struct {
+	ChaveAcesso   string
+	Serie         string
+	Numero        string
+	EmitenteCNPJ  string
+	EmitenteName  string
+	IssueDate     time.Time
+	TotalValue    int64
+	CienciaDue    *time.Time
+	ConclusiveDue *time.Time
+}
+
+// NFeSkipped is a requested chave that will not be sent, and why.
+type NFeSkipped struct {
+	ChaveAcesso string
+	Reason      string
+}
+
+// NFeCienciaPlan is what RegisterCiencia would send, for the confirmation
+// dialog.
+type NFeCienciaPlan struct {
+	Eligible []NFeCandidate
+	Skipped  []NFeSkipped
+	Lotes    int
+}
+
+// RegisterManifestationInput is one conclusive manifestação.
+type RegisterManifestationInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	// Tipo is confirmacao, desconhecimento or nao_realizada, or the tpEvento
+	// code 210200, 210220 or 210240.
+	Tipo string
+	// Justificativa is required (15 to 255 characters) for nao_realizada.
+	Justificativa string
+}
+
+type NFeEventResult struct {
+	ChaveAcesso  string
+	TpEvento     string
+	Status       string // registrada | ja_registrada | rejeitada | nao_enviada
+	CStat        string // empty when SEFAZ did not answer
+	XMotivo      string
+	Protocolo    string
+	RegisteredAt *time.Time
+}
+
+type NFeEventBatchResult struct {
+	Results           []NFeEventResult
+	Requested         int
+	Registered        int
+	AlreadyRegistered int
+	Rejected          int
+	NotSent           int
+	Skipped           []NFeSkipped
+	// Interrupted is the error that stopped the sending; the lotes after it
+	// were not sent. Empty when every lote was sent.
+	Interrupted string
+}
+
+type PullNFeInput struct {
+	CNPJ string
+}
+
+type PullNFeResult struct {
+	CompanyName      string
+	CNPJ             string
+	Status           string // completed | failed | interrupted
+	StopReason       string // caught_up | consumo_indevido | rate_budget | ...
+	UltNSU           int64
+	MaxNSU           int64 // 0 when unknown
+	CompletasSaved   int
+	ResumosSaved     int
+	EventsSaved      int
+	Errors           int
+	NextAllowedAt    *time.Time
+	RequestsLastHour int
+	RequestBudget    int
+	Duration         time.Duration
+}
+
+type NFeStatusResult struct {
+	CompanyName       string
+	CNPJ              string
+	UF                string
+	Environment       string
+	TpAmb             string // "1" produção, "2" homologação
+	AmbienteLabel     string
+	LastCheckedNSU    int64
+	MaxNSU            *int64 // nil when unknown
+	LastSyncAt        *time.Time
+	LastRunStatus     string
+	LastRunStopReason string
+	InitialSyncDoneAt *time.Time
+	NextAllowedAt     *time.Time
+	BlockedReason     string // caught_up | consumo_indevido | rate_budget; empty when not blocked
+	RequestsLastHour  int
+	RequestBudget     int
+	TotalDestinatario int
+	TotalEmitente     int
+	TotalOutros       int
+	TotalResumos      int
+	TotalCompletas    int
+	PendingCiencia    int
+	PendingConclusiva int
+	CienciaOverdue    int
+}
+
+type ExportNFeXMLInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
+}
+
+// ExportNFeZIPInput selects the NF-e for the XML ZIP. The export filters by
+// competência, papel and chaves only.
+type ExportNFeZIPInput struct {
+	CNPJ           string
+	Competence     string
+	Role           string
+	ChavesAcesso   []string
+	IncludeResumos bool
+	Incremental    bool
+	OutPath        string
+}
+
+type NFeExportResult struct {
+	ExportResult
+	SkippedResumos int
+}
+
+func NFeRows(documents []nfe.CompanyDocument) []NFeRow {
+	out := make([]NFeRow, len(documents))
+	for i, document := range documents {
+		deadlines := nfe.ManifestationDeadlines(document.Document)
+		out[i] = NFeRow{
+			ID:               document.RelationID,
+			DocumentID:       document.ID,
+			ChaveAcesso:      string(document.ChaveAcesso),
+			Serie:            document.Serie,
+			Numero:           document.Numero,
+			IssueDate:        document.IssueDate,
+			AuthorizedAt:     document.AuthorizedAt,
+			Protocolo:        document.Protocolo,
+			TipoOperacao:     document.TpNF,
+			EmitenteCNPJ:     document.EmitenteCNPJ,
+			EmitenteName:     document.EmitenteName,
+			EmitenteIE:       document.EmitenteIE,
+			DestinatarioCNPJ: document.DestinatarioCNPJ,
+			DestinatarioName: document.DestinatarioName,
+			TotalValue:       document.TotalValue.Cents(),
+			Situacao:         string(document.Situacao),
+			Completeness:     string(document.Completeness),
+			Manifestacao:     string(document.Manifestacao),
+			ManifestacaoAt:   document.ManifestacaoAt,
+			CienciaDue:       optionalTime(deadlines.CienciaDue),
+			ConclusiveDue:    optionalTime(deadlines.ConclusiveDue),
+			CompanyRole:      string(document.CompanyRole),
+			EventCount:       document.EventCount,
+			FirstSyncedAt:    document.FirstSyncedAt,
+			LastSyncedAt:     document.LastSyncedAt,
+			ViewedAt:         document.ViewedAt,
+		}
+	}
+	return out
+}
+
+func NFeEvents(events []nfe.Event) []NFeEvent {
+	out := make([]NFeEvent, len(events))
+	for i, event := range events {
+		out[i] = NFeEvent{
+			ID:            event.ID,
+			TpEvento:      event.TpEvento,
+			NSeqEvento:    event.NSeqEvento,
+			Description:   event.Description,
+			EventAt:       event.EventAt,
+			RegisteredAt:  event.RegisteredAt,
+			Protocolo:     event.Protocolo,
+			CStat:         event.CStat,
+			XMotivo:       event.XMotivo,
+			Justificativa: event.Justificativa,
+			Correcao:      event.Correcao,
+			AutorCNPJ:     event.AutorCNPJ,
+			Completeness:  string(event.Completeness),
+			Registered:    event.Registered,
+			SentByNanci:   event.SentByNanci,
+		}
+	}
+	return out
+}
+
+func NFePendingRows(pending []app.NFePendingManifestation) []NFePendingRow {
+	out := make([]NFePendingRow, len(pending))
+	for i, p := range pending {
+		conclusiveDue := optionalTime(p.ConclusiveDue)
+		out[i] = NFePendingRow{
+			NFeRow: NFeRow{
+				ChaveAcesso:   p.ChaveAcesso,
+				Serie:         p.Serie,
+				Numero:        p.Numero,
+				IssueDate:     p.IssueDate,
+				AuthorizedAt:  p.AuthorizedAt,
+				EmitenteCNPJ:  p.EmitenteCNPJ,
+				EmitenteName:  p.EmitenteName,
+				TotalValue:    p.TotalValue.Cents(),
+				Situacao:      string(nfe.SituacaoAutorizada),
+				Completeness:  p.Completeness,
+				Manifestacao:  p.Manifestacao,
+				CienciaDue:    optionalTime(p.CienciaDue),
+				ConclusiveDue: conclusiveDue,
+				CompanyRole:   string(nfe.CompanyRoleDestinatario),
+			},
+			Kind:           p.Kind,
+			Deadline:       conclusiveDue,
+			DaysLeft:       p.DaysLeft,
+			CienciaOverdue: p.CienciaOverdue,
+			Expired:        p.Expired,
+		}
+	}
+	return out
+}
+
+func NFeCienciaPlanDTO(plan app.NFeCienciaPlan) NFeCienciaPlan {
+	eligible := make([]NFeCandidate, len(plan.Eligible))
+	for i, c := range plan.Eligible {
+		eligible[i] = NFeCandidate{
+			ChaveAcesso:   c.ChaveAcesso,
+			Serie:         c.Serie,
+			Numero:        c.Numero,
+			EmitenteCNPJ:  c.EmitenteCNPJ,
+			EmitenteName:  c.EmitenteName,
+			IssueDate:     c.IssueDate,
+			TotalValue:    c.TotalValue.Cents(),
+			CienciaDue:    optionalTime(c.CienciaDue),
+			ConclusiveDue: optionalTime(c.ConclusiveDue),
+		}
+	}
+	return NFeCienciaPlan{
+		Eligible: eligible,
+		Skipped:  nfeSkipped(plan.Skipped),
+		Lotes:    plan.Lotes,
+	}
+}
+
+func NFeEventBatch(summary app.NFeManifestationSummary) NFeEventBatchResult {
+	results := make([]NFeEventResult, len(summary.Outcomes))
+	for i, outcome := range summary.Outcomes {
+		results[i] = NFeEventResult(outcome)
+	}
+	return NFeEventBatchResult{
+		Results:           results,
+		Requested:         summary.Requested,
+		Registered:        summary.Registered,
+		AlreadyRegistered: summary.AlreadyRegistered,
+		Rejected:          summary.Rejected,
+		NotSent:           summary.NotSent,
+		Skipped:           nfeSkipped(summary.Skipped),
+		Interrupted:       summary.Interrupted,
+	}
+}
+
+func nfeSkipped(skipped []app.NFeSkipped) []NFeSkipped {
+	out := make([]NFeSkipped, len(skipped))
+	for i, s := range skipped {
+		out[i] = NFeSkipped(s)
+	}
+	return out
+}
+
+// optionalTime returns nil for the zero time.
+func optionalTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }

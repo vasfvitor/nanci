@@ -12,6 +12,8 @@ export function CancelCertPassword(arg1:string):Promise<void>;
 
 export function CountPendingExports(arg1:desktopapi.ExportDocumentsInput):Promise<number>;
 
+export function CountPendingNFeExports(arg1:desktopapi.ExportNFeZIPInput):Promise<number>;
+
 export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
 
 export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
@@ -19,6 +21,10 @@ export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<de
 export function ExportDocuments(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
 
 export function ExportLogs():Promise<string>;
+
+export function ExportNFeXML(arg1:desktopapi.ExportNFeXMLInput):Promise<desktopapi.ExportResult>;
+
+export function ExportNFeZIP(arg1:desktopapi.ExportNFeZIPInput):Promise<desktopapi.NFeExportResult>;
 
 export function ExportXML(arg1:desktopapi.ExportXMLInput):Promise<desktopapi.ExportResult>;
 
@@ -34,15 +40,31 @@ export function ListDocuments(arg1:desktopapi.ListInput):Promise<Array<desktopap
 
 export function ListEventsForDocument(arg1:string):Promise<Array<desktopapi.DocumentEvent>>;
 
+export function ListNFe(arg1:desktopapi.ListNFeInput):Promise<Array<desktopapi.NFeRow>>;
+
+export function ListNFeEvents(arg1:desktopapi.NFeKeyInput):Promise<Array<desktopapi.NFeEvent>>;
+
+export function ListPendingManifestations(arg1:desktopapi.NFePendingInput):Promise<Array<desktopapi.NFePendingRow>>;
+
 export function MarkDocumentsViewed(arg1:desktopapi.ListInput):Promise<number>;
+
+export function MarkNFeViewed(arg1:desktopapi.ListNFeInput):Promise<number>;
 
 export function OpenDataDirectory():Promise<void>;
 
 export function OpenLogsDirectory():Promise<void>;
 
+export function PlanCiencia(arg1:desktopapi.RegisterCienciaInput):Promise<desktopapi.NFeCienciaPlan>;
+
 export function Pull(arg1:desktopapi.PullInput):Promise<desktopapi.PullResult>;
 
+export function PullNFe(arg1:desktopapi.PullNFeInput):Promise<desktopapi.PullNFeResult>;
+
 export function QueryNFSeEvents(arg1:desktopapi.QueryNFSeInput):Promise<string>;
+
+export function RegisterCiencia(arg1:desktopapi.RegisterCienciaInput):Promise<desktopapi.NFeEventBatchResult>;
+
+export function RegisterManifestation(arg1:desktopapi.RegisterManifestationInput):Promise<desktopapi.NFeEventResult>;
 
 export function ResetSyncState(arg1:desktopapi.ResetSyncInput):Promise<void>;
 
@@ -56,9 +78,13 @@ export function SetLogLevel(arg1:string):Promise<void>;
 
 export function Status(arg1:string):Promise<desktopapi.StatusResult>;
 
+export function StatusNFe(arg1:string):Promise<desktopapi.NFeStatusResult>;
+
 export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
 
 export function TestConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
+
+export function TestNFeConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
 
 export function UpdateCompany(arg1:desktopapi.UpdateCompanyInput):Promise<void>;
 

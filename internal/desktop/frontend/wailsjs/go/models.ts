@@ -413,6 +413,46 @@ export namespace desktopapi {
 	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
+	export class ExportNFeXMLInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportNFeXMLInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
+	export class ExportNFeZIPInput {
+	    CNPJ: string;
+	    Competence: string;
+	    Role: string;
+	    ChavesAcesso: string[];
+	    IncludeResumos: boolean;
+	    Incremental: boolean;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportNFeZIPInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Competence = source["Competence"];
+	        this.Role = source["Role"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
+	        this.IncludeResumos = source["IncludeResumos"];
+	        this.Incremental = source["Incremental"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
 	export class ExportResult {
 	    OutPath: string;
 	    Format: string;
@@ -465,6 +505,592 @@ export namespace desktopapi {
 	        this.OnlyUnread = source["OnlyUnread"];
 	    }
 	}
+	export class ListNFeInput {
+	    CNPJ: string;
+	    Competence: string;
+	    Situacao: string;
+	    Completeness: string;
+	    Manifestacao: string;
+	    Role: string;
+	    EmitenteCNPJ: string;
+	    OnlyUnread: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ListNFeInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Competence = source["Competence"];
+	        this.Situacao = source["Situacao"];
+	        this.Completeness = source["Completeness"];
+	        this.Manifestacao = source["Manifestacao"];
+	        this.Role = source["Role"];
+	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
+	        this.OnlyUnread = source["OnlyUnread"];
+	    }
+	}
+	export class NFeCandidate {
+	    ChaveAcesso: string;
+	    Serie: string;
+	    Numero: string;
+	    EmitenteCNPJ: string;
+	    EmitenteName: string;
+	    // Go type: time
+	    IssueDate: any;
+	    TotalValue: number;
+	    // Go type: time
+	    CienciaDue?: any;
+	    // Go type: time
+	    ConclusiveDue?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeCandidate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Serie = source["Serie"];
+	        this.Numero = source["Numero"];
+	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
+	        this.EmitenteName = source["EmitenteName"];
+	        this.IssueDate = this.convertValues(source["IssueDate"], null);
+	        this.TotalValue = source["TotalValue"];
+	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
+	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NFeSkipped {
+	    ChaveAcesso: string;
+	    Reason: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeSkipped(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Reason = source["Reason"];
+	    }
+	}
+	export class NFeCienciaPlan {
+	    Eligible: NFeCandidate[];
+	    Skipped: NFeSkipped[];
+	    Lotes: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeCienciaPlan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Eligible = this.convertValues(source["Eligible"], NFeCandidate);
+	        this.Skipped = this.convertValues(source["Skipped"], NFeSkipped);
+	        this.Lotes = source["Lotes"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NFeEvent {
+	    ID: string;
+	    TpEvento: string;
+	    NSeqEvento: number;
+	    Description: string;
+	    // Go type: time
+	    EventAt?: any;
+	    // Go type: time
+	    RegisteredAt?: any;
+	    Protocolo: string;
+	    CStat: string;
+	    XMotivo: string;
+	    Justificativa: string;
+	    Correcao: string;
+	    AutorCNPJ: string;
+	    Completeness: string;
+	    Registered: boolean;
+	    SentByNanci: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.TpEvento = source["TpEvento"];
+	        this.NSeqEvento = source["NSeqEvento"];
+	        this.Description = source["Description"];
+	        this.EventAt = this.convertValues(source["EventAt"], null);
+	        this.RegisteredAt = this.convertValues(source["RegisteredAt"], null);
+	        this.Protocolo = source["Protocolo"];
+	        this.CStat = source["CStat"];
+	        this.XMotivo = source["XMotivo"];
+	        this.Justificativa = source["Justificativa"];
+	        this.Correcao = source["Correcao"];
+	        this.AutorCNPJ = source["AutorCNPJ"];
+	        this.Completeness = source["Completeness"];
+	        this.Registered = source["Registered"];
+	        this.SentByNanci = source["SentByNanci"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NFeEventResult {
+	    ChaveAcesso: string;
+	    TpEvento: string;
+	    Status: string;
+	    CStat: string;
+	    XMotivo: string;
+	    Protocolo: string;
+	    // Go type: time
+	    RegisteredAt?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeEventResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.TpEvento = source["TpEvento"];
+	        this.Status = source["Status"];
+	        this.CStat = source["CStat"];
+	        this.XMotivo = source["XMotivo"];
+	        this.Protocolo = source["Protocolo"];
+	        this.RegisteredAt = this.convertValues(source["RegisteredAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NFeEventBatchResult {
+	    Results: NFeEventResult[];
+	    Requested: number;
+	    Registered: number;
+	    AlreadyRegistered: number;
+	    Rejected: number;
+	    NotSent: number;
+	    Skipped: NFeSkipped[];
+	    Interrupted: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeEventBatchResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Results = this.convertValues(source["Results"], NFeEventResult);
+	        this.Requested = source["Requested"];
+	        this.Registered = source["Registered"];
+	        this.AlreadyRegistered = source["AlreadyRegistered"];
+	        this.Rejected = source["Rejected"];
+	        this.NotSent = source["NotSent"];
+	        this.Skipped = this.convertValues(source["Skipped"], NFeSkipped);
+	        this.Interrupted = source["Interrupted"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class NFeExportResult {
+	    OutPath: string;
+	    Format: string;
+	    Incremental: boolean;
+	    ExportedCount: number;
+	    SkippedResumos: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeExportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.OutPath = source["OutPath"];
+	        this.Format = source["Format"];
+	        this.Incremental = source["Incremental"];
+	        this.ExportedCount = source["ExportedCount"];
+	        this.SkippedResumos = source["SkippedResumos"];
+	    }
+	}
+	export class NFeKeyInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeKeyInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	    }
+	}
+	export class NFePendingInput {
+	    CNPJ: string;
+	    DueWithinDays: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFePendingInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.DueWithinDays = source["DueWithinDays"];
+	    }
+	}
+	export class NFePendingRow {
+	    ID: string;
+	    DocumentID: string;
+	    ChaveAcesso: string;
+	    Serie: string;
+	    Numero: string;
+	    // Go type: time
+	    IssueDate: any;
+	    // Go type: time
+	    AuthorizedAt?: any;
+	    Protocolo: string;
+	    TipoOperacao: string;
+	    EmitenteCNPJ: string;
+	    EmitenteName: string;
+	    EmitenteIE: string;
+	    DestinatarioCNPJ: string;
+	    DestinatarioName: string;
+	    TotalValue: number;
+	    Situacao: string;
+	    Completeness: string;
+	    Manifestacao: string;
+	    // Go type: time
+	    ManifestacaoAt?: any;
+	    // Go type: time
+	    CienciaDue?: any;
+	    // Go type: time
+	    ConclusiveDue?: any;
+	    CompanyRole: string;
+	    EventCount: number;
+	    // Go type: time
+	    FirstSyncedAt: any;
+	    // Go type: time
+	    LastSyncedAt: any;
+	    // Go type: time
+	    ViewedAt?: any;
+	    Kind: string;
+	    // Go type: time
+	    Deadline?: any;
+	    DaysLeft: number;
+	    CienciaOverdue: boolean;
+	    Expired: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFePendingRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.DocumentID = source["DocumentID"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Serie = source["Serie"];
+	        this.Numero = source["Numero"];
+	        this.IssueDate = this.convertValues(source["IssueDate"], null);
+	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
+	        this.Protocolo = source["Protocolo"];
+	        this.TipoOperacao = source["TipoOperacao"];
+	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
+	        this.EmitenteName = source["EmitenteName"];
+	        this.EmitenteIE = source["EmitenteIE"];
+	        this.DestinatarioCNPJ = source["DestinatarioCNPJ"];
+	        this.DestinatarioName = source["DestinatarioName"];
+	        this.TotalValue = source["TotalValue"];
+	        this.Situacao = source["Situacao"];
+	        this.Completeness = source["Completeness"];
+	        this.Manifestacao = source["Manifestacao"];
+	        this.ManifestacaoAt = this.convertValues(source["ManifestacaoAt"], null);
+	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
+	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
+	        this.CompanyRole = source["CompanyRole"];
+	        this.EventCount = source["EventCount"];
+	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
+	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
+	        this.Kind = source["Kind"];
+	        this.Deadline = this.convertValues(source["Deadline"], null);
+	        this.DaysLeft = source["DaysLeft"];
+	        this.CienciaOverdue = source["CienciaOverdue"];
+	        this.Expired = source["Expired"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NFeRow {
+	    ID: string;
+	    DocumentID: string;
+	    ChaveAcesso: string;
+	    Serie: string;
+	    Numero: string;
+	    // Go type: time
+	    IssueDate: any;
+	    // Go type: time
+	    AuthorizedAt?: any;
+	    Protocolo: string;
+	    TipoOperacao: string;
+	    EmitenteCNPJ: string;
+	    EmitenteName: string;
+	    EmitenteIE: string;
+	    DestinatarioCNPJ: string;
+	    DestinatarioName: string;
+	    TotalValue: number;
+	    Situacao: string;
+	    Completeness: string;
+	    Manifestacao: string;
+	    // Go type: time
+	    ManifestacaoAt?: any;
+	    // Go type: time
+	    CienciaDue?: any;
+	    // Go type: time
+	    ConclusiveDue?: any;
+	    CompanyRole: string;
+	    EventCount: number;
+	    // Go type: time
+	    FirstSyncedAt: any;
+	    // Go type: time
+	    LastSyncedAt: any;
+	    // Go type: time
+	    ViewedAt?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.DocumentID = source["DocumentID"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Serie = source["Serie"];
+	        this.Numero = source["Numero"];
+	        this.IssueDate = this.convertValues(source["IssueDate"], null);
+	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
+	        this.Protocolo = source["Protocolo"];
+	        this.TipoOperacao = source["TipoOperacao"];
+	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
+	        this.EmitenteName = source["EmitenteName"];
+	        this.EmitenteIE = source["EmitenteIE"];
+	        this.DestinatarioCNPJ = source["DestinatarioCNPJ"];
+	        this.DestinatarioName = source["DestinatarioName"];
+	        this.TotalValue = source["TotalValue"];
+	        this.Situacao = source["Situacao"];
+	        this.Completeness = source["Completeness"];
+	        this.Manifestacao = source["Manifestacao"];
+	        this.ManifestacaoAt = this.convertValues(source["ManifestacaoAt"], null);
+	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
+	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
+	        this.CompanyRole = source["CompanyRole"];
+	        this.EventCount = source["EventCount"];
+	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
+	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class NFeStatusResult {
+	    CompanyName: string;
+	    CNPJ: string;
+	    UF: string;
+	    Environment: string;
+	    TpAmb: string;
+	    AmbienteLabel: string;
+	    LastCheckedNSU: number;
+	    MaxNSU?: number;
+	    // Go type: time
+	    LastSyncAt?: any;
+	    LastRunStatus: string;
+	    LastRunStopReason: string;
+	    // Go type: time
+	    InitialSyncDoneAt?: any;
+	    // Go type: time
+	    NextAllowedAt?: any;
+	    BlockedReason: string;
+	    RequestsLastHour: number;
+	    RequestBudget: number;
+	    TotalDestinatario: number;
+	    TotalEmitente: number;
+	    TotalOutros: number;
+	    TotalResumos: number;
+	    TotalCompletas: number;
+	    PendingCiencia: number;
+	    PendingConclusiva: number;
+	    CienciaOverdue: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeStatusResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyName = source["CompanyName"];
+	        this.CNPJ = source["CNPJ"];
+	        this.UF = source["UF"];
+	        this.Environment = source["Environment"];
+	        this.TpAmb = source["TpAmb"];
+	        this.AmbienteLabel = source["AmbienteLabel"];
+	        this.LastCheckedNSU = source["LastCheckedNSU"];
+	        this.MaxNSU = source["MaxNSU"];
+	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
+	        this.LastRunStatus = source["LastRunStatus"];
+	        this.LastRunStopReason = source["LastRunStopReason"];
+	        this.InitialSyncDoneAt = this.convertValues(source["InitialSyncDoneAt"], null);
+	        this.NextAllowedAt = this.convertValues(source["NextAllowedAt"], null);
+	        this.BlockedReason = source["BlockedReason"];
+	        this.RequestsLastHour = source["RequestsLastHour"];
+	        this.RequestBudget = source["RequestBudget"];
+	        this.TotalDestinatario = source["TotalDestinatario"];
+	        this.TotalEmitente = source["TotalEmitente"];
+	        this.TotalOutros = source["TotalOutros"];
+	        this.TotalResumos = source["TotalResumos"];
+	        this.TotalCompletas = source["TotalCompletas"];
+	        this.PendingCiencia = source["PendingCiencia"];
+	        this.PendingConclusiva = source["PendingConclusiva"];
+	        this.CienciaOverdue = source["CienciaOverdue"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PullInput {
 	    CNPJ: string;
 	    Mode: string;
@@ -478,6 +1104,75 @@ export namespace desktopapi {
 	        this.CNPJ = source["CNPJ"];
 	        this.Mode = source["Mode"];
 	    }
+	}
+	export class PullNFeInput {
+	    CNPJ: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PullNFeInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	    }
+	}
+	export class PullNFeResult {
+	    CompanyName: string;
+	    CNPJ: string;
+	    Status: string;
+	    StopReason: string;
+	    UltNSU: number;
+	    MaxNSU: number;
+	    CompletasSaved: number;
+	    ResumosSaved: number;
+	    EventsSaved: number;
+	    Errors: number;
+	    // Go type: time
+	    NextAllowedAt?: any;
+	    RequestsLastHour: number;
+	    RequestBudget: number;
+	    Duration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PullNFeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CompanyName = source["CompanyName"];
+	        this.CNPJ = source["CNPJ"];
+	        this.Status = source["Status"];
+	        this.StopReason = source["StopReason"];
+	        this.UltNSU = source["UltNSU"];
+	        this.MaxNSU = source["MaxNSU"];
+	        this.CompletasSaved = source["CompletasSaved"];
+	        this.ResumosSaved = source["ResumosSaved"];
+	        this.EventsSaved = source["EventsSaved"];
+	        this.Errors = source["Errors"];
+	        this.NextAllowedAt = this.convertValues(source["NextAllowedAt"], null);
+	        this.RequestsLastHour = source["RequestsLastHour"];
+	        this.RequestBudget = source["RequestBudget"];
+	        this.Duration = source["Duration"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class PullResult {
 	    CompanyName: string;
@@ -537,6 +1232,38 @@ export namespace desktopapi {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CompanyCNPJ = source["CompanyCNPJ"];
 	        this.ChaveAcesso = source["ChaveAcesso"];
+	    }
+	}
+	export class RegisterCienciaInput {
+	    CNPJ: string;
+	    ChavesAcesso: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new RegisterCienciaInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
+	    }
+	}
+	export class RegisterManifestationInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	    Tipo: string;
+	    Justificativa: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RegisterManifestationInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Tipo = source["Tipo"];
+	        this.Justificativa = source["Justificativa"];
 	    }
 	}
 	export class ResetSyncInput {

@@ -22,6 +22,10 @@ export function CountPendingExports(arg1) {
   return window['go']['main']['App']['CountPendingExports'](arg1);
 }
 
+export function CountPendingNFeExports(arg1) {
+  return window['go']['main']['App']['CountPendingNFeExports'](arg1);
+}
+
 export function ExportDANFSe(arg1) {
   return window['go']['main']['App']['ExportDANFSe'](arg1);
 }
@@ -36,6 +40,14 @@ export function ExportDocuments(arg1) {
 
 export function ExportLogs() {
   return window['go']['main']['App']['ExportLogs']();
+}
+
+export function ExportNFeXML(arg1) {
+  return window['go']['main']['App']['ExportNFeXML'](arg1);
+}
+
+export function ExportNFeZIP(arg1) {
+  return window['go']['main']['App']['ExportNFeZIP'](arg1);
 }
 
 export function ExportXML(arg1) {
@@ -66,8 +78,24 @@ export function ListEventsForDocument(arg1) {
   return window['go']['main']['App']['ListEventsForDocument'](arg1);
 }
 
+export function ListNFe(arg1) {
+  return window['go']['main']['App']['ListNFe'](arg1);
+}
+
+export function ListNFeEvents(arg1) {
+  return window['go']['main']['App']['ListNFeEvents'](arg1);
+}
+
+export function ListPendingManifestations(arg1) {
+  return window['go']['main']['App']['ListPendingManifestations'](arg1);
+}
+
 export function MarkDocumentsViewed(arg1) {
   return window['go']['main']['App']['MarkDocumentsViewed'](arg1);
+}
+
+export function MarkNFeViewed(arg1) {
+  return window['go']['main']['App']['MarkNFeViewed'](arg1);
 }
 
 export function OpenDataDirectory() {
@@ -78,12 +106,28 @@ export function OpenLogsDirectory() {
   return window['go']['main']['App']['OpenLogsDirectory']();
 }
 
+export function PlanCiencia(arg1) {
+  return window['go']['main']['App']['PlanCiencia'](arg1);
+}
+
 export function Pull(arg1) {
   return window['go']['main']['App']['Pull'](arg1);
 }
 
+export function PullNFe(arg1) {
+  return window['go']['main']['App']['PullNFe'](arg1);
+}
+
 export function QueryNFSeEvents(arg1) {
   return window['go']['main']['App']['QueryNFSeEvents'](arg1);
+}
+
+export function RegisterCiencia(arg1) {
+  return window['go']['main']['App']['RegisterCiencia'](arg1);
+}
+
+export function RegisterManifestation(arg1) {
+  return window['go']['main']['App']['RegisterManifestation'](arg1);
 }
 
 export function ResetSyncState(arg1) {
@@ -110,12 +154,20 @@ export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
 }
 
+export function StatusNFe(arg1) {
+  return window['go']['main']['App']['StatusNFe'](arg1);
+}
+
 export function SubmitCertPassword(arg1, arg2) {
   return window['go']['main']['App']['SubmitCertPassword'](arg1, arg2);
 }
 
 export function TestConnection(arg1) {
   return window['go']['main']['App']['TestConnection'](arg1);
+}
+
+export function TestNFeConnection(arg1) {
+  return window['go']['main']['App']['TestNFeConnection'](arg1);
 }
 
 export function UpdateCompany(arg1) {
