@@ -202,11 +202,9 @@ func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, ite
 			return ItemOutcome{}, fmt.Errorf("check local document for event failed: %w", err)
 		}
 		if !hasLocalDocument {
-			outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
-				return ItemOutcome{SkippedByPolicy: true, IsEvent: true}, nil
-			})
+			outcome, err := commitSkip(ctx, commit, true)
 			if err != nil {
-				return ItemOutcome{}, fmt.Errorf("persist skipped event progress failed: %w", err)
+				return ItemOutcome{}, err
 			}
 			s.log.InfoContext(ctx, "Evento NF-e descartado por não possuir documento local correspondente",
 				slog.Int64("nsu", item.NSU),
@@ -252,17 +250,12 @@ func (s *nfeSource) processUnsupported(ctx context.Context, item Item, payload g
 // parseError keeps the XML that failed to parse and wraps err so the loop
 // can skip the item after repeated failures.
 func (s *nfeSource) parseError(ctx context.Context, op string, item Item, payload gzipxml.Decoded, err error) error {
-	rawHash := payload.SHA256
-	if storeErr := s.xml.Store(payload.SHA256, payload.XML); storeErr != nil {
-		s.log.WarnContext(ctx, "Falha ao salvar XML não interpretado", slog.Any("err", storeErr))
-		rawHash = ""
-	}
 	return &ProcessingError{
 		Op:         op,
 		NSU:        item.NSU,
 		Schema:     item.Schema,
 		XMLPreview: xmlPreview(payload.XML),
-		RawHash:    rawHash,
+		RawHash:    keepUnparsedXML(ctx, s.xml, s.log, payload),
 		Err:        err,
 	}
 }

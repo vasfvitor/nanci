@@ -3,9 +3,13 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/files"
+	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -62,6 +66,32 @@ type Source interface {
 	// the checkpoint advances. Decode and parse failures are returned as
 	// *ProcessingError.
 	ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error)
+}
+
+// commitSkip commits an item skipped by policy so the checkpoint moves past it.
+func commitSkip(ctx context.Context, commit CommitFunc, isEvent bool) (ItemOutcome, error) {
+	outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
+		return ItemOutcome{SkippedByPolicy: true, IsEvent: isEvent}, nil
+	})
+	if err != nil {
+		what := "document"
+		if isEvent {
+			what = "event"
+		}
+		return ItemOutcome{}, fmt.Errorf("persist skipped %s progress failed: %w", what, err)
+	}
+	return outcome, nil
+}
+
+// keepUnparsedXML saves the XML of an item that failed to parse, so it can
+// be inspected once the loop gives up on it. It returns the blob hash, or ""
+// when the save failed.
+func keepUnparsedXML(ctx context.Context, xml files.XMLStore, log *slog.Logger, payload gzipxml.Decoded) string {
+	if err := xml.Store(payload.SHA256, payload.XML); err != nil {
+		log.WarnContext(ctx, "Falha ao salvar XML não interpretado", slog.Any("err", err))
+		return ""
+	}
+	return payload.SHA256
 }
 
 // shouldSkipDocumentByInitialPolicy reports whether a document issued at

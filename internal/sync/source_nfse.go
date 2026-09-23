@@ -122,17 +122,15 @@ func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company,
 			DocType:    item.DocType,
 			EventType:  item.EventType,
 			XMLPreview: xmlPreview(payload.XML),
-			RawHash:    s.keepUnparsedXML(ctx, payload),
+			RawHash:    keepUnparsedXML(ctx, s.xml, s.log, payload),
 			Err:        err,
 		}
 	}
 
 	if shouldSkipDocumentByInitialPolicy(company, src, doc.IssueDate) {
-		outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
-			return ItemOutcome{SkippedByPolicy: true}, nil
-		})
+		outcome, err := commitSkip(ctx, commit, false)
 		if err != nil {
-			return ItemOutcome{}, fmt.Errorf("persist skipped document progress failed: %w", err)
+			return ItemOutcome{}, err
 		}
 		s.log.InfoContext(ctx, "Documento descartado pela política inicial de histórico",
 			slog.Int64("nsu", item.NSU),
@@ -183,7 +181,7 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 			DocType:    item.DocType,
 			EventType:  item.EventType,
 			XMLPreview: xmlPreview(payload.XML),
-			RawHash:    s.keepUnparsedXML(ctx, payload),
+			RawHash:    keepUnparsedXML(ctx, s.xml, s.log, payload),
 			Err:        err,
 		}
 	}
@@ -193,11 +191,9 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 		return ItemOutcome{}, fmt.Errorf("check local document for event failed: %w", err)
 	}
 	if !hasLocalDocument {
-		outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
-			return ItemOutcome{SkippedByPolicy: true, IsEvent: true}, nil
-		})
+		outcome, err := commitSkip(ctx, commit, true)
 		if err != nil {
-			return ItemOutcome{}, fmt.Errorf("persist skipped event progress failed: %w", err)
+			return ItemOutcome{}, err
 		}
 		s.log.InfoContext(ctx, "Evento descartado por não possuir documento local correspondente",
 			slog.Int64("nsu", item.NSU),
@@ -226,15 +222,4 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 		return ItemOutcome{}, fmt.Errorf("db apply event failed: %w", err)
 	}
 	return outcome, nil
-}
-
-// keepUnparsedXML saves the XML of an item that failed to parse, so it can
-// be inspected once the loop gives up on it. It returns the blob hash, or ""
-// when the save failed.
-func (s *nfseSource) keepUnparsedXML(ctx context.Context, payload gzipxml.Decoded) string {
-	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
-		s.log.WarnContext(ctx, "Falha ao salvar XML não interpretado", slog.Any("err", err))
-		return ""
-	}
-	return payload.SHA256
 }
