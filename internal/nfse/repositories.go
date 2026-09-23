@@ -24,6 +24,7 @@ type DocumentExportMark struct {
 
 type StartRunParams struct {
 	CompanyID         CompanyID
+	Source            SyncSource
 	CredentialID      CredentialID
 	Environment       Environment
 	CredentialCNPJ    string
@@ -36,6 +37,7 @@ type StartRunParams struct {
 
 type GetOrCreateSyncStateParams struct {
 	CompanyID        CompanyID
+	Source           SyncSource
 	Environment      Environment
 	ConsultationCNPJ string
 }
@@ -69,6 +71,7 @@ type ApplyEventAndProgressParams struct {
 
 type PersistSyncProgressParams struct {
 	CompanyID             CompanyID
+	Source                SyncSource
 	RunID                 SyncRunID
 	Environment           Environment
 	ConsultationCNPJ      string
@@ -106,8 +109,12 @@ type SyncSnapshot struct {
 
 type ResetSyncStateParams struct {
 	CompanyID CompanyID
+	Source    SyncSource
 }
 
+// HasSyncStateParams asks whether the company has a sync cursor. Source is
+// optional: when empty, a cursor of any source counts.
 type HasSyncStateParams struct {
 	CompanyID CompanyID
+	Source    SyncSource
 }

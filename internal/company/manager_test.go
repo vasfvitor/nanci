@@ -37,7 +37,7 @@ func (f *fakeCred) CreateCredential(ctx context.Context, cred *nfse.Credential) 
 
 type fakeSync struct{}
 
-func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error) {
+func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error) {
 	return nfse.SyncSnapshot{}, nil
 }
 func (f *fakeSync) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {

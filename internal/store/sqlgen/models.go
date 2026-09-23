@@ -34,6 +34,24 @@ type CompanyDocument struct {
 	LastSeenNsu      sql.NullInt64
 	FirstSyncedAt    string
 	LastSyncedAt     string
+	ViewedAt         sql.NullString
+}
+
+type CompanyDocumentExportMark struct {
+	CompanyID    string
+	DocumentID   string
+	ExportKind   string
+	ExportedHash string
+	ExportedAt   string
+}
+
+type CompanySyncSource struct {
+	CompanyID              string
+	Source                 string
+	InitialSyncCompletedAt sql.NullString
+	BlockedUntil           sql.NullString
+	BlockedReason          sql.NullString
+	UpdatedAt              string
 }
 
 type Credential struct {
@@ -95,6 +113,13 @@ type Event struct {
 	CreatedAt              string
 }
 
+type SyncRequest struct {
+	ID          int64
+	CompanyID   string
+	Source      string
+	RequestedAt string
+}
+
 type SyncRun struct {
 	ID                    string
 	CompanyID             string
@@ -116,4 +141,22 @@ type SyncRun struct {
 	LastFoundNsu          sql.NullInt64
 	Status                string
 	StopReason            sql.NullString
+	Source                string
+}
+
+type SyncState struct {
+	CompanyID        string
+	Source           string
+	Environment      string
+	ConsultationCnpj string
+	LastCheckedNsu   int64
+	LastFoundNsu     sql.NullInt64
+	MaxNsu           sql.NullInt64
+	LastEmptyStreak  int64
+	LastSuccessAt    sql.NullString
+	LastErrorAt      sql.NullString
+	LastErrorCode    sql.NullString
+	LastErrorMessage sql.NullString
+	CreatedAt        string
+	UpdatedAt        string
 }

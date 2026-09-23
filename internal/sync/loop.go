@@ -53,11 +53,16 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 	state, err := s.store.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
+		Source:           nfse.SyncSourceNFSe,
 		Environment:      company.Environment,
 		ConsultationCNPJ: company.CNPJ,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to load sync state: %w", err)
+	}
+	sourceState, err := s.store.SourceState(ctx, company.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		return fmt.Errorf("failed to load source state: %w", err)
 	}
 	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
 		slog.String("cnpj", company.CNPJ),
@@ -66,6 +71,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 
 	syncRun, err := s.store.StartRun(ctx, nfse.StartRunParams{
 		CompanyID:         company.ID,
+		Source:            nfse.SyncSourceNFSe,
 		CredentialID:      credential.ID,
 		Environment:       company.Environment,
 		CredentialCNPJ:    credential.OwnerCNPJ,
@@ -94,6 +100,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		consecutiveEmpty:       0,
 		errorsCount:            0,
 		initialEmptyStreak:     state.LastEmptyStreak,
+		initialSyncDone:        sourceState.InitialSyncDoneAt != nil,
 	}
 	finalStatus := nfse.SyncStatusCompleted
 	stopReason := nfse.SyncStopReasonEmptyLimit
@@ -186,6 +193,7 @@ type syncRuntimeState struct {
 	consecutiveEmpty       int
 	errorsCount            int
 	initialEmptyStreak     int
+	initialSyncDone        bool
 }
 
 type syncBatchResult struct {
@@ -261,6 +269,7 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 
 		progressParams := nfse.PersistSyncProgressParams{
 			CompanyID:             company.ID,
+			Source:                nfse.SyncSourceNFSe,
 			RunID:                 runID,
 			Environment:           company.Environment,
 			ConsultationCNPJ:      company.CNPJ,
@@ -280,13 +289,14 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		if env.IsEvent() {
 			processResult, processErr = s.processEvent(ctx, company, env, progressParams)
 		} else {
-			processResult, processErr = s.processDocument(ctx, company, env, progressParams)
+			processResult, processErr = s.processDocument(ctx, company, runState.initialSyncDone, env, progressParams)
 		}
 
 		if processErr != nil {
 			runState.errorsCount++
 			if persistErr := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
 				CompanyID:             company.ID,
+				Source:                nfse.SyncSourceNFSe,
 				RunID:                 runID,
 				Environment:           company.Environment,
 				ConsultationCNPJ:      company.CNPJ,
@@ -338,6 +348,7 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		runState.consecutiveEmpty++
 		if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
 			CompanyID:             company.ID,
+			Source:                nfse.SyncSourceNFSe,
 			RunID:                 runID,
 			Environment:           company.Environment,
 			ConsultationCNPJ:      company.CNPJ,
@@ -358,8 +369,8 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 				code:       "persist_error",
 			}
 		}
-		if company.InitialSyncDoneAt == nil {
-			if err := s.store.MarkInitialSyncCompleted(ctx, company.ID); err != nil {
+		if !runState.initialSyncDone {
+			if err := s.store.MarkInitialSyncCompleted(ctx, company.ID, nfse.SyncSourceNFSe); err != nil {
 				return syncBatchResult{}, &syncFailure{
 					err:        fmt.Errorf("failed to mark initial sync completed: %w", err),
 					status:     nfse.SyncStatusFailed,
@@ -367,14 +378,14 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 					code:       "persist_error",
 				}
 			}
-			now := time.Now().UTC()
-			company.InitialSyncDoneAt = &now
+			runState.initialSyncDone = true
 		}
 	} else {
 		runState.consecutiveEmpty = 0
 		if nextCursorLastNSU == cursorLastNSU {
 			if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
 				CompanyID:             company.ID,
+				Source:                nfse.SyncSourceNFSe,
 				RunID:                 runID,
 				Environment:           company.Environment,
 				ConsultationCNPJ:      company.CNPJ,
@@ -422,6 +433,7 @@ func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncR
 		return
 	}
 	progress(nfse.ProgressEvent{
+		Source:                   nfse.SyncSourceNFSe,
 		CurrentNSU:               cursorLastNSU,
 		MaxNSU:                   resp.MaxNSU,
 		LastProcessedNSU:         runState.lastProcessedNSU,
@@ -470,7 +482,7 @@ type envelopeProcessResult struct {
 }
 
 // processDocument handles the decoding, parsing, and saving of a single document.
-func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (envelopeProcessResult, error) {
+func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, initialSyncDone bool, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (envelopeProcessResult, error) {
 	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", env.NSU))
 
 	payload, err := gzipxml.Decode(env.PayloadBase64(), gzipxml.Limits{
@@ -494,7 +506,7 @@ func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company
 		}
 	}
 
-	if shouldSkipDocumentByInitialPolicy(company, doc.IssueDate) {
+	if shouldSkipDocumentByInitialPolicy(company, initialSyncDone, doc.IssueDate) {
 		if err := s.store.PersistProgress(ctx, progressParams); err != nil {
 			return envelopeProcessResult{}, fmt.Errorf("persist skipped document progress failed: %w", err)
 		}
@@ -591,8 +603,8 @@ func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, e
 	return envelopeProcessResult{inserted: outcome.Inserted, isEvent: true}, nil
 }
 
-func shouldSkipDocumentByInitialPolicy(company *nfse.Company, issueDate time.Time) bool {
-	if company.InitialSyncDoneAt != nil {
+func shouldSkipDocumentByInitialPolicy(company *nfse.Company, initialSyncDone bool, issueDate time.Time) bool {
+	if initialSyncDone {
 		return false
 	}
 	if company.SyncStartPolicy == "" || company.SyncStartPolicy == nfse.SyncStartPolicyAll {

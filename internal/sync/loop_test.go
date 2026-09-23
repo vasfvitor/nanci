@@ -63,11 +63,11 @@ func (h *testHelper) setSyncState(nsu int64, lastFound *int64, streak int) {
 	}
 	_, err := h.db.ExecContext(context.Background(), `
 		INSERT INTO sync_state (
-			company_id, environment, consultation_cnpj,
+			company_id, source, environment, consultation_cnpj,
 			last_checked_nsu, last_found_nsu, last_empty_streak,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(company_id, environment, consultation_cnpj) DO UPDATE SET
+		) VALUES (?, 'nfse', ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(company_id, source, environment, consultation_cnpj) DO UPDATE SET
 			last_checked_nsu = excluded.last_checked_nsu,
 			last_found_nsu = excluded.last_found_nsu,
 			last_empty_streak = excluded.last_empty_streak,
@@ -86,7 +86,7 @@ func (h *testHelper) assertSyncState(wantNSU int64, wantLastFound *int64, wantEm
 	err := h.db.QueryRowContext(context.Background(), `
 		SELECT last_checked_nsu, last_found_nsu, last_empty_streak
 		FROM sync_state
-		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
+		WHERE company_id = ? AND source = 'nfse' AND environment = ? AND consultation_cnpj = ?
 	`, string(h.company.ID), string(h.company.Environment), h.company.CNPJ).Scan(&nsu, &lastFound, &streak)
 	if err != nil {
 		h.t.Fatalf("failed to query sync_state: %v", err)
@@ -261,6 +261,14 @@ func (h *testHelper) assertInitialSyncCompleted(wantCompleted bool) {
 	if (completedAt.Valid) != wantCompleted {
 		h.t.Errorf("initial_sync_completed_at valid = %t, want %t", completedAt.Valid, wantCompleted)
 	}
+
+	sourceState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		h.t.Fatalf("failed to load nfse source state: %v", err)
+	}
+	if (sourceState.InitialSyncDoneAt != nil) != wantCompleted {
+		h.t.Errorf("nfse source initial sync done = %t, want %t", sourceState.InitialSyncDoneAt != nil, wantCompleted)
+	}
 }
 
 func (h *testHelper) markInitialSyncDone(t *testing.T, doneAt time.Time) {
@@ -272,6 +280,13 @@ func (h *testHelper) markInitialSyncDone(t *testing.T, doneAt time.Time) {
 	`, doneAt.Format(time.RFC3339), string(h.company.ID))
 	if err != nil {
 		h.t.Fatalf("failed to mark initial sync done: %v", err)
+	}
+	_, err = h.db.ExecContext(context.Background(), `
+		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
+		VALUES (?, 'nfse', ?, ?)
+	`, string(h.company.ID), doneAt.Format(time.RFC3339), doneAt.Format(time.RFC3339))
+	if err != nil {
+		h.t.Fatalf("failed to mark nfse source initial sync done: %v", err)
 	}
 	h.company.InitialSyncDoneAt = &doneAt
 }

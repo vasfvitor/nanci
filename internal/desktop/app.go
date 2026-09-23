@@ -355,8 +355,9 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 
 func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 	res, err := a.core.SyncManager.Pull(a.ctx, nsync.PullInput{
-		CNPJ: input.CNPJ,
-		Mode: input.Mode,
+		CNPJ:   input.CNPJ,
+		Mode:   input.Mode,
+		Source: nfse.SyncSourceNFSe,
 	})
 	if err != nil && errors.Is(err, app.ErrOperationCanceled) {
 		return desktopapi.PullResult{}, fmt.Errorf("ERR_CANCELED: %w", err)
@@ -385,7 +386,8 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
 	return a.core.SyncManager.ResetSyncState(a.ctx, nsync.ResetSyncInput{
-		CNPJ: input.CompanyCNPJ,
+		CNPJ:   input.CompanyCNPJ,
+		Source: nfse.SyncSourceNFSe,
 	})
 }
 

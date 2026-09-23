@@ -165,3 +165,13 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		t.Fatalf("DocumentsFound = %d, want 1", result.DocumentsFound)
 	}
 }
+
+func TestPullRejectsSourcesWithoutALoop(t *testing.T) {
+	mgr := &Manager{Log: slog.New(slog.DiscardHandler)}
+
+	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFe, "bogus"} {
+		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: "11222333000181", Source: source}); err == nil {
+			t.Errorf("Pull with source %q succeeded, want an error", source)
+		}
+	}
+}

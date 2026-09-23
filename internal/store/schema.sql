@@ -103,11 +103,11 @@ CREATE TABLE sync_runs (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES companies(id),
     credential_id TEXT NOT NULL REFERENCES credentials(id),
-    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
+    environment TEXT NOT NULL DEFAULT 'producao_restrita',
     credential_cnpj TEXT NOT NULL,
     consultation_cnpj TEXT NOT NULL,
     consultation_basis TEXT NOT NULL CHECK (consultation_basis IN ('exact_certificate_cnpj', 'same_root_certificate')),
-    mode TEXT NOT NULL CHECK (mode IN ('normal', 'first_setup')),
+    mode TEXT NOT NULL DEFAULT 'normal',
     started_at TEXT NOT NULL,
     finished_at TEXT,
     from_nsu INTEGER NOT NULL,
@@ -119,15 +119,20 @@ CREATE TABLE sync_runs (
     errors_count INTEGER NOT NULL DEFAULT 0,
     last_found_nsu INTEGER,
     status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed', 'interrupted')),
-    stop_reason TEXT CHECK (stop_reason IN ('empty_limit', 'context_canceled', 'fetch_error', 'process_error'))
+    stop_reason TEXT,
+    source TEXT NOT NULL DEFAULT 'nfse' CHECK (source IN ('nfse', 'nfe', 'cte'))
 );
+
+CREATE UNIQUE INDEX idx_sync_runs_running ON sync_runs(company_id, source) WHERE status = 'running';
 
 CREATE TABLE sync_state (
     company_id TEXT NOT NULL REFERENCES companies(id),
-    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
+    source TEXT NOT NULL CHECK (source IN ('nfse', 'nfe', 'cte')),
+    environment TEXT NOT NULL,
     consultation_cnpj TEXT NOT NULL,
     last_checked_nsu INTEGER NOT NULL DEFAULT 0,
     last_found_nsu INTEGER,
+    max_nsu INTEGER,
     last_empty_streak INTEGER NOT NULL DEFAULT 0,
     last_success_at TEXT,
     last_error_at TEXT,
@@ -135,7 +140,24 @@ CREATE TABLE sync_state (
     last_error_message TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    PRIMARY KEY (company_id, environment, consultation_cnpj)
+    PRIMARY KEY (company_id, source, environment, consultation_cnpj)
 );
 
-CREATE UNIQUE INDEX idx_sync_runs_running ON sync_runs(company_id) WHERE status = 'running';
+CREATE TABLE company_sync_sources (
+    company_id TEXT NOT NULL REFERENCES companies(id),
+    source TEXT NOT NULL CHECK (source IN ('nfse', 'nfe', 'cte')),
+    initial_sync_completed_at TEXT,
+    blocked_until TEXT,
+    blocked_reason TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (company_id, source)
+);
+
+CREATE TABLE sync_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id TEXT NOT NULL REFERENCES companies(id),
+    source TEXT NOT NULL,
+    requested_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_sync_requests_window ON sync_requests(company_id, source, requested_at);

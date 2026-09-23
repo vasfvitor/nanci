@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sync"
 )
 
@@ -22,7 +23,8 @@ func newPullCommand(env CommandEnv) *cobra.Command {
 			defer cleanup()
 
 			result, err := application.SyncManager.Pull(cmd.Context(), sync.PullInput{
-				CNPJ: cnpjFlag,
+				CNPJ:   cnpjFlag,
+				Source: nfse.SyncSourceNFSe,
 			})
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)

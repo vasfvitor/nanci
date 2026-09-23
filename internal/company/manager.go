@@ -32,7 +32,7 @@ type credentialProvider interface {
 }
 
 type syncProvider interface {
-	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
+	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
 	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
 }
 
@@ -118,7 +118,7 @@ func (m *Manager) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 		return nil, fmt.Errorf("listar empresas: %w", err)
 	}
 	for i := range companies {
-		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, companies[i].Environment, companies[i].CNPJ)
+		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, nfse.SyncSourceNFSe, companies[i].Environment, companies[i].CNPJ)
 		if snapErr != nil {
 			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
 		}

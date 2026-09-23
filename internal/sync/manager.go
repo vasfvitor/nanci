@@ -78,6 +78,8 @@ type Manager struct {
 type PullInput struct {
 	CNPJ string
 	Mode string
+	// Source is the distribution service to pull from. Empty means NFS-e.
+	Source nfse.SyncSource
 }
 
 type PullResult struct {
@@ -109,6 +111,13 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	mode, err := parsePullMode(input.Mode)
 	if err != nil {
 		return PullResult{}, err
+	}
+	source, err := resolveSyncSource(input.Source)
+	if err != nil {
+		return PullResult{}, err
+	}
+	if source != nfse.SyncSourceNFSe {
+		return PullResult{}, fmt.Errorf("origem de sincronização %q ainda não suportada", source)
 	}
 
 	m.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
@@ -209,7 +218,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 	result.Duration = time.Since(start)
 
-	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, source, company.Environment, company.CNPJ)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
@@ -236,6 +245,15 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	)
 
 	return result, nil
+}
+
+// resolveSyncSource defaults an empty source to NFS-e, the source every
+// caller used before sources existed.
+func resolveSyncSource(source nfse.SyncSource) (nfse.SyncSource, error) {
+	if source == "" {
+		return nfse.SyncSourceNFSe, nil
+	}
+	return nfse.ParseSyncSource(string(source))
 }
 
 func parsePullMode(raw string) (nfse.SyncMode, error) {
@@ -301,7 +319,7 @@ func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, err
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}
-	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, company.Environment, company.CNPJ)
+	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, nfse.SyncSourceNFSe, company.Environment, company.CNPJ)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
@@ -361,10 +379,16 @@ func validateCertificatePath(path string) error {
 
 type ResetSyncInput struct {
 	CNPJ string
+	// Source is the distribution service whose cursor is reset. Empty means NFS-e.
+	Source nfse.SyncSource
 }
 
 func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
 	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	if err != nil {
+		return err
+	}
+	source, err := resolveSyncSource(input.Source)
 	if err != nil {
 		return err
 	}
@@ -375,6 +399,7 @@ func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) erro
 
 	if err := m.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{
 		CompanyID: company.ID,
+		Source:    source,
 	}); err != nil {
 		return fmt.Errorf("resetar estado de sincronização: %w", err)
 	}
