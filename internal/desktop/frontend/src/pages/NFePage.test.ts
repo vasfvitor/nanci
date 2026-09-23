@@ -26,7 +26,8 @@ vi.mock('quasar', () => ({
   date: { formatDate: vi.fn(() => '2024-09') },
 }))
 
-vi.mock('@/platform/wails/client', () => ({
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   wailsErrorCode: () => '',
   desktopClient: {
     listCompanies: vi.fn(),

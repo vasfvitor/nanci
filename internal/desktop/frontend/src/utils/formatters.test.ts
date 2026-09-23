@@ -7,6 +7,7 @@ import {
   formatDate,
   formatNFeNumber,
   formatTime,
+  normalizeText,
   parseDate,
 } from './formatters'
 import {
@@ -30,6 +31,12 @@ describe('formatters', () => {
   it('handles invalid and empty dates', () => {
     expect(formatDate('not-a-date')).toBe('')
     expect(formatDate(null)).toBe('')
+  })
+
+  it('normalizes text for accent- and case-insensitive search', () => {
+    expect(normalizeText('  São Paulo ')).toBe('sao paulo')
+    expect(normalizeText(null)).toBe('')
+    expect(normalizeText(123)).toBe('123')
   })
 
   it('parses backend dates and rejects empty or invalid values', () => {

@@ -15,6 +15,16 @@ export function formatCpfCnpj(value: string | null | undefined) {
   return value
 }
 
+// normalizeText folds case and accents, so a text search matches "sao" to
+// "São".
+export function normalizeText(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim()
+}
+
 // parseDate turns a backend date into a Date, or null when value is empty or
 // invalid.
 export function parseDate(value: string | Date | null | undefined): Date | null {

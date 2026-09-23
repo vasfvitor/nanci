@@ -1,6 +1,7 @@
 import { beforeEach, expect, vi } from 'vitest'
 import {
   desktopClient,
+  errorMessage,
   mapCompanySummary,
   mapCredentialSummary,
   mapDocumentEvent,
@@ -603,5 +604,14 @@ describe('Wails error codes', () => {
     expect((error as WailsClientError).message).toBe(message)
     expect(wailsErrorCode(error)).toBe(code)
     expect(wailsErrorCode(new Error(message))).toBe(code)
+  })
+})
+
+describe('errorMessage', () => {
+  it('reads the message of errors and stringifies anything else', () => {
+    expect(errorMessage(new WailsClientError('ERR_CANCELED: cancelado'))).toBe('ERR_CANCELED: cancelado')
+    expect(errorMessage(new Error('boom'))).toBe('boom')
+    expect(errorMessage('texto')).toBe('texto')
+    expect(errorMessage(undefined)).toBe('undefined')
   })
 })

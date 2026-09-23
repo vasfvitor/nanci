@@ -418,7 +418,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { copyToClipboard, date, useQuasar, type QTableColumn } from 'quasar'
+import { date, useQuasar, type QTableColumn } from 'quasar'
 import CienciaConfirmDialog from '../components/CienciaConfirmDialog.vue'
 import ManifestacaoDialog from '../components/ManifestacaoDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
@@ -426,6 +426,7 @@ import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeManifestation } from '@/composables/useNFeManifestation'
+import { useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type {
   ISODateValue,
@@ -444,6 +445,7 @@ import {
   formatDateTime,
   formatNFeNumber,
   formatTime,
+  normalizeText,
 } from '@/utils/formatters'
 import {
   ambienteColor,
@@ -472,6 +474,7 @@ type SelectOption = { label: string; value: string }
 const $q = useQuasar()
 const nfe = useNFeDocuments()
 const manifestation = useNFeManifestation()
+const { notifyError, copyChave } = useNotify()
 
 const {
   filter,
@@ -585,22 +588,6 @@ function withAllOption(allLabel: string, labels: Record<string, string>): Select
     { label: allLabel, value: '' },
     ...Object.entries(labels).map(([value, label]) => ({ label, value })),
   ]
-}
-
-function normalizeText(value: unknown): string {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .trim()
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function notifyError(message: string, error: unknown) {
-  $q.notify({ type: 'negative', message: `${message}: ${errorMessage(error)}` })
 }
 
 function onDateChange(_value: string, reason: string) {
@@ -880,15 +867,6 @@ function notifyManifestationResult(result: NFeEventResult) {
 function openEvents(chaveAcesso: string) {
   eventsChave.value = chaveAcesso
   showEventsDialog.value = true
-}
-
-async function copyChave(chaveAcesso: string) {
-  try {
-    await copyToClipboard(chaveAcesso)
-    $q.notify({ type: 'positive', message: 'Chave copiada!', timeout: 1000 })
-  } catch (error) {
-    notifyError('Erro ao copiar chave', error)
-  }
 }
 
 async function exportXML(chaveAcesso: string) {

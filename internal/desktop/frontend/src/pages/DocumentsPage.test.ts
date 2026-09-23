@@ -19,7 +19,8 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {} }),
 }))
 
-vi.mock('@/platform/wails/client', () => ({
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: {
     listCompanies: vi.fn().mockResolvedValue([]),
     listDocuments: vi.fn().mockResolvedValue([]),

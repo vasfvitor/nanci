@@ -351,15 +351,17 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { copyToClipboard, date, useQuasar, type QTableColumn } from 'quasar'
+import { date, useQuasar, type QTableColumn } from 'quasar'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import { useDocuments } from '@/composables/useDocuments'
+import { useNotify } from '@/composables/useNotify'
 import {
   formatChaveAcesso,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
+  normalizeText,
 } from '@/utils/formatters'
 import {
   getRoleAbbreviation,
@@ -414,6 +416,7 @@ type DocumentRow = {
 const $q = useQuasar()
 const route = useRoute()
 const documentsApi = useDocuments()
+const { notifyError, copyChave } = useNotify()
 
 const {
   filter,
@@ -543,14 +546,6 @@ onMounted(() => {
   void loadCompanies()
 })
 
-function normalizeText(value: unknown): string {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .trim()
-}
-
 function hasEvents(document: DocumentRow): boolean {
   return document.Status === 'cancelada' || document.Status === 'substituida'
 }
@@ -622,21 +617,6 @@ function selectDefaultCompany() {
   filter.value.CNPJ = firstCompany.value
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return String(error)
-}
-
-function notifyError(message: string, error: unknown) {
-  $q.notify({
-    type: 'negative',
-    message: `${message}: ${errorMessage(error)}`,
-  })
-}
-
 function notifyExportSuccess(label: string, result: ExportResult | null | undefined) {
   if (!result) return
 
@@ -666,24 +646,6 @@ async function handleCompanyChange() {
   }
 
   await search()
-}
-
-async function copyChave(chave?: string) {
-  if (!chave) {
-    return
-  }
-
-  try {
-    await copyToClipboard(chave.replace(/^NFS/i, ''))
-
-    $q.notify({
-      type: 'positive',
-      message: 'Chave copiada!',
-      timeout: 1000,
-    })
-  } catch (error) {
-    notifyError('Erro ao copiar chave', error)
-  }
 }
 
 async function loadCompanies() {

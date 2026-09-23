@@ -128,6 +128,11 @@ export function wailsErrorCode(error: unknown): WailsErrorCode {
   return parseErrorCode(String(error))
 }
 
+// errorMessage is the text to show for any thrown value.
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 function normalizeError(error: unknown): WailsClientError {
   if (error instanceof WailsClientError) return error
   if (error instanceof Error) return new WailsClientError(error.message, error)
