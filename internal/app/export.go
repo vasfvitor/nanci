@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/danfse"
@@ -182,16 +181,11 @@ func (s *ExportService) bulkExport(ctx context.Context, input ExportInput, kind 
 		return res, nil
 	}
 
-	ext := filepath.Ext(input.OutPath)
-	tempPath := strings.TrimSuffix(input.OutPath, ext) + ".tmp" + ext
-	defer func() { _ = os.Remove(tempPath) }()
-
-	if err := generator(docs, tempPath); err != nil {
-		return res, fmt.Errorf("gerar arquivo: %w", err)
-	}
-
-	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		return res, fmt.Errorf("mover arquivo temporário para destino final: %w", err)
+	err = writeViaTemp(input.OutPath, func(tempPath string) error {
+		return generator(docs, tempPath)
+	})
+	if err != nil {
+		return res, err
 	}
 
 	marks := make([]nfse.DocumentExportMark, len(docs))
@@ -233,14 +227,8 @@ func (s *ExportService) ExportDANFSe(ctx context.Context, input ExportDANFSeInpu
 		return err
 	}
 
-	tempPath := input.OutPath + ".tmp"
-	if err := os.WriteFile(tempPath, pdf, 0o644); err != nil { // #nosec G306
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("gravar DANFSe temp: %w", err)
-	}
-	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("mover DANFSe temp: %w", err)
+	if err := writeFileAtomic(input.OutPath, pdf, "DANFSe"); err != nil {
+		return err
 	}
 
 	mark := nfse.DocumentExportMark{
@@ -282,14 +270,8 @@ func (s *ExportService) ExportXML(ctx context.Context, input ExportXMLInput) err
 		return fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
 	}
 
-	tempPath := input.OutPath + ".tmp"
-	if err := os.WriteFile(tempPath, xmlData, 0o644); err != nil { // #nosec G306
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("gravar XML temp: %w", err)
-	}
-	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("mover XML temp: %w", err)
+	if err := writeFileAtomic(input.OutPath, xmlData, "XML"); err != nil {
+		return err
 	}
 
 	mark := nfse.DocumentExportMark{

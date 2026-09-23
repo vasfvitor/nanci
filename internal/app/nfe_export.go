@@ -3,9 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -84,15 +81,11 @@ func (s *NFeService) ExportXMLZip(ctx context.Context, in NFeExportInput) (NFeEx
 		eventsByChave[string(e.ChaveAcesso)] = append(eventsByChave[string(e.ChaveAcesso)], e)
 	}
 
-	ext := filepath.Ext(in.OutPath)
-	tempPath := strings.TrimSuffix(in.OutPath, ext) + ".tmp" + ext
-	defer func() { _ = os.Remove(tempPath) }()
-
-	if err := report.GenerateZIP(report.NFeZipEntries(docs, eventsByChave), s.XMLStore, tempPath); err != nil {
-		return res, fmt.Errorf("gerar arquivo: %w", err)
-	}
-	if err := os.Rename(tempPath, in.OutPath); err != nil {
-		return res, fmt.Errorf("mover arquivo temporário para destino final: %w", err)
+	err = writeViaTemp(in.OutPath, func(tempPath string) error {
+		return report.GenerateZIP(report.NFeZipEntries(docs, eventsByChave), s.XMLStore, tempPath)
+	})
+	if err != nil {
+		return res, err
 	}
 	if err := s.NFeRepo.MarkExported(ctx, comp.ID, nfe.ExportKindXML, docs); err != nil {
 		return res, fmt.Errorf("marcar NF-e como exportadas: %w", err)
@@ -137,14 +130,8 @@ func (s *NFeService) ExportXML(ctx context.Context, in NFeExportXMLInput) error 
 		return fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
 	}
 
-	tempPath := in.OutPath + ".tmp"
-	if err := os.WriteFile(tempPath, xmlData, 0o644); err != nil { // #nosec G306 -- exported XML is meant to be shared.
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("gravar XML temp: %w", err)
-	}
-	if err := os.Rename(tempPath, in.OutPath); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("mover XML temp: %w", err)
+	if err := writeFileAtomic(in.OutPath, xmlData, "XML"); err != nil {
+		return err
 	}
 	if err := s.NFeRepo.MarkExported(ctx, comp.ID, nfe.ExportKindXML, []nfe.CompanyDocument{doc}); err != nil {
 		return fmt.Errorf("marcar NF-e como exportada: %w", err)
