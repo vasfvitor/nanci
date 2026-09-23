@@ -25,6 +25,7 @@ type NFeRepository interface {
 	ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) ([]nfe.CompanyDocument, error)
 	ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error)
 	ListEventsByChave(ctx context.Context, chave string) ([]nfe.Event, error)
+	ListEventsByChaves(ctx context.Context, chaves []string) ([]nfe.Event, error)
 	CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error)
 	MarkViewed(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) (int, error)
 	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error

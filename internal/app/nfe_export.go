@@ -69,16 +69,19 @@ func (s *NFeService) ExportXMLZip(ctx context.Context, in NFeExportInput) (NFeEx
 		return res, nil
 	}
 
-	eventsByChave := make(map[string][]nfe.Event, len(docs))
+	var withEvents []string
 	for _, doc := range docs {
-		if doc.EventCount == 0 {
-			continue
+		if doc.EventCount > 0 {
+			withEvents = append(withEvents, string(doc.ChaveAcesso))
 		}
-		events, err := s.NFeRepo.ListEventsByChave(ctx, string(doc.ChaveAcesso))
-		if err != nil {
-			return res, fmt.Errorf("listar eventos da NF-e %s: %w", doc.ChaveAcesso, err)
-		}
-		eventsByChave[string(doc.ChaveAcesso)] = events
+	}
+	events, err := s.NFeRepo.ListEventsByChaves(ctx, withEvents)
+	if err != nil {
+		return res, fmt.Errorf("listar eventos das NF-e: %w", err)
+	}
+	eventsByChave := make(map[string][]nfe.Event, len(withEvents))
+	for _, e := range events {
+		eventsByChave[string(e.ChaveAcesso)] = append(eventsByChave[string(e.ChaveAcesso)], e)
 	}
 
 	ext := filepath.Ext(in.OutPath)

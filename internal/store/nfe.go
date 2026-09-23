@@ -181,6 +181,47 @@ func (r *NFeRepository) ListEventsByChave(ctx context.Context, chave string) ([]
 	return eventsFromRows(rows)
 }
 
+// ListEventsByChaves returns the stored events of every chave in one query,
+// ordered by chave and then oldest first. sqlc cannot type the json_each
+// parameter, so the query is written here.
+func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string) ([]nfe.Event, error) {
+	if len(chaves) == 0 {
+		return nil, nil
+	}
+	const query = `
+		SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
+			registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
+			completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at
+		FROM nfe_events
+		WHERE chave_acesso IN (SELECT value FROM json_each(?))
+		ORDER BY chave_acesso, COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento
+	`
+	chavesJSON, _ := json.Marshal(chaves) // a []string always marshals
+	rows, err := r.db.QueryContext(ctx, query, string(chavesJSON))
+	if err != nil {
+		return nil, fmt.Errorf("list nfe events of %d chaves: %w", len(chaves), err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []sqlgen.NfeEvent
+	for rows.Next() {
+		var i sqlgen.NfeEvent
+		err := rows.Scan(
+			&i.ID, &i.NfeDocumentID, &i.ChaveAcesso, &i.TpEvento, &i.Type, &i.NSeqEvento, &i.EventAt, &i.RegisteredAt,
+			&i.Registered, &i.CStat, &i.XMotivo, &i.Protocolo, &i.AutorCnpj, &i.Description, &i.Justificativa, &i.Correcao,
+			&i.Completeness, &i.SentByNanci, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan nfe event: %w", err)
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list nfe events of %d chaves: %w", len(chaves), err)
+	}
+	return eventsFromRows(items)
+}
+
 // CountSummary counts the company's NF-e by role, completeness and pending
 // manifestação.
 func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error) {

@@ -597,3 +597,32 @@ func TestNFeCompanyDocumentLookup(t *testing.T) {
 		t.Errorf("CompanyDocumentByChave(emitente) error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestNFeListEventsByChaves(t *testing.T) {
+	f := newNFeFixture(t)
+	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia"))
+	f.applyEvent(f.procEvento("proceventonfe-cce.xml", "hash-cce"))
+	f.applyEvent(f.procEvento("proceventonfe-cancelamento.xml", "hash-cancel"))
+	f.applyEvent(f.procEvento("proceventonfe-ciencia-real.xml", "hash-other"))
+	ctx := context.Background()
+
+	got, err := f.repo.ListEventsByChaves(ctx, []string{nfeKeyProc, nfeKeyCancelada, nfeKeyDenegada})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Grouped by chave, each group equal to ListEventsByChave.
+	want := append(f.events(nfeKeyProc), f.events(nfeKeyCancelada)...)
+	if len(want) != 3 || len(got) != len(want) {
+		t.Fatalf("got %d events, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i].ID != want[i].ID || got[i].RawHash != want[i].RawHash {
+			t.Errorf("event %d = %s %s, want %s %s", i, got[i].ChaveAcesso, got[i].RawHash, want[i].ChaveAcesso, want[i].RawHash)
+		}
+	}
+
+	none, err := f.repo.ListEventsByChaves(ctx, nil)
+	if err != nil || len(none) != 0 {
+		t.Errorf("ListEventsByChaves(nil) = %v, %v; want none", none, err)
+	}
+}
