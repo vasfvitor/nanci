@@ -15,8 +15,8 @@ function row(chave: string, fields: Partial<NFePendingRow>): NFePendingRow {
     Kind: 'sem_conclusiva',
     Manifestacao: 'ciencia',
     DaysLeft: 0,
+    TacitlyConfirmed: false,
     CienciaOverdue: false,
-    Expired: false,
     ...fields,
   } as NFePendingRow
 }
@@ -42,20 +42,23 @@ function mountPanel(rows: NFePendingRow[]) {
 describe('NFePendingPanel', () => {
   it('labels expired rows as tacitly confirmed', () => {
     const wrapper = mountPanel([
-      row('on-time', { Deadline: daysFromNow(20) }),
-      row('expired', { Deadline: daysFromNow(-3), Expired: true }),
+      row('on-time', { ConclusiveDue: daysFromNow(20), DaysLeft: 20 }),
+      row('due-today', { ConclusiveDue: daysFromNow(0), DaysLeft: 0 }),
+      row('expired', { ConclusiveDue: daysFromNow(-3), DaysLeft: -3, TacitlyConfirmed: true }),
       row('expired-sem-ciencia', {
         Kind: 'sem_ciencia',
         Manifestacao: 'nenhuma',
         CienciaDue: daysFromNow(-83),
         CienciaOverdue: true,
-        Deadline: daysFromNow(-3),
-        Expired: true,
+        ConclusiveDue: daysFromNow(-3),
+        DaysLeft: -3,
+        TacitlyConfirmed: true,
       }),
     ])
 
     const chip = (chave: string) => wrapper.find(`[data-chave="${chave}"] .chip`).text()
-    expect(chip('on-time')).toMatch(/d restantes$/)
+    expect(chip('on-time')).toBe('20 d restantes')
+    expect(chip('due-today')).toBe('Vence hoje')
     expect(chip('expired')).toBe('Confirmada tacitamente')
     expect(chip('expired-sem-ciencia')).toBe('Confirmada tacitamente')
     expect(wrapper.text()).toMatch(/até 90 dias da\s+autorização/)
@@ -64,8 +67,8 @@ describe('NFePendingPanel', () => {
 
   it('keeps the backend order of conclusive rows', () => {
     const wrapper = mountPanel([
-      row('first', { Deadline: daysFromNow(5) }),
-      row('second', { Deadline: daysFromNow(40) }),
+      row('first', { ConclusiveDue: daysFromNow(5), DaysLeft: 5 }),
+      row('second', { ConclusiveDue: daysFromNow(40), DaysLeft: 40 }),
     ])
 
     const order = wrapper.findAll('[data-chave]').map((item) => item.attributes('data-chave'))

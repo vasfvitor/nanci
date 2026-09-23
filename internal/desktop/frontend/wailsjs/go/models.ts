@@ -529,35 +529,93 @@ export namespace desktopapi {
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	    }
 	}
-	export class NFeCandidate {
+	export class NFeSkipped {
 	    ChaveAcesso: string;
-	    Serie: string;
-	    Numero: string;
-	    EmitenteCNPJ: string;
-	    EmitenteName: string;
-	    // Go type: time
-	    IssueDate: any;
-	    TotalValue: number;
-	    // Go type: time
-	    CienciaDue?: any;
-	    // Go type: time
-	    ConclusiveDue?: any;
+	    Reason: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new NFeCandidate(source);
+	        return new NFeSkipped(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Reason = source["Reason"];
+	    }
+	}
+	export class NFeRow {
+	    ID: string;
+	    DocumentID: string;
+	    ChaveAcesso: string;
+	    Serie: string;
+	    Numero: string;
+	    // Go type: time
+	    IssueDate: any;
+	    // Go type: time
+	    AuthorizedAt?: any;
+	    Protocolo: string;
+	    TipoOperacao: string;
+	    EmitenteCNPJ: string;
+	    EmitenteName: string;
+	    EmitenteIE: string;
+	    DestinatarioCNPJ: string;
+	    DestinatarioName: string;
+	    TotalValue: number;
+	    Situacao: string;
+	    Completeness: string;
+	    Manifestacao: string;
+	    // Go type: time
+	    ManifestacaoAt?: any;
+	    // Go type: time
+	    CienciaDue?: any;
+	    // Go type: time
+	    ConclusiveDue?: any;
+	    CompanyRole: string;
+	    EventCount: number;
+	    // Go type: time
+	    FirstSyncedAt: any;
+	    // Go type: time
+	    LastSyncedAt: any;
+	    DaysLeft?: number;
+	    TacitlyConfirmed: boolean;
+	    CienciaBlockReason: string;
+	    ConclusiveBlockReason: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NFeRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.DocumentID = source["DocumentID"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
 	        this.Serie = source["Serie"];
 	        this.Numero = source["Numero"];
+	        this.IssueDate = this.convertValues(source["IssueDate"], null);
+	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
+	        this.Protocolo = source["Protocolo"];
+	        this.TipoOperacao = source["TipoOperacao"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.EmitenteName = source["EmitenteName"];
-	        this.IssueDate = this.convertValues(source["IssueDate"], null);
+	        this.EmitenteIE = source["EmitenteIE"];
+	        this.DestinatarioCNPJ = source["DestinatarioCNPJ"];
+	        this.DestinatarioName = source["DestinatarioName"];
 	        this.TotalValue = source["TotalValue"];
+	        this.Situacao = source["Situacao"];
+	        this.Completeness = source["Completeness"];
+	        this.Manifestacao = source["Manifestacao"];
+	        this.ManifestacaoAt = this.convertValues(source["ManifestacaoAt"], null);
 	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
 	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
+	        this.CompanyRole = source["CompanyRole"];
+	        this.EventCount = source["EventCount"];
+	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
+	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.DaysLeft = source["DaysLeft"];
+	        this.TacitlyConfirmed = source["TacitlyConfirmed"];
+	        this.CienciaBlockReason = source["CienciaBlockReason"];
+	        this.ConclusiveBlockReason = source["ConclusiveBlockReason"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -578,22 +636,8 @@ export namespace desktopapi {
 		    return a;
 		}
 	}
-	export class NFeSkipped {
-	    ChaveAcesso: string;
-	    Reason: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new NFeSkipped(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ChaveAcesso = source["ChaveAcesso"];
-	        this.Reason = source["Reason"];
-	    }
-	}
 	export class NFeCienciaPlan {
-	    Eligible: NFeCandidate[];
+	    Eligible: NFeRow[];
 	    Skipped: NFeSkipped[];
 	
 	    static createFrom(source: any = {}) {
@@ -602,7 +646,7 @@ export namespace desktopapi {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Eligible = this.convertValues(source["Eligible"], NFeCandidate);
+	        this.Eligible = this.convertValues(source["Eligible"], NFeRow);
 	        this.Skipped = this.convertValues(source["Skipped"], NFeSkipped);
 	    }
 	
@@ -843,12 +887,12 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
+	    DaysLeft?: number;
+	    TacitlyConfirmed: boolean;
+	    CienciaBlockReason: string;
+	    ConclusiveBlockReason: string;
 	    Kind: string;
-	    // Go type: time
-	    Deadline?: any;
-	    DaysLeft: number;
 	    CienciaOverdue: boolean;
-	    Expired: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new NFePendingRow(source);
@@ -881,11 +925,12 @@ export namespace desktopapi {
 	        this.EventCount = source["EventCount"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
-	        this.Kind = source["Kind"];
-	        this.Deadline = this.convertValues(source["Deadline"], null);
 	        this.DaysLeft = source["DaysLeft"];
+	        this.TacitlyConfirmed = source["TacitlyConfirmed"];
+	        this.CienciaBlockReason = source["CienciaBlockReason"];
+	        this.ConclusiveBlockReason = source["ConclusiveBlockReason"];
+	        this.Kind = source["Kind"];
 	        this.CienciaOverdue = source["CienciaOverdue"];
-	        this.Expired = source["Expired"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -930,91 +975,7 @@ export namespace desktopapi {
 	        this.ManifestationsKept = source["ManifestationsKept"];
 	    }
 	}
-	export class NFeRow {
-	    ID: string;
-	    DocumentID: string;
-	    ChaveAcesso: string;
-	    Serie: string;
-	    Numero: string;
-	    // Go type: time
-	    IssueDate: any;
-	    // Go type: time
-	    AuthorizedAt?: any;
-	    Protocolo: string;
-	    TipoOperacao: string;
-	    EmitenteCNPJ: string;
-	    EmitenteName: string;
-	    EmitenteIE: string;
-	    DestinatarioCNPJ: string;
-	    DestinatarioName: string;
-	    TotalValue: number;
-	    Situacao: string;
-	    Completeness: string;
-	    Manifestacao: string;
-	    // Go type: time
-	    ManifestacaoAt?: any;
-	    // Go type: time
-	    CienciaDue?: any;
-	    // Go type: time
-	    ConclusiveDue?: any;
-	    CompanyRole: string;
-	    EventCount: number;
-	    // Go type: time
-	    FirstSyncedAt: any;
-	    // Go type: time
-	    LastSyncedAt: any;
 	
-	    static createFrom(source: any = {}) {
-	        return new NFeRow(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
-	        this.DocumentID = source["DocumentID"];
-	        this.ChaveAcesso = source["ChaveAcesso"];
-	        this.Serie = source["Serie"];
-	        this.Numero = source["Numero"];
-	        this.IssueDate = this.convertValues(source["IssueDate"], null);
-	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
-	        this.Protocolo = source["Protocolo"];
-	        this.TipoOperacao = source["TipoOperacao"];
-	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
-	        this.EmitenteName = source["EmitenteName"];
-	        this.EmitenteIE = source["EmitenteIE"];
-	        this.DestinatarioCNPJ = source["DestinatarioCNPJ"];
-	        this.DestinatarioName = source["DestinatarioName"];
-	        this.TotalValue = source["TotalValue"];
-	        this.Situacao = source["Situacao"];
-	        this.Completeness = source["Completeness"];
-	        this.Manifestacao = source["Manifestacao"];
-	        this.ManifestacaoAt = this.convertValues(source["ManifestacaoAt"], null);
-	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
-	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
-	        this.CompanyRole = source["CompanyRole"];
-	        this.EventCount = source["EventCount"];
-	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
-	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	
 	export class NFeStatusResult {
 	    CompanyName: string;

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -37,19 +36,6 @@ type NFeCienciaInput struct {
 	AllResumos bool
 }
 
-// NFeCandidate is an NF-e that can receive Ciência da Operação.
-type NFeCandidate struct {
-	ChaveAcesso   string
-	Serie         string
-	Numero        string
-	EmitenteCNPJ  string
-	EmitenteName  string
-	IssueDate     time.Time
-	TotalValue    nfse.Money
-	CienciaDue    time.Time
-	ConclusiveDue time.Time
-}
-
 // NFeSkipped is a requested chave that will not be sent, and why.
 type NFeSkipped struct {
 	ChaveAcesso string
@@ -58,7 +44,7 @@ type NFeSkipped struct {
 
 // NFeCienciaPlan is what RegisterCiencia would send.
 type NFeCienciaPlan struct {
-	Eligible []NFeCandidate
+	Eligible []NFeDocument
 	Skipped  []NFeSkipped
 }
 
@@ -107,8 +93,8 @@ type NFeManifestationPlan struct {
 	// ConclusiveDue is zero when the NF-e has neither an authorization nor
 	// an issue date.
 	ConclusiveDue time.Time
-	// DaysLeft is how many whole days are left until ConclusiveDue;
-	// negative once it passed.
+	// DaysLeft is how many calendar days are left until ConclusiveDue: 0 on
+	// the due day, negative once it passed.
 	DaysLeft int
 	// TacitlyConfirmed is true when ConclusiveDue passed without a
 	// conclusive manifestação: SEFAZ should reject the event (cStat 596).
@@ -149,7 +135,7 @@ func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (N
 	for lote := range slices.Chunk(plan.Eligible, sefaz.MaxEventosPorLote) {
 		eventos := make([]sefaz.Evento, 0, len(lote))
 		for _, c := range lote {
-			eventos = append(eventos, s.evento(comp, c.ChaveAcesso, nfe.ManifestationCiencia, ""))
+			eventos = append(eventos, s.evento(comp, string(c.ChaveAcesso), nfe.ManifestationCiencia, ""))
 		}
 
 		var outcomes []NFeEventOutcome
@@ -243,10 +229,13 @@ func (s *NFeService) planManifestation(ctx context.Context, in NFeManifestationI
 	return comp, plan, nil
 }
 
-// daysLeft is how many whole days are left until due; negative once it
-// passed.
+// daysLeft counts the calendar days from now until due, in now's location:
+// 0 on the due day, negative once it passed.
 func daysLeft(due, now time.Time) int {
-	return int(math.Floor(due.Sub(now).Hours() / 24))
+	due = due.In(now.Location())
+	dueDay := time.Date(due.Year(), due.Month(), due.Day(), 0, 0, 0, 0, time.UTC)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	return int(dueDay.Sub(today).Hours() / 24)
 }
 
 // planCiencia resolves the company and splits the requested chaves into
@@ -263,6 +252,7 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 		return nil, NFeCienciaPlan{}, err
 	}
 
+	now := s.now()
 	var plan NFeCienciaPlan
 	if in.AllResumos {
 		docs, err := s.NFeRepo.ListCompanyDocuments(ctx, comp.ID, nfe.DocumentFilter{
@@ -275,17 +265,17 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 			return nil, NFeCienciaPlan{}, fmt.Errorf("listar NF-e: %w", err)
 		}
 		for _, doc := range docs {
-			plan.Eligible = append(plan.Eligible, candidateFrom(doc))
+			plan.Eligible = append(plan.Eligible, newNFeDocument(doc, now))
 		}
 	} else {
-		if err := s.planChaves(ctx, comp.ID, in.ChavesAcesso, &plan); err != nil {
+		if err := s.planChaves(ctx, comp.ID, in.ChavesAcesso, now, &plan); err != nil {
 			return nil, NFeCienciaPlan{}, err
 		}
 	}
 	return comp, plan, nil
 }
 
-func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, rawChaves []string, plan *NFeCienciaPlan) error {
+func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, rawChaves []string, now time.Time, plan *NFeCienciaPlan) error {
 	var chaves []string
 	seen := make(map[string]bool, len(rawChaves))
 	for _, raw := range rawChaves {
@@ -320,15 +310,11 @@ func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, r
 			plan.Skipped = append(plan.Skipped, NFeSkipped{ChaveAcesso: chave, Reason: "não encontrada para a empresa"})
 			continue
 		}
-		reason := manifestationBlockReason(doc)
-		if reason == "" && doc.Manifestacao != nfe.ManifestacaoNenhuma {
-			reason = "já manifestada (" + string(doc.Manifestacao) + ")"
-		}
-		if reason != "" {
+		if reason := cienciaBlockReason(doc); reason != "" {
 			plan.Skipped = append(plan.Skipped, NFeSkipped{ChaveAcesso: chave, Reason: reason})
 			continue
 		}
-		plan.Eligible = append(plan.Eligible, candidateFrom(doc))
+		plan.Eligible = append(plan.Eligible, newNFeDocument(doc, now))
 	}
 	return nil
 }
@@ -345,19 +331,25 @@ func manifestationBlockReason(doc nfe.CompanyDocument) string {
 	return ""
 }
 
-func candidateFrom(doc nfe.CompanyDocument) NFeCandidate {
-	deadlines := nfe.ManifestationDeadlines(doc.Document)
-	return NFeCandidate{
-		ChaveAcesso:   string(doc.ChaveAcesso),
-		Serie:         doc.Serie,
-		Numero:        doc.Numero,
-		EmitenteCNPJ:  doc.EmitenteCNPJ,
-		EmitenteName:  doc.EmitenteName,
-		IssueDate:     doc.IssueDate,
-		TotalValue:    doc.TotalValue,
-		CienciaDue:    deadlines.CienciaDue,
-		ConclusiveDue: deadlines.ConclusiveDue,
+// cienciaBlockReason says why doc cannot receive Ciência da Operação, or ""
+// when it can.
+func cienciaBlockReason(doc nfe.CompanyDocument) string {
+	if reason := manifestationBlockReason(doc); reason != "" {
+		return reason
 	}
+	if doc.Manifestacao != nfe.ManifestacaoNenhuma {
+		return "já manifestada (" + string(doc.Manifestacao) + ")"
+	}
+	return ""
+}
+
+// conclusiveBlockReason says why doc cannot receive a conclusive
+// manifestação, or "" when it can.
+func conclusiveBlockReason(doc nfe.CompanyDocument) string {
+	if reason := manifestationBlockReason(doc); reason != "" {
+		return reason
+	}
+	return nfe.ConclusiveBlockReason(doc.Manifestacao)
 }
 
 // parseConclusiveManifestation reads a conclusive type by name or tpEvento

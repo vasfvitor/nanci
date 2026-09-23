@@ -78,6 +78,10 @@ function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
     Manifestacao: 'nenhuma',
     CompanyRole: 'destinatario',
     EventCount: 0,
+    DaysLeft: null,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
     ...overrides,
   }
 }
@@ -109,7 +113,11 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
 }
 
 const destinatario = nfeRow('a')
-const emitida = nfeRow('b', { CompanyRole: 'emitente' })
+const emitida = nfeRow('b', {
+  CompanyRole: 'emitente',
+  CienciaBlockReason: 'a empresa não é a destinatária',
+  ConclusiveBlockReason: 'a empresa não é a destinatária',
+})
 
 function mountPage() {
   return shallowMount(NFePage, {
@@ -211,17 +219,8 @@ describe('NFePage', () => {
 
   it('opens the confirm dialog with the eligible chaves from planCiencia', async () => {
     const plan: NFeCienciaPlan = {
-      Eligible: [
-        {
-          ChaveAcesso: 'a',
-          Serie: '1',
-          Numero: '1',
-          EmitenteCNPJ: '12345678000199',
-          EmitenteName: 'Fornecedor',
-          TotalValue: 100,
-        },
-      ],
-      Skipped: [{ ChaveAcesso: 'b', Reason: 'Somente o destinatário pode manifestar' }],
+      Eligible: [destinatario],
+      Skipped: [{ ChaveAcesso: 'b', Reason: 'a empresa não é a destinatária' }],
     }
     vi.mocked(desktopClient.planCiencia).mockResolvedValue(plan)
     vi.mocked(desktopClient.registerCiencia).mockResolvedValue({

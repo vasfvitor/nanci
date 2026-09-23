@@ -383,6 +383,16 @@ type NFeRow struct {
 	EventCount       int
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
+	// DaysLeft is how many calendar days are left until ConclusiveDue: 0 on
+	// the due day, negative once it passed, nil without a deadline.
+	DaysLeft *int
+	// TacitlyConfirmed is true once ConclusiveDue passed without a
+	// conclusive manifestação.
+	TacitlyConfirmed bool
+	// CienciaBlockReason and ConclusiveBlockReason say why the NF-e cannot
+	// receive that manifestação; empty when it can.
+	CienciaBlockReason    string
+	ConclusiveBlockReason string
 }
 
 // NFeKeyInput identifies one of the company's NF-e.
@@ -416,36 +426,18 @@ type NFePendingInput struct {
 	DueWithinDays int
 }
 
-// NFePendingRow is an NF-e still waiting for a manifestação. Only the fields
-// the pending list carries are set: ID, DocumentID, Protocolo, destinatário,
-// EventCount and the sync timestamps stay empty. Pending rows are always
-// authorized NF-e addressed to the company.
+// NFePendingRow is an authorized NF-e addressed to the company that still
+// lacks a conclusive manifestação.
 type NFePendingRow struct {
 	NFeRow
-	Kind           string     // sem_ciencia | sem_conclusiva
-	Deadline       *time.Time // the conclusive deadline
-	DaysLeft       int        // negative once past
-	CienciaOverdue bool
-	Expired        bool
+	Kind           string // sem_ciencia | sem_conclusiva
+	CienciaOverdue bool   // no manifestação and CienciaDue has passed
 }
 
 // RegisterCienciaInput selects the NF-e for Ciência da Operação.
 type RegisterCienciaInput struct {
 	CNPJ         string
 	ChavesAcesso []string
-}
-
-// NFeCandidate is an NF-e that can receive Ciência da Operação.
-type NFeCandidate struct {
-	ChaveAcesso   string
-	Serie         string
-	Numero        string
-	EmitenteCNPJ  string
-	EmitenteName  string
-	IssueDate     time.Time
-	TotalValue    int64
-	CienciaDue    *time.Time
-	ConclusiveDue *time.Time
 }
 
 // NFeSkipped is a requested chave that will not be sent, and why.
@@ -457,7 +449,7 @@ type NFeSkipped struct {
 // NFeCienciaPlan is what RegisterCiencia would send, for the confirmation
 // dialog.
 type NFeCienciaPlan struct {
-	Eligible []NFeCandidate
+	Eligible []NFeRow
 	Skipped  []NFeSkipped
 }
 
@@ -573,39 +565,49 @@ type NFeExportResult struct {
 	SkippedResumos int
 }
 
-func NFeRows(documents []nfe.CompanyDocument) []NFeRow {
+func NFeRows(documents []app.NFeDocument) []NFeRow {
 	out := make([]NFeRow, len(documents))
 	for i, document := range documents {
-		deadlines := nfe.ManifestationDeadlines(document.Document)
-		out[i] = NFeRow{
-			ID:               document.RelationID,
-			DocumentID:       document.ID,
-			ChaveAcesso:      string(document.ChaveAcesso),
-			Serie:            document.Serie,
-			Numero:           document.Numero,
-			IssueDate:        document.IssueDate,
-			AuthorizedAt:     document.AuthorizedAt,
-			Protocolo:        document.Protocolo,
-			TipoOperacao:     document.TpNF,
-			EmitenteCNPJ:     document.EmitenteCNPJ,
-			EmitenteName:     document.EmitenteName,
-			EmitenteIE:       document.EmitenteIE,
-			DestinatarioCNPJ: document.DestinatarioCNPJ,
-			DestinatarioName: document.DestinatarioName,
-			TotalValue:       document.TotalValue.Cents(),
-			Situacao:         string(document.Situacao),
-			Completeness:     string(document.Completeness),
-			Manifestacao:     string(document.Manifestacao),
-			ManifestacaoAt:   document.ManifestacaoAt,
-			CienciaDue:       optionalTime(deadlines.CienciaDue),
-			ConclusiveDue:    optionalTime(deadlines.ConclusiveDue),
-			CompanyRole:      string(document.CompanyRole),
-			EventCount:       document.EventCount,
-			FirstSyncedAt:    document.FirstSyncedAt,
-			LastSyncedAt:     document.LastSyncedAt,
-		}
+		out[i] = nfeRow(document)
 	}
 	return out
+}
+
+func nfeRow(document app.NFeDocument) NFeRow {
+	row := NFeRow{
+		ID:                    document.RelationID,
+		DocumentID:            document.ID,
+		ChaveAcesso:           string(document.ChaveAcesso),
+		Serie:                 document.Serie,
+		Numero:                document.Numero,
+		IssueDate:             document.IssueDate,
+		AuthorizedAt:          document.AuthorizedAt,
+		Protocolo:             document.Protocolo,
+		TipoOperacao:          document.TpNF,
+		EmitenteCNPJ:          document.EmitenteCNPJ,
+		EmitenteName:          document.EmitenteName,
+		EmitenteIE:            document.EmitenteIE,
+		DestinatarioCNPJ:      document.DestinatarioCNPJ,
+		DestinatarioName:      document.DestinatarioName,
+		TotalValue:            document.TotalValue.Cents(),
+		Situacao:              string(document.Situacao),
+		Completeness:          string(document.Completeness),
+		Manifestacao:          string(document.Manifestacao),
+		ManifestacaoAt:        document.ManifestacaoAt,
+		CienciaDue:            optionalTime(document.CienciaDue),
+		ConclusiveDue:         optionalTime(document.ConclusiveDue),
+		CompanyRole:           string(document.CompanyRole),
+		EventCount:            document.EventCount,
+		FirstSyncedAt:         document.FirstSyncedAt,
+		LastSyncedAt:          document.LastSyncedAt,
+		TacitlyConfirmed:      document.TacitlyConfirmed,
+		CienciaBlockReason:    document.CienciaBlockReason,
+		ConclusiveBlockReason: document.ConclusiveBlockReason,
+	}
+	if !document.ConclusiveDue.IsZero() {
+		row.DaysLeft = &document.DaysLeft
+	}
+	return row
 }
 
 func NFeEvents(events []nfe.Event) []NFeEvent {
@@ -635,51 +637,18 @@ func NFeEvents(events []nfe.Event) []NFeEvent {
 func NFePendingRows(pending []app.NFePendingManifestation) []NFePendingRow {
 	out := make([]NFePendingRow, len(pending))
 	for i, p := range pending {
-		conclusiveDue := optionalTime(p.ConclusiveDue)
 		out[i] = NFePendingRow{
-			NFeRow: NFeRow{
-				ChaveAcesso:   p.ChaveAcesso,
-				Serie:         p.Serie,
-				Numero:        p.Numero,
-				IssueDate:     p.IssueDate,
-				AuthorizedAt:  p.AuthorizedAt,
-				EmitenteCNPJ:  p.EmitenteCNPJ,
-				EmitenteName:  p.EmitenteName,
-				TotalValue:    p.TotalValue.Cents(),
-				Situacao:      string(nfe.SituacaoAutorizada),
-				Completeness:  p.Completeness,
-				Manifestacao:  p.Manifestacao,
-				CienciaDue:    optionalTime(p.CienciaDue),
-				ConclusiveDue: conclusiveDue,
-				CompanyRole:   string(nfe.CompanyRoleDestinatario),
-			},
+			NFeRow:         nfeRow(p.NFeDocument),
 			Kind:           p.Kind,
-			Deadline:       conclusiveDue,
-			DaysLeft:       p.DaysLeft,
 			CienciaOverdue: p.CienciaOverdue,
-			Expired:        p.Expired,
 		}
 	}
 	return out
 }
 
 func NFeCienciaPlanDTO(plan app.NFeCienciaPlan) NFeCienciaPlan {
-	eligible := make([]NFeCandidate, len(plan.Eligible))
-	for i, c := range plan.Eligible {
-		eligible[i] = NFeCandidate{
-			ChaveAcesso:   c.ChaveAcesso,
-			Serie:         c.Serie,
-			Numero:        c.Numero,
-			EmitenteCNPJ:  c.EmitenteCNPJ,
-			EmitenteName:  c.EmitenteName,
-			IssueDate:     c.IssueDate,
-			TotalValue:    c.TotalValue.Cents(),
-			CienciaDue:    optionalTime(c.CienciaDue),
-			ConclusiveDue: optionalTime(c.ConclusiveDue),
-		}
-	}
 	return NFeCienciaPlan{
-		Eligible: eligible,
+		Eligible: NFeRows(plan.Eligible),
 		Skipped:  nfeSkipped(plan.Skipped),
 	}
 }

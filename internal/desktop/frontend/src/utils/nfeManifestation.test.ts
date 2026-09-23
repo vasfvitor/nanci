@@ -27,61 +27,27 @@ function row(overrides: Partial<NFeRow> = {}): NFeRow {
     Manifestacao: 'nenhuma',
     CompanyRole: 'destinatario',
     EventCount: 0,
+    DaysLeft: null,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
     ...overrides,
   }
 }
 
-describe('cienciaBlockReason', () => {
-  it('allows an authorized note addressed to the company without manifestação', () => {
+describe('block reasons', () => {
+  it('reads the backend reasons, capitalized for display', () => {
+    const blocked = row({
+      CienciaBlockReason: 'já manifestada (ciencia)',
+      ConclusiveBlockReason: 'NF-e já possui manifestação conclusiva (Confirmada)',
+    })
+    expect(cienciaBlockReason(blocked)).toBe('Já manifestada (ciencia)')
+    expect(conclusiveBlockReason(blocked)).toBe('NF-e já possui manifestação conclusiva (Confirmada)')
+  })
+
+  it('returns null when the backend sends no reason', () => {
     expect(cienciaBlockReason(row())).toBeNull()
-  })
-
-  it('blocks when the company is not the destinatário', () => {
-    for (const role of ['emitente', 'transportador', 'autorizado', 'none', ''] as const) {
-      expect(cienciaBlockReason(row({ CompanyRole: role }))).toBe(
-        'Somente o destinatário pode manifestar'
-      )
-    }
-  })
-
-  it('blocks notes that are not authorized', () => {
-    expect(cienciaBlockReason(row({ Situacao: 'cancelada' }))).toBe('Nota cancelada')
-    expect(cienciaBlockReason(row({ Situacao: 'denegada' }))).toBe('Nota denegada')
-    expect(cienciaBlockReason(row({ Situacao: '' }))).toBe('Situação da nota desconhecida')
-  })
-
-  it('blocks notes that already have a manifestação', () => {
-    for (const manifestacao of ['ciencia', 'confirmada', 'desconhecida', 'nao_realizada'] as const) {
-      expect(cienciaBlockReason(row({ Manifestacao: manifestacao }))).toBe('Já possui manifestação')
-    }
-    expect(cienciaBlockReason(row({ Manifestacao: '' }))).toBe('Manifestação atual desconhecida')
-  })
-})
-
-describe('conclusiveBlockReason', () => {
-  it('allows conclusive events before and after ciência', () => {
-    expect(conclusiveBlockReason(row({ Manifestacao: 'nenhuma' }))).toBeNull()
-    expect(conclusiveBlockReason(row({ Manifestacao: 'ciencia' }))).toBeNull()
-  })
-
-  it('does not block on a past conclusive deadline', () => {
-    const expired = row({ Manifestacao: 'ciencia', ConclusiveDue: '2020-01-01T00:00:00Z' })
-    expect(conclusiveBlockReason(expired)).toBeNull()
-  })
-
-  it('blocks every conclusive event once one is registered', () => {
-    for (const manifestacao of ['confirmada', 'desconhecida', 'nao_realizada'] as const) {
-      expect(conclusiveBlockReason(row({ Manifestacao: manifestacao }))).toBe(
-        'Já possui manifestação conclusiva'
-      )
-    }
-  })
-
-  it('applies the destinatário and situação rules', () => {
-    expect(conclusiveBlockReason(row({ CompanyRole: 'emitente' }))).toBe(
-      'Somente o destinatário pode manifestar'
-    )
-    expect(conclusiveBlockReason(row({ Situacao: 'cancelada' }))).toBe('Nota cancelada')
+    expect(conclusiveBlockReason(row())).toBeNull()
   })
 })
 

@@ -36,6 +36,10 @@ function nfeRow(chave: string): NFeRow {
     Manifestacao: 'nenhuma',
     CompanyRole: 'destinatario',
     EventCount: 0,
+    DaysLeft: null,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
   }
 }
 

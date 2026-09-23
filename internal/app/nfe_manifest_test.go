@@ -151,7 +151,7 @@ func TestNFePlanCienciaNeedsNoNetworkOrPassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Eligible) != 1 || plan.Eligible[0].ChaveAcesso != eligible {
+	if len(plan.Eligible) != 1 || string(plan.Eligible[0].ChaveAcesso) != eligible {
 		t.Fatalf("eligible = %+v, want only %s", plan.Eligible, eligible)
 	}
 	wantSkipped := []NFeSkipped{
@@ -170,7 +170,7 @@ func TestNFePlanCienciaNeedsNoNetworkOrPassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(all.Eligible) != 1 || all.Eligible[0].ChaveAcesso != eligible {
+	if len(all.Eligible) != 1 || string(all.Eligible[0].ChaveAcesso) != eligible {
 		t.Errorf("all resumos = %+v, want only %s", all.Eligible, eligible)
 	}
 	if len(env.passwords.requests) != 0 || fake.clients != 0 {

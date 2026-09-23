@@ -102,11 +102,11 @@
             <q-chip
               dense
               square
-              :color="deadlineColor(daysUntil(cellProps.row.Deadline), 'conclusiva')"
+              :color="deadlineColor(cellProps.row.DaysLeft, 'conclusiva')"
               outline
               :label="conclusiveChipLabel(cellProps.row)"
             />
-            <div class="text-caption text-app-muted">{{ formatDate(cellProps.row.Deadline) }}</div>
+            <div class="text-caption text-app-muted">{{ formatDate(cellProps.row.ConclusiveDue) }}</div>
           </q-td>
         </template>
 
@@ -201,24 +201,24 @@ const columns: QTableColumn<NFePendingRow>[] = [
     classes: 'text-mono',
     format: (value: number) => formatCurrencyCents(value),
   },
-  { name: 'prazo', label: 'Prazo', field: 'Deadline', align: 'left' },
+  { name: 'prazo', label: 'Prazo', field: 'ConclusiveDue', align: 'left' },
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },
 ]
 
 // A note without ciência can also pass the conclusive deadline; the row is
-// then Expired and the operation is already deemed confirmed.
+// then TacitlyConfirmed and the operation is already deemed confirmed.
 function cienciaChipLabel(row: NFePendingRow) {
-  if (row.Expired) return TACIT_CONFIRMATION_LABEL
+  if (row.TacitlyConfirmed) return TACIT_CONFIRMATION_LABEL
   return deadlineLabel(daysUntil(row.CienciaDue))
 }
 
 function cienciaChipColor(row: NFePendingRow) {
-  if (row.CienciaOverdue || row.Expired) return 'negative'
+  if (row.CienciaOverdue || row.TacitlyConfirmed) return 'negative'
   return deadlineColor(daysUntil(row.CienciaDue), 'ciencia')
 }
 
 function conclusiveChipLabel(row: NFePendingRow) {
-  if (row.Expired) return TACIT_CONFIRMATION_LABEL
-  return conclusiveDeadlineLabel(daysUntil(row.Deadline))
+  if (row.TacitlyConfirmed) return TACIT_CONFIRMATION_LABEL
+  return conclusiveDeadlineLabel(row.DaysLeft)
 }
 </script>

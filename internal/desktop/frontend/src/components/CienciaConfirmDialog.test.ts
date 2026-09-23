@@ -2,7 +2,7 @@ import { shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import CienciaConfirmDialog from './CienciaConfirmDialog.vue'
-import type { NFeCienciaPlan } from '@/types/desktop'
+import type { NFeCienciaPlan, NFeRow } from '@/types/desktop'
 
 const onDialogOK = vi.fn()
 
@@ -18,24 +18,37 @@ vi.mock('quasar', () => {
   return { useDialogPluginComponent, useQuasar: () => ({ dark: { isActive: false } }) }
 })
 
+function note(chave: string, numero: string, totalValue: number): NFeRow {
+  return {
+    ID: `rel-${numero}`,
+    DocumentID: `doc-${numero}`,
+    ChaveAcesso: chave,
+    Serie: '1',
+    Numero: numero,
+    Protocolo: '',
+    TipoOperacao: '1',
+    EmitenteCNPJ: '12345678000199',
+    EmitenteName: 'Fornecedor A',
+    EmitenteIE: '',
+    DestinatarioCNPJ: '98765432000199',
+    DestinatarioName: 'Empresa Um',
+    TotalValue: totalValue,
+    Situacao: 'autorizada',
+    Completeness: 'resumo',
+    Manifestacao: 'nenhuma',
+    CompanyRole: 'destinatario',
+    EventCount: 0,
+    DaysLeft: 80,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
+  }
+}
+
 const plan: NFeCienciaPlan = {
   Eligible: [
-    {
-      ChaveAcesso: '35240912345678000199550010000000011000000011',
-      Serie: '1',
-      Numero: '1',
-      EmitenteCNPJ: '12345678000199',
-      EmitenteName: 'Fornecedor A',
-      TotalValue: 10000,
-    },
-    {
-      ChaveAcesso: '35240912345678000199550010000000021000000021',
-      Serie: '1',
-      Numero: '2',
-      EmitenteCNPJ: '12345678000199',
-      EmitenteName: 'Fornecedor A',
-      TotalValue: 25050,
-    },
+    note('35240912345678000199550010000000011000000011', '1', 10000),
+    note('35240912345678000199550010000000021000000021', '2', 25050),
   ],
   Skipped: [{ ChaveAcesso: '35240998765432000199550010000000031000000031', Reason: 'Nota cancelada' }],
 }

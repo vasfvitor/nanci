@@ -1,7 +1,8 @@
 import type { NFeConclusiveTipo, NFeEventOutcome, NFeEventResult, NFeRow } from '@/types/desktop'
 
-// Rules that enable or disable manifestação actions in the UI. The backend
-// enforces them again, and SEFAZ has the final word on deadlines.
+// The backend decides which manifestação a note can receive and says why
+// not in the row; SEFAZ has the final word on deadlines. The frontend only
+// validates the justificativa as it is typed.
 
 export const JUSTIFICATIVA_MIN_LENGTH = 15
 export const JUSTIFICATIVA_MAX_LENGTH = 255
@@ -10,33 +11,20 @@ export const JUSTIFICATIVA_MAX_LENGTH = 255
 // UI offers them.
 export const CONCLUSIVE_TIPOS: readonly NFeConclusiveTipo[] = ['210200', '210220', '210240']
 
-type ManifestableRow = Pick<NFeRow, 'CompanyRole' | 'Situacao' | 'Manifestacao'>
-
-function noteBlockReason(row: ManifestableRow): string | null {
-  if (row.CompanyRole !== 'destinatario') return 'Somente o destinatário pode manifestar'
-  if (row.Situacao === 'cancelada') return 'Nota cancelada'
-  if (row.Situacao === 'denegada') return 'Nota denegada'
-  if (row.Situacao !== 'autorizada') return 'Situação da nota desconhecida'
-  if (row.Manifestacao === '') return 'Manifestação atual desconhecida'
-  return null
+// displayReason starts a backend reason with a capital letter, or returns
+// null when there is none.
+function displayReason(reason: string): string | null {
+  return reason ? reason.charAt(0).toUpperCase() + reason.slice(1) : null
 }
 
-export function cienciaBlockReason(row: ManifestableRow): string | null {
-  const reason = noteBlockReason(row)
-  if (reason) return reason
-  if (row.Manifestacao !== 'nenhuma') return 'Já possui manifestação'
-  return null
+export function cienciaBlockReason(row: Pick<NFeRow, 'CienciaBlockReason'>): string | null {
+  return displayReason(row.CienciaBlockReason)
 }
 
 // conclusiveBlockReason applies to every conclusive tipo alike: only one
 // conclusive manifestação can be registered per note.
-export function conclusiveBlockReason(row: ManifestableRow): string | null {
-  const reason = noteBlockReason(row)
-  if (reason) return reason
-  if (row.Manifestacao !== 'nenhuma' && row.Manifestacao !== 'ciencia') {
-    return 'Já possui manifestação conclusiva'
-  }
-  return null
+export function conclusiveBlockReason(row: Pick<NFeRow, 'ConclusiveBlockReason'>): string | null {
+  return displayReason(row.ConclusiveBlockReason)
 }
 
 export function validateJustificativa(text: string | null | undefined): string | null {

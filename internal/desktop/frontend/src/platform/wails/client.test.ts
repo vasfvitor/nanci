@@ -324,24 +324,29 @@ describe('NF-e mappers', () => {
 
   it('maps flat pending rows with their deadline fields', () => {
     const pending = mapNFePendingRow({
+      ID: 'rel-1',
       ChaveAcesso: chave,
       Kind: 'sem_ciencia',
-      Deadline: '2025-03-01T00:00:00Z',
-      DaysLeft: 5,
+      ConclusiveDue: '2025-03-01T00:00:00Z',
+      DaysLeft: -5,
+      TacitlyConfirmed: true,
       CienciaOverdue: true,
-      Expired: false,
+      CienciaBlockReason: '',
+      ConclusiveBlockReason: '',
     })
 
     expect(pending).toMatchObject({
-      ID: '',
+      ID: 'rel-1',
       ChaveAcesso: chave,
       Kind: 'sem_ciencia',
-      Deadline: '2025-03-01T00:00:00Z',
-      DaysLeft: 5,
+      ConclusiveDue: '2025-03-01T00:00:00Z',
+      DaysLeft: -5,
+      TacitlyConfirmed: true,
       CienciaOverdue: true,
-      Expired: false,
+      CienciaBlockReason: '',
     })
     expect(mapNFePendingRow({ Kind: 'outro' }).Kind).toBe('')
+    expect(mapNFePendingRow({}).DaysLeft).toBeNull()
   })
 
   it('maps events, batch results, plans, status, and pull results', () => {

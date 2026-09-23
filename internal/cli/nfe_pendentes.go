@@ -68,7 +68,7 @@ func newNFePendentesCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 // pendingAlert is the ALERTA column of `nfe pendentes`.
 func pendingAlert(p app.NFePendingManifestation) string {
 	switch {
-	case p.Expired:
+	case p.TacitlyConfirmed:
 		return "confirmada tacitamente (prazo expirado)"
 	case p.CienciaOverdue:
 		return "ciência atrasada"

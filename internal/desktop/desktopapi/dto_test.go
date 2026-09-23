@@ -11,35 +11,47 @@ import (
 
 func TestNFeRows(t *testing.T) {
 	authorized := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
-	docs := []nfe.CompanyDocument{
+	cienciaDue := authorized.AddDate(0, 0, nfe.CienciaWarningDays)
+	conclusiveDue := authorized.AddDate(0, 0, nfe.ConclusiveDeadlineDays)
+	docs := []app.NFeDocument{
 		{
-			Document: nfe.Document{
-				ID:           "doc-1",
-				ChaveAcesso:  "35260912345678000195550010000123451000123456",
-				Serie:        "1",
-				Numero:       "12345",
-				IssueDate:    authorized.Add(-time.Hour),
-				AuthorizedAt: &authorized,
-				Protocolo:    "135260000000001",
-				TpNF:         "1",
-				TotalValue:   nfse.NewMoneyFromCents(123456),
-				Situacao:     nfe.SituacaoAutorizada,
-				Completeness: nfe.CompletenessCompleta,
+			CompanyDocument: nfe.CompanyDocument{
+				Document: nfe.Document{
+					ID:           "doc-1",
+					ChaveAcesso:  "35260912345678000195550010000123451000123456",
+					Serie:        "1",
+					Numero:       "12345",
+					IssueDate:    authorized.Add(-time.Hour),
+					AuthorizedAt: &authorized,
+					Protocolo:    "135260000000001",
+					TpNF:         "1",
+					TotalValue:   nfse.NewMoneyFromCents(123456),
+					Situacao:     nfe.SituacaoAutorizada,
+					Completeness: nfe.CompletenessCompleta,
+				},
+				RelationID:   "rel-1",
+				CompanyRole:  nfe.CompanyRoleDestinatario,
+				Manifestacao: nfe.ManifestacaoCiencia,
+				EventCount:   2,
 			},
-			RelationID:   "rel-1",
-			CompanyRole:  nfe.CompanyRoleDestinatario,
-			Manifestacao: nfe.ManifestacaoCiencia,
-			EventCount:   2,
+			Deadlines:          nfe.Deadlines{CienciaDue: cienciaDue, ConclusiveDue: conclusiveDue},
+			DaysLeft:           -3,
+			TacitlyConfirmed:   true,
+			CienciaBlockReason: "já manifestada (ciencia)",
 		},
 		{
-			Document: nfe.Document{
-				ID:           "doc-2",
-				Situacao:     nfe.SituacaoCancelada,
-				Completeness: nfe.CompletenessResumo,
+			CompanyDocument: nfe.CompanyDocument{
+				Document: nfe.Document{
+					ID:           "doc-2",
+					Situacao:     nfe.SituacaoCancelada,
+					Completeness: nfe.CompletenessResumo,
+				},
+				RelationID:   "rel-2",
+				CompanyRole:  nfe.CompanyRoleNone,
+				Manifestacao: nfe.ManifestacaoNaoRealizada,
 			},
-			RelationID:   "rel-2",
-			CompanyRole:  nfe.CompanyRoleNone,
-			Manifestacao: nfe.ManifestacaoNaoRealizada,
+			CienciaBlockReason:    "a empresa não é a destinatária",
+			ConclusiveBlockReason: "a empresa não é a destinatária",
 		},
 	}
 
@@ -61,45 +73,63 @@ func TestNFeRows(t *testing.T) {
 	if row.Situacao != "autorizada" || row.Completeness != "completa" || row.Manifestacao != "ciencia" || row.CompanyRole != "destinatario" {
 		t.Errorf("enums = %q %q %q %q", row.Situacao, row.Completeness, row.Manifestacao, row.CompanyRole)
 	}
-	if row.CienciaDue == nil || !row.CienciaDue.Equal(authorized.AddDate(0, 0, nfe.CienciaWarningDays)) {
-		t.Errorf("CienciaDue = %v, want authorization + %d days", row.CienciaDue, nfe.CienciaWarningDays)
+	if row.CienciaDue == nil || !row.CienciaDue.Equal(cienciaDue) || row.ConclusiveDue == nil || !row.ConclusiveDue.Equal(conclusiveDue) {
+		t.Errorf("CienciaDue = %v, ConclusiveDue = %v, want %v and %v", row.CienciaDue, row.ConclusiveDue, cienciaDue, conclusiveDue)
 	}
-	if row.ConclusiveDue == nil || !row.ConclusiveDue.Equal(authorized.AddDate(0, 0, nfe.ConclusiveDeadlineDays)) {
-		t.Errorf("ConclusiveDue = %v, want authorization + %d days", row.ConclusiveDue, nfe.ConclusiveDeadlineDays)
+	if row.DaysLeft == nil || *row.DaysLeft != -3 || !row.TacitlyConfirmed {
+		t.Errorf("DaysLeft = %v, TacitlyConfirmed = %t; want -3 and true", row.DaysLeft, row.TacitlyConfirmed)
+	}
+	if row.CienciaBlockReason != "já manifestada (ciencia)" || row.ConclusiveBlockReason != "" {
+		t.Errorf("block reasons = %q, %q", row.CienciaBlockReason, row.ConclusiveBlockReason)
 	}
 	if row.EventCount != 2 {
 		t.Errorf("EventCount = %d, want 2", row.EventCount)
 	}
 
 	empty := rows[1]
-	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil {
-		t.Errorf("dates = %v %v %v %v, want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue)
+	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil {
+		t.Errorf("dates = %v %v %v %v, DaysLeft = %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.DaysLeft)
 	}
 	if empty.Situacao != "cancelada" || empty.Completeness != "resumo" || empty.Manifestacao != "nao_realizada" || empty.CompanyRole != "none" {
 		t.Errorf("enums = %q %q %q %q", empty.Situacao, empty.Completeness, empty.Manifestacao, empty.CompanyRole)
+	}
+	if empty.CienciaBlockReason == "" || empty.ConclusiveBlockReason == "" {
+		t.Errorf("block reasons = %q, %q; want both set", empty.CienciaBlockReason, empty.ConclusiveBlockReason)
 	}
 }
 
 func TestNFePendingRows(t *testing.T) {
 	conclusive := time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC)
 	rows := NFePendingRows([]app.NFePendingManifestation{{
-		ChaveAcesso:    "35260912345678000195550010000123451000123456",
+		NFeDocument: app.NFeDocument{
+			CompanyDocument: nfe.CompanyDocument{
+				Document: nfe.Document{
+					ChaveAcesso:  "35260912345678000195550010000123451000123456",
+					TotalValue:   nfse.NewMoneyFromCents(990),
+					Situacao:     nfe.SituacaoAutorizada,
+					Completeness: nfe.CompletenessResumo,
+				},
+				RelationID:   "rel-1",
+				CompanyRole:  nfe.CompanyRoleDestinatario,
+				Manifestacao: nfe.ManifestacaoNenhuma,
+			},
+			Deadlines:        nfe.Deadlines{ConclusiveDue: conclusive},
+			DaysLeft:         -2,
+			TacitlyConfirmed: true,
+		},
 		Kind:           app.NFePendingSemCiencia,
-		TotalValue:     nfse.NewMoneyFromCents(990),
-		Completeness:   "resumo",
-		Manifestacao:   "nenhuma",
-		ConclusiveDue:  conclusive,
-		DaysLeft:       -2,
 		CienciaOverdue: true,
-		Expired:        true,
 	}})
 
 	row := rows[0]
-	if row.Kind != "sem_ciencia" || row.TotalValue != 990 || row.DaysLeft != -2 || !row.CienciaOverdue || !row.Expired {
+	if row.Kind != "sem_ciencia" || row.ID != "rel-1" || row.TotalValue != 990 || !row.CienciaOverdue || !row.TacitlyConfirmed {
 		t.Errorf("row = %+v", row)
 	}
-	if row.Deadline == nil || !row.Deadline.Equal(conclusive) || row.ConclusiveDue == nil || !row.ConclusiveDue.Equal(conclusive) {
-		t.Errorf("Deadline = %v, ConclusiveDue = %v, want %v", row.Deadline, row.ConclusiveDue, conclusive)
+	if row.DaysLeft == nil || *row.DaysLeft != -2 {
+		t.Errorf("DaysLeft = %v, want -2", row.DaysLeft)
+	}
+	if row.ConclusiveDue == nil || !row.ConclusiveDue.Equal(conclusive) {
+		t.Errorf("ConclusiveDue = %v, want %v", row.ConclusiveDue, conclusive)
 	}
 	if row.CienciaDue != nil {
 		t.Errorf("CienciaDue = %v, want nil for a zero date", row.CienciaDue)
@@ -153,8 +183,11 @@ func TestNFeEventBatchEmptyListsAreNotNil(t *testing.T) {
 func TestNFeCienciaPlanDTO(t *testing.T) {
 	due := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	got := NFeCienciaPlanDTO(app.NFeCienciaPlan{
-		Eligible: []app.NFeCandidate{{ChaveAcesso: "a", TotalValue: nfse.NewMoneyFromCents(5050), CienciaDue: due}},
-		Skipped:  []app.NFeSkipped{{ChaveAcesso: "b", Reason: "NF-e cancelada"}},
+		Eligible: []app.NFeDocument{{
+			CompanyDocument: nfe.CompanyDocument{Document: nfe.Document{ChaveAcesso: "a", TotalValue: nfse.NewMoneyFromCents(5050)}},
+			Deadlines:       nfe.Deadlines{CienciaDue: due},
+		}},
+		Skipped: []app.NFeSkipped{{ChaveAcesso: "b", Reason: "NF-e cancelada"}},
 	})
 	if len(got.Eligible) != 1 || got.Eligible[0].TotalValue != 5050 {
 		t.Fatalf("Eligible = %+v", got.Eligible)

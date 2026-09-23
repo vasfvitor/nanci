@@ -38,6 +38,10 @@ function note(overrides: Partial<NFeRow> = {}): NFeRow {
     Manifestacao: 'ciencia',
     CompanyRole: 'destinatario',
     EventCount: 1,
+    DaysLeft: null,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
     ...overrides,
   }
 }
@@ -131,7 +135,12 @@ describe('ManifestacaoDialog', () => {
   })
 
   it('disables blocked options and shows why', async () => {
-    const wrapper = mountDialog(note({ Manifestacao: 'confirmada' }))
+    const wrapper = mountDialog(
+      note({
+        Manifestacao: 'confirmada',
+        ConclusiveBlockReason: 'NF-e já possui manifestação conclusiva (Confirmada)',
+      })
+    )
     const options = wrapper.getComponent({ name: 'QOptionGroup' }).props('options') as Option[]
 
     expect(options.map((option) => [option.value, option.disable])).toEqual([
@@ -139,7 +148,7 @@ describe('ManifestacaoDialog', () => {
       ['210220', true],
       ['210240', true],
     ])
-    expect(wrapper.text()).toContain('Já possui manifestação conclusiva')
+    expect(wrapper.text()).toContain('NF-e já possui manifestação conclusiva (Confirmada)')
 
     wrapper.getComponent({ name: 'QOptionGroup' }).vm.$emit('update:modelValue', '210200')
     await wrapper.vm.$nextTick()

@@ -271,6 +271,14 @@ export type NFeRow = {
   EventCount: number
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
+  // DaysLeft counts calendar days until ConclusiveDue: 0 on the due day,
+  // negative once it passed, null without a deadline.
+  DaysLeft: number | null
+  TacitlyConfirmed: boolean
+  // The backend says why the note cannot receive each manifestação; '' when
+  // it can.
+  CienciaBlockReason: string
+  ConclusiveBlockReason: string
 }
 
 export type NFeKeyInput = {
@@ -296,14 +304,10 @@ export type NFeEvent = {
   SentByNanci: boolean
 }
 
-// NFePendingRow carries the NFeRow fields flat. The backend fills only part
-// of them, so pending rows are keyed by ChaveAcesso, not ID.
+// NFePendingRow is a full NFeRow plus what the pending list adds.
 export type NFePendingRow = NFeRow & {
   Kind: NFePendingKind | ''
-  Deadline?: ISODateValue
-  DaysLeft: number
   CienciaOverdue: boolean
-  Expired: boolean
 }
 
 export type NFePendingInput = {
@@ -316,25 +320,13 @@ export type RegisterCienciaInput = {
   ChavesAcesso: string[]
 }
 
-export type NFeCandidate = {
-  ChaveAcesso: string
-  Serie: string
-  Numero: string
-  EmitenteCNPJ: string
-  EmitenteName: string
-  IssueDate?: ISODateValue
-  TotalValue: number
-  CienciaDue?: ISODateValue
-  ConclusiveDue?: ISODateValue
-}
-
 export type NFeSkipped = {
   ChaveAcesso: string
   Reason: string
 }
 
 export type NFeCienciaPlan = {
-  Eligible: NFeCandidate[]
+  Eligible: NFeRow[]
   Skipped: NFeSkipped[]
 }
 

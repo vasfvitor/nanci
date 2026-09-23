@@ -355,7 +355,7 @@ func TestPendingAlert(t *testing.T) {
 		p    app.NFePendingManifestation
 		want string
 	}{
-		{"expired", app.NFePendingManifestation{Expired: true, CienciaOverdue: true}, "confirmada tacitamente (prazo expirado)"},
+		{"expired", app.NFePendingManifestation{NFeDocument: app.NFeDocument{TacitlyConfirmed: true}, CienciaOverdue: true}, "confirmada tacitamente (prazo expirado)"},
 		{"ciência overdue", app.NFePendingManifestation{CienciaOverdue: true}, "ciência atrasada"},
 		{"on time", app.NFePendingManifestation{}, "-"},
 	}

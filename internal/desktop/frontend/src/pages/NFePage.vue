@@ -324,8 +324,8 @@
                   square
                   outline
                   size="sm"
-                  :color="deadlineColor(daysUntil(cellProps.row.ConclusiveDue), 'conclusiva')"
-                  :label="conclusiveDeadlineLabel(daysUntil(cellProps.row.ConclusiveDue))"
+                  :color="deadlineColor(cellProps.row.DaysLeft, 'conclusiva')"
+                  :label="conclusiveDeadlineLabel(cellProps.row.DaysLeft)"
                   :title="`Prazo da manifestação conclusiva: ${formatDate(cellProps.row.ConclusiveDue)}`"
                 />
               </div>
@@ -381,7 +381,6 @@ import type {
   NFeRow,
 } from '@/types/desktop'
 import {
-  daysUntil,
   formatChaveAcesso,
   formatChaveNFe,
   formatCpfCnpj,

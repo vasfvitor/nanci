@@ -244,10 +244,44 @@ type NFeListInput struct {
 	Limit        int // 0 means no limit
 }
 
+// NFeDocument is one of the company's NF-e with its manifestação state
+// derived when it was listed.
+type NFeDocument struct {
+	nfe.CompanyDocument
+	nfe.Deadlines
+	// DaysLeft is how many calendar days are left until ConclusiveDue: 0 on
+	// the due day, negative once it passed. It is 0 when there is no
+	// deadline.
+	DaysLeft int
+	// TacitlyConfirmed is true once ConclusiveDue passed without a
+	// conclusive manifestação: the operation is deemed confirmed by law.
+	TacitlyConfirmed bool
+	// CienciaBlockReason says why the NF-e cannot receive Ciência da
+	// Operação, or "" when it can.
+	CienciaBlockReason string
+	// ConclusiveBlockReason says why the NF-e cannot receive a conclusive
+	// manifestação, or "" when it can. The deadline never blocks it.
+	ConclusiveBlockReason string
+}
+
+func newNFeDocument(doc nfe.CompanyDocument, now time.Time) NFeDocument {
+	d := NFeDocument{
+		CompanyDocument:       doc,
+		Deadlines:             nfe.ManifestationDeadlines(doc.Document),
+		TacitlyConfirmed:      nfe.TacitlyConfirmed(doc, now),
+		CienciaBlockReason:    cienciaBlockReason(doc),
+		ConclusiveBlockReason: conclusiveBlockReason(doc),
+	}
+	if !d.ConclusiveDue.IsZero() {
+		d.DaysLeft = daysLeft(d.ConclusiveDue, now)
+	}
+	return d
+}
+
 // ListDocuments returns the company's NF-e, newest issue date first. Unlike
 // NFS-e, the company start policy is not applied: the SEFAZ queue already
 // covers only the last 90 days.
-func (s *NFeService) ListDocuments(ctx context.Context, in NFeListInput) ([]nfe.CompanyDocument, error) {
+func (s *NFeService) ListDocuments(ctx context.Context, in NFeListInput) ([]NFeDocument, error) {
 	comp, filter, err := s.buildFilter(ctx, in)
 	if err != nil {
 		return nil, err
@@ -256,7 +290,12 @@ func (s *NFeService) ListDocuments(ctx context.Context, in NFeListInput) ([]nfe.
 	if err != nil {
 		return nil, fmt.Errorf("listar NF-e: %w", err)
 	}
-	return docs, nil
+	now := s.now()
+	out := make([]NFeDocument, len(docs))
+	for i, doc := range docs {
+		out[i] = newNFeDocument(doc, now)
+	}
+	return out, nil
 }
 
 // ListEvents returns the events nanci holds for one of the company's NF-e,
@@ -286,26 +325,12 @@ type NFePendingInput struct {
 }
 
 // NFePendingManifestation is an authorized NF-e addressed to the company
-// that still lacks a conclusive manifestação.
+// that still lacks a conclusive manifestação. ConclusiveDue is the deadline
+// shown; nanci never blocks on it.
 type NFePendingManifestation struct {
-	ChaveAcesso    string
+	NFeDocument
 	Kind           string // sem_ciencia | sem_conclusiva
-	Serie          string
-	Numero         string
-	EmitenteCNPJ   string
-	EmitenteName   string
-	IssueDate      time.Time
-	AuthorizedAt   *time.Time
-	TotalValue     nfse.Money
-	Completeness   string // resumo | completa
-	Manifestacao   string // nenhuma | ciencia
-	CienciaDue     time.Time
-	ConclusiveDue  time.Time // the deadline shown; nanci never blocks on it
-	DaysLeft       int       // whole days until ConclusiveDue; negative once past
-	CienciaOverdue bool      // no manifestação and CienciaDue has passed
-	// Expired is true once ConclusiveDue has passed. The operation is then
-	// deemed confirmed by law (nfe.TacitlyConfirmed).
-	Expired bool
+	CienciaOverdue bool   // no manifestação and CienciaDue has passed
 }
 
 // ListPendingManifestations returns the company's pending manifestações,
@@ -339,29 +364,12 @@ func (s *NFeService) pendingManifestations(ctx context.Context, companyID nfse.C
 
 	pending := make([]NFePendingManifestation, 0, len(docs))
 	for _, doc := range docs {
-		deadlines := nfe.ManifestationDeadlines(doc.Document)
-		kind := NFePendingSemConclusiva
+		p := NFePendingManifestation{NFeDocument: newNFeDocument(doc, now), Kind: NFePendingSemConclusiva}
 		if doc.Manifestacao == nfe.ManifestacaoNenhuma {
-			kind = NFePendingSemCiencia
+			p.Kind = NFePendingSemCiencia
+			p.CienciaOverdue = p.CienciaWarning(now)
 		}
-		pending = append(pending, NFePendingManifestation{
-			ChaveAcesso:    string(doc.ChaveAcesso),
-			Kind:           kind,
-			Serie:          doc.Serie,
-			Numero:         doc.Numero,
-			EmitenteCNPJ:   doc.EmitenteCNPJ,
-			EmitenteName:   doc.EmitenteName,
-			IssueDate:      doc.IssueDate,
-			AuthorizedAt:   doc.AuthorizedAt,
-			TotalValue:     doc.TotalValue,
-			Completeness:   string(doc.Completeness),
-			Manifestacao:   string(doc.Manifestacao),
-			CienciaDue:     deadlines.CienciaDue,
-			ConclusiveDue:  deadlines.ConclusiveDue,
-			DaysLeft:       daysLeft(deadlines.ConclusiveDue, now),
-			CienciaOverdue: kind == NFePendingSemCiencia && deadlines.CienciaWarning(now),
-			Expired:        nfe.TacitlyConfirmed(doc, now),
-		})
+		pending = append(pending, p)
 	}
 	slices.SortFunc(pending, func(a, b NFePendingManifestation) int {
 		return cmp.Or(a.ConclusiveDue.Compare(b.ConclusiveDue), cmp.Compare(a.ChaveAcesso, b.ChaveAcesso))

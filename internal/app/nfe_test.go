@@ -196,7 +196,7 @@ func testChave(t *testing.T, n int) string {
 	return chave
 }
 
-func chavesOf(docs []nfe.CompanyDocument) []string {
+func chavesOf(docs []NFeDocument) []string {
 	out := make([]string, 0, len(docs))
 	for _, d := range docs {
 		out = append(out, string(d.ChaveAcesso))
@@ -330,14 +330,14 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pending) != 2 || pending[0].ChaveAcesso != early || pending[1].ChaveAcesso != nfeChaveProc {
+	if len(pending) != 2 || string(pending[0].ChaveAcesso) != early || pending[1].ChaveAcesso != nfeChaveProc {
 		t.Fatalf("pending = %+v, want the 08-20 resumo then the ciência", pending)
 	}
 
 	first := pending[0]
-	if first.Kind != NFePendingSemCiencia || !first.CienciaOverdue || first.Expired || first.DaysLeft != 63 {
-		t.Errorf("first = kind %s, overdue %t, expired %t, days %d; want sem_ciencia, true, false, 63",
-			first.Kind, first.CienciaOverdue, first.Expired, first.DaysLeft)
+	if first.Kind != NFePendingSemCiencia || !first.CienciaOverdue || first.TacitlyConfirmed || first.DaysLeft != 64 {
+		t.Errorf("first = kind %s, overdue %t, tacit %t, days %d; want sem_ciencia, true, false, 64",
+			first.Kind, first.CienciaOverdue, first.TacitlyConfirmed, first.DaysLeft)
 	}
 	if want := mustTime(t, "2026-11-18T10:00:00-03:00"); !first.ConclusiveDue.Equal(want) {
 		t.Errorf("ConclusiveDue = %s, want %s", first.ConclusiveDue, want)
@@ -352,7 +352,7 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(due) != 1 || due[0].ChaveAcesso != early {
+	if len(due) != 1 || string(due[0].ChaveAcesso) != early {
 		t.Errorf("due within 70 days = %+v, want only the 08-20 resumo", due)
 	}
 
@@ -362,8 +362,8 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range expired {
-		if !p.Expired || p.DaysLeft >= 0 {
-			t.Errorf("%s: expired %t, days %d; want expired with negative days", p.ChaveAcesso, p.Expired, p.DaysLeft)
+		if !p.TacitlyConfirmed || p.DaysLeft >= 0 {
+			t.Errorf("%s: tacit %t, days %d; want tacitly confirmed with negative days", p.ChaveAcesso, p.TacitlyConfirmed, p.DaysLeft)
 		}
 	}
 }
@@ -491,5 +491,72 @@ func TestNFeTestConnectionOnlyChecksTLS(t *testing.T) {
 	}
 	if result.EndpointReached || !strings.Contains(result.StatusExplanation, "handshake failed") {
 		t.Errorf("failed check result = %+v", result)
+	}
+}
+
+func TestNFeListDocumentsDerivesManifestationState(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seedFixtures()
+	ctx := context.Background()
+
+	list := func() map[string]NFeDocument {
+		t.Helper()
+		docs, err := env.app.NFe.ListDocuments(ctx, NFeListInput{CNPJ: nfeTestCNPJ})
+		if err != nil {
+			t.Fatal(err)
+		}
+		byChave := make(map[string]NFeDocument, len(docs))
+		for _, d := range docs {
+			byChave[string(d.ChaveAcesso)] = d
+		}
+		return byChave
+	}
+
+	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-09-15T12:00:00-03:00") }
+	docs := list()
+	tests := []struct {
+		chave               string
+		ciencia, conclusive string
+	}{
+		{nfeChaveProc, "já manifestada (ciencia)", ""},
+		{nfeChaveCancelada, "NF-e cancelada", "NF-e cancelada"},
+		{nfeChaveDenegada, "NF-e denegada", "NF-e denegada"},
+	}
+	for _, tc := range tests {
+		d := docs[tc.chave]
+		if d.CienciaBlockReason != tc.ciencia || d.ConclusiveBlockReason != tc.conclusive {
+			t.Errorf("%s: block reasons = %q, %q; want %q, %q", tc.chave, d.CienciaBlockReason, d.ConclusiveBlockReason, tc.ciencia, tc.conclusive)
+		}
+	}
+	proc := docs[nfeChaveProc]
+	if proc.ConclusiveDue.IsZero() || proc.DaysLeft <= 0 || proc.TacitlyConfirmed {
+		t.Errorf("ciência row = due %s, days %d, tacit %t; want a future deadline", proc.ConclusiveDue, proc.DaysLeft, proc.TacitlyConfirmed)
+	}
+
+	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-12-15T12:00:00-03:00") }
+	proc = list()[nfeChaveProc]
+	if proc.DaysLeft >= 0 || !proc.TacitlyConfirmed || proc.ConclusiveBlockReason != "" {
+		t.Errorf("ciência row after the deadline = days %d, tacit %t, reason %q; want tacitly confirmed and still manifestable",
+			proc.DaysLeft, proc.TacitlyConfirmed, proc.ConclusiveBlockReason)
+	}
+}
+
+func TestDaysLeftCountsCalendarDays(t *testing.T) {
+	brt := time.FixedZone("BRT", -3*3600)
+	now := time.Date(2026, 9, 23, 0, 5, 0, 0, brt)
+	tests := []struct {
+		due  time.Time
+		want int
+	}{
+		{time.Date(2026, 9, 23, 23, 59, 0, 0, brt), 0},
+		{time.Date(2026, 9, 24, 0, 1, 0, 0, brt), 1},
+		{time.Date(2026, 9, 22, 23, 59, 0, 0, brt), -1},
+		{time.Date(2026, 9, 24, 1, 0, 0, 0, time.UTC), 0}, // 22:00 on the 23rd in BRT
+		{time.Date(2026, 10, 3, 12, 0, 0, 0, brt), 10},
+	}
+	for _, tc := range tests {
+		if got := daysLeft(tc.due, now); got != tc.want {
+			t.Errorf("daysLeft(%s) = %d, want %d", tc.due, got, tc.want)
+		}
 	}
 }

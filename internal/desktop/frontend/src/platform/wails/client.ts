@@ -62,7 +62,6 @@ import type {
   ListDocumentsInput,
   ListNFeInput,
   NFeBlockedReason,
-  NFeCandidate,
   NFeCienciaPlan,
   NFeCompleteness,
   NFeEvent,
@@ -335,6 +334,10 @@ export function mapNFeRow(raw: unknown): NFeRow {
     EventCount: asNumber(item['EventCount']),
     FirstSyncedAt: asDate(item['FirstSyncedAt']),
     LastSyncedAt: asDate(item['LastSyncedAt']),
+    DaysLeft: asNullableNumber(item['DaysLeft']),
+    TacitlyConfirmed: asBoolean(item['TacitlyConfirmed']),
+    CienciaBlockReason: asString(item['CienciaBlockReason']),
+    ConclusiveBlockReason: asString(item['ConclusiveBlockReason']),
   }
 }
 
@@ -343,10 +346,7 @@ export function mapNFePendingRow(raw: unknown): NFePendingRow {
   return {
     ...mapNFeRow(item),
     Kind: asEnum(item['Kind'], nfePendingKinds),
-    Deadline: asDate(item['Deadline']),
-    DaysLeft: asNumber(item['DaysLeft']),
     CienciaOverdue: asBoolean(item['CienciaOverdue']),
-    Expired: asBoolean(item['Expired']),
   }
 }
 
@@ -401,25 +401,10 @@ export function mapNFeEventBatchResult(raw: unknown): NFeEventBatchResult {
   }
 }
 
-function mapNFeCandidate(raw: unknown): NFeCandidate {
-  const item = asRawRecord(raw)
-  return {
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    Serie: asString(item['Serie']),
-    Numero: asString(item['Numero']),
-    EmitenteCNPJ: asString(item['EmitenteCNPJ']),
-    EmitenteName: asString(item['EmitenteName']),
-    IssueDate: asDate(item['IssueDate']),
-    TotalValue: asNumber(item['TotalValue']),
-    CienciaDue: asDate(item['CienciaDue']),
-    ConclusiveDue: asDate(item['ConclusiveDue']),
-  }
-}
-
 export function mapNFeCienciaPlan(raw: unknown): NFeCienciaPlan {
   const item = asRawRecord(raw)
   return {
-    Eligible: asArray(item['Eligible']).map(mapNFeCandidate),
+    Eligible: asArray(item['Eligible']).map(mapNFeRow),
     Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
   }
 }
