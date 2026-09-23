@@ -51,6 +51,7 @@ type Dependencies struct {
 	CredentialStore    *credential.Store
 	SyncRepo           *sync.Store
 	DocumentRepo       *store.DocumentRepository
+	NFeRepo            sync.NFeRepository
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -98,6 +99,7 @@ func New(deps Dependencies) (*App, error) {
 			SyncRepo:           deps.SyncRepo,
 			XMLStore:           deps.XMLStore,
 			PassProvider:       deps.CredentialProvider,
+			NFeRepo:            deps.NFeRepo,
 		},
 		Certificates: certificates,
 	}, nil

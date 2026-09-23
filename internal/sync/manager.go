@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	gosync "sync"
@@ -12,12 +13,18 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/foundation/uf"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sefaz"
 )
 
 var (
 	loadPKCS12   = cert.LoadPKCS12
 	newADNClient = adn.NewClient
+	// newSEFAZClient builds the NF-e distribution client; tests swap it.
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (nfeFetcher, error) {
+		return sefaz.NewClient(cfg)
+	}
 )
 
 // CertPasswordRequest carries the context needed to ask for a certificate password.
@@ -68,7 +75,7 @@ var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
 }
 
 // sourceFactory builds the Source of one pull once the certificate is loaded.
-type sourceFactory func(company *nfse.Company, tlsCert tls.Certificate) (Source, error)
+type sourceFactory func(tlsCert tls.Certificate) (Source, error)
 
 type Manager struct {
 	Log                *slog.Logger
@@ -78,6 +85,8 @@ type Manager struct {
 	SyncRepo           *Store
 	XMLStore           xmlStore
 	PassProvider       CredentialProvider
+	// NFeRepo stores the NF-e distribution; pulls with Source nfe need it.
+	NFeRepo NFeRepository
 
 	runningMu gosync.Mutex
 	running   map[string]bool // "companyID:source" pulls in flight in this process
@@ -91,6 +100,7 @@ type PullInput struct {
 }
 
 type PullResult struct {
+	Source                   nfse.SyncSource
 	CompanyName              string
 	CNPJ                     string
 	CredentialLabel          string
@@ -98,16 +108,22 @@ type PullResult struct {
 	ConsultationBasis        string
 	Status                   string
 	StopReason               string
-	LastProcessedNSU         int64
+	LastProcessedNSU         int64 // the cursor; for NF-e, the last ultNSU
 	LastFoundNSU             *int64
+	MaxNSU                   int64 // highest NSU the source reported; 0 when unknown
 	EmptyStreak              int
 	DocumentsFound           int
 	EventsFound              int
 	DocumentsSaved           int
 	EventsSaved              int
+	CompletasSaved           int // NF-e procNFe stored
+	ResumosSaved             int // NF-e resNFe stored
 	DocumentsSkippedByPolicy int
 	EventsSkippedByPolicy    int
 	Errors                   int
+	NextAllowedAt            *time.Time // set while the source must not be queried
+	RequestsLastHour         int
+	RequestBudget            int // requests allowed per hour; 0 means unlimited
 	Duration                 time.Duration
 }
 
@@ -124,14 +140,14 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err != nil {
 		return PullResult{}, err
 	}
-	newSource, err := m.sourceFactoryFor(source)
+
+	m.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ), slog.String("source", string(source)))
+
+	company, err := m.CompanyProvider.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		return PullResult{}, err
 	}
-
-	m.Log.InfoContext(ctx, "Iniciando sincronização de pull", slog.String("cnpj", cleanedCNPJ))
-
-	company, err := m.CompanyProvider.CompanyByCNPJ(ctx, cleanedCNPJ)
+	newSource, err := m.sourceFactoryFor(company, source)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -155,13 +171,14 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 	credential := loaded.Credential
 
-	src, err := newSource(company, loaded.TLS)
+	src, err := newSource(loaded.TLS)
 	if err != nil {
 		return PullResult{}, err
 	}
 	svc := newSyncRunner(m.SyncRepo, src, m.Log)
 
 	var result PullResult
+	result.Source = source
 	result.CompanyName = company.Name
 	result.CNPJ = company.CNPJ
 	result.CredentialLabel = credential.Label
@@ -187,6 +204,12 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 		if event.EventsSkippedByPolicy > result.EventsSkippedByPolicy {
 			result.EventsSkippedByPolicy = event.EventsSkippedByPolicy
 		}
+		if event.CompletasSaved > result.CompletasSaved {
+			result.CompletasSaved = event.CompletasSaved
+		}
+		if event.ResumosSaved > result.ResumosSaved {
+			result.ResumosSaved = event.ResumosSaved
+		}
 	}
 
 	start := time.Now()
@@ -203,6 +226,9 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 		result.LastProcessedNSU = snapshot.State.LastProcessedNSU
 		result.LastFoundNSU = snapshot.State.LastFoundNSU
 		result.EmptyStreak = snapshot.State.LastEmptyStreak
+		if snapshot.State.MaxNSU != nil {
+			result.MaxNSU = *snapshot.State.MaxNSU
+		}
 	}
 	if snapshot.Run != nil {
 		result.Status = string(snapshot.Run.Status)
@@ -212,6 +238,9 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	}
 	if result.DocumentsSaved == 0 {
 		result.DocumentsSaved = result.DocumentsFound
+	}
+	if err := m.fillRequestLimits(ctx, company.ID, source, src.Policy(), &result); err != nil {
+		return PullResult{}, err
 	}
 
 	m.Log.InfoContext(
@@ -248,12 +277,45 @@ func (m *Manager) startPull(companyID nfse.CompanyID, source nfse.SyncSource) (f
 	}, nil
 }
 
-// sourceFactoryFor returns how to build the source. It fails before any
-// password prompt for a source that cannot be pulled yet.
-func (m *Manager) sourceFactoryFor(source nfse.SyncSource) (sourceFactory, error) {
+// fillRequestLimits reports when the source may be queried again and how
+// much of its hourly budget is spent.
+func (m *Manager) fillRequestLimits(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, policy SourcePolicy, result *PullResult) error {
+	now := time.Now().UTC()
+	state, err := m.SyncRepo.SourceState(ctx, companyID, source)
+	if err != nil {
+		return fmt.Errorf("carregar estado da origem: %w", err)
+	}
+	if state.BlockedUntil != nil && now.Before(*state.BlockedUntil) {
+		result.NextAllowedAt = state.BlockedUntil
+	}
+	count, _, err := m.SyncRepo.RequestsSince(ctx, companyID, source, now.Add(-time.Hour))
+	if err != nil {
+		return fmt.Errorf("contar consultas da última hora: %w", err)
+	}
+	result.RequestsLastHour = count
+	result.RequestBudget = policy.RequestsPerHour
+	return nil
+}
+
+// sourceFactoryFor returns how to build the source for the company. It
+// fails before any password prompt for a source that cannot be pulled.
+func (m *Manager) sourceFactoryFor(company *nfse.Company, source nfse.SyncSource) (sourceFactory, error) {
 	switch source {
 	case nfse.SyncSourceNFSe:
-		return m.newNFSeSource, nil
+		return func(tlsCert tls.Certificate) (Source, error) {
+			return m.newNFSeSource(company, tlsCert)
+		}, nil
+	case nfse.SyncSourceNFe:
+		if m.NFeRepo == nil {
+			return nil, errors.New("repositório de NF-e não configurado")
+		}
+		cUFAutor, err := companyUFCode(company)
+		if err != nil {
+			return nil, err
+		}
+		return func(tlsCert tls.Certificate) (Source, error) {
+			return m.newNFeSource(company, tlsCert, cUFAutor)
+		}, nil
 	default:
 		return nil, fmt.Errorf("origem de sincronização %q ainda não disponível", source)
 	}
@@ -269,6 +331,31 @@ func (m *Manager) newNFSeSource(company *nfse.Company, tlsCert tls.Certificate) 
 		return nil, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
 	return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
+}
+
+func (m *Manager) newNFeSource(company *nfse.Company, tlsCert tls.Certificate, cUFAutor int) (Source, error) {
+	client, err := newSEFAZClient(sefaz.ClientConfig{
+		Environment: company.Environment,
+		Certificate: &tlsCert,
+		Log:         m.Log,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
+	}
+	return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
+}
+
+// companyUFCode returns the IBGE code of the company's UF, which the NF-e
+// distribution requires as cUFAutor.
+func companyUFCode(company *nfse.Company) (int, error) {
+	if company.UF == "" {
+		return 0, errors.New("empresa sem UF cadastrada; use company update --uf")
+	}
+	code, ok := uf.Code(company.UF)
+	if !ok {
+		return 0, fmt.Errorf("UF %q da empresa é inválida; use company update --uf", company.UF)
+	}
+	return code, nil
 }
 
 // resolveSyncSource defaults an empty source to NFS-e, the source every

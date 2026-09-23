@@ -42,6 +42,7 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 		CredentialStore: credential.NewStore(db),
 		SyncRepo:        sync.NewStore(db),
 		DocumentRepo:    docRepo,
+		NFeRepo:         store.NewNFeRepository(db),
 
 		XMLStore:           files.NewBlobStore(t.TempDir()),
 		DataDir:            t.TempDir(),

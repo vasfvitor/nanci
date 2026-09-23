@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -188,6 +189,8 @@ type syncRuntimeState struct {
 	documentsSkippedPolicy int
 	eventsSkippedPolicy    int
 	unsupported            int
+	completasSaved         int
+	resumosSaved           int
 	emptyCount             int
 	consecutiveEmpty       int
 	errorsCount            int
@@ -433,6 +436,12 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 	default:
 		runState.documentsSkippedDup++
 	}
+	switch outcome.Completeness {
+	case nfe.CompletenessCompleta:
+		runState.completasSaved++
+	case nfe.CompletenessResumo:
+		runState.resumosSaved++
+	}
 	runState.lastProcessedNSU = item.NSU
 	runState.lastFoundNSU = nextLastFoundNSU
 	return nil
@@ -493,6 +502,8 @@ func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncR
 		EventsSaved:              runState.eventsInserted,
 		DocumentsSkippedByPolicy: runState.documentsSkippedPolicy,
 		EventsSkippedByPolicy:    runState.eventsSkippedPolicy,
+		CompletasSaved:           runState.completasSaved,
+		ResumosSaved:             runState.resumosSaved,
 		DocsInBatch:              docsInBatch,
 		Errors:                   runState.errorsCount,
 		Message:                  fmt.Sprintf("cursor=%d fetched=%d ultNSU=%d maxNSU=%d inserted=%d events=%d stale=%d duplicate=%d skipped_policy=%d/%d", cursor, docsInBatch, batch.UltNSU, batch.MaxNSU, runState.documentsInserted, runState.eventsInserted, runState.documentsSkippedStale, runState.documentsSkippedDup, runState.documentsSkippedPolicy, runState.eventsSkippedPolicy),

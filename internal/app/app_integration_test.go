@@ -40,6 +40,7 @@ func setupTestApp(t *testing.T) (*app.App, *sql.DB) {
 		CredentialStore:    credential.NewStore(db),
 		SyncRepo:           sync.NewStore(db),
 		DocumentRepo:       docRepo,
+		NFeRepo:            store.NewNFeRepository(db),
 		XMLStore:           files.NewBlobStore(t.TempDir()),
 		DataDir:            t.TempDir(),
 		CredentialProvider: credentialProviderStub{},

@@ -96,6 +96,8 @@ type ProgressEvent struct {
 	EventsSaved              int
 	DocumentsSkippedByPolicy int
 	EventsSkippedByPolicy    int
+	CompletasSaved           int // NF-e procNFe stored; zero for NFS-e
+	ResumosSaved             int // NF-e resNFe stored; zero for NFS-e
 	DocsInBatch              int
 	Errors                   int
 	Message                  string

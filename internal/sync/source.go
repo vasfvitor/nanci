@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -36,6 +37,9 @@ type ItemOutcome struct {
 	IsEvent         bool
 	SkippedByPolicy bool
 	Unsupported     bool // unknown schema: checkpointed and counted, never fails the run
+	// Completeness is set when the item stored an NF-e document: resumo for
+	// a resNFe, completa for a procNFe. Empty for events and NFS-e.
+	Completeness nfe.Completeness
 }
 
 // CommitFunc runs write in one transaction together with the item's sync checkpoint.

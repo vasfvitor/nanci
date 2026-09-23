@@ -60,6 +60,7 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 			CredentialStore: credential.NewStore(db),
 			SyncRepo:        sync.NewStore(db),
 			DocumentRepo:    docRepo,
+			NFeRepo:         store.NewNFeRepository(db),
 
 			XMLStore: files.NewBlobStore(dataDir),
 			DataDir:  dataDir,

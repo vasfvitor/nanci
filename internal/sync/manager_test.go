@@ -318,11 +318,15 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 }
 
 func TestPullRejectsSourcesWithoutALoop(t *testing.T) {
-	mgr := &Manager{Log: slog.New(slog.DiscardHandler)}
+	passwords := &countingProvider{}
+	mgr, comp := newPullTestManager(t, passwords)
 
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFe, "bogus"} {
-		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: "11222333000181", Source: source}); err == nil {
+	for _, source := range []nfse.SyncSource{nfse.SyncSourceCTe, "bogus"} {
+		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: source}); err == nil {
 			t.Errorf("Pull with source %q succeeded, want an error", source)
 		}
+	}
+	if got := passwords.callCount(); got != 0 {
+		t.Errorf("password prompts = %d, want 0", got)
 	}
 }
