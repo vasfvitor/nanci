@@ -87,9 +87,7 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     CompanyName: 'Empresa Um',
     CNPJ: company.CNPJ,
     UF: 'SP',
-    Environment: 'producao',
     TpAmb: '1',
-    AmbienteLabel: 'Produção',
     LastCheckedNSU: 10,
     MaxNSU: 10,
     LastRunStatus: 'completed',
@@ -251,7 +249,6 @@ describe('NFePage', () => {
         component: CienciaConfirmDialog,
         componentProps: expect.objectContaining({
           cnpj: company.CNPJ,
-          environment: 'Produção',
           tpAmb: '1',
           plan,
         }),

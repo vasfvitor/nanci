@@ -415,7 +415,6 @@ describe('NF-e mappers', () => {
 
     const status = mapNFeStatus({
       TpAmb: '2',
-      AmbienteLabel: 'Homologação',
       LastCheckedNSU: 10,
       MaxNSU: null,
       NextAllowedAt: '2026-09-23T15:00:00Z',
@@ -425,7 +424,6 @@ describe('NF-e mappers', () => {
     })
     expect(status).toMatchObject({
       TpAmb: '2',
-      AmbienteLabel: 'Homologação',
       LastCheckedNSU: 10,
       MaxNSU: null,
       NextAllowedAt: '2026-09-23T15:00:00Z',

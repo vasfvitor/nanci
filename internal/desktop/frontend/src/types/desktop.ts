@@ -404,9 +404,7 @@ export type NFeStatusResult = {
   CompanyName: string
   CNPJ: string
   UF: string
-  Environment: string
   TpAmb: string
-  AmbienteLabel: string
   LastCheckedNSU: number
   MaxNSU: number | null
   LastSyncAt?: ISODateValue

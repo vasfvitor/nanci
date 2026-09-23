@@ -6,7 +6,7 @@
         v-if="status"
         :color="badgeColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
         :text-color="badgeTextColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
-        :label="status.AmbienteLabel || 'Ambiente desconhecido'"
+        :label="ambienteLabel(status.TpAmb)"
         class="text-weight-bold"
       />
       <q-space />
@@ -394,6 +394,7 @@ import {
 } from '@/utils/formatters'
 import {
   ambienteColor,
+  ambienteLabel,
   badgeColor,
   badgeTextColor,
   blockedMessage,
@@ -676,7 +677,6 @@ async function startCiencia(chavesAcesso: string[]) {
     componentProps: {
       companyName: companyName.value,
       cnpj: filter.value.CNPJ,
-      environment: status.value?.AmbienteLabel ?? '',
       tpAmb: status.value?.TpAmb ?? '',
       plan,
     },
@@ -730,7 +730,6 @@ function openManifestacao(row: NFeRow) {
     component: ManifestacaoDialog,
     componentProps: {
       note: row,
-      environment: status.value?.AmbienteLabel ?? '',
       tpAmb: status.value?.TpAmb ?? '',
     },
   }).onOk((payload: { tipo: NFeConclusiveTipo; justificativa: string }) => {

@@ -46,7 +46,7 @@ type Option = { value: string; disable: boolean }
 
 function mountDialog(row = note()) {
   return shallowMount(ManifestacaoDialog, {
-    props: { note: row, environment: 'Homologação', tpAmb: '2' },
+    props: { note: row, tpAmb: '2' },
     global: {
       renderStubDefaultSlot: true,
       stubs: {

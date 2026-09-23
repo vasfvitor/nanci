@@ -46,7 +46,6 @@ function mountDialog() {
     props: {
       companyName: 'Empresa Um',
       cnpj: '98765432000199',
-      environment: 'Produção',
       tpAmb: '1',
       plan,
     },

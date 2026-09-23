@@ -124,9 +124,7 @@ type NFeStatusResult struct {
 	CompanyName       string
 	CNPJ              string
 	UF                string
-	Environment       string
 	TpAmb             string // "1" produção, "2" homologação
-	AmbienteLabel     string // "Produção" | "Homologação"
 	LastNSU           int64
 	MaxNSU            int64 // 0 when unknown
 	LastSyncAt        *time.Time
@@ -161,15 +159,10 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	now := s.now()
 
 	result := NFeStatusResult{
-		CompanyName:   comp.Name,
-		CNPJ:          comp.CNPJ,
-		UF:            comp.UF,
-		Environment:   string(comp.Environment),
-		TpAmb:         tpAmb,
-		AmbienteLabel: "Homologação",
-	}
-	if tpAmb == sefaz.TpAmbProducao {
-		result.AmbienteLabel = "Produção"
+		CompanyName: comp.Name,
+		CNPJ:        comp.CNPJ,
+		UF:          comp.UF,
+		TpAmb:       tpAmb,
 	}
 
 	snapshot, err := s.SyncRepo.LatestSyncSnapshot(ctx, comp.ID, nfse.SyncSourceNFe, comp.Environment, comp.CNPJ)

@@ -521,9 +521,7 @@ type NFeStatusResult struct {
 	CompanyName       string
 	CNPJ              string
 	UF                string
-	Environment       string
 	TpAmb             string // "1" produção, "2" homologação
-	AmbienteLabel     string
 	LastCheckedNSU    int64
 	MaxNSU            *int64 // nil when unknown
 	LastSyncAt        *time.Time

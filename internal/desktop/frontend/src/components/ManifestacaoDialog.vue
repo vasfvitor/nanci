@@ -9,7 +9,7 @@
           :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
           class="text-weight-bold q-pa-sm"
         >
-          {{ environment || 'Ambiente desconhecido' }}
+          {{ ambienteLabel(tpAmb) }}
         </q-badge>
       </q-card-section>
 
@@ -108,7 +108,7 @@ import {
   formatCurrencyCents,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, badgeColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
+import { ambienteColor, ambienteLabel, badgeColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
 import {
   CONCLUSIVE_TIPOS,
   conclusiveBlockReason,
@@ -119,7 +119,6 @@ import {
 
 const props = defineProps<{
   note: NFeRow
-  environment: string
   tpAmb: string
 }>()
 

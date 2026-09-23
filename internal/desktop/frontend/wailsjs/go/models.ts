@@ -1032,9 +1032,7 @@ export namespace desktopapi {
 	    CompanyName: string;
 	    CNPJ: string;
 	    UF: string;
-	    Environment: string;
 	    TpAmb: string;
-	    AmbienteLabel: string;
 	    LastCheckedNSU: number;
 	    MaxNSU?: number;
 	    // Go type: time
@@ -1066,9 +1064,7 @@ export namespace desktopapi {
 	        this.CompanyName = source["CompanyName"];
 	        this.CNPJ = source["CNPJ"];
 	        this.UF = source["UF"];
-	        this.Environment = source["Environment"];
 	        this.TpAmb = source["TpAmb"];
-	        this.AmbienteLabel = source["AmbienteLabel"];
 	        this.LastCheckedNSU = source["LastCheckedNSU"];
 	        this.MaxNSU = source["MaxNSU"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ambienteColor,
+  ambienteLabel,
   badgeColor,
   badgeTextColor,
   blockedMessage,
@@ -177,6 +178,12 @@ describe('nfeDisplay', () => {
     expect(ambienteColor('1')).toBe('negative')
     expect(ambienteColor('2')).toBe('warning')
     expect(ambienteColor('')).toBe('grey')
+  })
+
+  it('names the environment of tpAmb', () => {
+    expect(ambienteLabel('1')).toBe('Produção')
+    expect(ambienteLabel('2')).toBe('Homologação')
+    expect(ambienteLabel('')).toBe('Ambiente desconhecido')
   })
 
   it('explains each block reason', () => {

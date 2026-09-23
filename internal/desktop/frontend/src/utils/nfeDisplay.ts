@@ -134,6 +134,13 @@ export function conclusiveDeadlineLabel(days: number | null) {
   return deadlineLabel(days)
 }
 
+// ambienteLabel names the SEFAZ environment of tpAmb.
+export function ambienteLabel(tpAmb: string) {
+  if (tpAmb === '1') return 'Produção'
+  if (tpAmb === '2') return 'Homologação'
+  return 'Ambiente desconhecido'
+}
+
 // ambienteColor highlights production (tpAmb 1), where events are fiscal acts.
 export function ambienteColor(tpAmb: string) {
   if (tpAmb === '1') return 'negative'

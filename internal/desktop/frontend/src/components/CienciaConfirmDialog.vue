@@ -9,7 +9,7 @@
           :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
           class="text-weight-bold q-pa-sm"
         >
-          {{ environment || 'Ambiente desconhecido' }}
+          {{ ambienteLabel(tpAmb) }}
         </q-badge>
       </q-card-section>
 
@@ -99,12 +99,11 @@ import {
   formatCurrencyCents,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, badgeColor, badgeTextColor } from '@/utils/nfeDisplay'
+import { ambienteColor, ambienteLabel, badgeColor, badgeTextColor } from '@/utils/nfeDisplay'
 
 const props = defineProps<{
   companyName: string
   cnpj: string
-  environment: string
   tpAmb: string
   plan: NFeCienciaPlan
 }>()

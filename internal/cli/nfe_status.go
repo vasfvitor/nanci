@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/sefaz"
 )
 
 func newNFeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
@@ -26,7 +27,7 @@ func newNFeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 
 			out := cmd.OutOrStdout()
 			_, _ = fmt.Fprintf(out, "Status NF-e para: %s (%s)\n", result.CompanyName, cnpj.Format(result.CNPJ))
-			_, _ = fmt.Fprintf(out, "Ambiente: %s (tpAmb %s) | UF: %s\n", result.AmbienteLabel, result.TpAmb, dashIfEmpty(result.UF))
+			_, _ = fmt.Fprintf(out, "Ambiente: %s (tpAmb %s) | UF: %s\n", ambienteLabel(result.TpAmb), result.TpAmb, dashIfEmpty(result.UF))
 
 			_, _ = fmt.Fprintln(out, "\nSincronização:")
 			maxNSU := "-"
@@ -66,4 +67,12 @@ func newNFeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// ambienteLabel names the SEFAZ environment of tpAmb.
+func ambienteLabel(tpAmb string) string {
+	if tpAmb == sefaz.TpAmbProducao {
+		return "Produção"
+	}
+	return "Homologação"
 }
