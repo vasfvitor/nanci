@@ -216,8 +216,9 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 		return err
 	}
 
+	// The start policy only applies to NFS-e; an NF-e cursor does not lock it.
 	if input.SyncStartPolicy != company.SyncStartPolicy || !sameDate(input.SyncStartDate, company.SyncStartDate) {
-		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID})
+		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe})
 		if err != nil {
 			return fmt.Errorf("verificar estado de sincronização: %w", err)
 		}

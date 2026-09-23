@@ -2,6 +2,7 @@ package company_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/company"
@@ -38,13 +39,20 @@ func (f *fakeCred) CredentialByID(ctx context.Context, id nfse.CredentialID) (*n
 }
 func (f *fakeCred) CreateCredential(ctx context.Context, cred *nfse.Credential) error { return nil }
 
-type fakeSync struct{}
+// fakeSync reports a sync cursor for the sources in cursors; an empty
+// source asks for any cursor.
+type fakeSync struct {
+	cursors []nfse.SyncSource
+}
 
 func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error) {
 	return nfse.SyncSnapshot{}, nil
 }
 func (f *fakeSync) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
-	return false, nil
+	if params.Source == "" {
+		return len(f.cursors) > 0, nil
+	}
+	return slices.Contains(f.cursors, params.Source), nil
 }
 
 func TestManager_AddCompany(t *testing.T) {
@@ -123,5 +131,51 @@ func TestManager_CompanyUF(t *testing.T) {
 	}
 	if got := s.companies[0].UF; got != "RJ" {
 		t.Errorf("UF after rejected update = %q, want RJ", got)
+	}
+}
+
+func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name    string
+		cursors []nfse.SyncSource
+		wantErr bool
+	}{
+		{"no cursor", nil, false},
+		{"only an NF-e cursor", []nfse.SyncSource{nfse.SyncSourceNFe}, false},
+		{"NFS-e cursor", []nfse.SyncSource{nfse.SyncSourceNFSe}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &fakeStore{}
+			m := company.NewManager(s, &fakeCred{}, &fakeSync{cursors: tt.cursors})
+			err := m.AddCompany(ctx, company.AddCompanyInput{
+				CNPJ:            "00.000.000/0001-91",
+				Name:            "Test",
+				Environment:     nfse.EnvironmentProduction,
+				CredentialID:    "cred-123",
+				SyncStartPolicy: nfse.SyncStartPolicyFromNow,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			stored := s.companies[0]
+			err = m.UpdateCompany(ctx, company.UpdateCompanyInput{
+				CNPJ:            stored.CNPJ,
+				Name:            stored.Name,
+				Environment:     stored.Environment,
+				SyncStartPolicy: nfse.SyncStartPolicyAll,
+			})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("UpdateCompany error = %v, wantErr %t", err, tt.wantErr)
+			}
+			want := nfse.SyncStartPolicyAll
+			if tt.wantErr {
+				want = nfse.SyncStartPolicyFromNow
+			}
+			if got := s.companies[0].SyncStartPolicy; got != want {
+				t.Errorf("SyncStartPolicy = %s, want %s", got, want)
+			}
+		})
 	}
 }
