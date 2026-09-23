@@ -1,9 +1,10 @@
 import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { companyOption } from '@/composables/useCompanies'
+import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import { usePreferencesStore } from '@/stores/preferences'
 import type { CompanySummary } from '@/types/desktop'
 import { parseDate } from '@/utils/formatters'
 
@@ -18,23 +19,7 @@ export function useNFeDocuments() {
   const { filter, rows, selected, loading, exporting, status, activeTab, resettingCNPJ } =
     storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-
-  const preferencesStore = usePreferencesStore()
-  const { rowsPerPage } = storeToRefs(preferencesStore)
-
-  const pagination = ref({
-    sortBy: 'issueDate',
-    descending: true,
-    page: 1,
-    rowsPerPage: rowsPerPage.value,
-  })
-
-  watch(
-    () => pagination.value.rowsPerPage,
-    (newVal) => {
-      rowsPerPage.value = newVal
-    }
-  )
+  const pagination = useTablePagination()
 
   const isSyncing = computed(
     () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'nfe')
@@ -202,12 +187,5 @@ export function useNFeDocuments() {
     exportXML,
     exportZIP,
     loadEvents,
-  }
-}
-
-function companyOption(company: CompanySummary) {
-  return {
-    label: `${company.Name} (${company.CNPJ})`,
-    value: company.CNPJ,
   }
 }

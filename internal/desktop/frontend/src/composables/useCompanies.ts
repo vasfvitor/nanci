@@ -75,3 +75,11 @@ export function useCompanies() {
     resetSyncState,
   }
 }
+
+// companyOption is a company as a q-select option keyed by CNPJ.
+export function companyOption(company: CompanySummary) {
+  return {
+    label: `${company.Name} (${company.CNPJ})`,
+    value: company.CNPJ,
+  }
+}
