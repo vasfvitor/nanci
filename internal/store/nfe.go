@@ -223,17 +223,14 @@ func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string)
 	return eventsFromRows(items)
 }
 
-// CountSummary counts the company's NF-e by role, completeness and pending
-// manifestação.
+// CountSummary counts the company's NF-e by role and completeness.
 func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error) {
 	const query = `
 		SELECT
 			cd.company_role,
 			COUNT(*),
 			SUM(d.completeness = 'resumo'),
-			SUM(d.completeness = 'completa'),
-			SUM(cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao = 'nenhuma'),
-			SUM(cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao = 'ciencia')
+			SUM(d.completeness = 'completa')
 		FROM company_nfe_documents cd
 		INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
 		WHERE cd.company_id = ?
@@ -248,15 +245,13 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.Company
 	counts := nfe.Counts{ByRole: make(map[nfe.CompanyRole]int)}
 	for rows.Next() {
 		var role string
-		var total, resumos, completas, pendingCiencia, pendingConclusiva int
-		if err := rows.Scan(&role, &total, &resumos, &completas, &pendingCiencia, &pendingConclusiva); err != nil {
+		var total, resumos, completas int
+		if err := rows.Scan(&role, &total, &resumos, &completas); err != nil {
 			return nfe.Counts{}, fmt.Errorf("scan nfe counts: %w", err)
 		}
 		counts.ByRole[nfe.CompanyRole(role)] = total
 		counts.Resumos += resumos
 		counts.Completas += completas
-		counts.PendingCiencia += pendingCiencia
-		counts.PendingConclusiva += pendingConclusiva
 	}
 	if err := rows.Err(); err != nil {
 		return nfe.Counts{}, fmt.Errorf("iterate nfe counts: %w", err)

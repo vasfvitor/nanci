@@ -225,14 +225,18 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	}
 	result.TotalResumos = counts.Resumos
 	result.TotalCompletas = counts.Completas
-	result.PendingCiencia = counts.PendingCiencia
-	result.PendingConclusiva = counts.PendingConclusiva
 
 	pending, err := s.pendingManifestations(ctx, comp.ID, now)
 	if err != nil {
 		return NFeStatusResult{}, err
 	}
 	for _, p := range pending {
+		switch p.Kind {
+		case NFePendingSemCiencia:
+			result.PendingCiencia++
+		case NFePendingSemConclusiva:
+			result.PendingConclusiva++
+		}
 		if p.CienciaOverdue {
 			result.CienciaOverdue++
 		}

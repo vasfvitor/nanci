@@ -32,12 +32,6 @@ type Counts struct {
 	ByRole    map[CompanyRole]int
 	Resumos   int
 	Completas int
-	// PendingCiencia counts authorized documents addressed to the company
-	// without any manifestação.
-	PendingCiencia int
-	// PendingConclusiva counts authorized documents addressed to the company
-	// with ciência but no conclusive manifestação.
-	PendingConclusiva int
 }
 
 // ResetCounts is what a company NF-e reset removes, or would remove, and the

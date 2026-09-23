@@ -523,14 +523,11 @@ func TestNFePendingManifestation(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := nfe.Counts{
-		ByRole:            map[nfe.CompanyRole]int{nfe.CompanyRoleDestinatario: 3},
-		Resumos:           1,
-		Completas:         2,
-		PendingCiencia:    0,
-		PendingConclusiva: 1,
+		ByRole:    map[nfe.CompanyRole]int{nfe.CompanyRoleDestinatario: 3},
+		Resumos:   1,
+		Completas: 2,
 	}
 	if counts.Resumos != want.Resumos || counts.Completas != want.Completas ||
-		counts.PendingCiencia != want.PendingCiencia || counts.PendingConclusiva != want.PendingConclusiva ||
 		len(counts.ByRole) != 1 || counts.ByRole[nfe.CompanyRoleDestinatario] != 3 {
 		t.Errorf("CountSummary = %+v, want %+v", counts, want)
 	}
@@ -549,7 +546,7 @@ func TestNFeCountSummaryEmitente(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if counts.ByRole[nfe.CompanyRoleEmitente] != 1 || counts.PendingCiencia != 0 || counts.Completas != 1 {
+	if counts.ByRole[nfe.CompanyRoleEmitente] != 1 || counts.Completas != 1 {
 		t.Errorf("CountSummary = %+v", counts)
 	}
 }
