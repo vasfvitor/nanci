@@ -16,9 +16,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
-// cteSyncSource is the sync_state source of the CT-e distribution.
-const cteSyncSource = nfse.SyncSource("cte")
-
 // CTeRepository stores CT-e documents (CT-e, CT-e OS, GTV-e and CT-e
 // Simplificado), their events and each company's view of them.
 //
@@ -367,7 +364,7 @@ func (r *CTeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 	if !apply {
 		return counts, nil
 	}
-	if err := ResetSyncStateTx(ctx, tx, nfse.ResetSyncStateParams{CompanyID: companyID, Source: cteSyncSource}); err != nil {
+	if err := ResetSyncStateTx(ctx, tx, nfse.ResetSyncStateParams{CompanyID: companyID, Source: nfse.SyncSourceCTe}); err != nil {
 		return cte.ResetCounts{}, fmt.Errorf("reset cte sync state: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

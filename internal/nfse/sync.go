@@ -16,6 +16,7 @@ type SyncSource string
 const (
 	SyncSourceNFSe SyncSource = "nfse"
 	SyncSourceNFe  SyncSource = "nfe"
+	SyncSourceCTe  SyncSource = "cte"
 )
 
 func ParseSyncSource(val string) (SyncSource, error) {
@@ -28,7 +29,7 @@ func ParseSyncSource(val string) (SyncSource, error) {
 
 func (s SyncSource) Valid() bool {
 	switch s {
-	case SyncSourceNFSe, SyncSourceNFe:
+	case SyncSourceNFSe, SyncSourceNFe, SyncSourceCTe:
 		return true
 	default:
 		return false
