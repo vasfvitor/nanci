@@ -4,6 +4,10 @@ import {
   errorMessage,
   mapCompanySummary,
   mapCredentialSummary,
+  mapCTeEvent,
+  mapCTeResetResult,
+  mapCTeRow,
+  mapCTeStatus,
   mapDocumentEvent,
   mapDocumentRow,
   mapNFeCienciaPlan,
@@ -12,16 +16,21 @@ import {
   mapNFePendingRow,
   mapNFeRow,
   mapNFeStatus,
+  mapPullCTeResult,
   mapPullNFeResult,
   wailsErrorCode,
   WailsClientError,
 } from './client'
 import {
+  ExportCTeXML,
+  ExportCTeZIP,
   ExportDANFSe,
   ExportDANFSeZIP,
   ExportDocuments,
   ExportNFeXML,
   ExportNFeZIP,
+  ListCTe,
+  ListCTeEvents,
   ListCompanies,
   ListCredentials,
   ListDocuments,
@@ -30,13 +39,18 @@ import {
   ListNFeEvents,
   ListNFePendingManifestacoes,
   PlanNFeCiencia,
+  PreviewResetCTe,
+  PullCTe,
   PullNFe,
   RegisterNFeCiencia,
   RegisterNFeManifestacao,
+  ResetCTe,
   ResetNFe,
   SelectCertificate,
   SelectSaveFile,
+  StatusCTe,
   StatusNFe,
+  TestCTeConnection,
 } from '../../../wailsjs/go/main/App'
 
 vi.mock('../../../wailsjs/go/main/App', () => ({
@@ -44,11 +58,15 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
   CancelCertPassword: vi.fn(),
+  ExportCTeXML: vi.fn(),
+  ExportCTeZIP: vi.fn(),
   ExportDANFSe: vi.fn(),
   ExportDANFSeZIP: vi.fn(),
   ExportDocuments: vi.fn(),
   ExportNFeXML: vi.fn(),
   ExportNFeZIP: vi.fn(),
+  ListCTe: vi.fn(),
+  ListCTeEvents: vi.fn(),
   ListCompanies: vi.fn(),
   ListCredentials: vi.fn(),
   ListDocuments: vi.fn(),
@@ -57,19 +75,24 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ListNFeEvents: vi.fn(),
   ListNFePendingManifestacoes: vi.fn(),
   PlanNFeCiencia: vi.fn(),
+  PreviewResetCTe: vi.fn(),
   Pull: vi.fn(),
+  PullCTe: vi.fn(),
   PullNFe: vi.fn(),
   QueryNFSeEvents: vi.fn(),
   RegisterNFeCiencia: vi.fn(),
   RegisterNFeManifestacao: vi.fn(),
+  ResetCTe: vi.fn(),
   ResetNFe: vi.fn(),
   ResetSyncState: vi.fn(),
   SelectCertificate: vi.fn(),
   SelectExportDirectory: vi.fn(),
   SelectSaveFile: vi.fn(),
   SetLogLevel: vi.fn(),
+  StatusCTe: vi.fn(),
   StatusNFe: vi.fn(),
   SubmitCertPassword: vi.fn(),
+  TestCTeConnection: vi.fn(),
   UpdateCompany: vi.fn(),
   UpdateCredentialData: vi.fn(),
   UpdateCredentialPath: vi.fn(),
@@ -579,6 +602,266 @@ describe('NF-e client calls', () => {
 
     expect(ExportNFeXML).not.toHaveBeenCalled()
     expect(ExportNFeZIP).not.toHaveBeenCalled()
+  })
+})
+
+describe('CT-e mappers', () => {
+  const cteChave = '35240911111111000111570010000000011000000011'
+
+  it('keeps cents, arrays, municípios, nullable fields, and known enum values of a row', () => {
+    const row = mapCTeRow({
+      ID: 'rel-1',
+      DocumentID: 'doc-1',
+      ChaveAcesso: cteChave,
+      TpAmb: '2',
+      Modelo: '57',
+      TipoDocumento: 'cte_simplificado',
+      TpServ: '2',
+      Modal: '01',
+      MunIni: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
+      TomadorCNPJ: '22222222000122',
+      TomadorIE: '123',
+      TomadorUF: 'SP',
+      TotalValue: 123456,
+      ICMSValue: 14815,
+      CargaValue: 9990000,
+      NFeChaves: [chave, 7, null],
+      Situacao: 'cancelada',
+      CompanyRole: 'tomador',
+      Papeis: ['tomador', 'remetente'],
+      AuthorizedAt: '2024-09-01T10:00:00Z',
+      FirstSeenNSU: 42,
+      EventCount: 3,
+    })
+
+    expect(row).toMatchObject({
+      ID: 'rel-1',
+      DocumentID: 'doc-1',
+      ChaveAcesso: cteChave,
+      TpAmb: '2',
+      Modelo: '57',
+      TipoDocumento: 'cte_simplificado',
+      TpServ: '2',
+      Modal: '01',
+      MunIni: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
+      MunFim: { Codigo: '', Nome: '', UF: '' },
+      TomadorCNPJ: '22222222000122',
+      TomadorIE: '123',
+      TomadorUF: 'SP',
+      TotalValue: 123456,
+      ICMSValue: 14815,
+      CargaValue: 9990000,
+      ReceivableValue: 0,
+      NFeChaves: [chave],
+      Situacao: 'cancelada',
+      CompanyRole: 'tomador',
+      Papeis: ['tomador', 'remetente'],
+      AuthorizedAt: '2024-09-01T10:00:00Z',
+      FirstSeenNSU: 42,
+      LastSeenNSU: null,
+      EventCount: 3,
+    })
+    expect(mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null })).toMatchObject({
+      NFeChaves: [],
+      Papeis: [],
+      ParseWarnings: [],
+    })
+  })
+
+  it('maps unknown enum values to an empty string', () => {
+    const row = mapCTeRow({
+      Modelo: '55',
+      TipoDocumento: 'nfe',
+      Situacao: 'suspensa',
+      CompanyRole: 'transportador',
+      Papeis: ['tomador', 'transportador', 42, 'recebedor'],
+    })
+
+    expect(row.Modelo).toBe('')
+    expect(row.TipoDocumento).toBe('')
+    expect(row.Situacao).toBe('')
+    expect(row.CompanyRole).toBe('')
+    expect(row.Papeis).toEqual(['tomador', 'recebedor'])
+    expect(mapCTeEvent({ Type: 'manifestacao' }).Type).toBe('')
+    expect(mapCTeStatus({ BlockedReason: 'sem_documentos' }).BlockedReason).toBe('')
+  })
+
+  it('maps events, status, pull, and reset results', () => {
+    expect(
+      mapCTeEvent({
+        ID: 'evt-1',
+        TpEvento: '110180',
+        Type: 'comprovante_entrega',
+        NSeqEvento: 1,
+        Protocolo: '135',
+        Observacao: 'entregue',
+        Registered: true,
+        EventAt: null,
+      })
+    ).toEqual({
+      ID: 'evt-1',
+      TpEvento: '110180',
+      Type: 'comprovante_entrega',
+      NSeqEvento: 1,
+      Description: '',
+      EventAt: null,
+      RegisteredAt: null,
+      Protocolo: '135',
+      CStat: '',
+      XMotivo: '',
+      AutorCNPJ: '',
+      Justificativa: '',
+      Observacao: 'entregue',
+      Correcao: '',
+      Registered: true,
+    })
+
+    expect(
+      mapCTeStatus({
+        TpAmb: '1',
+        LastNSU: 10,
+        MaxNSU: null,
+        BlockedReason: 'rate_budget',
+        RequestsLastHour: 20,
+        RequestBudget: 20,
+        TotalTomador: 4,
+        TotalDestinatario: 3,
+        TotalRemetente: 2,
+        TotalOutros: 1,
+      })
+    ).toMatchObject({
+      TpAmb: '1',
+      LastNSU: 10,
+      MaxNSU: null,
+      BlockedReason: 'rate_budget',
+      RequestsLastHour: 20,
+      RequestBudget: 20,
+      TotalTomador: 4,
+      TotalDestinatario: 3,
+      TotalRemetente: 2,
+      TotalOutros: 1,
+    })
+
+    expect(mapPullCTeResult({ LastNSU: 5, MaxNSU: 9, DocumentsSaved: 3, EventsSaved: 1 })).toMatchObject({
+      LastNSU: 5,
+      MaxNSU: 9,
+      DocumentsSaved: 3,
+      EventsSaved: 1,
+      NextAllowedAt: null,
+    })
+    expect(mapPullCTeResult({ MaxNSU: null }).MaxNSU).toBeNull()
+
+    expect(mapCTeResetResult({ CNPJ: '123', CompanyDocuments: 5, Events: 7 })).toEqual({
+      CompanyName: '',
+      CNPJ: '123',
+      CompanyDocuments: 5,
+      Documents: 0,
+      Events: 7,
+      ExportMarks: 0,
+    })
+  })
+})
+
+describe('CT-e client calls', () => {
+  const cteChave = '35240911111111000111570010000000011000000011'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('passes the Wails DTOs for CT-e calls', async () => {
+    vi.mocked(PullCTe).mockResolvedValue({ CNPJ: '123', DocumentsSaved: 2 } as never)
+    vi.mocked(StatusCTe).mockResolvedValue({ CNPJ: '123', TotalTomador: 1 } as never)
+    vi.mocked(ListCTe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
+    vi.mocked(ListCTeEvents).mockResolvedValue(null as never)
+    vi.mocked(TestCTeConnection).mockResolvedValue({ certLoaded: true, endpointReached: true } as never)
+    vi.mocked(PreviewResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
+    vi.mocked(ResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
+
+    const listInput = {
+      CNPJ: '123',
+      Competence: '2024-09',
+      Situacao: '' as const,
+      Role: 'tomador' as const,
+      Modelo: '67' as const,
+      EmitenteCNPJ: '',
+      TomadorCNPJ: '',
+      NFeChave: chave,
+    }
+
+    await expect(desktopClient.pullCTe('123')).resolves.toMatchObject({ DocumentsSaved: 2 })
+    await expect(desktopClient.statusCTe('123')).resolves.toMatchObject({ TotalTomador: 1 })
+    await expect(desktopClient.listCTe(listInput)).resolves.toMatchObject([
+      { ID: 'rel-1', Situacao: 'autorizada', Papeis: [], NFeChaves: [] },
+    ])
+    await desktopClient.listCTe({ ...listInput, ChavesAcesso: [cteChave], Limit: 1 })
+    await expect(desktopClient.listCTeEvents('123', cteChave)).resolves.toEqual([])
+    await expect(desktopClient.testCTeConnection('123')).resolves.toMatchObject({
+      certLoaded: true,
+      endpointReached: true,
+      mtlsAccepted: false,
+    })
+    await expect(desktopClient.previewResetCTe('123')).resolves.toMatchObject({ CompanyDocuments: 3 })
+    await expect(desktopClient.resetCTe('123')).resolves.toMatchObject({ CompanyDocuments: 3 })
+
+    expect(PullCTe).toHaveBeenCalledWith({ CNPJ: '123' })
+    expect(StatusCTe).toHaveBeenCalledWith('123')
+    expect(ListCTe).toHaveBeenNthCalledWith(1, { ...listInput, ChavesAcesso: [], Limit: 0 })
+    expect(ListCTe).toHaveBeenNthCalledWith(2, { ...listInput, ChavesAcesso: [cteChave], Limit: 1 })
+    expect(ListCTeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave })
+    expect(TestCTeConnection).toHaveBeenCalledWith('123')
+    expect(PreviewResetCTe).toHaveBeenCalledWith('123')
+    expect(ResetCTe).toHaveBeenCalledWith('123')
+  })
+
+  it('exports CT-e XML and ZIP to the path chosen in the save dialog', async () => {
+    vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
+    vi.mocked(ExportCTeXML).mockResolvedValue({ OutPath: 'C:\\out\\file', Format: 'xml' } as never)
+    vi.mocked(ExportCTeZIP).mockResolvedValue({
+      OutPath: 'C:\\out\\file',
+      Format: 'xml',
+      Incremental: true,
+      ExportedCount: 3,
+    } as never)
+
+    const xml = await desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })
+    const zip = await desktopClient.exportCTeZIP({
+      CNPJ: '123',
+      Competence: '2024-09',
+      Role: 'tomador',
+      ChavesAcesso: [cteChave],
+      Incremental: true,
+    })
+
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(1, 'Salvar XML do CT-e', `cte_${cteChave}.xml`, '*.xml')
+    expect(vi.mocked(SelectSaveFile).mock.calls[1]?.[1]).toMatch(/^cte_123_\d{4}_\d{2}_\d{2}_\d{6}\.zip$/)
+    expect(ExportCTeXML).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: cteChave,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(ExportCTeZIP).toHaveBeenCalledWith({
+      CNPJ: '123',
+      Competence: '2024-09',
+      Role: 'tomador',
+      ChavesAcesso: [cteChave],
+      Incremental: true,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(xml).toEqual({ OutPath: 'C:\\out\\file', Format: 'xml', Incremental: false, ExportedCount: 0 })
+    expect(zip).toEqual({ OutPath: 'C:\\out\\file', Format: 'xml', Incremental: true, ExportedCount: 3 })
+  })
+
+  it('returns null and skips CT-e exports when the save dialog is cancelled', async () => {
+    vi.mocked(SelectSaveFile).mockResolvedValue('')
+
+    await expect(desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })).resolves.toBeNull()
+    await expect(
+      desktopClient.exportCTeZIP({ CNPJ: '123', Competence: '', Role: '', ChavesAcesso: [], Incremental: false })
+    ).resolves.toBeNull()
+
+    expect(ExportCTeXML).not.toHaveBeenCalled()
+    expect(ExportCTeZIP).not.toHaveBeenCalled()
   })
 })
 

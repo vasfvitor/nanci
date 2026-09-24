@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/seed"
@@ -107,7 +108,7 @@ func seedXML(ctx context.Context, db *sql.DB, xmlPath, companyID string) error {
 	cd := nfse.CompanyDocument{
 		Document:         doc,
 		RelationID:       fmt.Sprintf("%s-%s", companyID, doc.ID),
-		CompanyID:        nfse.CompanyID(companyID),
+		CompanyID:        dfe.CompanyID(companyID),
 		DocumentID:       doc.ID,
 		CompanyRole:      role,
 		VisibilityReason: nfse.VisibilityReason("unknown"),

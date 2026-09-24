@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -19,9 +20,11 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -86,6 +89,7 @@ func newNFeTestRoot(t *testing.T) *nfeTestRoot {
 		SyncRepo:           sync.NewStore(db),
 		DocumentRepo:       store.NewDocumentRepository(db),
 		NFeRepo:            repo,
+		CTeRepo:            store.NewCTeRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            t.TempDir(),
 		CredentialProvider: passwords,
@@ -138,6 +142,7 @@ func (e *nfeTestRoot) seed(fixture string, nsu int64) {
 			e.t.Fatalf("parse %s: %v", fixture, err)
 		}
 		doc.RawHash = hash
+		doc.TpAmb = cmp.Or(doc.TpAmb, sefaz.TpAmbProducao) // a resumo takes the pull's, like the NF-e source does
 		params := store.ApplyNFeDocumentParams{Document: doc, CompanyID: e.company.ID, CompanyCNPJ: e.company.CNPJ, NSU: nsu}
 		if _, err := e.repo.ApplyDocumentTx(ctx, tx, params); err != nil {
 			e.t.Fatal(err)
@@ -338,6 +343,25 @@ func TestNFeList_PrintsColumns(t *testing.T) {
 	}
 }
 
+func TestNFeList_ValidatesChave(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	env.seed("procnfe-denegada.xml", 2)
+
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--chave", " "+nfeChaveProc+" "); err != nil {
+		t.Fatalf("list with a spaced --chave: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, nfeChaveProc) || !strings.Contains(got, "Total de 1 nota(s) listada(s).") {
+		t.Errorf("list --chave:\n%s", got)
+	}
+
+	env = newNFeTestRoot(t) // flag values stick to a command tree
+	err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--chave", nfeChaveProc[:43]+"0")
+	if !errors.Is(err, dfe.ErrInvalidAccessKey) {
+		t.Errorf("list with an invalid --chave = %v, want dfe.ErrInvalidAccessKey", err)
+	}
+}
+
 func TestNFeOutcomesError(t *testing.T) {
 	registrada := app.NFeEventOutcome{Status: nfe.ManifestacaoStatusRegistrada}
 	jaRegistrada := app.NFeEventOutcome{Status: nfe.ManifestacaoStatusJaRegistrada}
@@ -416,9 +440,15 @@ func TestNFeReset_DryRunThenConfirm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = env.run("company", "update", "-c", nfeTestCNPJ, "--env", "producao_restrita")
-	if err == nil || !strings.Contains(err.Error(), "use `nanci nfe reset` ou o botão Redefinir NF-e antes") {
-		t.Fatalf("company update --env before the reset = %v, want the lock pointing to nfe reset", err)
+	// The environment switches freely; each one lists only its own notes.
+	if err := env.run("company", "update", "-c", nfeTestCNPJ, "--env", "producao_restrita"); err != nil {
+		t.Fatalf("company update --env producao_restrita: %v", err)
+	}
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ); err != nil || strings.Contains(env.out.String(), nfeChaveProc) {
+		t.Fatalf("homologação lists the produção note: %v\n%s", err, env.out.String())
+	}
+	if err := env.run("company", "update", "-c", nfeTestCNPJ, "--env", "producao"); err != nil {
+		t.Fatalf("company update --env producao: %v", err)
 	}
 
 	if err := env.run("nfe", "reset", "-c", nfeTestCNPJ); err != nil {
@@ -443,8 +473,5 @@ func TestNFeReset_DryRunThenConfirm(t *testing.T) {
 	docs, err := env.repo.ListCompanyDocuments(context.Background(), env.company.ID, nfe.DocumentFilter{})
 	if err != nil || len(docs) != 0 {
 		t.Errorf("documents after the reset = %d, %v; want none", len(docs), err)
-	}
-	if err := env.run("company", "update", "-c", nfeTestCNPJ, "--env", "producao_restrita"); err != nil {
-		t.Errorf("company update --env after the reset: %v", err)
 	}
 }

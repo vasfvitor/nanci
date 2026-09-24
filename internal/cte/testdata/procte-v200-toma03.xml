@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cteProc xmlns="http://www.portalfiscal.inf.br/cte" versao="2.00">
+  <CTe xmlns="http://www.portalfiscal.inf.br/cte">
+    <infCte Id="CTe35260912345678000195570010000001031345678907" versao="2.00">
+      <ide>
+        <cUF>35</cUF>
+        <cCT>34567890</cCT>
+        <CFOP>5353</CFOP>
+        <natOp>PRESTACAO DE SERVICO DE TRANSPORTE</natOp>
+        <forPag>0</forPag>
+        <mod>57</mod>
+        <serie>1</serie>
+        <nCT>103</nCT>
+        <dhEmi>2026-09-04T10:00:00-03:00</dhEmi>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>7</cDV>
+        <tpAmb>2</tpAmb>
+        <tpCTe>0</tpCTe>
+        <procEmi>0</procEmi>
+        <verProc>FICTICIO 1.0</verProc>
+        <cMunEnv>3550308</cMunEnv>
+        <xMunEnv>SAO PAULO</xMunEnv>
+        <UFEnv>SP</UFEnv>
+        <modal>01</modal>
+        <tpServ>0</tpServ>
+        <cMunIni>3550308</cMunIni>
+        <xMunIni>SAO PAULO</xMunIni>
+        <UFIni>SP</UFIni>
+        <cMunFim>3550308</cMunFim>
+        <xMunFim>SAO PAULO</xMunFim>
+        <UFFim>SP</UFFim>
+        <retira>1</retira>
+        <toma03>
+          <toma>0</toma>
+        </toma03>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <IE>123456789012</IE>
+        <xNome>TRANSPORTADORA FICTICIA LTDA</xNome>
+        <enderEmit>
+          <xLgr>RODOVIA FICTICIA</xLgr>
+          <nro>1000</nro>
+          <xBairro>DISTRITO INDUSTRIAL</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <rem>
+        <CNPJ>70860312000150</CNPJ>
+        <IE>555666777888</IE>
+        <xNome>EMPRESA MOCK LTDA</xNome>
+        <enderReme>
+          <xLgr>AVENIDA DE TESTE</xLgr>
+          <nro>200</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderReme>
+        <infNFe>
+          <chave>35260970860312000150550010000000101000000106</chave>
+        </infNFe>
+      </rem>
+      <dest>
+        <CNPJ>11222333000181</CNPJ>
+        <IE>111222333444</IE>
+        <xNome>DISTRIBUIDORA FICTICIA DE PECAS LTDA</xNome>
+        <enderDest>
+          <xLgr>RUA FICTICIA</xLgr>
+          <nro>100</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderDest>
+      </dest>
+      <vPrest>
+        <vTPrest>95.10</vTPrest>
+        <vRec>95.10</vRec>
+      </vPrest>
+      <imp>
+        <ICMS>
+          <ICMS45>
+            <CST>40</CST>
+          </ICMS45>
+        </ICMS>
+      </imp>
+      <infCTeNorm>
+        <infCarga>
+          <vCarga>900.00</vCarga>
+          <proPred>FERRAMENTAS</proPred>
+        </infCarga>
+        <seg>
+          <respSeg>4</respSeg>
+        </seg>
+        <infModal versaoModal="2.00">
+          <rodo>
+            <RNTRC>12345678</RNTRC>
+            <dPrev>2026-09-05</dPrev>
+            <lota>0</lota>
+          </rodo>
+        </infModal>
+      </infCTeNorm>
+    </infCte>
+  </CTe>
+  <protCTe versao="2.00">
+    <infProt>
+      <tpAmb>2</tpAmb>
+      <verAplic>SP-CTe-FICTICIO</verAplic>
+      <chCTe>35260912345678000195570010000001031345678907</chCTe>
+      <dhRecbto>2026-09-04T10:00:05-03:00</dhRecbto>
+      <nProt>135260000000103</nProt>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso do CT-e</xMotivo>
+    </infProt>
+  </protCTe>
+</cteProc>

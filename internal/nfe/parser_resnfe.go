@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/foundation/xmlwalk"
 )
 
 // ParseResNFe parses a resNFe (schema resNFe_v1.01), the summary SEFAZ
@@ -18,29 +21,29 @@ func ParseResNFe(data []byte) (Document, error) {
 
 	onStart := func(path string, attrs []xml.Attr) {
 		if strings.HasSuffix(path, "/resNFe") {
-			doc.LayoutVersion = attrValue(attrs, "versao")
+			doc.LayoutVersion = xmlwalk.AttrValue(attrs, "versao")
 		}
 	}
 	onText := func(path, value string) error {
 		switch {
 		case strings.HasSuffix(path, "/resNFe/chNFe"):
 			chave = value
-		case hasAnySuffix(path, "/resNFe/CNPJ", "/resNFe/CPF"):
+		case xmlwalk.HasAnySuffix(path, "/resNFe/CNPJ", "/resNFe/CPF"):
 			doc.EmitenteCNPJ = value
 		case strings.HasSuffix(path, "/resNFe/xNome"):
 			doc.EmitenteName = value
 		case strings.HasSuffix(path, "/resNFe/IE"):
 			doc.EmitenteIE = value
 		case strings.HasSuffix(path, "/resNFe/dhEmi"):
-			if t := parseDateTime("dhEmi", value, &warnings); t != nil {
+			if t := dfe.ParseDateTime("dhEmi", value, &warnings); t != nil {
 				doc.IssueDate = *t
 			}
 		case strings.HasSuffix(path, "/resNFe/tpNF"):
 			doc.TpNF = value
 		case strings.HasSuffix(path, "/resNFe/vNF"):
-			return parseMoneyInto(&doc.TotalValue, "vNF", value)
+			return dfe.ParseMoneyInto(&doc.TotalValue, "vNF", value)
 		case strings.HasSuffix(path, "/resNFe/dhRecbto"):
-			doc.AuthorizedAt = parseDateTime("dhRecbto", value, &warnings)
+			doc.AuthorizedAt = dfe.ParseDateTime("dhRecbto", value, &warnings)
 		case strings.HasSuffix(path, "/resNFe/nProt"):
 			doc.Protocolo = value
 		case strings.HasSuffix(path, "/resNFe/cSitNFe"):
@@ -48,14 +51,14 @@ func ParseResNFe(data []byte) (Document, error) {
 		}
 		return nil
 	}
-	if err := walkXML(data, onStart, onText); err != nil {
+	if err := xmlwalk.Walk(data, onStart, onText); err != nil {
 		return Document{}, err
 	}
 
 	if chave == "" {
 		return Document{}, errors.New("missing essential field: chNFe")
 	}
-	key, err := ParseAccessKey(chave)
+	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {
 		return Document{}, fmt.Errorf("chNFe: %w", err)
 	}
@@ -81,7 +84,7 @@ func ParseResNFe(data []byte) (Document, error) {
 	if doc.IssueDate.IsZero() {
 		warnings = append(warnings, "missing dhEmi; competence is unknown")
 	}
-	doc.Competence = competence(doc.IssueDate)
+	doc.Competence = dfe.Competence(doc.IssueDate)
 	doc.ParseWarnings = warnings
 	return doc, nil
 }

@@ -1,12 +1,16 @@
 package nfe
 
-import "time"
+import (
+	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
+)
 
 // Event is an NF-e event (cancelamento, carta de correção, manifestação, ...)
 // built from a resEvento (resumo) or a procEventoNFe (completa).
 type Event struct {
 	ID            string
-	ChaveAcesso   AccessKey
+	ChaveAcesso   dfe.AccessKey
 	TpEvento      string
 	Type          EventType
 	NSeqEvento    int
@@ -17,6 +21,7 @@ type Event struct {
 	Description   string     // descEvento, falling back to xEvento
 	Justificativa string     // detEvento/xJust
 	Correcao      string     // detEvento/xCorrecao (carta de correção)
+	TpAmb         string     // evento/infEvento/tpAmb: "1" produção, "2" homologação; a resEvento carries none
 	Completeness  Completeness
 	// Registered is true when SEFAZ accepted the event: always for a
 	// resEvento, and for a procEventoNFe only when retEvento carries one of

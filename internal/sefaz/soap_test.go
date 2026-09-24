@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -26,7 +27,7 @@ func TestNewClient_Validation(t *testing.T) {
 	if _, err := NewClient(ClientConfig{Environment: nfse.EnvironmentProduction}); err == nil {
 		t.Error("expected error without a certificate")
 	}
-	if _, err := NewClient(ClientConfig{Environment: "local", Certificate: &tls.Certificate{}}); !errors.Is(err, nfse.ErrInvalidEnum) {
+	if _, err := NewClient(ClientConfig{Environment: "local", Certificate: &tls.Certificate{}}); !errors.Is(err, dfe.ErrInvalidEnum) {
 		t.Errorf("invalid environment: err = %v, want ErrInvalidEnum", err)
 	}
 }
@@ -39,7 +40,8 @@ func TestNewClient_DefaultsFromEnvironment(t *testing.T) {
 	if client.tpAmb != TpAmbHomologacao {
 		t.Errorf("tpAmb = %q, want %q", client.tpAmb, TpAmbHomologacao)
 	}
-	if client.endpoints.Distribuicao != DistribuicaoHomologacao || client.endpoints.RecepcaoEvento != RecepcaoEventoHomologacao {
+	if client.endpoints.Distribuicao != DistribuicaoHomologacao || client.endpoints.DistribuicaoCTe != DistribuicaoCTeHomologacao ||
+		client.endpoints.RecepcaoEvento != RecepcaoEventoHomologacao {
 		t.Errorf("endpoints = %+v", client.endpoints)
 	}
 	if client.timeout != DefaultTimeout {

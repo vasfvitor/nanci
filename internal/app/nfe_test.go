@@ -2,6 +2,7 @@ package app
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -20,9 +21,11 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -88,6 +91,7 @@ func newNFeTestEnv(t *testing.T) *nfeTestEnv {
 		SyncRepo:           sync.NewStore(db),
 		DocumentRepo:       store.NewDocumentRepository(db),
 		NFeRepo:            repo,
+		CTeRepo:            store.NewCTeRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            t.TempDir(),
 		CredentialProvider: passwords,
@@ -136,6 +140,7 @@ func (e *nfeTestEnv) seed(fixture string, nsu int64, replacements ...string) str
 			e.t.Fatalf("parse %s: %v", fixture, err)
 		}
 		doc.RawHash = hash
+		doc.TpAmb = cmp.Or(doc.TpAmb, sefaz.TpAmbProducao) // a resumo takes the pull's, like the NF-e source does
 		_, err = e.repo.ApplyDocumentTx(ctx, tx, store.ApplyNFeDocumentParams{Document: doc, CompanyID: e.company.ID, CompanyCNPJ: e.company.CNPJ, NSU: nsu})
 		if err != nil {
 			e.t.Fatal(err)
@@ -150,6 +155,7 @@ func (e *nfeTestEnv) seed(fixture string, nsu int64, replacements ...string) str
 			e.t.Fatalf("parse %s: %v", fixture, err)
 		}
 		ev.RawHash = hash
+		ev.TpAmb = cmp.Or(ev.TpAmb, sefaz.TpAmbProducao)
 		if _, err := e.repo.ApplyEventTx(ctx, tx, store.ApplyNFeEventParams{Event: ev}); err != nil {
 			e.t.Fatal(err)
 		}
@@ -190,7 +196,7 @@ func testChave(t *testing.T, n int) string {
 		dv = 11 - r
 	}
 	chave := base + strconv.Itoa(dv)
-	if _, err := nfe.ParseAccessKey(chave); err != nil {
+	if _, err := dfe.ParseAccessKey(chave); err != nil {
 		t.Fatal(err)
 	}
 	return chave
@@ -261,8 +267,8 @@ func TestNFeListDocumentsFilters(t *testing.T) {
 		"papel":        {CNPJ: nfeTestCNPJ, Role: "tomador"},
 		"manifestação": {CNPJ: nfeTestCNPJ, Manifestacao: "aceita"},
 	} {
-		if _, err := env.app.NFe.ListDocuments(ctx, in); !errors.Is(err, nfse.ErrInvalidEnum) {
-			t.Errorf("invalid %s: err = %v, want nfse.ErrInvalidEnum", name, err)
+		if _, err := env.app.NFe.ListDocuments(ctx, in); !errors.Is(err, dfe.ErrInvalidEnum) {
+			t.Errorf("invalid %s: err = %v, want dfe.ErrInvalidEnum", name, err)
 		}
 	}
 

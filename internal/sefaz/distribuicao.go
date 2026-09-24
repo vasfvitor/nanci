@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfe"
 )
 
 const (
@@ -23,7 +23,35 @@ const (
 	maxNSU = 999_999_999_999_999
 )
 
-// cStat values of NFeDistribuicaoDFe that are answers rather than errors.
+// distService names the parts of one distribution web service. The NF-e and
+// CT-e services share the request and response layout and differ only here.
+type distService struct {
+	// name identifies the service in errors: "NF-e" or "CT-e".
+	name      string
+	namespace string
+	wsdl      string
+	action    string
+	versao    string
+	// wrapper is the operation element and dadosMsg the message element
+	// around distDFeInt, both in the wsdl namespace.
+	wrapper  string
+	dadosMsg string
+	endpoint func(Endpoints) string
+}
+
+var nfeDist = distService{
+	name:      "NF-e",
+	namespace: nfeNamespace,
+	wsdl:      wsdlDistribuicao,
+	action:    actionDistribuicao,
+	versao:    versaoDistDFe,
+	wrapper:   "nfeDistDFeInteresse",
+	dadosMsg:  "nfeDadosMsg",
+	endpoint:  func(e Endpoints) string { return e.Distribuicao },
+}
+
+// cStat values of NFeDistribuicaoDFe and CTeDistribuicaoDFe that are answers
+// rather than errors.
 const (
 	// CStatNenhumDocumento: no document after the NSU sent; wait an hour
 	// before asking again.
@@ -63,7 +91,7 @@ func (c *Client) DistNSU(ctx context.Context, cnpjValue string, cUFAutor int, ul
 	if err != nil {
 		return DistResult{}, err
 	}
-	return c.distribuicao(ctx, cnpjValue, cUFAutor, query)
+	return c.distribuicao(ctx, nfeDist, cnpjValue, cUFAutor, query)
 }
 
 // ConsNSU asks for the single document with the given NSU (consNSU), to fill
@@ -73,16 +101,16 @@ func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, ns
 	if err != nil {
 		return DistResult{}, err
 	}
-	return c.distribuicao(ctx, cnpjValue, cUFAutor, query)
+	return c.distribuicao(ctx, nfeDist, cnpjValue, cUFAutor, query)
 }
 
 // ConsChNFe asks for the NF-e with the given access key (consChNFe).
 func (c *Client) ConsChNFe(ctx context.Context, cnpjValue string, cUFAutor int, chave string) (DistResult, error) {
-	key, err := nfe.ParseAccessKey(chave)
+	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {
 		return DistResult{}, err
 	}
-	return c.distribuicao(ctx, cnpjValue, cUFAutor, "<consChNFe><chNFe>"+key.String()+"</chNFe></consChNFe>")
+	return c.distribuicao(ctx, nfeDist, cnpjValue, cUFAutor, "<consChNFe><chNFe>"+key.String()+"</chNFe></consChNFe>")
 }
 
 func nsuQuery(group, field string, nsu int64) (string, error) {
@@ -92,17 +120,21 @@ func nsuQuery(group, field string, nsu int64) (string, error) {
 	return fmt.Sprintf("<%s><%s>%015d</%s></%s>", group, field, nsu, field, group), nil
 }
 
-func (c *Client) distribuicao(ctx context.Context, cnpjValue string, cUFAutor int, query string) (DistResult, error) {
-	request, err := buildDistDFeInt(c.tpAmb, cUFAutor, cnpjValue, query)
+func (c *Client) distribuicao(ctx context.Context, svc distService, cnpjValue string, cUFAutor int, query string) (DistResult, error) {
+	url := svc.endpoint(c.endpoints)
+	if url == "" {
+		return DistResult{}, fmt.Errorf("%s distribution URL is not configured", svc.name)
+	}
+	request, err := buildDistDFeInt(svc, c.tpAmb, cUFAutor, cnpjValue, query)
 	if err != nil {
 		return DistResult{}, err
 	}
-	// The distribution service is the only one that wants the operation
-	// element around nfeDadosMsg.
-	body := `<nfeDistDFeInteresse xmlns="` + wsdlDistribuicao + `"><nfeDadosMsg xmlns="` + wsdlDistribuicao + `">` +
-		request + `</nfeDadosMsg></nfeDistDFeInteresse>`
+	// The distribution services are the only ones that want the operation
+	// element around the message element.
+	body := `<` + svc.wrapper + ` xmlns="` + svc.wsdl + `"><` + svc.dadosMsg + ` xmlns="` + svc.wsdl + `">` +
+		request + `</` + svc.dadosMsg + `></` + svc.wrapper + `>`
 
-	respBody, err := c.post(ctx, c.endpoints.Distribuicao, actionDistribuicao, []byte(body), 0)
+	respBody, err := c.post(ctx, url, svc.action, []byte(body), 0)
 	if err != nil {
 		return DistResult{}, err
 	}
@@ -111,7 +143,7 @@ func (c *Client) distribuicao(ctx context.Context, cnpjValue string, cUFAutor in
 
 // buildDistDFeInt writes the request without whitespace between tags:
 // SEFAZ rejects formatting characters with cStat 588.
-func buildDistDFeInt(tpAmb string, cUFAutor int, cnpjValue, query string) (string, error) {
+func buildDistDFeInt(svc distService, tpAmb string, cUFAutor int, cnpjValue, query string) (string, error) {
 	if err := cnpj.Validate(cnpjValue); err != nil {
 		return "", fmt.Errorf("invalid CNPJ: %w", err)
 	}
@@ -119,7 +151,7 @@ func buildDistDFeInt(tpAmb string, cUFAutor int, cnpjValue, query string) (strin
 	if cUFAutor < 11 || cUFAutor > 53 {
 		return "", fmt.Errorf("invalid cUFAutor %d", cUFAutor)
 	}
-	return `<distDFeInt xmlns="` + nfeNamespace + `" versao="` + versaoDistDFe + `">` +
+	return `<distDFeInt xmlns="` + svc.namespace + `" versao="` + svc.versao + `">` +
 		"<tpAmb>" + tpAmb + "</tpAmb>" +
 		"<cUFAutor>" + strconv.Itoa(cUFAutor) + "</cUFAutor>" +
 		"<CNPJ>" + cnpj.Clean(cnpjValue) + "</CNPJ>" +

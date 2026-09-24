@@ -4,7 +4,7 @@
 
 # Nanci
 
-Aplicativo desktop e de linha de comando (CLI) Open Source para baixar Notas Fiscais de Serviços Eletrônicas (NFS-e) diretamente do Ambiente de Dados Nacional (ADN) e NF-e (modelo 55) da distribuição DF-e da SEFAZ, utilizando seu Certificado Digital A1.
+Aplicativo desktop e de linha de comando (CLI) Open Source para baixar Notas Fiscais de Serviços Eletrônicas (NFS-e) diretamente do Ambiente de Dados Nacional (ADN) NF-e (modelo 55) e CT-e (modelos 57, 67 e 64) da distribuição DF-e da SEFAZ, utilizando seu Certificado Digital A1.
 
 <p align="center">
   <img src="docs/screenshots/empresas-dark.png" alt="Nanci Tela Empresas" width="90%">
@@ -27,11 +27,12 @@ Toda a operação ocorre localmente na sua máquina (Local-First).
 - Suporta cadastro de múltiplas empresas e credenciais A1 (PFX/P12).
 - Baixa as NF-e (modelo 55) recebidas pela empresa na distribuição DF-e do Ambiente Nacional da SEFAZ, respeitando o limite de consultas por hora.
 - Registra a Manifestação do Destinatário da NF-e: Ciência da Operação em lote e manifestações conclusivas nota a nota, sempre com confirmação explícita.
+- Baixa os CT-e em que a empresa é tomadora, remetente, destinatária, expedidora, recebedora ou autorizada (CT-e, CT-e OS, GTV-e e CT-e Simplificado), com os eventos, pela distribuição DF-e do Ambiente Nacional da SEFAZ. Guarda as chaves das NF-e transportadas, para achar o CT-e do frete de uma nota. Detalhes em [docs/CTE_SEFAZ.md](docs/CTE_SEFAZ.md).
 
 ## O que o Nanci NÃO faz?
 
-- **Não usa portal web municipal**: A consulta ocorre exclusivamente na infraestrutura nacional (ADN para NFS-e, Ambiente Nacional da SEFAZ para NF-e).
-- **Não baixa NFC-e, CT-e, NFCom, NF3e nem CF-e SAT**, e não importa XML avulso.
+- **Não usa portal web municipal**: A consulta ocorre exclusivamente na infraestrutura nacional (ADN para NFS-e, Ambiente Nacional da SEFAZ para NF-e e CT-e).
+- **Não baixa NFC-e, MDF-e, NFCom, NF3e nem CF-e SAT**, e não importa XML avulso.
 - **Não faz scraping ou usa automação de navegador**: Não resolve CAPTCHAs nem simula navegação.
 - **Não envia seus XMLs ou Certificados para servidores de terceiros**: A comunicação ocorre apenas entre sua máquina e o Governo.
 - **Não garante que notas emitidas pela sua própria empresa apareçam**: O ADN possui regras de distribuição estritas. Não utilize o app como garantidor absoluto de notas emitidas. Veja a [FAQ de documentos vazios](website/content/docs/faq.md).
@@ -104,9 +105,23 @@ nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
 | `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. `--vencendo-em N` mostra só as que vencem em até N dias. |
 | `nfe export zip` | Exporta os XMLs em ZIP (`--out`/`-o`, padrão `nfe.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incluir-resumos` inclui os resumos e `--incremental` exporta só o que ainda não foi exportado. |
 | `nfe export xml` | Exporta o XML de uma nota (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
-| `nfe reset` | Remove as NF-e da empresa e reinicia a sincronização NF-e; necessário antes de trocar o ambiente. Simulação sem `--confirmar`. |
+| `nfe reset` | Remove as NF-e da empresa, nos dois ambientes, e reinicia a sincronização NF-e. Simulação sem `--confirmar`. |
 
 Detalhes de limites, prazos e TLS em [docs/NFE_SEFAZ.md](docs/NFE_SEFAZ.md).
+
+#### CT-e (modelos 57, 64 e 67)
+
+Os comandos ficam em `nanci cte`, recebem a empresa por `--cnpj` e usam o mesmo certificado da NF-e. A empresa recebe os CT-e em que é tomadora, remetente, destinatária, expedidora, recebedora, emitente ou autorizada no XML.
+
+| Comando | O que faz |
+|---|---|
+| `cte testar-conexao` | Carrega o certificado e testa o TLS com a SEFAZ, sem consumir consultas. |
+| `cte pull` | Baixa CT-e, CT-e OS, GTV-e e eventos (até 20 consultas por hora). |
+| `cte status` | Mostra cursor, bloqueios, consultas da última hora e totais por papel. |
+| `cte list` | Lista os CT-e. Filtros: `--competencia`/`-m`, `--situacao`, `--papel`/`-p` (casa com qualquer papel da empresa no documento), `--modelo` (57, 64 ou 67), `--emitente`, `--tomador`, `--nfe` (chave de uma NF-e transportada) e `--chave` (pode repetir). |
+| `cte export zip` | Exporta os XMLs e eventos em ZIP (`--out`/`-o`, padrão `cte.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incremental` exporta só o que ainda não foi exportado. |
+| `cte export xml` | Exporta o XML de um CT-e (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
+| `cte reset` | Remove os CT-e da empresa, nos dois ambientes, e reinicia a sincronização CT-e. Simulação sem `--confirmar`. |
 
 
 

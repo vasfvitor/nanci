@@ -61,6 +61,7 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 			SyncRepo:        sync.NewStore(db),
 			DocumentRepo:    docRepo,
 			NFeRepo:         store.NewNFeRepository(db),
+			CTeRepo:         store.NewCTeRepository(db),
 
 			XMLStore: files.NewBlobStore(dataDir),
 			DataDir:  dataDir,

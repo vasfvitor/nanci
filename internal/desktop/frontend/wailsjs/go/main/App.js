@@ -22,6 +22,14 @@ export function CountPendingExports(arg1) {
   return window['go']['main']['App']['CountPendingExports'](arg1);
 }
 
+export function ExportCTeXML(arg1) {
+  return window['go']['main']['App']['ExportCTeXML'](arg1);
+}
+
+export function ExportCTeZIP(arg1) {
+  return window['go']['main']['App']['ExportCTeZIP'](arg1);
+}
+
 export function ExportDANFSe(arg1) {
   return window['go']['main']['App']['ExportDANFSe'](arg1);
 }
@@ -56,6 +64,14 @@ export function GetBuildInfo() {
 
 export function GetDataDirectory() {
   return window['go']['main']['App']['GetDataDirectory']();
+}
+
+export function ListCTe(arg1) {
+  return window['go']['main']['App']['ListCTe'](arg1);
+}
+
+export function ListCTeEvents(arg1) {
+  return window['go']['main']['App']['ListCTeEvents'](arg1);
 }
 
 export function ListCompanies() {
@@ -102,8 +118,16 @@ export function PlanNFeCiencia(arg1) {
   return window['go']['main']['App']['PlanNFeCiencia'](arg1);
 }
 
+export function PreviewResetCTe(arg1) {
+  return window['go']['main']['App']['PreviewResetCTe'](arg1);
+}
+
 export function Pull(arg1) {
   return window['go']['main']['App']['Pull'](arg1);
+}
+
+export function PullCTe(arg1) {
+  return window['go']['main']['App']['PullCTe'](arg1);
 }
 
 export function PullNFe(arg1) {
@@ -120,6 +144,10 @@ export function RegisterNFeCiencia(arg1) {
 
 export function RegisterNFeManifestacao(arg1) {
   return window['go']['main']['App']['RegisterNFeManifestacao'](arg1);
+}
+
+export function ResetCTe(arg1) {
+  return window['go']['main']['App']['ResetCTe'](arg1);
 }
 
 export function ResetNFe(arg1) {
@@ -150,12 +178,20 @@ export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
 }
 
+export function StatusCTe(arg1) {
+  return window['go']['main']['App']['StatusCTe'](arg1);
+}
+
 export function StatusNFe(arg1) {
   return window['go']['main']['App']['StatusNFe'](arg1);
 }
 
 export function SubmitCertPassword(arg1, arg2) {
   return window['go']['main']['App']['SubmitCertPassword'](arg1, arg2);
+}
+
+export function TestCTeConnection(arg1) {
+  return window['go']['main']['App']['TestCTeConnection'](arg1);
 }
 
 export function TestConnection(arg1) {

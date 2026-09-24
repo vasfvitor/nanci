@@ -41,7 +41,9 @@ As chamadas são SOAP 1.2 sobre HTTPS com o certificado A1 da empresa.
 
 O ambiente segue o da empresa: `producao` usa produção (`tpAmb` 1) e `producao_restrita` usa homologação (`tpAmb` 2). Para trocar, use `nanci company update --cnpj <CNPJ> --env producao`. As URLs estão em `internal/sefaz/endpoints.go` e só podem ser substituídas pelo código (`sefaz.ClientConfig.Endpoints`, usado nos testes); não existe flag nem variável de ambiente para isso.
 
-As tabelas de NF-e não guardam o ambiente de cada nota. Por isso, depois da primeira sincronização de NF-e, o ambiente da empresa fica travado: notas de homologação se misturariam às pendências de produção. Para trocar de ambiente, redefina antes as NF-e da empresa com `nanci nfe reset --cnpj <CNPJ>` (sem `--confirmar` só mostra o que seria removido) ou com o botão "Redefinir NF-e" do aplicativo. A redefinição remove as notas da empresa, seus eventos e marcas de exportação, e volta o cursor ao NSU 0. Notas que outra empresa cadastrada também vê continuam para ela. O histórico das manifestações enviadas (`nfe_manifestacoes`, com o `tpAmb` de cada envio) é mantido, e as manifestações registradas na SEFAZ não são afetadas. Um bloqueio da SEFAZ em vigor continua valendo, e os XMLs baixados ficam no armazenamento de blobs. A NFS-e não tem essa trava, porque o estado de sincronização dela já é separado por ambiente.
+Cada NF-e e cada evento guardam o seu `tpAmb`: o do XML (`ide/tpAmb` na `procNFe`, `infEvento/tpAmb` no `procEventoNFe`) ou, nos resumos (`resNFe` e `resEvento`, que não trazem o campo), o do ambiente consultado. Um XML de um ambiente diferente do consultado é guardado com o `tpAmb` dele e recebe um aviso de leitura. A lista de notas, o `nfe status`, as pendências de manifestação, a ciência em lote e a exportação mostram só as notas do ambiente atual da empresa. Por isso o ambiente pode ser trocado a qualquer momento, também depois da primeira sincronização: as notas do outro ambiente deixam de aparecer e voltam quando a empresa retorna a ele. O cursor de sincronização já é separado por ambiente, na NF-e e na NFS-e. O bloqueio da SEFAZ (`company_sync_sources.blocked_until`) e o orçamento por hora, não: valem para a empresa e a origem, em qualquer ambiente, então um bloqueio recebido em produção também adia o próximo pull em homologação.
+
+Para apagar as NF-e da empresa, use `nanci nfe reset --cnpj <CNPJ>` (sem `--confirmar` só mostra o que seria removido) ou o botão "Redefinir NF-e" do aplicativo. A redefinição remove as notas da empresa nos dois ambientes, seus eventos e marcas de exportação, e volta o cursor ao NSU 0. Notas que outra empresa cadastrada também vê continuam para ela. O histórico das manifestações enviadas (`nfe_manifestacoes`, com o `tpAmb` de cada envio) é mantido, e as manifestações registradas na SEFAZ não são afetadas. Um bloqueio da SEFAZ em vigor continua valendo, e os XMLs baixados ficam no armazenamento de blobs.
 
 A distribuição exige o código IBGE da UF da empresa (`cUFAutor`). Cadastre a UF com `nanci company update --cnpj <CNPJ> --uf SP`; sem ela, `nfe pull` falha antes de pedir a senha.
 
@@ -142,7 +144,7 @@ nanci.exe nfe export zip --cnpj 12345678000199 --competencia 2026-09 -p destinat
 nanci.exe nfe export zip --cnpj 12345678000199 --chave <CHAVE> --chave <OUTRA_CHAVE> --out notas.zip
 nanci.exe nfe export xml --cnpj 12345678000199 --chave <CHAVE> --out nota.xml
 
-# 9. Redefinir as NF-e da empresa (por exemplo, antes de trocar de ambiente)
+# 9. Redefinir as NF-e da empresa (apaga as notas dos dois ambientes)
 nanci.exe nfe reset --cnpj 12345678000199
 nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 ```
@@ -150,7 +152,7 @@ nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 - `nfe ciencia` aceita `--chave` (repetível) ou `--todos-resumos`, nunca os dois. `--todos-resumos` seleciona os resumos autorizados em que a empresa é destinatária e que ainda não têm manifestação. A simulação lista as notas elegíveis, as ignoradas com o motivo e os prazos de cada uma.
 - `nfe manifestar` também é simulação sem `--confirmar`. `nao-realizada` continua aceito como sinônimo de `nao_realizada`. Depois de uma manifestação conclusiva, nenhuma outra conclusiva é aceita para a mesma nota.
 - `nfe reset` sem `--confirmar` mostra quantas notas, eventos e marcas de exportação seriam removidos e não altera nada.
-- `nfe export zip` grava `<competencia>/<papel>/<chave>-procNFe.xml` e os eventos completos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (`-o`, padrão `nfe.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível). Resumos ficam de fora, a menos que se passe `--incluir-resumos`; `--incremental` exporta só o que ainda não foi exportado ou mudou (por exemplo, um resumo que virou completa).
+- `nfe export zip` grava `<competencia>/<papel>/<chave>-procNFe.xml` e os eventos completos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (`-o`, padrão `nfe.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível). Resumos ficam de fora, a menos que se passe `--incluir-resumos`; `--incremental` exporta só o que ainda não foi exportado, mudou (por exemplo, um resumo que virou completa) ou recebeu um evento depois da última exportação (por exemplo, um cancelamento); o documento volta com todos os seus eventos completos.
 - `nfe export xml` grava o `procNFe` da `--chave`, ou o `resNFe` de um resumo, em `--out` (`-o`); sem `--out`, o arquivo é `<chave>.xml` na pasta atual.
 
 ## Aplicativo desktop
@@ -159,7 +161,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `014` em `internal/store/migrations_v2/`:
+Migrações `007` a `016` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -169,12 +171,14 @@ Migrações `007` a `014` em `internal/store/migrations_v2/`:
 - `012`: indexa `company_nfe_documents` por nota, para a redefinição de NF-e.
 - `013`: renomeia `nfe_manifestations` para `nfe_manifestacoes` e o índice `idx_company_nfe_documents_viewed` para `idx_company_nfe_documents_viewed_at`, e recria `sync_requests` com o mesmo `CHECK` de origem das outras tabelas de sincronização.
 - `014`: remove `companies.initial_sync_completed_at`. A carga inicial da NFS-e, mostrada na lista de empresas e usada pela trava da política inicial no desktop, passa a vir só de `company_sync_sources`.
+- `015`: cria as tabelas de CT-e, descritas em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
+- `016`: adiciona `tp_amb` (`1`, `2` ou vazio) a `nfe_documents` e `nfe_events`. As notas existentes recebem o ambiente da empresa que as vê, que até então não podia mudar depois da primeira sincronização de NF-e; os eventos recebem o da nota de mesma chave. Notas que nenhuma empresa vê e eventos sem nota ficam vazios.
 
 Tabelas de NF-e:
 
-- `nfe_documents`: uma linha por chave de acesso, com os campos extraídos, a situação (`autorizada`, `denegada`, `cancelada`), a completude (`resumo` ou `completa`) e o hash do XML bruto. Uma completa nunca é substituída por um resumo, e a situação só piora (cancelada > denegada > autorizada).
+- `nfe_documents`: uma linha por chave de acesso, com os campos extraídos, a situação (`autorizada`, `denegada`, `cancelada`), a completude (`resumo` ou `completa`), o `tpAmb` (`tp_amb`) e o hash do XML bruto. Uma completa nunca é substituída por um resumo, e a situação só piora (cancelada > denegada > autorizada).
 - `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação e NSUs em que foi vista. A coluna `viewed_at` continua no esquema, mas nenhum fluxo a preenche.
-- `nfe_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`). Um `resEvento` é trocado pelo `procEventoNFe` quando este chega, e um evento enviado pelo Nanci se junta à cópia que volta pela distribuição.
+- `nfe_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`), com o `tpAmb` (`tp_amb`) do evento. Um `resEvento` é trocado pelo `procEventoNFe` quando este chega, e um evento enviado pelo Nanci se junta à cópia que volta pela distribuição.
 - `nfe_manifestacoes`: registro de cada envio de manifestação (lote, `tpAmb`, resultado, `cStat`, `xMotivo`, protocolo), inclusive falhas, para auditoria.
 - `company_nfe_export_marks`: o que já foi exportado e com qual hash, para a exportação incremental.
 
@@ -183,13 +187,11 @@ O estado da manifestação em `company_nfe_documents` é derivado dos eventos re
 ## Fora do escopo
 
 - NFC-e (modelo 65), NFCom, NF3e e CF-e SAT.
-- CT-e: próxima etapa.
 - Importação de XML avulso.
 - Recuperar notas emitidas pela própria empresa.
 
 ## Próximos passos
 
-- CT-e pela mesma interface `Source` (`CTeDistribuicaoDFe`), com tabelas e tela próprias.
 - Importação de XML avulso.
 
 ## Atribuição

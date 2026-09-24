@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<procEventoCTe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+  <eventoCTe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+    <infEvento Id="ID11011135260912345678000195570010000001011123456784001">
+      <cOrgao>35</cOrgao>
+      <tpAmb>1</tpAmb>
+      <CNPJ>12345678000195</CNPJ>
+      <chCTe>35260912345678000195570010000001011123456784</chCTe>
+      <dhEvento>2026-09-02T10:00:00-03:00</dhEvento>
+      <tpEvento>110111</tpEvento>
+      <nSeqEvento>1</nSeqEvento>
+      <detEvento versaoEvento="4.00">
+        <evCancCTe>
+          <descEvento>Cancelamento</descEvento>
+          <nProt>135260000000101</nProt>
+          <xJust>Erro na emissao do documento de transporte</xJust>
+        </evCancCTe>
+      </detEvento>
+    </infEvento>
+  </eventoCTe>
+  <retEventoCTe versao="4.00">
+    <infEvento>
+      <tpAmb>1</tpAmb>
+      <verAplic>SP-CTe-FICTICIO</verAplic>
+      <cOrgao>35</cOrgao>
+      <cStat>135</cStat>
+      <xMotivo>Evento registrado e vinculado a CT-e</xMotivo>
+      <chCTe>35260912345678000195570010000001011123456784</chCTe>
+      <tpEvento>110111</tpEvento>
+      <xEvento>Cancelamento</xEvento>
+      <nSeqEvento>1</nSeqEvento>
+      <dhRegEvento>2026-09-02T10:00:04-03:00</dhRegEvento>
+      <nProt>135260000000201</nProt>
+    </infEvento>
+  </retEventoCTe>
+</procEventoCTe>

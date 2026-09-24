@@ -1,107 +1,11 @@
 package nfse
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
-
-// Money represents monetary values in integer cents (e.g., 1000 = R$ 10,00).
-// The XSD allows 15 integer digits plus exactly two decimals, which safely fits in int64.
-type Money int64
-
-var (
-	ErrInvalidMoneyFormat = errors.New("invalid money format")
-	ErrMoneyOverflow      = errors.New("money overflow")
-	// ErrInvalidEnum is returned when an enum value fails to parse. The specific
-	// value is included in the message; match with errors.Is(err, ErrInvalidEnum).
-	ErrInvalidEnum = errors.New("invalid enum value")
-	// XML monetary format: optional decimals, no thousands separators, exactly two decimals if present
-	moneyRegex = regexp.MustCompile(`^[0-9]{1,15}(\.[0-9]{1,2})?$`)
-)
-
-// ParseMoney parses a string in XSD decimal format into Money.
-func ParseMoney(value string) (Money, error) {
-	value = strings.TrimSpace(value)
-	if !moneyRegex.MatchString(value) {
-		return 0, fmt.Errorf("%w: %q", ErrInvalidMoneyFormat, value)
-	}
-
-	parts := strings.Split(value, ".")
-	integerPart := parts[0]
-	fractionalPart := "00"
-
-	if len(parts) == 2 {
-		fractionalPart = parts[1]
-		if len(fractionalPart) == 1 {
-			fractionalPart += "0" // pad to two decimals
-		}
-	}
-
-	centsStr := integerPart + fractionalPart
-	cents, err := strconv.ParseInt(centsStr, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("%w: %w", ErrMoneyOverflow, err)
-	}
-
-	return Money(cents), nil
-}
-
-// NewMoneyFromCents creates a Money value from raw cents.
-func NewMoneyFromCents(cents int64) Money {
-	return Money(cents)
-}
-
-// Cents returns the integer cents value.
-func (m Money) Cents() int64 {
-	return int64(m)
-}
-
-// Add adds two Money values.
-func (m Money) Add(other Money) (Money, error) {
-	// Simple overflow check for int64 addition
-	result := m.Cents() + other.Cents()
-	if (result > m.Cents()) != (other.Cents() > 0) && other.Cents() != 0 {
-		return 0, ErrMoneyOverflow
-	}
-	return Money(result), nil
-}
-
-// Sub subtracts another Money value.
-func (m Money) Sub(other Money) (Money, error) {
-	// Simple overflow check for int64 subtraction
-	result := m.Cents() - other.Cents()
-	if (result < m.Cents()) != (other.Cents() > 0) && other.Cents() != 0 {
-		return 0, ErrMoneyOverflow
-	}
-	return Money(result), nil
-}
-
-// FormatBRL formats the Money value into Brazilian Real representation (e.g., "1.234,56").
-func (m Money) FormatBRL() string {
-	cents := m.Cents()
-	sign := ""
-	if cents < 0 {
-		sign = "-"
-		cents = -cents
-	}
-
-	fractional := cents % 100
-	integer := cents / 100
-
-	intStr := strconv.FormatInt(integer, 10)
-	var formattedInt strings.Builder
-	for i, c := range intStr {
-		if i > 0 && (len(intStr)-i)%3 == 0 {
-			formattedInt.WriteRune('.')
-		}
-		formattedInt.WriteRune(c)
-	}
-
-	return fmt.Sprintf("%s%s,%02d", sign, formattedInt.String(), fractional)
-}
 
 // --- Identifiers ---
 
@@ -122,7 +26,6 @@ func ParseAccessKey(key string) (AccessKey, error) {
 
 type (
 	DocumentID   string
-	CompanyID    string
 	CredentialID string
 	SyncRunID    string
 )
@@ -141,7 +44,7 @@ func ParseEnvironment(val string) (Environment, error) {
 	case EnvironmentProduction, EnvironmentRestricted:
 		return Environment(val), nil
 	default:
-		return "", fmt.Errorf("invalid environment %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid environment %q: %w", val, dfe.ErrInvalidEnum)
 	}
 }
 
@@ -176,7 +79,7 @@ const (
 func ParseDocumentStatus(val string) (DocumentStatus, error) {
 	status := DocumentStatus(val)
 	if !status.Valid() {
-		return "", fmt.Errorf("invalid document status %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid document status %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return status, nil
 }
@@ -209,7 +112,7 @@ const (
 func ParseCompanyRole(val string) (CompanyRole, error) {
 	role := CompanyRole(val)
 	if !role.Valid() {
-		return "", fmt.Errorf("invalid company role %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid company role %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return role, nil
 }
@@ -238,7 +141,7 @@ const (
 func ParseVisibilityReason(val string) (VisibilityReason, error) {
 	reason := VisibilityReason(val)
 	if !reason.Valid() {
-		return "", fmt.Errorf("invalid visibility reason %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid visibility reason %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return reason, nil
 }
@@ -265,7 +168,7 @@ const (
 func ParseEventType(val string) (EventType, error) {
 	evtType := EventType(val)
 	if !evtType.Valid() {
-		return "", fmt.Errorf("invalid event type %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid event type %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return evtType, nil
 }
@@ -286,7 +189,7 @@ func (e EventType) String() string {
 func ParseSyncStatus(val string) (SyncStatus, error) {
 	status := SyncStatus(val)
 	if !status.Valid() {
-		return "", fmt.Errorf("invalid sync status %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid sync status %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return status, nil
 }
@@ -312,7 +215,7 @@ const (
 func ParseConsultationBasis(val string) (ConsultationBasis, error) {
 	basis := ConsultationBasis(val)
 	if !basis.Valid() {
-		return "", fmt.Errorf("invalid consultation basis %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid consultation basis %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return basis, nil
 }
@@ -338,7 +241,7 @@ const (
 func ParseSyncMode(val string) (SyncMode, error) {
 	mode := SyncMode(val)
 	if !mode.Valid() {
-		return "", fmt.Errorf("invalid sync mode %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid sync mode %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return mode, nil
 }
@@ -372,7 +275,7 @@ const (
 func ParseSyncStopReason(val string) (SyncStopReason, error) {
 	reason := SyncStopReason(val)
 	if !reason.Valid() {
-		return "", fmt.Errorf("invalid sync stop reason %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid sync stop reason %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return reason, nil
 }
@@ -400,7 +303,7 @@ const (
 func ParseSyncStartPolicy(val string) (SyncStartPolicy, error) {
 	policy := SyncStartPolicy(val)
 	if !policy.Valid() {
-		return "", fmt.Errorf("invalid sync start policy %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid sync start policy %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return policy, nil
 }

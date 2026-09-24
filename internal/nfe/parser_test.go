@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const (
@@ -77,7 +77,7 @@ func TestFixturesHaveValidCheckDigits(t *testing.T) {
 		}
 		for _, m := range keyRe.FindAllSubmatch(data, -1) {
 			key := string(m[1]) + string(m[2])
-			if _, err := ParseAccessKey(key); err != nil {
+			if _, err := dfe.ParseAccessKey(key); err != nil {
 				t.Errorf("%s: key %s: %v", file, key, err)
 			}
 		}
@@ -102,7 +102,7 @@ func TestParseResNFe(t *testing.T) {
 		EmitenteIE:    "111222333444",
 		EmitenteUF:    "SP",
 		TpNF:          "1",
-		TotalValue:    nfse.NewMoneyFromCents(125050),
+		TotalValue:    dfe.NewMoneyFromCents(125050),
 		Situacao:      SituacaoAutorizada,
 		Completeness:  CompletenessResumo,
 		LayoutVersion: "1.01",
@@ -184,12 +184,13 @@ func TestParseProcNFe(t *testing.T) {
 		NatOp:             "VENDA DE MERCADORIA",
 		// Items carry vICMS 180.00 and 24.00 and vIPI 50.00 and 0.50; only
 		// the ICMSTot values may land here.
-		TotalValue:    nfse.NewMoneyFromCents(125050),
-		ICMSValue:     nfse.NewMoneyFromCents(20400),
-		IPIValue:      nfse.NewMoneyFromCents(5050),
+		TotalValue:    dfe.NewMoneyFromCents(125050),
+		ICMSValue:     dfe.NewMoneyFromCents(20400),
+		IPIValue:      dfe.NewMoneyFromCents(5050),
 		Situacao:      SituacaoAutorizada,
 		Completeness:  CompletenessCompleta,
 		LayoutVersion: "4.00",
+		TpAmb:         "1",
 	}
 	assertDocumentFields(t, doc, want)
 	if !slices.Equal(doc.AutorizadosCNPJ, []string{cnpjAutorizado}) {
@@ -338,6 +339,7 @@ func TestParseProcEventoNFe(t *testing.T) {
 				AutorCNPJ:     cnpjEmitente,
 				Description:   "Cancelamento",
 				Justificativa: "Erro na digitacao dos valores da nota",
+				TpAmb:         "1",
 				Completeness:  CompletenessCompleta,
 				Registered:    true,
 				CStat:         "135",
@@ -356,6 +358,7 @@ func TestParseProcEventoNFe(t *testing.T) {
 				Protocolo:    "891260000000001",
 				AutorCNPJ:    cnpjMock,
 				Description:  "Ciencia da Operacao",
+				TpAmb:        "1",
 				Completeness: CompletenessCompleta,
 				Registered:   true,
 				CStat:        "135",
@@ -375,6 +378,7 @@ func TestParseProcEventoNFe(t *testing.T) {
 				AutorCNPJ:    cnpjEmitente,
 				Description:  "Carta de Correcao",
 				Correcao:     "Corrigir o endereco de entrega para Rua Ficticia, 150",
+				TpAmb:        "1",
 				Completeness: CompletenessCompleta,
 				Registered:   true,
 				CStat:        "135",
@@ -394,6 +398,7 @@ func TestParseProcEventoNFe(t *testing.T) {
 				Protocolo:    "891170419030368",
 				AutorCNPJ:    "69161982000108",
 				Description:  "Ciencia da Operacao",
+				TpAmb:        "1",
 				Completeness: CompletenessCompleta,
 				Registered:   true,
 				CStat:        "135",
@@ -433,6 +438,28 @@ func TestParseProcEventoNFeNotRegistered(t *testing.T) {
 	}
 	if len(ev.ParseWarnings) != 1 || !strings.Contains(ev.ParseWarnings[0], "573") {
 		t.Errorf("ParseWarnings = %v, want one naming cStat 573", ev.ParseWarnings)
+	}
+}
+
+// TestParseTpAmbFromTheSignedPart changes only the first tpAmb, the one in
+// ide or evento/infEvento; the protocol's tpAmb that follows keeps "1".
+func TestParseTpAmbFromTheSignedPart(t *testing.T) {
+	homologacao := func(fixture string) []byte {
+		return []byte(strings.Replace(string(readFixture(t, fixture)), "<tpAmb>1</tpAmb>", "<tpAmb>2</tpAmb>", 1))
+	}
+	doc, err := ParseProcNFe(homologacao("procnfe.xml"))
+	if err != nil {
+		t.Fatalf("ParseProcNFe: %v", err)
+	}
+	if doc.TpAmb != "2" {
+		t.Errorf("procNFe TpAmb = %q, want 2", doc.TpAmb)
+	}
+	ev, err := ParseProcEventoNFe(homologacao("proceventonfe-ciencia.xml"))
+	if err != nil {
+		t.Fatalf("ParseProcEventoNFe: %v", err)
+	}
+	if ev.TpAmb != "2" {
+		t.Errorf("procEventoNFe TpAmb = %q, want 2", ev.TpAmb)
 	}
 }
 

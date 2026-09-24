@@ -191,6 +191,7 @@ func (a *App) startup(ctx context.Context) {
 		SyncRepo:        nsync.NewStore(db),
 		DocumentRepo:    docRepo,
 		NFeRepo:         store.NewNFeRepository(db),
+		CTeRepo:         store.NewCTeRepository(db),
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
@@ -892,4 +893,155 @@ func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
 		ExportMarks:       res.ExportMarks,
 		ManifestacoesKept: res.ManifestacoesKept,
 	}, nil
+}
+
+// --- CT-e ---
+
+func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, error) {
+	res, err := a.core.CTe.Pull(a.ctx, input.CNPJ)
+	if err != nil {
+		return desktopapi.PullCTeResult{}, err
+	}
+	return desktopapi.PullCTeResult{
+		CompanyName:      res.CompanyName,
+		CNPJ:             res.CNPJ,
+		Status:           res.Status,
+		StopReason:       res.StopReason,
+		LastNSU:          res.LastNSU,
+		MaxNSU:           res.MaxNSU,
+		DocumentsSaved:   res.DocumentsSaved,
+		EventsSaved:      res.EventsSaved,
+		Errors:           res.Errors,
+		NextAllowedAt:    res.NextAllowedAt,
+		RequestsLastHour: res.RequestsLastHour,
+		RequestBudget:    res.RequestBudget,
+		Duration:         res.Duration,
+	}, nil
+}
+
+func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
+	res, err := a.core.CTe.Status(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.CTeStatusResult{}, err
+	}
+	return desktopapi.CTeStatusResult{
+		CompanyName:       res.CompanyName,
+		CNPJ:              res.CNPJ,
+		UF:                res.UF,
+		TpAmb:             res.TpAmb,
+		LastNSU:           res.LastNSU,
+		MaxNSU:            res.MaxNSU,
+		LastSyncAt:        res.LastSyncAt,
+		LastRunStatus:     res.LastRunStatus,
+		LastRunStopReason: res.LastRunStopReason,
+		InitialSyncDoneAt: res.InitialSyncDoneAt,
+		NextAllowedAt:     res.NextAllowedAt,
+		BlockedReason:     res.BlockedReason,
+		RequestsLastHour:  res.RequestsLastHour,
+		RequestBudget:     res.RequestBudget,
+		TotalTomador:      res.TotalTomador,
+		TotalDestinatario: res.TotalDestinatario,
+		TotalRemetente:    res.TotalRemetente,
+		TotalOutros:       res.TotalOutros,
+	}, nil
+}
+
+func (a *App) ListCTe(input desktopapi.ListCTeInput) ([]desktopapi.CTeRow, error) {
+	documents, err := a.core.CTe.ListDocuments(a.ctx, app.ListCTeInput{
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Situacao:     input.Situacao,
+		Role:         input.Role,
+		Modelo:       input.Modelo,
+		EmitenteCNPJ: input.EmitenteCNPJ,
+		TomadorCNPJ:  input.TomadorCNPJ,
+		NFeChave:     input.NFeChave,
+		ChavesAcesso: input.ChavesAcesso,
+		Limit:        input.Limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return desktopapi.CTeRows(documents), nil
+}
+
+func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent, error) {
+	events, err := a.core.CTe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
+	if err != nil {
+		return nil, err
+	}
+	return desktopapi.CTeEvents(events), nil
+}
+
+// TestCTeConnection opens a TLS connection to the CT-e distribution host. It
+// sends no query, so it does not use the hourly budget.
+func (a *App) TestCTeConnection(cnpj string) (desktopapi.ConnectionTestResult, error) {
+	res, err := a.core.CTe.TestConnection(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.ConnectionTestResult{}, err
+	}
+	return desktopapi.ConnectionTestResult{
+		CertLoaded:        res.CertLoaded,
+		CertSubject:       res.CertSubject,
+		CertExpiration:    res.CertExpiration,
+		MTLSAccepted:      res.MTLSAccepted,
+		EndpointReached:   res.EndpointReached,
+		ResponseCode:      res.ResponseCode,
+		ResponseDetail:    res.ResponseDetail,
+		StatusExplanation: res.StatusExplanation,
+	}, nil
+}
+
+func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.ExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	err := a.core.CTe.ExportXML(a.ctx, app.CTeExportXMLInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+}
+
+func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.ExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	res, err := a.core.CTe.ExportXMLZip(a.ctx, app.CTeExportInput{
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Role:         input.Role,
+		ChavesAcesso: input.ChavesAcesso,
+		Incremental:  input.Incremental,
+		OutPath:      input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult(res), nil
+}
+
+// PreviewResetCTe returns what ResetCTe would remove, changing nothing.
+func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
+	res, err := a.core.CTe.PreviewReset(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.CTeResetResult{}, err
+	}
+	return desktopapi.CTeResetResultFrom(res), nil
+}
+
+// ResetCTe removes the company's CT-e and resets its CT-e sync, so the next
+// pull starts over from NSU 0.
+func (a *App) ResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
+	res, err := a.core.CTe.Reset(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.CTeResetResult{}, err
+	}
+	return desktopapi.CTeResetResultFrom(res), nil
 }

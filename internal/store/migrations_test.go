@@ -9,7 +9,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -540,7 +540,7 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list companies after up: %v", err)
 	}
-	wantDone := map[nfse.CompanyID]string{"comp-1": syncedAt, "comp-2": mirrorOnlyAt, "comp-3": ""}
+	wantDone := map[dfe.CompanyID]string{"comp-1": syncedAt, "comp-2": mirrorOnlyAt, "comp-3": ""}
 	if len(companies) != len(wantDone) {
 		t.Fatalf("companies after up = %d, want %d", len(companies), len(wantDone))
 	}
@@ -568,9 +568,189 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	}
 }
 
+func TestMigration016BackfillsNFeTpAmb(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 14); err != nil {
+		t.Fatalf("migrate to version 14: %v", err)
+	}
+
+	const now = "2026-09-01T10:00:00Z"
+	insertCompany := `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 'all', ?, ?)
+	`
+	mustExec(t, db, insertCompany, "comp-prod", "11222333000181", "11222333", "Produção", "producao", now, now)
+	mustExec(t, db, insertCompany, "comp-hom", "44555666000199", "44555666", "Homologação", "producao_restrita", now, now)
+	insertDocument := `
+		INSERT INTO nfe_documents (id, chave_acesso, modelo, serie, numero, issue_date, competence, protocolo,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name, transportador_cnpj,
+			tp_nf, fin_nfe, nat_op, situacao, completeness, layout_version, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '55', '1', '1', ?, '2026-09', '', '', '', '', 'SP', '', '', '', '1', '', '', 'autorizada', 'resumo', '1.01', ?, ?, ?)
+	`
+	mustExec(t, db, insertDocument, "doc-prod", "chave-prod", now, "hash-prod", now, now)
+	mustExec(t, db, insertDocument, "doc-hom", "chave-hom", now, "hash-hom", now, now)
+	mustExec(t, db, insertDocument, "doc-orphan", "chave-orphan", now, "hash-orphan", now, now)
+	insertRelation := `
+		INSERT INTO company_nfe_documents (relation_id, company_id, nfe_document_id, company_role, visibility_reason, first_synced_at, last_synced_at)
+		VALUES (?, ?, ?, 'destinatario', 'resumo_destinatario', ?, ?)
+	`
+	mustExec(t, db, insertRelation, "rel-prod", "comp-prod", "doc-prod", now, now)
+	mustExec(t, db, insertRelation, "rel-hom", "comp-hom", "doc-hom", now, now)
+	insertEvent := `
+		INSERT INTO nfe_events (id, chave_acesso, tp_evento, type, n_seq_evento, protocolo, autor_cnpj, description,
+			justificativa, correcao, completeness, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '210210', 'ciencia', 1, '', '', '', '', '', 'completa', ?, ?, ?)
+	`
+	mustExec(t, db, insertEvent, "ev-prod", "chave-prod", "ev-hash-prod", now, now)
+	mustExec(t, db, insertEvent, "ev-hom", "chave-hom", "ev-hash-hom", now, now)
+	mustExec(t, db, insertEvent, "ev-no-document", "chave-missing", "ev-hash-missing", now, now)
+
+	if _, err := provider.UpTo(ctx, 16); err != nil {
+		t.Fatalf("migrate to version 16: %v", err)
+	}
+	for table, want := range map[string]map[string]string{
+		"nfe_documents": {"doc-prod": "1", "doc-hom": "2", "doc-orphan": ""},
+		"nfe_events":    {"ev-prod": "1", "ev-hom": "2", "ev-no-document": ""},
+	} {
+		for id, wantTpAmb := range want {
+			var got string
+			if err := db.QueryRowContext(ctx, `SELECT tp_amb FROM `+table+` WHERE id = ?`, id).Scan(&got); err != nil { // #nosec G202 -- fixed table names.
+				t.Fatalf("read %s.tp_amb: %v", table, err)
+			}
+			if got != wantTpAmb {
+				t.Errorf("%s %s tp_amb = %q, want %q", table, id, got, wantTpAmb)
+			}
+		}
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE nfe_documents SET tp_amb = '3' WHERE id = 'doc-prod'`); err == nil {
+		t.Error("nfe_documents accepted tp_amb 3")
+	}
+
+	if _, err := provider.DownTo(ctx, 14); err != nil {
+		t.Fatalf("migrate down to version 14: %v", err)
+	}
+	var columns int
+	if err := db.QueryRowContext(ctx, `
+		SELECT (SELECT COUNT(*) FROM pragma_table_info('nfe_documents') WHERE name = 'tp_amb')
+			+ (SELECT COUNT(*) FROM pragma_table_info('nfe_events') WHERE name = 'tp_amb')
+	`).Scan(&columns); err != nil {
+		t.Fatal(err)
+	}
+	if columns != 0 {
+		t.Errorf("tp_amb columns after down = %d, want 0", columns)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 	t.Helper()
 	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {
 		t.Fatalf("exec %q: %v", query, err)
+	}
+}
+
+func TestMigration015AddsCTeTables(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 14); err != nil {
+		t.Fatalf("migrate to version 14: %v", err)
+	}
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+
+	cteTables := []string{"cte_documents", "company_cte_documents", "cte_events", "company_cte_export_marks"}
+	countTables := func() int {
+		t.Helper()
+		var n int
+		err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM sqlite_master
+			WHERE type = 'table' AND name IN (?, ?, ?, ?)
+		`, cteTables[0], cteTables[1], cteTables[2], cteTables[3]).Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 15); err != nil {
+		t.Fatalf("migrate to version 15: %v", err)
+	}
+	if n := countTables(); n != len(cteTables) {
+		t.Errorf("CT-e tables after up = %d, want %d", n, len(cteTables))
+	}
+
+	insertDocument := `
+		INSERT INTO cte_documents (id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op,
+			issue_date, competence, protocolo, tp_cte, tp_serv, modal,
+			mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name,
+			destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
+			tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
+			produto_predominante, situacao, layout_version, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '1', '57', 'cte', '1', '101', '6353', '', ?, '2026-09', '', '0', '0', '01',
+			'', '', 'SP', '', '', 'RJ', '12345678000195', 'Transportadora', '', 'SP', '', '', '', '', '', '', '', '',
+			'3', '70860312000150', 'Company', '', 'RJ', '', ?, '4.00', ?, ?, ?)
+	`
+	mustExec(t, db, insertDocument, "doc-1", "35260912345678000195570010000001011123456784", now, "autorizada", "hash-1", now, now)
+	if _, err := db.ExecContext(ctx, insertDocument, "doc-2", "35260912345678000195570010000001021234567891", now, "autorizado", "hash-2", now, now); err == nil {
+		t.Error("cte_documents accepted situacao 'autorizado', want a CHECK failure")
+	}
+	mustExec(t, db, `
+		INSERT INTO company_cte_documents (relation_id, company_id, cte_document_id, company_role, papeis,
+			visibility_reason, first_synced_at, last_synced_at)
+		VALUES ('rel-1', 'comp-1', 'doc-1', 'tomador', 'tomador,destinatario', 'exact_tomador', ?, ?)
+	`, now, now)
+	var autorizados, nfeChaves string
+	var maskedKeys int
+	err = db.QueryRowContext(ctx, `SELECT autorizados_cnpj, nfe_chaves, masked_keys FROM cte_documents WHERE id = 'doc-1'`).
+		Scan(&autorizados, &nfeChaves, &maskedKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if autorizados != "" || nfeChaves != "" || maskedKeys != 0 {
+		t.Errorf("default (autorizados_cnpj, nfe_chaves, masked_keys) = (%q, %q, %d), want empty", autorizados, nfeChaves, maskedKeys)
+	}
+
+	if _, err := provider.DownTo(ctx, 14); err != nil {
+		t.Fatalf("migrate down to version 14: %v", err)
+	}
+	if n := countTables(); n != 0 {
+		t.Errorf("CT-e tables after down = %d, want 0", n)
+	}
+	var companies int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM companies`).Scan(&companies); err != nil {
+		t.Fatal(err)
+	}
+	if companies != 1 {
+		t.Errorf("companies after down = %d, want 1", companies)
 	}
 }

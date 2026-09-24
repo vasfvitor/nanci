@@ -10,6 +10,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -35,6 +36,24 @@ func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (
 		return nil, fmt.Errorf("buscar empresa: %w", err)
 	}
 	return comp, nil
+}
+
+// parseAccessKeys validates and normalizes the chaves a user typed. An
+// invalid one fails the whole call with an error matching
+// dfe.ErrInvalidAccessKey.
+func parseAccessKeys(raw []string) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	chaves := make([]string, 0, len(raw))
+	for _, r := range raw {
+		key, err := dfe.ParseAccessKey(r)
+		if err != nil {
+			return nil, fmt.Errorf("chave de acesso inválida %q: %w", strings.TrimSpace(r), err)
+		}
+		chaves = append(chaves, string(key))
+	}
+	return chaves, nil
 }
 
 func lookupCredentialByID(ctx context.Context, repo *credential.Store, id nfse.CredentialID) (*nfse.Credential, error) {

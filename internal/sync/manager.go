@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
@@ -22,11 +23,18 @@ import (
 var (
 	loadPKCS12   = cert.LoadPKCS12
 	newADNClient = adn.NewClient
-	// newSEFAZClient builds the NF-e distribution client; tests swap it.
-	newSEFAZClient = func(cfg sefaz.ClientConfig) (nfeFetcher, error) {
+	// newSEFAZClient builds the NF-e and CT-e distribution client; tests
+	// swap it.
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
 		return sefaz.NewClient(cfg)
 	}
 )
+
+// sefazFetcher queries both SEFAZ distributions.
+type sefazFetcher interface {
+	nfeFetcher
+	cteFetcher
+}
 
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest struct {
@@ -59,7 +67,7 @@ type credentialProvider interface {
 }
 
 type documentProvider interface {
-	CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error)
+	CountDocumentsByRole(ctx context.Context, companyID dfe.CompanyID) (map[string]int64, error)
 }
 
 // xmlStore reuses files.XMLStore
@@ -86,6 +94,11 @@ type Manager struct {
 	Certificates *CertificateLoader
 	// NFeRepo stores the NF-e distribution; pulls with Source nfe need it.
 	NFeRepo *store.NFeRepository
+	// CTeRepo stores the CT-e distribution; pulls with Source cte need it.
+	CTeRepo *store.CTeRepository
+	// SEFAZEndpoints overrides the SEFAZ URLs of NF-e and CT-e pulls; nil
+	// uses the URLs of the company's environment.
+	SEFAZEndpoints *sefaz.Endpoints
 
 	runningMu gosync.Mutex
 	running   map[string]bool // "companyID:source" pulls in flight in this process
@@ -258,7 +271,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 // pulls out. A second reservation of the same pair gets ErrSyncRunning
 // instead of interrupting the first. This does not guard against another
 // process; StartRun cleans up after a crashed one.
-func (m *Manager) ReserveSource(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
+func (m *Manager) ReserveSource(companyID dfe.CompanyID, source nfse.SyncSource) (func(), error) {
 	key := string(companyID) + ":" + string(source)
 
 	m.runningMu.Lock()
@@ -288,7 +301,7 @@ type SourceLimits struct {
 }
 
 // SourceLimits reports the request limits of the company's source now.
-func (m *Manager) SourceLimits(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) (SourceLimits, error) {
+func (m *Manager) SourceLimits(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) (SourceLimits, error) {
 	now := time.Now().UTC()
 	state, err := m.SyncRepo.SourceState(ctx, companyID, source)
 	if err != nil {
@@ -304,9 +317,7 @@ func (m *Manager) SourceLimits(ctx context.Context, companyID nfse.CompanyID, so
 		return SourceLimits{}, fmt.Errorf("contar consultas da última hora: %w", err)
 	}
 	limits.RequestsLastHour = count
-	if source == nfse.SyncSourceNFe {
-		limits.RequestBudget = NFeRequestsPerHour
-	}
+	limits.RequestBudget = requestsPerHour(source)
 	return limits, nil
 }
 
@@ -316,9 +327,9 @@ func (m *Manager) checkSource(company *nfse.Company, source nfse.SyncSource) err
 	switch source {
 	case nfse.SyncSourceNFSe:
 		return nil
-	case nfse.SyncSourceNFe:
-		if m.NFeRepo == nil {
-			return errors.New("repositório de NF-e não configurado")
+	case nfse.SyncSourceNFe, nfse.SyncSourceCTe:
+		if (source == nfse.SyncSourceNFe && m.NFeRepo == nil) || (source == nfse.SyncSourceCTe && m.CTeRepo == nil) {
+			return fmt.Errorf("repositório de %s não configurado", sourceLabel(source))
 		}
 		_, err := companyUFCode(company)
 		return err
@@ -341,7 +352,7 @@ func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCe
 			return nil, fmt.Errorf("configurar cliente ADN: %w", err)
 		}
 		return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
-	case nfse.SyncSourceNFe:
+	case nfse.SyncSourceNFe, nfse.SyncSourceCTe:
 		cUFAutor, err := companyUFCode(company)
 		if err != nil {
 			return nil, err
@@ -350,18 +361,22 @@ func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCe
 			Environment: company.Environment,
 			Certificate: &tlsCert,
 			Log:         m.Log,
+			Endpoints:   m.SEFAZEndpoints,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
 		}
-		return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
+		if source == nfse.SyncSourceNFe {
+			return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
+		}
+		return NewCTeSource(client, m.CTeRepo, m.XMLStore, m.Log, cUFAutor), nil
 	default:
 		return nil, fmt.Errorf("origem de sincronização %q ainda não disponível", source)
 	}
 }
 
 // companyUFCode returns the IBGE code of the company's UF, which the NF-e
-// distribution requires as cUFAutor.
+// and CT-e distributions require as cUFAutor.
 func companyUFCode(company *nfse.Company) (int, error) {
 	if company.UF == "" {
 		return 0, errors.New("empresa sem UF cadastrada; use company update --uf")

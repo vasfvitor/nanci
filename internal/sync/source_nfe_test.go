@@ -27,16 +27,26 @@ const (
 	nfeCompanyCNPJ    = "70860312000150"                               // destinatário of the fixtures
 )
 
-// scriptedFetcher answers DistNSU from a script keyed by the requested
-// ultNSU. A cursor without a script gets cStat 137.
+// scriptedFetcher answers DistNSU and DistCTeNSU from a script keyed by the
+// requested ultNSU. A cursor without a script gets cStat 137.
 type scriptedFetcher struct {
 	responses map[int64]sefaz.DistResult
 	cursors   []int64
 	cUFAutors []int
 	cnpjs     []string
+	services  []string // "nfe" or "cte" for each request
 }
 
 func (f *scriptedFetcher) DistNSU(_ context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
+	return f.answer("nfe", cnpj, cUFAutor, ultNSU)
+}
+
+func (f *scriptedFetcher) DistCTeNSU(_ context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
+	return f.answer("cte", cnpj, cUFAutor, ultNSU)
+}
+
+func (f *scriptedFetcher) answer(service, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
+	f.services = append(f.services, service)
 	f.cursors = append(f.cursors, ultNSU)
 	f.cUFAutors = append(f.cUFAutors, cUFAutor)
 	f.cnpjs = append(f.cnpjs, cnpj)
@@ -261,6 +271,44 @@ func TestNFeSourceUpgradesResumoToCompleta(t *testing.T) {
 	}
 }
 
+// TestNFeSourceRecordsTpAmb pulls in produção: a resumo and a resEvento,
+// which carry no tpAmb, take the pull's; a procNFe of homologação keeps its
+// own with a warning.
+func TestNFeSourceRecordsTpAmb(t *testing.T) {
+	h := newNFeTestHelper(t)
+	denegada, err := os.ReadFile(filepath.Join("..", "nfe", "testdata", "procnfe-denegada.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	homologacao := strings.ReplaceAll(string(denegada), "<tpAmb>1</tpAmb>", "<tpAmb>2</tpAmb>")
+	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{
+		0: {CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 3, MaxNSU: 3, Docs: []sefaz.DocZip{
+			docZip(t, 1, "resNFe_v1.01.xsd", "resnfe-cancelada.xml"),
+			{NSU: 2, Schema: "procNFe_v4.00.xsd", Content: mustEncodeGzipBase64(t, homologacao)},
+			docZip(t, 3, "resEvento_v1.01.xsd", "resevento-cancelamento.xml"),
+		}},
+	}}
+
+	if _, err := h.run(fetcher); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	docs := h.documents()
+	if got := docs[nfeChaveCancelada]; got.TpAmb != "1" || len(got.ParseWarnings) != 0 {
+		t.Errorf("resumo tpAmb = %q, warnings %v; want the pull's 1 and no warning", got.TpAmb, got.ParseWarnings)
+	}
+	got := docs[nfeChaveDenegada]
+	if got.TpAmb != "2" {
+		t.Errorf("homologação procNFe tpAmb = %q, want the XML's 2", got.TpAmb)
+	}
+	if len(got.ParseWarnings) != 1 || !strings.Contains(got.ParseWarnings[0], "tpAmb 2 differs from the queried tpAmb 1") {
+		t.Errorf("homologação procNFe warnings = %v, want the tpAmb mismatch", got.ParseWarnings)
+	}
+	if events := h.events(nfeChaveCancelada); len(events) != 1 || events[0].TpAmb != "1" {
+		t.Errorf("resEvento = %+v, want one with the pull's tpAmb 1", events)
+	}
+}
+
 func TestNFeSourceKeepsOnlyOwnEventsWithoutLocalDocument(t *testing.T) {
 	h := newNFeTestHelper(t)
 	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{
@@ -429,7 +477,7 @@ func TestNFeSourceRejectionFailsRunAsFetchError(t *testing.T) {
 
 // newNFePullTestManager is newPullTestManager with the company given a UF,
 // an NF-e repository and a scripted SEFAZ client.
-func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher nfeFetcher) (*Manager, *nfse.Company) {
+func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *scriptedFetcher) (*Manager, *nfse.Company) {
 	t.Helper()
 	mgr, comp := newPullTestManager(t, passwords)
 	if _, err := mgr.SyncRepo.db.ExecContext(context.Background(), `UPDATE companies SET uf = 'SP' WHERE id = ?`, string(comp.ID)); err != nil {
@@ -444,7 +492,7 @@ func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher n
 		nfeRequestDelay = originalDelay
 	})
 	nfeRequestDelay = 0
-	newSEFAZClient = func(cfg sefaz.ClientConfig) (nfeFetcher, error) {
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
 		if cfg.Environment != nfse.EnvironmentProduction || cfg.Certificate == nil {
 			t.Errorf("SEFAZ client config = %+v", cfg)
 		}

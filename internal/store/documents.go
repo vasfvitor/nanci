@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
@@ -26,7 +27,7 @@ func NewDocumentRepository(db *sql.DB) *DocumentRepository {
 }
 
 // CompanyDocumentByChave retrieves one company-visible document by access key.
-func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfse.CompanyDocument, error) {
+func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, companyID dfe.CompanyID, chave string) (*nfse.CompanyDocument, error) {
 	query := `
 		SELECT
 			d.id, d.chave_acesso, d.issue_date, d.competence,
@@ -76,7 +77,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 }
 
 // ListCompanyDocuments retrieves company-facing documents based on the provided filters.
-func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
+func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter) ([]nfse.CompanyDocument, error) {
 	query := `
 		SELECT
 			d.id, d.chave_acesso, d.issue_date, d.competence,
@@ -309,7 +310,7 @@ func decodeWarnings(value sql.NullString, dst *[]string) error {
 }
 
 // ListPendingExportDocuments retrieves documents that have not been exported for the given kind, or where the hash changed.
-func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) ([]nfse.CompanyDocument, error) {
+func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter, kind string) ([]nfse.CompanyDocument, error) {
 	// Re-use ListCompanyDocuments logic but add a JOIN/WHERE for pending export
 	query := `
 		SELECT
@@ -415,7 +416,7 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 }
 
 // CountPendingExportDocuments counts pending export documents.
-func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter, kind string) (int, error) {
+func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter, kind string) (int, error) {
 	query := `
 		SELECT COUNT(1)
 		FROM company_documents cd
@@ -461,7 +462,7 @@ func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, co
 }
 
 // MarkDocumentsExported marks documents as exported for a specific kind.
-func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyID nfse.CompanyID, kind string, marks []nfse.DocumentExportMark) error {
+func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyID dfe.CompanyID, kind string, marks []nfse.DocumentExportMark) error {
 	if len(marks) == 0 {
 		return nil
 	}
@@ -494,7 +495,7 @@ func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyI
 }
 
 // MarkDocumentsViewed marks documents matching the filter as viewed.
-func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID nfse.CompanyID, filter nfse.DocumentFilter) (int, error) {
+func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter) (int, error) {
 	// First we need to find the relation_ids that match, then update them.
 	// Or we can do an UPDATE with a subquery.
 	query := `
@@ -546,7 +547,7 @@ func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID 
 }
 
 // CountDocumentsByRole returns a map of role to document count for the given company.
-func (s *DocumentRepository) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
+func (s *DocumentRepository) CountDocumentsByRole(ctx context.Context, companyID dfe.CompanyID) (map[string]int64, error) {
 	query := `
 		SELECT company_role, COUNT(*) 
 		FROM company_documents 

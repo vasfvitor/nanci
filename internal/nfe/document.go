@@ -3,14 +3,14 @@ package nfe
 import (
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // Document is the canonical NF-e, built from a resNFe (resumo) or a procNFe
 // (completa). Fields that a resumo does not carry stay empty or zero.
 type Document struct {
 	ID                string
-	ChaveAcesso       AccessKey
+	ChaveAcesso       dfe.AccessKey
 	Modelo            string     // "55"
 	Serie             string     // ide/serie (completa) or the key slot (resumo)
 	Numero            string     // ide/nNF (completa) or the key slot (resumo)
@@ -29,12 +29,13 @@ type Document struct {
 	TpNF              string   // "0" entrada, "1" saída
 	FinNFe            string   // empty on resumo
 	NatOp             string   // empty on resumo
-	TotalValue        nfse.Money
-	ICMSValue         nfse.Money // total/ICMSTot/vICMS; zero on resumo
-	IPIValue          nfse.Money // total/ICMSTot/vIPI; zero on resumo
+	TotalValue        dfe.Money
+	ICMSValue         dfe.Money // total/ICMSTot/vICMS; zero on resumo
+	IPIValue          dfe.Money // total/ICMSTot/vIPI; zero on resumo
 	Situacao          Situacao
 	Completeness      Completeness
 	LayoutVersion     string // infNFe@versao or resNFe@versao
+	TpAmb             string // ide/tpAmb: "1" produção, "2" homologação; a resumo carries none
 	RawHash           string // hash of the current blob (procNFe once completa)
 	ResumoRawHash     string // hash of the resNFe blob, kept after the upgrade to completa
 	ParseWarnings     []string
@@ -44,7 +45,7 @@ type Document struct {
 type CompanyDocument struct {
 	Document
 	RelationID       string
-	CompanyID        nfse.CompanyID
+	CompanyID        dfe.CompanyID
 	CompanyRole      CompanyRole
 	VisibilityReason VisibilityReason
 	Manifestacao     Manifestacao

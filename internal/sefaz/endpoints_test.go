@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -16,16 +17,18 @@ func TestEndpointsFor(t *testing.T) {
 		{
 			env: nfse.EnvironmentProduction,
 			want: Endpoints{
-				Distribuicao:   "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
-				RecepcaoEvento: "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
+				Distribuicao:    "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
+				DistribuicaoCTe: "https://www1.cte.fazenda.gov.br/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx",
+				RecepcaoEvento:  "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
 			},
 			tpAmb: "1",
 		},
 		{
 			env: nfse.EnvironmentRestricted,
 			want: Endpoints{
-				Distribuicao:   "https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
-				RecepcaoEvento: "https://hom1.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
+				Distribuicao:    "https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
+				DistribuicaoCTe: "https://hom1.cte.fazenda.gov.br/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx",
+				RecepcaoEvento:  "https://hom1.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
 			},
 			tpAmb: "2",
 		},
@@ -45,10 +48,10 @@ func TestEndpointsFor(t *testing.T) {
 }
 
 func TestEndpointsFor_InvalidEnvironment(t *testing.T) {
-	if _, err := EndpointsFor("homologacao"); !errors.Is(err, nfse.ErrInvalidEnum) {
+	if _, err := EndpointsFor("homologacao"); !errors.Is(err, dfe.ErrInvalidEnum) {
 		t.Errorf("EndpointsFor: err = %v, want ErrInvalidEnum", err)
 	}
-	if _, err := TpAmb(""); !errors.Is(err, nfse.ErrInvalidEnum) {
+	if _, err := TpAmb(""); !errors.Is(err, dfe.ErrInvalidEnum) {
 		t.Errorf("TpAmb: err = %v, want ErrInvalidEnum", err)
 	}
 }

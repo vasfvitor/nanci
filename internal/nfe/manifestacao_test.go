@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 func TestTipoManifestacao(t *testing.T) {
@@ -296,8 +296,8 @@ func TestValidateJustificativa(t *testing.T) {
 		t.Errorf("error = %v, want %q", err, want)
 	}
 	_, err = ValidateJustificativa(TipoManifestacao("x"), "")
-	if err == nil || !errors.Is(err, nfse.ErrInvalidEnum) || !strings.HasPrefix(err.Error(), "tipo de manifestação inválido") {
-		t.Errorf("error = %v, want the Portuguese message wrapping nfse.ErrInvalidEnum", err)
+	if err == nil || !errors.Is(err, dfe.ErrInvalidEnum) || !strings.HasPrefix(err.Error(), "tipo de manifestação inválido") {
+		t.Errorf("error = %v, want the Portuguese message wrapping dfe.ErrInvalidEnum", err)
 	}
 	_, err = ValidateJustificativa(TipoManifestacaoConfirmacao, "mercadoria não recebida no prazo")
 	if want := "justificativa só é aceita para operação não realizada"; err == nil || err.Error() != want {

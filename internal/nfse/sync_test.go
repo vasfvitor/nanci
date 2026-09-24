@@ -84,3 +84,33 @@ func TestSyncMode(t *testing.T) {
 		})
 	}
 }
+
+func TestSyncSource(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected nfse.SyncSource
+		valid    bool
+	}{
+		{"nfse", nfse.SyncSourceNFSe, true},
+		{"nfe", nfse.SyncSourceNFe, true},
+		{"cte", nfse.SyncSourceCTe, true},
+		{"mdfe", "", false},
+		{"", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			source, err := nfse.ParseSyncSource(tt.input)
+			if tt.valid {
+				if err != nil {
+					t.Errorf("Expected no error, got %v", err)
+				}
+				if source != tt.expected {
+					t.Errorf("Expected %s, got %s", tt.expected, source)
+				}
+			} else if err == nil {
+				t.Errorf("Expected error for input %q, got nil", tt.input)
+			}
+		})
+	}
+}

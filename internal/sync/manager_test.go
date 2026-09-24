@@ -149,15 +149,26 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 }
 
 type countingProvider struct {
-	mu    gosync.Mutex
-	calls int
+	mu       gosync.Mutex
+	calls    int
+	purposes []string
 }
 
-func (p *countingProvider) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+func (p *countingProvider) GetCertPassword(_ context.Context, req CertPasswordRequest) ([]byte, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.calls++
+	p.purposes = append(p.purposes, req.Purpose)
 	return []byte("secret"), nil
+}
+
+func (p *countingProvider) lastPurpose() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.purposes) == 0 {
+		return ""
+	}
+	return p.purposes[len(p.purposes)-1]
 }
 
 func (p *countingProvider) callCount() int {
@@ -349,11 +360,12 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	releaseAgain()
 }
 
-func TestPullRejectsSourcesWithoutALoop(t *testing.T) {
+func TestPullRejectsUnconfiguredSources(t *testing.T) {
 	passwords := &countingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 
-	for _, source := range []nfse.SyncSource{"cte", "bogus"} {
+	// newPullTestManager configures no NF-e or CT-e repository.
+	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFe, nfse.SyncSourceCTe, "mdfe", "bogus"} {
 		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: source}); err == nil {
 			t.Errorf("Pull with source %q succeeded, want an error", source)
 		}

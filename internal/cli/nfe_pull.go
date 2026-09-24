@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -9,7 +8,6 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 func newNFePullCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
@@ -26,14 +24,7 @@ func newNFePullCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			out := cmd.OutOrStdout()
 			result, err := application.NFe.Pull(cmd.Context(), *cnpjFlag)
 			if err != nil {
-				var blocked *sync.BlockedError
-				if errors.As(err, &blocked) {
-					_, _ = fmt.Fprintf(out, "Próxima consulta permitida após: %s\n", formatNFeDateTime(blocked.Until))
-				}
-				if errors.Is(err, app.ErrSyncRunning) {
-					return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
-				}
-				return fmt.Errorf("erro: %w", err)
+				return pullError(out, err)
 			}
 
 			printNFePullResult(out, result)
@@ -56,6 +47,6 @@ func printNFePullResult(out io.Writer, result app.NFePullResult) {
 		result.CompletasSaved, result.ResumosSaved, result.EventsSaved, result.Errors)
 	_, _ = fmt.Fprintf(out, "Consultas na última hora: %d/%d\n", result.RequestsLastHour, result.RequestBudget)
 	if result.NextAllowedAt != nil {
-		_, _ = fmt.Fprintf(out, "Próxima consulta permitida após: %s\n", formatNFeDateTime(*result.NextAllowedAt))
+		_, _ = fmt.Fprintf(out, "Próxima consulta permitida após: %s\n", formatDateTime(*result.NextAllowedAt))
 	}
 }

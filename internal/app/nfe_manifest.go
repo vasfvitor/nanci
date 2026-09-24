@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
@@ -204,7 +205,7 @@ func (s *NFeService) planManifestacao(ctx context.Context, in NFeManifestacaoInp
 	if err != nil {
 		return nil, NFeManifestacaoPlan{}, err
 	}
-	doc, err := s.companyDocument(ctx, comp.ID, in.ChaveAcesso)
+	doc, err := s.companyDocument(ctx, comp, in.ChaveAcesso)
 	if err != nil {
 		return nil, NFeManifestacaoPlan{}, err
 	}
@@ -251,6 +252,11 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 		return nil, NFeCienciaPlan{}, err
 	}
 
+	tpAmb, err := environmentTpAmb(comp)
+	if err != nil {
+		return nil, NFeCienciaPlan{}, err
+	}
+
 	now := s.now()
 	var plan NFeCienciaPlan
 	if in.AllResumos {
@@ -259,6 +265,7 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 			Situacao:     nfe.SituacaoAutorizada,
 			Completeness: nfe.CompletenessResumo,
 			Manifestacao: nfe.ManifestacaoNenhuma,
+			TpAmb:        tpAmb,
 		})
 		if err != nil {
 			return nil, NFeCienciaPlan{}, fmt.Errorf("listar NF-e: %w", err)
@@ -267,18 +274,18 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 			plan.Eligible = append(plan.Eligible, newNFeDocument(doc, now))
 		}
 	} else {
-		if err := s.planChaves(ctx, comp.ID, in.ChavesAcesso, now, &plan); err != nil {
+		if err := s.planChaves(ctx, comp.ID, tpAmb, in.ChavesAcesso, now, &plan); err != nil {
 			return nil, NFeCienciaPlan{}, err
 		}
 	}
 	return comp, plan, nil
 }
 
-func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, rawChaves []string, now time.Time, plan *NFeCienciaPlan) error {
+func (s *NFeService) planChaves(ctx context.Context, companyID dfe.CompanyID, tpAmb string, rawChaves []string, now time.Time, plan *NFeCienciaPlan) error {
 	var chaves []string
 	seen := make(map[string]bool, len(rawChaves))
 	for _, raw := range rawChaves {
-		chave, err := nfe.ParseAccessKey(raw)
+		chave, err := dfe.ParseAccessKey(raw)
 		if err != nil {
 			plan.Skipped = append(plan.Skipped, NFeSkipped{ChaveAcesso: strings.TrimSpace(raw), Reason: "chave de acesso inválida"})
 			continue
@@ -294,7 +301,7 @@ func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, r
 		return nil
 	}
 
-	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: chaves})
+	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: chaves, TpAmb: tpAmb})
 	if err != nil {
 		return fmt.Errorf("listar NF-e: %w", err)
 	}

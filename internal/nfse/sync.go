@@ -3,6 +3,8 @@ package nfse
 import (
 	"fmt"
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // The sync types in this file are source-neutral: they describe the NSU
@@ -14,19 +16,20 @@ type SyncSource string
 const (
 	SyncSourceNFSe SyncSource = "nfse"
 	SyncSourceNFe  SyncSource = "nfe"
+	SyncSourceCTe  SyncSource = "cte"
 )
 
 func ParseSyncSource(val string) (SyncSource, error) {
 	source := SyncSource(val)
 	if !source.Valid() {
-		return "", fmt.Errorf("invalid sync source %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("invalid sync source %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return source, nil
 }
 
 func (s SyncSource) Valid() bool {
 	switch s {
-	case SyncSourceNFSe, SyncSourceNFe:
+	case SyncSourceNFSe, SyncSourceNFe, SyncSourceCTe:
 		return true
 	default:
 		return false
@@ -40,7 +43,7 @@ func (s SyncSource) String() string {
 // SyncRun represents a synchronization execution for audit and control.
 type SyncRun struct {
 	ID                    SyncRunID
-	CompanyID             CompanyID
+	CompanyID             dfe.CompanyID
 	Source                SyncSource
 	CredentialID          CredentialID
 	Environment           Environment
@@ -64,7 +67,7 @@ type SyncRun struct {
 
 // SyncState represents the persisted sync cursor and audit state for a company/source/environment/CNPJ key.
 type SyncState struct {
-	CompanyID        CompanyID
+	CompanyID        dfe.CompanyID
 	Source           SyncSource
 	Environment      Environment
 	ConsultationCNPJ string

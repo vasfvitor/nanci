@@ -1,6 +1,6 @@
 import {
   formatChaveAcesso,
-  formatChaveNFe,
+  formatChaveDFe,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
@@ -60,23 +60,23 @@ describe('formatters', () => {
     expect(formatChaveAcesso('123')).toBe('123')
   })
 
-  it('groups a 44-character NF-e access key in blocks of four', () => {
+  it('groups a 44-character NF-e or CT-e access key in blocks of four', () => {
     const chave = '35240912345678000199550010000123451123456789'
-    expect(formatChaveNFe(chave)).toBe(
+    expect(formatChaveDFe(chave)).toBe(
       '3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789'
     )
-    expect(formatChaveNFe('3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789')).toBe(
+    expect(formatChaveDFe('3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789')).toBe(
       '3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789'
     )
   })
 
-  it('returns other NF-e key lengths unchanged', () => {
-    expect(formatChaveNFe('3524091234567800019955001000012345112345678')).toBe(
+  it('returns other access key lengths unchanged', () => {
+    expect(formatChaveDFe('3524091234567800019955001000012345112345678')).toBe(
       '3524091234567800019955001000012345112345678'
     )
-    expect(formatChaveNFe('123')).toBe('123')
-    expect(formatChaveNFe('')).toBe('')
-    expect(formatChaveNFe(null)).toBe('')
+    expect(formatChaveDFe('123')).toBe('123')
+    expect(formatChaveDFe('')).toBe('')
+    expect(formatChaveDFe(null)).toBe('')
   })
 
   it('formats NF-e number and série', () => {

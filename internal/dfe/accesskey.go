@@ -1,4 +1,8 @@
-package nfe
+// Package dfe holds the vocabulary shared by the documentos fiscais
+// eletrônicos distributed by SEFAZ (NF-e, CT-e): the 44-character access key,
+// the value types their domains have in common and the helpers their XML
+// parsers share. It has no network or database code.
+package dfe
 
 import (
 	"errors"
@@ -12,14 +16,15 @@ import (
 
 // ErrInvalidAccessKey is returned by ParseAccessKey. The message carries the
 // specific problem; match with errors.Is.
-var ErrInvalidAccessKey = errors.New("invalid NF-e access key")
+var ErrInvalidAccessKey = errors.New("invalid access key")
 
-// AccessKey is the 44-character chave de acesso of an NF-e:
+// AccessKey is the 44-character chave de acesso shared by NF-e and CT-e:
 //
 //	cUF(2) AAMM(4) CNPJ(14) mod(2) serie(3) nNF(9) tpEmis(1) cNF(8) cDV(1)
 //
 // Every position is a digit except the CNPJ slot, which also accepts
-// uppercase letters for the alphanumeric CNPJ (NT 2025.001).
+// uppercase letters for the alphanumeric CNPJ (NT 2025.001). The model is not
+// validated here: each document parser checks its own.
 type AccessKey string
 
 const (
@@ -113,7 +118,8 @@ func (k AccessKey) EmitenteCNPJ() string {
 	return k.slice(cnpjSlotStart, cnpjSlotEnd)
 }
 
-// Modelo returns the document model, "55" for NF-e.
+// Modelo returns the document model: "55" for NF-e, "57" for CT-e, "64" for
+// GTV-e and "67" for CT-e OS.
 func (k AccessKey) Modelo() string {
 	return k.slice(20, 22)
 }
@@ -123,7 +129,8 @@ func (k AccessKey) Serie() string {
 	return k.slice(22, 25)
 }
 
-// Numero returns the NF-e number as written in the key, zero-padded to 9 digits.
+// Numero returns the document number as written in the key, zero-padded to 9
+// digits.
 func (k AccessKey) Numero() string {
 	return k.slice(25, 34)
 }

@@ -586,6 +586,232 @@ const mockNFeEvents = [
   },
 ]
 
+// CT-e mocks reuse the company and the NF-e partners above; the carriers
+// and the access keys are fictitious but carry valid check digits.
+
+type MockCTeFields = {
+  ID: string
+  ChaveAcesso: string
+  Numero: string
+  IssueDate: string
+  EmitenteCNPJ: string
+  EmitenteName: string
+  TotalValue: number
+}
+
+function mockCTeRow<T extends MockCTeFields>(fields: T) {
+  return {
+    DocumentID: '',
+    TpAmb: '1',
+    Modelo: '57',
+    TipoDocumento: 'cte',
+    Serie: '1',
+    CFOP: '5353',
+    NatOp: 'Prestação de serviço de transporte',
+    Competence: fields.IssueDate.slice(0, 7),
+    AuthorizedAt: fields.IssueDate,
+    Protocolo: `135${fields.Numero.padStart(12, '0')}`,
+    TpCTe: '0',
+    TpServ: '0',
+    Modal: '01',
+    MunIni: { Codigo: '3509502', Nome: 'Campinas', UF: 'SP' },
+    MunFim: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
+    RemetenteCNPJ: '',
+    RemetenteName: '',
+    DestinatarioCNPJ: '',
+    DestinatarioName: '',
+    ExpedidorCNPJ: '',
+    ExpedidorName: '',
+    RecebedorCNPJ: '',
+    RecebedorName: '',
+    TomadorCNPJ: '12345678000100',
+    TomadorName: 'ACME Tecnologia e Serviços LTDA',
+    TomadorIE: '',
+    TomadorUF: 'SP',
+    TomadorIndicador: '3',
+    ReceivableValue: fields.TotalValue,
+    ICMSValue: Math.round(fields.TotalValue * 0.12),
+    TotTribValue: Math.round(fields.TotalValue * 0.18),
+    CargaValue: 0,
+    ProdutoPredominante: '',
+    NFeChaves: [] as string[],
+    Situacao: 'autorizada',
+    CompanyRole: 'tomador',
+    Papeis: ['tomador'],
+    VisibilityReason: 'exact_tomador',
+    EventCount: 0,
+    FirstSeenNSU: 1,
+    LastSeenNSU: 1,
+    FirstSyncedAt: daysFromNow(-1),
+    LastSyncedAt: daysFromNow(-1),
+    LayoutVersion: '4.00',
+    ParseWarnings: [] as string[],
+    ...fields,
+  }
+}
+
+const mockCTeRows = [
+  mockCTeRow({
+    ID: 'cte-1',
+    ChaveAcesso: '35260973451982000101570010000081271108273641',
+    Numero: '8127',
+    IssueDate: daysFromNow(-11),
+    EmitenteCNPJ: '73451982000101',
+    EmitenteName: 'Transportes Rodovia Sul Ltda',
+    TotalValue: 185000,
+    RemetenteCNPJ: '11222333000181',
+    RemetenteName: 'Distribuidora Fictícia de Peças Ltda',
+    DestinatarioCNPJ: '12345678000100',
+    DestinatarioName: 'ACME Tecnologia e Serviços LTDA',
+    CargaValue: 1248000,
+    ProdutoPredominante: 'Peças e acessórios',
+    NFeChaves: ['35260911222333000181550010000045121418273651'],
+    Papeis: ['tomador', 'destinatario'],
+    EventCount: 2,
+  }),
+  mockCTeRow({
+    ID: 'cte-2',
+    ChaveAcesso: '35260982903746000170570010000214551472190350',
+    Numero: '21455',
+    IssueDate: daysFromNow(-4),
+    EmitenteCNPJ: '82903746000170',
+    EmitenteName: 'Expresso Litoral Cargas Ltda',
+    TotalValue: 342090,
+    MunIni: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
+    MunFim: { Codigo: '5002704', Nome: 'Campo Grande', UF: 'MS' },
+    CFOP: '6353',
+    RemetenteCNPJ: '12345678000100',
+    RemetenteName: 'ACME Tecnologia e Serviços LTDA',
+    DestinatarioCNPJ: '45091726000115',
+    DestinatarioName: 'Agropecuária Campo Verde Ltda',
+    TomadorIndicador: '0',
+    CargaValue: 215000,
+    ProdutoPredominante: 'Equipamentos de informática',
+    NFeChaves: ['35260912345678000100550010000003181157930460'],
+    Papeis: ['tomador', 'remetente'],
+  }),
+  mockCTeRow({
+    ID: 'cte-3',
+    ChaveAcesso: '41260991726483000161670010000003921630172480',
+    Numero: '392',
+    IssueDate: daysFromNow(-9),
+    EmitenteCNPJ: '91726483000161',
+    EmitenteName: 'Fretamento Serra Azul Turismo Ltda',
+    TotalValue: 480000,
+    Modelo: '67',
+    TipoDocumento: 'cte_os',
+    TpServ: '6',
+    CFOP: '6357',
+    MunIni: { Codigo: '4106902', Nome: 'Curitiba', UF: 'PR' },
+    MunFim: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
+    TomadorIndicador: '',
+    Situacao: 'cancelada',
+    EventCount: 1,
+  }),
+  mockCTeRow({
+    ID: 'cte-4',
+    ChaveAcesso: '31260873451982000101570020000079131293847104',
+    Serie: '2',
+    Numero: '7913',
+    IssueDate: daysFromNow(-33),
+    EmitenteCNPJ: '73451982000101',
+    EmitenteName: 'Transportes Rodovia Sul Ltda',
+    TotalValue: 267450,
+    MunIni: { Codigo: '3106200', Nome: 'Belo Horizonte', UF: 'MG' },
+    CFOP: '6353',
+    RemetenteCNPJ: '27184593000140',
+    RemetenteName: 'Metalúrgica Horizonte Ltda',
+    DestinatarioCNPJ: '12345678000100',
+    DestinatarioName: 'ACME Tecnologia e Serviços LTDA',
+    TomadorCNPJ: '27184593000140',
+    TomadorName: 'Metalúrgica Horizonte Ltda',
+    TomadorUF: 'MG',
+    TomadorIndicador: '0',
+    CargaValue: 3875090,
+    ProdutoPredominante: 'Chapas de aço',
+    NFeChaves: ['31260927184593000140550010000187361729504185'],
+    CompanyRole: 'destinatario',
+    Papeis: ['destinatario'],
+    VisibilityReason: 'exact_destinatario',
+  }),
+  mockCTeRow({
+    ID: 'cte-5',
+    ChaveAcesso: '35260982903746000170570010000215021817263545',
+    Numero: '21502',
+    IssueDate: daysFromNow(-2),
+    EmitenteCNPJ: '82903746000170',
+    EmitenteName: 'Expresso Litoral Cargas Ltda',
+    TotalValue: 96300,
+    TipoDocumento: 'cte_simplificado',
+    MunFim: { Codigo: '4205407', Nome: 'Florianópolis', UF: 'SC' },
+    CFOP: '6353',
+    DestinatarioCNPJ: '50361928000170',
+    DestinatarioName: 'Papelaria Aurora Comércio Ltda',
+    CargaValue: 64350,
+    ProdutoPredominante: 'Material de escritório',
+    NFeChaves: ['41260950361928000170550020000009271361025847'],
+    ParseWarnings: ['tomador sem inscrição estadual no XML'],
+  }),
+]
+
+const mockCTeStatus = {
+  CompanyName: 'ACME Tecnologia e Serviços LTDA',
+  CNPJ: '12345678000100',
+  UF: 'SP',
+  TpAmb: '1',
+  LastNSU: 412,
+  MaxNSU: 412,
+  LastSyncAt: minutesFromNow(-70),
+  LastRunStatus: 'success',
+  LastRunStopReason: 'caught_up',
+  InitialSyncDoneAt: daysFromNow(-30),
+  NextAllowedAt: null,
+  BlockedReason: '',
+  RequestsLastHour: 0,
+  RequestBudget: 20,
+  TotalTomador: 4,
+  TotalDestinatario: 1,
+  TotalRemetente: 0,
+  TotalOutros: 0,
+}
+
+const mockCTeEvents = [
+  {
+    ID: 'cte-ev-1',
+    TpEvento: '110180',
+    Type: 'comprovante_entrega',
+    NSeqEvento: 1,
+    Description: 'Comprovante de Entrega do CT-e',
+    EventAt: daysFromNow(-9),
+    RegisteredAt: daysFromNow(-9),
+    Protocolo: '135260008127101',
+    CStat: '135',
+    XMotivo: 'Evento registrado e vinculado a CT-e',
+    AutorCNPJ: '73451982000101',
+    Justificativa: '',
+    Observacao: 'Entregue na portaria, recebido por J. Silva',
+    Correcao: '',
+    Registered: true,
+  },
+  {
+    ID: 'cte-ev-2',
+    TpEvento: '110110',
+    Type: 'carta_correcao',
+    NSeqEvento: 1,
+    Description: 'Carta de Correcao',
+    EventAt: daysFromNow(-10),
+    RegisteredAt: daysFromNow(-10),
+    Protocolo: '135260008127102',
+    CStat: '135',
+    XMotivo: 'Evento registrado e vinculado a CT-e',
+    AutorCNPJ: '73451982000101',
+    Justificativa: '',
+    Observacao: '',
+    Correcao: 'compl/xObs: volumes conferidos na coleta',
+    Registered: true,
+  },
+]
+
 // selectNFeRows ticks the selection checkbox of each row whose number
 // (as formatted in the table) is listed.
 async function selectNFeRows(page: Page, numeros: string[]) {
@@ -802,11 +1028,50 @@ const screenshots: ScreenshotSpec[] = [
     ready: 'text=Metalúrgica Horizonte Ltda',
     nfeStatus: mockNFeBlockedStatus,
   },
+
+  { route: '/cte', name: 'cte', theme: 'light', ready: 'text=Expresso Litoral Cargas Ltda' },
+  { route: '/cte', name: 'cte', theme: 'dark', ready: 'text=Expresso Litoral Cargas Ltda' },
+
+  {
+    route: '/cte',
+    name: 'detalhes-cte',
+    theme: 'light',
+    ready: 'text=Expresso Litoral Cargas Ltda',
+    setup: async (page) => {
+      await page.locator('button[aria-label="Ver detalhes do CT-e"]').first().click()
+      await page.waitForSelector('text=NF-e transportadas', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
+    },
+  },
+  {
+    route: '/cte',
+    name: 'detalhes-cte',
+    theme: 'dark',
+    ready: 'text=Expresso Litoral Cargas Ltda',
+    setup: async (page) => {
+      await page.locator('button[aria-label="Ver detalhes do CT-e"]').first().click()
+      await page.waitForSelector('text=NF-e transportadas', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
+    },
+  },
+
+  {
+    route: '/cte',
+    name: 'dialogo-eventos-cte',
+    theme: 'light',
+    ready: 'text=Expresso Litoral Cargas Ltda',
+    setup: async (page) => {
+      // O CT-e da Transportes Rodovia Sul com NF-e da Distribuidora tem dois eventos
+      await page.locator('tbody tr', { hasText: '000.008.127' }).locator('button[aria-label="Ações do CT-e"]').click()
+      await page.click('.q-menu >> text=Eventos (2)')
+      await page.waitForSelector('.q-dialog >> text=Comprovante de entrega', { timeout: 3000 })
+    },
+  },
 ]
 
 async function installWailsMock(context: BrowserContext, nfeStatus: Record<string, unknown>) {
   await context.addInitScript(
-    ({ companies, credentials, documents, events, nfe }) => {
+    ({ companies, credentials, documents, events, nfe, cte }) => {
       const listeners: Record<string, EventCallback[]> = {}
 
       const off = (eventName: string, callback: EventCallback) => {
@@ -836,6 +1101,14 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             RegisterNFeCiencia: async () => ({ Results: [], Skipped: [], Interrupted: '' }),
             RegisterNFeManifestacao: async () => ({ Status: 'registrada', CStat: '135', Protocolo: '135260000000001' }),
             StatusNFe: async () => nfe.status,
+            ExportCTeXML: async () => ({ OutPath: 'C:\\exports\\cte.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
+            ExportCTeZIP: async () => ({ OutPath: 'C:\\exports\\cte.zip', Format: 'xml', Incremental: false, ExportedCount: 5 }),
+            ListCTe: async () => cte.rows,
+            ListCTeEvents: async () => cte.events,
+            PreviewResetCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, CompanyDocuments: 5, Documents: 5, Events: 3, ExportMarks: 0 }),
+            PullCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, Status: 'success' }),
+            ResetCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, CompanyDocuments: 5, Documents: 5, Events: 3, ExportMarks: 0 }),
+            StatusCTe: async () => cte.status,
             MarkDocumentsViewed: async () => 0,
             ListCompanies: async () => companies,
             ListCredentials: async () => credentials,
@@ -954,6 +1227,11 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
         status: nfeStatus,
         cienciaPlan: mockNFeCienciaPlan,
         events: mockNFeEvents,
+      },
+      cte: {
+        rows: mockCTeRows,
+        status: mockCTeStatus,
+        events: mockCTeEvents,
       },
     }
   )

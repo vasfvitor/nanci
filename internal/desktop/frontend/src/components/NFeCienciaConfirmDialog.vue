@@ -29,7 +29,7 @@
               <q-item-label>
                 {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
               </q-item-label>
-              <q-item-label caption class="text-mono">{{ formatChaveNFe(note.ChaveAcesso) }}</q-item-label>
+              <q-item-label caption class="text-mono">{{ formatChaveDFe(note.ChaveAcesso) }}</q-item-label>
             </q-item-section>
             <q-item-section side class="text-mono">
               {{ formatCurrencyCents(note.TotalValue) }}
@@ -50,7 +50,7 @@
           <q-list dense separator>
             <q-item v-for="skip in plan.Skipped" :key="skip.ChaveAcesso">
               <q-item-section>
-                <q-item-label caption class="text-mono">{{ formatChaveNFe(skip.ChaveAcesso) }}</q-item-label>
+                <q-item-label caption class="text-mono">{{ formatChaveDFe(skip.ChaveAcesso) }}</q-item-label>
                 <q-item-label>{{ skip.Reason }}</q-item-label>
               </q-item-section>
             </q-item>
@@ -93,13 +93,13 @@ import { computed, ref } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import type { NFeCienciaPlan } from '@/types/desktop'
 import {
-  formatChaveNFe,
+  formatChaveDFe,
   formatCpfCnpj,
   formatCurrencyCents,
   formatNFeNumber,
   formatParty,
 } from '@/utils/formatters'
-import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/nfeDisplay'
+import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
 
 const props = defineProps<{
   companyName: string

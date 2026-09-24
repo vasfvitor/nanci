@@ -4,7 +4,7 @@
       <q-card-section class="row items-center q-pb-none">
         <div>
           <div class="text-h6">Eventos da NF-e</div>
-          <div class="text-caption text-app-muted text-mono">{{ formatChaveNFe(chaveAcesso) }}</div>
+          <div class="text-caption text-app-muted text-mono">{{ formatChaveDFe(chaveAcesso) }}</div>
         </div>
         <q-space />
         <q-btn v-close-popup icon="close" flat round dense aria-label="Fechar" />
@@ -55,8 +55,9 @@ import { useQuasar, type QTableColumn } from 'quasar'
 import { useNFeEvents } from '@/composables/useNFeEvents'
 import { useNotify } from '@/composables/useNotify'
 import type { NFeEvent } from '@/types/desktop'
-import { formatChaveNFe, formatDateTime } from '@/utils/formatters'
-import { badgeProps, nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
+import { formatChaveDFe, formatDateTime } from '@/utils/formatters'
+import { nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
+import { badgeProps } from '@/utils/sefazDisplay'
 
 const open = defineModel<boolean>({ required: true })
 

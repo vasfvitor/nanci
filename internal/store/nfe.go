@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -35,7 +36,7 @@ func NewNFeRepository(db *sql.DB) *NFeRepository {
 // ApplyNFeDocumentParams is one distributed resNFe or procNFe for a company.
 type ApplyNFeDocumentParams struct {
 	Document    nfe.Document
-	CompanyID   nfse.CompanyID
+	CompanyID   dfe.CompanyID
 	CompanyCNPJ string
 	NSU         int64
 }
@@ -133,7 +134,7 @@ func (r *NFeRepository) ApplyEventTx(ctx context.Context, tx *sql.Tx, p ApplyNFe
 }
 
 // CompanyDocumentExists reports whether the company already sees the chave.
-func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
+func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID dfe.CompanyID, chave string) (bool, error) {
 	count, err := r.queries.HasCompanyNFeDocument(ctx, sqlgen.HasCompanyNFeDocumentParams{
 		CompanyID:   string(companyID),
 		ChaveAcesso: chave,
@@ -145,14 +146,15 @@ func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID nfs
 }
 
 // ListCompanyDocuments returns the company's NF-e, newest issue date first.
-func (r *NFeRepository) ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) ([]nfe.CompanyDocument, error) {
+func (r *NFeRepository) ListCompanyDocuments(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter) ([]nfe.CompanyDocument, error) {
 	return r.listCompanyDocuments(ctx, companyID, f, "")
 }
 
 // ListPendingExport returns the rows ListCompanyDocuments would return that
-// were never exported with this kind, or whose raw hash changed since (for
-// example after a resumo was upgraded to completa).
-func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error) {
+// were never exported with this kind, whose raw hash changed since (for
+// example after a resumo was upgraded to completa), or that got a new event
+// since, such as a cancelamento or a manifestação.
+func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error) {
 	if kind == "" {
 		return nil, errors.New("export kind is required")
 	}
@@ -160,9 +162,9 @@ func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID nfse.Co
 }
 
 // CompanyDocumentByChave returns nfe.ErrDocumentNotFound when the company
-// does not see the chave.
-func (r *NFeRepository) CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error) {
-	docs, err := r.listCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: []string{chave}, Limit: 1}, "")
+// does not see the chave in the tpAmb environment.
+func (r *NFeRepository) CompanyDocumentByChave(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (*nfe.CompanyDocument, error) {
+	docs, err := r.listCompanyDocuments(ctx, companyID, nfe.DocumentFilter{ChavesAcesso: []string{chave}, TpAmb: tpAmb, Limit: 1}, "")
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +193,7 @@ func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string)
 	const query = `
 		SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
 			registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
-			completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at
+			completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at, tp_amb
 		FROM nfe_events
 		WHERE chave_acesso IN (SELECT value FROM json_each(?))
 		ORDER BY chave_acesso, COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento
@@ -209,7 +211,7 @@ func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string)
 		err := rows.Scan(
 			&i.ID, &i.NfeDocumentID, &i.ChaveAcesso, &i.TpEvento, &i.Type, &i.NSeqEvento, &i.EventAt, &i.RegisteredAt,
 			&i.Registered, &i.CStat, &i.XMotivo, &i.Protocolo, &i.AutorCnpj, &i.Description, &i.Justificativa, &i.Correcao,
-			&i.Completeness, &i.SentByNanci, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt,
+			&i.Completeness, &i.SentByNanci, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt, &i.TpAmb,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan nfe event: %w", err)
@@ -222,9 +224,11 @@ func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string)
 	return eventsFromRows(items)
 }
 
-// CountSummary counts the company's NF-e by role and completeness.
-func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error) {
-	const query = `
+// CountSummary counts the company's NF-e of the tpAmb environment by role
+// and completeness.
+func (r *NFeRepository) CountSummary(ctx context.Context, companyID dfe.CompanyID, tpAmb string) (nfe.Counts, error) {
+	where, args := buildNFeFilterSQL(companyID, nfe.DocumentFilter{TpAmb: tpAmb})
+	query := `
 		SELECT
 			cd.company_role,
 			COUNT(*),
@@ -232,10 +236,10 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.Company
 			SUM(d.completeness = 'completa')
 		FROM company_nfe_documents cd
 		INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
-		WHERE cd.company_id = ?
+		WHERE ` + where + `
 		GROUP BY cd.company_role
-	`
-	rows, err := r.db.QueryContext(ctx, query, string(companyID))
+	` // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nfe.Counts{}, fmt.Errorf("count nfe documents: %w", err)
 	}
@@ -259,7 +263,7 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID nfse.Company
 }
 
 // MarkExported records the current raw hash of each document as exported.
-func (r *NFeRepository) MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error {
+func (r *NFeRepository) MarkExported(ctx context.Context, companyID dfe.CompanyID, kind string, docs []nfe.CompanyDocument) error {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -351,7 +355,7 @@ func (r *NFeRepository) RecordManifestacoes(ctx context.Context, items []nfe.Man
 
 func manifestacaoEvent(item nfe.ManifestacaoRecord) nfe.Event {
 	return nfe.Event{
-		ChaveAcesso:   nfe.AccessKey(item.ChaveAcesso),
+		ChaveAcesso:   dfe.AccessKey(item.ChaveAcesso),
 		TpEvento:      item.TpEvento,
 		Type:          nfe.EventTypeFromTpEvento(item.TpEvento),
 		NSeqEvento:    item.NSeqEvento,
@@ -367,6 +371,7 @@ func manifestacaoEvent(item nfe.ManifestacaoRecord) nfe.Event {
 		XMotivo:       item.XMotivo,
 		SentByNanci:   true,
 		RawHash:       item.ProcEventoRawHash,
+		TpAmb:         item.TpAmb,
 	}
 }
 
@@ -477,6 +482,7 @@ func upsertEvent(ctx context.Context, q *sqlgen.Queries, e nfe.Event, now string
 		SentByNanci:   boolToInt(e.SentByNanci),
 		RawHash:       e.RawHash,
 		ParseWarnings: warnings,
+		TpAmb:         e.TpAmb,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
@@ -493,14 +499,14 @@ const nfeCompanyDocumentColumns = `
 	d.emitente_cnpj, d.emitente_name, d.emitente_ie, d.emitente_uf,
 	d.destinatario_cnpj, d.destinatario_name, d.transportador_cnpj, d.autorizados_cnpj,
 	d.tp_nf, d.fin_nfe, d.nat_op, d.total_value, d.icms_value, d.ipi_value,
-	d.situacao, d.completeness, d.layout_version, d.raw_hash, d.resumo_raw_hash, d.parse_warnings,
+	d.situacao, d.completeness, d.layout_version, d.raw_hash, d.resumo_raw_hash, d.parse_warnings, d.tp_amb,
 	cd.relation_id, cd.company_id, cd.company_role, cd.visibility_reason, cd.manifestacao, cd.manifestacao_at,
 	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at,
 	(SELECT COUNT(*) FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso)`
 
 // listCompanyDocuments runs the single company NF-e query. A non-empty
 // exportKind keeps only rows pending export for that kind.
-func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, exportKind string) ([]nfe.CompanyDocument, error) {
+func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter, exportKind string) ([]nfe.CompanyDocument, error) {
 	query := `SELECT ` + nfeCompanyDocumentColumns + `
 		FROM company_nfe_documents cd
 		INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id`
@@ -516,7 +522,10 @@ func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID nfse
 	query += " WHERE " + where // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
 	args = append(args, whereArgs...)
 	if exportKind != "" {
-		query += " AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)"
+		// An event stored after the mark, such as a cancelamento that
+		// arrived after the export, makes the document pending again.
+		query += ` AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash
+			OR EXISTS (SELECT 1 FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso AND e.created_at > m.exported_at))`
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
@@ -548,7 +557,7 @@ func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID nfse
 // buildNFeFilterSQL returns the WHERE conditions for f over the aliases cd
 // (company_nfe_documents) and d (nfe_documents), and their arguments. Limit
 // is left to the caller.
-func buildNFeFilterSQL(companyID nfse.CompanyID, f nfe.DocumentFilter) (string, []any) {
+func buildNFeFilterSQL(companyID dfe.CompanyID, f nfe.DocumentFilter) (string, []any) {
 	where := "cd.company_id = ?"
 	args := []any{string(companyID)}
 
@@ -581,6 +590,10 @@ func buildNFeFilterSQL(companyID nfse.CompanyID, f nfe.DocumentFilter) (string, 
 		chaves, _ := json.Marshal(f.ChavesAcesso) // a []string always marshals
 		args = append(args, string(chaves))
 	}
+	if f.TpAmb != "" {
+		where += " AND d.tp_amb = ?"
+		args = append(args, f.TpAmb)
+	}
 
 	if f.PendingManifestacao {
 		where += " AND cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao IN ('nenhuma', 'ciencia')"
@@ -601,7 +614,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 		&d.EmitenteCnpj, &d.EmitenteName, &d.EmitenteIe, &d.EmitenteUf,
 		&d.DestinatarioCnpj, &d.DestinatarioName, &d.TransportadorCnpj, &d.AutorizadosCnpj,
 		&d.TpNf, &d.FinNfe, &d.NatOp, &d.TotalValue, &d.IcmsValue, &d.IpiValue,
-		&d.Situacao, &d.Completeness, &d.LayoutVersion, &d.RawHash, &d.ResumoRawHash, &d.ParseWarnings,
+		&d.Situacao, &d.Completeness, &d.LayoutVersion, &d.RawHash, &d.ResumoRawHash, &d.ParseWarnings, &d.TpAmb,
 		&cd.RelationID, &companyID, &role, &visibility, &manifestacao, &manifestacaoAt,
 		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt,
 		&cd.EventCount,
@@ -614,7 +627,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 	if err != nil {
 		return nfe.CompanyDocument{}, err
 	}
-	cd.CompanyID = nfse.CompanyID(companyID)
+	cd.CompanyID = dfe.CompanyID(companyID)
 	cd.CompanyRole = nfe.CompanyRole(role)
 	cd.VisibilityReason = nfe.VisibilityReason(visibility)
 	cd.Manifestacao = nfe.Manifestacao(manifestacao)
@@ -637,7 +650,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 func documentFromRow(row sqlgen.NfeDocument) (nfe.Document, error) {
 	doc := nfe.Document{
 		ID:                row.ID,
-		ChaveAcesso:       nfe.AccessKey(row.ChaveAcesso),
+		ChaveAcesso:       dfe.AccessKey(row.ChaveAcesso),
 		Modelo:            row.Modelo,
 		Serie:             row.Serie,
 		Numero:            row.Numero,
@@ -653,18 +666,17 @@ func documentFromRow(row sqlgen.NfeDocument) (nfe.Document, error) {
 		TpNF:              row.TpNf,
 		FinNFe:            row.FinNfe,
 		NatOp:             row.NatOp,
-		TotalValue:        nfse.Money(row.TotalValue),
-		ICMSValue:         nfse.Money(row.IcmsValue),
-		IPIValue:          nfse.Money(row.IpiValue),
+		TotalValue:        dfe.Money(row.TotalValue),
+		ICMSValue:         dfe.Money(row.IcmsValue),
+		IPIValue:          dfe.Money(row.IpiValue),
 		Situacao:          nfe.Situacao(row.Situacao),
 		Completeness:      nfe.Completeness(row.Completeness),
 		LayoutVersion:     row.LayoutVersion,
+		TpAmb:             row.TpAmb,
 		RawHash:           row.RawHash,
 		ResumoRawHash:     row.ResumoRawHash.String,
 	}
-	if row.AutorizadosCnpj != "" {
-		doc.AutorizadosCNPJ = strings.Split(row.AutorizadosCnpj, ",")
-	}
+	doc.AutorizadosCNPJ = splitCSV(row.AutorizadosCnpj)
 
 	var err error
 	if row.IssueDate != "" {
@@ -720,6 +732,7 @@ func upsertDocumentParams(doc nfe.Document, now string) (sqlgen.UpsertNFeDocumen
 		RawHash:           doc.RawHash,
 		ResumoRawHash:     nullString(doc.ResumoRawHash),
 		ParseWarnings:     warnings,
+		TpAmb:             doc.TpAmb,
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}, nil
@@ -730,7 +743,7 @@ func eventsFromRows(rows []sqlgen.NfeEvent) ([]nfe.Event, error) {
 	for _, row := range rows {
 		e := nfe.Event{
 			ID:            row.ID,
-			ChaveAcesso:   nfe.AccessKey(row.ChaveAcesso),
+			ChaveAcesso:   dfe.AccessKey(row.ChaveAcesso),
 			TpEvento:      row.TpEvento,
 			Type:          nfe.EventType(row.Type),
 			NSeqEvento:    int(row.NSeqEvento),
@@ -739,6 +752,7 @@ func eventsFromRows(rows []sqlgen.NfeEvent) ([]nfe.Event, error) {
 			Description:   row.Description,
 			Justificativa: row.Justificativa,
 			Correcao:      row.Correcao,
+			TpAmb:         row.TpAmb,
 			Completeness:  nfe.Completeness(row.Completeness),
 			Registered:    row.Registered != 0,
 			CStat:         row.CStat,
@@ -783,27 +797,27 @@ func boolToInt(v bool) int64 {
 	return 0
 }
 
-// ResetCompany removes the company's NF-e view in one transaction: its
-// company_nfe_documents rows and export marks, the nfe_documents no other
-// company sees and their events, and the company's own events that have no
-// document. Events authored by another registered company are kept, unlinked
+// ResetCompany removes the company's NF-e view of both environments in one
+// transaction (tp_amb is not looked at): its company_nfe_documents rows and
+// export marks, the nfe_documents no other company sees and their events,
+// and the company's own events that have no document. Events authored by another registered company are kept, unlinked
 // from a removed document. The company's NF-e sync cursor and initial-sync
 // flag are reset in the same transaction, so the next pull starts over from
 // NSU 0. nfe_manifestacoes are kept as the audit trail, and the XML blobs
 // stay on disk.
-func (r *NFeRepository) ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error) {
+func (r *NFeRepository) ResetCompany(ctx context.Context, companyID dfe.CompanyID) (nfe.ResetCounts, error) {
 	return r.resetCompany(ctx, companyID, true)
 }
 
 // PreviewResetCompany returns what ResetCompany would remove, changing
 // nothing.
-func (r *NFeRepository) PreviewResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error) {
+func (r *NFeRepository) PreviewResetCompany(ctx context.Context, companyID dfe.CompanyID) (nfe.ResetCounts, error) {
 	return r.resetCompany(ctx, companyID, false)
 }
 
 // resetCompany runs the reset and commits it only when apply is set, so the
 // preview counts come from the same statements.
-func (r *NFeRepository) resetCompany(ctx context.Context, companyID nfse.CompanyID, apply bool) (nfe.ResetCounts, error) {
+func (r *NFeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyID, apply bool) (nfe.ResetCounts, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nfe.ResetCounts{}, err

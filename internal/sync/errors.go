@@ -46,6 +46,8 @@ func sourceLabel(source nfse.SyncSource) string {
 		return "NFS-e"
 	case nfse.SyncSourceNFe:
 		return "NF-e"
+	case nfse.SyncSourceCTe:
+		return "CT-e"
 	default:
 		return string(source)
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 const getNFeDocumentByChave = `-- name: GetNFeDocumentByChave :one
-SELECT id, chave_acesso, modelo, serie, numero, issue_date, competence, authorized_at, protocolo, emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name, transportador_cnpj, autorizados_cnpj, tp_nf, fin_nfe, nat_op, total_value, icms_value, ipi_value, situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings, created_at, updated_at FROM nfe_documents WHERE chave_acesso = ? LIMIT 1
+SELECT id, chave_acesso, modelo, serie, numero, issue_date, competence, authorized_at, protocolo, emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name, transportador_cnpj, autorizados_cnpj, tp_nf, fin_nfe, nat_op, total_value, icms_value, ipi_value, situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings, created_at, updated_at, tp_amb FROM nfe_documents WHERE chave_acesso = ? LIMIT 1
 `
 
 func (q *Queries) GetNFeDocumentByChave(ctx context.Context, chaveAcesso string) (NfeDocument, error) {
@@ -49,6 +49,7 @@ func (q *Queries) GetNFeDocumentByChave(ctx context.Context, chaveAcesso string)
 		&i.ParseWarnings,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TpAmb,
 	)
 	return i, err
 }
@@ -187,7 +188,7 @@ func (q *Queries) ListCompanyNFeRelationsByChave(ctx context.Context, chaveAcess
 }
 
 const listNFeEventsByChave = `-- name: ListNFeEventsByChave :many
-SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at, registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao, completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at FROM nfe_events
+SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at, registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao, completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at, tp_amb FROM nfe_events
 WHERE chave_acesso = ?
 ORDER BY COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento
 `
@@ -224,6 +225,7 @@ func (q *Queries) ListNFeEventsByChave(ctx context.Context, chaveAcesso string) 
 			&i.ParseWarnings,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TpAmb,
 		); err != nil {
 			return nil, err
 		}
@@ -349,9 +351,9 @@ INSERT INTO nfe_documents (
     emitente_cnpj, emitente_name, emitente_ie, emitente_uf,
     destinatario_cnpj, destinatario_name, transportador_cnpj, autorizados_cnpj,
     tp_nf, fin_nfe, nat_op, total_value, icms_value, ipi_value,
-    situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings,
+    situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings, tp_amb,
     created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(chave_acesso) DO UPDATE SET
     modelo = excluded.modelo,
     serie = excluded.serie,
@@ -380,6 +382,7 @@ ON CONFLICT(chave_acesso) DO UPDATE SET
     raw_hash = excluded.raw_hash,
     resumo_raw_hash = excluded.resumo_raw_hash,
     parse_warnings = excluded.parse_warnings,
+    tp_amb = excluded.tp_amb,
     updated_at = excluded.updated_at
 RETURNING id
 `
@@ -414,6 +417,7 @@ type UpsertNFeDocumentParams struct {
 	RawHash           string
 	ResumoRawHash     sql.NullString
 	ParseWarnings     sql.NullString
+	TpAmb             string
 	CreatedAt         string
 	UpdatedAt         string
 }
@@ -449,6 +453,7 @@ func (q *Queries) UpsertNFeDocument(ctx context.Context, arg UpsertNFeDocumentPa
 		arg.RawHash,
 		arg.ResumoRawHash,
 		arg.ParseWarnings,
+		arg.TpAmb,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -461,8 +466,8 @@ const upsertNFeEvent = `-- name: UpsertNFeEvent :exec
 INSERT INTO nfe_events (
     id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
     registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
-    completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    completeness, sent_by_nanci, raw_hash, parse_warnings, tp_amb, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(chave_acesso, tp_evento, n_seq_evento) DO UPDATE SET
     nfe_document_id = COALESCE(nfe_events.nfe_document_id, excluded.nfe_document_id),
     type = excluded.type,
@@ -480,6 +485,7 @@ ON CONFLICT(chave_acesso, tp_evento, n_seq_evento) DO UPDATE SET
     sent_by_nanci = MAX(nfe_events.sent_by_nanci, excluded.sent_by_nanci),
     raw_hash = excluded.raw_hash,
     parse_warnings = excluded.parse_warnings,
+    tp_amb = excluded.tp_amb,
     updated_at = excluded.updated_at
 WHERE NOT (nfe_events.completeness = 'completa' AND excluded.completeness = 'resumo')
 `
@@ -505,6 +511,7 @@ type UpsertNFeEventParams struct {
 	SentByNanci   int64
 	RawHash       string
 	ParseWarnings sql.NullString
+	TpAmb         string
 	CreatedAt     string
 	UpdatedAt     string
 }
@@ -533,6 +540,7 @@ func (q *Queries) UpsertNFeEvent(ctx context.Context, arg UpsertNFeEventParams) 
 		arg.SentByNanci,
 		arg.RawHash,
 		arg.ParseWarnings,
+		arg.TpAmb,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

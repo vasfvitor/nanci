@@ -53,8 +53,9 @@
 import { computed } from 'vue'
 import { useDialogPluginComponent, useQuasar, type QTableColumn } from 'quasar'
 import type { NFeEventBatchResult, NFeEventResult } from '@/types/desktop'
-import { formatChaveNFe } from '@/utils/formatters'
-import { badgeProps, outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
+import { formatChaveDFe } from '@/utils/formatters'
+import { outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
+import { badgeProps } from '@/utils/sefazDisplay'
 import { countOutcomes, isProblemOutcome } from '@/utils/nfeManifestacao'
 
 const props = defineProps<{
@@ -80,7 +81,7 @@ const columns: QTableColumn<NFeEventResult>[] = [
     field: 'ChaveAcesso',
     align: 'left',
     classes: 'text-mono',
-    format: (value: string) => formatChaveNFe(value),
+    format: (value: string) => formatChaveDFe(value),
   },
   { name: 'status', label: 'Resultado', field: 'Status', align: 'left' },
   { name: 'cstat', label: 'cStat', field: 'CStat', align: 'left', classes: 'text-mono' },

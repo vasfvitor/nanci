@@ -55,7 +55,7 @@ func (s *NFeService) ExportXMLZip(ctx context.Context, in NFeExportInput) (NFeEx
 	if err != nil {
 		return res, err
 	}
-	docs, skipped, err := s.exportDocuments(ctx, comp.ID, in)
+	docs, skipped, err := s.exportDocuments(ctx, comp, in)
 	if err != nil {
 		return res, err
 	}
@@ -103,7 +103,7 @@ func (s *NFeService) ExportXML(ctx context.Context, in NFeExportXMLInput) error 
 	if err != nil {
 		return err
 	}
-	doc, err := s.companyDocument(ctx, comp.ID, in.ChaveAcesso)
+	doc, err := s.companyDocument(ctx, comp, in.ChaveAcesso)
 	if err != nil {
 		return err
 	}
@@ -126,10 +126,19 @@ func (s *NFeService) ExportXML(ctx context.Context, in NFeExportXMLInput) error 
 
 // exportDocuments lists the documents to export and how many resumos were
 // left out because in.IncludeResumos is false.
-func (s *NFeService) exportDocuments(ctx context.Context, companyID nfse.CompanyID, in NFeExportInput) ([]nfe.CompanyDocument, int, error) {
+func (s *NFeService) exportDocuments(ctx context.Context, comp *nfse.Company, in NFeExportInput) ([]nfe.CompanyDocument, int, error) {
+	tpAmb, err := environmentTpAmb(comp)
+	if err != nil {
+		return nil, 0, err
+	}
+	chaves, err := parseAccessKeys(in.ChavesAcesso)
+	if err != nil {
+		return nil, 0, err
+	}
 	filter := nfe.DocumentFilter{
 		Competence:   in.Competence,
-		ChavesAcesso: in.ChavesAcesso,
+		ChavesAcesso: chaves,
+		TpAmb:        tpAmb,
 	}
 	if in.Role != "" {
 		role, err := nfe.ParseCompanyRole(in.Role)
@@ -140,11 +149,10 @@ func (s *NFeService) exportDocuments(ctx context.Context, companyID nfse.Company
 	}
 
 	var docs []nfe.CompanyDocument
-	var err error
 	if in.Incremental {
-		docs, err = s.NFeRepo.ListPendingExport(ctx, companyID, filter, nfe.ExportKindXML)
+		docs, err = s.NFeRepo.ListPendingExport(ctx, comp.ID, filter, nfe.ExportKindXML)
 	} else {
-		docs, err = s.NFeRepo.ListCompanyDocuments(ctx, companyID, filter)
+		docs, err = s.NFeRepo.ListCompanyDocuments(ctx, comp.ID, filter)
 	}
 	if err != nil {
 		return nil, 0, fmt.Errorf("listar NF-e: %w", err)

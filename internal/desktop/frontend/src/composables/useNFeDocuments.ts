@@ -1,14 +1,15 @@
-import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { companyOption } from '@/composables/useCompanies'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
+import { useSefazBlock } from '@/composables/useSefazBlock'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { CompanySummary, NFeRow } from '@/types/desktop'
-import { formatTime, normalizeText, parseDate } from '@/utils/formatters'
-import { blockedMessage, nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
+import { normalizeText } from '@/utils/formatters'
+import { nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
 import { nfeRowActions } from '@/utils/nfeManifestacao'
 
 export function useNFeDocuments() {
@@ -70,39 +71,7 @@ export function useNFeDocuments() {
     () => Boolean(filter.value.CNPJ) && resettingCNPJ.value === filter.value.CNPJ
   )
 
-  // now ticks when the SEFAZ block ends, so syncBlockedUntil clears itself
-  // without polling.
-  const now = shallowRef(Date.now())
-  let unblockTimer: ReturnType<typeof setTimeout> | undefined
-
-  watch(
-    () => status.value?.NextAllowedAt,
-    (value) => {
-      now.value = Date.now()
-      clearTimeout(unblockTimer)
-      const until = parseDate(value)
-      if (until && until.getTime() > now.value) {
-        unblockTimer = setTimeout(() => {
-          now.value = Date.now()
-        }, until.getTime() - now.value + 1000)
-      }
-    },
-    { immediate: true }
-  )
-
-  if (getCurrentScope()) {
-    onScopeDispose(() => clearTimeout(unblockTimer))
-  }
-
-  const syncBlockedUntil = computed(() => {
-    const until = parseDate(status.value?.NextAllowedAt)
-    return until && until.getTime() > now.value ? until : null
-  })
-
-  const blockedText = computed(() => {
-    if (!syncBlockedUntil.value || !status.value) return ''
-    return blockedMessage(status.value, formatTime(syncBlockedUntil.value))
-  })
+  const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
   // loadCompanies lists the companies and keeps a known one selected,
   // falling back to the first.

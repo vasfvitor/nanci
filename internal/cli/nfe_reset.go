@@ -18,10 +18,9 @@ func newNFeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reset",
 		Short: "Remove as NF-e da empresa e reinicia a sincronização NF-e (simulação sem --confirmar)",
-		Long: "Remove as NF-e, eventos e marcas de exportação da empresa e reinicia a sincronização NF-e " +
-			"desde o NSU 0. Notas vistas por outra empresa continuam para ela. O histórico das manifestações " +
-			"enviadas é mantido, e as manifestações registradas na SEFAZ não são afetadas. Depois da " +
-			"redefinição o ambiente da empresa pode ser alterado.",
+		Long: "Remove as NF-e, eventos e marcas de exportação da empresa, nos dois ambientes, e reinicia a " +
+			"sincronização NF-e desde o NSU 0. Notas vistas por outra empresa continuam para ela. O histórico " +
+			"das manifestações enviadas é mantido, e as manifestações registradas na SEFAZ não são afetadas.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			application, cleanup, err := env.AppFactory(cmd.Context())
 			if err != nil {

@@ -21,15 +21,6 @@ import (
 // var so tests can drop it.
 var nfeRequestDelay = 2 * time.Second
 
-const (
-	// NFeRequestsPerHour is the SEFAZ limit per CNPJ; going over it gets
-	// cStat 656 and an hour of blocking.
-	NFeRequestsPerHour = 20
-	// nfeWaitAfterStop is how long SEFAZ wants us to wait after catching up
-	// (cStat 137, or ultNSU = maxNSU) and after cStat 656.
-	nfeWaitAfterStop = time.Hour
-)
-
 type nfeFetcher interface {
 	DistNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error)
 }
@@ -62,64 +53,22 @@ func (s *nfeSource) Kind() nfse.SyncSource {
 }
 
 func (s *nfeSource) Policy() SourcePolicy {
-	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: NFeRequestsPerHour}
+	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: requestsPerHour(nfse.SyncSourceNFe)}
 }
 
-// Fetch asks for the documents after cursor and turns the cStat into the
-// loop's stop rules:
-//
-//   - 138: items; the next cursor is ultNSU; ultNSU >= maxNSU means caught up.
-//   - 137: nothing new; caught up.
-//   - 656: consumo indevido; stop and wait.
-//
-// Caught up and 656 both ask the loop to wait an hour before the next query.
+// Fetch asks for the documents after cursor; distBatch applies the stop
+// rules.
 func (s *nfeSource) Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error) {
 	resp, err := s.client.DistNSU(ctx, company.CNPJ, s.cUFAutor, cursor)
 	if err != nil {
 		return Batch{}, err
 	}
+	return distBatch(ctx, s.log, resp, cursor, isNFeEvent, "NF-e")
+}
 
-	batch := Batch{
-		UltNSU:     resp.UltNSU,
-		MaxNSU:     resp.MaxNSU,
-		NextCursor: resp.UltNSU,
-	}
-	waitUntil := time.Now().UTC().Add(nfeWaitAfterStop)
-
-	switch resp.CStat {
-	case sefaz.CStatDocumentoLocalizado:
-		batch.Items = make([]Item, 0, len(resp.Docs))
-		for _, doc := range resp.Docs {
-			kind := nfe.ClassifySchema(doc.Schema)
-			batch.Items = append(batch.Items, Item{
-				NSU:     doc.NSU,
-				Schema:  doc.Schema,
-				Payload: doc.Content,
-				IsEvent: kind == nfe.SchemaResEvento || kind == nfe.SchemaProcEventoNFe,
-			})
-		}
-		if resp.UltNSU >= resp.MaxNSU {
-			batch.Done = true
-			batch.StopReason = nfse.SyncStopReasonCaughtUp
-			batch.WaitUntil = &waitUntil
-		}
-	case sefaz.CStatNenhumDocumento:
-		batch.NextCursor = max(cursor, resp.UltNSU)
-		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonCaughtUp
-		batch.WaitUntil = &waitUntil
-	case sefaz.CStatConsumoIndevido:
-		// The loop only adopts a cursor that moves forward.
-		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonConsumoIndevido
-		batch.WaitUntil = &waitUntil
-		s.log.WarnContext(ctx, "SEFAZ bloqueou a consulta por consumo indevido",
-			slog.Int64("ult_nsu", resp.UltNSU),
-			slog.Time("next_allowed_at", waitUntil))
-	default:
-		return Batch{}, &sefaz.RejectionError{CStat: resp.CStat, XMotivo: resp.XMotivo}
-	}
-	return batch, nil
+func isNFeEvent(schema string) bool {
+	kind := nfe.ClassifySchema(schema)
+	return kind == nfe.SchemaResEvento || kind == nfe.SchemaProcEventoNFe
 }
 
 func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
@@ -130,25 +79,31 @@ func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src 
 		return ItemOutcome{}, &ProcessingError{Op: "decode document", NSU: item.NSU, Schema: item.Schema, Err: err}
 	}
 
+	tpAmb, err := sefaz.TpAmb(company.Environment)
+	if err != nil {
+		return ItemOutcome{}, err
+	}
+
 	switch nfe.ClassifySchema(item.Schema) {
 	case nfe.SchemaResNFe:
-		return s.processDocument(ctx, company, item, nfe.ParseResNFe, payload, commit)
+		return s.processDocument(ctx, company, tpAmb, item, nfe.ParseResNFe, payload, commit)
 	case nfe.SchemaProcNFe:
-		return s.processDocument(ctx, company, item, nfe.ParseProcNFe, payload, commit)
+		return s.processDocument(ctx, company, tpAmb, item, nfe.ParseProcNFe, payload, commit)
 	case nfe.SchemaResEvento:
-		return s.processEvent(ctx, company, item, nfe.ParseResEvento, payload, commit)
+		return s.processEvent(ctx, company, tpAmb, item, nfe.ParseResEvento, payload, commit)
 	case nfe.SchemaProcEventoNFe:
-		return s.processEvent(ctx, company, item, nfe.ParseProcEventoNFe, payload, commit)
+		return s.processEvent(ctx, company, tpAmb, item, nfe.ParseProcEventoNFe, payload, commit)
 	default:
 		return s.processUnsupported(ctx, item, payload, commit)
 	}
 }
 
-func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, tpAmb string, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	doc, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse document", item, payload, err)
 	}
+	doc.TpAmb = checkTpAmb(doc.TpAmb, tpAmb, &doc.ParseWarnings)
 
 	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
 		return ItemOutcome{}, fmt.Errorf("file save failed: %w", err)
@@ -174,11 +129,12 @@ func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, 
 // processEvent stores an event. An event for a chave the company does not
 // see yet is skipped by policy, unless the company authored it (its own
 // manifestação): that one is kept and linked when the document arrives.
-func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, tpAmb string, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	ev, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse event", item, payload, err)
 	}
+	ev.TpAmb = checkTpAmb(ev.TpAmb, tpAmb, &ev.ParseWarnings)
 
 	authoredByCompany := cnpj.Clean(ev.AutorCNPJ) == company.CNPJ
 	if !authoredByCompany {

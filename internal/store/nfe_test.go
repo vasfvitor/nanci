@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
@@ -101,7 +101,7 @@ func (f *nfeFixture) applyDocument(companyID, companyCNPJ string, doc nfe.Docume
 		var err error
 		inserted, err = f.repo.ApplyDocumentTx(context.Background(), tx, store.ApplyNFeDocumentParams{
 			Document:    doc,
-			CompanyID:   nfse.CompanyID(companyID),
+			CompanyID:   dfe.CompanyID(companyID),
 			CompanyCNPJ: companyCNPJ,
 			NSU:         nsu,
 		})
@@ -138,7 +138,7 @@ func (f *nfeFixture) inTx(fn func(tx *sql.Tx) error) {
 
 func (f *nfeFixture) companyDocument(companyID, chave string) nfe.CompanyDocument {
 	f.t.Helper()
-	doc, err := f.repo.CompanyDocumentByChave(context.Background(), nfse.CompanyID(companyID), chave)
+	doc, err := f.repo.CompanyDocumentByChave(context.Background(), dfe.CompanyID(companyID), "", chave)
 	if err != nil {
 		f.t.Fatalf("CompanyDocumentByChave(%s, %s): %v", companyID, chave, err)
 	}
@@ -163,7 +163,7 @@ func (f *nfeFixture) record(items ...nfe.ManifestacaoRecord) {
 
 func (f *nfeFixture) list(companyID string, filter nfe.DocumentFilter) []string {
 	f.t.Helper()
-	docs, err := f.repo.ListCompanyDocuments(context.Background(), nfse.CompanyID(companyID), filter)
+	docs, err := f.repo.ListCompanyDocuments(context.Background(), dfe.CompanyID(companyID), filter)
 	if err != nil {
 		f.t.Fatalf("ListCompanyDocuments: %v", err)
 	}
@@ -358,6 +358,54 @@ func TestNFeManifestacaoKeepsTpAmb(t *testing.T) {
 	if tpAmb != "2" {
 		t.Errorf("tp_amb = %q, want 2", tpAmb)
 	}
+	events, err := f.repo.ListEventsByChave(context.Background(), nfeKeyProc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].TpAmb != "2" {
+		t.Errorf("recorded events = %+v, want one with tpAmb 2", events)
+	}
+}
+
+// TestNFeTpAmbFilter stores a produção completa and a homologação resumo for
+// one company: each environment sees only its own note.
+func TestNFeTpAmbFilter(t *testing.T) {
+	ctx := context.Background()
+	f := newNFeFixture(t)
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-a"), 1)
+	homologacao := f.resNFe("resnfe-cancelada.xml", "hash-b")
+	homologacao.TpAmb = "2"
+	f.applyDocument("mock", cnpjMock, homologacao, 2)
+	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia"))
+
+	if got := f.list("mock", nfe.DocumentFilter{TpAmb: "1"}); !slices.Equal(got, []string{nfeKeyProc}) {
+		t.Errorf("tpAmb 1 = %v, want the produção completa", got)
+	}
+	if got := f.list("mock", nfe.DocumentFilter{TpAmb: "2"}); !slices.Equal(got, []string{nfeKeyCancelada}) {
+		t.Errorf("tpAmb 2 = %v, want the homologação resumo", got)
+	}
+	if doc := f.companyDocument("mock", nfeKeyCancelada); doc.TpAmb != "2" {
+		t.Errorf("stored TpAmb = %q, want 2", doc.TpAmb)
+	}
+	if _, err := f.repo.CompanyDocumentByChave(ctx, "mock", "1", nfeKeyCancelada); !errors.Is(err, nfe.ErrDocumentNotFound) {
+		t.Errorf("CompanyDocumentByChave in the other environment = %v, want ErrDocumentNotFound", err)
+	}
+
+	counts, err := f.repo.CountSummary(ctx, "mock", "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts.ByRole[nfe.CompanyRoleDestinatario] != 1 || counts.Resumos != 1 || counts.Completas != 0 {
+		t.Errorf("CountSummary(tpAmb 2) = %+v, want one resumo", counts)
+	}
+
+	events, err := f.repo.ListEventsByChaves(ctx, []string{nfeKeyProc})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].TpAmb != "1" {
+		t.Errorf("events = %+v, want the ciência with tpAmb 1", events)
+	}
 }
 
 func TestNFeConclusiveAfterCiencia(t *testing.T) {
@@ -507,7 +555,7 @@ func TestNFePendingManifestacao(t *testing.T) {
 		t.Errorf("pending after ciência = %v", got)
 	}
 
-	counts, err := f.repo.CountSummary(context.Background(), "mock")
+	counts, err := f.repo.CountSummary(context.Background(), "mock", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -531,7 +579,7 @@ func TestNFePendingManifestacao(t *testing.T) {
 func TestNFeCountSummaryEmitente(t *testing.T) {
 	f := newNFeFixture(t)
 	seedFilterDocuments(f)
-	counts, err := f.repo.CountSummary(context.Background(), "emitente")
+	counts, err := f.repo.CountSummary(context.Background(), "emitente", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,6 +626,21 @@ func TestNFeExportMarks(t *testing.T) {
 		t.Errorf("pending after second export = %v, want none", chaves(docs))
 	}
 
+	// An event stored after the export makes the document pending again. The
+	// mark is moved back so the event is not stored in the same second.
+	mustExec(t, f.db, `UPDATE company_nfe_export_marks SET exported_at = '2026-09-01T00:00:00Z'`)
+	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia"))
+	docs = pending()
+	if !slices.Equal(chaves(docs), []string{nfeKeyProc}) {
+		t.Fatalf("pending after a new event = %v, want %s", chaves(docs), nfeKeyProc)
+	}
+	if err := f.repo.MarkExported(ctx, "mock", nfe.ExportKindXML, docs); err != nil {
+		t.Fatal(err)
+	}
+	if docs := pending(); len(docs) != 0 {
+		t.Errorf("pending after exporting the event = %v, want none", chaves(docs))
+	}
+
 	if _, err := f.repo.ListPendingExport(ctx, "mock", nfe.DocumentFilter{}, ""); err == nil {
 		t.Error("ListPendingExport without a kind should fail")
 	}
@@ -596,7 +659,7 @@ func TestNFeCompanyDocumentLookup(t *testing.T) {
 	if err != nil || exists {
 		t.Errorf("CompanyDocumentExists(emitente) = %v, %v", exists, err)
 	}
-	if _, err := f.repo.CompanyDocumentByChave(ctx, "emitente", nfeKeyProc); !errors.Is(err, nfe.ErrDocumentNotFound) {
+	if _, err := f.repo.CompanyDocumentByChave(ctx, "emitente", "", nfeKeyProc); !errors.Is(err, nfe.ErrDocumentNotFound) {
 		t.Errorf("CompanyDocumentByChave(emitente) error = %v, want ErrDocumentNotFound", err)
 	}
 }

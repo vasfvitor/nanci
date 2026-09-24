@@ -19,13 +19,14 @@ func MaskIdentifier(v string) string {
 }
 
 // identifierElement matches the text of XML elements that identify a
-// company, a person or a document in NF-e and NFS-e payloads, with or
-// without a namespace prefix.
-var identifierElement = regexp.MustCompile(`(<(?:[\w.-]+:)?(?:CNPJ|CPF|CNPJDest|CPFDest|NIF|IE|IM|chNFe|chNFSe|xNome|xFant|email|fone)(?:\s[^>]*)?>)([^<]*)(</)`)
+// company, a person or a document in NF-e, CT-e and NFS-e payloads, with or
+// without a namespace prefix. The name must match whole: chave (the NF-e key
+// in a CT-e infDoc/infNFe) does not catch chaveTeste.
+var identifierElement = regexp.MustCompile(`(<(?:[\w.-]+:)?(?:CNPJ|CPF|CNPJDest|CPFDest|NIF|IE|IM|chNFe|chNFSe|chCTe|chave|xNome|xFant|email|fone)(?:\s[^>]*)?>)([^<]*)(</)`)
 
 // MaskXMLIdentifiers masks, with MaskIdentifier, the text of the CNPJ, CPF,
-// CNPJDest, CPFDest, NIF, IE, IM, chNFe, chNFSe, xNome, xFant, email and fone
-// elements of body, so XML can go to the log.
+// CNPJDest, CPFDest, NIF, IE, IM, chNFe, chNFSe, chCTe, chave, xNome, xFant,
+// email and fone elements of body, so XML can go to the log.
 func MaskXMLIdentifiers(body []byte) []byte {
 	return identifierElement.ReplaceAllFunc(body, func(match []byte) []byte {
 		parts := identifierElement.FindSubmatch(match)

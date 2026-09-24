@@ -19,6 +19,7 @@ import (
 const testCNPJ = "70860312000150"
 
 type capturedRequest struct {
+	Path   string
 	Header http.Header
 	Body   string
 }
@@ -36,7 +37,7 @@ type fakeSEFAZ struct {
 func (f *fakeSEFAZ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	f.mu.Lock()
-	f.requests = append(f.requests, capturedRequest{Header: r.Header.Clone(), Body: string(body)})
+	f.requests = append(f.requests, capturedRequest{Path: r.URL.Path, Header: r.Header.Clone(), Body: string(body)})
 	f.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/soap+xml; charset=utf-8")
@@ -50,7 +51,7 @@ func (f *fakeSEFAZ) captured() []capturedRequest {
 	return append([]capturedRequest(nil), f.requests...)
 }
 
-// newFakeClient starts a fakeSEFAZ and a Client whose both endpoints point to
+// newFakeClient starts a fakeSEFAZ and a Client whose endpoints all point to
 // it. cfg may set Environment and Log; the rest is filled in.
 func newFakeClient(t *testing.T, status int, body string, cfg ClientConfig) (*Client, *fakeSEFAZ) {
 	t.Helper()
@@ -65,8 +66,9 @@ func newFakeClient(t *testing.T, status int, body string, cfg ClientConfig) (*Cl
 		cfg.Certificate = &tls.Certificate{}
 	}
 	cfg.Endpoints = &Endpoints{
-		Distribuicao:   server.URL + "/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
-		RecepcaoEvento: server.URL + "/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
+		Distribuicao:    server.URL + "/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
+		DistribuicaoCTe: server.URL + "/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx",
+		RecepcaoEvento:  server.URL + "/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
 	}
 	client, err := NewClient(cfg)
 	if err != nil {

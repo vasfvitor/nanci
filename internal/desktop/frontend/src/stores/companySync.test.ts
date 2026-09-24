@@ -47,6 +47,16 @@ describe('company sync store', () => {
     expect(store.isSyncing('123', 'nfse')).toBe(true)
   })
 
+  it('keys CT-e syncs apart from NF-e syncs', () => {
+    const store = useCompanySyncStore()
+
+    store.startSync('123', 'cte')
+
+    expect(store.isSyncing('123', 'cte')).toBe(true)
+    expect(store.isSyncing('123', 'nfe')).toBe(false)
+    expect(store.activeSyncs).toEqual({ 'cte:123': 1 })
+  })
+
   it('ignores finishing a sync that was never started', () => {
     const store = useCompanySyncStore()
 

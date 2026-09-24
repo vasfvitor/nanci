@@ -2,6 +2,8 @@ package nfse
 
 import (
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // Document represents a synced fiscal document (NFS-e).
@@ -16,14 +18,14 @@ type Document struct {
 	TomadorName        string
 	IntermediarioCNPJ  string
 	IntermediarioName  string
-	ServiceValue       Money
-	ISSValue           Money
-	IRRFValue          Money
-	INSSValue          Money
-	PISValue           Money
-	COFINSValue        Money
-	CSLLValue          Money
-	TotalRetentions    Money
+	ServiceValue       dfe.Money
+	ISSValue           dfe.Money
+	IRRFValue          dfe.Money
+	INSSValue          dfe.Money
+	PISValue           dfe.Money
+	COFINSValue        dfe.Money
+	CSLLValue          dfe.Money
+	TotalRetentions    dfe.Money
 	Status             DocumentStatus // "normal" | "cancelada" | "substituida"
 	LayoutVersion      string
 	XMLPath            string
@@ -39,7 +41,7 @@ type Document struct {
 type CompanyDocument struct {
 	Document
 	RelationID       string
-	CompanyID        CompanyID
+	CompanyID        dfe.CompanyID
 	DocumentID       DocumentID
 	CompanyRole      CompanyRole      // "tomada" | "prestada" | "intermediario" | "none"
 	VisibilityReason VisibilityReason // "exact_prestador" | "exact_tomador" | "exact_intermediario" | "same_root_only" | "unknown"

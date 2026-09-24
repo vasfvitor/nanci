@@ -1,4 +1,4 @@
-package nfe
+package dfe
 
 import (
 	"errors"
@@ -17,6 +17,10 @@ func TestParseAccessKey(t *testing.T) {
 		{name: "real sample", raw: "35170349607369000156550010000229481398694060", want: "35170349607369000156550010000229481398694060"},
 		{name: "alphanumeric CNPJ", raw: "41260912ABC34501DE35550020000000771456789019", want: "41260912ABC34501DE35550020000000771456789019"},
 		{name: "lowercase and spaces are normalized", raw: "  41260912abc34501de35550020000000771456789019 ", want: "41260912ABC34501DE35550020000000771456789019"},
+		{name: "CT-e modelo 57", raw: "35260911222333000181570010000012341123456784", want: "35260911222333000181570010000012341123456784"},
+		{name: "GTV-e modelo 64", raw: "35260911222333000181640010000012341123456786", want: "35260911222333000181640010000012341123456786"},
+		{name: "CT-e OS modelo 67", raw: "35260911222333000181670010000012341123456787", want: "35260911222333000181670010000012341123456787"},
+		{name: "alphanumeric CNPJ modelo 57", raw: "41260912ABC34501DE35570020000000771456789016", want: "41260912ABC34501DE35570020000000771456789016"},
 		{name: "bad check digit", raw: "35260911222333000181550010000012341123456788", wantErr: true},
 		{name: "alphanumeric bad check digit", raw: "41260912ABC34501DE35550020000000771456789018", wantErr: true},
 		{name: "letter outside the CNPJ slot", raw: "35260911222333000181550010000012341A23456787", wantErr: true},
@@ -62,6 +66,14 @@ func TestAccessKeyAccessors(t *testing.T) {
 		if c[0] != c[1] {
 			t.Errorf("%s() = %q, want %q", name, c[0], c[1])
 		}
+	}
+
+	cte, err := ParseAccessKey("35260911222333000181570010000012341123456784")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cte.Modelo() != "57" {
+		t.Errorf("Modelo() = %q, want %q", cte.Modelo(), "57")
 	}
 
 	var empty AccessKey

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 func TestEventTypeFromTpEvento(t *testing.T) {
@@ -42,7 +42,7 @@ func TestEnumParsers(t *testing.T) {
 			if err := tt.parse(tt.value); err != nil {
 				t.Errorf("parse(%q): %v", tt.value, err)
 			}
-			if err := tt.parse("bogus"); !errors.Is(err, nfse.ErrInvalidEnum) {
+			if err := tt.parse("bogus"); !errors.Is(err, dfe.ErrInvalidEnum) {
 				t.Errorf("parse(bogus) error = %v, want ErrInvalidEnum", err)
 			}
 		})

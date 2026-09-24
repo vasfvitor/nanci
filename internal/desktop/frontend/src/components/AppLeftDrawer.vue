@@ -28,6 +28,15 @@
         </q-item-section>
       </q-item>
 
+      <q-item v-ripple clickable to="/cte" exact dense active-class="text-primary">
+        <q-item-section avatar>
+          <q-icon name="local_shipping" size="sm" />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label class="text-weight-medium">CT-e</q-item-label>
+        </q-item-section>
+      </q-item>
+
       <q-item v-ripple clickable to="/credentials" exact dense active-class="text-primary">
         <q-item-section avatar>
           <q-icon name="vpn_key" size="sm" />

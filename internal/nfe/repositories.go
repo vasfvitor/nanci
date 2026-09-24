@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // ExportKindXML is the only export kind tracked for NF-e.
@@ -22,6 +22,10 @@ type DocumentFilter struct {
 	Manifestacao Manifestacao
 	EmitenteCNPJ string
 	ChavesAcesso []string
+	// TpAmb keeps the documents of one environment ("1" produção, "2"
+	// homologação). The app layer sets it from the company's current
+	// environment in every listing.
+	TpAmb string
 	// PendingManifestacao keeps authorized documents where the company is
 	// the destinatário and has no conclusive manifestação yet.
 	PendingManifestacao bool
@@ -56,7 +60,7 @@ const (
 // ManifestacaoRecord is the outcome of one event of a lote sent to SEFAZ.
 // Fields are plain values so the store does not depend on the SEFAZ client.
 type ManifestacaoRecord struct {
-	CompanyID     nfse.CompanyID
+	CompanyID     dfe.CompanyID
 	CompanyCNPJ   string
 	IDLote        string
 	TpAmb         string // tpAmb the lote was sent to: 1 produção, 2 homologação

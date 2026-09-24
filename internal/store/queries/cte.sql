@@ -1,0 +1,155 @@
+-- name: GetCTeDocumentByChave :one
+SELECT * FROM cte_documents WHERE chave_acesso = ? LIMIT 1;
+
+-- name: UpsertCTeDocument :one
+INSERT INTO cte_documents (
+    id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op,
+    issue_date, competence, authorized_at, protocolo, tp_cte, tp_serv, modal,
+    mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim,
+    emitente_cnpj, emitente_name, emitente_ie, emitente_uf,
+    remetente_cnpj, remetente_name, destinatario_cnpj, destinatario_name,
+    expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
+    tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
+    autorizados_cnpj, nfe_chaves, masked_keys,
+    total_value, receivable_value, icms_value, tot_trib_value, carga_value, produto_predominante,
+    situacao, layout_version, raw_hash, parse_warnings, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?,
+    ?, ?, ?, ?,
+    ?, ?, ?, ?,
+    ?, ?, ?, ?, ?,
+    ?, ?, ?,
+    ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?
+)
+ON CONFLICT(chave_acesso) DO UPDATE SET
+    tp_amb = excluded.tp_amb,
+    modelo = excluded.modelo,
+    tipo_documento = excluded.tipo_documento,
+    serie = excluded.serie,
+    numero = excluded.numero,
+    cfop = excluded.cfop,
+    nat_op = excluded.nat_op,
+    issue_date = excluded.issue_date,
+    competence = excluded.competence,
+    authorized_at = excluded.authorized_at,
+    protocolo = excluded.protocolo,
+    tp_cte = excluded.tp_cte,
+    tp_serv = excluded.tp_serv,
+    modal = excluded.modal,
+    mun_ini_codigo = excluded.mun_ini_codigo,
+    mun_ini_nome = excluded.mun_ini_nome,
+    uf_ini = excluded.uf_ini,
+    mun_fim_codigo = excluded.mun_fim_codigo,
+    mun_fim_nome = excluded.mun_fim_nome,
+    uf_fim = excluded.uf_fim,
+    emitente_cnpj = excluded.emitente_cnpj,
+    emitente_name = excluded.emitente_name,
+    emitente_ie = excluded.emitente_ie,
+    emitente_uf = excluded.emitente_uf,
+    remetente_cnpj = excluded.remetente_cnpj,
+    remetente_name = excluded.remetente_name,
+    destinatario_cnpj = excluded.destinatario_cnpj,
+    destinatario_name = excluded.destinatario_name,
+    expedidor_cnpj = excluded.expedidor_cnpj,
+    expedidor_name = excluded.expedidor_name,
+    recebedor_cnpj = excluded.recebedor_cnpj,
+    recebedor_name = excluded.recebedor_name,
+    tomador_indicador = excluded.tomador_indicador,
+    tomador_cnpj = excluded.tomador_cnpj,
+    tomador_name = excluded.tomador_name,
+    tomador_ie = excluded.tomador_ie,
+    tomador_uf = excluded.tomador_uf,
+    autorizados_cnpj = excluded.autorizados_cnpj,
+    nfe_chaves = excluded.nfe_chaves,
+    masked_keys = excluded.masked_keys,
+    total_value = excluded.total_value,
+    receivable_value = excluded.receivable_value,
+    icms_value = excluded.icms_value,
+    tot_trib_value = excluded.tot_trib_value,
+    carga_value = excluded.carga_value,
+    produto_predominante = excluded.produto_predominante,
+    situacao = excluded.situacao,
+    layout_version = excluded.layout_version,
+    raw_hash = excluded.raw_hash,
+    parse_warnings = excluded.parse_warnings,
+    updated_at = excluded.updated_at
+RETURNING id;
+
+-- name: UpdateCTeSituacao :exec
+UPDATE cte_documents SET situacao = ?, updated_at = ? WHERE chave_acesso = ?;
+
+-- name: HasCompanyCTeDocument :one
+SELECT COUNT(*) FROM company_cte_documents cd
+INNER JOIN cte_documents d ON d.id = cd.cte_document_id
+WHERE cd.company_id = ? AND d.chave_acesso = ?;
+
+-- name: UpsertCompanyCTeDocument :exec
+INSERT INTO company_cte_documents (
+    relation_id, company_id, cte_document_id, company_role, papeis, visibility_reason,
+    first_seen_nsu, last_seen_nsu, first_synced_at, last_synced_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(company_id, cte_document_id) DO UPDATE SET
+    company_role = excluded.company_role,
+    papeis = excluded.papeis,
+    visibility_reason = excluded.visibility_reason,
+    first_seen_nsu = CASE
+        WHEN company_cte_documents.first_seen_nsu IS NULL THEN excluded.first_seen_nsu
+        WHEN excluded.first_seen_nsu IS NULL THEN company_cte_documents.first_seen_nsu
+        ELSE MIN(company_cte_documents.first_seen_nsu, excluded.first_seen_nsu)
+    END,
+    last_seen_nsu = CASE
+        WHEN company_cte_documents.last_seen_nsu IS NULL THEN excluded.last_seen_nsu
+        WHEN excluded.last_seen_nsu IS NULL THEN company_cte_documents.last_seen_nsu
+        ELSE MAX(company_cte_documents.last_seen_nsu, excluded.last_seen_nsu)
+    END,
+    last_synced_at = excluded.last_synced_at;
+
+-- name: HasCTeEvent :one
+SELECT COUNT(*) FROM cte_events WHERE chave_acesso = ? AND tp_evento = ? AND n_seq_evento = ?;
+
+-- name: UpsertCTeEvent :exec
+-- Keeps the row id, created_at and the document link.
+INSERT INTO cte_events (
+    id, cte_document_id, chave_acesso, tp_amb, c_orgao, tp_evento, type, n_seq_evento, event_at, registered_at,
+    registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, observacao, correcao,
+    condicao_uso, raw_hash, parse_warnings, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(chave_acesso, tp_evento, n_seq_evento) DO UPDATE SET
+    cte_document_id = COALESCE(cte_events.cte_document_id, excluded.cte_document_id),
+    tp_amb = excluded.tp_amb,
+    c_orgao = excluded.c_orgao,
+    type = excluded.type,
+    event_at = excluded.event_at,
+    registered_at = excluded.registered_at,
+    registered = excluded.registered,
+    c_stat = excluded.c_stat,
+    x_motivo = excluded.x_motivo,
+    protocolo = excluded.protocolo,
+    autor_cnpj = excluded.autor_cnpj,
+    description = excluded.description,
+    justificativa = excluded.justificativa,
+    observacao = excluded.observacao,
+    correcao = excluded.correcao,
+    condicao_uso = excluded.condicao_uso,
+    raw_hash = excluded.raw_hash,
+    parse_warnings = excluded.parse_warnings,
+    updated_at = excluded.updated_at;
+
+-- name: LinkCTeEventsToDocument :exec
+UPDATE cte_events SET cte_document_id = ? WHERE chave_acesso = ? AND cte_document_id IS NULL;
+
+-- name: ListCTeEventsByChave :many
+SELECT * FROM cte_events
+WHERE chave_acesso = ?
+ORDER BY COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento;
+
+-- name: MarkCTeExported :exec
+INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(company_id, cte_document_id, export_kind) DO UPDATE SET
+    exported_hash = excluded.exported_hash,
+    exported_at = excluded.exported_at;

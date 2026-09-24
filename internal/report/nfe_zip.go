@@ -2,7 +2,6 @@ package report
 
 import (
 	"path"
-	"strconv"
 
 	"github.com/vasfvitor/nanci/internal/nfe"
 )
@@ -30,8 +29,7 @@ func NFeZipEntries(docs []nfe.CompanyDocument, eventsByChave map[string][]nfe.Ev
 			if ev.Completeness != nfe.CompletenessCompleta || ev.RawHash == "" {
 				continue
 			}
-			name := chave + "-" + ev.TpEvento + "-" + strconv.Itoa(ev.NSeqEvento) + ".xml"
-			entries = append(entries, ZipEntry{Path: path.Join(folder, "eventos", name), RawHash: ev.RawHash})
+			entries = append(entries, eventZipEntry(folder, chave, ev.TpEvento, ev.NSeqEvento, ev.RawHash))
 		}
 	}
 	return entries
