@@ -89,7 +89,7 @@ func (t TipoManifestacao) Label() string {
 	case TipoManifestacaoDesconhecimento:
 		return "Desconhecimento da Operação"
 	case TipoManifestacaoNaoRealizada:
-		return "Operação não Realizada"
+		return "Operação não realizada"
 	default:
 		return ""
 	}

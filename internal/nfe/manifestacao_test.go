@@ -19,7 +19,7 @@ func TestTipoManifestacao(t *testing.T) {
 		{TipoManifestacaoCiencia, "210210", "Ciencia da Operacao", "Ciência da Operação"},
 		{TipoManifestacaoConfirmacao, "210200", "Confirmacao da Operacao", "Confirmação da Operação"},
 		{TipoManifestacaoDesconhecimento, "210220", "Desconhecimento da Operacao", "Desconhecimento da Operação"},
-		{TipoManifestacaoNaoRealizada, "210240", "Operacao nao Realizada", "Operação não Realizada"},
+		{TipoManifestacaoNaoRealizada, "210240", "Operacao nao Realizada", "Operação não realizada"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.tipo), func(t *testing.T) {

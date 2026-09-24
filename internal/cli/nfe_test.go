@@ -230,7 +230,7 @@ func TestNFeManifestacaoDryRunSendsNothing(t *testing.T) {
 		t.Fatalf("manifestar: %v", err)
 	}
 	got = env.out.String()
-	for _, want := range []string{"Operação não Realizada (210240)", nfeChaveProc, "Prazo da manifestação conclusiva:", "Nada foi enviado. Use --confirmar"} {
+	for _, want := range []string{"Operação não realizada (210240)", nfeChaveProc, "Prazo da manifestação conclusiva:", "Nada foi enviado. Use --confirmar"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("manifestar output lacks %q:\n%s", want, got)
 		}

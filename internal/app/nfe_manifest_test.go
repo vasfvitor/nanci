@@ -379,7 +379,7 @@ func TestNFeRegisterManifestacaoValidatesBeforePassword(t *testing.T) {
 	if len(fake.lotes) != 1 || len(fake.lotes[0]) != 1 || fake.lotes[0][0].XJust != justificativa {
 		t.Errorf("lotes = %+v", fake.lotes)
 	}
-	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Assinatura: Operação não Realizada" {
+	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Assinatura: Operação não realizada" {
 		t.Errorf("password requests = %+v", env.passwords.requests)
 	}
 	if got := env.manifestacao(nfeChaveProc); got != nfe.ManifestacaoNaoRealizada {
