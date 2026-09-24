@@ -12,6 +12,10 @@ var (
 	// NF-e access key: UF(2) AAMM(4) CNPJ(14, alphanumeric allowed) and 24
 	// more digits. Only the embedded CNPJ slot is masked.
 	nfeAccessKeyPattern = regexp.MustCompile(`\b\d{6}[0-9A-Z]{14}\d{24}\b`)
+	// NFS-e access key: cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13)
+	// AnoMes(4) cod(9) DV(1). Only the inscrição federal slot is masked; a
+	// CPF sits there padded with three leading zeros.
+	nfseAccessKeyPattern = regexp.MustCompile(`\b\d{50}\b`)
 	// Raw matches are restricted to digits so hashes and hex IDs are untouched.
 	rawCNPJPattern = regexp.MustCompile(`\b\d{14}\b`)
 )
@@ -21,6 +25,7 @@ var (
 func sanitizeLogContent(content []byte) []byte {
 	out := formattedCNPJPattern.ReplaceAllFunc(content, maskCNPJMatch)
 	out = nfeAccessKeyPattern.ReplaceAllFunc(out, maskNFeAccessKeyCNPJ)
+	out = nfseAccessKeyPattern.ReplaceAllFunc(out, maskNFSeAccessKeyInscricao)
 	return rawCNPJPattern.ReplaceAllFunc(out, maskCNPJMatch)
 }
 
@@ -31,6 +36,15 @@ func maskNFeAccessKeyCNPJ(key []byte) []byte {
 	masked = append(masked, key[:6]...)
 	masked = append(masked, maskCNPJMatch(key[6:20])...)
 	return append(masked, key[20:]...)
+}
+
+// maskNFSeAccessKeyInscricao masks the inscrição federal at positions 10-23
+// of an NFS-e access key and keeps the rest of the key intact.
+func maskNFSeAccessKeyInscricao(key []byte) []byte {
+	masked := make([]byte, 0, len(key)+4)
+	masked = append(masked, key[:9]...)
+	masked = append(masked, maskCNPJMatch(key[9:23])...)
+	return append(masked, key[23:]...)
 }
 
 func maskCNPJMatch(match []byte) []byte {
