@@ -79,16 +79,6 @@ export function formatNFeNumber(numero: string | null | undefined, serie?: strin
   return formatted ? `${formatted} / série ${serieLabel}` : `série ${serieLabel}`
 }
 
-// daysUntil counts whole local calendar days from now until value: 0 for
-// today, negative when the date has passed, null when value is empty or invalid.
-export function daysUntil(value: string | Date | null | undefined, now: Date = new Date()) {
-  const target = parseDate(value)
-  if (!target || Number.isNaN(now.getTime())) return null
-  const targetDay = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate())
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
-  return Math.round((targetDay - today) / 86_400_000)
-}
-
 // formatTime prints a local HH:MM time, or fallback for empty/invalid values.
 export function formatTime(value: string | Date | null | undefined, fallback = '') {
   return parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? fallback

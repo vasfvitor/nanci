@@ -28,6 +28,7 @@ function row(overrides: Partial<NFeRow> = {}): NFeRow {
     CompanyRole: 'destinatario',
     EventCount: 0,
     DaysLeft: null,
+    CienciaDaysLeft: null,
     TacitlyConfirmed: false,
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',

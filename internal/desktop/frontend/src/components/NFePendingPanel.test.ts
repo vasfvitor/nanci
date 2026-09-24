@@ -15,6 +15,7 @@ function row(chave: string, fields: Partial<NFePendingRow>): NFePendingRow {
     Kind: 'sem_conclusiva',
     Manifestacao: 'ciencia',
     DaysLeft: 0,
+    CienciaDaysLeft: null,
     TacitlyConfirmed: false,
     CienciaOverdue: false,
     ...fields,
@@ -49,6 +50,7 @@ describe('NFePendingPanel', () => {
         Kind: 'sem_ciencia',
         Manifestacao: 'nenhuma',
         CienciaDue: daysFromNow(-83),
+        CienciaDaysLeft: -83,
         CienciaOverdue: true,
         ConclusiveDue: daysFromNow(-3),
         DaysLeft: -3,
@@ -73,5 +75,20 @@ describe('NFePendingPanel', () => {
 
     const order = wrapper.findAll('[data-chave]').map((item) => item.attributes('data-chave'))
     expect(order).toEqual(['first', 'second'])
+  })
+
+  it('shows the ciência days left the backend counted', () => {
+    const wrapper = mountPanel([
+      row('ciencia-soon', {
+        Kind: 'sem_ciencia',
+        Manifestacao: 'nenhuma',
+        CienciaDue: daysFromNow(2),
+        CienciaDaysLeft: 2,
+        ConclusiveDue: daysFromNow(82),
+        DaysLeft: 82,
+      }),
+    ])
+
+    expect(wrapper.find('[data-chave="ciencia-soon"] .chip').text()).toBe('2 d restantes')
   })
 })

@@ -36,6 +36,7 @@ func TestNFeRows(t *testing.T) {
 			},
 			Deadlines:          nfe.Deadlines{CienciaDue: cienciaDue, ConclusiveDue: conclusiveDue},
 			DaysLeft:           -3,
+			CienciaDaysLeft:    -80,
 			TacitlyConfirmed:   true,
 			CienciaBlockReason: "já manifestada (ciencia)",
 		},
@@ -79,6 +80,9 @@ func TestNFeRows(t *testing.T) {
 	if row.DaysLeft == nil || *row.DaysLeft != -3 || !row.TacitlyConfirmed {
 		t.Errorf("DaysLeft = %v, TacitlyConfirmed = %t; want -3 and true", row.DaysLeft, row.TacitlyConfirmed)
 	}
+	if row.CienciaDaysLeft == nil || *row.CienciaDaysLeft != -80 {
+		t.Errorf("CienciaDaysLeft = %v, want -80", row.CienciaDaysLeft)
+	}
 	if row.CienciaBlockReason != "já manifestada (ciencia)" || row.ConclusiveBlockReason != "" {
 		t.Errorf("block reasons = %q, %q", row.CienciaBlockReason, row.ConclusiveBlockReason)
 	}
@@ -87,8 +91,8 @@ func TestNFeRows(t *testing.T) {
 	}
 
 	empty := rows[1]
-	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil {
-		t.Errorf("dates = %v %v %v %v, DaysLeft = %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.DaysLeft)
+	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil || empty.CienciaDaysLeft != nil {
+		t.Errorf("dates = %v %v %v %v, days left = %v %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.DaysLeft, empty.CienciaDaysLeft)
 	}
 	if empty.Situacao != "cancelada" || empty.Completeness != "resumo" || empty.Manifestacao != "nao_realizada" || empty.CompanyRole != "none" {
 		t.Errorf("enums = %q %q %q %q", empty.Situacao, empty.Completeness, empty.Manifestacao, empty.CompanyRole)

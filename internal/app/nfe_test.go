@@ -349,6 +349,9 @@ func TestNFeListPendingManifestacoesOrderAndFlags(t *testing.T) {
 	if want := mustTime(t, "2026-11-18T10:00:00-03:00"); !first.ConclusiveDue.Equal(want) {
 		t.Errorf("ConclusiveDue = %s, want %s", first.ConclusiveDue, want)
 	}
+	if first.CienciaDaysLeft != -16 {
+		t.Errorf("CienciaDaysLeft = %d, want -16 (ciência window ended 08-30)", first.CienciaDaysLeft)
+	}
 	second := pending[1]
 	if second.Kind != NFePendingSemConclusiva || second.CienciaOverdue || second.Manifestacao != "ciencia" {
 		t.Errorf("second = kind %s, overdue %t, manifestacao %s; want sem_conclusiva, false, ciencia",

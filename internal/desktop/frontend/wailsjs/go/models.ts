@@ -579,6 +579,7 @@ export namespace desktopapi {
 	    // Go type: time
 	    LastSyncedAt: any;
 	    DaysLeft?: number;
+	    CienciaDaysLeft?: number;
 	    TacitlyConfirmed: boolean;
 	    CienciaBlockReason: string;
 	    ConclusiveBlockReason: string;
@@ -615,6 +616,7 @@ export namespace desktopapi {
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	        this.DaysLeft = source["DaysLeft"];
+	        this.CienciaDaysLeft = source["CienciaDaysLeft"];
 	        this.TacitlyConfirmed = source["TacitlyConfirmed"];
 	        this.CienciaBlockReason = source["CienciaBlockReason"];
 	        this.ConclusiveBlockReason = source["ConclusiveBlockReason"];
@@ -890,6 +892,7 @@ export namespace desktopapi {
 	    // Go type: time
 	    LastSyncedAt: any;
 	    DaysLeft?: number;
+	    CienciaDaysLeft?: number;
 	    TacitlyConfirmed: boolean;
 	    CienciaBlockReason: string;
 	    ConclusiveBlockReason: string;
@@ -928,6 +931,7 @@ export namespace desktopapi {
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	        this.DaysLeft = source["DaysLeft"];
+	        this.CienciaDaysLeft = source["CienciaDaysLeft"];
 	        this.TacitlyConfirmed = source["TacitlyConfirmed"];
 	        this.CienciaBlockReason = source["CienciaBlockReason"];
 	        this.ConclusiveBlockReason = source["ConclusiveBlockReason"];

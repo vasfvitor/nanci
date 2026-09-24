@@ -329,6 +329,7 @@ describe('NF-e mappers', () => {
       Kind: 'sem_ciencia',
       ConclusiveDue: '2025-03-01T00:00:00Z',
       DaysLeft: -5,
+      CienciaDaysLeft: -85,
       TacitlyConfirmed: true,
       CienciaOverdue: true,
       CienciaBlockReason: '',
@@ -341,12 +342,14 @@ describe('NF-e mappers', () => {
       Kind: 'sem_ciencia',
       ConclusiveDue: '2025-03-01T00:00:00Z',
       DaysLeft: -5,
+      CienciaDaysLeft: -85,
       TacitlyConfirmed: true,
       CienciaOverdue: true,
       CienciaBlockReason: '',
     })
     expect(mapNFePendingRow({ Kind: 'outro' }).Kind).toBe('')
     expect(mapNFePendingRow({}).DaysLeft).toBeNull()
+    expect(mapNFePendingRow({}).CienciaDaysLeft).toBeNull()
   })
 
   it('maps events, batch results, plans, status, and pull results', () => {

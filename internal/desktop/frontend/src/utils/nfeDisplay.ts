@@ -93,8 +93,8 @@ export const completenessFilterOptions = completeness.options('Todas')
 export const manifestacaoFilterOptions = manifestacao.options('Todas')
 export const nfeRoleFilterOptions = nfeRole.options('Todos')
 
-// deadlineColor colors a days-left chip; days is a row's DaysLeft or comes
-// from daysUntil.
+// deadlineColor colors a days-left chip; days is a row's DaysLeft or
+// CienciaDaysLeft.
 export function deadlineColor(days: number | null, kind: DeadlineKind) {
   if (days === null) return 'grey'
   const thresholds = DEADLINE_THRESHOLDS[kind]
@@ -118,7 +118,8 @@ export function badgeTextColor(color: string, dark: boolean) {
   return 'white'
 }
 
-// deadlineLabel describes the days left, counted like daysUntil.
+// deadlineLabel describes the days left before a deadline, as the backend
+// counts them.
 export function deadlineLabel(days: number | null) {
   if (days === null) return 'Sem prazo'
   if (days < 0) return `Vencido há ${-days} d`

@@ -39,6 +39,7 @@ function note(overrides: Partial<NFeRow> = {}): NFeRow {
     CompanyRole: 'destinatario',
     EventCount: 1,
     DaysLeft: null,
+    CienciaDaysLeft: null,
     TacitlyConfirmed: false,
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',

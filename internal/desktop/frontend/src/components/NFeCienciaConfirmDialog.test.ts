@@ -39,6 +39,7 @@ function note(chave: string, numero: string, totalValue: number): NFeRow {
     CompanyRole: 'destinatario',
     EventCount: 0,
     DaysLeft: 80,
+    CienciaDaysLeft: null,
     TacitlyConfirmed: false,
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',

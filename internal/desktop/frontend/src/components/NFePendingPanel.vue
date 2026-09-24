@@ -138,13 +138,7 @@
 import { computed } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import type { ISODateValue, NFePendingRow } from '@/types/desktop'
-import {
-  daysUntil,
-  formatCpfCnpj,
-  formatCurrencyCents,
-  formatDate,
-  formatNFeNumber,
-} from '@/utils/formatters'
+import { formatCpfCnpj, formatCurrencyCents, formatDate, formatNFeNumber } from '@/utils/formatters'
 import {
   conclusiveDeadlineLabel,
   deadlineColor,
@@ -209,12 +203,12 @@ const columns: QTableColumn<NFePendingRow>[] = [
 // then TacitlyConfirmed and the operation is already deemed confirmed.
 function cienciaChipLabel(row: NFePendingRow) {
   if (row.TacitlyConfirmed) return TACIT_CONFIRMATION_LABEL
-  return deadlineLabel(daysUntil(row.CienciaDue))
+  return deadlineLabel(row.CienciaDaysLeft)
 }
 
 function cienciaChipColor(row: NFePendingRow) {
   if (row.CienciaOverdue || row.TacitlyConfirmed) return 'negative'
-  return deadlineColor(daysUntil(row.CienciaDue), 'ciencia')
+  return deadlineColor(row.CienciaDaysLeft, 'ciencia')
 }
 
 function conclusiveChipLabel(row: NFePendingRow) {

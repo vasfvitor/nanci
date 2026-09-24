@@ -400,6 +400,7 @@ function mockNFeRow<T extends MockNFeFields>(fields: T) {
     FirstSyncedAt: daysFromNow(-1),
     LastSyncedAt: daysFromNow(-1),
     DaysLeft: null,
+    CienciaDaysLeft: null,
     TacitlyConfirmed: false,
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
@@ -434,6 +435,7 @@ const mockNFeRows = [
     TotalValue: 3875090,
     Completeness: 'resumo',
     CienciaDue: daysFromNow(7),
+    CienciaDaysLeft: 7,
   }),
   mockNFeRow({
     ID: 'nfe-3',
@@ -447,6 +449,7 @@ const mockNFeRows = [
     TotalValue: 64350,
     Completeness: 'resumo',
     CienciaDue: daysFromNow(2),
+    CienciaDaysLeft: 2,
   }),
   mockNFeRow({
     ID: 'nfe-4',

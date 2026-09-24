@@ -1,5 +1,4 @@
 import {
-  daysUntil,
   formatChaveAcesso,
   formatChaveNFe,
   formatCpfCnpj,
@@ -88,24 +87,6 @@ describe('formatters', () => {
     expect(formatNFeNumber('', '2')).toBe('série 2')
     expect(formatNFeNumber('', '')).toBe('')
     expect(formatNFeNumber('ABC', '1')).toBe('ABC / série 1')
-  })
-
-  it('counts whole local calendar days until a date', () => {
-    const now = new Date(2026, 8, 23, 23, 30)
-
-    expect(daysUntil(new Date(2026, 8, 23, 0, 5), now)).toBe(0)
-    expect(daysUntil(new Date(2026, 8, 24, 0, 5), now)).toBe(1)
-    expect(daysUntil(new Date(2026, 9, 3, 12, 0), now)).toBe(10)
-    expect(daysUntil(new Date(2026, 8, 22, 23, 59), now)).toBe(-1)
-    expect(daysUntil(new Date(2026, 2, 23, 12, 0), now)).toBe(-184)
-    expect(daysUntil(new Date(2026, 8, 30, 12, 0).toISOString(), now)).toBe(7)
-  })
-
-  it('returns null days for empty or invalid dates', () => {
-    expect(daysUntil(null)).toBeNull()
-    expect(daysUntil(undefined)).toBeNull()
-    expect(daysUntil('')).toBeNull()
-    expect(daysUntil('not-a-date')).toBeNull()
   })
 
   it('formats local HH:MM times', () => {

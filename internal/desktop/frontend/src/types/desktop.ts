@@ -276,6 +276,8 @@ export type NFeRow = {
   // DaysLeft counts calendar days until ConclusiveDue: 0 on the due day,
   // negative once it passed, null without a deadline.
   DaysLeft: number | null
+  // CienciaDaysLeft counts the same way until CienciaDue.
+  CienciaDaysLeft: number | null
   TacitlyConfirmed: boolean
   // The backend says why the note cannot receive each manifestação; '' when
   // it can.

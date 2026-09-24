@@ -387,6 +387,8 @@ type NFeRow struct {
 	// DaysLeft is how many calendar days are left until ConclusiveDue: 0 on
 	// the due day, negative once it passed, nil without a deadline.
 	DaysLeft *int
+	// CienciaDaysLeft counts the same way until CienciaDue.
+	CienciaDaysLeft *int
 	// TacitlyConfirmed is true once ConclusiveDue passed without a
 	// conclusive manifestação.
 	TacitlyConfirmed bool
@@ -607,6 +609,9 @@ func nfeRow(document app.NFeDocument) NFeRow {
 	}
 	if !document.ConclusiveDue.IsZero() {
 		row.DaysLeft = &document.DaysLeft
+	}
+	if !document.CienciaDue.IsZero() {
+		row.CienciaDaysLeft = &document.CienciaDaysLeft
 	}
 	return row
 }

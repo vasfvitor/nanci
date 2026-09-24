@@ -335,6 +335,7 @@ export function mapNFeRow(raw: unknown): NFeRow {
     FirstSyncedAt: asDate(item['FirstSyncedAt']),
     LastSyncedAt: asDate(item['LastSyncedAt']),
     DaysLeft: asNullableNumber(item['DaysLeft']),
+    CienciaDaysLeft: asNullableNumber(item['CienciaDaysLeft']),
     TacitlyConfirmed: asBoolean(item['TacitlyConfirmed']),
     CienciaBlockReason: asString(item['CienciaBlockReason']),
     ConclusiveBlockReason: asString(item['ConclusiveBlockReason']),

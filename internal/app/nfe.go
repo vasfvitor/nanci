@@ -239,6 +239,9 @@ type NFeDocument struct {
 	// the due day, negative once it passed. It is 0 when there is no
 	// deadline.
 	DaysLeft int
+	// CienciaDaysLeft is DaysLeft for CienciaDue, the end of the ciência
+	// window. It is 0 when there is no ciência deadline.
+	CienciaDaysLeft int
 	// TacitlyConfirmed is true once ConclusiveDue passed without a
 	// conclusive manifestação: the operation is deemed confirmed by law.
 	TacitlyConfirmed bool
@@ -260,6 +263,9 @@ func newNFeDocument(doc nfe.CompanyDocument, now time.Time) NFeDocument {
 	}
 	if !d.ConclusiveDue.IsZero() {
 		d.DaysLeft = daysLeft(d.ConclusiveDue, now)
+	}
+	if !d.CienciaDue.IsZero() {
+		d.CienciaDaysLeft = daysLeft(d.CienciaDue, now)
 	}
 	return d
 }
