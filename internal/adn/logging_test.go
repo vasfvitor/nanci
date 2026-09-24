@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 )
 
@@ -49,7 +50,7 @@ func newLoggedClient(t *testing.T, baseURL string, level slog.Level) (*Client, *
 }
 
 func TestClient_ErrorLogsAreBoundedAndMasked(t *testing.T) {
-	bigBody := strings.Repeat("é", maxErrorLogBodyBytes) // 2 bytes each: twice the log cap
+	bigBody := strings.Repeat("é", httpclient.MaxErrorLogBodyBytes) // 2 bytes each: twice the log cap
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(bigBody))
@@ -75,8 +76,8 @@ func TestClient_ErrorLogsAreBoundedAndMasked(t *testing.T) {
 	if strings.Contains(out, "ADN API Error Response Body") {
 		t.Errorf("full body must not be logged below trace level:\n%s", out)
 	}
-	if len(out) > 2*maxErrorLogBodyBytes+1024 {
-		t.Errorf("log record too large (%d bytes) for a %d byte cap", len(out), maxErrorLogBodyBytes)
+	if len(out) > 2*httpclient.MaxErrorLogBodyBytes+1024 {
+		t.Errorf("log record too large (%d bytes) for a %d byte cap", len(out), httpclient.MaxErrorLogBodyBytes)
 	}
 
 	msg := err.Error()

@@ -14,6 +14,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
+	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -21,12 +22,6 @@ const requestDelay = 500 * time.Millisecond
 
 // syncRequestDelay is a var so tests can drop the pause between ADN requests.
 var syncRequestDelay = requestDelay
-
-// nfsePayloadLimits bounds the decoded size of one ADN document.
-var nfsePayloadLimits = gzipxml.Limits{
-	CompressedBytes:   5 * 1024 * 1024,
-	UncompressedBytes: 20 * 1024 * 1024,
-}
 
 type documentFetcher interface {
 	FetchDocuments(ctx context.Context, req adn.DistributionRequest) (*adn.DocumentResponse, error)
@@ -112,9 +107,9 @@ func (s *nfseSource) ProcessItem(ctx context.Context, company *nfse.Company, src
 
 // processDocument decodes, parses and saves a single document.
 func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
-	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", item.NSU))
+	s.log.Log(ctx, logger.LevelTrace, "Processando documento", slog.Int64("nsu", item.NSU))
 
-	payload, err := gzipxml.Decode(item.Payload, nfsePayloadLimits)
+	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
 	if err != nil {
 		return ItemOutcome{}, &ProcessingError{Op: "decode document", NSU: item.NSU, Err: err}
 	}
@@ -170,9 +165,9 @@ func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company,
 // processEvent decodes and saves an event. Events whose document is not
 // stored for the company are skipped by policy.
 func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, item Item, commit CommitFunc) (ItemOutcome, error) {
-	s.log.Log(ctx, slog.Level(-8), "Processando evento", slog.Int64("nsu", item.NSU))
+	s.log.Log(ctx, logger.LevelTrace, "Processando evento", slog.Int64("nsu", item.NSU))
 
-	payload, err := gzipxml.Decode(item.Payload, nfsePayloadLimits)
+	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
 	if err != nil {
 		return ItemOutcome{}, &ProcessingError{Op: "decode event", NSU: item.NSU, Err: err}
 	}

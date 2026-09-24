@@ -520,7 +520,7 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 		t.Errorf("nfe sync_requests rows = %d, want 4 after pruning the 25h-old one", rows)
 	}
 
-	count, oldest, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSourceCTe, now.Add(-time.Hour))
+	count, oldest, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSource("cte"), now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}

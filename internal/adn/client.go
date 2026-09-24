@@ -21,10 +21,6 @@ const (
 	BaseURLRestrictedProduction = "https://adn.producaorestrita.nfse.gov.br/contribuintes"
 
 	MaxJSONResponseBytes = 20 * 1024 * 1024 // 20 MiB
-
-	// maxErrorLogBodyBytes caps the error body attached to Error-level log
-	// records; the full body is only logged at trace.
-	maxErrorLogBodyBytes = httpclient.MaxErrorLogBodyBytes
 )
 
 // APIError is the error returned for a rejected ADN response.
@@ -164,7 +160,7 @@ func (c *Client) notFound(ctx context.Context, method, path, u string, body []by
 	}
 
 	if c.log != nil {
-		c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.Int("status", http.StatusNotFound), slog.String("body", httpclient.TruncateForLog(body, maxErrorLogBodyBytes)))
+		c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.Int("status", http.StatusNotFound), slog.String("body", httpclient.TruncateForLog(body, httpclient.MaxErrorLogBodyBytes)))
 	}
 	return c.httpClient.NewStatusError(method, u, http.StatusNotFound, body)
 }

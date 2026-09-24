@@ -34,18 +34,3 @@ func TestValid(t *testing.T) {
 		t.Error("Sigla(99) found a sigla")
 	}
 }
-
-func TestSiglas(t *testing.T) {
-	siglas := Siglas()
-	if len(siglas) != 27 {
-		t.Fatalf("len(Siglas()) = %d, want 27", len(siglas))
-	}
-	if siglas[0] != "AC" || siglas[26] != "TO" {
-		t.Errorf("Siglas() not sorted: first %q, last %q", siglas[0], siglas[26])
-	}
-	for _, sigla := range siglas {
-		if !Valid(sigla) {
-			t.Errorf("Siglas() returned invalid %q", sigla)
-		}
-	}
-}

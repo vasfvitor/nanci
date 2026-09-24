@@ -3,8 +3,6 @@
 // (cUF, cUFAutor).
 package uf
 
-import "slices"
-
 // codeBySigla maps each sigla to its IBGE code.
 var codeBySigla = map[string]int{
 	"RO": 11, "AC": 12, "AM": 13, "RR": 14, "PA": 15, "AP": 16, "TO": 17,
@@ -34,14 +32,4 @@ func Sigla(code int) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-// Siglas returns the 27 siglas in alphabetical order.
-func Siglas() []string {
-	siglas := make([]string, 0, len(codeBySigla))
-	for sigla := range codeBySigla {
-		siglas = append(siglas, sigla)
-	}
-	slices.Sort(siglas)
-	return siglas
 }

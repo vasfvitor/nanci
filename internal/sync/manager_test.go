@@ -353,7 +353,7 @@ func TestPullRejectsSourcesWithoutALoop(t *testing.T) {
 	passwords := &countingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceCTe, "bogus"} {
+	for _, source := range []nfse.SyncSource{"cte", "bogus"} {
 		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: source}); err == nil {
 			t.Errorf("Pull with source %q succeeded, want an error", source)
 		}

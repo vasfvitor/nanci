@@ -10,6 +10,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
+	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
@@ -122,9 +123,9 @@ func (s *nfeSource) Fetch(ctx context.Context, company *nfse.Company, cursor int
 }
 
 func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
-	s.log.Log(ctx, slog.Level(-8), "Processando documento NF-e", slog.Int64("nsu", item.NSU), slog.String("schema", item.Schema))
+	s.log.Log(ctx, logger.LevelTrace, "Processando documento NF-e", slog.Int64("nsu", item.NSU), slog.String("schema", item.Schema))
 
-	payload, err := gzipxml.Decode(item.Payload, nfsePayloadLimits)
+	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
 	if err != nil {
 		return ItemOutcome{}, &ProcessingError{Op: "decode document", NSU: item.NSU, Schema: item.Schema, Err: err}
 	}

@@ -47,8 +47,20 @@ type ItemOutcome struct {
 	Partial bool
 }
 
-// CommitFunc runs write in one transaction together with the item's sync checkpoint.
+// CommitFunc runs write in one transaction together with the item's sync
+// checkpoint. Each item gets its own transaction: write stores the item's
+// rows through tx, and the checkpoint moves past the item only if the whole
+// transaction commits, so a crash never leaves an item half stored or skipped.
+// write must use tx for every database write and must not commit or roll it
+// back.
 type CommitFunc func(ctx context.Context, write func(tx *sql.Tx) (ItemOutcome, error)) (ItemOutcome, error)
+
+// dfePayloadLimits bounds the decoded size of one distributed document
+// (ADN NFS-e or SEFAZ NF-e).
+var dfePayloadLimits = gzipxml.Limits{
+	CompressedBytes:   5 * 1024 * 1024,
+	UncompressedBytes: 20 * 1024 * 1024,
+}
 
 // SourcePolicy holds the request limits of a distribution service.
 type SourcePolicy struct {
@@ -63,7 +75,8 @@ type Source interface {
 	Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error)
 	// ProcessItem decodes, parses and stores the raw XML outside any
 	// transaction, then calls commit exactly once, also for policy skips, so
-	// the checkpoint advances. Decode and parse failures are returned as
+	// the checkpoint advances. The *sql.Tx that commit hands to write is the
+	// per-item transaction described on CommitFunc. Decode and parse failures are returned as
 	// *ProcessingError.
 	ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error)
 }
