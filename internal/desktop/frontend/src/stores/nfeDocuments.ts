@@ -39,9 +39,9 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const pendingLoading = shallowRef(false)
   // cienciaInFlight holds the chaves of the ciência being sent, or null.
   const cienciaInFlight = shallowRef<string[] | null>(null)
-  // manifestationInFlight holds the chaves whose conclusive manifestação is
+  // manifestacaoInFlight holds the chaves whose conclusive manifestação is
   // being sent.
-  const manifestationInFlight = ref(new Set<string>())
+  const manifestacaoInFlight = ref(new Set<string>())
   // resettingCNPJ is the company whose NF-e reset is in flight, or ''.
   const resettingCNPJ = shallowRef('')
 
@@ -72,7 +72,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   }
 
   function isChaveBusy(chave: string) {
-    return Boolean(cienciaInFlight.value?.includes(chave)) || manifestationInFlight.value.has(chave)
+    return Boolean(cienciaInFlight.value?.includes(chave)) || manifestacaoInFlight.value.has(chave)
   }
 
   return {
@@ -87,7 +87,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     pending,
     pendingLoading,
     cienciaInFlight,
-    manifestationInFlight,
+    manifestacaoInFlight,
     resettingCNPJ,
     setRows,
     patchRow,

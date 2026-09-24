@@ -671,21 +671,21 @@ export const desktopClient = {
     return (res || []).map(mapNFeEvent)
   },
   // dueWithinDays 0 lists every pending manifestação.
-  async listPendingManifestations(cnpj: string, dueWithinDays = 0): Promise<NFePendingRow[]> {
+  async listNFePendingManifestacoes(cnpj: string, dueWithinDays = 0): Promise<NFePendingRow[]> {
     const res = await callWails(() =>
       ListNFePendingManifestacoes({ CNPJ: cnpj, DueWithinDays: dueWithinDays })
     )
     return (res || []).map(mapNFePendingRow)
   },
-  async planCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeCienciaPlan> {
+  async planNFeCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeCienciaPlan> {
     const res = await callWails(() => PlanNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
     return mapNFeCienciaPlan(res)
   },
-  async registerCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeEventBatchResult> {
+  async registerNFeCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeEventBatchResult> {
     const res = await callWails(() => RegisterNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
     return mapNFeEventBatchResult(res)
   },
-  async registerManifestation(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
+  async registerNFeManifestacao(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
     const res = await callWails(() => RegisterNFeManifestacao(input))
     return mapNFeEventResult(res)
   },

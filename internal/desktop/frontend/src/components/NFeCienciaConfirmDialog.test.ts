@@ -1,7 +1,7 @@
 import { shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import CienciaConfirmDialog from './CienciaConfirmDialog.vue'
+import NFeCienciaConfirmDialog from './NFeCienciaConfirmDialog.vue'
 import type { NFeCienciaPlan, NFeRow } from '@/types/desktop'
 
 const onDialogOK = vi.fn()
@@ -54,7 +54,7 @@ const plan: NFeCienciaPlan = {
 }
 
 function mountDialog() {
-  return shallowMount(CienciaConfirmDialog, {
+  return shallowMount(NFeCienciaConfirmDialog, {
     props: {
       companyName: 'Empresa Um',
       cnpj: '98765432000199',
@@ -89,7 +89,7 @@ function okButton(wrapper: ReturnType<typeof mountDialog>) {
   return button
 }
 
-describe('CienciaConfirmDialog', () => {
+describe('NFeCienciaConfirmDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

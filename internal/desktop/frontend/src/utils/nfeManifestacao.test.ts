@@ -5,7 +5,7 @@ import {
   conclusiveBlockReason,
   countOutcomes,
   validateJustificativa,
-} from './nfeManifestation'
+} from './nfeManifestacao'
 
 function row(overrides: Partial<NFeRow> = {}): NFeRow {
   return {

@@ -90,11 +90,11 @@ describe('nfeDocuments store', () => {
     store.cienciaInFlight = null
     expect(store.isChaveBusy('a')).toBe(false)
 
-    store.manifestationInFlight.add('c')
-    store.manifestationInFlight.add('d')
+    store.manifestacaoInFlight.add('c')
+    store.manifestacaoInFlight.add('d')
     expect(store.isChaveBusy('c')).toBe(true)
 
-    store.manifestationInFlight.delete('c')
+    store.manifestacaoInFlight.delete('c')
     expect(store.isChaveBusy('c')).toBe(false)
     expect(store.isChaveBusy('d')).toBe(true)
   })

@@ -1,7 +1,7 @@
 import { shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import ManifestacaoDialog from './ManifestacaoDialog.vue'
+import NFeManifestacaoDialog from './NFeManifestacaoDialog.vue'
 import type { NFeRow } from '@/types/desktop'
 
 const onDialogOK = vi.fn()
@@ -49,7 +49,7 @@ function note(overrides: Partial<NFeRow> = {}): NFeRow {
 type Option = { value: string; disable: boolean }
 
 function mountDialog(row = note()) {
-  return shallowMount(ManifestacaoDialog, {
+  return shallowMount(NFeManifestacaoDialog, {
     props: { note: row, tpAmb: '2' },
     global: {
       renderStubDefaultSlot: true,
@@ -83,7 +83,7 @@ function button(wrapper: ReturnType<typeof mountDialog>, label: string) {
   return found
 }
 
-describe('ManifestacaoDialog', () => {
+describe('NFeManifestacaoDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

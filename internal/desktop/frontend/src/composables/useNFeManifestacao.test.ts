@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useNFeManifestation } from './useNFeManifestation'
+import { useNFeManifestacao } from './useNFeManifestacao'
 import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
@@ -9,10 +9,10 @@ vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     listNFe: vi.fn(),
     statusNFe: vi.fn(),
-    listPendingManifestations: vi.fn(),
-    planCiencia: vi.fn(),
-    registerCiencia: vi.fn(),
-    registerManifestation: vi.fn(),
+    listNFePendingManifestacoes: vi.fn(),
+    planNFeCiencia: vi.fn(),
+    registerNFeCiencia: vi.fn(),
+    registerNFeManifestacao: vi.fn(),
   },
 }))
 
@@ -59,45 +59,45 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-describe('useNFeManifestation', () => {
+describe('useNFeManifestacao', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listNFe).mockResolvedValue([nfeRow('a')])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue({} as never)
-    vi.mocked(desktopClient.listPendingManifestations).mockResolvedValue([])
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
     const store = useNFeDocumentsStore()
     store.filter.CNPJ = '123'
   })
 
   it('loads pendências and plans ciência for the selected company', async () => {
-    const manifestation = useNFeManifestation()
+    const manifestacao = useNFeManifestacao()
 
-    await manifestation.loadPending()
-    await manifestation.planCiencia(['a'])
+    await manifestacao.loadPending()
+    await manifestacao.planCiencia(['a'])
 
-    expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
-    expect(desktopClient.planCiencia).toHaveBeenCalledWith('123', ['a'])
+    expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
+    expect(desktopClient.planNFeCiencia).toHaveBeenCalledWith('123', ['a'])
   })
 
   it('keeps a pending ciência visible across a route remount', async () => {
     const store = useNFeDocumentsStore()
     store.selected = [nfeRow('a'), nfeRow('b')]
     const call = deferred<NFeEventBatchResult>()
-    vi.mocked(desktopClient.registerCiencia).mockReturnValue(call.promise)
+    vi.mocked(desktopClient.registerNFeCiencia).mockReturnValue(call.promise)
 
-    const firstPage = useNFeManifestation()
+    const firstPage = useNFeManifestacao()
     const sending = firstPage.registerCiencia(['a', 'b'])
 
-    const remountedPage = useNFeManifestation()
+    const remountedPage = useNFeManifestacao()
     expect(remountedPage.cienciaInFlight.value).toEqual(['a', 'b'])
     expect(remountedPage.isChaveBusy('a')).toBe(true)
     expect(remountedPage.isChaveBusy('z')).toBe(false)
 
     await expect(remountedPage.registerCiencia(['a', 'b'])).resolves.toBeNull()
     await expect(remountedPage.registerCiencia(['z'])).resolves.toBeNull()
-    expect(desktopClient.registerCiencia).toHaveBeenCalledTimes(1)
-    expect(desktopClient.registerCiencia).toHaveBeenCalledWith('123', ['a', 'b'])
+    expect(desktopClient.registerNFeCiencia).toHaveBeenCalledTimes(1)
+    expect(desktopClient.registerNFeCiencia).toHaveBeenCalledWith('123', ['a', 'b'])
 
     call.resolve(batch)
     await expect(sending).resolves.toEqual(batch)
@@ -106,7 +106,7 @@ describe('useNFeManifestation', () => {
     expect(remountedPage.isChaveBusy('a')).toBe(false)
     expect(store.selected).toEqual([])
     expect(desktopClient.listNFe).toHaveBeenCalledWith(store.listInput)
-    expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
+    expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
     expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['a'])
   })
 
@@ -114,44 +114,44 @@ describe('useNFeManifestation', () => {
     const store = useNFeDocumentsStore()
     store.selected = [nfeRow('a')]
     const call = deferred<NFeEventBatchResult>()
-    vi.mocked(desktopClient.registerCiencia).mockReturnValue(call.promise)
+    vi.mocked(desktopClient.registerNFeCiencia).mockReturnValue(call.promise)
 
-    const manifestation = useNFeManifestation()
-    const sending = manifestation.registerCiencia(['a'])
-    expect(manifestation.isChaveBusy('a')).toBe(true)
+    const manifestacao = useNFeManifestacao()
+    const sending = manifestacao.registerCiencia(['a'])
+    expect(manifestacao.isChaveBusy('a')).toBe(true)
 
     call.reject(new Error('ERR_CANCELED: senha não informada'))
     await expect(sending).rejects.toThrow('ERR_CANCELED')
 
-    expect(manifestation.cienciaInFlight.value).toBeNull()
-    expect(manifestation.isChaveBusy('a')).toBe(false)
+    expect(manifestacao.cienciaInFlight.value).toBeNull()
+    expect(manifestacao.isChaveBusy('a')).toBe(false)
     expect(store.selected).toHaveLength(1)
   })
 
   it('does not fail a registered ciência when the refresh fails', async () => {
-    vi.mocked(desktopClient.registerCiencia).mockResolvedValue(batch)
+    vi.mocked(desktopClient.registerNFeCiencia).mockResolvedValue(batch)
     vi.mocked(desktopClient.listNFe).mockRejectedValue(new Error('boom'))
 
-    const manifestation = useNFeManifestation()
-    await expect(manifestation.registerCiencia(['a'])).resolves.toEqual(batch)
-    expect(desktopClient.listPendingManifestations).toHaveBeenCalled()
+    const manifestacao = useNFeManifestacao()
+    await expect(manifestacao.registerCiencia(['a'])).resolves.toEqual(batch)
+    expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalled()
   })
 
   it('keeps a pending manifestação busy per chave across a route remount', async () => {
     const call = deferred<NFeEventResult>()
-    vi.mocked(desktopClient.registerManifestation).mockReturnValue(call.promise)
+    vi.mocked(desktopClient.registerNFeManifestacao).mockReturnValue(call.promise)
 
-    const firstPage = useNFeManifestation()
-    const sending = firstPage.registerManifestation('a', '210240', '  mercadoria não entregue  ')
+    const firstPage = useNFeManifestacao()
+    const sending = firstPage.registerManifestacao('a', '210240', '  mercadoria não entregue  ')
 
-    const remountedPage = useNFeManifestation()
-    expect(remountedPage.manifestationInFlight.value).toEqual(new Set(['a']))
+    const remountedPage = useNFeManifestacao()
+    expect(remountedPage.manifestacaoInFlight.value).toEqual(new Set(['a']))
     expect(remountedPage.isChaveBusy('a')).toBe(true)
-    await expect(remountedPage.registerManifestation('a', '210200')).resolves.toBeNull()
+    await expect(remountedPage.registerManifestacao('a', '210200')).resolves.toBeNull()
     await expect(remountedPage.registerCiencia(['a'])).resolves.toBeNull()
-    expect(desktopClient.registerManifestation).toHaveBeenCalledTimes(1)
-    expect(desktopClient.registerCiencia).not.toHaveBeenCalled()
-    expect(desktopClient.registerManifestation).toHaveBeenCalledWith({
+    expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledTimes(1)
+    expect(desktopClient.registerNFeCiencia).not.toHaveBeenCalled()
+    expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledWith({
       CNPJ: '123',
       ChaveAcesso: 'a',
       Tipo: '210240',
@@ -164,7 +164,7 @@ describe('useNFeManifestation', () => {
 
     expect(remountedPage.isChaveBusy('a')).toBe(false)
     expect(desktopClient.listNFe).toHaveBeenCalled()
-    expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
+    expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
   })
 
   it('reloads only the manifested note when it is listed', async () => {
@@ -172,42 +172,42 @@ describe('useNFeManifestation', () => {
     store.setRows([nfeRow('a'), nfeRow('b')])
     const fresh = { ...nfeRow('a'), Manifestacao: 'confirmada' as const }
     vi.mocked(desktopClient.listNFe).mockResolvedValue([fresh])
-    vi.mocked(desktopClient.registerManifestation).mockResolvedValue({
+    vi.mocked(desktopClient.registerNFeManifestacao).mockResolvedValue({
       ChaveAcesso: 'a',
       Status: 'registrada',
     } as NFeEventResult)
 
-    await useNFeManifestation().registerManifestation('a', '210200')
+    await useNFeManifestacao().registerManifestacao('a', '210200')
 
     expect(desktopClient.listNFe).toHaveBeenCalledTimes(1)
     expect(desktopClient.listNFe).toHaveBeenCalledWith({ ...store.listInput, ChavesAcesso: ['a'] })
     expect(store.rows).toEqual([fresh, nfeRow('b')])
     expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
-    expect(desktopClient.listPendingManifestations).toHaveBeenCalledWith('123')
+    expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
   })
 
   it('searches the whole list when the manifested note is not listed', async () => {
     const store = useNFeDocumentsStore()
     store.setRows([nfeRow('b')])
-    vi.mocked(desktopClient.registerManifestation).mockResolvedValue({
+    vi.mocked(desktopClient.registerNFeManifestacao).mockResolvedValue({
       ChaveAcesso: 'a',
       Status: 'registrada',
     } as NFeEventResult)
 
-    await useNFeManifestation().registerManifestation('a', '210200')
+    await useNFeManifestacao().registerManifestacao('a', '210200')
 
     expect(desktopClient.listNFe).toHaveBeenCalledWith(store.listInput)
     expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['a'])
   })
 
   it('clears the manifestação marker when the call fails and drops justificativa for other tipos', async () => {
-    vi.mocked(desktopClient.registerManifestation).mockRejectedValue(new Error('boom'))
+    vi.mocked(desktopClient.registerNFeManifestacao).mockRejectedValue(new Error('boom'))
 
-    const manifestation = useNFeManifestation()
-    await expect(manifestation.registerManifestation('a', '210200', 'ignorada')).rejects.toThrow('boom')
+    const manifestacao = useNFeManifestacao()
+    await expect(manifestacao.registerManifestacao('a', '210200', 'ignorada')).rejects.toThrow('boom')
 
-    expect(manifestation.isChaveBusy('a')).toBe(false)
-    expect(desktopClient.registerManifestation).toHaveBeenCalledWith({
+    expect(manifestacao.isChaveBusy('a')).toBe(false)
+    expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledWith({
       CNPJ: '123',
       ChaveAcesso: 'a',
       Tipo: '210200',

@@ -41,7 +41,7 @@ export function useNFeLoaders() {
     }
     pendingLoading.value = true
     try {
-      const rows = await desktopClient.listPendingManifestations(cnpj)
+      const rows = await desktopClient.listNFePendingManifestacoes(cnpj)
       if (isSelected(cnpj)) pending.value = rows
       return rows
     } finally {

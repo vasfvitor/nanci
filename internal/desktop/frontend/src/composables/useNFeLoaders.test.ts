@@ -9,7 +9,7 @@ vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     listNFe: vi.fn(),
     statusNFe: vi.fn(),
-    listPendingManifestations: vi.fn(),
+    listNFePendingManifestacoes: vi.fn(),
   },
 }))
 
@@ -31,7 +31,7 @@ describe('useNFeLoaders', () => {
     vi.clearAllMocks()
     vi.mocked(desktopClient.listNFe).mockResolvedValue([row])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(statusResult)
-    vi.mocked(desktopClient.listPendingManifestations).mockResolvedValue([pendingRow])
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([pendingRow])
     useNFeDocumentsStore().filter.CNPJ = '123'
   })
 
@@ -54,7 +54,7 @@ describe('useNFeLoaders', () => {
 
     expect(desktopClient.listNFe).not.toHaveBeenCalled()
     expect(desktopClient.statusNFe).not.toHaveBeenCalled()
-    expect(desktopClient.listPendingManifestations).not.toHaveBeenCalled()
+    expect(desktopClient.listNFePendingManifestacoes).not.toHaveBeenCalled()
   })
 
   it('drops results that arrive after the company changed', async () => {

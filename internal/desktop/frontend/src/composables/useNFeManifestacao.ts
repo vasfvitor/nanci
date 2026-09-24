@@ -4,12 +4,12 @@ import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeConclusiveTipo } from '@/types/desktop'
 
-// useNFeManifestation sends manifestação do destinatário events. The calls
+// useNFeManifestacao sends manifestação do destinatário events. The calls
 // can outlive the page, so in-flight markers and results live in the
 // nfeDocuments store and the follow-up refresh does not depend on the page.
-export function useNFeManifestation() {
+export function useNFeManifestacao() {
   const store = useNFeDocumentsStore()
-  const { selected, pending, pendingLoading, cienciaInFlight, manifestationInFlight } =
+  const { selected, pending, pendingLoading, cienciaInFlight, manifestacaoInFlight } =
     storeToRefs(store)
   const { loadPending, refresh, refreshNote } = useNFeLoaders()
 
@@ -18,7 +18,7 @@ export function useNFeManifestation() {
   async function planCiencia(chavesAcesso: string[]) {
     const cnpj = store.filter.CNPJ
     if (!cnpj || chavesAcesso.length === 0) return null
-    return desktopClient.planCiencia(cnpj, chavesAcesso)
+    return desktopClient.planNFeCiencia(cnpj, chavesAcesso)
   }
 
   async function registerCiencia(chavesAcesso: string[]) {
@@ -29,7 +29,7 @@ export function useNFeManifestation() {
     cienciaInFlight.value = [...chavesAcesso]
     let result
     try {
-      result = await desktopClient.registerCiencia(cnpj, chavesAcesso)
+      result = await desktopClient.registerNFeCiencia(cnpj, chavesAcesso)
     } finally {
       cienciaInFlight.value = null
     }
@@ -39,7 +39,7 @@ export function useNFeManifestation() {
     return result
   }
 
-  async function registerManifestation(
+  async function registerManifestacao(
     chaveAcesso: string,
     tipo: NFeConclusiveTipo,
     justificativa = ''
@@ -47,17 +47,17 @@ export function useNFeManifestation() {
     const cnpj = store.filter.CNPJ
     if (!cnpj || store.isChaveBusy(chaveAcesso)) return null
 
-    manifestationInFlight.value.add(chaveAcesso)
+    manifestacaoInFlight.value.add(chaveAcesso)
     let result
     try {
-      result = await desktopClient.registerManifestation({
+      result = await desktopClient.registerNFeManifestacao({
         CNPJ: cnpj,
         ChaveAcesso: chaveAcesso,
         Tipo: tipo,
         Justificativa: tipo === '210240' ? justificativa.trim() : '',
       })
     } finally {
-      manifestationInFlight.value.delete(chaveAcesso)
+      manifestacaoInFlight.value.delete(chaveAcesso)
     }
 
     await refreshNote(cnpj, chaveAcesso)
@@ -68,11 +68,11 @@ export function useNFeManifestation() {
     pending,
     pendingLoading,
     cienciaInFlight,
-    manifestationInFlight,
+    manifestacaoInFlight,
     isChaveBusy: (chaveAcesso: string) => store.isChaveBusy(chaveAcesso),
     loadPending,
     planCiencia,
     registerCiencia,
-    registerManifestation,
+    registerManifestacao,
   }
 }

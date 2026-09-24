@@ -115,7 +115,7 @@ import {
   JUSTIFICATIVA_MAX_LENGTH,
   JUSTIFICATIVA_MIN_LENGTH,
   validateJustificativa,
-} from '@/utils/nfeManifestation'
+} from '@/utils/nfeManifestacao'
 
 const props = defineProps<{
   note: NFeRow

@@ -363,14 +363,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import CienciaConfirmDialog from '../components/CienciaConfirmDialog.vue'
+import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
 import CompetencePicker from '../components/CompetencePicker.vue'
-import ManifestacaoDialog from '../components/ManifestacaoDialog.vue'
+import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
-import { useNFeManifestation } from '@/composables/useNFeManifestation'
+import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type {
@@ -412,11 +412,11 @@ import {
   situacaoLabel,
   situacaoFilterOptions,
 } from '@/utils/nfeDisplay'
-import { cienciaBlockReason, conclusiveBlockReason, countOutcomes } from '@/utils/nfeManifestation'
+import { cienciaBlockReason, conclusiveBlockReason, countOutcomes } from '@/utils/nfeManifestacao'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
-const manifestation = useNFeManifestation()
+const manifestacao = useNFeManifestacao()
 const { notifyError, copyChave } = useNotify()
 
 const {
@@ -433,7 +433,7 @@ const {
   isResetting,
   syncBlockedUntil,
 } = nfe
-const { pending, pendingLoading, cienciaInFlight, isChaveBusy } = manifestation
+const { pending, pendingLoading, cienciaInFlight, isChaveBusy } = manifestacao
 
 const filterText = ref('')
 const planning = ref(false)
@@ -570,7 +570,7 @@ async function loadStatus() {
 
 async function loadPending() {
   try {
-    await manifestation.loadPending()
+    await manifestacao.loadPending()
   } catch (error) {
     notifyError('Erro ao carregar pendências', error)
   }
@@ -651,7 +651,7 @@ async function startCiencia(chavesAcesso: string[]) {
   planning.value = true
   let plan
   try {
-    plan = await manifestation.planCiencia(chavesAcesso)
+    plan = await manifestacao.planCiencia(chavesAcesso)
   } catch (error) {
     notifyError('Erro ao preparar a ciência', error)
     return
@@ -672,7 +672,7 @@ async function startCiencia(chavesAcesso: string[]) {
   }
 
   $q.dialog({
-    component: CienciaConfirmDialog,
+    component: NFeCienciaConfirmDialog,
     componentProps: {
       companyName: companyName.value,
       cnpj: filter.value.CNPJ,
@@ -686,7 +686,7 @@ async function startCiencia(chavesAcesso: string[]) {
 
 async function sendCiencia(chavesAcesso: string[]) {
   try {
-    const result = await manifestation.registerCiencia(chavesAcesso)
+    const result = await manifestacao.registerCiencia(chavesAcesso)
     if (!result) {
       $q.notify({ type: 'warning', message: 'Já existe um envio de ciência em andamento.' })
       return
@@ -727,24 +727,24 @@ function notifyCienciaResult(result: NFeEventBatchResult) {
 
 function openManifestacao(row: NFeRow) {
   $q.dialog({
-    component: ManifestacaoDialog,
+    component: NFeManifestacaoDialog,
     componentProps: {
       note: row,
       tpAmb: status.value?.TpAmb ?? '',
     },
   }).onOk((payload: { tipo: NFeConclusiveTipo; justificativa: string }) => {
-    void sendManifestation(row.ChaveAcesso, payload.tipo, payload.justificativa)
+    void sendManifestacao(row.ChaveAcesso, payload.tipo, payload.justificativa)
   })
 }
 
-async function sendManifestation(chaveAcesso: string, tipo: NFeConclusiveTipo, justificativa: string) {
+async function sendManifestacao(chaveAcesso: string, tipo: NFeConclusiveTipo, justificativa: string) {
   try {
-    const result = await manifestation.registerManifestation(chaveAcesso, tipo, justificativa)
+    const result = await manifestacao.registerManifestacao(chaveAcesso, tipo, justificativa)
     if (!result) {
       $q.notify({ type: 'warning', message: 'Esta nota já tem um envio em andamento.' })
       return
     }
-    notifyManifestationResult(result)
+    notifyManifestacaoResult(result)
   } catch (error) {
     if (wailsErrorCode(error) === 'canceled') {
       $q.notify({ type: 'warning', message: 'Envio da manifestação cancelado.' })
@@ -754,7 +754,7 @@ async function sendManifestation(chaveAcesso: string, tipo: NFeConclusiveTipo, j
   }
 }
 
-function notifyManifestationResult(result: NFeEventResult) {
+function notifyManifestacaoResult(result: NFeEventResult) {
   const detail = [result.CStat, result.XMotivo].filter(Boolean).join(' - ')
   switch (result.Status) {
     case 'registrada':

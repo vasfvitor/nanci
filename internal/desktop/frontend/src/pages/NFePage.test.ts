@@ -2,7 +2,7 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFePage from './NFePage.vue'
-import CienciaConfirmDialog from '@/components/CienciaConfirmDialog.vue'
+import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
 import type { NFeCienciaPlan, NFeRow, NFeStatusResult } from '@/types/desktop'
 
@@ -33,9 +33,9 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     listCompanies: vi.fn(),
     listNFe: vi.fn(),
     statusNFe: vi.fn(),
-    listPendingManifestations: vi.fn(),
-    planCiencia: vi.fn(),
-    registerCiencia: vi.fn(),
+    listNFePendingManifestacoes: vi.fn(),
+    planNFeCiencia: vi.fn(),
+    registerNFeCiencia: vi.fn(),
     pullNFe: vi.fn(),
     resetNFe: vi.fn(),
     exportNFeZIP: vi.fn(),
@@ -177,7 +177,7 @@ describe('NFePage', () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
-    vi.mocked(desktopClient.listPendingManifestations).mockResolvedValue([])
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
   })
 
   it('filters the notes by accent- and case-insensitive text', async () => {
@@ -217,13 +217,13 @@ describe('NFePage', () => {
     expect(button().props('disable')).toBe(false)
   })
 
-  it('opens the confirm dialog with the eligible chaves from planCiencia', async () => {
+  it('opens the confirm dialog with the eligible chaves from planNFeCiencia', async () => {
     const plan: NFeCienciaPlan = {
       Eligible: [destinatario],
       Skipped: [{ ChaveAcesso: 'b', Reason: 'a empresa não é a destinatária' }],
     }
-    vi.mocked(desktopClient.planCiencia).mockResolvedValue(plan)
-    vi.mocked(desktopClient.registerCiencia).mockResolvedValue({
+    vi.mocked(desktopClient.planNFeCiencia).mockResolvedValue(plan)
+    vi.mocked(desktopClient.registerNFeCiencia).mockResolvedValue({
       Results: [
         {
           ChaveAcesso: 'a',
@@ -245,10 +245,10 @@ describe('NFePage', () => {
     await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
     await flushPromises()
 
-    expect(desktopClient.planCiencia).toHaveBeenCalledWith(company.CNPJ, ['a', 'b'])
+    expect(desktopClient.planNFeCiencia).toHaveBeenCalledWith(company.CNPJ, ['a', 'b'])
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
-        component: CienciaConfirmDialog,
+        component: NFeCienciaConfirmDialog,
         componentProps: expect.objectContaining({
           cnpj: company.CNPJ,
           tpAmb: '1',
@@ -260,7 +260,7 @@ describe('NFePage', () => {
     okHandlers[0]?.(['a'])
     await flushPromises()
 
-    expect(desktopClient.registerCiencia).toHaveBeenCalledWith(company.CNPJ, ['a'])
+    expect(desktopClient.registerNFeCiencia).toHaveBeenCalledWith(company.CNPJ, ['a'])
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'positive',
@@ -295,8 +295,8 @@ describe('NFePage', () => {
     )
   })
 
-  it('does not open the dialog when planCiencia finds no eligible note', async () => {
-    vi.mocked(desktopClient.planCiencia).mockResolvedValue({
+  it('does not open the dialog when planNFeCiencia finds no eligible note', async () => {
+    vi.mocked(desktopClient.planNFeCiencia).mockResolvedValue({
       Eligible: [],
       Skipped: [{ ChaveAcesso: 'a', Reason: 'Já possui manifestação' }],
     })

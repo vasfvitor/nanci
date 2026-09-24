@@ -475,16 +475,16 @@ describe('NF-e client calls', () => {
       { ID: 'rel-1', Situacao: 'autorizada' },
     ])
     await expect(desktopClient.listNFeEvents('123', chave)).resolves.toEqual([])
-    await expect(desktopClient.listPendingManifestations('123')).resolves.toMatchObject([
+    await expect(desktopClient.listNFePendingManifestacoes('123')).resolves.toMatchObject([
       { ChaveAcesso: chave },
     ])
-    await desktopClient.listPendingManifestations('123', 10)
-    await expect(desktopClient.planCiencia('123', [chave])).resolves.toEqual({ Eligible: [], Skipped: [] })
-    await expect(desktopClient.registerCiencia('123', [chave])).resolves.toMatchObject({
+    await desktopClient.listNFePendingManifestacoes('123', 10)
+    await expect(desktopClient.planNFeCiencia('123', [chave])).resolves.toEqual({ Eligible: [], Skipped: [] })
+    await expect(desktopClient.registerNFeCiencia('123', [chave])).resolves.toMatchObject({
       Interrupted: 'timeout',
     })
     await expect(
-      desktopClient.registerManifestation({
+      desktopClient.registerNFeManifestacao({
         CNPJ: '123',
         ChaveAcesso: chave,
         Tipo: '210240',
