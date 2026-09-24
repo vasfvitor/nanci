@@ -8,7 +8,8 @@ import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { CompanySummary, NFeRow } from '@/types/desktop'
 import { formatTime, normalizeText, parseDate } from '@/utils/formatters'
-import { blockedMessage, nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
+import { nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
+import { blockedMessage } from '@/utils/sefazDisplay'
 import { nfeRowActions } from '@/utils/nfeManifestacao'
 
 export function useNFeDocuments() {

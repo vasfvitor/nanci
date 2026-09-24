@@ -265,7 +265,7 @@
             <q-td :props="cellProps">
               <div class="row no-wrap items-center q-gutter-x-xs">
                 <span
-                  :title="formatChaveNFe(cellProps.row.ChaveAcesso)"
+                  :title="formatChaveDFe(cellProps.row.ChaveAcesso)"
                   class="cursor-pointer text-weight-medium text-mono"
                   @click="copyChave(cellProps.row.ChaveAcesso)"
                 >
@@ -384,16 +384,14 @@ import type {
 } from '@/types/desktop'
 import {
   formatChaveAcesso,
-  formatChaveNFe,
+  formatChaveDFe,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
   formatNFeNumber,
 } from '@/utils/formatters'
+import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
 import {
-  ambienteColor,
-  ambienteLabel,
-  badgeProps,
   completenessColor,
   completenessLabel,
   completenessFilterOptions,

@@ -61,9 +61,10 @@ export function formatChaveAcesso(chave: string) {
   return clean.length > 10 ? `...${clean.slice(-10)}` : clean
 }
 
-// formatChaveNFe prints a 44-character NF-e access key in the DANFE layout:
-// 11 groups of 4 separated by spaces. Anything else is returned unchanged.
-export function formatChaveNFe(chave: string | null | undefined) {
+// formatChaveDFe prints a 44-character NF-e or CT-e access key as the DANFE
+// and DACTE do: 11 groups of 4 separated by spaces. Anything else is returned
+// unchanged.
+export function formatChaveDFe(chave: string | null | undefined) {
   if (!chave) return ''
   const clean = chave.replace(/\s/g, '')
   if (clean.length !== 44) return chave
