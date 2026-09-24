@@ -626,6 +626,21 @@ func TestNFeExportMarks(t *testing.T) {
 		t.Errorf("pending after second export = %v, want none", chaves(docs))
 	}
 
+	// An event stored after the export makes the document pending again. The
+	// mark is moved back so the event is not stored in the same second.
+	mustExec(t, f.db, `UPDATE company_nfe_export_marks SET exported_at = '2026-09-01T00:00:00Z'`)
+	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia"))
+	docs = pending()
+	if !slices.Equal(chaves(docs), []string{nfeKeyProc}) {
+		t.Fatalf("pending after a new event = %v, want %s", chaves(docs), nfeKeyProc)
+	}
+	if err := f.repo.MarkExported(ctx, "mock", nfe.ExportKindXML, docs); err != nil {
+		t.Fatal(err)
+	}
+	if docs := pending(); len(docs) != 0 {
+		t.Errorf("pending after exporting the event = %v, want none", chaves(docs))
+	}
+
 	if _, err := f.repo.ListPendingExport(ctx, "mock", nfe.DocumentFilter{}, ""); err == nil {
 		t.Error("ListPendingExport without a kind should fail")
 	}

@@ -151,8 +151,9 @@ func (r *NFeRepository) ListCompanyDocuments(ctx context.Context, companyID dfe.
 }
 
 // ListPendingExport returns the rows ListCompanyDocuments would return that
-// were never exported with this kind, or whose raw hash changed since (for
-// example after a resumo was upgraded to completa).
+// were never exported with this kind, whose raw hash changed since (for
+// example after a resumo was upgraded to completa), or that got a new event
+// since, such as a cancelamento or a manifestação.
 func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error) {
 	if kind == "" {
 		return nil, errors.New("export kind is required")
@@ -521,7 +522,10 @@ func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID dfe.
 	query += " WHERE " + where // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
 	args = append(args, whereArgs...)
 	if exportKind != "" {
-		query += " AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)"
+		// An event stored after the mark, such as a cancelamento that
+		// arrived after the export, makes the document pending again.
+		query += ` AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash
+			OR EXISTS (SELECT 1 FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso AND e.created_at > m.exported_at))`
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"

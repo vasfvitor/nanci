@@ -436,6 +436,28 @@ func TestCTeExportMarks(t *testing.T) {
 	if !slices.Equal(cteChaves(pending), []string{cteKeyOS}) {
 		t.Errorf("pending after a new raw hash = %v, want the CT-e OS", cteChaves(pending))
 	}
+	if err := f.repo.MarkExported(ctx, "mock", cte.ExportKindXML, pending); err != nil {
+		t.Fatal(err)
+	}
+
+	// A cancelamento stored after the export makes the document pending
+	// again. The marks are moved back so the event is not stored in the
+	// same second.
+	mustExec(t, f.db, `UPDATE company_cte_export_marks SET exported_at = '2026-09-01T00:00:00Z'`)
+	f.applyEvent(f.event("proceventocte-cancelamento.xml", "hash-canc"))
+	pending, err = f.repo.ListPendingExport(ctx, "mock", cte.DocumentFilter{}, cte.ExportKindXML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(cteChaves(pending), []string{cteKeyProc}) {
+		t.Fatalf("pending after a cancelamento = %v, want the CT-e", cteChaves(pending))
+	}
+	if err := f.repo.MarkExported(ctx, "mock", cte.ExportKindXML, pending); err != nil {
+		t.Fatal(err)
+	}
+	if pending, _ = f.repo.ListPendingExport(ctx, "mock", cte.DocumentFilter{}, cte.ExportKindXML); len(pending) != 0 {
+		t.Errorf("pending after exporting the cancelamento = %v, want none", cteChaves(pending))
+	}
 	if _, err := f.repo.ListPendingExport(ctx, "mock", cte.DocumentFilter{}, ""); err == nil {
 		t.Error("ListPendingExport without a kind should fail")
 	}
