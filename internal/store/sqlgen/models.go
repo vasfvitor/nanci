@@ -24,6 +24,27 @@ type Company struct {
 	Uf                 string
 }
 
+type CompanyCteDocument struct {
+	RelationID       string
+	CompanyID        string
+	CteDocumentID    string
+	CompanyRole      string
+	Papeis           string
+	VisibilityReason string
+	FirstSeenNsu     sql.NullInt64
+	LastSeenNsu      sql.NullInt64
+	FirstSyncedAt    string
+	LastSyncedAt     string
+}
+
+type CompanyCteExportMark struct {
+	CompanyID     string
+	CteDocumentID string
+	ExportKind    string
+	ExportedHash  string
+	ExportedAt    string
+}
+
 type CompanyDocument struct {
 	RelationID       string
 	CompanyID        string
@@ -90,6 +111,89 @@ type Credential struct {
 	InspectedAt       sql.NullString
 	CreatedAt         string
 	UpdatedAt         string
+}
+
+type CteDocument struct {
+	ID                  string
+	ChaveAcesso         string
+	TpAmb               string
+	Modelo              string
+	TipoDocumento       string
+	Serie               string
+	Numero              string
+	Cfop                string
+	NatOp               string
+	IssueDate           string
+	Competence          string
+	AuthorizedAt        sql.NullString
+	Protocolo           string
+	TpCte               string
+	TpServ              string
+	Modal               string
+	MunIniCodigo        string
+	MunIniNome          string
+	UfIni               string
+	MunFimCodigo        string
+	MunFimNome          string
+	UfFim               string
+	EmitenteCnpj        string
+	EmitenteName        string
+	EmitenteIe          string
+	EmitenteUf          string
+	RemetenteCnpj       string
+	RemetenteName       string
+	DestinatarioCnpj    string
+	DestinatarioName    string
+	ExpedidorCnpj       string
+	ExpedidorName       string
+	RecebedorCnpj       string
+	RecebedorName       string
+	TomadorIndicador    string
+	TomadorCnpj         string
+	TomadorName         string
+	TomadorIe           string
+	TomadorUf           string
+	AutorizadosCnpj     string
+	NfeChaves           string
+	TotalValue          int64
+	ReceivableValue     int64
+	IcmsValue           int64
+	TotTribValue        int64
+	CargaValue          int64
+	ProdutoPredominante string
+	Situacao            string
+	LayoutVersion       string
+	RawHash             string
+	ParseWarnings       sql.NullString
+	CreatedAt           string
+	UpdatedAt           string
+}
+
+type CteEvent struct {
+	ID            string
+	CteDocumentID sql.NullString
+	ChaveAcesso   string
+	TpAmb         string
+	COrgao        string
+	TpEvento      string
+	Type          string
+	NSeqEvento    int64
+	EventAt       sql.NullString
+	RegisteredAt  sql.NullString
+	Registered    int64
+	CStat         string
+	XMotivo       string
+	Protocolo     string
+	AutorCnpj     string
+	Description   string
+	Justificativa string
+	Observacao    string
+	Correcao      string
+	CondicaoUso   string
+	RawHash       string
+	ParseWarnings sql.NullString
+	CreatedAt     string
+	UpdatedAt     string
 }
 
 type Document struct {

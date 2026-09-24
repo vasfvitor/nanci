@@ -661,3 +661,93 @@ func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 		t.Fatalf("exec %q: %v", query, err)
 	}
 }
+
+func TestMigration015AddsCTeTables(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 14); err != nil {
+		t.Fatalf("migrate to version 14: %v", err)
+	}
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+
+	cteTables := []string{"cte_documents", "company_cte_documents", "cte_events", "company_cte_export_marks"}
+	countTables := func() int {
+		t.Helper()
+		var n int
+		err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM sqlite_master
+			WHERE type = 'table' AND name IN (?, ?, ?, ?)
+		`, cteTables[0], cteTables[1], cteTables[2], cteTables[3]).Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 15); err != nil {
+		t.Fatalf("migrate to version 15: %v", err)
+	}
+	if n := countTables(); n != len(cteTables) {
+		t.Errorf("CT-e tables after up = %d, want %d", n, len(cteTables))
+	}
+
+	insertDocument := `
+		INSERT INTO cte_documents (id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op,
+			issue_date, competence, protocolo, tp_cte, tp_serv, modal,
+			mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name,
+			destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
+			tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
+			produto_predominante, situacao, layout_version, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '1', '57', 'cte', '1', '101', '6353', '', ?, '2026-09', '', '0', '0', '01',
+			'', '', 'SP', '', '', 'RJ', '12345678000195', 'Transportadora', '', 'SP', '', '', '', '', '', '', '', '',
+			'3', '70860312000150', 'Company', '', 'RJ', '', ?, '4.00', ?, ?, ?)
+	`
+	mustExec(t, db, insertDocument, "doc-1", "35260912345678000195570010000001011123456784", now, "autorizada", "hash-1", now, now)
+	if _, err := db.ExecContext(ctx, insertDocument, "doc-2", "35260912345678000195570010000001021234567891", now, "autorizado", "hash-2", now, now); err == nil {
+		t.Error("cte_documents accepted situacao 'autorizado', want a CHECK failure")
+	}
+	mustExec(t, db, `
+		INSERT INTO company_cte_documents (relation_id, company_id, cte_document_id, company_role, papeis,
+			visibility_reason, first_synced_at, last_synced_at)
+		VALUES ('rel-1', 'comp-1', 'doc-1', 'tomador', 'tomador,destinatario', 'exact_tomador', ?, ?)
+	`, now, now)
+	var autorizados, nfeChaves string
+	if err := db.QueryRowContext(ctx, `SELECT autorizados_cnpj, nfe_chaves FROM cte_documents WHERE id = 'doc-1'`).Scan(&autorizados, &nfeChaves); err != nil {
+		t.Fatal(err)
+	}
+	if autorizados != "" || nfeChaves != "" {
+		t.Errorf("default (autorizados_cnpj, nfe_chaves) = (%q, %q), want empty", autorizados, nfeChaves)
+	}
+
+	if _, err := provider.DownTo(ctx, 14); err != nil {
+		t.Fatalf("migrate down to version 14: %v", err)
+	}
+	if n := countTables(); n != 0 {
+		t.Errorf("CT-e tables after down = %d, want 0", n)
+	}
+	var companies int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM companies`).Scan(&companies); err != nil {
+		t.Fatal(err)
+	}
+	if companies != 1 {
+		t.Errorf("companies after down = %d, want 1", companies)
+	}
+}
