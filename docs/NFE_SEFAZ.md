@@ -161,7 +161,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `014` e `016` em `internal/store/migrations_v2/`:
+Migrações `007` a `016` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -171,6 +171,7 @@ Migrações `007` a `014` e `016` em `internal/store/migrations_v2/`:
 - `012`: indexa `company_nfe_documents` por nota, para a redefinição de NF-e.
 - `013`: renomeia `nfe_manifestations` para `nfe_manifestacoes` e o índice `idx_company_nfe_documents_viewed` para `idx_company_nfe_documents_viewed_at`, e recria `sync_requests` com o mesmo `CHECK` de origem das outras tabelas de sincronização.
 - `014`: remove `companies.initial_sync_completed_at`. A carga inicial da NFS-e, mostrada na lista de empresas e usada pela trava da política inicial no desktop, passa a vir só de `company_sync_sources`.
+- `015`: cria as tabelas de CT-e, descritas em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 - `016`: adiciona `tp_amb` (`1`, `2` ou vazio) a `nfe_documents` e `nfe_events`. As notas existentes recebem o ambiente da empresa que as vê, que até então não podia mudar depois da primeira sincronização de NF-e; os eventos recebem o da nota de mesma chave. Notas que nenhuma empresa vê e eventos sem nota ficam vazios.
 
 Tabelas de NF-e:
@@ -186,13 +187,11 @@ O estado da manifestação em `company_nfe_documents` é derivado dos eventos re
 ## Fora do escopo
 
 - NFC-e (modelo 65), NFCom, NF3e e CF-e SAT.
-- CT-e: próxima etapa.
 - Importação de XML avulso.
 - Recuperar notas emitidas pela própria empresa.
 
 ## Próximos passos
 
-- CT-e pela mesma interface `Source` (`CTeDistribuicaoDFe`), com tabelas e tela próprias.
 - Importação de XML avulso.
 
 ## Atribuição

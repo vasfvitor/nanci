@@ -4,7 +4,7 @@
 
 # Nanci
 
-Aplicativo desktop e de linha de comando (CLI) Open Source para baixar Notas Fiscais de Serviços Eletrônicas (NFS-e) diretamente do Ambiente de Dados Nacional (ADN) e NF-e (modelo 55) da distribuição DF-e da SEFAZ, utilizando seu Certificado Digital A1.
+Aplicativo desktop e de linha de comando (CLI) Open Source para baixar Notas Fiscais de Serviços Eletrônicas (NFS-e) diretamente do Ambiente de Dados Nacional (ADN) NF-e (modelo 55) e CT-e (modelos 57, 67 e 64) da distribuição DF-e da SEFAZ, utilizando seu Certificado Digital A1.
 
 <p align="center">
   <img src="docs/screenshots/empresas-dark.png" alt="Nanci Tela Empresas" width="90%">
@@ -27,11 +27,12 @@ Toda a operação ocorre localmente na sua máquina (Local-First).
 - Suporta cadastro de múltiplas empresas e credenciais A1 (PFX/P12).
 - Baixa as NF-e (modelo 55) recebidas pela empresa na distribuição DF-e do Ambiente Nacional da SEFAZ, respeitando o limite de consultas por hora.
 - Registra a Manifestação do Destinatário da NF-e: Ciência da Operação em lote e manifestações conclusivas nota a nota, sempre com confirmação explícita.
+- Baixa os CT-e em que a empresa é tomadora, remetente, destinatária, expedidora, recebedora ou autorizada (CT-e, CT-e OS, GTV-e e CT-e Simplificado), com os eventos, pela distribuição DF-e do Ambiente Nacional da SEFAZ. Guarda as chaves das NF-e transportadas, para achar o CT-e do frete de uma nota. Detalhes em [docs/CTE_SEFAZ.md](docs/CTE_SEFAZ.md).
 
 ## O que o Nanci NÃO faz?
 
-- **Não usa portal web municipal**: A consulta ocorre exclusivamente na infraestrutura nacional (ADN para NFS-e, Ambiente Nacional da SEFAZ para NF-e).
-- **Não baixa NFC-e, CT-e, NFCom, NF3e nem CF-e SAT**, e não importa XML avulso.
+- **Não usa portal web municipal**: A consulta ocorre exclusivamente na infraestrutura nacional (ADN para NFS-e, Ambiente Nacional da SEFAZ para NF-e e CT-e).
+- **Não baixa NFC-e, MDF-e, NFCom, NF3e nem CF-e SAT**, e não importa XML avulso.
 - **Não faz scraping ou usa automação de navegador**: Não resolve CAPTCHAs nem simula navegação.
 - **Não envia seus XMLs ou Certificados para servidores de terceiros**: A comunicação ocorre apenas entre sua máquina e o Governo.
 - **Não garante que notas emitidas pela sua própria empresa apareçam**: O ADN possui regras de distribuição estritas. Não utilize o app como garantidor absoluto de notas emitidas. Veja a [FAQ de documentos vazios](website/content/docs/faq.md).

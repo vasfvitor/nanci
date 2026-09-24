@@ -30,9 +30,9 @@ Para desenvolvimento ou uso avançado em automações recorrentes, o Nanci carre
 NANCI_CERT_PASSWORD=senha-super-secreta
 ```
 
-## Uso do Certificado com a SEFAZ (NF-e)
+## Uso do Certificado com a SEFAZ (NF-e e CT-e)
 
-O mesmo certificado A1 cadastrado para a NFS-e é usado na distribuição de NF-e e na Manifestação do Destinatário. Pontos específicos do Ambiente Nacional da SEFAZ:
+O mesmo certificado A1 cadastrado para a NFS-e é usado na distribuição de NF-e, na Manifestação do Destinatário e na distribuição de CT-e. Não é preciso outro certificado nem outra configuração. Os hosts do Ambiente Nacional são `www1.nfe.fazenda.gov.br`, `www.nfe.fazenda.gov.br` e `hom1.nfe.fazenda.gov.br` para a NF-e, e `www1.cte.fazenda.gov.br` (produção) e `hom1.cte.fazenda.gov.br` (homologação) para o CT-e. Pontos específicos do Ambiente Nacional da SEFAZ:
 
 - **Renegociação TLS**: os servidores da SEFAZ só pedem o certificado do cliente depois do primeiro handshake, renegociando a conexão. O Nanci permite essa renegociação (TLS 1.2, HTTP/1.1); nada precisa ser configurado.
 - **Cadeias públicas**: os certificados dos servidores da SEFAZ são emitidos por autoridades públicas já confiáveis no sistema operacional. Não é preciso instalar raízes ICP-Brasil, e a verificação do servidor nunca é desligada.
@@ -40,7 +40,7 @@ O mesmo certificado A1 cadastrado para a NFS-e é usado na distribuição de NF-
 - **Assinatura de eventos**: as manifestações são assinadas com a chave privada do certificado, que precisa ser RSA (como nos A1 ICP-Brasil).
 - **Senha por operação**: a senha é pedida uma vez por operação. Na Ciência da Operação em lote, uma única senha assina todos os lotes. O pedido informa a finalidade, por exemplo "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)"; no desktop ela aparece no diálogo de senha. `NANCI_CERT_PASSWORD` também vale para esses comandos.
 
-O comando `nanci nfe testar-conexao --cnpj <CNPJ>` carrega o certificado e testa o TLS com a SEFAZ sem consumir consultas. Veja [NFE_SEFAZ.md](NFE_SEFAZ.md).
+Os comandos `nanci nfe testar-conexao --cnpj <CNPJ>` e `nanci cte testar-conexao --cnpj <CNPJ>` carregam o certificado e testam o TLS com o host de distribuição de cada serviço sem consumir consultas. Veja [NFE_SEFAZ.md](NFE_SEFAZ.md) e [CTE_SEFAZ.md](CTE_SEFAZ.md).
 
 ## Cuidados Importantes de Segurança
 
