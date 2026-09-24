@@ -93,7 +93,7 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if summary.Interrupted != "" {
 				_, _ = fmt.Fprintf(out, "Aviso: o envio foi interrompido (%s). As NF-e não enviadas podem ser enviadas de novo.\n", summary.Interrupted)
 			}
-			return nil
+			return nfeOutcomesError(summary.Outcomes, summary.Interrupted)
 		},
 	}
 	cmd.Flags().StringSliceVar(&chaveFlags, "chave", nil, "Chave de acesso da NF-e (pode repetir)")
@@ -153,16 +153,36 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
 			}
-			return nil
+			return nfeOutcomesError([]app.NFeEventOutcome{outcome}, "")
 		},
 	}
 	cmd.Flags().StringVar(&chaveFlag, "chave", "", "Chave de acesso da NF-e")
-	cmd.Flags().StringVar(&tipoFlag, "tipo", "", "Tipo: confirmacao, desconhecimento ou nao-realizada")
-	cmd.Flags().StringVar(&justificativaFlag, "justificativa", "", "Justificativa (15 a 255 caracteres), obrigatória para nao-realizada")
+	cmd.Flags().StringVar(&tipoFlag, "tipo", "", "Tipo: confirmacao, desconhecimento ou nao_realizada")
+	cmd.Flags().StringVar(&justificativaFlag, "justificativa", "", "Justificativa (15 a 255 caracteres), obrigatória para nao_realizada")
 	cmd.Flags().BoolVar(&confirmarFlag, "confirmar", false, "Envia o evento à SEFAZ; sem esta flag nada é enviado")
 	_ = cmd.MarkFlagRequired("chave")
 	_ = cmd.MarkFlagRequired("tipo")
 	return cmd
+}
+
+// nfeOutcomesError makes ciencia and manifestar exit non-zero when an event
+// was not registered (rejeitada or nao_enviada) or the sending was
+// interrupted. The caller prints the outcome table first.
+func nfeOutcomesError(outcomes []app.NFeEventOutcome, interrupted string) error {
+	failed := 0
+	for _, o := range outcomes {
+		if o.Status != nfe.ManifestacaoStatusRegistrada && o.Status != nfe.ManifestacaoStatusJaRegistrada {
+			failed++
+		}
+	}
+	switch {
+	case interrupted != "":
+		return fmt.Errorf("erro: envio interrompido, %d de %d evento(s) sem registro", failed, len(outcomes))
+	case failed > 0:
+		return fmt.Errorf("erro: %d de %d evento(s) sem registro", failed, len(outcomes))
+	default:
+		return nil
+	}
 }
 
 // printNFeManifestacaoPlan prints what `nfe manifestar --confirmar` would

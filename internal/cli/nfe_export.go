@@ -60,7 +60,7 @@ func newNFeExportZipCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&competenceFlag, "competencia", "m", "", "Mês de emissão (ex: 2026-09)")
-	cmd.Flags().StringVar(&papelFlag, "papel", "", "Papel da empresa (destinatario, emitente, transportador, autorizado, none)")
+	cmd.Flags().StringVarP(&papelFlag, "papel", "p", "", "Papel da empresa (destinatario, emitente, transportador, autorizado, none)")
 	cmd.Flags().StringSliceVar(&chaveFlags, "chave", nil, "Chave de acesso da NF-e (pode repetir)")
 	cmd.Flags().BoolVar(&incluirResumosFlag, "incluir-resumos", false, "Inclui os resumos (resNFe), que não são o documento fiscal")
 	cmd.Flags().BoolVar(&incrementalFlag, "incremental", false, "Exportar apenas NF-e não exportadas (ou modificadas)")

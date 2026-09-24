@@ -194,8 +194,8 @@ func TestNFeManifestar_ValidatesJustificativa(t *testing.T) {
 		name string
 		args []string
 	}{
-		{"nao-realizada without justificativa", []string{"--tipo", "nao-realizada"}},
-		{"nao-realizada with a short justificativa", []string{"--tipo", "nao-realizada", "--justificativa", "curta"}},
+		{"nao_realizada without justificativa", []string{"--tipo", "nao_realizada"}},
+		{"nao_realizada with a short justificativa", []string{"--tipo", "nao_realizada", "--justificativa", "curta"}},
 		{"confirmacao with justificativa", []string{"--tipo", "confirmacao", "--justificativa", "mercadoria não recebida no prazo"}},
 	}
 	for _, tc := range tests {
@@ -223,6 +223,7 @@ func TestNFeManifestacaoDryRunSendsNothing(t *testing.T) {
 		}
 	}
 
+	// The hyphenated nao-realizada stays accepted as an alias.
 	err := env.run("nfe", "manifestar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc,
 		"--tipo", "nao-realizada", "--justificativa", "mercadoria devolvida ao emitente")
 	if err != nil {
@@ -269,7 +270,7 @@ func TestNFeManifestarDryRunRefusesSecondConclusive(t *testing.T) {
 	for _, args := range [][]string{
 		{"--tipo", "confirmacao"},
 		{"--tipo", "desconhecimento"},
-		{"--tipo", "nao-realizada", "--justificativa", "mercadoria devolvida ao emitente"},
+		{"--tipo", "nao_realizada", "--justificativa", "mercadoria devolvida ao emitente"},
 	} {
 		err := env.run(append([]string{"nfe", "manifestar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc}, args...)...)
 		const want = "erro: NF-e já possui manifestação conclusiva (Confirmada)"
@@ -300,14 +301,14 @@ func TestNFeList_PrintsColumns(t *testing.T) {
 	}
 	lines := strings.Split(strings.TrimSpace(env.out.String()), "\n")
 	header := strings.Join(strings.Fields(lines[0]), " ")
-	if want := "EMISSÃO CHAVE DE ACESSO PAPEL TIPO SITUAÇÃO EMITENTE NOME EMITENTE VALOR (R$) MANIFESTAÇÃO"; header != want {
+	if want := "EMISSÃO CHAVE DE ACESSO PAPEL COMPLETUDE SITUAÇÃO EMITENTE NOME EMITENTE VALOR (R$) MANIFESTAÇÃO"; header != want {
 		t.Errorf("header = %q, want %q", header, want)
 	}
 
-	// Rows come newest first; the columns after the chave are papel, tipo,
+	// Rows come newest first; the columns after the chave are papel, completude,
 	// situação and, last, manifestação.
 	wantRows := []struct {
-		chave, papel, tipo, situacao, manifestacao string
+		chave, papel, completude, situacao, manifestacao string
 	}{
 		{nfeChaveDenegada, "destinatario", "completa", "denegada", "nenhuma"},
 		{nfeChaveProc, "destinatario", "completa", "autorizada", "ciencia"},
@@ -320,12 +321,46 @@ func TestNFeList_PrintsColumns(t *testing.T) {
 	for i, want := range wantRows {
 		fields := strings.Fields(rows[i])
 		got := []string{fields[1], fields[2], fields[3], fields[4], fields[len(fields)-1]}
-		if strings.Join(got, " ") != strings.Join([]string{want.chave, want.papel, want.tipo, want.situacao, want.manifestacao}, " ") {
+		if strings.Join(got, " ") != strings.Join([]string{want.chave, want.papel, want.completude, want.situacao, want.manifestacao}, " ") {
 			t.Errorf("row %d = %q, want %+v", i, rows[i], want)
 		}
 	}
-	if last := lines[len(lines)-1]; last != "Total de 3 nota(s)." {
+	if last := lines[len(lines)-1]; last != "Total de 3 nota(s) listada(s)." {
 		t.Errorf("footer = %q", last)
+	}
+
+	env.out.Reset()
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--completude", "resumo", "-p", "destinatario"); err != nil {
+		t.Fatalf("list --completude -p: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, nfeChaveCancelada) || strings.Contains(got, nfeChaveProc) || !strings.Contains(got, "Total de 1 nota(s) listada(s).") {
+		t.Errorf("list --completude resumo -p destinatario:\n%s", got)
+	}
+}
+
+func TestNFeOutcomesError(t *testing.T) {
+	registrada := app.NFeEventOutcome{Status: nfe.ManifestacaoStatusRegistrada}
+	jaRegistrada := app.NFeEventOutcome{Status: nfe.ManifestacaoStatusJaRegistrada}
+	rejeitada := app.NFeEventOutcome{Status: nfe.ManifestacaoStatusRejeitada}
+	naoEnviada := app.NFeEventOutcome{Status: app.NFeOutcomeNaoEnviada}
+
+	tests := []struct {
+		name        string
+		outcomes    []app.NFeEventOutcome
+		interrupted string
+		wantErr     bool
+	}{
+		{"all registered", []app.NFeEventOutcome{registrada, jaRegistrada}, "", false},
+		{"one rejected", []app.NFeEventOutcome{registrada, rejeitada}, "", true},
+		{"one not sent", []app.NFeEventOutcome{naoEnviada}, "", true},
+		{"interrupted", []app.NFeEventOutcome{registrada}, "timeout", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := nfeOutcomesError(tc.outcomes, tc.interrupted); (err != nil) != tc.wantErr {
+				t.Errorf("nfeOutcomesError = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
 	}
 }
 
