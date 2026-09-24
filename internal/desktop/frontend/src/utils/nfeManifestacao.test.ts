@@ -4,6 +4,7 @@ import {
   cienciaBlockReason,
   conclusiveBlockReason,
   countOutcomes,
+  noEligibleCienciaMessage,
   validateJustificativa,
 } from './nfeManifestacao'
 
@@ -102,5 +103,20 @@ describe('countOutcomes', () => {
       ])
     ).toEqual({ registrada: 2, ja_registrada: 1, rejeitada: 1, nao_enviada: 2 })
     expect(countOutcomes([])).toEqual({ registrada: 0, ja_registrada: 0, rejeitada: 0, nao_enviada: 0 })
+  })
+})
+
+describe('noEligibleCienciaMessage', () => {
+  it('explains a plan without eligible notes with the first reason', () => {
+    expect(
+      noEligibleCienciaMessage({
+        Eligible: [],
+        Skipped: [{ ChaveAcesso: 'a', Reason: 'NF-e cancelada' }],
+      })
+    ).toBe('Nenhuma nota elegível para ciência. Motivo: NF-e cancelada')
+    expect(noEligibleCienciaMessage({ Eligible: [], Skipped: [] })).toBe(
+      'Nenhuma nota elegível para ciência.'
+    )
+    expect(noEligibleCienciaMessage({ Eligible: [row()], Skipped: [] })).toBeNull()
   })
 })

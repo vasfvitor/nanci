@@ -1,3 +1,6 @@
+import type { NFeStatusResult } from '@/types/desktop'
+import { formatDateTime } from '@/utils/formatters'
+
 export type DeadlineKind = 'ciencia' | 'conclusiva'
 
 // Days left before a deadline at which a chip turns warning, then urgent.
@@ -169,4 +172,28 @@ export function blockedMessage(info: NFeBlockInfo, time: string) {
     default:
       return `Próxima consulta permitida a partir de ${time}`
   }
+}
+
+type NFeStatusCounts = Pick<
+  NFeStatusResult,
+  'PendingCiencia' | 'PendingConclusiva' | 'TotalDestinatario' | 'TotalEmitente' | 'TotalOutros'
+>
+
+// nfePendingCount counts the notes still waiting for a manifestação.
+export function nfePendingCount(status: NFeStatusCounts | null) {
+  return (status?.PendingCiencia ?? 0) + (status?.PendingConclusiva ?? 0)
+}
+
+// nfeNoteCount counts the company's notes in every role.
+export function nfeNoteCount(status: NFeStatusCounts | null) {
+  return (status?.TotalDestinatario ?? 0) + (status?.TotalEmitente ?? 0) + (status?.TotalOutros ?? 0)
+}
+
+// nfeStatusLine sums up the last sync, the NSU cursor and the pendências.
+export function nfeStatusLine(status: NFeStatusResult) {
+  return [
+    `Última sincronização: ${formatDateTime(status.LastSyncAt, 'nunca')}`,
+    `NSU ${status.LastNSU}/${status.MaxNSU ?? '—'}`,
+    `Pendências: ${nfePendingCount(status)}`,
+  ].join(' · ')
 }

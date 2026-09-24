@@ -81,6 +81,14 @@ describe('useNFeManifestacao', () => {
     expect(desktopClient.planNFeCiencia).toHaveBeenCalledWith('123', ['a'])
   })
 
+  it('keeps only the selected notes that can receive ciência as eligible', () => {
+    const store = useNFeDocumentsStore()
+    const blocked = { ...nfeRow('b'), CienciaBlockReason: 'a empresa não é a destinatária' }
+    store.selected = [nfeRow('a'), blocked]
+
+    expect(useNFeManifestacao().eligibleSelection.value.map((row) => row.ChaveAcesso)).toEqual(['a'])
+  })
+
   it('keeps a ciência plan in flight visible across a route remount', async () => {
     const call = deferred<NFeCienciaPlan>()
     vi.mocked(desktopClient.planNFeCiencia).mockReturnValue(call.promise)

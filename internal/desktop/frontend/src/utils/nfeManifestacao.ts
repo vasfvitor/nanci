@@ -1,4 +1,10 @@
-import type { NFeConclusiveTipo, NFeEventOutcome, NFeEventResult, NFeRow } from '@/types/desktop'
+import type {
+  NFeCienciaPlan,
+  NFeConclusiveTipo,
+  NFeEventOutcome,
+  NFeEventResult,
+  NFeRow,
+} from '@/types/desktop'
 
 // The backend decides which manifestação a note can receive and says why
 // not in the row; SEFAZ has the final word on deadlines. The frontend only
@@ -44,4 +50,14 @@ export function countOutcomes(results: readonly NFeEventResult[]): Record<NFeEve
   const counts = { registrada: 0, ja_registrada: 0, rejeitada: 0, nao_enviada: 0 }
   for (const result of results) counts[result.Status || 'nao_enviada']++
   return counts
+}
+
+// noEligibleCienciaMessage explains a ciência plan with no eligible note,
+// or returns null when the plan has one.
+export function noEligibleCienciaMessage(plan: NFeCienciaPlan): string | null {
+  if (plan.Eligible.length > 0) return null
+  const reason = plan.Skipped[0]?.Reason
+  return reason
+    ? `Nenhuma nota elegível para ciência. Motivo: ${reason}`
+    : 'Nenhuma nota elegível para ciência.'
 }

@@ -19,7 +19,7 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
-  wailsErrorCode: (await importOriginal<typeof import('@/platform/wails/client')>()).wailsErrorCode,
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: {
     listCompanies: vi.fn(),
     listCredentials: vi.fn(),
@@ -185,6 +185,6 @@ describe('CompaniesPage sync errors', () => {
   it('reports other sync errors as failures', async () => {
     await clickSync(new Error('boom'))
 
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'negative' }))
+    expect(notify).toHaveBeenCalledWith({ type: 'negative', message: 'Erro na sincronização: boom' })
   })
 })

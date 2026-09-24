@@ -4,10 +4,13 @@ import { useNFeDocuments } from './useNFeDocuments'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
+import { nextTick } from 'vue'
 import type {
+  CompanySummary,
   ExportResult,
   NFeExportResult,
   NFeResetResult,
+  NFeRow,
   NFeStatusResult,
   PullNFeResult,
 } from '@/types/desktop'
@@ -49,6 +52,16 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     CienciaOverdue: 0,
     ...overrides,
   }
+}
+
+function nfeRow(chave: string, fields: Partial<NFeRow> = {}): NFeRow {
+  return {
+    ChaveAcesso: chave,
+    Numero: '1',
+    EmitenteCNPJ: '11222333000181',
+    EmitenteName: 'Fornecedor',
+    ...fields,
+  } as NFeRow
 }
 
 describe('useNFeDocuments', () => {
@@ -266,5 +279,77 @@ describe('useNFeDocuments', () => {
     expect(nfe.exporting.value).toBe(false)
     vi.mocked(desktopClient.exportNFeXML).mockResolvedValue({ OutPath: 'a.xml' } as ExportResult)
     await expect(nfe.exportXML('chave-1')).resolves.toMatchObject({ OutPath: 'a.xml' })
+  })
+
+  it('filters the grid by accent- and case-insensitive text and back to page 1', async () => {
+    const sao = nfeRow('a', { EmitenteName: 'São João Ltda' })
+    const other = nfeRow('b', { Numero: '4321' })
+    const nfe = useNFeDocuments()
+    useNFeDocumentsStore().setRows([sao, other])
+    nfe.pagination.value.page = 3
+
+    expect(nfe.filteredRows.value).toEqual([sao, other])
+    nfe.filterText.value = 'SAO JOAO'
+    await nextTick()
+    expect(nfe.filteredRows.value).toEqual([sao])
+    expect(nfe.pagination.value.page).toBe(1)
+
+    nfe.filterText.value = '432'
+    expect(nfe.filteredRows.value).toEqual([other])
+  })
+
+  it('exports the selected rows, or else the rows the grid shows', async () => {
+    vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue(null)
+    const nfe = useNFeDocuments()
+    nfe.filter.value.CNPJ = '123'
+    useNFeDocumentsStore().setRows([nfeRow('a'), nfeRow('b', { EmitenteName: 'Outro' })])
+    nfe.filterText.value = 'outro'
+
+    await nfe.exportZIP()
+    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
+      expect.objectContaining({ ChavesAcesso: ['b'] })
+    )
+
+    nfe.selected.value = [nfeRow('a')]
+    await nfe.exportZIP()
+    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
+      expect.objectContaining({ ChavesAcesso: ['a'] })
+    )
+  })
+
+  it('keeps a known company selected and falls back to the first', async () => {
+    const companies = [
+      { CNPJ: '111', Name: 'Primeira' },
+      { CNPJ: '222', Name: 'Segunda' },
+    ] as CompanySummary[]
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue(companies)
+    const nfe = useNFeDocuments()
+
+    nfe.filter.value.CNPJ = '222'
+    await nfe.loadCompanies()
+    expect(nfe.filter.value.CNPJ).toBe('222')
+
+    nfe.filter.value.CNPJ = '999'
+    await nfe.loadCompanies()
+    expect(nfe.filter.value.CNPJ).toBe('111')
+  })
+
+  it('derives the company name, counts and status line from the status', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
+      { CNPJ: '123', Name: 'Empresa da lista' } as CompanySummary,
+    ])
+    const nfe = useNFeDocuments()
+    await nfe.loadCompanies()
+    expect(nfe.companyName.value).toContain('Empresa da lista')
+    expect(nfe.statusLine.value).toBe('')
+
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(
+      status({ CompanyName: 'Empresa do status', LastNSU: 5, MaxNSU: 9, PendingCiencia: 1, PendingConclusiva: 2, TotalDestinatario: 3, TotalEmitente: 1 })
+    )
+    await nfe.loadStatus()
+    expect(nfe.companyName.value).toBe('Empresa do status')
+    expect(nfe.pendingCount.value).toBe(3)
+    expect(nfe.noteCount.value).toBe(4)
+    expect(nfe.statusLine.value).toContain('NSU 5/9 · Pendências: 3')
   })
 })

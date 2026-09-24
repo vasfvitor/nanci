@@ -20,6 +20,22 @@ describe('useNotify', () => {
     expect(notify).toHaveBeenCalledWith({ type: 'negative', message: 'Erro ao buscar: boom' })
   })
 
+  it('warns about canceled, running and blocked syncs and reports other failures', () => {
+    const { notifySyncError } = useNotify()
+
+    notifySyncError('Erro na sincronização', new Error('ERR_CANCELED: senha não informada'))
+    notifySyncError('Erro na sincronização', new Error('ERR_SYNC_RUNNING: em andamento'))
+    notifySyncError('Erro na sincronização', new Error('ERR_SEFAZ_BLOCKED: bloqueado'))
+    notifySyncError('Erro na sincronização', new Error('boom'))
+
+    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'warning', message: 'Sincronização cancelada.' },
+      { type: 'warning', message: 'Sincronização já em andamento para esta empresa.' },
+      { type: 'warning', message: 'Consultas bloqueadas no momento. Aguarde o horário indicado.' },
+      { type: 'negative', message: 'Erro na sincronização: boom' },
+    ])
+  })
+
   it('copies access keys without the NFS prefix', async () => {
     vi.mocked(copyToClipboard).mockResolvedValue(undefined)
     await useNotify().copyChave('NFS123')

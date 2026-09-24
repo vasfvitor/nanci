@@ -1,8 +1,10 @@
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
 import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeConclusiveTipo } from '@/types/desktop'
+import { cienciaBlockReason } from '@/utils/nfeManifestacao'
 
 // useNFeManifestacao sends manifestação do destinatário events. The calls
 // can outlive the page, so in-flight markers and results live in the
@@ -12,6 +14,9 @@ export function useNFeManifestacao() {
   const { selected, pending, pendingLoading, planningCiencia, cienciaInFlight, manifestacaoInFlight } =
     storeToRefs(store)
   const { loadPending, refresh, refreshNote } = useNFeLoaders()
+
+  // eligibleSelection is the selected notes that can receive ciência.
+  const eligibleSelection = computed(() => selected.value.filter((row) => !cienciaBlockReason(row)))
 
   // planCiencia asks the backend which notes a ciência would send. It sends
   // nothing and asks for no password. It returns null while another plan is
@@ -77,6 +82,7 @@ export function useNFeManifestacao() {
     planningCiencia,
     cienciaInFlight,
     manifestacaoInFlight,
+    eligibleSelection,
     isChaveBusy: (chaveAcesso: string) => store.isChaveBusy(chaveAcesso),
     loadPending,
     planCiencia,

@@ -7,7 +7,8 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { CompanySummary } from '@/types/desktop'
-import { parseDate } from '@/utils/formatters'
+import { formatTime, normalizeText, parseDate } from '@/utils/formatters'
+import { blockedMessage, nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
 
 export type NFeExportZIPOptions = {
   includeResumos?: boolean
@@ -22,6 +23,39 @@ export function useNFeDocuments() {
     storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
   const pagination = useTablePagination()
+  const filterText = ref('')
+
+  // searchIndex normalizes the searchable fields once per result set, not on
+  // every keystroke.
+  const searchIndex = computed(() =>
+    rows.value.map((row) => ({
+      row,
+      fields: [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName].map(normalizeText),
+    }))
+  )
+
+  // filteredRows is what the grid shows: the search result narrowed by the
+  // accent- and case-insensitive filterText.
+  const filteredRows = computed(() => {
+    const query = normalizeText(filterText.value)
+    if (!query) return rows.value
+    return searchIndex.value
+      .filter(({ fields }) => fields.some((field) => field.includes(query)))
+      .map(({ row }) => row)
+  })
+
+  watch(filterText, () => {
+    pagination.value.page = 1
+  })
+
+  const companyName = computed(() => {
+    if (status.value?.CompanyName) return status.value.CompanyName
+    const option = companyOptions.value.find((item) => item.value === filter.value.CNPJ)
+    return option?.label ?? ''
+  })
+  const pendingCount = computed(() => nfePendingCount(status.value))
+  const noteCount = computed(() => nfeNoteCount(status.value))
+  const statusLine = computed(() => (status.value ? nfeStatusLine(status.value) : ''))
 
   const isSyncing = computed(
     () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'nfe')
@@ -59,9 +93,19 @@ export function useNFeDocuments() {
     return until && until.getTime() > now.value ? until : null
   })
 
+  const blockedText = computed(() => {
+    if (!syncBlockedUntil.value || !status.value) return ''
+    return blockedMessage(status.value, formatTime(syncBlockedUntil.value))
+  })
+
+  // loadCompanies lists the companies and keeps a known one selected,
+  // falling back to the first.
   async function loadCompanies(): Promise<CompanySummary[]> {
     const companies = await desktopClient.listCompanies()
     companyOptions.value = companies.map(companyOption)
+    if (!companyOptions.value.some((option) => option.value === filter.value.CNPJ)) {
+      filter.value.CNPJ = companyOptions.value[0]?.value ?? ''
+    }
     return companies
   }
 
@@ -109,10 +153,19 @@ export function useNFeDocuments() {
     }
   }
 
-  // exportZIP exports exactly the given chaves, the rows the user sees or
-  // selected. Competence and Role are left empty: the grid may hold the
-  // result of an earlier search, and an empty list would export everything.
-  async function exportZIP(chavesAcesso: string[], options: NFeExportZIPOptions = {}) {
+  // exportChaves are the chaves a ZIP export takes by default: the selected
+  // rows, or else every row the grid shows.
+  const exportChaves = computed(() =>
+    (selected.value.length > 0 ? selected.value : filteredRows.value).map((row) => row.ChaveAcesso)
+  )
+
+  // exportZIP exports exactly the given chaves, by default exportChaves.
+  // Competence and Role are left empty: the grid may hold the result of an
+  // earlier search, and an empty list would export everything.
+  async function exportZIP(
+    chavesAcesso: string[] = exportChaves.value,
+    options: NFeExportZIPOptions = {}
+  ) {
     const cnpj = store.listInput.CNPJ
     if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
     exporting.value = true
@@ -139,10 +192,17 @@ export function useNFeDocuments() {
     status,
     activeTab,
     pagination,
+    filterText,
+    filteredRows,
     companyOptions,
+    companyName,
+    pendingCount,
+    noteCount,
+    statusLine,
     isSyncing,
     isResetting,
     syncBlockedUntil,
+    blockedText,
     loadCompanies,
     search,
     loadStatus,

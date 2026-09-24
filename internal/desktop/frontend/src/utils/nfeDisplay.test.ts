@@ -14,15 +14,19 @@ import {
   manifestacaoLabel,
   nfeEventColor,
   nfeEventLabel,
+  nfeNoteCount,
+  nfePendingCount,
   nfeRoleColor,
   nfeRoleLabel,
   outcomeColor,
   outcomeLabel,
   nfeRoleFilterOptions,
+  nfeStatusLine,
   situacaoColor,
   situacaoFilterOptions,
   situacaoLabel,
 } from './nfeDisplay'
+import type { NFeStatusResult } from '@/types/desktop'
 
 describe('nfeDisplay', () => {
   it('maps situação values', () => {
@@ -200,5 +204,31 @@ describe('nfeDisplay', () => {
     expect(blockedMessage({ ...info, BlockedReason: '' }, '14:32')).toBe(
       'Próxima consulta permitida a partir de 14:32'
     )
+  })
+
+  it('counts pendências and notes from the status', () => {
+    const status = {
+      PendingCiencia: 2,
+      PendingConclusiva: 3,
+      TotalDestinatario: 4,
+      TotalEmitente: 1,
+      TotalOutros: 2,
+    }
+    expect(nfePendingCount(status)).toBe(5)
+    expect(nfeNoteCount(status)).toBe(7)
+    expect(nfePendingCount(null)).toBe(0)
+    expect(nfeNoteCount(null)).toBe(0)
+  })
+
+  it('sums up the status in one line', () => {
+    const status = {
+      LastSyncAt: null,
+      LastNSU: 10,
+      MaxNSU: null,
+      PendingCiencia: 1,
+      PendingConclusiva: 1,
+    } as unknown as NFeStatusResult
+    expect(nfeStatusLine(status)).toBe('Última sincronização: nunca · NSU 10/— · Pendências: 2')
+    expect(nfeStatusLine({ ...status, MaxNSU: 12 })).toContain('NSU 10/12')
   })
 })

@@ -130,7 +130,7 @@ import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useConsoleStore } from '@/stores/console'
 import { useCompanies } from '@/composables/useCompanies'
-import { wailsErrorCode } from '@/platform/wails/client'
+import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
 import type { CompanySummary } from '@/types/desktop'
 
@@ -139,6 +139,7 @@ const router = useRouter()
 const consoleStore = useConsoleStore()
 const { debugEnabled } = storeToRefs(consoleStore)
 const companiesApi = useCompanies()
+const { notifySyncError } = useNotify()
 const { companies, credentials, loading, isSyncingCompany } = companiesApi
 const showAddDialog = ref(false)
 const selectedCredentials = ref<Record<string, string>>({})
@@ -228,14 +229,7 @@ async function syncCompany(cnpj: string) {
     })
     await loadCompanies()
   } catch (err) {
-    const code = wailsErrorCode(err)
-    if (code === 'canceled') {
-      $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
-    } else if (code === 'sync_running') {
-      $q.notify({ type: 'warning', message: 'Sincronização já em andamento para esta empresa.' })
-    } else {
-      $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + String(err) })
-    }
+    notifySyncError('Erro na sincronização', err)
   }
 }
 

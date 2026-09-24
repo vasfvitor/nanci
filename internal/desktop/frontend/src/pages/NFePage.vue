@@ -361,13 +361,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
 import CompetencePicker from '../components/CompetencePicker.vue'
-import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
+import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
+import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
@@ -386,17 +386,13 @@ import {
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
-  formatDateTime,
   formatNFeNumber,
-  formatTime,
-  normalizeText,
 } from '@/utils/formatters'
 import {
   ambienteColor,
   ambienteLabel,
   badgeColor,
   badgeTextColor,
-  blockedMessage,
   completenessColor,
   completenessLabel,
   completenessFilterOptions,
@@ -412,30 +408,47 @@ import {
   situacaoLabel,
   situacaoFilterOptions,
 } from '@/utils/nfeDisplay'
-import { cienciaBlockReason, conclusiveBlockReason, countOutcomes } from '@/utils/nfeManifestacao'
+import {
+  cienciaBlockReason,
+  conclusiveBlockReason,
+  countOutcomes,
+  noEligibleCienciaMessage,
+} from '@/utils/nfeManifestacao'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
 const manifestacao = useNFeManifestacao()
-const { notifyError, copyChave } = useNotify()
+const { notifyError, notifySyncError, copyChave } = useNotify()
 
 const {
   filter,
-  rows,
   selected,
   loading,
   exporting,
   status,
   activeTab,
   pagination,
+  filterText,
+  filteredRows,
   companyOptions,
+  companyName,
+  pendingCount,
+  noteCount,
+  statusLine,
   isSyncing,
   isResetting,
   syncBlockedUntil,
+  blockedText,
 } = nfe
-const { pending, pendingLoading, planningCiencia, cienciaInFlight, isChaveBusy } = manifestacao
+const {
+  pending,
+  pendingLoading,
+  planningCiencia,
+  cienciaInFlight,
+  eligibleSelection,
+  isChaveBusy,
+} = manifestacao
 
-const filterText = ref('')
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
 
@@ -474,54 +487,6 @@ const columns: QTableColumn<NFeRow>[] = [
   { name: 'papel', label: 'Papel', field: 'CompanyRole', align: 'left' },
 ]
 
-// searchIndex normalizes the searchable fields once per result set, not on
-// every keystroke.
-const searchIndex = computed(() =>
-  rows.value.map((row) => ({
-    row,
-    fields: [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName].map(normalizeText),
-  }))
-)
-
-const filteredRows = computed(() => {
-  const query = normalizeText(filterText.value)
-  if (!query) return rows.value
-  return searchIndex.value
-    .filter(({ fields }) => fields.some((field) => field.includes(query)))
-    .map(({ row }) => row)
-})
-
-const eligibleSelection = computed(() => selected.value.filter((row) => !cienciaBlockReason(row)))
-
-const pendingCount = computed(
-  () => (status.value?.PendingCiencia ?? 0) + (status.value?.PendingConclusiva ?? 0)
-)
-
-const statusLine = computed(() => {
-  if (!status.value) return ''
-  const maxNSU = status.value.MaxNSU ?? '—'
-  return [
-    `Última sincronização: ${formatDateTime(status.value.LastSyncAt, 'nunca')}`,
-    `NSU ${status.value.LastNSU}/${maxNSU}`,
-    `Pendências: ${pendingCount.value}`,
-  ].join(' · ')
-})
-
-const blockedText = computed(() => {
-  if (!syncBlockedUntil.value || !status.value) return ''
-  return blockedMessage(status.value, formatTime(syncBlockedUntil.value))
-})
-
-const companyName = computed(() => {
-  if (status.value?.CompanyName) return status.value.CompanyName
-  const option = companyOptions.value.find((item) => item.value === filter.value.CNPJ)
-  return option?.label ?? ''
-})
-
-watch(filterText, () => {
-  pagination.value.page = 1
-})
-
 onMounted(() => {
   void loadCompanies()
 })
@@ -529,10 +494,6 @@ onMounted(() => {
 async function loadCompanies() {
   try {
     await nfe.loadCompanies()
-    const known = companyOptions.value.some((option) => option.value === filter.value.CNPJ)
-    if (!known) {
-      filter.value.CNPJ = companyOptions.value[0]?.value ?? ''
-    }
     if (filter.value.CNPJ) {
       await refreshAll()
     }
@@ -584,29 +545,16 @@ async function syncNFe() {
       message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`,
     })
   } catch (error) {
-    const code = wailsErrorCode(error)
-    if (code === 'canceled') {
-      $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
-    } else if (code === 'sync_running') {
-      $q.notify({ type: 'warning', message: 'Sincronização já em andamento para esta empresa.' })
-    } else if (code === 'sefaz_blocked') {
-      $q.notify({ type: 'warning', message: 'Consultas bloqueadas no momento. Aguarde o horário indicado.' })
-    } else {
-      notifyError('Erro na sincronização da NF-e', error)
-    }
+    notifySyncError('Erro na sincronização da NF-e', error)
   }
 }
 
 function confirmResetNFe() {
   if (!filter.value.CNPJ) return
-  const notes =
-    (status.value?.TotalDestinatario ?? 0) +
-    (status.value?.TotalEmitente ?? 0) +
-    (status.value?.TotalOutros ?? 0)
   $q.dialog({
     title: 'Redefinir NF-e',
     message:
-      `Remove as ${notes} NF-e de ${companyName.value}, com seus eventos e marcas de exportação, ` +
+      `Remove as ${noteCount.value} NF-e de ${companyName.value}, com seus eventos e marcas de exportação, ` +
       'e reinicia a sincronização NF-e desde o NSU 0. Notas vistas por outra empresa continuam para ela. ' +
       'O histórico das manifestações enviadas é mantido, e as manifestações registradas na SEFAZ não são afetadas. ' +
       'Depois disso o ambiente da empresa pode ser alterado.',
@@ -654,14 +602,9 @@ async function startCiencia(chavesAcesso: string[]) {
   }
   if (!plan) return
 
-  if (plan.Eligible.length === 0) {
-    const reason = plan.Skipped[0]?.Reason
-    $q.notify({
-      type: 'warning',
-      message: reason
-        ? `Nenhuma nota elegível para ciência. Motivo: ${reason}`
-        : 'Nenhuma nota elegível para ciência.',
-    })
+  const noEligible = noEligibleCienciaMessage(plan)
+  if (noEligible) {
+    $q.notify({ type: 'warning', message: noEligible })
     return
   }
 
@@ -781,13 +724,10 @@ async function exportXML(chaveAcesso: string) {
   }
 }
 
-// exportZIP exports the selected rows, or else every row the grid shows
-// after the filters and the text search.
+// exportZIP exports the selected rows, or else every row the grid shows.
 async function exportZIP() {
-  const target = selected.value.length > 0 ? selected.value : filteredRows.value
-  const chavesAcesso = target.map((row) => row.ChaveAcesso)
   try {
-    const result = await nfe.exportZIP(chavesAcesso)
+    const result = await nfe.exportZIP()
     if (!result) return
     const skipped =
       result.SkippedResumos > 0
