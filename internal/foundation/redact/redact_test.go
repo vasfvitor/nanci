@@ -62,9 +62,19 @@ func TestMaskXMLIdentifiers(t *testing.T) {
 			want: `<emit><xNome>ÁG*********ÃO</xNome><xFant>Ót*** Ê</xFant></emit>`,
 		},
 		{
+			name: "CT-e resumo",
+			in:   `<resCTe><chCTe>35260911222333000181570010000012341123456787</chCTe><rem><CNPJ>11222333000181</CNPJ></rem><toma4><xNome>TOMADORA FICTICIA</xNome></toma4><infDoc><infNFe><chave>35260970860312000150550010000009871123456780</chave></infNFe></infDoc><xMotivo>Documento localizado</xMotivo></resCTe>`,
+			want: `<resCTe><chCTe>35****************************************87</chCTe><rem><CNPJ>11**********81</CNPJ></rem><toma4><xNome>TO*************IA</xNome></toma4><infDoc><infNFe><chave>35****************************************80</chave></infNFe></infDoc><xMotivo>Documento localizado</xMotivo></resCTe>`,
+		},
+		{
+			name: "chave with attributes and prefix",
+			in:   `<chave versao="1.00">35260970860312000150550010000009871123456780</chave><ns2:chave>35260970860312000150550010000009871123456780</ns2:chave>`,
+			want: `<chave versao="1.00">35****************************************80</chave><ns2:chave>35****************************************80</ns2:chave>`,
+		},
+		{
 			name: "similar names and values are kept",
-			in:   `<IEST>123456</IEST><IMunic>1</IMunic><CNPJBase>12345678</CNPJBase><vServ>10.00</vServ><cStat>138</cStat>`,
-			want: `<IEST>123456</IEST><IMunic>1</IMunic><CNPJBase>12345678</CNPJBase><vServ>10.00</vServ><cStat>138</cStat>`,
+			in:   `<IEST>123456</IEST><IMunic>1</IMunic><CNPJBase>12345678</CNPJBase><vServ>10.00</vServ><cStat>138</cStat><chaveTeste>35260970860312000150550010000009871123456780</chaveTeste><chCTeRef>abc12345</chCTeRef>`,
+			want: `<IEST>123456</IEST><IMunic>1</IMunic><CNPJBase>12345678</CNPJBase><vServ>10.00</vServ><cStat>138</cStat><chaveTeste>35260970860312000150550010000009871123456780</chaveTeste><chCTeRef>abc12345</chCTeRef>`,
 		},
 	}
 	for _, tt := range tests {

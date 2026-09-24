@@ -9,7 +9,7 @@ import (
 // masked only when exported (see docs/specs/2026-06-20-diagnostics-and-secure-logging-design.md).
 var (
 	formattedCNPJPattern = regexp.MustCompile(`\b[A-Za-z0-9]{2}\.[A-Za-z0-9]{3}\.[A-Za-z0-9]{3}/[A-Za-z0-9]{4}-[A-Za-z0-9]{2}\b`)
-	// NF-e access key: UF(2) AAMM(4) CNPJ(14, alphanumeric allowed) and 24
+	// NF-e or CT-e access key (same layout): UF(2) AAMM(4) CNPJ(14, alphanumeric allowed) and 24
 	// more digits. Only the embedded CNPJ slot is masked.
 	nfeAccessKeyPattern = regexp.MustCompile(`\b\d{6}[0-9A-Z]{14}\d{24}\b`)
 	// NFS-e access key: cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13)
