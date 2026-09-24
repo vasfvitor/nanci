@@ -158,7 +158,7 @@ nanci.exe cte reset --cnpj 12345678000199 --confirmar
 - `cte status` mostra cursor, bloqueio, consultas da última hora e os totais do ambiente atual por papel principal: tomador, destinatário, remetente e os demais.
 - `cte list` mostra chave, modelo, número e série, emissão, emitente, tomador, papel, valor da prestação e situação. `--papel` casa com o papel principal ou com qualquer outro papel da empresa no documento; `--modelo` aceita 57, 64 ou 67; `--chave` pode repetir.
 - `cte export zip` grava `<competencia>/<papel>/<chave>-procCTe.xml` (`-procCTeOS`, `-procGTVe` ou `-procCTeSimp` conforme o tipo) e os eventos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (padrão `cte.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível); `--incremental` exporta só o que ainda não foi exportado ou mudou.
-- `cte export xml` grava o XML do documento da `--chave` em `--out`.
+- `cte export xml` grava o XML do documento da `--chave` em `--out` (`-o`), por padrão `<chave>.xml`.
 - `cte reset` sem `--confirmar` mostra quantos documentos, eventos e marcas de exportação seriam removidos e não altera nada.
 
 ## Aplicativo desktop
