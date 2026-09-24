@@ -26,10 +26,5 @@ func ResetSyncStateTx(ctx context.Context, tx *sql.Tx, params nfse.ResetSyncStat
 	`, now, string(params.CompanyID), string(params.Source)); err != nil {
 		return err
 	}
-	if params.Source == nfse.SyncSourceNFSe {
-		if _, err := tx.ExecContext(ctx, `UPDATE companies SET initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
-			return err
-		}
-	}
 	return nil
 }

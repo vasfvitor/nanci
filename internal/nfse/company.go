@@ -19,7 +19,7 @@ type Company struct {
 	LastSyncAt         *time.Time
 	SyncStartPolicy    SyncStartPolicy
 	SyncStartDate      *time.Time
-	InitialSyncDoneAt  *time.Time
+	InitialSyncDoneAt  *time.Time // NFS-e source; read from company_sync_sources
 	LastRunStatus      SyncStatus
 	LastRunStopReason  SyncStopReason
 	CreatedAt          time.Time

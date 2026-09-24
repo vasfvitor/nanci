@@ -34,20 +34,19 @@ func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) 
 		c.SyncStartDate = &today
 	}
 	err := r.queries.CreateCompany(ctx, sqlgen.CreateCompanyParams{
-		ID:                     string(c.ID),
-		Cnpj:                   c.CNPJ,
-		CnpjRoot:               c.CNPJRoot,
-		Name:                   c.Name,
-		CredentialID:           sql.NullString{String: string(c.CredentialID), Valid: c.CredentialID != ""},
-		CredentialLabel:        sql.NullString{String: c.CredentialLabel, Valid: c.CredentialLabel != ""},
-		CredentialCertPath:     sql.NullString{String: c.CredentialCertPath, Valid: c.CredentialCertPath != ""},
-		Environment:            string(c.Environment),
-		SyncStartPolicy:        string(syncStartPolicy),
-		SyncStartDate:          nullableTime(c.SyncStartDate, dateOnlyLayout),
-		InitialSyncCompletedAt: nullableTime(c.InitialSyncDoneAt, time.RFC3339),
-		Uf:                     c.UF,
-		CreatedAt:              now.Format(time.RFC3339),
-		UpdatedAt:              now.Format(time.RFC3339),
+		ID:                 string(c.ID),
+		Cnpj:               c.CNPJ,
+		CnpjRoot:           c.CNPJRoot,
+		Name:               c.Name,
+		CredentialID:       sql.NullString{String: string(c.CredentialID), Valid: c.CredentialID != ""},
+		CredentialLabel:    sql.NullString{String: c.CredentialLabel, Valid: c.CredentialLabel != ""},
+		CredentialCertPath: sql.NullString{String: c.CredentialCertPath, Valid: c.CredentialCertPath != ""},
+		Environment:        string(c.Environment),
+		SyncStartPolicy:    string(syncStartPolicy),
+		SyncStartDate:      nullableTime(c.SyncStartDate, dateOnlyLayout),
+		Uf:                 c.UF,
+		CreatedAt:          now.Format(time.RFC3339),
+		UpdatedAt:          now.Format(time.RFC3339),
 	})
 	if err != nil {
 		return err
@@ -67,8 +66,7 @@ func (r *CompanyRepository) CompanyByCNPJ(ctx context.Context, cnpjVal string) (
 		return nil, err
 	}
 
-	c := companyFromRow(row)
-	return c, nil
+	return companyFromRow(row.Company, row.NfseInitialSyncCompletedAt), nil
 }
 
 func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
@@ -79,13 +77,15 @@ func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, 
 
 	companies := make([]nfse.Company, 0, len(rows))
 	for _, row := range rows {
-		companies = append(companies, *companyFromRow(row))
+		companies = append(companies, *companyFromRow(row.Company, row.NfseInitialSyncCompletedAt))
 	}
 
 	return companies, nil
 }
 
-func companyFromRow(row sqlgen.Company) *nfse.Company {
+// companyFromRow maps a companies row plus the NFS-e initial sync timestamp,
+// read from company_sync_sources.
+func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *nfse.Company {
 	c := &nfse.Company{
 		ID:                 nfse.CompanyID(row.ID),
 		CNPJ:               row.Cnpj,
@@ -98,7 +98,7 @@ func companyFromRow(row sqlgen.Company) *nfse.Company {
 		UF:                 row.Uf,
 		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
 		SyncStartDate:      parseNullableDate(row.SyncStartDate),
-		InitialSyncDoneAt:  ParseNullableTime(row.InitialSyncCompletedAt),
+		InitialSyncDoneAt:  ParseNullableTime(nfseInitialSyncDoneAt),
 	}
 	c.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
 	c.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)

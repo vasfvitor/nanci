@@ -47,25 +47,24 @@ const createCompany = `-- name: CreateCompany :exec
 INSERT INTO companies (
     id, cnpj, cnpj_root, name, credential_id, credential_label,
     credential_cert_path, environment, sync_start_policy,
-    sync_start_date, initial_sync_completed_at, created_at, updated_at, uf
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sync_start_date, created_at, updated_at, uf
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateCompanyParams struct {
-	ID                     string
-	Cnpj                   string
-	CnpjRoot               string
-	Name                   string
-	CredentialID           sql.NullString
-	CredentialLabel        sql.NullString
-	CredentialCertPath     sql.NullString
-	Environment            string
-	SyncStartPolicy        string
-	SyncStartDate          sql.NullString
-	InitialSyncCompletedAt sql.NullString
-	CreatedAt              string
-	UpdatedAt              string
-	Uf                     string
+	ID                 string
+	Cnpj               string
+	CnpjRoot           string
+	Name               string
+	CredentialID       sql.NullString
+	CredentialLabel    sql.NullString
+	CredentialCertPath sql.NullString
+	Environment        string
+	SyncStartPolicy    string
+	SyncStartDate      sql.NullString
+	CreatedAt          string
+	UpdatedAt          string
+	Uf                 string
 }
 
 func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) error {
@@ -80,7 +79,6 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 		arg.Environment,
 		arg.SyncStartPolicy,
 		arg.SyncStartDate,
-		arg.InitialSyncCompletedAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.Uf,
@@ -89,59 +87,80 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 }
 
 const getCompanyByCNPJ = `-- name: GetCompanyByCNPJ :one
-SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at, uf FROM companies WHERE cnpj = ? LIMIT 1
+SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, companies.credential_id, companies.credential_label, companies.credential_cert_path, companies.environment, companies.sync_start_policy, companies.sync_start_date, companies.created_at, companies.updated_at, companies.uf, company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
+FROM companies
+LEFT JOIN company_sync_sources
+    ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
+WHERE companies.cnpj = ? LIMIT 1
 `
 
-func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (Company, error) {
+type GetCompanyByCNPJRow struct {
+	Company                    Company
+	NfseInitialSyncCompletedAt sql.NullString
+}
+
+// The NFS-e initial sync comes from company_sync_sources; it is NULL for a
+// company that never finished one.
+func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (GetCompanyByCNPJRow, error) {
 	row := q.db.QueryRowContext(ctx, getCompanyByCNPJ, cnpj)
-	var i Company
+	var i GetCompanyByCNPJRow
 	err := row.Scan(
-		&i.ID,
-		&i.Cnpj,
-		&i.CnpjRoot,
-		&i.Name,
-		&i.CredentialID,
-		&i.CredentialLabel,
-		&i.CredentialCertPath,
-		&i.Environment,
-		&i.SyncStartPolicy,
-		&i.SyncStartDate,
-		&i.InitialSyncCompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Uf,
+		&i.Company.ID,
+		&i.Company.Cnpj,
+		&i.Company.CnpjRoot,
+		&i.Company.Name,
+		&i.Company.CredentialID,
+		&i.Company.CredentialLabel,
+		&i.Company.CredentialCertPath,
+		&i.Company.Environment,
+		&i.Company.SyncStartPolicy,
+		&i.Company.SyncStartDate,
+		&i.Company.CreatedAt,
+		&i.Company.UpdatedAt,
+		&i.Company.Uf,
+		&i.NfseInitialSyncCompletedAt,
 	)
 	return i, err
 }
 
 const listCompanies = `-- name: ListCompanies :many
-SELECT id, cnpj, cnpj_root, name, credential_id, credential_label, credential_cert_path, environment, sync_start_policy, sync_start_date, initial_sync_completed_at, created_at, updated_at, uf FROM companies ORDER BY name ASC
+SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, companies.credential_id, companies.credential_label, companies.credential_cert_path, companies.environment, companies.sync_start_policy, companies.sync_start_date, companies.created_at, companies.updated_at, companies.uf, company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
+FROM companies
+LEFT JOIN company_sync_sources
+    ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
+ORDER BY companies.name ASC
 `
 
-func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
+type ListCompaniesRow struct {
+	Company                    Company
+	NfseInitialSyncCompletedAt sql.NullString
+}
+
+// Same NFS-e initial sync join as GetCompanyByCNPJ.
+func (q *Queries) ListCompanies(ctx context.Context) ([]ListCompaniesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCompanies)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Company
+	var items []ListCompaniesRow
 	for rows.Next() {
-		var i Company
+		var i ListCompaniesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Cnpj,
-			&i.CnpjRoot,
-			&i.Name,
-			&i.CredentialID,
-			&i.CredentialLabel,
-			&i.CredentialCertPath,
-			&i.Environment,
-			&i.SyncStartPolicy,
-			&i.SyncStartDate,
-			&i.InitialSyncCompletedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Uf,
+			&i.Company.ID,
+			&i.Company.Cnpj,
+			&i.Company.CnpjRoot,
+			&i.Company.Name,
+			&i.Company.CredentialID,
+			&i.Company.CredentialLabel,
+			&i.Company.CredentialCertPath,
+			&i.Company.Environment,
+			&i.Company.SyncStartPolicy,
+			&i.Company.SyncStartDate,
+			&i.Company.CreatedAt,
+			&i.Company.UpdatedAt,
+			&i.Company.Uf,
+			&i.NfseInitialSyncCompletedAt,
 		); err != nil {
 			return nil, err
 		}
