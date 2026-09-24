@@ -191,6 +191,7 @@ func (a *App) startup(ctx context.Context) {
 		SyncRepo:        nsync.NewStore(db),
 		DocumentRepo:    docRepo,
 		NFeRepo:         store.NewNFeRepository(db),
+		CTeRepo:         store.NewCTeRepository(db),
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{

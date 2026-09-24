@@ -19,9 +19,10 @@ import (
 	"github.com/vasfvitor/nanci/internal/sync"
 )
 
-// sefazClient is the part of *sefaz.Client the NF-e use cases call.
+// sefazClient is the part of *sefaz.Client the NF-e and CT-e use cases call.
 type sefazClient interface {
 	CheckTLS(ctx context.Context) error
+	CheckTLSCTe(ctx context.Context) error
 	EnviarEventos(ctx context.Context, signer *sefaz.Signer, idLote string, eventos []sefaz.Evento) (sefaz.LoteResult, error)
 }
 

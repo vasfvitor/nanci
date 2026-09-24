@@ -91,6 +91,7 @@ func newNFeTestEnv(t *testing.T) *nfeTestEnv {
 		SyncRepo:           sync.NewStore(db),
 		DocumentRepo:       store.NewDocumentRepository(db),
 		NFeRepo:            repo,
+		CTeRepo:            store.NewCTeRepository(db),
 		XMLStore:           xmlStore,
 		DataDir:            t.TempDir(),
 		CredentialProvider: passwords,

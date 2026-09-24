@@ -40,6 +40,7 @@ type App struct {
 	Exports     *ExportService
 	Query       *QueryService
 	NFe         *NFeService
+	CTe         *CTeService
 	SyncManager *sync.Manager
 }
 
@@ -51,6 +52,7 @@ type Dependencies struct {
 	SyncRepo           *sync.Store
 	DocumentRepo       *store.DocumentRepository
 	NFeRepo            *store.NFeRepository
+	CTeRepo            *store.CTeRepository
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -72,6 +74,8 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: document repository is required")
 	case deps.NFeRepo == nil:
 		return nil, errors.New("app: NF-e repository is required")
+	case deps.CTeRepo == nil:
+		return nil, errors.New("app: CT-e repository is required")
 	case deps.XMLStore == nil:
 		return nil, errors.New("app: XML store is required")
 	case deps.DataDir == "":
@@ -95,6 +99,7 @@ func New(deps Dependencies) (*App, error) {
 		XMLStore:           deps.XMLStore,
 		Certificates:       certificates,
 		NFeRepo:            deps.NFeRepo,
+		CTeRepo:            deps.CTeRepo,
 	}
 
 	return &App{
@@ -104,6 +109,7 @@ func New(deps Dependencies) (*App, error) {
 		Exports:     NewExportService(deps),
 		Query:       NewQueryService(deps, certificates),
 		NFe:         NewNFeService(deps, certificates, syncManager),
+		CTe:         NewCTeService(deps, certificates, syncManager),
 		SyncManager: syncManager,
 	}, nil
 }

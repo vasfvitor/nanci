@@ -17,17 +17,23 @@ import (
 // fakeSEFAZ answers EnviarEventos with real signed eventos and a scripted
 // cStat per chave (135 when not scripted).
 type fakeSEFAZ struct {
-	t        *testing.T
-	clients  int // clients created through newSEFAZClient
-	tlsErr   error
-	tlsCalls int
-	lotes    [][]sefaz.Evento
-	cStats   map[string]int
-	failLote map[int]error // 0-based lote index -> transport error
+	t           *testing.T
+	clients     int // clients created through newSEFAZClient
+	tlsErr      error
+	tlsCalls    int
+	cteTLSCalls int
+	lotes       [][]sefaz.Evento
+	cStats      map[string]int
+	failLote    map[int]error // 0-based lote index -> transport error
 }
 
 func (f *fakeSEFAZ) CheckTLS(context.Context) error {
 	f.tlsCalls++
+	return f.tlsErr
+}
+
+func (f *fakeSEFAZ) CheckTLSCTe(context.Context) error {
+	f.cteTLSCalls++
 	return f.tlsErr
 }
 
