@@ -33,6 +33,24 @@ export function conclusiveBlockReason(row: Pick<NFeRow, 'ConclusiveBlockReason'>
   return displayReason(row.ConclusiveBlockReason)
 }
 
+export type NFeRowActions = {
+  cienciaBlockReason: string | null
+  conclusiveBlockReason: string | null
+  canExportXML: boolean
+}
+
+// nfeRowActions says what a note's row menu offers. Only a complete note has
+// an XML to export.
+export function nfeRowActions(
+  row: Pick<NFeRow, 'CienciaBlockReason' | 'ConclusiveBlockReason' | 'Completeness'>
+): NFeRowActions {
+  return {
+    cienciaBlockReason: cienciaBlockReason(row),
+    conclusiveBlockReason: conclusiveBlockReason(row),
+    canExportXML: row.Completeness === 'completa',
+  }
+}
+
 export function validateJustificativa(text: string | null | undefined): string | null {
   const length = (text ?? '').trim().length
   if (length < JUSTIFICATIVA_MIN_LENGTH) {

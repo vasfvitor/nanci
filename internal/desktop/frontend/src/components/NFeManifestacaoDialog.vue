@@ -5,8 +5,7 @@
         <div class="text-h6">Manifestação do destinatário</div>
         <q-space />
         <q-badge
-          :color="badgeColor(ambienteColor(tpAmb), $q.dark.isActive)"
-          :text-color="badgeTextColor(ambienteColor(tpAmb), $q.dark.isActive)"
+          v-bind="badgeProps(ambienteColor(tpAmb), $q.dark.isActive)"
           class="text-weight-bold q-pa-sm"
         >
           {{ ambienteLabel(tpAmb) }}
@@ -60,8 +59,7 @@
           <div class="row items-center q-gutter-sm">
             <span class="text-weight-medium">Evento:</span>
             <q-badge
-              :color="badgeColor(nfeEventColor(tipo ?? ''), $q.dark.isActive)"
-              :text-color="badgeTextColor(nfeEventColor(tipo ?? ''), $q.dark.isActive)"
+              v-bind="badgeProps(nfeEventColor(tipo ?? ''), $q.dark.isActive)"
               :label="selectedLabel"
             />
             <span class="text-caption text-app-muted text-mono">{{ tipo }}</span>
@@ -106,8 +104,7 @@ import { formatChaveNFe, formatCurrencyCents, formatNFeNumber, formatParty } fro
 import {
   ambienteColor,
   ambienteLabel,
-  badgeColor,
-  badgeTextColor,
+  badgeProps,
   nfeEventColor,
   nfeEventLabel,
 } from '@/utils/nfeDisplay'

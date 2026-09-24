@@ -4,8 +4,7 @@
       <h5 class="q-my-none">NF-e (Modelo 55)</h5>
       <q-badge
         v-if="status"
-        :color="badgeColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
-        :text-color="badgeTextColor(ambienteColor(status.TpAmb), $q.dark.isActive)"
+        v-bind="badgeProps(ambienteColor(status.TpAmb), $q.dark.isActive)"
         :label="ambienteLabel(status.TpAmb)"
         class="text-weight-bold"
       />
@@ -58,8 +57,7 @@
       <q-tab name="pendencias" label="Pendências">
         <q-badge
           v-if="pendingCount > 0"
-          color="negative"
-          :text-color="badgeTextColor('negative', $q.dark.isActive)"
+          v-bind="badgeProps('negative', $q.dark.isActive)"
           class="q-ml-sm"
           :label="pendingCount"
         />
@@ -218,20 +216,28 @@
               >
                 <q-menu auto-close>
                   <q-list dense class="nfe-row-menu">
-                    <q-item clickable :disable="conclusiveBlockReason(cellProps.row) !== null" @click="openManifestacao(cellProps.row)">
+                    <q-item
+                      clickable
+                      :disable="rowActions(cellProps.row).conclusiveBlockReason !== null"
+                      @click="openManifestacao(cellProps.row)"
+                    >
                       <q-item-section>
                         <q-item-label>Manifestar…</q-item-label>
-                        <q-item-label v-if="conclusiveBlockReason(cellProps.row)" caption>{{ conclusiveBlockReason(cellProps.row) }}</q-item-label>
+                        <q-item-label v-if="rowActions(cellProps.row).conclusiveBlockReason" caption>
+                          {{ rowActions(cellProps.row).conclusiveBlockReason }}
+                        </q-item-label>
                       </q-item-section>
                     </q-item>
                     <q-item
                       clickable
-                      :disable="cienciaBlockReason(cellProps.row) !== null || Boolean(cienciaInFlight)"
+                      :disable="rowActions(cellProps.row).cienciaBlockReason !== null || Boolean(cienciaInFlight)"
                       @click="startCiencia([cellProps.row.ChaveAcesso])"
                     >
                       <q-item-section>
                         <q-item-label>Registrar ciência</q-item-label>
-                        <q-item-label v-if="cienciaBlockReason(cellProps.row)" caption>{{ cienciaBlockReason(cellProps.row) }}</q-item-label>
+                        <q-item-label v-if="rowActions(cellProps.row).cienciaBlockReason" caption>
+                          {{ rowActions(cellProps.row).cienciaBlockReason }}
+                        </q-item-label>
                       </q-item-section>
                     </q-item>
                     <q-item clickable @click="openEvents(cellProps.row.ChaveAcesso)">
@@ -239,12 +245,12 @@
                     </q-item>
                     <q-item
                       clickable
-                      :disable="exporting || cellProps.row.Completeness !== 'completa'"
+                      :disable="exporting || !rowActions(cellProps.row).canExportXML"
                       @click="exportXML(cellProps.row.ChaveAcesso)"
                     >
                       <q-item-section>
                         <q-item-label>Exportar XML</q-item-label>
-                        <q-item-label v-if="cellProps.row.Completeness !== 'completa'" caption>
+                        <q-item-label v-if="!rowActions(cellProps.row).canExportXML" caption>
                           XML completo ainda não baixado
                         </q-item-label>
                       </q-item-section>
@@ -292,8 +298,7 @@
           <template #body-cell-situacao="cellProps">
             <q-td :props="cellProps">
               <q-badge
-                :color="badgeColor(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
-                :text-color="badgeTextColor(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
+                v-bind="badgeProps(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
                 :label="situacaoLabel(cellProps.row.Situacao)"
               />
             </q-td>
@@ -302,8 +307,7 @@
           <template #body-cell-completude="cellProps">
             <q-td :props="cellProps">
               <q-badge
-                :color="badgeColor(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
-                :text-color="badgeTextColor(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
+                v-bind="badgeProps(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
                 :label="completenessLabel(cellProps.row.Completeness)"
               />
             </q-td>
@@ -314,12 +318,11 @@
               <div class="row no-wrap items-center q-gutter-x-xs">
                 <q-spinner v-if="isChaveBusy(cellProps.row.ChaveAcesso)" size="xs" color="primary" />
                 <q-badge
-                  :color="badgeColor(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
-                  :text-color="badgeTextColor(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
+                  v-bind="badgeProps(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
                   :label="manifestacaoLabel(cellProps.row.Manifestacao)"
                 />
                 <q-chip
-                  v-if="cellProps.row.Manifestacao === 'ciencia' && cellProps.row.ConclusiveDue"
+                  v-if="showsConclusiveDeadline(cellProps.row)"
                   dense
                   square
                   outline
@@ -335,8 +338,7 @@
           <template #body-cell-papel="cellProps">
             <q-td :props="cellProps">
               <q-badge
-                :color="badgeColor(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
-                :text-color="badgeTextColor(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
+                v-bind="badgeProps(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
                 :label="nfeRoleLabel(cellProps.row.CompanyRole)"
               />
             </q-td>
@@ -391,8 +393,7 @@ import {
 import {
   ambienteColor,
   ambienteLabel,
-  badgeColor,
-  badgeTextColor,
+  badgeProps,
   completenessColor,
   completenessLabel,
   completenessFilterOptions,
@@ -407,10 +408,9 @@ import {
   situacaoColor,
   situacaoLabel,
   situacaoFilterOptions,
+  showsConclusiveDeadline,
 } from '@/utils/nfeDisplay'
 import {
-  cienciaBlockReason,
-  conclusiveBlockReason,
   countOutcomes,
   isProblemOutcome,
   noEligibleCienciaMessage,
@@ -440,6 +440,7 @@ const {
   isResetting,
   syncBlockedUntil,
   blockedText,
+  rowActions,
 } = nfe
 const {
   pending,

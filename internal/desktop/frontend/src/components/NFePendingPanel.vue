@@ -10,7 +10,7 @@
           :label="`Registrar ciência de todas (${semCiencia.length})`"
           dense
           flat
-          :disable="loading || semCiencia.length === 0 || semCiencia.every((row) => busy(row.ChaveAcesso))"
+          :disable="loading || semCiencia.length === 0 || allSemCienciaBusy"
           @click="emit('ciencia', semCiencia)"
         />
       </div>
@@ -161,6 +161,9 @@ const emit = defineEmits<{
 const $q = useQuasar()
 
 const semCiencia = computed(() => props.rows.filter((row) => row.Kind === 'sem_ciencia'))
+
+// allSemCienciaBusy is true when every note without ciência is being sent.
+const allSemCienciaBusy = computed(() => semCiencia.value.every((row) => props.busy(row.ChaveAcesso)))
 
 // The backend lists pending rows nearest conclusive deadline first.
 const semConclusiva = computed(() => props.rows.filter((row) => row.Kind === 'sem_conclusiva'))

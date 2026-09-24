@@ -6,9 +6,10 @@ import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { CompanySummary } from '@/types/desktop'
+import type { CompanySummary, NFeRow } from '@/types/desktop'
 import { formatTime, normalizeText, parseDate } from '@/utils/formatters'
 import { blockedMessage, nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
+import { nfeRowActions } from '@/utils/nfeManifestacao'
 
 export type NFeExportZIPOptions = {
   includeResumos?: boolean
@@ -47,6 +48,16 @@ export function useNFeDocuments() {
   watch(filterText, () => {
     pagination.value.page = 1
   })
+
+  // actionsByChave holds the row menu state of every row the grid shows,
+  // computed once per result set rather than on each render of a row.
+  const actionsByChave = computed(
+    () => new Map(filteredRows.value.map((row) => [row.ChaveAcesso, nfeRowActions(row)]))
+  )
+
+  function rowActions(row: NFeRow) {
+    return actionsByChave.value.get(row.ChaveAcesso) ?? nfeRowActions(row)
+  }
 
   const companyName = computed(() => {
     if (status.value?.CompanyName) return status.value.CompanyName
@@ -203,6 +214,7 @@ export function useNFeDocuments() {
     isResetting,
     syncBlockedUntil,
     blockedText,
+    rowActions,
     loadCompanies,
     search,
     loadStatus,

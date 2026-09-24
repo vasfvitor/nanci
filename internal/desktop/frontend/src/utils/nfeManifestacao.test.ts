@@ -5,6 +5,7 @@ import {
   conclusiveBlockReason,
   countOutcomes,
   isProblemOutcome,
+  nfeRowActions,
   noEligibleCienciaMessage,
   validateJustificativa,
 } from './nfeManifestacao'
@@ -129,5 +130,24 @@ describe('isProblemOutcome', () => {
     expect(isProblemOutcome({ Status: 'rejeitada' })).toBe(true)
     expect(isProblemOutcome({ Status: 'nao_enviada' })).toBe(true)
     expect(isProblemOutcome({ Status: '' })).toBe(true)
+  })
+})
+
+describe('nfeRowActions', () => {
+  it('gathers the block reasons and whether the XML can be exported', () => {
+    expect(nfeRowActions(row({ Completeness: 'completa' }))).toEqual({
+      cienciaBlockReason: null,
+      conclusiveBlockReason: null,
+      canExportXML: true,
+    })
+    expect(
+      nfeRowActions(
+        row({ Completeness: 'resumo', CienciaBlockReason: 'NF-e cancelada', ConclusiveBlockReason: 'NF-e cancelada' })
+      )
+    ).toEqual({
+      cienciaBlockReason: 'NF-e cancelada',
+      conclusiveBlockReason: 'NF-e cancelada',
+      canExportXML: false,
+    })
   })
 })

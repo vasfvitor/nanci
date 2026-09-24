@@ -1,4 +1,4 @@
-import type { NFeStatusResult } from '@/types/desktop'
+import type { NFeRow, NFeStatusResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
 
 export type DeadlineKind = 'ciencia' | 'conclusiva'
@@ -121,6 +121,11 @@ export function badgeTextColor(color: string, dark: boolean) {
   return 'white'
 }
 
+// badgeProps binds the fill and text color of a q-badge of color.
+export function badgeProps(color: string, dark: boolean) {
+  return { color: badgeColor(color, dark), textColor: badgeTextColor(color, dark) }
+}
+
 // deadlineLabel describes the days left before a deadline, as the backend
 // counts them.
 export function deadlineLabel(days: number | null) {
@@ -128,6 +133,13 @@ export function deadlineLabel(days: number | null) {
   if (days < 0) return `Vencido há ${-days} d`
   if (days === 0) return 'Vence hoje'
   return `${days} d restantes`
+}
+
+// showsConclusiveDeadline reports whether the grid shows the conclusive
+// deadline chip: only a note with ciência still waits for a conclusive
+// manifestação.
+export function showsConclusiveDeadline(row: Pick<NFeRow, 'Manifestacao' | 'ConclusiveDue'>) {
+  return row.Manifestacao === 'ciencia' && Boolean(row.ConclusiveDue)
 }
 
 export const TACIT_CONFIRMATION_LABEL = 'Confirmada tacitamente'

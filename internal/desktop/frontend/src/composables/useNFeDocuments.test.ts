@@ -352,4 +352,18 @@ describe('useNFeDocuments', () => {
     expect(nfe.noteCount.value).toBe(4)
     expect(nfe.statusLine.value).toContain('NSU 5/9 · Pendências: 3')
   })
+
+  it('computes the row menu state once per result set', () => {
+    const nfe = useNFeDocuments()
+    const completa = nfeRow('a', { Completeness: 'completa', CienciaBlockReason: 'já manifestada (ciencia)' })
+    useNFeDocumentsStore().setRows([completa])
+
+    const actions = nfe.rowActions(completa)
+    expect(actions).toEqual({
+      cienciaBlockReason: 'Já manifestada (ciencia)',
+      conclusiveBlockReason: null,
+      canExportXML: true,
+    })
+    expect(nfe.rowActions(completa)).toBe(actions)
+  })
 })

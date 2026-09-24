@@ -3,6 +3,7 @@ import {
   ambienteColor,
   ambienteLabel,
   badgeColor,
+  badgeProps,
   badgeTextColor,
   blockedMessage,
   completenessColor,
@@ -21,6 +22,7 @@ import {
   outcomeColor,
   outcomeLabel,
   nfeRoleFilterOptions,
+  showsConclusiveDeadline,
   nfeStatusLine,
   situacaoColor,
   situacaoFilterOptions,
@@ -230,5 +232,18 @@ describe('nfeDisplay', () => {
     } as unknown as NFeStatusResult
     expect(nfeStatusLine(status)).toBe('Última sincronização: nunca · NSU 10/— · Pendências: 2')
     expect(nfeStatusLine({ ...status, MaxNSU: 12 })).toContain('NSU 10/12')
+  })
+
+  it('shows the conclusive deadline only for notes with ciência', () => {
+    const due = '2026-12-01T00:00:00Z'
+    expect(showsConclusiveDeadline({ Manifestacao: 'ciencia', ConclusiveDue: due })).toBe(true)
+    expect(showsConclusiveDeadline({ Manifestacao: 'ciencia', ConclusiveDue: null })).toBe(false)
+    expect(showsConclusiveDeadline({ Manifestacao: 'nenhuma', ConclusiveDue: due })).toBe(false)
+    expect(showsConclusiveDeadline({ Manifestacao: 'confirmada', ConclusiveDue: due })).toBe(false)
+  })
+
+  it('binds badge fill and text colors together', () => {
+    expect(badgeProps('info', false)).toEqual({ color: 'light-blue-9', textColor: 'white' })
+    expect(badgeProps('warning', true)).toEqual({ color: 'warning', textColor: 'dark' })
   })
 })
