@@ -379,7 +379,9 @@ describe('NFePage', () => {
       })
     )
     expect(dialog).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining('Remove as 3 NF-e de Empresa Um') })
+      expect.objectContaining({
+        message: expect.stringContaining('Remove as NF-e de Empresa Um nos dois ambientes (3 no ambiente atual)'),
+      })
     )
     expect(desktopClient.resetNFe).not.toHaveBeenCalled()
 

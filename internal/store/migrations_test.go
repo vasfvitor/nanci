@@ -568,6 +568,93 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	}
 }
 
+func TestMigration016BackfillsNFeTpAmb(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 14); err != nil {
+		t.Fatalf("migrate to version 14: %v", err)
+	}
+
+	const now = "2026-09-01T10:00:00Z"
+	insertCompany := `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 'all', ?, ?)
+	`
+	mustExec(t, db, insertCompany, "comp-prod", "11222333000181", "11222333", "Produção", "producao", now, now)
+	mustExec(t, db, insertCompany, "comp-hom", "44555666000199", "44555666", "Homologação", "producao_restrita", now, now)
+	insertDocument := `
+		INSERT INTO nfe_documents (id, chave_acesso, modelo, serie, numero, issue_date, competence, protocolo,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name, transportador_cnpj,
+			tp_nf, fin_nfe, nat_op, situacao, completeness, layout_version, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '55', '1', '1', ?, '2026-09', '', '', '', '', 'SP', '', '', '', '1', '', '', 'autorizada', 'resumo', '1.01', ?, ?, ?)
+	`
+	mustExec(t, db, insertDocument, "doc-prod", "chave-prod", now, "hash-prod", now, now)
+	mustExec(t, db, insertDocument, "doc-hom", "chave-hom", now, "hash-hom", now, now)
+	mustExec(t, db, insertDocument, "doc-orphan", "chave-orphan", now, "hash-orphan", now, now)
+	insertRelation := `
+		INSERT INTO company_nfe_documents (relation_id, company_id, nfe_document_id, company_role, visibility_reason, first_synced_at, last_synced_at)
+		VALUES (?, ?, ?, 'destinatario', 'resumo_destinatario', ?, ?)
+	`
+	mustExec(t, db, insertRelation, "rel-prod", "comp-prod", "doc-prod", now, now)
+	mustExec(t, db, insertRelation, "rel-hom", "comp-hom", "doc-hom", now, now)
+	insertEvent := `
+		INSERT INTO nfe_events (id, chave_acesso, tp_evento, type, n_seq_evento, protocolo, autor_cnpj, description,
+			justificativa, correcao, completeness, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '210210', 'ciencia', 1, '', '', '', '', '', 'completa', ?, ?, ?)
+	`
+	mustExec(t, db, insertEvent, "ev-prod", "chave-prod", "ev-hash-prod", now, now)
+	mustExec(t, db, insertEvent, "ev-hom", "chave-hom", "ev-hash-hom", now, now)
+	mustExec(t, db, insertEvent, "ev-no-document", "chave-missing", "ev-hash-missing", now, now)
+
+	if _, err := provider.UpTo(ctx, 16); err != nil {
+		t.Fatalf("migrate to version 16: %v", err)
+	}
+	for table, want := range map[string]map[string]string{
+		"nfe_documents": {"doc-prod": "1", "doc-hom": "2", "doc-orphan": ""},
+		"nfe_events":    {"ev-prod": "1", "ev-hom": "2", "ev-no-document": ""},
+	} {
+		for id, wantTpAmb := range want {
+			var got string
+			if err := db.QueryRowContext(ctx, `SELECT tp_amb FROM `+table+` WHERE id = ?`, id).Scan(&got); err != nil { // #nosec G202 -- fixed table names.
+				t.Fatalf("read %s.tp_amb: %v", table, err)
+			}
+			if got != wantTpAmb {
+				t.Errorf("%s %s tp_amb = %q, want %q", table, id, got, wantTpAmb)
+			}
+		}
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE nfe_documents SET tp_amb = '3' WHERE id = 'doc-prod'`); err == nil {
+		t.Error("nfe_documents accepted tp_amb 3")
+	}
+
+	if _, err := provider.DownTo(ctx, 14); err != nil {
+		t.Fatalf("migrate down to version 14: %v", err)
+	}
+	var columns int
+	if err := db.QueryRowContext(ctx, `
+		SELECT (SELECT COUNT(*) FROM pragma_table_info('nfe_documents') WHERE name = 'tp_amb')
+			+ (SELECT COUNT(*) FROM pragma_table_info('nfe_events') WHERE name = 'tp_amb')
+	`).Scan(&columns); err != nil {
+		t.Fatal(err)
+	}
+	if columns != 0 {
+		t.Errorf("tp_amb columns after down = %d, want 0", columns)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 	t.Helper()
 	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {

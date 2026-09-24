@@ -195,7 +195,8 @@ CREATE TABLE nfe_documents (
     resumo_raw_hash TEXT,
     parse_warnings TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    tp_amb TEXT NOT NULL DEFAULT '' CHECK (tp_amb IN ('', '1', '2'))
 );
 CREATE INDEX idx_nfe_documents_emitente ON nfe_documents(emitente_cnpj);
 
@@ -244,6 +245,7 @@ CREATE TABLE nfe_events (
     parse_warnings TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    tp_amb TEXT NOT NULL DEFAULT '' CHECK (tp_amb IN ('', '1', '2')),
     UNIQUE (chave_acesso, tp_evento, n_seq_evento)
 );
 

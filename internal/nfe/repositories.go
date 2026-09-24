@@ -22,6 +22,10 @@ type DocumentFilter struct {
 	Manifestacao Manifestacao
 	EmitenteCNPJ string
 	ChavesAcesso []string
+	// TpAmb keeps the documents of one environment ("1" produção, "2"
+	// homologação). The app layer sets it from the company's current
+	// environment in every listing.
+	TpAmb string
 	// PendingManifestacao keeps authorized documents where the company is
 	// the destinatário and has no conclusive manifestação yet.
 	PendingManifestacao bool

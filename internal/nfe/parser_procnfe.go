@@ -41,6 +41,8 @@ func ParseProcNFe(data []byte) (Document, error) {
 			doc.TpNF = value
 		case strings.HasSuffix(path, "/infNFe/ide/finNFe"):
 			doc.FinNFe = value
+		case strings.HasSuffix(path, "/infNFe/ide/tpAmb"):
+			doc.TpAmb = value
 		case strings.HasSuffix(path, "/infNFe/ide/natOp"):
 			doc.NatOp = value
 

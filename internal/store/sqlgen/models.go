@@ -168,6 +168,7 @@ type NfeDocument struct {
 	ParseWarnings     sql.NullString
 	CreatedAt         string
 	UpdatedAt         string
+	TpAmb             string
 }
 
 type NfeEvent struct {
@@ -193,6 +194,7 @@ type NfeEvent struct {
 	ParseWarnings sql.NullString
 	CreatedAt     string
 	UpdatedAt     string
+	TpAmb         string
 }
 
 type NfeManifestacao struct {

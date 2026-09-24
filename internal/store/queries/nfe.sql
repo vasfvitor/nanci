@@ -7,9 +7,9 @@ INSERT INTO nfe_documents (
     emitente_cnpj, emitente_name, emitente_ie, emitente_uf,
     destinatario_cnpj, destinatario_name, transportador_cnpj, autorizados_cnpj,
     tp_nf, fin_nfe, nat_op, total_value, icms_value, ipi_value,
-    situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings,
+    situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings, tp_amb,
     created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(chave_acesso) DO UPDATE SET
     modelo = excluded.modelo,
     serie = excluded.serie,
@@ -38,6 +38,7 @@ ON CONFLICT(chave_acesso) DO UPDATE SET
     raw_hash = excluded.raw_hash,
     resumo_raw_hash = excluded.resumo_raw_hash,
     parse_warnings = excluded.parse_warnings,
+    tp_amb = excluded.tp_amb,
     updated_at = excluded.updated_at
 RETURNING id;
 
@@ -87,8 +88,8 @@ SELECT COUNT(*) FROM nfe_events WHERE chave_acesso = ? AND tp_evento = ? AND n_s
 INSERT INTO nfe_events (
     id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
     registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
-    completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    completeness, sent_by_nanci, raw_hash, parse_warnings, tp_amb, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(chave_acesso, tp_evento, n_seq_evento) DO UPDATE SET
     nfe_document_id = COALESCE(nfe_events.nfe_document_id, excluded.nfe_document_id),
     type = excluded.type,
@@ -106,6 +107,7 @@ ON CONFLICT(chave_acesso, tp_evento, n_seq_evento) DO UPDATE SET
     sent_by_nanci = MAX(nfe_events.sent_by_nanci, excluded.sent_by_nanci),
     raw_hash = excluded.raw_hash,
     parse_warnings = excluded.parse_warnings,
+    tp_amb = excluded.tp_amb,
     updated_at = excluded.updated_at
 WHERE NOT (nfe_events.completeness = 'completa' AND excluded.completeness = 'resumo');
 

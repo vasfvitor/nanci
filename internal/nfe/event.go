@@ -21,6 +21,7 @@ type Event struct {
 	Description   string     // descEvento, falling back to xEvento
 	Justificativa string     // detEvento/xJust
 	Correcao      string     // detEvento/xCorrecao (carta de correção)
+	TpAmb         string     // evento/infEvento/tpAmb: "1" produção, "2" homologação; a resEvento carries none
 	Completeness  Completeness
 	// Registered is true when SEFAZ accepted the event: always for a
 	// resEvento, and for a procEventoNFe only when retEvento carries one of

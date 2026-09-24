@@ -104,7 +104,7 @@ nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
 | `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. `--vencendo-em N` mostra só as que vencem em até N dias. |
 | `nfe export zip` | Exporta os XMLs em ZIP (`--out`/`-o`, padrão `nfe.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incluir-resumos` inclui os resumos e `--incremental` exporta só o que ainda não foi exportado. |
 | `nfe export xml` | Exporta o XML de uma nota (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
-| `nfe reset` | Remove as NF-e da empresa e reinicia a sincronização NF-e; necessário antes de trocar o ambiente. Simulação sem `--confirmar`. |
+| `nfe reset` | Remove as NF-e da empresa, nos dois ambientes, e reinicia a sincronização NF-e. Simulação sem `--confirmar`. |
 
 Detalhes de limites, prazos e TLS em [docs/NFE_SEFAZ.md](docs/NFE_SEFAZ.md).
 

@@ -139,9 +139,9 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	if err != nil {
 		return NFeStatusResult{}, err
 	}
-	tpAmb, err := sefaz.TpAmb(comp.Environment)
+	tpAmb, err := environmentTpAmb(comp)
 	if err != nil {
-		return NFeStatusResult{}, fmt.Errorf("ambiente da empresa: %w", err)
+		return NFeStatusResult{}, err
 	}
 	now := s.now()
 
@@ -183,7 +183,7 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	result.RequestsLastHour = limits.RequestsLastHour
 	result.RequestBudget = limits.RequestBudget
 
-	counts, err := s.NFeRepo.CountSummary(ctx, comp.ID)
+	counts, err := s.NFeRepo.CountSummary(ctx, comp.ID, tpAmb)
 	if err != nil {
 		return NFeStatusResult{}, fmt.Errorf("contar NF-e: %w", err)
 	}
@@ -200,7 +200,7 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	result.TotalResumos = counts.Resumos
 	result.TotalCompletas = counts.Completas
 
-	pending, err := s.pendingManifestacoes(ctx, comp.ID, now)
+	pending, err := s.pendingManifestacoes(ctx, comp.ID, tpAmb, now)
 	if err != nil {
 		return NFeStatusResult{}, err
 	}
@@ -298,7 +298,7 @@ func (s *NFeService) ListEvents(ctx context.Context, cnpj, chave string) ([]nfe.
 	if err != nil {
 		return nil, err
 	}
-	doc, err := s.companyDocument(ctx, comp.ID, chave)
+	doc, err := s.companyDocument(ctx, comp, chave)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,11 @@ func (s *NFeService) ListPendingManifestacoes(ctx context.Context, in NFePending
 	if err != nil {
 		return nil, err
 	}
-	pending, err := s.pendingManifestacoes(ctx, comp.ID, s.now())
+	tpAmb, err := environmentTpAmb(comp)
+	if err != nil {
+		return nil, err
+	}
+	pending, err := s.pendingManifestacoes(ctx, comp.ID, tpAmb, s.now())
 	if err != nil {
 		return nil, err
 	}
@@ -349,8 +353,8 @@ func (s *NFeService) ListPendingManifestacoes(ctx context.Context, in NFePending
 	return due, nil
 }
 
-func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.CompanyID, now time.Time) ([]NFePendingManifestacao, error) {
-	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{PendingManifestacao: true})
+func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.CompanyID, tpAmb string, now time.Time) ([]NFePendingManifestacao, error) {
+	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{TpAmb: tpAmb, PendingManifestacao: true})
 	if err != nil {
 		return nil, fmt.Errorf("listar manifestações pendentes: %w", err)
 	}
@@ -418,10 +422,15 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 	if err != nil {
 		return nil, nfe.DocumentFilter{}, err
 	}
+	tpAmb, err := environmentTpAmb(comp)
+	if err != nil {
+		return nil, nfe.DocumentFilter{}, err
+	}
 	filter := nfe.DocumentFilter{
 		Competence:   in.Competence,
 		EmitenteCNPJ: in.EmitenteCNPJ,
 		ChavesAcesso: in.ChavesAcesso,
+		TpAmb:        tpAmb,
 		Limit:        in.Limit,
 	}
 	if in.Situacao != "" {
@@ -447,13 +456,18 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 	return comp, filter, nil
 }
 
-// companyDocument returns the company's row for the chave.
-func (s *NFeService) companyDocument(ctx context.Context, companyID dfe.CompanyID, rawChave string) (nfe.CompanyDocument, error) {
+// companyDocument returns the company's row for the chave in its current
+// environment.
+func (s *NFeService) companyDocument(ctx context.Context, comp *nfse.Company, rawChave string) (nfe.CompanyDocument, error) {
 	chave, err := dfe.ParseAccessKey(rawChave)
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("chave de acesso inválida: %w", err)
 	}
-	doc, err := s.NFeRepo.CompanyDocumentByChave(ctx, companyID, string(chave))
+	tpAmb, err := environmentTpAmb(comp)
+	if err != nil {
+		return nfe.CompanyDocument{}, err
+	}
+	doc, err := s.NFeRepo.CompanyDocumentByChave(ctx, comp.ID, tpAmb, string(chave))
 	if errors.Is(err, nfe.ErrDocumentNotFound) {
 		return nfe.CompanyDocument{}, fmt.Errorf("chave %s: %w", chave, err)
 	}
@@ -461,4 +475,15 @@ func (s *NFeService) companyDocument(ctx context.Context, companyID dfe.CompanyI
 		return nfe.CompanyDocument{}, fmt.Errorf("buscar NF-e: %w", err)
 	}
 	return *doc, nil
+}
+
+// environmentTpAmb is the tpAmb of the company's current environment. NF-e
+// listings, counts and exports show only the documents of this tpAmb; the
+// other environment's come back when the company switches back to it.
+func environmentTpAmb(comp *nfse.Company) (string, error) {
+	tpAmb, err := sefaz.TpAmb(comp.Environment)
+	if err != nil {
+		return "", fmt.Errorf("ambiente da empresa: %w", err)
+	}
+	return tpAmb, nil
 }

@@ -554,10 +554,10 @@ function confirmResetNFe() {
   $q.dialog({
     title: 'Redefinir NF-e',
     message:
-      `Remove as ${noteCount.value} NF-e de ${companyName.value}, com seus eventos e marcas de exportação, ` +
-      'e reinicia a sincronização NF-e desde o NSU 0. Notas vistas por outra empresa continuam para ela. ' +
-      'O histórico das manifestações enviadas é mantido, e as manifestações registradas na SEFAZ não são afetadas. ' +
-      'Depois disso o ambiente da empresa pode ser alterado.',
+      `Remove as NF-e de ${companyName.value} nos dois ambientes (${noteCount.value} no ambiente atual), ` +
+      'com seus eventos e marcas de exportação, e reinicia a sincronização NF-e desde o NSU 0. ' +
+      'Notas vistas por outra empresa continuam para ela. O histórico das manifestações enviadas é mantido, ' +
+      'e as manifestações registradas na SEFAZ não são afetadas.',
     cancel: true,
     persistent: true,
     ok: { label: 'Redefinir', color: 'negative' },

@@ -35,6 +35,7 @@ type Document struct {
 	Situacao          Situacao
 	Completeness      Completeness
 	LayoutVersion     string // infNFe@versao or resNFe@versao
+	TpAmb             string // ide/tpAmb: "1" produção, "2" homologação; a resumo carries none
 	RawHash           string // hash of the current blob (procNFe once completa)
 	ResumoRawHash     string // hash of the resNFe blob, kept after the upgrade to completa
 	ParseWarnings     []string

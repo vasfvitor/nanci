@@ -69,6 +69,8 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 			ev.AutorCNPJ = value
 		case strings.HasSuffix(path, "/evento/infEvento/dhEvento"):
 			ev.EventAt = parseDateTime("dhEvento", value, &warnings)
+		case strings.HasSuffix(path, "/evento/infEvento/tpAmb"):
+			ev.TpAmb = value
 		case strings.HasSuffix(path, "/evento/infEvento/tpEvento"):
 			tpEvento = value
 		case strings.HasSuffix(path, "/evento/infEvento/nSeqEvento"):

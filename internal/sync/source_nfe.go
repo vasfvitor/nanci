@@ -130,25 +130,31 @@ func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src 
 		return ItemOutcome{}, &ProcessingError{Op: "decode document", NSU: item.NSU, Schema: item.Schema, Err: err}
 	}
 
+	tpAmb, err := sefaz.TpAmb(company.Environment)
+	if err != nil {
+		return ItemOutcome{}, err
+	}
+
 	switch nfe.ClassifySchema(item.Schema) {
 	case nfe.SchemaResNFe:
-		return s.processDocument(ctx, company, item, nfe.ParseResNFe, payload, commit)
+		return s.processDocument(ctx, company, tpAmb, item, nfe.ParseResNFe, payload, commit)
 	case nfe.SchemaProcNFe:
-		return s.processDocument(ctx, company, item, nfe.ParseProcNFe, payload, commit)
+		return s.processDocument(ctx, company, tpAmb, item, nfe.ParseProcNFe, payload, commit)
 	case nfe.SchemaResEvento:
-		return s.processEvent(ctx, company, item, nfe.ParseResEvento, payload, commit)
+		return s.processEvent(ctx, company, tpAmb, item, nfe.ParseResEvento, payload, commit)
 	case nfe.SchemaProcEventoNFe:
-		return s.processEvent(ctx, company, item, nfe.ParseProcEventoNFe, payload, commit)
+		return s.processEvent(ctx, company, tpAmb, item, nfe.ParseProcEventoNFe, payload, commit)
 	default:
 		return s.processUnsupported(ctx, item, payload, commit)
 	}
 }
 
-func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, tpAmb string, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	doc, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse document", item, payload, err)
 	}
+	doc.TpAmb = checkTpAmb(doc.TpAmb, tpAmb, &doc.ParseWarnings)
 
 	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
 		return ItemOutcome{}, fmt.Errorf("file save failed: %w", err)
@@ -174,11 +180,12 @@ func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, 
 // processEvent stores an event. An event for a chave the company does not
 // see yet is skipped by policy, unless the company authored it (its own
 // manifestação): that one is kept and linked when the document arrives.
-func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, tpAmb string, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	ev, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse event", item, payload, err)
 	}
+	ev.TpAmb = checkTpAmb(ev.TpAmb, tpAmb, &ev.ParseWarnings)
 
 	authoredByCompany := cnpj.Clean(ev.AutorCNPJ) == company.CNPJ
 	if !authoredByCompany {
@@ -211,6 +218,25 @@ func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, ite
 		return ItemOutcome{}, fmt.Errorf("db apply nfe event failed: %w", err)
 	}
 	return outcome, nil
+}
+
+// checkTpAmb returns the tpAmb to store for an item of a pull that queried
+// pullTpAmb. The XML wins, with a warning when it names the other
+// environment. A resumo carries no tpAmb and takes the pull's, and so does an
+// XML with an invalid one.
+func checkTpAmb(xmlTpAmb, pullTpAmb string, warnings *[]string) string {
+	switch xmlTpAmb {
+	case "":
+		return pullTpAmb
+	case pullTpAmb:
+		return xmlTpAmb
+	case sefaz.TpAmbProducao, sefaz.TpAmbHomologacao:
+		*warnings = append(*warnings, fmt.Sprintf("tpAmb %s differs from the queried tpAmb %s; kept the XML's", xmlTpAmb, pullTpAmb))
+		return xmlTpAmb
+	default:
+		*warnings = append(*warnings, fmt.Sprintf("invalid tpAmb %q; using the queried tpAmb %s", xmlTpAmb, pullTpAmb))
+		return pullTpAmb
+	}
 }
 
 // processUnsupported keeps the XML of a schema nanci does not read and lets

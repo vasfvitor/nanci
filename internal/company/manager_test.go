@@ -2,7 +2,6 @@ package company_test
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"testing"
 
@@ -182,17 +181,19 @@ func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
 	}
 }
 
-func TestManager_UpdateCompanyEnvironmentLock(t *testing.T) {
+// TestManager_UpdateCompanyEnvironmentAfterSync: sync state is kept per
+// environment and NF-e rows record their tpAmb, so no cursor locks the
+// environment.
+func TestManager_UpdateCompanyEnvironmentAfterSync(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name    string
 		cursors []nfse.SyncSource
-		wantErr bool
 	}{
-		{"no cursor", nil, false},
-		{"only an NFS-e cursor", []nfse.SyncSource{nfse.SyncSourceNFSe}, false},
-		{"NF-e cursor", []nfse.SyncSource{nfse.SyncSourceNFe}, true},
-		{"NF-e and NFS-e cursors", []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe}, true},
+		{"no cursor", nil},
+		{"NFS-e cursor", []nfse.SyncSource{nfse.SyncSourceNFSe}},
+		{"NF-e cursor", []nfse.SyncSource{nfse.SyncSourceNFe}},
+		{"NF-e and NFS-e cursors", []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -209,37 +210,18 @@ func TestManager_UpdateCompanyEnvironmentLock(t *testing.T) {
 				t.Fatal(err)
 			}
 			stored := s.companies[0]
-			update := company.UpdateCompanyInput{
+			err = m.UpdateCompany(ctx, company.UpdateCompanyInput{
 				CNPJ:            stored.CNPJ,
 				Name:            "Renamed",
 				Environment:     nfse.EnvironmentProduction,
 				SyncStartPolicy: stored.SyncStartPolicy,
 				SyncStartDate:   stored.SyncStartDate,
-			}
-			err = m.UpdateCompany(ctx, update)
-			if tt.wantErr {
-				if !errors.Is(err, company.ErrEnvironmentLocked) {
-					t.Fatalf("UpdateCompany error = %v, want ErrEnvironmentLocked", err)
-				}
-				if got := s.companies[0]; got.Environment != nfse.EnvironmentRestricted || got.Name != "Test" {
-					t.Errorf("company after refused update = (%s, %s), want (producao_restrita, Test)", got.Environment, got.Name)
-				}
-
-				// Other fields stay editable while the environment is kept.
-				update.Environment = stored.Environment
-				if err := m.UpdateCompany(ctx, update); err != nil {
-					t.Fatalf("UpdateCompany keeping the environment: %v", err)
-				}
-				if got := s.companies[0].Name; got != "Renamed" {
-					t.Errorf("Name = %s, want Renamed", got)
-				}
-				return
-			}
+			})
 			if err != nil {
 				t.Fatalf("UpdateCompany: %v", err)
 			}
-			if got := s.companies[0].Environment; got != nfse.EnvironmentProduction {
-				t.Errorf("Environment = %s, want producao", got)
+			if got := s.companies[0]; got.Environment != nfse.EnvironmentProduction || got.Name != "Renamed" {
+				t.Errorf("company = (%s, %s), want (producao, Renamed)", got.Environment, got.Name)
 			}
 		})
 	}
