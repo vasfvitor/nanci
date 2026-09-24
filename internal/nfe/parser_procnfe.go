@@ -34,7 +34,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 		case strings.HasSuffix(path, "/infNFe/ide/nNF"):
 			doc.Numero = value
 		case strings.HasSuffix(path, "/infNFe/ide/dhEmi"):
-			if t := parseDateTime("dhEmi", value, &warnings); t != nil {
+			if t := dfe.ParseDateTime("dhEmi", value, &warnings); t != nil {
 				doc.IssueDate = *t
 			}
 		case strings.HasSuffix(path, "/infNFe/ide/tpNF"):
@@ -66,11 +66,11 @@ func ParseProcNFe(data []byte) (Document, error) {
 
 		// totals
 		case strings.HasSuffix(path, "/infNFe/total/ICMSTot/vNF"):
-			return parseMoneyInto(&doc.TotalValue, "vNF", value)
+			return dfe.ParseMoneyInto(&doc.TotalValue, "vNF", value)
 		case strings.HasSuffix(path, "/infNFe/total/ICMSTot/vICMS"):
-			return parseMoneyInto(&doc.ICMSValue, "vICMS", value)
+			return dfe.ParseMoneyInto(&doc.ICMSValue, "vICMS", value)
 		case strings.HasSuffix(path, "/infNFe/total/ICMSTot/vIPI"):
-			return parseMoneyInto(&doc.IPIValue, "vIPI", value)
+			return dfe.ParseMoneyInto(&doc.IPIValue, "vIPI", value)
 
 		// authorization protocol
 		case strings.HasSuffix(path, "/protNFe/infProt/chNFe"):
@@ -78,7 +78,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 		case strings.HasSuffix(path, "/protNFe/infProt/nProt"):
 			doc.Protocolo = value
 		case strings.HasSuffix(path, "/protNFe/infProt/dhRecbto"):
-			doc.AuthorizedAt = parseDateTime("dhRecbto", value, &warnings)
+			doc.AuthorizedAt = dfe.ParseDateTime("dhRecbto", value, &warnings)
 		case strings.HasSuffix(path, "/protNFe/infProt/cStat"):
 			cStat = value
 		case strings.HasSuffix(path, "/protNFe/infProt/xMotivo"):
@@ -90,7 +90,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 		return Document{}, err
 	}
 
-	key, err := procNFeKey(protChave, infNFeID, &warnings)
+	key, err := dfe.KeyFromProtocol("NFe", protChave, infNFeID, &warnings)
 	if err != nil {
 		return Document{}, err
 	}
@@ -116,27 +116,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 	if doc.IssueDate.IsZero() {
 		warnings = append(warnings, "missing dhEmi; competence is unknown")
 	}
-	doc.Competence = competence(doc.IssueDate)
+	doc.Competence = dfe.Competence(doc.IssueDate)
 	doc.ParseWarnings = warnings
 	return doc, nil
-}
-
-// procNFeKey picks the access key from protNFe/infProt/chNFe, falling back to
-// infNFe@Id ("NFe" + key). When both are present they must agree.
-func procNFeKey(protChave, infNFeID string, warnings *[]string) (dfe.AccessKey, error) {
-	idChave := strings.TrimPrefix(infNFeID, "NFe")
-	switch {
-	case protChave == "" && idChave == "":
-		return "", errors.New("missing essential field: chNFe")
-	case protChave == "":
-		*warnings = append(*warnings, "missing protNFe/infProt/chNFe; using infNFe Id")
-		protChave = idChave
-	case idChave != "" && idChave != protChave:
-		return "", fmt.Errorf("protNFe chNFe %s does not match infNFe Id %s", protChave, infNFeID)
-	}
-	key, err := dfe.ParseAccessKey(protChave)
-	if err != nil {
-		return "", fmt.Errorf("chNFe: %w", err)
-	}
-	return key, nil
 }

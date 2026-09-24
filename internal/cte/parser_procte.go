@@ -82,7 +82,7 @@ func ParseProcCTe(data []byte) (Document, error) {
 		case strings.HasSuffix(p, "/infCte/ide/natOp"):
 			doc.NatOp = value
 		case strings.HasSuffix(p, "/infCte/ide/dhEmi"):
-			if t := parseDateTime("dhEmi", value, &warnings); t != nil {
+			if t := dfe.ParseDateTime("dhEmi", value, &warnings); t != nil {
 				doc.IssueDate = *t
 			}
 		case strings.HasSuffix(p, "/infCte/ide/tpCTe"):
@@ -123,15 +123,15 @@ func ParseProcCTe(data []byte) (Document, error) {
 		// Simplificado. Only one ICMS group exists per document; vICMSOutraUF
 		// is the ICMS due to another UF.
 		case xmlwalk.HasAnySuffix(p, "/infCte/vPrest/vTPrest", "/infCte/total/vTPrest"):
-			return parseMoneyInto(&doc.TotalValue, "vTPrest", value)
+			return dfe.ParseMoneyInto(&doc.TotalValue, "vTPrest", value)
 		case xmlwalk.HasAnySuffix(p, "/infCte/vPrest/vRec", "/infCte/total/vTRec"):
-			return parseMoneyInto(&doc.ReceivableValue, "vRec", value)
+			return dfe.ParseMoneyInto(&doc.ReceivableValue, "vRec", value)
 		case isICMSGroupField(p):
 			return addMoneyInto(&doc.ICMSValue, "vICMS", value)
 		case strings.HasSuffix(p, "/infCte/imp/vTotTrib"):
-			return parseMoneyInto(&doc.TotTribValue, "vTotTrib", value)
+			return dfe.ParseMoneyInto(&doc.TotTribValue, "vTotTrib", value)
 		case xmlwalk.HasAnySuffix(p, "/infCTeNorm/infCarga/vCarga", "/infCte/infCarga/vCarga"):
-			return parseMoneyInto(&doc.CargaValue, "vCarga", value)
+			return dfe.ParseMoneyInto(&doc.CargaValue, "vCarga", value)
 		case xmlwalk.HasAnySuffix(p, "/infCTeNorm/infCarga/proPred", "/infCte/infCarga/proPred"):
 			doc.ProdutoPredominante = value
 		case strings.HasSuffix(p, "/infCte/detGTV/infEspecie/vEspecie"):
@@ -152,7 +152,7 @@ func ParseProcCTe(data []byte) (Document, error) {
 		case strings.HasSuffix(p, "/infProt/nProt"):
 			doc.Protocolo = value
 		case strings.HasSuffix(p, "/infProt/dhRecbto"):
-			doc.AuthorizedAt = parseDateTime("dhRecbto", value, &warnings)
+			doc.AuthorizedAt = dfe.ParseDateTime("dhRecbto", value, &warnings)
 		case strings.HasSuffix(p, "/infProt/cStat"):
 			cStat = value
 		case strings.HasSuffix(p, "/infProt/xMotivo"):
@@ -170,7 +170,7 @@ func ParseProcCTe(data []byte) (Document, error) {
 	}
 	doc.TipoDocumento = tipo
 
-	key, err := procCTeKey(protChave, infCteID, &warnings)
+	key, err := dfe.KeyFromProtocol("CTe", protChave, infCteID, &warnings)
 	if err != nil {
 		return Document{}, err
 	}
@@ -213,7 +213,7 @@ func ParseProcCTe(data []byte) (Document, error) {
 	if doc.IssueDate.IsZero() {
 		warnings = append(warnings, "missing dhEmi; competence is unknown")
 	}
-	doc.Competence = competence(doc.IssueDate)
+	doc.Competence = dfe.Competence(doc.IssueDate)
 	doc.ParseWarnings = warnings
 	return doc, nil
 }
@@ -316,24 +316,4 @@ func validNFeChaves(raw []string, warnings *[]string) (chaves []string, masked b
 		*warnings = append(*warnings, fmt.Sprintf("%d NF-e chaves masked with 9s were dropped", maskedCount))
 	}
 	return chaves, maskedCount > 0
-}
-
-// procCTeKey picks the access key from infProt/chCTe, falling back to
-// infCte@Id ("CTe" + key). When both are present they must agree.
-func procCTeKey(protChave, infCteID string, warnings *[]string) (dfe.AccessKey, error) {
-	idChave := strings.TrimPrefix(infCteID, "CTe")
-	switch {
-	case protChave == "" && idChave == "":
-		return "", errors.New("missing essential field: chCTe")
-	case protChave == "":
-		*warnings = append(*warnings, "missing infProt/chCTe; using infCte Id")
-		protChave = idChave
-	case idChave != "" && idChave != protChave:
-		return "", fmt.Errorf("protocol chCTe %s does not match infCte Id %s", protChave, infCteID)
-	}
-	key, err := dfe.ParseAccessKey(protChave)
-	if err != nil {
-		return "", fmt.Errorf("chCTe: %w", err)
-	}
-	return key, nil
 }

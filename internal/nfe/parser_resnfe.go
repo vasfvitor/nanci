@@ -35,15 +35,15 @@ func ParseResNFe(data []byte) (Document, error) {
 		case strings.HasSuffix(path, "/resNFe/IE"):
 			doc.EmitenteIE = value
 		case strings.HasSuffix(path, "/resNFe/dhEmi"):
-			if t := parseDateTime("dhEmi", value, &warnings); t != nil {
+			if t := dfe.ParseDateTime("dhEmi", value, &warnings); t != nil {
 				doc.IssueDate = *t
 			}
 		case strings.HasSuffix(path, "/resNFe/tpNF"):
 			doc.TpNF = value
 		case strings.HasSuffix(path, "/resNFe/vNF"):
-			return parseMoneyInto(&doc.TotalValue, "vNF", value)
+			return dfe.ParseMoneyInto(&doc.TotalValue, "vNF", value)
 		case strings.HasSuffix(path, "/resNFe/dhRecbto"):
-			doc.AuthorizedAt = parseDateTime("dhRecbto", value, &warnings)
+			doc.AuthorizedAt = dfe.ParseDateTime("dhRecbto", value, &warnings)
 		case strings.HasSuffix(path, "/resNFe/nProt"):
 			doc.Protocolo = value
 		case strings.HasSuffix(path, "/resNFe/cSitNFe"):
@@ -84,7 +84,7 @@ func ParseResNFe(data []byte) (Document, error) {
 	if doc.IssueDate.IsZero() {
 		warnings = append(warnings, "missing dhEmi; competence is unknown")
 	}
-	doc.Competence = competence(doc.IssueDate)
+	doc.Competence = dfe.Competence(doc.IssueDate)
 	doc.ParseWarnings = warnings
 	return doc, nil
 }

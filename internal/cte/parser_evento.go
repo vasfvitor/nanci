@@ -2,9 +2,7 @@ package cte
 
 import (
 	"encoding/xml"
-	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
@@ -53,7 +51,7 @@ func ParseProcEventoCTe(data []byte) (Event, error) {
 		case strings.HasSuffix(p, "/eventoCTe/infEvento/chCTe"):
 			chave = value
 		case strings.HasSuffix(p, "/eventoCTe/infEvento/dhEvento"):
-			ev.EventAt = parseDateTime("dhEvento", value, &warnings)
+			ev.EventAt = dfe.ParseDateTime("dhEvento", value, &warnings)
 		case strings.HasSuffix(p, "/eventoCTe/infEvento/tpEvento"):
 			tpEvento = value
 		case strings.HasSuffix(p, "/eventoCTe/infEvento/nSeqEvento"):
@@ -79,9 +77,13 @@ func ParseProcEventoCTe(data []byte) (Event, error) {
 		return Event{}, err
 	}
 
-	if err := setEventIdentity(&ev, chave, tpEvento, nSeqEvento); err != nil {
+	key, seq, err := dfe.ParseEventIdentity("CTe", chave, tpEvento, nSeqEvento)
+	if err != nil {
 		return Event{}, err
 	}
+	ev.ChaveAcesso, ev.TpEvento, ev.NSeqEvento = key, tpEvento, seq
+	ev.Type = EventTypeFromTpEvento(tpEvento)
+
 	// A missing or invalid tpAmb is not an error here: the sync decides the
 	// tpAmb to store against the environment it queried.
 	switch {
@@ -104,7 +106,7 @@ func ParseProcEventoCTe(data []byte) (Event, error) {
 		ev.Registered = true
 		ev.Protocolo = nProt
 		if dhRegEvento != "" {
-			ev.RegisteredAt = parseDateTime("dhRegEvento", dhRegEvento, &warnings)
+			ev.RegisteredAt = dfe.ParseDateTime("dhRegEvento", dhRegEvento, &warnings)
 		}
 	case "":
 		warnings = append(warnings, "missing retEventoCTe cStat; event not registered")
@@ -181,49 +183,4 @@ func formatCorrecoes(correcoes []correcao) string {
 		parts = append(parts, field+"="+c.valor)
 	}
 	return strings.Join(parts, "; ")
-}
-
-// setEventIdentity validates and sets the fields that identify an event:
-// chave, tpEvento and nSeqEvento.
-func setEventIdentity(ev *Event, chave, tpEvento, nSeqEvento string) error {
-	if chave == "" {
-		return errors.New("missing essential field: chCTe")
-	}
-	key, err := dfe.ParseAccessKey(chave)
-	if err != nil {
-		return fmt.Errorf("chCTe: %w", err)
-	}
-	if tpEvento == "" {
-		return errors.New("missing essential field: tpEvento")
-	}
-	if !isTpEvento(tpEvento) {
-		return fmt.Errorf("invalid tpEvento %q", tpEvento)
-	}
-	if nSeqEvento == "" {
-		return errors.New("missing essential field: nSeqEvento")
-	}
-	seq, err := strconv.Atoi(nSeqEvento)
-	if err != nil || seq < 1 {
-		return fmt.Errorf("invalid nSeqEvento %q", nSeqEvento)
-	}
-
-	ev.ChaveAcesso = key
-	ev.TpEvento = tpEvento
-	ev.Type = EventTypeFromTpEvento(tpEvento)
-	ev.NSeqEvento = seq
-	return nil
-}
-
-// isTpEvento reports whether s is a tpEvento code: exactly six ASCII digits.
-// The code names ZIP entries on export, so nothing else may pass.
-func isTpEvento(s string) bool {
-	if len(s) != 6 {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		if s[i] < '0' || s[i] > '9' {
-			return false
-		}
-	}
-	return true
 }

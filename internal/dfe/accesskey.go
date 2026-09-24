@@ -1,7 +1,7 @@
 // Package dfe holds the vocabulary shared by the documentos fiscais
-// eletrônicos distributed by SEFAZ (NF-e, CT-e): the 44-character access key
-// and the value types their domains have in common. It has no network or
-// database code.
+// eletrônicos distributed by SEFAZ (NF-e, CT-e): the 44-character access key,
+// the value types their domains have in common and the helpers their XML
+// parsers share. It has no network or database code.
 package dfe
 
 import (

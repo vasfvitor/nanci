@@ -1,9 +1,7 @@
 package nfe
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
@@ -25,7 +23,7 @@ func ParseResEvento(data []byte) (Event, error) {
 		case xmlwalk.HasAnySuffix(path, "/resEvento/CNPJ", "/resEvento/CPF"):
 			ev.AutorCNPJ = value
 		case strings.HasSuffix(path, "/resEvento/dhEvento"):
-			ev.EventAt = parseDateTime("dhEvento", value, &warnings)
+			ev.EventAt = dfe.ParseDateTime("dhEvento", value, &warnings)
 		case strings.HasSuffix(path, "/resEvento/tpEvento"):
 			tpEvento = value
 		case strings.HasSuffix(path, "/resEvento/nSeqEvento"):
@@ -33,7 +31,7 @@ func ParseResEvento(data []byte) (Event, error) {
 		case strings.HasSuffix(path, "/resEvento/xEvento"):
 			ev.Description = value
 		case strings.HasSuffix(path, "/resEvento/dhRecbto"):
-			ev.RegisteredAt = parseDateTime("dhRecbto", value, &warnings)
+			ev.RegisteredAt = dfe.ParseDateTime("dhRecbto", value, &warnings)
 		case strings.HasSuffix(path, "/resEvento/nProt"):
 			ev.Protocolo = value
 		}
@@ -43,9 +41,12 @@ func ParseResEvento(data []byte) (Event, error) {
 		return Event{}, err
 	}
 
-	if err := setEventIdentity(&ev, chave, tpEvento, nSeqEvento); err != nil {
+	key, seq, err := dfe.ParseEventIdentity("NFe", chave, tpEvento, nSeqEvento)
+	if err != nil {
 		return Event{}, err
 	}
+	ev.ChaveAcesso, ev.TpEvento, ev.NSeqEvento = key, tpEvento, seq
+	ev.Type = EventTypeFromTpEvento(tpEvento)
 	ev.ParseWarnings = warnings
 	return ev, nil
 }
@@ -68,7 +69,7 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 		case xmlwalk.HasAnySuffix(path, "/evento/infEvento/CNPJ", "/evento/infEvento/CPF"):
 			ev.AutorCNPJ = value
 		case strings.HasSuffix(path, "/evento/infEvento/dhEvento"):
-			ev.EventAt = parseDateTime("dhEvento", value, &warnings)
+			ev.EventAt = dfe.ParseDateTime("dhEvento", value, &warnings)
 		case strings.HasSuffix(path, "/evento/infEvento/tpAmb"):
 			ev.TpAmb = value
 		case strings.HasSuffix(path, "/evento/infEvento/tpEvento"):
@@ -100,9 +101,12 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 		return Event{}, err
 	}
 
-	if err := setEventIdentity(&ev, chave, tpEvento, nSeqEvento); err != nil {
+	key, seq, err := dfe.ParseEventIdentity("NFe", chave, tpEvento, nSeqEvento)
+	if err != nil {
 		return Event{}, err
 	}
+	ev.ChaveAcesso, ev.TpEvento, ev.NSeqEvento = key, tpEvento, seq
+	ev.Type = EventTypeFromTpEvento(tpEvento)
 	if ev.Description == "" {
 		ev.Description = xEvento
 	}
@@ -114,7 +118,7 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 		ev.Registered = true
 		ev.Protocolo = nProt
 		if dhRegEvento != "" {
-			ev.RegisteredAt = parseDateTime("dhRegEvento", dhRegEvento, &warnings)
+			ev.RegisteredAt = dfe.ParseDateTime("dhRegEvento", dhRegEvento, &warnings)
 		}
 	case "":
 		warnings = append(warnings, "missing retEvento cStat; event not registered")
@@ -124,32 +128,4 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 
 	ev.ParseWarnings = warnings
 	return ev, nil
-}
-
-// setEventIdentity validates and sets the fields that identify an event:
-// chave, tpEvento and nSeqEvento.
-func setEventIdentity(ev *Event, chave, tpEvento, nSeqEvento string) error {
-	if chave == "" {
-		return errors.New("missing essential field: chNFe")
-	}
-	key, err := dfe.ParseAccessKey(chave)
-	if err != nil {
-		return fmt.Errorf("chNFe: %w", err)
-	}
-	if tpEvento == "" {
-		return errors.New("missing essential field: tpEvento")
-	}
-	if nSeqEvento == "" {
-		return errors.New("missing essential field: nSeqEvento")
-	}
-	seq, err := strconv.Atoi(nSeqEvento)
-	if err != nil || seq < 1 {
-		return fmt.Errorf("invalid nSeqEvento %q", nSeqEvento)
-	}
-
-	ev.ChaveAcesso = key
-	ev.TpEvento = tpEvento
-	ev.Type = EventTypeFromTpEvento(tpEvento)
-	ev.NSeqEvento = seq
-	return nil
 }

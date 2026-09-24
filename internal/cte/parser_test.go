@@ -374,7 +374,7 @@ func TestParseProcCTeKeySources(t *testing.T) {
 		if doc.ChaveAcesso != keyProcCTe {
 			t.Errorf("ChaveAcesso = %q", doc.ChaveAcesso)
 		}
-		if len(doc.ParseWarnings) != 1 || !strings.Contains(doc.ParseWarnings[0], "infCte Id") {
+		if len(doc.ParseWarnings) != 1 || !strings.Contains(doc.ParseWarnings[0], "using Id CTe") {
 			t.Errorf("ParseWarnings = %v, want one about the Id fallback", doc.ParseWarnings)
 		}
 	})
