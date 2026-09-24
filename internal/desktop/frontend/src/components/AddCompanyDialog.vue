@@ -21,6 +21,15 @@
           outlined
           dense
         />
+        <q-select
+          v-model="form.UF"
+          :options="ufOptions"
+          label="UF (opcional)"
+          hint="Necessária para buscar NF-e na SEFAZ."
+          clearable
+          outlined
+          dense
+        />
 
         <q-separator />
 
@@ -96,6 +105,7 @@ import { computed, ref, watch } from 'vue'
 import { date, useQuasar } from 'quasar'
 import { desktopClient } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
+import { UF_SIGLAS } from '@/utils/uf'
 
 const props = defineProps<{
   modelValue: boolean
@@ -113,6 +123,7 @@ const credentialMode = ref<'existing' | 'new'>('existing')
 const credentialOptions = ref<{ label: string; value: string }[]>([])
 const syncStartChoice = ref<'from_now' | 'last_12_months' | 'last_5_years' | 'custom_date' | 'all'>('from_now')
 const customSyncStartDate = ref('')
+const ufOptions = [...UF_SIGLAS]
 
 const form = ref({
   CNPJ: '',
@@ -121,6 +132,8 @@ const form = ref({
   CredentialLabel: '',
   CertPath: '',
   Environment: 'producao_restrita',
+  // q-select sets null when cleared.
+  UF: '' as string | null,
 })
 
 const syncStartOptions = computed(() => [
@@ -204,6 +217,7 @@ async function submit() {
       CredentialLabel: credentialMode.value === 'new' ? form.value.CredentialLabel : '',
       CertPath: credentialMode.value === 'new' ? form.value.CertPath : '',
       Environment: form.value.Environment,
+      UF: form.value.UF ?? '',
       SyncStartPolicy: syncStart.policy,
       SyncStartDate: syncStart.date,
     })
@@ -226,6 +240,7 @@ function resetForm() {
     CredentialLabel: '',
     CertPath: '',
     Environment: 'producao_restrita',
+    UF: '',
   }
   syncStartChoice.value = 'from_now'
   customSyncStartDate.value = ''

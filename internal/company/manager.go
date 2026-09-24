@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/foundation/uf"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -16,6 +18,10 @@ var (
 	ErrCredentialMismatch   = errors.New("a credencial informada não pertence à mesma raiz do CNPJ da empresa")
 	ErrCredentialNoOwner    = errors.New("o certificado não expõe um CNPJ proprietário utilizável para consulta")
 	ErrCompanyNoEnvironment = errors.New("a empresa não possui ambiente configurado")
+	// ErrEnvironmentLocked refuses an environment change once NF-e was
+	// synced: NF-e rows do not record their environment, so documents of
+	// both environments would mix. The NF-e reset lifts it.
+	ErrEnvironmentLocked = errors.New("não é possível alterar o ambiente depois que a sincronização de NF-e já começou; use `nanci nfe reset` ou o botão Redefinir NF-e antes")
 )
 
 type storeInterface interface {
@@ -32,7 +38,7 @@ type credentialProvider interface {
 }
 
 type syncProvider interface {
-	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
+	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
 	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
 }
 
@@ -44,6 +50,7 @@ type AddCompanyInput struct {
 	CredentialLabel string
 	CertPath        string
 	Environment     nfse.Environment
+	UF              string // optional state sigla, e.g. "SP"
 	SyncStartPolicy nfse.SyncStartPolicy
 	SyncStartDate   *time.Time
 }
@@ -53,6 +60,7 @@ type UpdateCompanyInput struct {
 	CNPJ            string
 	Name            string
 	Environment     nfse.Environment
+	UF              string // optional state sigla, e.g. "SP"
 	SyncStartPolicy nfse.SyncStartPolicy
 	SyncStartDate   *time.Time
 }
@@ -85,6 +93,10 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		return err
 	}
 	root, _ := cnpj.Root(cleanedCNPJ)
+	sigla, err := normalizeUF(input.UF)
+	if err != nil {
+		return err
+	}
 
 	credential, err := m.resolveCredentialForCompany(ctx, input)
 	if err != nil {
@@ -100,6 +112,7 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		CredentialLabel:    credential.Label,
 		CredentialCertPath: credential.CertPath,
 		Environment:        input.Environment,
+		UF:                 sigla,
 		SyncStartPolicy:    input.SyncStartPolicy,
 		SyncStartDate:      input.SyncStartDate,
 	}
@@ -118,7 +131,7 @@ func (m *Manager) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 		return nil, fmt.Errorf("listar empresas: %w", err)
 	}
 	for i := range companies {
-		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, companies[i].Environment, companies[i].CNPJ)
+		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, nfse.SyncSourceNFSe, companies[i].Environment, companies[i].CNPJ)
 		if snapErr != nil {
 			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
 		}
@@ -190,15 +203,39 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 	return credential, nil
 }
 
-// UpdateCompany updates the name and environment of an existing company.
+// CompanyByCNPJ returns one registered company.
+func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*nfse.Company, error) {
+	return lookupCompanyByCNPJ(ctx, m.store, rawCNPJ)
+}
+
+// UpdateCompany replaces the editable fields of an existing company: name,
+// UF, the environment until the first NF-e sync and, before the first NFS-e
+// sync, the initial sync policy.
 func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
 	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CNPJ)
 	if err != nil {
 		return err
 	}
+	sigla, err := normalizeUF(input.UF)
+	if err != nil {
+		return err
+	}
 
+	// NFS-e keys its sync state by environment; NF-e does not, so only an
+	// NF-e cursor locks the environment.
+	if input.Environment != company.Environment {
+		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFe})
+		if err != nil {
+			return fmt.Errorf("verificar estado de sincronização: %w", err)
+		}
+		if hasState {
+			return ErrEnvironmentLocked
+		}
+	}
+
+	// The start policy only applies to NFS-e; an NF-e cursor does not lock it.
 	if input.SyncStartPolicy != company.SyncStartPolicy || !sameDate(input.SyncStartDate, company.SyncStartDate) {
-		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID})
+		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe})
 		if err != nil {
 			return fmt.Errorf("verificar estado de sincronização: %w", err)
 		}
@@ -209,6 +246,7 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 
 	company.Name = input.Name
 	company.Environment = input.Environment
+	company.UF = sigla
 	company.SyncStartPolicy = input.SyncStartPolicy
 	company.SyncStartDate = input.SyncStartDate
 
@@ -274,6 +312,16 @@ func normalizeCNPJ(raw string) (string, error) {
 		return "", fmt.Errorf("CNPJ inválido: %w", err)
 	}
 	return cnpj.Clean(raw), nil
+}
+
+// normalizeUF trims and upper-cases a state sigla. Empty is allowed and
+// means the UF is unknown.
+func normalizeUF(raw string) (string, error) {
+	sigla := strings.ToUpper(strings.TrimSpace(raw))
+	if sigla != "" && !uf.Valid(sigla) {
+		return "", fmt.Errorf("UF inválida %q: use uma sigla como SP, RJ ou MG", raw)
+	}
+	return sigla, nil
 }
 
 func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*nfse.Company, error) {

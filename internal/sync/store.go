@@ -31,7 +31,7 @@ type executor interface {
 }
 
 func (r *Store) GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyncStateParams) (*nfse.SyncState, error) {
-	state, err := r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
+	state, err := r.getSyncState(ctx, params.CompanyID, params.Source, params.Environment, params.ConsultationCNPJ)
 	if err == nil {
 		return state, nil
 	}
@@ -43,26 +43,27 @@ func (r *Store) GetOrCreateState(ctx context.Context, params nfse.GetOrCreateSyn
 
 	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO sync_state (
-			company_id, environment, consultation_cnpj,
+			company_id, source, environment, consultation_cnpj,
 			last_checked_nsu, last_found_nsu, last_empty_streak,
 			created_at, updated_at
-		) VALUES (?, ?, ?, 0, NULL, 0, ?, ?)
+		) VALUES (?, ?, ?, ?, 0, NULL, 0, ?, ?)
 	`,
 		string(params.CompanyID),
+		string(params.Source),
 		string(params.Environment),
 		params.ConsultationCNPJ,
 		now,
 		now,
 	)
 	if err != nil {
-		state, retryErr := r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
+		state, retryErr := r.getSyncState(ctx, params.CompanyID, params.Source, params.Environment, params.ConsultationCNPJ)
 		if retryErr == nil {
 			return state, nil
 		}
 		return nil, err
 	}
 
-	return r.getSyncState(ctx, params.CompanyID, params.Environment, params.ConsultationCNPJ)
+	return r.getSyncState(ctx, params.CompanyID, params.Source, params.Environment, params.ConsultationCNPJ)
 }
 
 func (r *Store) StartRun(ctx context.Context, params nfse.StartRunParams) (nfse.SyncRun, error) {
@@ -71,20 +72,22 @@ func (r *Store) StartRun(ctx context.Context, params nfse.StartRunParams) (nfse.
 
 	_, _ = r.db.ExecContext(
 		ctx,
-		"UPDATE sync_runs SET status = 'interrupted', stop_reason = 'context_canceled', finished_at = ? WHERE company_id = ? AND status = 'running'",
+		"UPDATE sync_runs SET status = 'interrupted', stop_reason = 'context_canceled', finished_at = ? WHERE company_id = ? AND source = ? AND status = 'running'",
 		now.Format(time.RFC3339),
 		string(params.CompanyID),
+		string(params.Source),
 	)
 
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO sync_runs (
-			id, company_id, credential_id, environment, credential_cnpj, consultation_cnpj,
+			id, company_id, source, credential_id, environment, credential_cnpj, consultation_cnpj,
 			consultation_basis, mode, started_at, from_nsu, to_nsu,
 			checked_count, documents_found, empty_count, consecutive_empty_count, errors_count, status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?)
 	`,
 		string(runID),
 		string(params.CompanyID),
+		string(params.Source),
 		string(params.CredentialID),
 		string(params.Environment),
 		params.CredentialCNPJ,
@@ -103,6 +106,7 @@ func (r *Store) StartRun(ctx context.Context, params nfse.StartRunParams) (nfse.
 	return nfse.SyncRun{
 		ID:                runID,
 		CompanyID:         params.CompanyID,
+		Source:            params.Source,
 		CredentialID:      params.CredentialID,
 		Environment:       params.Environment,
 		CredentialCNPJ:    params.CredentialCNPJ,
@@ -262,6 +266,10 @@ func (r *Store) doPersistProgress(ctx context.Context, tx executor, params nfse.
 				WHEN ? IS NOT NULL THEN ?
 				ELSE last_found_nsu
 			END,
+			max_nsu = CASE
+				WHEN ? IS NOT NULL THEN ?
+				ELSE max_nsu
+			END,
 			last_empty_streak = ?,
 			last_success_at = CASE
 				WHEN ? IS NOT NULL THEN ?
@@ -282,11 +290,13 @@ func (r *Store) doPersistProgress(ctx context.Context, tx executor, params nfse.
 				ELSE last_error_message
 			END,
 			updated_at = ?
-		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
 	`,
 		params.LastProcessedNSU,
 		store.NullInt64FromPtr(params.LastFoundNSU),
 		store.NullInt64FromPtr(params.LastFoundNSU),
+		store.NullInt64FromPtr(params.MaxNSU),
+		store.NullInt64FromPtr(params.MaxNSU),
 		params.LastEmptyStreak,
 		lastSuccessAt,
 		lastSuccessAt,
@@ -300,6 +310,7 @@ func (r *Store) doPersistProgress(ctx context.Context, tx executor, params nfse.
 		lastSuccessAt,
 		now,
 		string(params.CompanyID),
+		string(params.Source),
 		string(params.Environment),
 		params.ConsultationCNPJ,
 	)
@@ -389,50 +400,43 @@ func (r *Store) PersistProgress(ctx context.Context, params nfse.PersistSyncProg
 	return tx.Commit()
 }
 
-func (r *Store) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
+// ApplyWithProgress runs write and the item's sync checkpoint in one
+// transaction. An inserted document (not an event) is added to the run's
+// documents_found before the checkpoint is written.
+func (r *Store) ApplyWithProgress(ctx context.Context, progress nfse.PersistSyncProgressParams, write func(tx *sql.Tx) (ItemOutcome, error)) (ItemOutcome, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nfse.ApplyOutcome{}, err
+		return ItemOutcome{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	outcome, err := r.doApplyDocument(ctx, tx, r.queries.WithTx(tx), params.DocumentParams)
+	outcome, err := write(tx)
 	if err != nil {
-		return nfse.ApplyOutcome{}, err
+		return ItemOutcome{}, err
 	}
-	progressParams := params.ProgressParams
-	if outcome.Inserted {
-		progressParams.DocumentsFound++
+	if outcome.Inserted && !outcome.IsEvent {
+		progress.DocumentsFound++
 	}
-	if err := r.doPersistProgress(ctx, tx, progressParams); err != nil {
-		return nfse.ApplyOutcome{}, err
+	if err := r.doPersistProgress(ctx, tx, progress); err != nil {
+		return ItemOutcome{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nfse.ApplyOutcome{}, err
+		return ItemOutcome{}, err
 	}
 	return outcome, nil
 }
 
-func (r *Store) ApplyEventAndProgress(ctx context.Context, params nfse.ApplyEventAndProgressParams) (nfse.ApplyOutcome, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+// ApplyDocumentAndProgress stores a document and its sync checkpoint in one transaction.
+func (r *Store) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
+	outcome, err := r.ApplyWithProgress(ctx, params.ProgressParams, func(tx *sql.Tx) (ItemOutcome, error) {
+		applied, err := r.doApplyDocument(ctx, tx, r.queries.WithTx(tx), params.DocumentParams)
+		return ItemOutcome{Inserted: applied.Inserted}, err
+	})
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
 	}
-	defer func() { _ = tx.Rollback() }()
-
-	outcome, err := r.doApplyEvent(ctx, tx, r.queries.WithTx(tx), params.EventParams)
-	if err != nil {
-		return nfse.ApplyOutcome{}, err
-	}
-	if err := r.doPersistProgress(ctx, tx, params.ProgressParams); err != nil {
-		return nfse.ApplyOutcome{}, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nfse.ApplyOutcome{}, err
-	}
-	return outcome, nil
+	return nfse.ApplyOutcome{Inserted: outcome.Inserted}, nil
 }
 
 func companyDocumentMissing(ctx context.Context, tx executor, companyID, documentID string) (bool, error) {
@@ -496,10 +500,10 @@ func (r *Store) FinishRun(ctx context.Context, params nfse.FinishRunParams) erro
 	return err
 }
 
-func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error) {
+func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error) {
 	var snapshot nfse.SyncSnapshot
 
-	state, err := r.getSyncState(ctx, companyID, environment, consultationCNPJ)
+	state, err := r.getSyncState(ctx, companyID, source, environment, consultationCNPJ)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return snapshot, err
 	}
@@ -507,7 +511,7 @@ func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID
 		snapshot.State = state
 	}
 
-	run, err := r.latestRun(ctx, companyID, environment, consultationCNPJ)
+	run, err := r.latestRun(ctx, companyID, source, environment, consultationCNPJ)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return snapshot, err
 	}
@@ -518,6 +522,9 @@ func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID
 	return snapshot, nil
 }
 
+// ResetSyncState deletes the source's sync cursor and clears its initial-sync
+// flag, so the next pull starts over under the company start policy. It keeps
+// blocked_until: a local reset does not lift a wait imposed by the tax authority.
 func (r *Store) ResetSyncState(ctx context.Context, params nfse.ResetSyncStateParams) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -525,20 +532,20 @@ func (r *Store) ResetSyncState(ctx context.Context, params nfse.ResetSyncStatePa
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	if _, err := tx.ExecContext(ctx, `DELETE FROM sync_state WHERE company_id = ?`, string(params.CompanyID)); err != nil {
+	if err := store.ResetSyncStateTx(ctx, tx, params); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE companies SET initial_sync_completed_at = NULL, updated_at = ? WHERE id = ?`, now, string(params.CompanyID)); err != nil {
-		return err
-	}
-
 	return tx.Commit()
 }
 
+// HasSyncState reports whether the company has a sync cursor for
+// params.Source.
 func (r *Store) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
 	var exists int
-	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM sync_state WHERE company_id = ? LIMIT 1`, string(params.CompanyID)).Scan(&exists)
+	err := r.db.QueryRowContext(ctx,
+		`SELECT 1 FROM sync_state WHERE company_id = ? AND source = ? LIMIT 1`,
+		string(params.CompanyID), string(params.Source),
+	).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -548,18 +555,153 @@ func (r *Store) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams
 	return true, nil
 }
 
-func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID) error {
+// SourceState holds the per (company, source) facts that outlive a single run.
+type SourceState struct {
+	InitialSyncDoneAt *time.Time
+	BlockedUntil      *time.Time
+	BlockedReason     nfse.SyncStopReason
+}
+
+// SourceState returns the company's facts for the source. A company that
+// never synced the source gets the zero SourceState.
+func (r *Store) SourceState(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) (SourceState, error) {
+	var initialSyncDoneAt, blockedUntil, blockedReason sql.NullString
+	err := r.db.QueryRowContext(ctx, `
+		SELECT initial_sync_completed_at, blocked_until, blocked_reason
+		FROM company_sync_sources
+		WHERE company_id = ? AND source = ?
+	`, string(companyID), string(source)).Scan(&initialSyncDoneAt, &blockedUntil, &blockedReason)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SourceState{}, nil
+	}
+	if err != nil {
+		return SourceState{}, err
+	}
+
+	return SourceState{
+		InitialSyncDoneAt: store.ParseNullableTime(initialSyncDoneAt),
+		BlockedUntil:      store.ParseNullableTime(blockedUntil),
+		BlockedReason:     nfse.SyncStopReason(blockedReason.String),
+	}, nil
+}
+
+// MarkInitialSyncCompleted records the first time the source caught up for
+// the company. For NFS-e it also sets companies.initial_sync_completed_at,
+// which the company list and the desktop start-policy lock still read.
+func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT (company_id, source) DO UPDATE SET
+			initial_sync_completed_at = COALESCE(initial_sync_completed_at, excluded.initial_sync_completed_at),
+			updated_at = excluded.updated_at
+	`, string(companyID), string(source), now, now); err != nil {
+		return err
+	}
+	if source == nfse.SyncSourceNFSe {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE companies
+			SET initial_sync_completed_at = COALESCE(initial_sync_completed_at, ?),
+				updated_at = ?
+			WHERE id = ?
+		`, now, now, string(companyID)); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SetBlockedUntil records that the source must not be queried for the
+// company before until, and why.
+func (r *Store) SetBlockedUntil(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, until time.Time, reason nfse.SyncStopReason) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE companies
-		SET initial_sync_completed_at = CASE
-				WHEN initial_sync_completed_at IS NULL THEN ?
-				ELSE initial_sync_completed_at
-			END,
-			updated_at = ?
-		WHERE id = ?
-	`, now, now, string(companyID))
+		INSERT INTO company_sync_sources (company_id, source, blocked_until, blocked_reason, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (company_id, source) DO UPDATE SET
+			blocked_until = excluded.blocked_until,
+			blocked_reason = excluded.blocked_reason,
+			updated_at = excluded.updated_at
+	`, string(companyID), string(source), until.UTC().Format(time.RFC3339), string(reason), now)
 	return err
+}
+
+// requestRetention is how long sync_requests rows are kept. It only has to
+// cover the widest budget window.
+const requestRetention = 24 * time.Hour
+
+// RecordRequest logs one outbound distribution request for the source's
+// rolling budget and prunes rows older than requestRetention.
+func (r *Store) RecordRequest(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, at time.Time) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO sync_requests (company_id, source, requested_at) VALUES (?, ?, ?)`,
+		string(companyID), string(source), at.UTC().Format(time.RFC3339),
+	); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM sync_requests WHERE requested_at < ?`,
+		at.UTC().Add(-requestRetention).Format(time.RFC3339),
+	); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// RequestsSince counts the source's requests for the company at or after
+// since, and returns the oldest of them (nil when there are none).
+func (r *Store) RequestsSince(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, since time.Time) (int, *time.Time, error) {
+	var count int
+	var oldest sql.NullString
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*), MIN(requested_at)
+		FROM sync_requests
+		WHERE company_id = ? AND source = ? AND requested_at >= ?
+	`, string(companyID), string(source), since.UTC().Format(time.RFC3339)).Scan(&count, &oldest)
+	if err != nil {
+		return 0, nil, err
+	}
+	return count, store.ParseNullableTime(oldest), nil
+}
+
+// RecordItemFailure counts one decode or parse failure of the item at nsu
+// and returns how many times in a row that NSU has failed. A failure at a
+// different NSU starts the count over.
+func (r *Store) RecordItemFailure(ctx context.Context, key nfse.GetOrCreateSyncStateParams, nsu int64) (int, error) {
+	var attempts int
+	err := r.db.QueryRowContext(ctx, `
+		UPDATE sync_state
+		SET
+			failed_nsu_attempts = CASE WHEN failed_nsu = ? THEN failed_nsu_attempts + 1 ELSE 1 END,
+			failed_nsu = ?,
+			updated_at = ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
+		RETURNING failed_nsu_attempts
+	`,
+		nsu,
+		nsu,
+		time.Now().UTC().Format(time.RFC3339),
+		string(key.CompanyID),
+		string(key.Source),
+		string(key.Environment),
+		key.ConsultationCNPJ,
+	).Scan(&attempts)
+	return attempts, err
 }
 
 func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
@@ -580,31 +722,34 @@ func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID 
 	return true, nil
 }
 
-func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
+func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
-			company_id, environment, consultation_cnpj,
-			last_checked_nsu, last_found_nsu, last_empty_streak,
+			company_id, source, environment, consultation_cnpj,
+			last_checked_nsu, last_found_nsu, max_nsu, last_empty_streak,
 			last_success_at, last_error_at, last_error_code, last_error_message,
 			created_at, updated_at
 		FROM sync_state
-		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
 	`,
 		string(companyID),
+		string(source),
 		string(environment),
 		consultationCNPJ,
 	)
 
 	var state nfse.SyncState
-	var lastFound sql.NullInt64
+	var lastFound, maxNSU sql.NullInt64
 	var lastSuccessAt, lastErrorAt, lastErrorCode, lastErrorMessage sql.NullString
 	var createdAt, updatedAt string
 	if err := row.Scan(
 		&state.CompanyID,
+		&state.Source,
 		&state.Environment,
 		&state.ConsultationCNPJ,
 		&state.LastProcessedNSU,
 		&lastFound,
+		&maxNSU,
 		&state.LastEmptyStreak,
 		&lastSuccessAt,
 		&lastErrorAt,
@@ -617,6 +762,7 @@ func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, envi
 	}
 
 	state.LastFoundNSU = store.PtrFromNullInt64(lastFound)
+	state.MaxNSU = store.PtrFromNullInt64(maxNSU)
 	state.LastSuccessAt = store.ParseNullableTime(lastSuccessAt)
 	state.LastErrorAt = store.ParseNullableTime(lastErrorAt)
 	state.LastErrorCode = lastErrorCode.String
@@ -626,19 +772,20 @@ func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, envi
 	return &state, nil
 }
 
-func (r *Store) latestRun(ctx context.Context, companyID nfse.CompanyID, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncRun, error) {
+func (r *Store) latestRun(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncRun, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
-			id, company_id, credential_id, environment, credential_cnpj, consultation_cnpj,
+			id, company_id, source, credential_id, environment, credential_cnpj, consultation_cnpj,
 			consultation_basis, mode, started_at, finished_at, from_nsu, to_nsu,
 			checked_count, documents_found, empty_count, consecutive_empty_count,
 			errors_count, last_found_nsu, status, stop_reason
 		FROM sync_runs
-		WHERE company_id = ? AND environment = ? AND consultation_cnpj = ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
 		ORDER BY started_at DESC, id DESC
 		LIMIT 1
 	`,
 		string(companyID),
+		string(source),
 		string(environment),
 		consultationCNPJ,
 	)
@@ -652,6 +799,7 @@ func (r *Store) latestRun(ctx context.Context, companyID nfse.CompanyID, environ
 	if err := row.Scan(
 		&run.ID,
 		&run.CompanyID,
+		&run.Source,
 		&run.CredentialID,
 		&run.Environment,
 		&run.CredentialCNPJ,

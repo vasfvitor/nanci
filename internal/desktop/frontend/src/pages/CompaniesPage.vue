@@ -76,7 +76,7 @@
             round
             color="secondary"
             icon="description"
-            title="Ver documentos"
+            title="Ver NFS-e"
             @click="openDocuments(props.row.CNPJ)"
           />
           <q-btn
@@ -86,7 +86,7 @@
             color="primary"
             icon="sync"
             :loading="isSyncingCompany(props.row.CNPJ)"
-            title="Sincronizar"
+            title="Sincronizar NFS-e"
             @click="syncCompany(props.row.CNPJ)"
           />
           <q-btn
@@ -130,6 +130,7 @@ import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useConsoleStore } from '@/stores/console'
 import { useCompanies } from '@/composables/useCompanies'
+import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
 import type { CompanySummary } from '@/types/desktop'
 
@@ -138,6 +139,7 @@ const router = useRouter()
 const consoleStore = useConsoleStore()
 const { debugEnabled } = storeToRefs(consoleStore)
 const companiesApi = useCompanies()
+const { notifySyncError } = useNotify()
 const { companies, credentials, loading, isSyncingCompany } = companiesApi
 const showAddDialog = ref(false)
 const selectedCredentials = ref<Record<string, string>>({})
@@ -227,11 +229,7 @@ async function syncCompany(cnpj: string) {
     })
     await loadCompanies()
   } catch (err) {
-    if (String(err).includes('ERR_CANCELED')) {
-      $q.notify({ type: 'warning', message: 'Sincronização cancelada.' })
-    } else {
-      $q.notify({ type: 'negative', message: 'Erro na sincronização: ' + String(err) })
-    }
+    notifySyncError('Erro na sincronização', err)
   }
 }
 

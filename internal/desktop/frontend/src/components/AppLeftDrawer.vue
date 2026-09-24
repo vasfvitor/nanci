@@ -15,7 +15,16 @@
           <q-icon name="description" size="sm" />
         </q-item-section>
         <q-item-section>
-          <q-item-label class="text-weight-medium">Documentos</q-item-label>
+          <q-item-label class="text-weight-medium">NFS-e</q-item-label>
+        </q-item-section>
+      </q-item>
+
+      <q-item v-ripple clickable to="/nfe" exact dense active-class="text-primary">
+        <q-item-section avatar>
+          <q-icon name="receipt_long" size="sm" />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label class="text-weight-medium">NF-e</q-item-label>
         </q-item-section>
       </q-item>
 

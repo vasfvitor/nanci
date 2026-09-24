@@ -5,8 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
+	"path"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/danfse"
@@ -86,14 +85,14 @@ func (s *ExportService) ExportXLSX(ctx context.Context, input ExportInput) (Expo
 // ExportZIP packs the raw XML files for the matching documents into input.OutPath.
 func (s *ExportService) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "xml", func(docs []nfse.CompanyDocument, tempPath string) error {
-		return report.GenerateZIP(report.BuildRows(docs), s.XMLStore, tempPath)
+		return report.GenerateZIP(report.NFSeZipEntries(report.BuildRows(docs)), s.XMLStore, tempPath)
 	})
 }
 
 // ExportDANFSeZIP writes one DANFSe PDF per matching document into a ZIP archive.
 func (s *ExportService) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "danfse", func(docs []nfse.CompanyDocument, tempPath string) error {
-		zipFile, err := os.Create(tempPath) //nolint:gosec // intentional: creating temp export file in user directory
+		zipFile, err := os.Create(tempPath) // #nosec G304 -- temp file next to the export path the user chose.
 		if err != nil {
 			return fmt.Errorf("criar arquivo ZIP temporário: %w", err)
 		}
@@ -116,16 +115,7 @@ func (s *ExportService) ExportDANFSeZIP(ctx context.Context, input ExportInput) 
 				return fmt.Errorf("gerar DANFSe %s: %w", doc.ChaveAcesso, err)
 			}
 
-			roleFolder := string(doc.CompanyRole)
-			if roleFolder == "" || roleFolder == "none" {
-				roleFolder = "sem-papel-fiscal"
-			}
-			var entryPath string
-			if doc.Competence != "" {
-				entryPath = filepath.ToSlash(filepath.Join(doc.Competence, roleFolder, string(doc.ChaveAcesso)+".pdf"))
-			} else {
-				entryPath = filepath.ToSlash(filepath.Join(roleFolder, string(doc.ChaveAcesso)+".pdf"))
-			}
+			entryPath := path.Join(report.RoleFolder(doc.Competence, string(doc.CompanyRole)), string(doc.ChaveAcesso)+".pdf")
 
 			writer, err := zipWriter.Create(entryPath)
 			if err != nil {
@@ -182,16 +172,11 @@ func (s *ExportService) bulkExport(ctx context.Context, input ExportInput, kind 
 		return res, nil
 	}
 
-	ext := filepath.Ext(input.OutPath)
-	tempPath := strings.TrimSuffix(input.OutPath, ext) + ".tmp" + ext
-	defer func() { _ = os.Remove(tempPath) }()
-
-	if err := generator(docs, tempPath); err != nil {
-		return res, fmt.Errorf("gerar arquivo: %w", err)
-	}
-
-	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		return res, fmt.Errorf("mover arquivo temporário para destino final: %w", err)
+	err = writeViaTemp(input.OutPath, func(tempPath string) error {
+		return generator(docs, tempPath)
+	})
+	if err != nil {
+		return res, err
 	}
 
 	marks := make([]nfse.DocumentExportMark, len(docs))
@@ -233,14 +218,8 @@ func (s *ExportService) ExportDANFSe(ctx context.Context, input ExportDANFSeInpu
 		return err
 	}
 
-	tempPath := input.OutPath + ".tmp"
-	if err := os.WriteFile(tempPath, pdf, 0o644); err != nil { // #nosec G306
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("gravar DANFSe temp: %w", err)
-	}
-	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("mover DANFSe temp: %w", err)
+	if err := writeFileAtomic(input.OutPath, pdf, "DANFSe"); err != nil {
+		return err
 	}
 
 	mark := nfse.DocumentExportMark{
@@ -282,14 +261,8 @@ func (s *ExportService) ExportXML(ctx context.Context, input ExportXMLInput) err
 		return fmt.Errorf("ler XML original da chave %s: %w", doc.ChaveAcesso, err)
 	}
 
-	tempPath := input.OutPath + ".tmp"
-	if err := os.WriteFile(tempPath, xmlData, 0o644); err != nil { // #nosec G306
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("gravar XML temp: %w", err)
-	}
-	if err := os.Rename(tempPath, input.OutPath); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("mover XML temp: %w", err)
+	if err := writeFileAtomic(input.OutPath, xmlData, "XML"); err != nil {
+		return err
 	}
 
 	mark := nfse.DocumentExportMark{

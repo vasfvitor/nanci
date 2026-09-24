@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -51,7 +52,7 @@ func TestCompanyRepository(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CompanyByCNPJ(ctx, "00000000000000")
-	if err != store.ErrNotFound {
+	if !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("Expected ErrNotFound, got %v", err)
 	}
 
@@ -105,7 +106,7 @@ func TestCompanyRepository(t *testing.T) {
 
 	// Assign invalid credential to simulate ErrNotFound for AssignCredential
 	err = repo.AssignCredential(ctx, "non-existent-company", cred2.ID)
-	if err != store.ErrNotFound {
+	if !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("Expected ErrNotFound for non-existent company assignment, got %v", err)
 	}
 }

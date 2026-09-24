@@ -9,7 +9,7 @@ import (
 )
 
 func SeedDevelopment(ctx context.Context, db *sql.DB) error {
-	company := nfse.Company{ //nolint:gosec // intentional: mock test credentials
+	company := nfse.Company{ // #nosec G101 -- mock dev company; CredentialID is an ID, not a secret.
 		ID:           "dev-company-70860312000150",
 		CNPJ:         "70860312000150",
 		CNPJRoot:     "70860312",

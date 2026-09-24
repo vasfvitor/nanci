@@ -265,6 +265,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	// Initialize the sync state first so the UPDATE statement has a row to update.
 	_, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
+		Source:           nfse.SyncSourceNFSe,
 		Environment:      nfse.EnvironmentRestricted,
 		ConsultationCNPJ: "11222333000181",
 	})
@@ -286,6 +287,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 		},
 		ProgressParams: nfse.PersistSyncProgressParams{
 			CompanyID:        company.ID,
+			Source:           nfse.SyncSourceNFSe,
 			Environment:      nfse.EnvironmentRestricted,
 			ConsultationCNPJ: "11222333000181",
 			LastProcessedNSU: 10,
@@ -322,6 +324,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	// Verify atomicity (Progress was saved and transaction succeeded)
 	state, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
+		Source:           nfse.SyncSourceNFSe,
 		Environment:      nfse.EnvironmentRestricted,
 		ConsultationCNPJ: "11222333000181",
 	})
@@ -340,4 +343,208 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	}
 }
 
-// Removed duplicated int64Ptr
+func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
+	company := seedCompany(t, db, "company-1", "11222333000181")
+
+	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe} {
+		state, err := syncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+			CompanyID:        company.ID,
+			Source:           source,
+			Environment:      company.Environment,
+			ConsultationCNPJ: company.CNPJ,
+		})
+		if err != nil {
+			t.Fatalf("GetOrCreateState(%s): %v", source, err)
+		}
+		if state.Source != source {
+			t.Errorf("state.Source = %q, want %q", state.Source, source)
+		}
+	}
+
+	startRun := func(source nfse.SyncSource) nfse.SyncRun {
+		t.Helper()
+		run, err := syncRepo.StartRun(ctx, nfse.StartRunParams{
+			CompanyID:         company.ID,
+			Source:            source,
+			CredentialID:      company.CredentialID,
+			Environment:       company.Environment,
+			CredentialCNPJ:    company.CNPJ,
+			ConsultationCNPJ:  company.CNPJ,
+			ConsultationBasis: nfse.ConsultationBasisExactCertificateCNPJ,
+			Mode:              nfse.SyncModeNormal,
+		})
+		if err != nil {
+			t.Fatalf("StartRun(%s): %v", source, err)
+		}
+		return run
+	}
+	runStatus := func(id nfse.SyncRunID) string {
+		t.Helper()
+		var status string
+		if err := db.QueryRowContext(ctx, `SELECT status FROM sync_runs WHERE id = ?`, string(id)).Scan(&status); err != nil {
+			t.Fatal(err)
+		}
+		return status
+	}
+
+	firstNFSe := startRun(nfse.SyncSourceNFSe)
+	nfeRun := startRun(nfse.SyncSourceNFe)
+	if got := runStatus(firstNFSe.ID); got != "running" {
+		t.Errorf("nfse run status after starting an nfe run = %s, want running", got)
+	}
+	startRun(nfse.SyncSourceNFSe)
+	if got := runStatus(firstNFSe.ID); got != "interrupted" {
+		t.Errorf("first nfse run status after starting another nfse run = %s, want interrupted", got)
+	}
+	if got := runStatus(nfeRun.ID); got != "running" {
+		t.Errorf("nfe run status after starting another nfse run = %s, want running", got)
+	}
+
+	snapshot, err := syncRepo.LatestSyncSnapshot(ctx, company.ID, nfse.SyncSourceNFe, company.Environment, company.CNPJ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.State == nil || snapshot.State.Source != nfse.SyncSourceNFe {
+		t.Errorf("nfe snapshot state = %+v, want an nfe state", snapshot.State)
+	}
+	if snapshot.Run == nil || snapshot.Run.ID != nfeRun.ID || snapshot.Run.Source != nfse.SyncSourceNFe {
+		t.Errorf("nfe snapshot run = %+v, want run %s", snapshot.Run, nfeRun.ID)
+	}
+}
+
+func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
+	company := seedCompany(t, db, "company-1", "11222333000181")
+
+	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe} {
+		if _, err := syncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+			CompanyID:        company.ID,
+			Source:           source,
+			Environment:      company.Environment,
+			ConsultationCNPJ: company.CNPJ,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := syncRepo.MarkInitialSyncCompleted(ctx, company.ID, source); err != nil {
+			t.Fatal(err)
+		}
+	}
+	blockedUntil := time.Date(2026, 6, 1, 11, 0, 0, 0, time.UTC)
+	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, blockedUntil, nfse.SyncStopReasonConsumoIndevido); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := syncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFe}); err != nil {
+		t.Fatal(err)
+	}
+
+	nfeState, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nfeState.InitialSyncDoneAt != nil {
+		t.Errorf("nfe initial sync after reset = %v, want nil", nfeState.InitialSyncDoneAt)
+	}
+	if nfeState.BlockedUntil == nil || !nfeState.BlockedUntil.Equal(blockedUntil) || nfeState.BlockedReason != nfse.SyncStopReasonConsumoIndevido {
+		t.Errorf("nfe block after reset = (%v, %q), want (%v, consumo_indevido)", nfeState.BlockedUntil, nfeState.BlockedReason, blockedUntil)
+	}
+	nfseState, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nfseState.InitialSyncDoneAt == nil {
+		t.Error("nfse initial sync was cleared by an nfe reset")
+	}
+	if !companyInitialSyncSet(t, db, company.ID) {
+		t.Error("companies.initial_sync_completed_at was cleared by an nfe reset")
+	}
+	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFe, false)
+	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, true)
+
+	if err := syncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe}); err != nil {
+		t.Fatal(err)
+	}
+	if companyInitialSyncSet(t, db, company.ID) {
+		t.Error("companies.initial_sync_completed_at survived an nfse reset")
+	}
+	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, false)
+}
+
+func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
+	company := seedCompany(t, db, "company-1", "11222333000181")
+
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	for _, at := range []time.Time{
+		now.Add(-25 * time.Hour),
+		now.Add(-2 * time.Hour),
+		now.Add(-30 * time.Minute),
+		now.Add(-10 * time.Minute),
+		now,
+	} {
+		if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFe, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFSe, now); err != nil {
+		t.Fatal(err)
+	}
+
+	count, oldest, err := syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSourceNFe, now.Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantOldest := now.Add(-30 * time.Minute)
+	if count != 3 || oldest == nil || !oldest.Equal(wantOldest) {
+		t.Errorf("RequestsSince = (%d, %v), want (3, %v)", count, oldest, wantOldest)
+	}
+
+	var rows int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sync_requests WHERE source = 'nfe'`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 4 {
+		t.Errorf("nfe sync_requests rows = %d, want 4 after pruning the 25h-old one", rows)
+	}
+
+	count, oldest, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSource("cte"), now.Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 || oldest != nil {
+		t.Errorf("RequestsSince for a source without requests = (%d, %v), want (0, nil)", count, oldest)
+	}
+}
+
+func companyInitialSyncSet(t *testing.T, db *sql.DB, companyID nfse.CompanyID) bool {
+	t.Helper()
+	var completedAt sql.NullString
+	if err := db.QueryRowContext(context.Background(), `SELECT initial_sync_completed_at FROM companies WHERE id = ?`, string(companyID)).Scan(&completedAt); err != nil {
+		t.Fatal(err)
+	}
+	return completedAt.Valid
+}
+
+func assertHasSyncState(t *testing.T, syncRepo *sync.Store, companyID nfse.CompanyID, source nfse.SyncSource, want bool) {
+	t.Helper()
+	got, err := syncRepo.HasSyncState(context.Background(), nfse.HasSyncStateParams{CompanyID: companyID, Source: source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Errorf("HasSyncState(source %q) = %t, want %t", source, got, want)
+	}
+}

@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-func int64Ptr(v int64) *int64 { return new(v) }
-
 func PtrFromNullInt64(v sql.NullInt64) *int64 {
 	if !v.Valid {
 		return nil

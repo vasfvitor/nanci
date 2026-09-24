@@ -1,13 +1,47 @@
 package nfse
 
 import (
+	"fmt"
 	"time"
 )
+
+// The sync types in this file are source-neutral: they describe the NSU
+// distribution cursor of any fiscal document source, not only NFS-e.
+
+// SyncSource identifies the distribution service a sync cursor belongs to.
+type SyncSource string
+
+const (
+	SyncSourceNFSe SyncSource = "nfse"
+	SyncSourceNFe  SyncSource = "nfe"
+)
+
+func ParseSyncSource(val string) (SyncSource, error) {
+	source := SyncSource(val)
+	if !source.Valid() {
+		return "", fmt.Errorf("invalid sync source %q: %w", val, ErrInvalidEnum)
+	}
+	return source, nil
+}
+
+func (s SyncSource) Valid() bool {
+	switch s {
+	case SyncSourceNFSe, SyncSourceNFe:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s SyncSource) String() string {
+	return string(s)
+}
 
 // SyncRun represents a synchronization execution for audit and control.
 type SyncRun struct {
 	ID                    SyncRunID
 	CompanyID             CompanyID
+	Source                SyncSource
 	CredentialID          CredentialID
 	Environment           Environment
 	CredentialCNPJ        string
@@ -28,13 +62,15 @@ type SyncRun struct {
 	StopReason            SyncStopReason
 }
 
-// SyncState represents the persisted sync cursor and audit state for a company/environment/CNPJ pair.
+// SyncState represents the persisted sync cursor and audit state for a company/source/environment/CNPJ key.
 type SyncState struct {
 	CompanyID        CompanyID
+	Source           SyncSource
 	Environment      Environment
 	ConsultationCNPJ string
 	LastProcessedNSU int64
 	LastFoundNSU     *int64
+	MaxNSU           *int64
 	LastEmptyStreak  int
 	LastSuccessAt    *time.Time
 	LastErrorAt      *time.Time
@@ -46,6 +82,7 @@ type SyncState struct {
 
 // ProgressEvent contains information about the progress of a long-running operation.
 type ProgressEvent struct {
+	Source                   SyncSource
 	CurrentNSU               int64
 	MaxNSU                   int64
 	LastProcessedNSU         int64
@@ -58,6 +95,8 @@ type ProgressEvent struct {
 	EventsSaved              int
 	DocumentsSkippedByPolicy int
 	EventsSkippedByPolicy    int
+	CompletasSaved           int // documents stored whole (NF-e procNFe, every NFS-e)
+	ResumosSaved             int // documents stored as a summary (NF-e resNFe)
 	DocsInBatch              int
 	Errors                   int
 	Message                  string

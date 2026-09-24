@@ -10,32 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 )
-
-func Test_truncateForLog(t *testing.T) {
-	tests := []struct {
-		name  string
-		body  string
-		limit int
-		want  string
-	}{
-		{name: "under limit", body: "abc", limit: 10, want: "abc"},
-		{name: "at limit", body: "abcde", limit: 5, want: "abcde"},
-		{name: "over limit", body: "abcdefgh", limit: 5, want: "abcde... (truncated)"},
-		// "ação" is a(1) ç(2) ã(2) o(1) bytes; a cut inside ç or ã backs up.
-		{name: "does not split rune", body: "ação", limit: 2, want: "a... (truncated)"},
-		{name: "cut lands on rune start", body: "ação", limit: 3, want: "aç... (truncated)"},
-		{name: "cut inside second rune", body: "ação", limit: 4, want: "aç... (truncated)"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := truncateForLog([]byte(tt.body), tt.limit); got != tt.want {
-				t.Errorf("truncateForLog(%q, %d) = %q, want %q", tt.body, tt.limit, got, tt.want)
-			}
-		})
-	}
-}
 
 func Test_sanitizeURL(t *testing.T) {
 	tests := []struct {
@@ -73,7 +50,7 @@ func newLoggedClient(t *testing.T, baseURL string, level slog.Level) (*Client, *
 }
 
 func TestClient_ErrorLogsAreBoundedAndMasked(t *testing.T) {
-	bigBody := strings.Repeat("é", maxErrorLogBodyBytes) // 2 bytes each: twice the log cap
+	bigBody := strings.Repeat("é", httpclient.MaxErrorLogBodyBytes) // 2 bytes each: twice the log cap
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(bigBody))
@@ -99,8 +76,8 @@ func TestClient_ErrorLogsAreBoundedAndMasked(t *testing.T) {
 	if strings.Contains(out, "ADN API Error Response Body") {
 		t.Errorf("full body must not be logged below trace level:\n%s", out)
 	}
-	if len(out) > 2*maxErrorLogBodyBytes+1024 {
-		t.Errorf("log record too large (%d bytes) for a %d byte cap", len(out), maxErrorLogBodyBytes)
+	if len(out) > 2*httpclient.MaxErrorLogBodyBytes+1024 {
+		t.Errorf("log record too large (%d bytes) for a %d byte cap", len(out), httpclient.MaxErrorLogBodyBytes)
 	}
 
 	msg := err.Error()

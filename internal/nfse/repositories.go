@@ -24,6 +24,7 @@ type DocumentExportMark struct {
 
 type StartRunParams struct {
 	CompanyID         CompanyID
+	Source            SyncSource
 	CredentialID      CredentialID
 	Environment       Environment
 	CredentialCNPJ    string
@@ -36,6 +37,7 @@ type StartRunParams struct {
 
 type GetOrCreateSyncStateParams struct {
 	CompanyID        CompanyID
+	Source           SyncSource
 	Environment      Environment
 	ConsultationCNPJ string
 }
@@ -62,18 +64,15 @@ type ApplyDocumentAndProgressParams struct {
 	ProgressParams PersistSyncProgressParams
 }
 
-type ApplyEventAndProgressParams struct {
-	EventParams    ApplyEventParams
-	ProgressParams PersistSyncProgressParams
-}
-
 type PersistSyncProgressParams struct {
 	CompanyID             CompanyID
+	Source                SyncSource
 	RunID                 SyncRunID
 	Environment           Environment
 	ConsultationCNPJ      string
 	LastProcessedNSU      int64
 	LastFoundNSU          *int64
+	MaxNSU                *int64 // highest NSU the source reports; nil keeps the stored value
 	LastEmptyStreak       int
 	CheckedCount          int
 	DocumentsFound        int
@@ -106,8 +105,11 @@ type SyncSnapshot struct {
 
 type ResetSyncStateParams struct {
 	CompanyID CompanyID
+	Source    SyncSource
 }
 
+// HasSyncStateParams asks whether the company has a sync cursor for Source.
 type HasSyncStateParams struct {
 	CompanyID CompanyID
+	Source    SyncSource
 }

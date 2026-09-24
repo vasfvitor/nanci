@@ -65,8 +65,7 @@ func (c *Client) FetchDocuments(ctx context.Context, req DistributionRequest) (*
 	path := rel.String()
 
 	var response DocumentResponse
-	// bodyProvider is nil for GET request
-	if err := c.request(ctx, "GET", path, nil, &response); err != nil {
+	if err := c.request(ctx, "GET", path, &response); err != nil {
 		if errors.Is(err, ErrNoDocumentsLocated) {
 			return &DocumentResponse{
 				UltNSU: 0,

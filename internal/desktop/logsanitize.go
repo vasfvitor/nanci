@@ -9,6 +9,9 @@ import (
 // masked only when exported (see docs/specs/2026-06-20-diagnostics-and-secure-logging-design.md).
 var (
 	formattedCNPJPattern = regexp.MustCompile(`\b[A-Za-z0-9]{2}\.[A-Za-z0-9]{3}\.[A-Za-z0-9]{3}/[A-Za-z0-9]{4}-[A-Za-z0-9]{2}\b`)
+	// NF-e access key: UF(2) AAMM(4) CNPJ(14, alphanumeric allowed) and 24
+	// more digits. Only the embedded CNPJ slot is masked.
+	nfeAccessKeyPattern = regexp.MustCompile(`\b\d{6}[0-9A-Z]{14}\d{24}\b`)
 	// Raw matches are restricted to digits so hashes and hex IDs are untouched.
 	rawCNPJPattern = regexp.MustCompile(`\b\d{14}\b`)
 )
@@ -17,7 +20,17 @@ var (
 // keeping the first and last two characters for partial traceability.
 func sanitizeLogContent(content []byte) []byte {
 	out := formattedCNPJPattern.ReplaceAllFunc(content, maskCNPJMatch)
+	out = nfeAccessKeyPattern.ReplaceAllFunc(out, maskNFeAccessKeyCNPJ)
 	return rawCNPJPattern.ReplaceAllFunc(out, maskCNPJMatch)
+}
+
+// maskNFeAccessKeyCNPJ masks the CNPJ at positions 7-20 of an NF-e access key
+// and keeps the rest of the key intact.
+func maskNFeAccessKeyCNPJ(key []byte) []byte {
+	masked := make([]byte, 0, len(key)+4)
+	masked = append(masked, key[:6]...)
+	masked = append(masked, maskCNPJMatch(key[6:20])...)
+	return append(masked, key[20:]...)
 }
 
 func maskCNPJMatch(match []byte) []byte {

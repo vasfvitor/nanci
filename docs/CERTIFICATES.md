@@ -30,6 +30,18 @@ Para desenvolvimento ou uso avançado em automações recorrentes, o Nanci carre
 NANCI_CERT_PASSWORD=senha-super-secreta
 ```
 
+## Uso do Certificado com a SEFAZ (NF-e)
+
+O mesmo certificado A1 cadastrado para a NFS-e é usado na distribuição de NF-e e na Manifestação do Destinatário. Pontos específicos do Ambiente Nacional da SEFAZ:
+
+- **Renegociação TLS**: os servidores da SEFAZ só pedem o certificado do cliente depois do primeiro handshake, renegociando a conexão. O Nanci permite essa renegociação (TLS 1.2, HTTP/1.1); nada precisa ser configurado.
+- **Cadeias públicas**: os certificados dos servidores da SEFAZ são emitidos por autoridades públicas já confiáveis no sistema operacional. Não é preciso instalar raízes ICP-Brasil, e a verificação do servidor nunca é desligada.
+- **Raiz do CNPJ**: a empresa consultada precisa ter a mesma raiz de CNPJ (8 primeiros caracteres) do certificado. O Nanci confere isso antes de qualquer envio; a SEFAZ também recusa a consulta (`cStat` 593) ou o evento (`cStat` 631) quando a raiz difere. O certificado da matriz serve para as filiais.
+- **Assinatura de eventos**: as manifestações são assinadas com a chave privada do certificado, que precisa ser RSA (como nos A1 ICP-Brasil).
+- **Senha por operação**: a senha é pedida uma vez por operação. Na Ciência da Operação em lote, uma única senha assina todos os lotes. O pedido informa a finalidade, por exemplo "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)"; no desktop ela aparece no diálogo de senha. `NANCI_CERT_PASSWORD` também vale para esses comandos.
+
+O comando `nanci nfe testar-conexao --cnpj <CNPJ>` carrega o certificado e testa o TLS com a SEFAZ sem consumir consultas. Veja [NFE_SEFAZ.md](NFE_SEFAZ.md).
+
 ## Cuidados Importantes de Segurança
 
 > [!CAUTION]

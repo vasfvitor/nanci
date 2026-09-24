@@ -18,6 +18,11 @@ var ErrNotFound = errors.New("not found")
 //go:embed migrations_v2/*.sql
 var embedMigrationsV2 embed.FS
 
+// Migrations returns the embedded goose migrations.
+func Migrations() (fs.FS, error) {
+	return fs.Sub(embedMigrationsV2, "migrations_v2")
+}
+
 // OpenDB opens the SQLite database and optionally runs migrations.
 func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, error) {
 	separator := "?"
@@ -37,7 +42,7 @@ func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, er
 	}
 
 	if runMigrations {
-		migrations, err := fs.Sub(embedMigrationsV2, "migrations_v2")
+		migrations, err := Migrations()
 		if err != nil {
 			_ = db.Close()
 			return nil, fmt.Errorf("falha ao carregar migrations: %w", err)

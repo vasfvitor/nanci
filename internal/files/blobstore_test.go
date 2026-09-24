@@ -45,7 +45,7 @@ func TestBlobStore_Store_CreatesDirAndFile(t *testing.T) {
 
 	// Verify file exists at expected path with .xml extension.
 	expectedPath := filepath.Join(base, "blobs", hash+".xml")
-	got, err := os.ReadFile(expectedPath)
+	got, err := os.ReadFile(filepath.Clean(expectedPath))
 	if err != nil {
 		t.Fatalf("expected file at %s, got error: %v", expectedPath, err)
 	}
@@ -71,7 +71,7 @@ func TestBlobStore_Store_DirAlreadyExists(t *testing.T) {
 		t.Fatalf("Store returned unexpected error when dir exists: %v", err)
 	}
 
-	got, err := os.ReadFile(filepath.Join(blobsDir, hash+".xml"))
+	got, err := os.ReadFile(filepath.Clean(filepath.Join(blobsDir, hash+".xml")))
 	if err != nil {
 		t.Fatalf("file missing after store: %v", err)
 	}
@@ -141,11 +141,15 @@ func TestBlobStore_Store_WriteError(t *testing.T) {
 	if err := os.MkdirAll(blobsDir, 0o750); err != nil {
 		t.Fatalf("setup MkdirAll: %v", err)
 	}
-	if err := os.Chmod(blobsDir, 0o444); err != nil {
+	if err := os.Chmod(blobsDir, 0o400); err != nil {
 		t.Fatalf("setup Chmod: %v", err)
 	}
 	// Restore permissions so t.TempDir cleanup can delete the dir.
-	t.Cleanup(func() { os.Chmod(blobsDir, 0o755) }) //nolint:errcheck
+	t.Cleanup(func() {
+		if err := os.Chmod(blobsDir, 0o700); err != nil { //nolint:gosec // a directory needs the owner execute bit so TempDir cleanup can remove it.
+			t.Errorf("restore permissions: %v", err)
+		}
+	})
 
 	err := store.Store("somehash", []byte("data"))
 	if err == nil {

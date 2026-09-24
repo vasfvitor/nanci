@@ -8,6 +8,8 @@ import {
   ExportDANFSeZIP,
   ExportDocuments,
   ExportLogs,
+  ExportNFeXML,
+  ExportNFeZIP,
   ExportXML,
   GetBuildInfo,
   GetDataDirectory,
@@ -15,16 +17,25 @@ import {
   ListCredentials,
   ListDocuments,
   ListEventsForDocument,
+  ListNFe,
+  ListNFeEvents,
+  ListNFePendingManifestacoes,
   MarkDocumentsViewed,
   OpenDataDirectory,
   OpenLogsDirectory,
+  PlanNFeCiencia,
   Pull,
+  PullNFe,
   QueryNFSeEvents,
+  RegisterNFeCiencia,
+  RegisterNFeManifestacao,
+  ResetNFe,
   ResetSyncState,
   SelectCertificate,
   SelectExportDirectory,
   SelectSaveFile,
   SetLogLevel,
+  StatusNFe,
   SubmitCertPassword,
   TestConnection,
   UpdateCompany,
@@ -45,10 +56,33 @@ import type {
   ExportDocumentsInput,
   ExportResult,
   ExportXMLInput,
+  ExportNFeXMLInput,
+  ExportNFeZIPInput,
+  ISODateValue,
   ListDocumentsInput,
+  ListNFeInput,
+  NFeBlockedReason,
+  NFeCienciaPlan,
+  NFeCompleteness,
+  NFeEvent,
+  NFeEventBatchResult,
+  NFeEventOutcome,
+  NFeEventResult,
+  NFeExportResult,
+  NFeManifestacao,
+  NFePendingKind,
+  NFePendingRow,
+  NFeResetResult,
+  NFeRole,
+  NFeRow,
+  NFeSituacao,
+  NFeSkipped,
+  NFeStatusResult,
   PullInput,
+  PullNFeResult,
   PullResult,
   QueryNFSeInput,
+  RegisterNFeManifestacaoInput,
   ResetSyncInput,
   UpdateCompanyInput,
   UpdateCredentialDataInput,
@@ -57,11 +91,42 @@ import type {
 
 type RawRecord = Record<string, unknown>
 
+// WailsErrorCode names the backend errors the UI branches on. The desktop
+// layer tags them with an ERR_<CODE>: message prefix.
+export type WailsErrorCode = 'canceled' | 'sefaz_blocked' | 'sync_running' | ''
+
+const errorCodes: Record<string, WailsErrorCode> = {
+  CANCELED: 'canceled',
+  SEFAZ_BLOCKED: 'sefaz_blocked',
+  SYNC_RUNNING: 'sync_running',
+}
+
+function parseErrorCode(message: string): WailsErrorCode {
+  const match = /^\s*ERR_([A-Z_]+):/.exec(message)
+  return (match && errorCodes[match[1] ?? '']) || ''
+}
+
 export class WailsClientError extends Error {
+  readonly code: WailsErrorCode
+
   constructor(message: string, readonly cause?: unknown) {
     super(message)
     this.name = 'WailsClientError'
+    this.code = parseErrorCode(message)
   }
+}
+
+// wailsErrorCode reads the error code from any thrown value, so callers do not
+// depend on the error having gone through the client.
+export function wailsErrorCode(error: unknown): WailsErrorCode {
+  if (error instanceof WailsClientError) return error.code
+  if (error instanceof Error) return parseErrorCode(error.message)
+  return parseErrorCode(String(error))
+}
+
+// errorMessage is the text to show for any thrown value.
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function normalizeError(error: unknown): WailsClientError {
@@ -103,6 +168,47 @@ function asStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 }
 
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
+}
+
+function asDate(value: unknown): ISODateValue {
+  if (typeof value === 'string' || value instanceof Date) return value
+  return null
+}
+
+// asEnum keeps only known values. An unknown fiscal state becomes '' so the UI
+// shows "Desconhecido" instead of guessing a real state.
+function asEnum<T extends string>(value: unknown, allowed: readonly T[]): T | '' {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : ''
+}
+
+const nfeSituacoes: readonly NFeSituacao[] = ['autorizada', 'denegada', 'cancelada']
+const nfeCompletenesses: readonly NFeCompleteness[] = ['resumo', 'completa']
+const nfeManifestacoes: readonly NFeManifestacao[] = [
+  'nenhuma',
+  'ciencia',
+  'confirmada',
+  'desconhecida',
+  'nao_realizada',
+]
+const nfeRoles: readonly NFeRole[] = ['destinatario', 'emitente', 'transportador', 'autorizado', 'none']
+const nfeOutcomes: readonly NFeEventOutcome[] = ['registrada', 'ja_registrada', 'rejeitada', 'nao_enviada']
+const nfePendingKinds: readonly NFePendingKind[] = ['sem_ciencia', 'sem_conclusiva']
+const nfeBlockedReasons: readonly NFeBlockedReason[] = ['caught_up', 'consumo_indevido', 'rate_budget']
+
+function fileTimestamp(now = new Date()) {
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const h = String(now.getHours()).padStart(2, '0')
+  const min = String(now.getMinutes()).padStart(2, '0')
+  const s = String(now.getSeconds()).padStart(2, '0')
+  return `${y}_${m}_${d}_${h}${min}${s}`
+}
+
 export function mapCompanySummary(raw: unknown): CompanySummary {
   const item = asRawRecord(raw)
   return {
@@ -114,15 +220,16 @@ export function mapCompanySummary(raw: unknown): CompanySummary {
     CredentialLabel: asString(item['CredentialLabel']),
     CredentialCertPath: asString(item['CredentialCertPath']),
     Environment: asString(item['Environment']),
+    UF: asString(item['UF']),
     LastFoundNSU: asNullableNumber(item['LastFoundNSU']),
-    LastSyncAt: item['LastSyncAt'] as CompanySummary['LastSyncAt'],
+    LastSyncAt: asDate(item['LastSyncAt']),
     SyncStartPolicy: asString(item['SyncStartPolicy']) as CompanySummary['SyncStartPolicy'],
-    SyncStartDate: item['SyncStartDate'] as CompanySummary['SyncStartDate'],
-    InitialSyncDoneAt: item['InitialSyncDoneAt'] as CompanySummary['InitialSyncDoneAt'],
+    SyncStartDate: asDate(item['SyncStartDate']),
+    InitialSyncDoneAt: asDate(item['InitialSyncDoneAt']),
     LastRunStatus: asString(item['LastRunStatus']),
     LastRunStopReason: asString(item['LastRunStopReason']),
-    CreatedAt: item['CreatedAt'] as CompanySummary['CreatedAt'],
-    UpdatedAt: item['UpdatedAt'] as CompanySummary['UpdatedAt'],
+    CreatedAt: asDate(item['CreatedAt']),
+    UpdatedAt: asDate(item['UpdatedAt']),
   }
 }
 
@@ -136,11 +243,11 @@ export function mapCredentialSummary(raw: unknown): CredentialSummary {
     OwnerCNPJRoot: asString(item['OwnerCNPJRoot']),
     FingerprintSHA256: asString(item['FingerprintSHA256']),
     SubjectName: asString(item['SubjectName']),
-    NotBefore: item['NotBefore'] as CredentialSummary['NotBefore'],
-    NotAfter: item['NotAfter'] as CredentialSummary['NotAfter'],
-    InspectedAt: item['InspectedAt'] as CredentialSummary['InspectedAt'],
-    CreatedAt: item['CreatedAt'] as CredentialSummary['CreatedAt'],
-    UpdatedAt: item['UpdatedAt'] as CredentialSummary['UpdatedAt'],
+    NotBefore: asDate(item['NotBefore']),
+    NotAfter: asDate(item['NotAfter']),
+    InspectedAt: asDate(item['InspectedAt']),
+    CreatedAt: asDate(item['CreatedAt']),
+    UpdatedAt: asDate(item['UpdatedAt']),
   }
 }
 
@@ -149,7 +256,7 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
   return {
     ID: asString(item['ID']),
     ChaveAcesso: asString(item['ChaveAcesso']),
-    IssueDate: item['IssueDate'] as DocumentRow['IssueDate'],
+    IssueDate: asDate(item['IssueDate']),
     Competence: asString(item['Competence']),
     PrestadorCNPJ: asString(item['PrestadorCNPJ']),
     PrestadorName: asString(item['PrestadorName']),
@@ -172,8 +279,8 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     ParseWarnings: asStringArray(item['ParseWarnings']),
     NFSeNumber: asString(item['NFSeNumber']),
     ServiceDescription: asString(item['ServiceDescription']),
-    CreatedAt: item['CreatedAt'] as DocumentRow['CreatedAt'],
-    UpdatedAt: item['UpdatedAt'] as DocumentRow['UpdatedAt'],
+    CreatedAt: asDate(item['CreatedAt']),
+    UpdatedAt: asDate(item['UpdatedAt']),
     RelationID: asString(item['RelationID']),
     CompanyID: asString(item['CompanyID']),
     DocumentID: asString(item['DocumentID']),
@@ -181,9 +288,9 @@ export function mapDocumentRow(raw: unknown): DocumentRow {
     VisibilityReason: asString(item['VisibilityReason']),
     FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
     LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
-    FirstSyncedAt: item['FirstSyncedAt'] as DocumentRow['FirstSyncedAt'],
-    LastSyncedAt: item['LastSyncedAt'] as DocumentRow['LastSyncedAt'],
-    ViewedAt: item['ViewedAt'] as DocumentRow['ViewedAt'],
+    FirstSyncedAt: asDate(item['FirstSyncedAt']),
+    LastSyncedAt: asDate(item['LastSyncedAt']),
+    ViewedAt: asDate(item['ViewedAt']),
   }
 }
 
@@ -199,6 +306,202 @@ export function mapDocumentEvent(raw: unknown): DocumentEvent {
   }
 }
 
+export function mapNFeRow(raw: unknown): NFeRow {
+  const item = asRawRecord(raw)
+  return {
+    ID: asString(item['ID']),
+    DocumentID: asString(item['DocumentID']),
+    ChaveAcesso: asString(item['ChaveAcesso']),
+    Serie: asString(item['Serie']),
+    Numero: asString(item['Numero']),
+    IssueDate: asDate(item['IssueDate']),
+    AuthorizedAt: asDate(item['AuthorizedAt']),
+    Protocolo: asString(item['Protocolo']),
+    TpNF: asString(item['TpNF']),
+    EmitenteCNPJ: asString(item['EmitenteCNPJ']),
+    EmitenteName: asString(item['EmitenteName']),
+    EmitenteIE: asString(item['EmitenteIE']),
+    DestinatarioCNPJ: asString(item['DestinatarioCNPJ']),
+    DestinatarioName: asString(item['DestinatarioName']),
+    TotalValue: asNumber(item['TotalValue']),
+    Situacao: asEnum(item['Situacao'], nfeSituacoes),
+    Completeness: asEnum(item['Completeness'], nfeCompletenesses),
+    Manifestacao: asEnum(item['Manifestacao'], nfeManifestacoes),
+    ManifestacaoAt: asDate(item['ManifestacaoAt']),
+    CienciaDue: asDate(item['CienciaDue']),
+    ConclusiveDue: asDate(item['ConclusiveDue']),
+    CompanyRole: asEnum(item['CompanyRole'], nfeRoles),
+    EventCount: asNumber(item['EventCount']),
+    FirstSyncedAt: asDate(item['FirstSyncedAt']),
+    LastSyncedAt: asDate(item['LastSyncedAt']),
+    DaysLeft: asNullableNumber(item['DaysLeft']),
+    CienciaDaysLeft: asNullableNumber(item['CienciaDaysLeft']),
+    TacitlyConfirmed: asBoolean(item['TacitlyConfirmed']),
+    CienciaBlockReason: asString(item['CienciaBlockReason']),
+    ConclusiveBlockReason: asString(item['ConclusiveBlockReason']),
+  }
+}
+
+export function mapNFePendingRow(raw: unknown): NFePendingRow {
+  const item = asRawRecord(raw)
+  return {
+    ...mapNFeRow(item),
+    Kind: asEnum(item['Kind'], nfePendingKinds),
+    CienciaOverdue: asBoolean(item['CienciaOverdue']),
+  }
+}
+
+export function mapNFeEvent(raw: unknown): NFeEvent {
+  const item = asRawRecord(raw)
+  return {
+    ID: asString(item['ID']),
+    TpEvento: asString(item['TpEvento']),
+    NSeqEvento: asNumber(item['NSeqEvento']),
+    Description: asString(item['Description']),
+    EventAt: asDate(item['EventAt']),
+    RegisteredAt: asDate(item['RegisteredAt']),
+    Protocolo: asString(item['Protocolo']),
+    CStat: asString(item['CStat']),
+    XMotivo: asString(item['XMotivo']),
+    Justificativa: asString(item['Justificativa']),
+    Correcao: asString(item['Correcao']),
+    AutorCNPJ: asString(item['AutorCNPJ']),
+    Completeness: asEnum(item['Completeness'], nfeCompletenesses),
+    Registered: asBoolean(item['Registered']),
+    SentByNanci: asBoolean(item['SentByNanci']),
+  }
+}
+
+export function mapNFeEventResult(raw: unknown): NFeEventResult {
+  const item = asRawRecord(raw)
+  return {
+    ChaveAcesso: asString(item['ChaveAcesso']),
+    TpEvento: asString(item['TpEvento']),
+    Status: asEnum(item['Status'], nfeOutcomes),
+    CStat: asString(item['CStat']),
+    XMotivo: asString(item['XMotivo']),
+    Protocolo: asString(item['Protocolo']),
+    RegisteredAt: asDate(item['RegisteredAt']),
+  }
+}
+
+function mapNFeSkipped(raw: unknown): NFeSkipped {
+  const item = asRawRecord(raw)
+  return {
+    ChaveAcesso: asString(item['ChaveAcesso']),
+    Reason: asString(item['Reason']),
+  }
+}
+
+export function mapNFeEventBatchResult(raw: unknown): NFeEventBatchResult {
+  const item = asRawRecord(raw)
+  return {
+    Results: asArray(item['Results']).map(mapNFeEventResult),
+    Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
+    Interrupted: asString(item['Interrupted']),
+  }
+}
+
+export function mapNFeCienciaPlan(raw: unknown): NFeCienciaPlan {
+  const item = asRawRecord(raw)
+  return {
+    Eligible: asArray(item['Eligible']).map(mapNFeRow),
+    Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
+  }
+}
+
+export function mapNFeStatus(raw: unknown): NFeStatusResult {
+  const item = asRawRecord(raw)
+  return {
+    CompanyName: asString(item['CompanyName']),
+    CNPJ: asString(item['CNPJ']),
+    UF: asString(item['UF']),
+    TpAmb: asString(item['TpAmb']),
+    LastNSU: asNumber(item['LastNSU']),
+    MaxNSU: asNullableNumber(item['MaxNSU']),
+    LastSyncAt: asDate(item['LastSyncAt']),
+    LastRunStatus: asString(item['LastRunStatus']),
+    LastRunStopReason: asString(item['LastRunStopReason']),
+    InitialSyncDoneAt: asDate(item['InitialSyncDoneAt']),
+    NextAllowedAt: asDate(item['NextAllowedAt']),
+    BlockedReason: asEnum(item['BlockedReason'], nfeBlockedReasons),
+    RequestsLastHour: asNumber(item['RequestsLastHour']),
+    RequestBudget: asNumber(item['RequestBudget']),
+    TotalDestinatario: asNumber(item['TotalDestinatario']),
+    TotalEmitente: asNumber(item['TotalEmitente']),
+    TotalOutros: asNumber(item['TotalOutros']),
+    TotalResumos: asNumber(item['TotalResumos']),
+    TotalCompletas: asNumber(item['TotalCompletas']),
+    PendingCiencia: asNumber(item['PendingCiencia']),
+    PendingConclusiva: asNumber(item['PendingConclusiva']),
+    CienciaOverdue: asNumber(item['CienciaOverdue']),
+  }
+}
+
+export function mapPullNFeResult(raw: unknown): PullNFeResult {
+  const item = asRawRecord(raw)
+  return {
+    CompanyName: asString(item['CompanyName']),
+    CNPJ: asString(item['CNPJ']),
+    Status: asString(item['Status']),
+    StopReason: asString(item['StopReason']),
+    LastNSU: asNumber(item['LastNSU']),
+    MaxNSU: asNullableNumber(item['MaxNSU']),
+    CompletasSaved: asNumber(item['CompletasSaved']),
+    ResumosSaved: asNumber(item['ResumosSaved']),
+    EventsSaved: asNumber(item['EventsSaved']),
+    Errors: asNumber(item['Errors']),
+    NextAllowedAt: asDate(item['NextAllowedAt']),
+    RequestsLastHour: asNumber(item['RequestsLastHour']),
+    RequestBudget: asNumber(item['RequestBudget']),
+    Duration: asNumber(item['Duration']),
+  }
+}
+
+function mapExportResult(raw: unknown): ExportResult {
+  const item = asRawRecord(raw)
+  return {
+    OutPath: asString(item['OutPath']),
+    Format: asString(item['Format']) as ExportResult['Format'],
+    Incremental: asBoolean(item['Incremental']),
+    ExportedCount: asNumber(item['ExportedCount']),
+  }
+}
+
+function mapNFeExportResult(raw: unknown): NFeExportResult {
+  return {
+    ...mapExportResult(raw),
+    SkippedResumos: asNumber(asRawRecord(raw)['SkippedResumos']),
+  }
+}
+
+export function mapNFeResetResult(raw: unknown): NFeResetResult {
+  const item = asRawRecord(raw)
+  return {
+    CompanyName: asString(item['CompanyName']),
+    CNPJ: asString(item['CNPJ']),
+    CompanyDocuments: asNumber(item['CompanyDocuments']),
+    Documents: asNumber(item['Documents']),
+    Events: asNumber(item['Events']),
+    ExportMarks: asNumber(item['ExportMarks']),
+    ManifestacoesKept: asNumber(item['ManifestacoesKept']),
+  }
+}
+
+function mapConnectionTestResult(raw: unknown): ConnectionTestResult {
+  const item = asRawRecord(raw)
+  return {
+    certLoaded: asBoolean(item['certLoaded']),
+    certSubject: asString(item['certSubject']),
+    certExpiration: asString(item['certExpiration']),
+    mtlsAccepted: asBoolean(item['mtlsAccepted']),
+    endpointReached: asBoolean(item['endpointReached']),
+    responseCode: asString(item['responseCode']),
+    responseDetail: asString(item['responseDetail']),
+    statusExplanation: asString(item['statusExplanation']),
+  }
+}
+
 export const desktopClient = {
   addCompany(input: AddCompanyInput) {
     return callWails(() => AddCompany(input))
@@ -211,15 +514,7 @@ export const desktopClient = {
   },
   async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const extension = input.Format === 'csv' ? '.csv' : input.Format === 'xlsx' ? '.xlsx' : '.zip'
-    const now = new Date()
-    const y = now.getFullYear()
-    const m = String(now.getMonth() + 1).padStart(2, '0')
-    const d = String(now.getDate()).padStart(2, '0')
-    const h = String(now.getHours()).padStart(2, '0')
-    const min = String(now.getMinutes()).padStart(2, '0')
-    const s = String(now.getSeconds()).padStart(2, '0')
-    const timestamp = `${y}_${m}_${d}_${h}${min}${s}`
-    const defaultName = input.BaseName || `nanci_exportacao_${input.CNPJ}_${timestamp}${extension}`
+    const defaultName = input.BaseName || `nanci_exportacao_${input.CNPJ}_${fileTimestamp()}${extension}`
     const outPath = input.OutPath || await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
     if (!outPath) return null
 
@@ -230,7 +525,7 @@ export const desktopClient = {
         ChavesAcesso: input.ChavesAcesso || [],
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async exportDANFSe(input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfse_${input.ChaveAcesso}.pdf`
@@ -243,7 +538,7 @@ export const desktopClient = {
         OutPath: outPath,
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async exportXML(input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `nfse_${input.ChaveAcesso}.xml`
@@ -256,7 +551,7 @@ export const desktopClient = {
         OutPath: outPath,
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async exportDANFSeZIP(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfses_${input.CNPJ}_${Date.now()}.zip`
@@ -270,7 +565,7 @@ export const desktopClient = {
         ChavesAcesso: input.ChavesAcesso || [],
       })
     )
-    return result as ExportResult
+    return mapExportResult(result)
   },
   async listCompanies(): Promise<CompanySummary[]> {
     const result = await callWails(() => ListCompanies())
@@ -351,16 +646,83 @@ export const desktopClient = {
   },
   async testConnection(companyCNPJ: string): Promise<ConnectionTestResult> {
     const res = await callWails(() => TestConnection(companyCNPJ))
-    const item = asRawRecord(res)
-    return {
-      certLoaded: asBoolean(item['certLoaded']),
-      certSubject: asString(item['certSubject']),
-      certExpiration: asString(item['certExpiration']),
-      mtlsAccepted: asBoolean(item['mtlsAccepted']),
-      endpointReached: asBoolean(item['endpointReached']),
-      responseCode: asString(item['responseCode']),
-      responseDetail: asString(item['responseDetail']),
-      statusExplanation: asString(item['statusExplanation']),
-    }
+    return mapConnectionTestResult(res)
+  },
+
+  // NF-e (modelo 55)
+  async pullNFe(cnpj: string): Promise<PullNFeResult> {
+    const res = await callWails(() => PullNFe({ CNPJ: cnpj }))
+    return mapPullNFeResult(res)
+  },
+  // resetNFe removes the company's NF-e and resets its NF-e sync.
+  async resetNFe(cnpj: string): Promise<NFeResetResult> {
+    const res = await callWails(() => ResetNFe(cnpj))
+    return mapNFeResetResult(res)
+  },
+  async statusNFe(cnpj: string): Promise<NFeStatusResult> {
+    const res = await callWails(() => StatusNFe(cnpj))
+    return mapNFeStatus(res)
+  },
+  async listNFe(input: ListNFeInput): Promise<NFeRow[]> {
+    const res = await callWails(() => ListNFe({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] }))
+    return (res || []).map(mapNFeRow)
+  },
+  async listNFeEvents(cnpj: string, chaveAcesso: string): Promise<NFeEvent[]> {
+    const res = await callWails(() => ListNFeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
+    return (res || []).map(mapNFeEvent)
+  },
+  // dueWithinDays 0 lists every pending manifestação.
+  async listNFePendingManifestacoes(cnpj: string, dueWithinDays = 0): Promise<NFePendingRow[]> {
+    const res = await callWails(() =>
+      ListNFePendingManifestacoes({ CNPJ: cnpj, DueWithinDays: dueWithinDays })
+    )
+    return (res || []).map(mapNFePendingRow)
+  },
+  async planNFeCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeCienciaPlan> {
+    const res = await callWails(() => PlanNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
+    return mapNFeCienciaPlan(res)
+  },
+  async registerNFeCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeEventBatchResult> {
+    const res = await callWails(() => RegisterNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
+    return mapNFeEventBatchResult(res)
+  },
+  async registerNFeManifestacao(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
+    const res = await callWails(() => RegisterNFeManifestacao(input))
+    return mapNFeEventResult(res)
+  },
+  async exportNFeXML(
+    input: Omit<ExportNFeXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<ExportResult | null> {
+    const defaultName = input.BaseName || `nfe_${input.ChaveAcesso}.xml`
+    const outPath =
+      input.OutPath || (await desktopClient.selectSaveFile('Salvar XML da NF-e', defaultName, '*.xml'))
+    if (!outPath) return null
+
+    const res = await callWails(() =>
+      ExportNFeXML({ CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso, OutPath: outPath })
+    )
+    return mapExportResult(res)
+  },
+  async exportNFeZIP(
+    input: Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<NFeExportResult | null> {
+    const defaultName = input.BaseName || `nfe_${input.CNPJ}_${fileTimestamp()}.zip`
+    const outPath =
+      input.OutPath ||
+      (await desktopClient.selectSaveFile('Salvar XMLs de NF-e (ZIP)', defaultName, '*.zip'))
+    if (!outPath) return null
+
+    const res = await callWails(() =>
+      ExportNFeZIP({
+        CNPJ: input.CNPJ,
+        Competence: input.Competence,
+        Role: input.Role,
+        ChavesAcesso: input.ChavesAcesso || [],
+        IncludeResumos: input.IncludeResumos,
+        Incremental: input.Incremental,
+        OutPath: outPath,
+      })
+    )
+    return mapNFeExportResult(res)
   },
 }

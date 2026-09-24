@@ -3,9 +3,11 @@ package sync
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
+	gosync "sync"
 	"testing"
 	"time"
 
@@ -18,31 +20,6 @@ import (
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
-
-type dummyCompanyProvider struct {
-	company *nfse.Company
-}
-
-func (d *dummyCompanyProvider) CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error) {
-	return d.company, nil
-}
-
-type dummyCredentialProvider struct {
-	credential *nfse.Credential
-}
-
-func (d *dummyCredentialProvider) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
-	return d.credential, nil
-}
-func (d *dummyCredentialProvider) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
-	return nil
-}
-
-type dummyDocumentProvider struct{}
-
-func (d *dummyDocumentProvider) CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error) {
-	return nil, nil
-}
 
 type providerStub struct{}
 
@@ -108,7 +85,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		DocProvider:        dbstore.NewDocumentRepository(db),
 		SyncRepo:           NewStore(db),
 		XMLStore:           xmlStoreVal,
-		PassProvider:       providerStub{},
+		Certificates:       &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: providerStub{}},
 	}
 
 	originalLoadPKCS12 := loadPKCS12
@@ -139,8 +116,13 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 
 	var receivedStore files.XMLStore
-	newSyncRunner = func(repo *Store, client *adn.Client, store files.XMLStore, log *slog.Logger) syncRunner {
-		receivedStore = store
+	newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
+		nfseSrc, ok := src.(*nfseSource)
+		if !ok {
+			t.Fatalf("source = %T, want *nfseSource", src)
+		}
+		receivedStore = nfseSrc.xml
+		store := nfseSrc.xml
 		return syncRunnerStub{
 			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
 				if progress != nil {
@@ -163,5 +145,220 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	}
 	if result.DocumentsFound != 1 {
 		t.Fatalf("DocumentsFound = %d, want 1", result.DocumentsFound)
+	}
+}
+
+type countingProvider struct {
+	mu    gosync.Mutex
+	calls int
+}
+
+func (p *countingProvider) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.calls++
+	return []byte("secret"), nil
+}
+
+func (p *countingProvider) callCount() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.calls
+}
+
+// newPullTestManager returns a Manager over a real database whose certificate
+// loading and ADN client are stubbed, plus its only company.
+func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *nfse.Company) {
+	t.Helper()
+	db := storetest.OpenTestDB(t)
+	companyStore := company.NewStore(db)
+	credentialStore := credential.NewStore(db)
+
+	comp := &nfse.Company{ //nolint:gosec
+		ID:           "company-1",
+		CNPJ:         "11222333000181",
+		CNPJRoot:     "11222333",
+		Name:         "Company",
+		CredentialID: "credential-1",
+		Environment:  nfse.EnvironmentProduction,
+	}
+	if err := companyStore.CreateCompany(context.Background(), comp); err != nil {
+		t.Fatal(err)
+	}
+	certPath := filepath.Join(t.TempDir(), "cert.pfx")
+	if err := os.WriteFile(certPath, []byte("stub"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := credentialStore.CreateCredential(context.Background(), &nfse.Credential{ID: "credential-1", Label: "Credential", CertPath: certPath}); err != nil {
+		t.Fatal(err)
+	}
+
+	originalLoadPKCS12 := loadPKCS12
+	originalNewADNClient := newADNClient
+	originalNewSyncRunner := newSyncRunner
+	t.Cleanup(func() {
+		loadPKCS12 = originalLoadPKCS12
+		newADNClient = originalNewADNClient
+		newSyncRunner = originalNewSyncRunner
+	})
+	loadPKCS12 = func(string, []byte) (cert.LoadedCertificate, error) {
+		now := time.Now().UTC()
+		return cert.LoadedCertificate{Inspection: cert.Inspection{
+			OwnerCNPJ:     "11222333000181",
+			OwnerCNPJRoot: "11222333",
+			NotBefore:     now,
+			NotAfter:      now.Add(24 * time.Hour),
+		}}, nil
+	}
+	newADNClient = func(adn.ClientConfig) (*adn.Client, error) {
+		return &adn.Client{}, nil
+	}
+
+	return &Manager{
+		Log:                slog.New(slog.DiscardHandler),
+		CompanyProvider:    companyStore,
+		CredentialProvider: credentialStore,
+		DocProvider:        dbstore.NewDocumentRepository(db),
+		SyncRepo:           NewStore(db),
+		XMLStore:           &captureXMLStore{},
+		Certificates:       &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: passwords},
+	}, comp
+}
+
+func TestPullReturnsBlockedErrorBeforePasswordPrompt(t *testing.T) {
+	passwords := &countingProvider{}
+	mgr, comp := newPullTestManager(t, passwords)
+	until := time.Now().Add(time.Hour)
+	if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, nfse.SyncSourceNFSe, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ})
+	var blocked *BlockedError
+	if !errors.As(err, &blocked) || !errors.Is(err, ErrSourceBlocked) {
+		t.Fatalf("Pull error = %v, want *BlockedError", err)
+	}
+	if blocked.Reason != nfse.SyncStopReasonConsumoIndevido {
+		t.Errorf("Reason = %q, want consumo_indevido", blocked.Reason)
+	}
+	if got := passwords.callCount(); got != 0 {
+		t.Errorf("password prompts = %d, want 0", got)
+	}
+}
+
+func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
+	passwords := &countingProvider{}
+	mgr, comp := newPullTestManager(t, passwords)
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
+		return syncRunnerStub{
+			sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+				close(started)
+				<-release
+				return nil
+			},
+		}
+	}
+
+	firstErr := make(chan error, 1)
+	go func() {
+		_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ})
+		firstErr <- err
+	}()
+	<-started
+
+	if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ}); !errors.Is(err, ErrSyncRunning) {
+		t.Errorf("second Pull error = %v, want ErrSyncRunning", err)
+	}
+	if got := passwords.callCount(); got != 1 {
+		t.Errorf("password prompts = %d, want 1 (the second pull must not prompt)", got)
+	}
+
+	close(release)
+	if err := <-firstErr; err != nil {
+		t.Fatalf("first Pull: %v", err)
+	}
+
+	// Once the first pull ends, the pair is free again.
+	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
+		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+			return nil
+		}}
+	}
+	if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ}); err != nil {
+		t.Fatalf("third Pull: %v", err)
+	}
+}
+
+func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	if _, err := mgr.SyncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+		CompanyID:        comp.ID,
+		Source:           nfse.SyncSourceNFSe,
+		Environment:      comp.Environment,
+		ConsultationCNPJ: comp.CNPJ,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.SyncRepo.MarkInitialSyncCompleted(ctx, comp.ID, nfse.SyncSourceNFSe); err != nil {
+		t.Fatal(err)
+	}
+
+	// An NFS-e pull holds the reservation for its whole run.
+	release, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); !errors.Is(err, ErrSyncRunning) {
+		t.Fatalf("reset during an NFS-e pull = %v, want ErrSyncRunning", err)
+	}
+	state, err := mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.InitialSyncDoneAt == nil {
+		t.Error("the refused reset cleared the NFS-e initial sync")
+	}
+	release()
+
+	// An NF-e pull does not hold the NFS-e cursor.
+	releaseNFe, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer releaseNFe()
+	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); err != nil {
+		t.Fatalf("reset after the NFS-e pull ended: %v", err)
+	}
+	state, err = mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.InitialSyncDoneAt != nil {
+		t.Errorf("NFS-e initial sync after reset = %v, want nil", state.InitialSyncDoneAt)
+	}
+
+	// The reset gives the reservation back.
+	releaseAgain, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatalf("reserve after reset: %v", err)
+	}
+	releaseAgain()
+}
+
+func TestPullRejectsSourcesWithoutALoop(t *testing.T) {
+	passwords := &countingProvider{}
+	mgr, comp := newPullTestManager(t, passwords)
+
+	for _, source := range []nfse.SyncSource{"cte", "bogus"} {
+		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: source}); err == nil {
+			t.Errorf("Pull with source %q succeeded, want an error", source)
+		}
+	}
+	if got := passwords.callCount(); got != 0 {
+		t.Errorf("password prompts = %d, want 0", got)
 	}
 }

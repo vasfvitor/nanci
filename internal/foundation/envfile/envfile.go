@@ -54,7 +54,7 @@ func candidatePaths() []string {
 }
 
 func loadFile(path string) error {
-	file, err := os.Open(path) //nolint:gosec // intentional: path is explicitly selected by the user
+	file, err := os.Open(path) // #nosec G304 -- a fixed file name in the working dir, next to the executable, or in the data dir.
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil

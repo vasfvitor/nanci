@@ -88,10 +88,8 @@ func TestCompanyRole(t *testing.T) {
 				if role != tt.expected {
 					t.Errorf("Expected %s, got %s", tt.expected, role)
 				}
-			} else {
-				if err == nil {
-					t.Errorf("Expected error for input %s, got nil", tt.input)
-				}
+			} else if err == nil {
+				t.Errorf("Expected error for input %s, got nil", tt.input)
 			}
 		})
 	}
@@ -121,10 +119,8 @@ func TestVisibilityReason(t *testing.T) {
 				if reason != tt.expected {
 					t.Errorf("Expected %s, got %s", tt.expected, reason)
 				}
-			} else {
-				if err == nil {
-					t.Errorf("Expected error for input %s, got nil", tt.input)
-				}
+			} else if err == nil {
+				t.Errorf("Expected error for input %s, got nil", tt.input)
 			}
 		})
 	}

@@ -3,8 +3,9 @@
     <q-card style="min-width: 350px">
       <q-card-section>
         <div class="text-h6">Senha do Certificado</div>
+        <div v-if="requestData?.Purpose" class="text-caption text-app-muted">Finalidade: {{ requestData.Purpose }}</div>
         <div class="text-caption text-app-muted">Empresa: {{ requestData?.CompanyName }}</div>
-        <div class="text-caption text-app-muted">CNPJ consultado: {{ requestData?.TargetCNPJ }}</div>
+        <div class="text-caption text-app-muted">CNPJ: {{ requestData?.TargetCNPJ }}</div>
         <div class="text-caption text-app-muted">Credencial: {{ requestData?.CredentialLabel }}</div>
         <div class="text-caption text-app-muted">Arquivo: {{ requestData?.CertPath }}</div>
       </q-card-section>
@@ -25,14 +26,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { desktopClient } from '@/platform/wails/client'
 import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
-
-interface CertPasswordRequest {
-  RequestID: string
-  CompanyName: string
-  TargetCNPJ: string
-  CredentialLabel: string
-  CertPath: string
-}
+import type { CertPasswordRequest } from '@/types/desktop'
 
 const requests = ref<CertPasswordRequest[]>([])
 const password = ref('')

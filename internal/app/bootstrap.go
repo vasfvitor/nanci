@@ -18,6 +18,14 @@ import (
 
 var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
 
+// ErrSourceBlocked matches a pull refused because the source asked to wait;
+// errors.As with *sync.BlockedError gives the time and the reason.
+var ErrSourceBlocked = sync.ErrSourceBlocked
+
+// ErrSyncRunning matches a pull refused because the same company and source
+// are already syncing in this process.
+var ErrSyncRunning = sync.ErrSyncRunning
+
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest = sync.CertPasswordRequest
 
@@ -31,6 +39,7 @@ type App struct {
 	Documents   *DocumentService
 	Exports     *ExportService
 	Query       *QueryService
+	NFe         *NFeService
 	SyncManager *sync.Manager
 }
 
@@ -41,6 +50,7 @@ type Dependencies struct {
 	CredentialStore    *credential.Store
 	SyncRepo           *sync.Store
 	DocumentRepo       *store.DocumentRepository
+	NFeRepo            *store.NFeRepository
 	XMLStore           files.XMLStore
 	DataDir            string
 	CredentialProvider CredentialProvider
@@ -60,6 +70,8 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: sync repository is required")
 	case deps.DocumentRepo == nil:
 		return nil, errors.New("app: document repository is required")
+	case deps.NFeRepo == nil:
+		return nil, errors.New("app: NF-e repository is required")
 	case deps.XMLStore == nil:
 		return nil, errors.New("app: XML store is required")
 	case deps.DataDir == "":
@@ -68,21 +80,31 @@ func New(deps Dependencies) (*App, error) {
 		return nil, errors.New("app: credential provider is required")
 	}
 
+	certificates := &sync.CertificateLoader{
+		Log:         deps.Log,
+		Credentials: deps.CredentialStore,
+		Passwords:   deps.CredentialProvider,
+	}
+
+	syncManager := &sync.Manager{
+		Log:                deps.Log,
+		CompanyProvider:    deps.CompanyStore,
+		CredentialProvider: deps.CredentialStore,
+		DocProvider:        deps.DocumentRepo,
+		SyncRepo:           deps.SyncRepo,
+		XMLStore:           deps.XMLStore,
+		Certificates:       certificates,
+		NFeRepo:            deps.NFeRepo,
+	}
+
 	return &App{
 		Companies:   company.NewManager(deps.CompanyStore, deps.CredentialStore, deps.SyncRepo),
 		Credentials: credential.NewManager(deps.CredentialStore),
 		Documents:   NewDocumentService(deps),
 		Exports:     NewExportService(deps),
-		Query:       NewQueryService(deps),
-		SyncManager: &sync.Manager{
-			Log:                deps.Log,
-			CompanyProvider:    deps.CompanyStore,
-			CredentialProvider: deps.CredentialStore,
-			DocProvider:        deps.DocumentRepo,
-			SyncRepo:           deps.SyncRepo,
-			XMLStore:           deps.XMLStore,
-			PassProvider:       deps.CredentialProvider,
-		},
+		Query:       NewQueryService(deps, certificates),
+		NFe:         NewNFeService(deps, certificates, syncManager),
+		SyncManager: syncManager,
 	}, nil
 }
 

@@ -63,7 +63,7 @@ func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.C
 	}()
 
 	// Notify the frontend to show the password dialog
-	runtime.EventsEmit(p.ctx, "request-cert-password", req)
+	runtime.EventsEmit(p.ctx, "request-cert-password", req) //nolint:contextcheck // Wails runtime calls need the app context from startup; ctx only bounds the wait.
 
 	// Block until the password is submitted by the frontend
 	select {
@@ -190,6 +190,7 @@ func (a *App) startup(ctx context.Context) {
 		CredentialStore: credential.NewStore(db),
 		SyncRepo:        nsync.NewStore(db),
 		DocumentRepo:    docRepo,
+		NFeRepo:         store.NewNFeRepository(db),
 		XMLStore:        files.NewBlobStore(dataDir),
 		DataDir:         dataDir,
 		CredentialProvider: app.KeyringCredentialProvider{
@@ -281,6 +282,7 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 		CredentialLabel: input.CredentialLabel,
 		CertPath:        input.CertPath,
 		Environment:     environment,
+		UF:              input.UF,
 		SyncStartPolicy: policy,
 		SyncStartDate:   date,
 	})
@@ -333,6 +335,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		Environment:     environment,
+		UF:              input.UF,
 		SyncStartPolicy: policy,
 		SyncStartDate:   date,
 	})
@@ -355,11 +358,12 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 
 func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 	res, err := a.core.SyncManager.Pull(a.ctx, nsync.PullInput{
-		CNPJ: input.CNPJ,
-		Mode: input.Mode,
+		CNPJ:   input.CNPJ,
+		Mode:   input.Mode,
+		Source: nfse.SyncSourceNFSe,
 	})
-	if err != nil && errors.Is(err, app.ErrOperationCanceled) {
-		return desktopapi.PullResult{}, fmt.Errorf("ERR_CANCELED: %w", err)
+	if err != nil {
+		return desktopapi.PullResult{}, desktopError(err)
 	}
 	return desktopapi.PullResult{
 		CompanyName:              res.CompanyName,
@@ -380,12 +384,13 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 		EventsSkippedByPolicy:    res.EventsSkippedByPolicy,
 		Errors:                   res.Errors,
 		Duration:                 res.Duration,
-	}, err
+	}, nil
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
 	return a.core.SyncManager.ResetSyncState(a.ctx, nsync.ResetSyncInput{
-		CNPJ: input.CompanyCNPJ,
+		CNPJ:   input.CompanyCNPJ,
+		Source: nfse.SyncSourceNFSe,
 	})
 }
 
@@ -489,12 +494,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{
-		OutPath:       res.OutPath,
-		Format:        res.Format,
-		Incremental:   res.Incremental,
-		ExportedCount: res.ExportedCount,
-	}, nil
+	return desktopapi.ExportResult(res), nil
 }
 
 func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
@@ -529,19 +529,15 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 		return desktopapi.ExportResult{}, err
 	}
 
-	return desktopapi.ExportResult{
-		OutPath:       res.OutPath,
-		Format:        res.Format,
-		Incremental:   res.Incremental,
-		ExportedCount: res.ExportedCount,
-	}, nil
+	return desktopapi.ExportResult(res), nil
 }
 
 func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, error) {
 	format := strings.ToLower(strings.TrimSpace(input.Format))
-	if format == "zip" {
+	switch format {
+	case "zip":
 		format = "xml"
-	} else if format == "danfse-zip" {
+	case "danfse-zip":
 		format = "danfse"
 	}
 
@@ -584,19 +580,6 @@ func parseDesktopLogLevel(level string) slog.Level {
 	}
 }
 
-func exportExtension(format string) (string, error) {
-	switch format {
-	case "csv":
-		return ".csv", nil
-	case "xlsx":
-		return ".xlsx", nil
-	case "zip":
-		return ".zip", nil
-	default:
-		return "", fmt.Errorf("formato de exportação inválido: %s", format)
-	}
-}
-
 func (a *App) ExportLogs() (string, error) {
 	if a.logPath == "" {
 		return "", fmt.Errorf("logger de desktop não configurado")
@@ -618,7 +601,7 @@ func (a *App) ExportLogs() (string, error) {
 }
 
 func exportRotatedLogs(savePath string, basePath string) error {
-	file, err := os.Create(savePath)
+	file, err := os.Create(savePath) // #nosec G304 -- the user picks savePath in the save dialog.
 	if err != nil {
 		return fmt.Errorf("criar arquivo de exportação: %w", err)
 	}
@@ -639,7 +622,7 @@ func exportRotatedLogs(savePath string, basePath string) error {
 			continue
 		}
 
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // #nosec G304 -- path is one of the app's own rotated log files.
 		if err != nil {
 			return fmt.Errorf("ler log %s: %w", path, err)
 		}
@@ -678,15 +661,15 @@ func (a *App) GetDataDirectory() (string, error) {
 }
 
 func openDir(dir string) error {
-	var cmd *exec.Cmd
+	opener := "xdg-open" // linux, freebsd, etc.
 	switch goruntime.GOOS {
 	case "windows":
-		cmd = exec.Command("explorer", dir)
+		opener = "explorer"
 	case "darwin":
-		cmd = exec.Command("open", dir)
-	default: // linux, freebsd, etc.
-		cmd = exec.Command("xdg-open", dir)
+		opener = "open"
 	}
+	// #nosec G204 -- fixed opener per OS; dir is the app's data or log directory, passed without a shell.
+	cmd := exec.Command(opener, dir) //nolint:noctx // fire-and-forget launch of the file browser; nothing to cancel.
 	return cmd.Start()
 }
 
@@ -720,5 +703,193 @@ func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResul
 		ResponseCode:      res.ResponseCode,
 		ResponseDetail:    res.ResponseDetail,
 		StatusExplanation: res.StatusExplanation,
+	}, nil
+}
+
+// --- NF-e ---
+
+func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
+	res, err := a.core.NFe.Pull(a.ctx, input.CNPJ)
+	if err != nil {
+		return desktopapi.PullNFeResult{}, desktopError(err)
+	}
+	return desktopapi.PullNFeResult{
+		CompanyName:      res.CompanyName,
+		CNPJ:             res.CNPJ,
+		Status:           res.Status,
+		StopReason:       res.StopReason,
+		LastNSU:          res.LastNSU,
+		MaxNSU:           res.MaxNSU,
+		CompletasSaved:   res.CompletasSaved,
+		ResumosSaved:     res.ResumosSaved,
+		EventsSaved:      res.EventsSaved,
+		Errors:           res.Errors,
+		NextAllowedAt:    res.NextAllowedAt,
+		RequestsLastHour: res.RequestsLastHour,
+		RequestBudget:    res.RequestBudget,
+		Duration:         res.Duration,
+	}, nil
+}
+
+func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
+	res, err := a.core.NFe.Status(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.NFeStatusResult{}, desktopError(err)
+	}
+	return desktopapi.NFeStatusResult{
+		CompanyName:       res.CompanyName,
+		CNPJ:              res.CNPJ,
+		UF:                res.UF,
+		TpAmb:             res.TpAmb,
+		LastNSU:           res.LastNSU,
+		MaxNSU:            res.MaxNSU,
+		LastSyncAt:        res.LastSyncAt,
+		LastRunStatus:     res.LastRunStatus,
+		LastRunStopReason: res.LastRunStopReason,
+		InitialSyncDoneAt: res.InitialSyncDoneAt,
+		NextAllowedAt:     res.NextAllowedAt,
+		BlockedReason:     res.BlockedReason,
+		RequestsLastHour:  res.RequestsLastHour,
+		RequestBudget:     res.RequestBudget,
+		TotalDestinatario: res.TotalDestinatario,
+		TotalEmitente:     res.TotalEmitente,
+		TotalOutros:       res.TotalOutros,
+		TotalResumos:      res.TotalResumos,
+		TotalCompletas:    res.TotalCompletas,
+		PendingCiencia:    res.PendingCiencia,
+		PendingConclusiva: res.PendingConclusiva,
+		CienciaOverdue:    res.CienciaOverdue,
+	}, nil
+}
+
+func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error) {
+	documents, err := a.core.NFe.ListDocuments(a.ctx, app.NFeListInput{
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Situacao:     input.Situacao,
+		Completeness: input.Completeness,
+		Role:         input.Role,
+		Manifestacao: input.Manifestacao,
+		EmitenteCNPJ: input.EmitenteCNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+	})
+	if err != nil {
+		return nil, desktopError(err)
+	}
+	return desktopapi.NFeRows(documents), nil
+}
+
+func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {
+	events, err := a.core.NFe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
+	if err != nil {
+		return nil, desktopError(err)
+	}
+	return desktopapi.NFeEvents(events), nil
+}
+
+func (a *App) ListNFePendingManifestacoes(input desktopapi.NFePendingInput) ([]desktopapi.NFePendingRow, error) {
+	pending, err := a.core.NFe.ListPendingManifestacoes(a.ctx, app.NFePendingInput{
+		CNPJ:          input.CNPJ,
+		DueWithinDays: input.DueWithinDays,
+	})
+	if err != nil {
+		return nil, desktopError(err)
+	}
+	return desktopapi.NFePendingRows(pending), nil
+}
+
+// PlanNFeCiencia lists which NF-e RegisterNFeCiencia would send and which it would
+// skip. It sends nothing and asks for no password.
+func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeCienciaPlan, error) {
+	plan, err := a.core.NFe.PlanCiencia(a.ctx, app.NFeCienciaInput{
+		CNPJ:         input.CNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+	})
+	if err != nil {
+		return desktopapi.NFeCienciaPlan{}, desktopError(err)
+	}
+	return desktopapi.NFeCienciaPlanFrom(plan), nil
+}
+
+// RegisterNFeCiencia sends Ciência da Operação for the eligible NF-e. Failures
+// after sending started are reported per chave in the result, not as an error.
+func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeEventBatchResult, error) {
+	summary, err := a.core.NFe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
+		CNPJ:         input.CNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+	})
+	if err != nil {
+		return desktopapi.NFeEventBatchResult{}, desktopError(err)
+	}
+	return desktopapi.NFeEventResults(summary), nil
+}
+
+func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoInput) (desktopapi.NFeEventResult, error) {
+	outcome, err := a.core.NFe.RegisterManifestacao(a.ctx, app.NFeManifestacaoInput{
+		CNPJ:          input.CNPJ,
+		ChaveAcesso:   input.ChaveAcesso,
+		Tipo:          input.Tipo,
+		Justificativa: input.Justificativa,
+	})
+	if err != nil {
+		return desktopapi.NFeEventResult{}, desktopError(err)
+	}
+	return desktopapi.NFeEventResultFrom(outcome), nil
+}
+
+func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.ExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	err := a.core.NFe.ExportXML(a.ctx, app.NFeExportXMLInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, desktopError(err)
+	}
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+}
+
+func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeExportResult, error) {
+	if input.OutPath == "" {
+		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	res, err := a.core.NFe.ExportXMLZip(a.ctx, app.NFeExportInput{
+		CNPJ:           input.CNPJ,
+		Competence:     input.Competence,
+		Role:           input.Role,
+		ChavesAcesso:   input.ChavesAcesso,
+		IncludeResumos: input.IncludeResumos,
+		Incremental:    input.Incremental,
+		OutPath:        input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.NFeExportResult{}, desktopError(err)
+	}
+	return desktopapi.NFeExportResult{
+		ExportResult:   desktopapi.ExportResult(res.ExportResult),
+		SkippedResumos: res.SkippedResumos,
+	}, nil
+}
+
+// ResetNFe removes the company's NF-e and resets its NF-e sync, which lets the
+// company environment change again.
+func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
+	res, err := a.core.NFe.Reset(a.ctx, cnpj)
+	if err != nil {
+		return desktopapi.NFeResetResult{}, desktopError(err)
+	}
+	return desktopapi.NFeResetResult{
+		CompanyName:       res.CompanyName,
+		CNPJ:              res.CNPJ,
+		CompanyDocuments:  res.CompanyDocuments,
+		Documents:         res.Documents,
+		Events:            res.Events,
+		ExportMarks:       res.ExportMarks,
+		ManifestacoesKept: res.ManifestacoesKept,
 	}, nil
 }

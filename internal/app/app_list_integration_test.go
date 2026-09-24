@@ -17,21 +17,25 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath})
+	if err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
+		t.Fatalf("AddCredential: %v", err)
+	}
 	creds, _ := application.Credentials.ListCredentials(ctx)
 
 	now := time.Now().Truncate(24 * time.Hour)
 	policyFromNow, dateFromNow, _ := company.ParseSyncStartPolicyInput("from_now", "")
 
 	// Create Company with from_now policy
-	application.Companies.AddCompany(ctx, company.AddCompanyInput{
+	if err := application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Listagem",
 		Environment:     nfse.EnvironmentRestricted,
 		CredentialID:    string(creds[0].ID),
 		SyncStartPolicy: policyFromNow,
 		SyncStartDate:   dateFromNow,
-	})
+	}); err != nil {
+		t.Fatalf("AddCompany: %v", err)
+	}
 
 	comps, _ := application.Companies.ListCompanies(ctx)
 	companyID := comps[0].ID
@@ -100,16 +104,20 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath})
+	if err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
+		t.Fatalf("AddCredential: %v", err)
+	}
 	creds, _ := application.Credentials.ListCredentials(ctx)
 
-	application.Companies.AddCompany(ctx, company.AddCompanyInput{
+	if err := application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Company A",
 		CredentialID:    string(creds[0].ID),
 		Environment:     "producao",
 		SyncStartPolicy: "all",
-	})
+	}); err != nil {
+		t.Fatalf("AddCompany: %v", err)
+	}
 
 	comp, _ := company.NewStore(db).CompanyByCNPJ(ctx, "45852546000109")
 

@@ -1,31 +1,16 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { companyOption } from '@/composables/useCompanies'
+import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useDocumentsStore } from '@/stores/documents'
-import { usePreferencesStore } from '@/stores/preferences'
-import type { CompanySummary, ExportFormat } from '@/types/desktop'
+import type { ExportFormat } from '@/types/desktop'
 
 export function useDocuments() {
   const documentsStore = useDocumentsStore()
   const { filter, documents, loading, exporting } = storeToRefs(documentsStore)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-
-  const preferencesStore = usePreferencesStore()
-  const { rowsPerPage } = storeToRefs(preferencesStore)
-
-  const pagination = ref({
-    sortBy: 'issueDate',
-    descending: true,
-    page: 1,
-    rowsPerPage: rowsPerPage.value
-  })
-
-  watch(
-    () => pagination.value.rowsPerPage,
-    (newVal) => {
-      rowsPerPage.value = newVal
-    }
-  )
+  const pagination = useTablePagination()
 
   async function loadCompanies() {
     const companies = await desktopClient.listCompanies()
@@ -163,12 +148,5 @@ export function useDocuments() {
     loadEvents,
     markDocumentsViewed,
     countPendingExports,
-  }
-}
-
-function companyOption(company: CompanySummary) {
-  return {
-    label: `${company.Name} (${company.CNPJ})`,
-    value: company.CNPJ,
   }
 }

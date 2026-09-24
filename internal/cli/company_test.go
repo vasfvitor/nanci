@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -41,6 +42,7 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 		CredentialStore: credential.NewStore(db),
 		SyncRepo:        sync.NewStore(db),
 		DocumentRepo:    docRepo,
+		NFeRepo:         store.NewNFeRepository(db),
 
 		XMLStore:           files.NewBlobStore(t.TempDir()),
 		DataDir:            t.TempDir(),
@@ -50,17 +52,18 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 	if err != nil {
 		t.Fatalf("app.New: %v", err)
 	}
+	root, out := newTestRootForApp(application)
+	return root, out, &bytes.Buffer{}
+}
 
-	factoryCalled := false
+// newTestRootForApp builds a fresh root whose AppFactory always returns
+// application, and whose stdout is the returned buffer.
+func newTestRootForApp(application *app.App) (*cobra.Command, *bytes.Buffer) {
 	factory := func(ctx context.Context) (*app.App, func(), error) {
-		if factoryCalled {
-			return application, func() {}, nil
-		}
-		factoryCalled = true
 		return application, func() {}, nil
 	}
 
-	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	out := &bytes.Buffer{}
 	v, tr := false, false
 	root := NewRootCommand(CommandEnv{
 		In:         os.Stdin,
@@ -70,7 +73,7 @@ func newInMemTestRoot(t *testing.T) (*cobra.Command, *bytes.Buffer, *bytes.Buffe
 		Verbose:    &v,
 		Trace:      &tr,
 	})
-	return root, out, errOut
+	return root, out
 }
 
 // TestCompanyList_EmptyDB_PrintsNoCompanies asserts the company list subcommand
@@ -120,6 +123,58 @@ func TestCompanyAdd_InvalidCNPJ_ReturnsErrorWithoutUsage(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "CNPJ") && !strings.Contains(err.Error(), "cnpj") {
 		t.Errorf("error %q does not mention CNPJ", err.Error())
+	}
+}
+
+// TestCompanyUF_AddUpdateList asserts --uf is normalized on add, changed by
+// update without touching other fields, and shown by list.
+func TestCompanyUF_AddUpdateList(t *testing.T) {
+	root, out, errOut := newInMemTestRoot(t)
+	root.SetErr(errOut)
+	certPath := filepath.Join(t.TempDir(), "company.pfx")
+	if err := os.WriteFile(certPath, []byte("not inspected by company add"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(args ...string) error {
+		t.Helper()
+		out.Reset()
+		root.SetArgs(args)
+		return root.ExecuteContext(context.Background())
+	}
+	listedUF := func() string {
+		t.Helper()
+		if err := run("company", "list"); err != nil {
+			t.Fatalf("company list: %v", err)
+		}
+		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+		fields := strings.Fields(lines[len(lines)-1])
+		return fields[len(fields)-1]
+	}
+
+	if err := run("company", "add", "--cnpj", "11222333000181", "--name", "Acme", "--cert", certPath, "--uf", "sp"); err != nil {
+		t.Fatalf("company add: %v", err)
+	}
+	if got := listedUF(); got != "SP" {
+		t.Errorf("UF after add = %q, want SP", got)
+	}
+
+	if err := run("company", "update", "--cnpj", "11.222.333/0001-81", "--uf", "RJ"); err != nil {
+		t.Fatalf("company update: %v", err)
+	}
+	if got := listedUF(); got != "RJ" {
+		t.Errorf("UF after update = %q, want RJ", got)
+	}
+	if !strings.Contains(out.String(), "Acme") || !strings.Contains(out.String(), "producao_restrita") {
+		t.Errorf("update changed fields it was not asked to: %q", out.String())
+	}
+
+	err := run("company", "add", "--cnpj", "11222333000262", "--name", "Filial", "--cert", certPath, "--uf", "XX")
+	if err == nil || !strings.Contains(err.Error(), "UF") {
+		t.Errorf("company add with an invalid UF = %v, want a UF error", err)
+	}
+	if errOut.Len() != 0 {
+		t.Errorf("stderr not empty: %q", errOut.String())
 	}
 }
 

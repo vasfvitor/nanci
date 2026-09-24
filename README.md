@@ -4,7 +4,7 @@
 
 # Nanci
 
-Aplicativo desktop e de linha de comando (CLI) Open Source para baixar Notas Fiscais de Serviços Eletrônicas (NFS-e) diretamente do Ambiente de Dados Nacional (ADN) utilizando seu Certificado Digital A1.
+Aplicativo desktop e de linha de comando (CLI) Open Source para baixar Notas Fiscais de Serviços Eletrônicas (NFS-e) diretamente do Ambiente de Dados Nacional (ADN) e NF-e (modelo 55) da distribuição DF-e da SEFAZ, utilizando seu Certificado Digital A1.
 
 <p align="center">
   <img src="docs/screenshots/empresas-dark.png" alt="Nanci Tela Empresas" width="90%">
@@ -25,10 +25,13 @@ Toda a operação ocorre localmente na sua máquina (Local-First).
 - Exporta dados em Excel (`.xlsx`), CSV, ZIP de XMLs e PDF (DANFSE).
 - Permite automação através da sua interface de linha de comando (CLI).
 - Suporta cadastro de múltiplas empresas e credenciais A1 (PFX/P12).
+- Baixa as NF-e (modelo 55) recebidas pela empresa na distribuição DF-e do Ambiente Nacional da SEFAZ, respeitando o limite de consultas por hora.
+- Registra a Manifestação do Destinatário da NF-e: Ciência da Operação em lote e manifestações conclusivas nota a nota, sempre com confirmação explícita.
 
 ## O que o Nanci NÃO faz?
 
-- **Não usa portal web municipal**: A consulta ocorre exclusivamente na infraestrutura nacional (ADN).
+- **Não usa portal web municipal**: A consulta ocorre exclusivamente na infraestrutura nacional (ADN para NFS-e, Ambiente Nacional da SEFAZ para NF-e).
+- **Não baixa NFC-e, CT-e, NFCom, NF3e nem CF-e SAT**, e não importa XML avulso.
 - **Não faz scraping ou usa automação de navegador**: Não resolve CAPTCHAs nem simula navegação.
 - **Não envia seus XMLs ou Certificados para servidores de terceiros**: A comunicação ocorre apenas entre sua máquina e o Governo.
 - **Não garante que notas emitidas pela sua própria empresa apareçam**: O ADN possui regras de distribuição estritas. Não utilize o app como garantidor absoluto de notas emitidas. Veja a [FAQ de documentos vazios](website/content/docs/faq.md).
@@ -65,6 +68,45 @@ nanci.exe export xlsx --cnpj 12345678000199 --out relatorio.xlsx
 ```
 
 *A senha do certificado pode ser informada por prompt de comando seguro ou via variável de ambiente `NANCI_CERT_PASSWORD`.*
+
+#### NF-e (modelo 55)
+
+A distribuição de NF-e exige a UF da empresa (`--uf` em `company add` ou `company update`). Os comandos ficam em `nanci nfe` e recebem a empresa por `--cnpj`:
+
+```bash
+# Cadastrar a UF da empresa
+nanci.exe company update --cnpj 12345678000199 --uf SP
+
+# Testar certificado e TLS sem gastar consultas
+nanci.exe nfe testar-conexao --cnpj 12345678000199
+
+# Baixar e listar
+nanci.exe nfe pull --cnpj 12345678000199
+nanci.exe nfe list --cnpj 12345678000199 --completude resumo
+
+# Ciência da Operação, passo 1: simulação. Mostra o que seria enviado e não envia nada.
+nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos
+
+# Passo 2: envio de verdade. Confira a simulação antes.
+nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
+```
+
+> **Atenção:** com `--confirmar`, `nfe ciencia` e `nfe manifestar` enviam eventos assinados à SEFAZ. Um evento registrado não pode ser desfeito pelo Nanci. Rode sempre a simulação primeiro. Se algum evento for rejeitado ou não for enviado, o comando mostra a tabela de resultados e termina com erro.
+
+| Comando | O que faz |
+|---|---|
+| `nfe testar-conexao` | Carrega o certificado e testa o TLS com a SEFAZ, sem consumir consultas. |
+| `nfe pull` | Baixa resumos, NF-e completas e eventos (até 20 consultas por hora). |
+| `nfe status` | Mostra cursor, bloqueios, consultas da última hora e totais. |
+| `nfe list` | Lista as NF-e. Filtros: `--competencia`/`-m`, `--situacao`, `--completude` (resumo, completa), `--papel`/`-p`, `--manifestacao`, `--emitente` e `--chave` (pode repetir). |
+| `nfe ciencia` | Registra a Ciência da Operação em lote, por `--chave` (pode repetir) ou `--todos-resumos`. Simulação sem `--confirmar`. |
+| `nfe manifestar` | Registra uma manifestação conclusiva de uma nota: `--chave`, `--tipo` (confirmacao, desconhecimento ou nao_realizada) e `--justificativa` (15 a 255 caracteres, obrigatória para nao_realizada). Simulação sem `--confirmar`. |
+| `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. `--vencendo-em N` mostra só as que vencem em até N dias. |
+| `nfe export zip` | Exporta os XMLs em ZIP (`--out`/`-o`, padrão `nfe.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incluir-resumos` inclui os resumos e `--incremental` exporta só o que ainda não foi exportado. |
+| `nfe export xml` | Exporta o XML de uma nota (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
+| `nfe reset` | Remove as NF-e da empresa e reinicia a sincronização NF-e; necessário antes de trocar o ambiente. Simulação sem `--confirmar`. |
+
+Detalhes de limites, prazos e TLS em [docs/NFE_SEFAZ.md](docs/NFE_SEFAZ.md).
 
 
 

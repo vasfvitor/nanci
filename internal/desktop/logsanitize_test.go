@@ -23,6 +23,9 @@ func TestSanitizeLogContent(t *testing.T) {
 		{name: "hex id of 14 chars untouched", in: "id=3fa9c1d2e4b5a6", want: "id=3fa9c1d2e4b5a6"},
 		{name: "raw alphanumeric untouched", in: "12ABC34501DE35", want: "12ABC34501DE35"},
 		{name: "access key untouched", in: "chave=35503082604800000000000000000000000000000000000001", want: "chave=35503082604800000000000000000000000000000000000001"},
+		{name: "nfe key masks cnpj slot", in: "chNFe=35240112345678000195550010000001231234567890 ok", want: "chNFe=35240112.***.***/****-95550010000001231234567890 ok"},
+		{name: "nfe key alphanumeric cnpj", in: "chave 352401AB345CDE000135550010000001231234567890", want: "chave 352401AB.***.***/****-35550010000001231234567890"},
+		{name: "44 digits inside longer run untouched", in: "9352401123456780001955500100000012312345678901", want: "9352401123456780001955500100000012312345678901"},
 		{name: "13 digits untouched", in: "1234567800019", want: "1234567800019"},
 		{name: "15 digits untouched", in: "123456780001951", want: "123456780001951"},
 		{name: "empty", in: "", want: ""},
@@ -49,7 +52,7 @@ func TestExportRotatedLogsMasksCNPJs(t *testing.T) {
 		t.Fatalf("exportRotatedLogs: %v", err)
 	}
 
-	onDisk, err := os.ReadFile(logPath)
+	onDisk, err := os.ReadFile(filepath.Clean(logPath))
 	if err != nil {
 		t.Fatalf("read log: %v", err)
 	}

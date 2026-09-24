@@ -9,8 +9,43 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 )
 
-// GenerateZIP creates a ZIP archive containing the physical XML files for the given documents.
-func GenerateZIP(documents []ReportRow, xmlStore files.XMLStore, outPath string) (err error) {
+// ZipEntry is one file of an XML archive: the stored blob RawHash written
+// at Path.
+type ZipEntry struct {
+	Path    string
+	RawHash string
+}
+
+// NFSeZipEntries lays out the NFS-e archive: each document goes to
+// <competencia>/<papel>/<chave>.xml. Documents without a stored XML are left
+// out.
+func NFSeZipEntries(rows []ReportRow) []ZipEntry {
+	var entries []ZipEntry
+	for _, row := range rows {
+		if row.RawHash == "" {
+			continue
+		}
+		entryPath := path.Join(RoleFolder(row.Competence, string(row.CompanyRole)), row.ChaveAcesso+".xml")
+		entries = append(entries, ZipEntry{Path: entryPath, RawHash: row.RawHash})
+	}
+	return entries
+}
+
+// RoleFolder is the archive folder of a document: <competencia>/<papel>, or
+// just <papel> when the competência is unknown. A document without a fiscal
+// role goes to "sem-papel-fiscal".
+func RoleFolder(competence, role string) string {
+	if role == "" || role == "none" {
+		role = "sem-papel-fiscal"
+	}
+	if competence == "" {
+		return role
+	}
+	return path.Join(competence, role)
+}
+
+// GenerateZIP writes the entries into a new ZIP archive at outPath.
+func GenerateZIP(entries []ZipEntry, xmlStore files.XMLStore, outPath string) (err error) {
 	zipFile, err := os.Create(outPath) // #nosec G304 -- destination is explicitly selected by the local user.
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
@@ -28,35 +63,18 @@ func GenerateZIP(documents []ReportRow, xmlStore files.XMLStore, outPath string)
 		}
 	}()
 
-	for _, doc := range documents {
-		if doc.RawHash == "" {
-			continue // Skip if no physical file was registered
-		}
-
-		data, err := xmlStore.Get(doc.RawHash)
+	for _, entry := range entries {
+		data, err := xmlStore.Get(entry.RawHash)
 		if err != nil {
-			return fmt.Errorf("arquivo físico XML não encontrado para a nota %s: %w", doc.ChaveAcesso, err)
+			return fmt.Errorf("arquivo físico XML não encontrado para %s: %w", entry.Path, err)
 		}
-
-		// The path inside the zip file
-		roleFolder := string(doc.CompanyRole)
-		if roleFolder == "" || roleFolder == "none" {
-			roleFolder = "sem-papel-fiscal"
-		}
-		zipEntryPath := path.Join(roleFolder, doc.ChaveAcesso+".xml")
-		if doc.Competence != "" {
-			zipEntryPath = path.Join(doc.Competence, zipEntryPath)
-		}
-
-		writer, err := zipWriter.Create(zipEntryPath)
+		writer, err := zipWriter.Create(entry.Path)
 		if err != nil {
-			return fmt.Errorf("failed to create zip entry for %s: %w", doc.ChaveAcesso, err)
+			return fmt.Errorf("failed to create zip entry %s: %w", entry.Path, err)
 		}
-
 		if _, err := writer.Write(data); err != nil {
-			return fmt.Errorf("failed to write file %s to zip: %w", doc.ChaveAcesso, err)
+			return fmt.Errorf("failed to write zip entry %s: %w", entry.Path, err)
 		}
 	}
-
 	return nil
 }

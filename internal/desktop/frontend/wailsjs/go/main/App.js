@@ -38,6 +38,14 @@ export function ExportLogs() {
   return window['go']['main']['App']['ExportLogs']();
 }
 
+export function ExportNFeXML(arg1) {
+  return window['go']['main']['App']['ExportNFeXML'](arg1);
+}
+
+export function ExportNFeZIP(arg1) {
+  return window['go']['main']['App']['ExportNFeZIP'](arg1);
+}
+
 export function ExportXML(arg1) {
   return window['go']['main']['App']['ExportXML'](arg1);
 }
@@ -66,6 +74,18 @@ export function ListEventsForDocument(arg1) {
   return window['go']['main']['App']['ListEventsForDocument'](arg1);
 }
 
+export function ListNFe(arg1) {
+  return window['go']['main']['App']['ListNFe'](arg1);
+}
+
+export function ListNFeEvents(arg1) {
+  return window['go']['main']['App']['ListNFeEvents'](arg1);
+}
+
+export function ListNFePendingManifestacoes(arg1) {
+  return window['go']['main']['App']['ListNFePendingManifestacoes'](arg1);
+}
+
 export function MarkDocumentsViewed(arg1) {
   return window['go']['main']['App']['MarkDocumentsViewed'](arg1);
 }
@@ -78,12 +98,32 @@ export function OpenLogsDirectory() {
   return window['go']['main']['App']['OpenLogsDirectory']();
 }
 
+export function PlanNFeCiencia(arg1) {
+  return window['go']['main']['App']['PlanNFeCiencia'](arg1);
+}
+
 export function Pull(arg1) {
   return window['go']['main']['App']['Pull'](arg1);
 }
 
+export function PullNFe(arg1) {
+  return window['go']['main']['App']['PullNFe'](arg1);
+}
+
 export function QueryNFSeEvents(arg1) {
   return window['go']['main']['App']['QueryNFSeEvents'](arg1);
+}
+
+export function RegisterNFeCiencia(arg1) {
+  return window['go']['main']['App']['RegisterNFeCiencia'](arg1);
+}
+
+export function RegisterNFeManifestacao(arg1) {
+  return window['go']['main']['App']['RegisterNFeManifestacao'](arg1);
+}
+
+export function ResetNFe(arg1) {
+  return window['go']['main']['App']['ResetNFe'](arg1);
 }
 
 export function ResetSyncState(arg1) {
@@ -108,6 +148,10 @@ export function SetLogLevel(arg1) {
 
 export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
+}
+
+export function StatusNFe(arg1) {
+  return window['go']['main']['App']['StatusNFe'](arg1);
 }
 
 export function SubmitCertPassword(arg1, arg2) {

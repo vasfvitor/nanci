@@ -1,0 +1,1 @@
+All fixtures here are fictitious and hand-built (names, CNPJs, access keys and protocols), except `proceventonfe-ciencia-real.xml`: a public, SEFAZ-accepted sample copied verbatim from the sped-nfe docs (`docs/metodos/DistDFe.md`, with the Signature already abbreviated there).

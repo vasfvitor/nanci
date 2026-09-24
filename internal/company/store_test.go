@@ -2,6 +2,7 @@ package company_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -44,6 +45,7 @@ func TestCompanyStore(t *testing.T) {
 	}
 
 	comp := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
+	comp.UF = "SP"
 
 	// Create
 	err := repo.CreateCompany(ctx, comp)
@@ -59,6 +61,9 @@ func TestCompanyStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompanyByCNPJ failed: %v", err)
 	}
+	if fetched.UF != "SP" {
+		t.Errorf("Expected UF SP, got %q", fetched.UF)
+	}
 	if fetched.Name != comp.Name {
 		t.Errorf("Expected name %s, got %s", comp.Name, fetched.Name)
 	}
@@ -72,7 +77,7 @@ func TestCompanyStore(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CompanyByCNPJ(ctx, "00000000000000")
-	if err != company.ErrCompanyNotFound {
+	if !errors.Is(err, company.ErrCompanyNotFound) {
 		t.Errorf("Expected ErrCompanyNotFound, got %v", err)
 	}
 
@@ -87,6 +92,7 @@ func TestCompanyStore(t *testing.T) {
 
 	// Update
 	fetched.Name = "Updated Name"
+	fetched.UF = "RJ"
 	today, err := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	if err != nil {
 		t.Fatalf("time.Parse failed: %v", err)
@@ -100,6 +106,9 @@ func TestCompanyStore(t *testing.T) {
 	fetched2, err := repo.CompanyByCNPJ(ctx, comp.CNPJ)
 	if err != nil {
 		t.Fatalf("CompanyByCNPJ failed: %v", err)
+	}
+	if fetched2.UF != "RJ" {
+		t.Errorf("Expected UF RJ after update, got %q", fetched2.UF)
 	}
 	if fetched2.Name != "Updated Name" {
 		t.Errorf("Expected name 'Updated Name', got %s", fetched2.Name)
@@ -126,7 +135,7 @@ func TestCompanyStore(t *testing.T) {
 
 	// Assign invalid credential to simulate ErrCompanyNotFound for AssignCredential
 	err = repo.AssignCredential(ctx, "non-existent-company", cred2.ID)
-	if err != company.ErrCompanyNotFound {
+	if !errors.Is(err, company.ErrCompanyNotFound) {
 		t.Errorf("Expected ErrCompanyNotFound for non-existent company assignment, got %v", err)
 	}
 }

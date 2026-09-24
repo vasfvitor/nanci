@@ -13,6 +13,7 @@ type ScreenshotSpec = {
   theme: Theme
   ready?: string
   setup?: (page: Page) => Promise<void>
+  nfeStatus?: Record<string, unknown>
 }
 
 declare global {
@@ -354,6 +355,245 @@ const mockEvents = [
   },
 ]
 
+// NF-e dates are relative to the run so the deadline chips and the SEFAZ
+// block banner read the same on every run. CNPJs and access keys are
+// fictitious but carry valid check digits.
+const now = Date.now()
+const dayMs = 86_400_000
+
+function daysFromNow(days: number) {
+  return new Date(now + days * dayMs).toISOString()
+}
+
+function minutesFromNow(minutes: number) {
+  return new Date(now + minutes * 60_000).toISOString()
+}
+
+type MockNFeFields = {
+  ID: string
+  ChaveAcesso: string
+  Numero: string
+  IssueDate: string
+  Protocolo: string
+  EmitenteCNPJ: string
+  EmitenteName: string
+  TotalValue: number
+}
+
+function mockNFeRow<T extends MockNFeFields>(fields: T) {
+  return {
+    DocumentID: '',
+    Serie: '1',
+    AuthorizedAt: fields.IssueDate,
+    TpNF: '1',
+    EmitenteIE: '',
+    DestinatarioCNPJ: '12345678000100',
+    DestinatarioName: 'ACME Tecnologia e Serviços LTDA',
+    Situacao: 'autorizada',
+    Completeness: 'completa',
+    Manifestacao: 'nenhuma',
+    ManifestacaoAt: null,
+    CienciaDue: null,
+    ConclusiveDue: null,
+    CompanyRole: 'destinatario',
+    EventCount: 0,
+    FirstSyncedAt: daysFromNow(-1),
+    LastSyncedAt: daysFromNow(-1),
+    DaysLeft: null,
+    CienciaDaysLeft: null,
+    TacitlyConfirmed: false,
+    CienciaBlockReason: '',
+    ConclusiveBlockReason: '',
+    ...fields,
+  }
+}
+
+const mockNFeRows = [
+  mockNFeRow({
+    ID: 'nfe-1',
+    ChaveAcesso: '35260911222333000181550010000045121418273651',
+    Numero: '4512',
+    IssueDate: daysFromNow(-12),
+    Protocolo: '135260004512001',
+    EmitenteCNPJ: '11222333000181',
+    EmitenteName: 'Distribuidora Fictícia de Peças Ltda',
+    TotalValue: 1248000,
+    Manifestacao: 'confirmada',
+    ManifestacaoAt: daysFromNow(-10),
+    EventCount: 2,
+    CienciaBlockReason: 'já manifestada (confirmada)',
+    ConclusiveBlockReason: 'NF-e já possui manifestação conclusiva (Confirmada)',
+  }),
+  mockNFeRow({
+    ID: 'nfe-2',
+    ChaveAcesso: '31260927184593000140550010000187361729504185',
+    Numero: '18736',
+    IssueDate: daysFromNow(-3),
+    Protocolo: '131260018736002',
+    EmitenteCNPJ: '27184593000140',
+    EmitenteName: 'Metalúrgica Horizonte Ltda',
+    TotalValue: 3875090,
+    Completeness: 'resumo',
+    CienciaDue: daysFromNow(7),
+    CienciaDaysLeft: 7,
+  }),
+  mockNFeRow({
+    ID: 'nfe-3',
+    ChaveAcesso: '41260950361928000170550020000009271361025847',
+    Serie: '2',
+    Numero: '927',
+    IssueDate: daysFromNow(-8),
+    Protocolo: '141260000927003',
+    EmitenteCNPJ: '50361928000170',
+    EmitenteName: 'Papelaria Aurora Comércio Ltda',
+    TotalValue: 64350,
+    Completeness: 'resumo',
+    CienciaDue: daysFromNow(2),
+    CienciaDaysLeft: 2,
+  }),
+  mockNFeRow({
+    ID: 'nfe-4',
+    ChaveAcesso: '33260438470215000149550010000522101904172633',
+    Numero: '52210',
+    IssueDate: daysFromNow(-160),
+    Protocolo: '133260052210004',
+    EmitenteCNPJ: '38470215000149',
+    EmitenteName: 'Atacadista Litoral Fluminense S.A.',
+    TotalValue: 921740,
+    Manifestacao: 'ciencia',
+    ManifestacaoAt: daysFromNow(-155),
+    ConclusiveDue: daysFromNow(25),
+    DaysLeft: 25,
+    EventCount: 1,
+    CienciaBlockReason: 'já manifestada (ciencia)',
+  }),
+  mockNFeRow({
+    ID: 'nfe-5',
+    ChaveAcesso: '35260912345678000100550010000003181157930460',
+    Numero: '318',
+    IssueDate: daysFromNow(-5),
+    Protocolo: '135260000318005',
+    EmitenteCNPJ: '12345678000100',
+    EmitenteName: 'ACME Tecnologia e Serviços LTDA',
+    DestinatarioCNPJ: '45091726000115',
+    DestinatarioName: 'Agropecuária Campo Verde Ltda',
+    TotalValue: 215000,
+    CompanyRole: 'emitente',
+    CienciaBlockReason: 'a empresa não é a destinatária',
+    ConclusiveBlockReason: 'a empresa não é a destinatária',
+  }),
+  mockNFeRow({
+    ID: 'nfe-6',
+    ChaveAcesso: '42260961904387000103550010000077411640285314',
+    Numero: '7741',
+    IssueDate: daysFromNow(-15),
+    Protocolo: '142260007741006',
+    EmitenteCNPJ: '61904387000103',
+    EmitenteName: 'Comercial Serra Azul Ltda',
+    TotalValue: 158990,
+    Situacao: 'cancelada',
+    Completeness: 'resumo',
+    EventCount: 1,
+    CienciaBlockReason: 'NF-e cancelada',
+    ConclusiveBlockReason: 'NF-e cancelada',
+  }),
+  mockNFeRow({
+    ID: 'nfe-7',
+    ChaveAcesso: '50260645091726000115550010000033051281649704',
+    Numero: '3305',
+    IssueDate: daysFromNow(-92),
+    Protocolo: '150260003305007',
+    EmitenteCNPJ: '45091726000115',
+    EmitenteName: 'Agropecuária Campo Verde Ltda',
+    TotalValue: 4730000,
+    Manifestacao: 'ciencia',
+    ManifestacaoAt: daysFromNow(-90),
+    ConclusiveDue: daysFromNow(90),
+    DaysLeft: 90,
+    EventCount: 1,
+    CienciaBlockReason: 'já manifestada (ciencia)',
+  }),
+]
+
+function mockNFePendingRow(id: string, fields: Record<string, unknown>) {
+  const row = mockNFeRows.find((item) => item.ID === id)
+  return { ...row, CienciaOverdue: false, ...fields }
+}
+
+const mockNFePending = [
+  mockNFePendingRow('nfe-2', { Kind: 'sem_ciencia', ConclusiveDue: daysFromNow(7), DaysLeft: 7 }),
+  mockNFePendingRow('nfe-3', { Kind: 'sem_ciencia', ConclusiveDue: daysFromNow(2), DaysLeft: 2 }),
+  mockNFePendingRow('nfe-4', { Kind: 'sem_conclusiva' }),
+  mockNFePendingRow('nfe-7', { Kind: 'sem_conclusiva' }),
+]
+
+const mockNFeStatus = {
+  CompanyName: 'ACME Tecnologia e Serviços LTDA',
+  CNPJ: '12345678000100',
+  UF: 'SP',
+  TpAmb: '1',
+  LastNSU: 1843,
+  MaxNSU: 1843,
+  LastSyncAt: minutesFromNow(-95),
+  LastRunStatus: 'success',
+  LastRunStopReason: 'caught_up',
+  InitialSyncDoneAt: daysFromNow(-30),
+  NextAllowedAt: null,
+  BlockedReason: '',
+  RequestsLastHour: 0,
+  RequestBudget: 20,
+  TotalDestinatario: 6,
+  TotalEmitente: 1,
+  TotalOutros: 0,
+  TotalResumos: 3,
+  TotalCompletas: 4,
+  PendingCiencia: 2,
+  PendingConclusiva: 2,
+  CienciaOverdue: 0,
+}
+
+const mockNFeBlockedStatus = {
+  ...mockNFeStatus,
+  LastSyncAt: minutesFromNow(-15),
+  NextAllowedAt: minutesFromNow(45),
+  BlockedReason: 'consumo_indevido',
+  LastRunStatus: 'error',
+  LastRunStopReason: 'consumo_indevido',
+}
+
+const mockNFeCienciaPlan = {
+  Eligible: [mockNFeRows[1], mockNFeRows[2]],
+  Skipped: [{ ChaveAcesso: mockNFeRows[5].ChaveAcesso, Reason: 'NF-e cancelada' }],
+}
+
+const mockNFeEvents = [
+  {
+    ID: 'nfe-ev-1',
+    TpEvento: '210210',
+    NSeqEvento: 1,
+    Description: 'Ciencia da Operacao',
+    EventAt: daysFromNow(-155),
+    RegisteredAt: daysFromNow(-155),
+    Protocolo: '133260052210101',
+    CStat: '135',
+    XMotivo: 'Evento registrado e vinculado a NF-e',
+    Justificativa: '',
+    Correcao: '',
+    AutorCNPJ: '12345678000100',
+    Completeness: 'completa',
+    Registered: true,
+    SentByNanci: true,
+  },
+]
+
+// selectNFeRows ticks the selection checkbox of each row whose number
+// (as formatted in the table) is listed.
+async function selectNFeRows(page: Page, numeros: string[]) {
+  for (const numero of numeros) {
+    await page.locator('tbody tr', { hasText: numero }).locator('.q-checkbox').click()
+  }
+}
+
 const screenshots: ScreenshotSpec[] = [
   { route: '/', name: 'empresas', theme: 'light', ready: 'text=Empresas' },
   { route: '/', name: 'empresas', theme: 'dark', ready: 'text=Empresas' },
@@ -416,14 +656,14 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Documentos' },
-  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Documentos' },
+  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Notas fiscais de serviço' },
+  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Notas fiscais de serviço' },
 
   {
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'light',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Abre a expansão da primeira nota fiscal
       await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
@@ -434,7 +674,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'dark',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Abre a expansão da primeira nota fiscal
       await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
@@ -446,7 +686,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'light',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
       // Pode ser o primeiro botão de histórico que encontrar
@@ -462,7 +702,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'dark',
-    ready: 'text=Documentos',
+    ready: 'text=Notas fiscais de serviço',
     setup: async (page) => {
       // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
       // Pode ser o primeiro botão de histórico que encontrar
@@ -512,11 +752,61 @@ const screenshots: ScreenshotSpec[] = [
       }, syncLogs)
     },
   },
+
+  { route: '/nfe', name: 'nfe', theme: 'light', ready: 'text=Metalúrgica Horizonte Ltda' },
+  { route: '/nfe', name: 'nfe', theme: 'dark', ready: 'text=Metalúrgica Horizonte Ltda' },
+
+  {
+    route: '/nfe',
+    name: 'nfe-pendencias',
+    theme: 'light',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    setup: async (page) => {
+      await page.click('.q-tab:has-text("Pendências")')
+      await page.waitForSelector('text=Aguardando manifestação conclusiva', { timeout: 3000 })
+      await page.waitForTimeout(500) // espera a animação da troca de aba
+    },
+  },
+  {
+    route: '/nfe',
+    name: 'nfe-pendencias',
+    theme: 'dark',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    setup: async (page) => {
+      await page.click('.q-tab:has-text("Pendências")')
+      await page.waitForSelector('text=Aguardando manifestação conclusiva', { timeout: 3000 })
+      await page.waitForTimeout(500) // espera a animação da troca de aba
+    },
+  },
+
+  {
+    route: '/nfe',
+    name: 'dialogo-ciencia-nfe',
+    theme: 'light',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    setup: async (page) => {
+      // Duas notas elegíveis e uma cancelada, que o plano lista como não enviada
+      await selectNFeRows(page, ['000.018.736', '000.000.927', '000.007.741'])
+      await page.click('button:has-text("Registrar ciência (2)")')
+      await page.waitForSelector('text=Registrar ciência da operação', { timeout: 3000 })
+      await page.click('.q-dialog .q-expansion-item:has-text("Não serão enviadas")')
+      await page.waitForSelector('.q-dialog >> text=NF-e cancelada', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
+    },
+  },
+
+  {
+    route: '/nfe',
+    name: 'nfe-bloqueada',
+    theme: 'light',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    nfeStatus: mockNFeBlockedStatus,
+  },
 ]
 
-async function installWailsMock(context: BrowserContext) {
+async function installWailsMock(context: BrowserContext, nfeStatus: Record<string, unknown>) {
   await context.addInitScript(
-    ({ companies, credentials, documents, events }) => {
+    ({ companies, credentials, documents, events, nfe }) => {
       const listeners: Record<string, EventCallback[]> = {}
 
       const off = (eventName: string, callback: EventCallback) => {
@@ -536,6 +826,16 @@ async function installWailsMock(context: BrowserContext) {
             ExportXML: async () => ({ OutPath: 'C:\\exports\\nfs.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
             ExportLogs: async () => undefined,
             CountPendingExports: async () => 0,
+            ExportNFeXML: async () => ({ OutPath: 'C:\\exports\\nfe.xml', ExportedCount: 1, SkippedResumos: 0 }),
+            ExportNFeZIP: async () => ({ OutPath: 'C:\\exports\\nfe.zip', ExportedCount: 4, SkippedResumos: 3 }),
+            ListNFe: async () => nfe.rows,
+            ListNFeEvents: async () => nfe.events,
+            ListNFePendingManifestacoes: async () => nfe.pending,
+            PlanNFeCiencia: async () => nfe.cienciaPlan,
+            PullNFe: async () => ({ CompanyName: nfe.status.CompanyName, CNPJ: nfe.status.CNPJ, Status: 'success' }),
+            RegisterNFeCiencia: async () => ({ Results: [], Skipped: [], Interrupted: '' }),
+            RegisterNFeManifestacao: async () => ({ Status: 'registrada', CStat: '135', Protocolo: '135260000000001' }),
+            StatusNFe: async () => nfe.status,
             MarkDocumentsViewed: async () => 0,
             ListCompanies: async () => companies,
             ListCredentials: async () => credentials,
@@ -648,18 +948,26 @@ async function installWailsMock(context: BrowserContext) {
       credentials: mockCredentials,
       documents: mockDocuments,
       events: mockEvents,
+      nfe: {
+        rows: mockNFeRows,
+        pending: mockNFePending,
+        status: nfeStatus,
+        cienciaPlan: mockNFeCienciaPlan,
+        events: mockNFeEvents,
+      },
     }
   )
 }
 
-async function createPage(browser: Browser, theme: Theme) {
+async function createPage(browser: Browser, spec: ScreenshotSpec) {
+  const theme = spec.theme
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     deviceScaleFactor: 2,
     colorScheme: theme,
   })
 
-  await installWailsMock(context)
+  await installWailsMock(context, spec.nfeStatus ?? mockNFeStatus)
 
   await context.addInitScript((selectedTheme) => {
     localStorage.setItem('darkMode', String(selectedTheme === 'dark'))
@@ -685,7 +993,14 @@ async function waitForApp(page: Page, spec: ScreenshotSpec) {
 }
 
 async function capture(browser: Browser, spec: ScreenshotSpec) {
-  const { context, page } = await createPage(browser, spec.theme)
+  const { context, page } = await createPage(browser, spec)
+
+  page.on('pageerror', (error) => console.warn(`[${spec.name}-${spec.theme}] page error: ${error.message}`))
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      console.warn(`[${spec.name}-${spec.theme}] console ${message.type()}: ${message.text()}`)
+    }
+  })
 
   try {
     const hash = `#${spec.route}`

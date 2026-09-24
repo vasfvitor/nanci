@@ -1,46 +1,34 @@
 package sync
 
 import (
-	"cmp"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
-	"github.com/vasfvitor/nanci/internal/adn"
-	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-const (
-	requestDelay = 500 * time.Millisecond
-)
+// maxItemAttempts is how many runs in a row may fail to decode or parse the
+// same NSU before the loop skips it as unsupported.
+const maxItemAttempts = 3
 
-var syncRequestDelay = requestDelay
-
+// SyncService walks one Source by NSU and records the run.
 type SyncService struct {
-	store      *Store
-	apiClient  documentFetcher
-	fileWriter files.XMLStore
-	log        *slog.Logger
+	store  *Store
+	source Source
+	log    *slog.Logger
 }
 
-type documentFetcher interface {
-	FetchDocuments(ctx context.Context, req adn.DistributionRequest) (*adn.DocumentResponse, error)
-}
-
-// NewSyncService creates a new SyncService.
-func NewSyncService(syncRepo *Store, adnClient documentFetcher, xmlStore files.XMLStore, log *slog.Logger) *SyncService {
+// NewSyncService creates a new SyncService for the source.
+func NewSyncService(syncRepo *Store, source Source, log *slog.Logger) *SyncService {
 	return &SyncService{
-		store:      syncRepo,
-		apiClient:  adnClient,
-		fileWriter: xmlStore,
-		log:        log,
+		store:  syncRepo,
+		source: source,
+		log:    log,
 	}
 }
 
@@ -49,22 +37,30 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	if mode == "" {
 		mode = nfse.SyncModeNormal
 	}
+	kind := s.source.Kind()
 
 	state, err := s.store.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
+		Source:           kind,
 		Environment:      company.Environment,
 		ConsultationCNPJ: company.CNPJ,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to load sync state: %w", err)
 	}
+	sourceState, err := s.store.SourceState(ctx, company.ID, kind)
+	if err != nil {
+		return fmt.Errorf("failed to load source state: %w", err)
+	}
 	s.log.InfoContext(ctx, "Iniciando processo de sincronização",
 		slog.String("cnpj", company.CNPJ),
+		slog.String("source", string(kind)),
 		slog.String("mode", string(mode)),
 		slog.Int64("from_nsu", state.LastProcessedNSU))
 
 	syncRun, err := s.store.StartRun(ctx, nfse.StartRunParams{
 		CompanyID:         company.ID,
+		Source:            kind,
 		CredentialID:      credential.ID,
 		Environment:       company.Environment,
 		CredentialCNPJ:    credential.OwnerCNPJ,
@@ -79,20 +75,10 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	}
 
 	runState := syncRuntimeState{
-		lastProcessedNSU:       state.LastProcessedNSU,
-		lastFoundNSU:           state.LastFoundNSU,
-		checkedCount:           0,
-		documentsInserted:      0,
-		eventsInserted:         0,
-		documentsReturned:      0,
-		documentsSkippedStale:  0,
-		documentsSkippedDup:    0,
-		documentsSkippedPolicy: 0,
-		eventsSkippedPolicy:    0,
-		emptyCount:             0,
-		consecutiveEmpty:       0,
-		errorsCount:            0,
-		initialEmptyStreak:     state.LastEmptyStreak,
+		runID:            syncRun.ID,
+		lastProcessedNSU: state.LastProcessedNSU,
+		lastFoundNSU:     state.LastFoundNSU,
+		source:           sourceState,
 	}
 	finalStatus := nfse.SyncStatusCompleted
 	stopReason := nfse.SyncStopReasonEmptyLimit
@@ -115,9 +101,9 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		})
 	}()
 
-	cursorLastNSU := state.LastProcessedNSU
+	cursor := state.LastProcessedNSU
 	if mode == nfse.SyncModeFirstSetup {
-		cursorLastNSU = 0
+		cursor = 0
 	}
 
 	for {
@@ -129,35 +115,49 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		default:
 		}
 
-		batchResult, err := s.processNSU(ctx, company, syncRun.ID, cursorLastNSU, &runState, progress)
+		budgetLeft, err := s.spendRequest(ctx, company)
+		if err != nil {
+			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
+			return err
+		}
+		if !budgetLeft {
+			stopReason = nfse.SyncStopReasonRateBudget
+			break
+		}
+
+		batch, err := s.processBatch(ctx, company, cursor, &runState, progress)
 		if err != nil {
 			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
 			return err
 		}
 
-		if batchResult.docsInBatch == 0 {
+		if batch.Done {
+			if batch.StopReason != "" {
+				stopReason = batch.StopReason
+			}
 			break
 		}
 
-		if !batchResult.advanced {
+		if batch.NextCursor <= cursor {
 			s.log.WarnContext(ctx, "sync batch did not advance cursor; stopping to avoid loop",
-				slog.Int64("cursor_last_nsu", cursorLastNSU),
-				slog.Int("docs_in_batch", batchResult.docsInBatch),
+				slog.Int64("cursor_last_nsu", cursor),
+				slog.Int("docs_in_batch", len(batch.Items)),
 				slog.Int("skipped_stale", runState.documentsSkippedStale),
 				slog.Int("skipped_duplicate", runState.documentsSkippedDup))
 			break
 		}
 
-		if err := waitRequestDelay(ctx); err != nil {
+		if err := waitRequestDelay(ctx, s.source.Policy().RequestDelay); err != nil {
 			finalStatus = nfse.SyncStatusInterrupted
 			stopReason = nfse.SyncStopReasonContextCanceled
 			return err
 		}
 
-		cursorLastNSU = runState.lastProcessedNSU
+		cursor = batch.NextCursor
 	}
 
 	s.log.InfoContext(ctx, "Sync completed",
+		slog.String("source", string(kind)),
 		slog.Int64("last_processed_nsu", runState.lastProcessedNSU),
 		slog.Int("documents_returned", runState.documentsReturned),
 		slog.Int("documents_inserted", runState.documentsInserted),
@@ -165,14 +165,17 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		slog.Int("documents_skipped_stale", runState.documentsSkippedStale),
 		slog.Int("documents_skipped_duplicate", runState.documentsSkippedDup),
 		slog.Int("documents_skipped_policy", runState.documentsSkippedPolicy),
-		slog.Int("events_skipped_policy", runState.eventsSkippedPolicy))
+		slog.Int("events_skipped_policy", runState.eventsSkippedPolicy),
+		slog.Int("unsupported", runState.unsupported))
 
 	return nil
 }
 
 type syncRuntimeState struct {
+	runID                  nfse.SyncRunID
 	lastProcessedNSU       int64
 	lastFoundNSU           *int64
+	maxNSU                 *int64
 	checkedCount           int
 	documentsInserted      int
 	eventsInserted         int
@@ -181,15 +184,13 @@ type syncRuntimeState struct {
 	documentsSkippedDup    int
 	documentsSkippedPolicy int
 	eventsSkippedPolicy    int
+	unsupported            int
+	completasSaved         int // documents stored whole, inserted or not
+	resumosSaved           int // documents stored as a summary, inserted or not
 	emptyCount             int
 	consecutiveEmpty       int
 	errorsCount            int
-	initialEmptyStreak     int
-}
-
-type syncBatchResult struct {
-	docsInBatch int
-	advanced    bool
+	source                 SourceState
 }
 
 type syncFailure struct {
@@ -218,17 +219,85 @@ func classifySyncError(err error) (nfse.SyncStatus, nfse.SyncStopReason, string,
 	return nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError, "process_error", err.Error()
 }
 
-func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, runID nfse.SyncRunID, cursorLastNSU int64, runState *syncRuntimeState, progress nfse.ProgressFunc) (syncBatchResult, error) {
-	resp, err := s.apiClient.FetchDocuments(ctx, adn.DistributionRequest{
-		LastNSU:          cursorLastNSU,
-		ConsultationCNPJ: company.CNPJ,
-	})
+// persistFailure marks a failed checkpoint write as a failed run.
+func persistFailure(err error) *syncFailure {
+	return &syncFailure{
+		err:        err,
+		status:     nfse.SyncStatusFailed,
+		stopReason: nfse.SyncStopReasonProcessError,
+		code:       "persist_error",
+	}
+}
+
+// spendRequest enforces the source's hourly request budget before a fetch.
+// It records the request before it is sent, so failed attempts count too.
+// It returns false, and blocks the source until the oldest request in the
+// window expires, when the budget is exhausted.
+func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (bool, error) {
+	limit := s.source.Policy().RequestsPerHour
+	if limit <= 0 {
+		return true, nil
+	}
+	kind := s.source.Kind()
+
+	now := time.Now().UTC()
+	count, oldest, err := s.store.RequestsSince(ctx, company.ID, kind, now.Add(-time.Hour))
+	if err != nil {
+		return false, persistFailure(fmt.Errorf("failed to read request budget: %w", err))
+	}
+	if count >= limit {
+		until := now.Add(time.Hour)
+		if oldest != nil {
+			until = oldest.Add(time.Hour)
+		}
+		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, until, nfse.SyncStopReasonRateBudget); err != nil {
+			return false, persistFailure(fmt.Errorf("failed to block source after request budget: %w", err))
+		}
+		s.log.WarnContext(ctx, "Limite de consultas por hora atingido",
+			slog.String("source", string(kind)),
+			slog.Int("requests_last_hour", count),
+			slog.Int("limit", limit),
+			slog.Time("next_allowed_at", until))
+		return false, nil
+	}
+
+	if err := s.store.RecordRequest(ctx, company.ID, kind, now); err != nil {
+		return false, persistFailure(fmt.Errorf("failed to record request: %w", err))
+	}
+	return true, nil
+}
+
+// progressParams is the run checkpoint as it stands in runState.
+func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntimeState) nfse.PersistSyncProgressParams {
+	return nfse.PersistSyncProgressParams{
+		CompanyID:             company.ID,
+		Source:                s.source.Kind(),
+		RunID:                 runState.runID,
+		Environment:           company.Environment,
+		ConsultationCNPJ:      company.CNPJ,
+		LastProcessedNSU:      runState.lastProcessedNSU,
+		LastFoundNSU:          runState.lastFoundNSU,
+		MaxNSU:                runState.maxNSU,
+		LastEmptyStreak:       runState.consecutiveEmpty,
+		CheckedCount:          runState.checkedCount,
+		DocumentsFound:        runState.documentsInserted,
+		EmptyCount:            runState.emptyCount,
+		ConsecutiveEmptyCount: runState.consecutiveEmpty,
+		ErrorsCount:           runState.errorsCount,
+		MarkSuccess:           true,
+	}
+}
+
+// processBatch fetches one batch after cursor, processes its fresh items in
+// NSU order and checkpoints the run.
+func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, cursor int64, runState *syncRuntimeState, progress nfse.ProgressFunc) (Batch, error) {
+	batch, err := s.source.Fetch(ctx, company, cursor)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return syncBatchResult{}, err
+			return Batch{}, err
 		}
-		return syncBatchResult{}, &syncFailure{
-			err:        fmt.Errorf("failed to fetch documents at NSU %d: %w", cursorLastNSU, err),
+		return Batch{}, &syncFailure{
+			err:        fmt.Errorf("failed to fetch documents at NSU %d: %w", cursor, err),
 			status:     nfse.SyncStatusFailed,
 			stopReason: nfse.SyncStopReasonFetchError,
 			code:       "fetch_error",
@@ -236,173 +305,67 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 	}
 
 	runState.checkedCount++
-	docsInBatch := len(resp.Docs)
-	runState.documentsReturned += docsInBatch
+	runState.documentsReturned += len(batch.Items)
+	if batch.MaxNSU > 0 {
+		maxNSU := batch.MaxNSU
+		runState.maxNSU = &maxNSU
+	}
 
-	slices.SortFunc(resp.Docs, func(a, b adn.DocumentEnvelope) int {
-		return cmp.Compare(a.NSU, b.NSU)
-	})
-
-	nextCursorLastNSU := cursorLastNSU
-
-	for _, env := range resp.Docs {
-		if env.NSU <= cursorLastNSU {
+	processedAny := false
+	for _, item := range batch.Items {
+		if item.NSU <= cursor {
 			runState.documentsSkippedStale++
-			s.log.DebugContext(ctx, "Ignoring stale document", slog.Int64("nsu", env.NSU))
+			s.log.DebugContext(ctx, "Ignoring stale document", slog.Int64("nsu", item.NSU))
 			continue
 		}
-
-		nextLastFoundNSU := runState.lastFoundNSU
-		if runState.lastFoundNSU == nil || env.NSU > *runState.lastFoundNSU {
-			nsu := env.NSU
-			nextLastFoundNSU = &nsu
+		if err := s.processItem(ctx, company, item, runState); err != nil {
+			return Batch{}, err
 		}
-
-		progressParams := nfse.PersistSyncProgressParams{
-			CompanyID:             company.ID,
-			RunID:                 runID,
-			Environment:           company.Environment,
-			ConsultationCNPJ:      company.CNPJ,
-			LastProcessedNSU:      env.NSU,
-			LastFoundNSU:          nextLastFoundNSU,
-			LastEmptyStreak:       runState.currentEmptyStreak(),
-			CheckedCount:          runState.checkedCount,
-			DocumentsFound:        runState.documentsInserted,
-			EmptyCount:            runState.emptyCount,
-			ConsecutiveEmptyCount: runState.consecutiveEmpty,
-			ErrorsCount:           runState.errorsCount,
-			MarkSuccess:           true,
-		}
-
-		var processResult envelopeProcessResult
-		var processErr error
-		if env.IsEvent() {
-			processResult, processErr = s.processEvent(ctx, company, env, progressParams)
-		} else {
-			processResult, processErr = s.processDocument(ctx, company, env, progressParams)
-		}
-
-		if processErr != nil {
-			runState.errorsCount++
-			if persistErr := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
-				CompanyID:             company.ID,
-				RunID:                 runID,
-				Environment:           company.Environment,
-				ConsultationCNPJ:      company.CNPJ,
-				LastProcessedNSU:      runState.lastProcessedNSU,
-				LastFoundNSU:          runState.lastFoundNSU,
-				LastEmptyStreak:       runState.currentEmptyStreak(),
-				CheckedCount:          runState.checkedCount,
-				DocumentsFound:        runState.documentsInserted,
-				EmptyCount:            runState.emptyCount,
-				ConsecutiveEmptyCount: runState.consecutiveEmpty,
-				ErrorsCount:           runState.errorsCount,
-				ErrorCode:             "process_error",
-				ErrorMessage:          processErr.Error(),
-			}); persistErr != nil {
-				return syncBatchResult{}, &syncFailure{
-					err:        fmt.Errorf("failed to persist checkpoint after processing error: %w", persistErr),
-					status:     nfse.SyncStatusFailed,
-					stopReason: nfse.SyncStopReasonProcessError,
-					code:       "process_error",
-				}
-			}
-			return syncBatchResult{}, &syncFailure{
-				err:        fmt.Errorf("failed to process NSU %d: %w", env.NSU, processErr),
-				status:     nfse.SyncStatusFailed,
-				stopReason: nfse.SyncStopReasonProcessError,
-				code:       "process_error",
-			}
-		}
-
-		switch {
-		case processResult.skippedByPolicy && processResult.isEvent:
-			runState.eventsSkippedPolicy++
-		case processResult.skippedByPolicy:
-			runState.documentsSkippedPolicy++
-		case processResult.inserted && processResult.isEvent:
-			runState.eventsInserted++
-		case processResult.inserted:
-			runState.documentsInserted++
-		default:
-			runState.documentsSkippedDup++
-		}
-		runState.lastProcessedNSU = env.NSU
-		runState.lastFoundNSU = nextLastFoundNSU
-		nextCursorLastNSU = env.NSU
+		processedAny = true
 	}
 
-	if docsInBatch == 0 {
+	// Item commits already checkpointed the run. An empty or all-stale batch
+	// still counts, and a source may move the cursor past its last item
+	// (NF-e returns ultNSU).
+	needsCheckpoint := !processedAny
+	if len(batch.Items) == 0 {
 		runState.emptyCount++
 		runState.consecutiveEmpty++
-		if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
-			CompanyID:             company.ID,
-			RunID:                 runID,
-			Environment:           company.Environment,
-			ConsultationCNPJ:      company.CNPJ,
-			LastProcessedNSU:      runState.lastProcessedNSU,
-			LastFoundNSU:          runState.lastFoundNSU,
-			LastEmptyStreak:       runState.currentEmptyStreak(),
-			CheckedCount:          runState.checkedCount,
-			DocumentsFound:        runState.documentsInserted,
-			EmptyCount:            runState.emptyCount,
-			ConsecutiveEmptyCount: runState.consecutiveEmpty,
-			ErrorsCount:           runState.errorsCount,
-			MarkSuccess:           true,
-		}); err != nil {
-			return syncBatchResult{}, &syncFailure{
-				err:        fmt.Errorf("failed to persist sync progress on empty batch: %w", err),
-				status:     nfse.SyncStatusFailed,
-				stopReason: nfse.SyncStopReasonProcessError,
-				code:       "persist_error",
-			}
-		}
-		if company.InitialSyncDoneAt == nil {
-			if err := s.store.MarkInitialSyncCompleted(ctx, company.ID); err != nil {
-				return syncBatchResult{}, &syncFailure{
-					err:        fmt.Errorf("failed to mark initial sync completed: %w", err),
-					status:     nfse.SyncStatusFailed,
-					stopReason: nfse.SyncStopReasonProcessError,
-					code:       "persist_error",
-				}
-			}
-			now := time.Now().UTC()
-			company.InitialSyncDoneAt = &now
-		}
 	} else {
 		runState.consecutiveEmpty = 0
-		if nextCursorLastNSU == cursorLastNSU {
-			if err := s.store.PersistProgress(ctx, nfse.PersistSyncProgressParams{
-				CompanyID:             company.ID,
-				RunID:                 runID,
-				Environment:           company.Environment,
-				ConsultationCNPJ:      company.CNPJ,
-				LastProcessedNSU:      runState.lastProcessedNSU,
-				LastFoundNSU:          runState.lastFoundNSU,
-				LastEmptyStreak:       runState.currentEmptyStreak(),
-				CheckedCount:          runState.checkedCount,
-				DocumentsFound:        runState.documentsInserted,
-				EmptyCount:            runState.emptyCount,
-				ConsecutiveEmptyCount: runState.consecutiveEmpty,
-				ErrorsCount:           runState.errorsCount,
-				MarkSuccess:           true,
-			}); err != nil {
-				return syncBatchResult{}, &syncFailure{
-					err:        fmt.Errorf("failed to persist sync progress on non-advancing batch: %w", err),
-					status:     nfse.SyncStatusFailed,
-					stopReason: nfse.SyncStopReasonProcessError,
-					code:       "persist_error",
-				}
-			}
+	}
+	if batch.NextCursor > runState.lastProcessedNSU {
+		runState.lastProcessedNSU = batch.NextCursor
+		needsCheckpoint = true
+	}
+	if needsCheckpoint {
+		if err := s.store.PersistProgress(ctx, s.progressParams(company, runState)); err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to persist batch checkpoint: %w", err))
 		}
 	}
 
-	s.reportProgress(progress, runState, cursorLastNSU, resp, docsInBatch)
-	s.log.DebugContext(ctx, "ADN response observed",
-		slog.Int64("requested_last_nsu", cursorLastNSU),
-		slog.Int64("ult_nsu", resp.UltNSU),
-		slog.Int64("max_nsu", resp.MaxNSU),
-		slog.Int("docs_in_batch", docsInBatch),
+	if batch.WaitUntil != nil {
+		if err := s.store.SetBlockedUntil(ctx, company.ID, s.source.Kind(), *batch.WaitUntil, batch.StopReason); err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to record source wait: %w", err))
+		}
+	}
+
+	if batch.Done && runState.source.InitialSyncDoneAt == nil &&
+		(batch.StopReason == nfse.SyncStopReasonEmptyLimit || batch.StopReason == nfse.SyncStopReasonCaughtUp) {
+		if err := s.store.MarkInitialSyncCompleted(ctx, company.ID, s.source.Kind()); err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to mark initial sync completed: %w", err))
+		}
+		now := time.Now().UTC()
+		runState.source.InitialSyncDoneAt = &now
+	}
+
+	s.reportProgress(progress, runState, cursor, batch)
+	s.log.DebugContext(ctx, "Distribution response observed",
+		slog.String("source", string(s.source.Kind())),
+		slog.Int64("requested_last_nsu", cursor),
+		slog.Int64("ult_nsu", batch.UltNSU),
+		slog.Int64("max_nsu", batch.MaxNSU),
+		slog.Int("docs_in_batch", len(batch.Items)),
 		slog.Int("documents_inserted", runState.documentsInserted),
 		slog.Int("events_inserted", runState.eventsInserted),
 		slog.Int("documents_skipped_stale", runState.documentsSkippedStale),
@@ -410,42 +373,142 @@ func (s *SyncService) processNSU(ctx context.Context, company *nfse.Company, run
 		slog.Int("documents_skipped_policy", runState.documentsSkippedPolicy),
 		slog.Int("events_skipped_policy", runState.eventsSkippedPolicy))
 
-	return syncBatchResult{
-		docsInBatch: docsInBatch,
-		advanced:    nextCursorLastNSU > cursorLastNSU,
-	}, nil
+	return batch, nil
 }
 
-func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, cursorLastNSU int64, resp *adn.DocumentResponse, docsInBatch int) {
+// processItem hands one fresh item to the source and counts the outcome. On
+// failure it checkpoints the error without moving the cursor.
+func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, item Item, runState *syncRuntimeState) error {
+	nextLastFoundNSU := runState.lastFoundNSU
+	if runState.lastFoundNSU == nil || item.NSU > *runState.lastFoundNSU {
+		nsu := item.NSU
+		nextLastFoundNSU = &nsu
+	}
+
+	itemProgress := s.progressParams(company, runState)
+	itemProgress.LastProcessedNSU = item.NSU
+	itemProgress.LastFoundNSU = nextLastFoundNSU
+	commit := func(ctx context.Context, write func(tx *sql.Tx) (ItemOutcome, error)) (ItemOutcome, error) {
+		return s.store.ApplyWithProgress(ctx, itemProgress, write)
+	}
+
+	outcome, err := s.source.ProcessItem(ctx, company, runState.source, item, commit)
+	if err != nil {
+		runState.errorsCount++
+		outcome, err = s.skipPoisonItem(ctx, company, item, err, commit)
+	}
+	if err != nil {
+		failed := s.progressParams(company, runState)
+		failed.MarkSuccess = false
+		failed.ErrorCode = "process_error"
+		failed.ErrorMessage = err.Error()
+		if persistErr := s.store.PersistProgress(ctx, failed); persistErr != nil {
+			return &syncFailure{
+				err:        fmt.Errorf("failed to persist checkpoint after processing error: %w", persistErr),
+				status:     nfse.SyncStatusFailed,
+				stopReason: nfse.SyncStopReasonProcessError,
+				code:       "process_error",
+			}
+		}
+		return &syncFailure{
+			err:        fmt.Errorf("failed to process NSU %d: %w", item.NSU, err),
+			status:     nfse.SyncStatusFailed,
+			stopReason: nfse.SyncStopReasonProcessError,
+			code:       "process_error",
+		}
+	}
+
+	switch {
+	case outcome.SkippedByPolicy && outcome.IsEvent:
+		runState.eventsSkippedPolicy++
+	case outcome.SkippedByPolicy:
+		runState.documentsSkippedPolicy++
+	case outcome.Unsupported:
+		runState.unsupported++
+	case outcome.Inserted && outcome.IsEvent:
+		runState.eventsInserted++
+	case outcome.Inserted:
+		runState.documentsInserted++
+	default:
+		runState.documentsSkippedDup++
+	}
+	if !outcome.IsEvent && !outcome.SkippedByPolicy && !outcome.Unsupported {
+		if outcome.Partial {
+			runState.resumosSaved++
+		} else {
+			runState.completasSaved++
+		}
+	}
+	runState.lastProcessedNSU = item.NSU
+	runState.lastFoundNSU = nextLastFoundNSU
+	return nil
+}
+
+// skipPoisonItem gives up on an item that failed to decode or parse
+// maxItemAttempts runs in a row: it commits the item as unsupported so one
+// bad document cannot stall the source. Any other failure, or an earlier
+// attempt, is returned unchanged.
+func (s *SyncService) skipPoisonItem(ctx context.Context, company *nfse.Company, item Item, processErr error, commit CommitFunc) (ItemOutcome, error) {
+	var parseErr *ProcessingError
+	if !errors.As(processErr, &parseErr) {
+		return ItemOutcome{}, processErr
+	}
+
+	attempts, err := s.store.RecordItemFailure(ctx, nfse.GetOrCreateSyncStateParams{
+		CompanyID:        company.ID,
+		Source:           s.source.Kind(),
+		Environment:      company.Environment,
+		ConsultationCNPJ: company.CNPJ,
+	}, item.NSU)
+	if err != nil {
+		return ItemOutcome{}, errors.Join(processErr, fmt.Errorf("record item failure: %w", err))
+	}
+	if attempts < maxItemAttempts {
+		return ItemOutcome{}, processErr
+	}
+
+	outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
+		return ItemOutcome{Unsupported: true, IsEvent: item.IsEvent}, nil
+	})
+	if err != nil {
+		return ItemOutcome{}, fmt.Errorf("persist unsupported item progress failed: %w", err)
+	}
+	s.log.WarnContext(ctx, "Documento ignorado após falhas repetidas de leitura",
+		slog.String("source", string(s.source.Kind())),
+		slog.Int64("nsu", item.NSU),
+		slog.Int("attempts", attempts),
+		slog.String("raw_hash", parseErr.RawHash),
+		slog.Any("err", parseErr))
+	return outcome, nil
+}
+
+func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, cursor int64, batch Batch) {
 	if progress == nil {
 		return
 	}
+	docsInBatch := len(batch.Items)
 	progress(nfse.ProgressEvent{
-		CurrentNSU:               cursorLastNSU,
-		MaxNSU:                   resp.MaxNSU,
+		Source:                   s.source.Kind(),
+		CurrentNSU:               cursor,
+		MaxNSU:                   batch.MaxNSU,
 		LastProcessedNSU:         runState.lastProcessedNSU,
 		LastFoundNSU:             runState.lastFoundNSU,
-		EmptyStreak:              runState.currentEmptyStreak(),
+		EmptyStreak:              runState.consecutiveEmpty,
 		DocsFound:                runState.documentsInserted,
 		DocumentsSaved:           runState.documentsInserted,
 		EventsSaved:              runState.eventsInserted,
 		DocumentsSkippedByPolicy: runState.documentsSkippedPolicy,
 		EventsSkippedByPolicy:    runState.eventsSkippedPolicy,
+		CompletasSaved:           runState.completasSaved,
+		ResumosSaved:             runState.resumosSaved,
 		DocsInBatch:              docsInBatch,
 		Errors:                   runState.errorsCount,
-		Message:                  fmt.Sprintf("cursor=%d fetched=%d ultNSU=%d maxNSU=%d inserted=%d events=%d stale=%d duplicate=%d skipped_policy=%d/%d", cursorLastNSU, docsInBatch, resp.UltNSU, resp.MaxNSU, runState.documentsInserted, runState.eventsInserted, runState.documentsSkippedStale, runState.documentsSkippedDup, runState.documentsSkippedPolicy, runState.eventsSkippedPolicy),
+		Message:                  fmt.Sprintf("cursor=%d fetched=%d ultNSU=%d maxNSU=%d inserted=%d events=%d stale=%d duplicate=%d skipped_policy=%d/%d", cursor, docsInBatch, batch.UltNSU, batch.MaxNSU, runState.documentsInserted, runState.eventsInserted, runState.documentsSkippedStale, runState.documentsSkippedDup, runState.documentsSkippedPolicy, runState.eventsSkippedPolicy),
 	})
 }
 
-func (r *syncRuntimeState) currentEmptyStreak() int {
-	if r.consecutiveEmpty == 0 {
-		return 0
-	}
-	return r.consecutiveEmpty
-}
-
-func waitRequestDelay(ctx context.Context) error {
-	timer := time.NewTimer(syncRequestDelay)
+func waitRequestDelay(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
 	defer timer.Stop()
 
 	select {
@@ -462,159 +525,6 @@ func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams
 	return s.store.FinishRun(finishCtx, params)
 }
 
-type envelopeProcessResult struct {
-	inserted        bool
-	skippedByPolicy bool
-	isEvent         bool
-}
-
-// processDocument handles the decoding, parsing, and saving of a single document.
-func (s *SyncService) processDocument(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (envelopeProcessResult, error) {
-	s.log.Log(ctx, slog.Level(-8), "Processando documento", slog.Int64("nsu", env.NSU))
-
-	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
-		CompressedBytes:   5 * 1024 * 1024,
-		UncompressedBytes: 20 * 1024 * 1024,
-	})
-	if err != nil {
-		return envelopeProcessResult{}, &ProcessingError{Op: "decode document", NSU: env.NSU, Err: err}
-	}
-
-	doc, _, err := nfse.ParseDocumentXML(payload.XML)
-	if err != nil {
-		return envelopeProcessResult{}, &ProcessingError{
-			Op:         "parse document",
-			NSU:        env.NSU,
-			Schema:     env.Schema,
-			DocType:    env.DocumentType,
-			EventType:  env.EventType,
-			XMLPreview: xmlPreview(payload.XML),
-			Err:        err,
-		}
-	}
-
-	if shouldSkipDocumentByInitialPolicy(company, doc.IssueDate) {
-		if err := s.store.PersistProgress(ctx, progressParams); err != nil {
-			return envelopeProcessResult{}, fmt.Errorf("persist skipped document progress failed: %w", err)
-		}
-		s.log.InfoContext(ctx, "Documento descartado pela política inicial de histórico",
-			slog.Int64("nsu", env.NSU),
-			slog.Time("issue_date", doc.IssueDate))
-		return envelopeProcessResult{skippedByPolicy: true}, nil
-	}
-
-	doc.ID = nfse.DocumentID(uuid.NewString())
-	doc.RawHash = payload.SHA256
-
-	if err := s.fileWriter.Store(doc.RawHash, payload.XML); err != nil {
-		return envelopeProcessResult{}, fmt.Errorf("file save failed: %w", err)
-	}
-	doc.XMLPath = doc.RawHash + ".xml"
-
-	participation := nfse.ClassifyCompanyParticipation(&doc, company.CNPJ)
-	outcome, err := s.store.ApplyDocumentAndProgress(ctx, nfse.ApplyDocumentAndProgressParams{
-		DocumentParams: nfse.ApplyDocumentParams{
-			Document:      doc,
-			Participation: participation,
-			CompanyID:     company.ID,
-			NSU:           env.NSU,
-		},
-		ProgressParams: progressParams,
-	})
-	if err != nil {
-		return envelopeProcessResult{}, fmt.Errorf("db apply document failed: %w", err)
-	}
-
-	return envelopeProcessResult{inserted: outcome.Inserted}, nil
-}
-
-// processEvent handles decoding and saving an Event.
-func (s *SyncService) processEvent(ctx context.Context, company *nfse.Company, env adn.DocumentEnvelope, progressParams nfse.PersistSyncProgressParams) (envelopeProcessResult, error) {
-	s.log.Log(ctx, slog.Level(-8), "Processando evento", slog.Int64("nsu", env.NSU))
-
-	payload, err := nfse.DecodePayload(env.PayloadBase64(), nfse.PayloadLimits{
-		CompressedBytes:   5 * 1024 * 1024,
-		UncompressedBytes: 20 * 1024 * 1024,
-	})
-	if err != nil {
-		return envelopeProcessResult{}, &ProcessingError{Op: "decode event", NSU: env.NSU, Err: err}
-	}
-
-	ev, _, err := nfse.ParseEventXML(payload.XML)
-	if err != nil {
-		return envelopeProcessResult{}, &ProcessingError{
-			Op:         "parse event",
-			NSU:        env.NSU,
-			Schema:     env.Schema,
-			DocType:    env.DocumentType,
-			EventType:  env.EventType,
-			XMLPreview: xmlPreview(payload.XML),
-			Err:        err,
-		}
-	}
-
-	hasLocalDocument, err := s.store.CompanyDocumentExistsByAccessKey(ctx, company.ID, string(ev.ChaveAcesso))
-	if err != nil {
-		return envelopeProcessResult{}, fmt.Errorf("check local document for event failed: %w", err)
-	}
-	if !hasLocalDocument {
-		if err := s.store.PersistProgress(ctx, progressParams); err != nil {
-			return envelopeProcessResult{}, fmt.Errorf("persist skipped event progress failed: %w", err)
-		}
-		s.log.InfoContext(ctx, "Evento descartado por não possuir documento local correspondente",
-			slog.Int64("nsu", env.NSU),
-			slog.String("chave", string(ev.ChaveAcesso)))
-		return envelopeProcessResult{skippedByPolicy: true, isEvent: true}, nil
-	}
-
-	ev.ID = nfse.GenerateID()
-	ev.RawHash = payload.SHA256
-
-	if err := s.fileWriter.Store(ev.RawHash, payload.XML); err != nil {
-		return envelopeProcessResult{}, fmt.Errorf("event file save failed: %w", err)
-	}
-	ev.RawXMLPath = ev.RawHash + ".xml"
-
-	outcome, err := s.store.ApplyEventAndProgress(ctx, nfse.ApplyEventAndProgressParams{
-		EventParams: nfse.ApplyEventParams{
-			Event:     ev,
-			CompanyID: company.ID,
-			NSU:       env.NSU,
-		},
-		ProgressParams: progressParams,
-	})
-	if err != nil {
-		return envelopeProcessResult{}, fmt.Errorf("db apply event failed: %w", err)
-	}
-
-	return envelopeProcessResult{inserted: outcome.Inserted, isEvent: true}, nil
-}
-
-func shouldSkipDocumentByInitialPolicy(company *nfse.Company, issueDate time.Time) bool {
-	if company.InitialSyncDoneAt != nil {
-		return false
-	}
-	if company.SyncStartPolicy == "" || company.SyncStartPolicy == nfse.SyncStartPolicyAll {
-		return false
-	}
-	if company.SyncStartDate == nil {
-		return false
-	}
-	return issueDate.Format("2006-01-02") < company.SyncStartDate.Format("2006-01-02")
-}
-
-func xmlPreview(data []byte) string {
-	preview := strings.TrimSpace(string(data))
-	preview = strings.ReplaceAll(preview, "\r", " ")
-	preview = strings.ReplaceAll(preview, "\n", " ")
-	preview = strings.ReplaceAll(preview, "\t", " ")
-	preview = strings.Join(strings.Fields(preview), " ")
-	if len(preview) > 400 {
-		return preview[:400] + "...(truncated)"
-	}
-	return preview
-}
-
 // ProcessingError carries the structured context that used to be emitted via a
 // duplicate ErrorContext log call inside processDocument/processEvent. The
 // service layer now returns it instead of logging, so a single boundary (CLI
@@ -624,9 +534,9 @@ type ProcessingError struct {
 	Op         string // "decode document" | "parse document" | "decode event" | "parse event"
 	NSU        int64
 	Schema     string
-	DocType    string
-	EventType  string
+	Attrs      []slog.Attr // source details, such as the ADN tipo_documento
 	XMLPreview string
+	RawHash    string // blob of the raw XML, saved when the payload decoded
 	Err        error
 }
 
@@ -636,11 +546,8 @@ func (e *ProcessingError) Error() string {
 	if e.Schema != "" {
 		fmt.Fprintf(&b, ", schema=%s", e.Schema)
 	}
-	if e.DocType != "" {
-		fmt.Fprintf(&b, ", tipo_documento=%s", e.DocType)
-	}
-	if e.EventType != "" {
-		fmt.Fprintf(&b, ", tipo_evento=%s", e.EventType)
+	for _, attr := range e.Attrs {
+		fmt.Fprintf(&b, ", %s=%s", attr.Key, attr.Value)
 	}
 	if e.XMLPreview != "" {
 		fmt.Fprintf(&b, ", xml_preview=%s", e.XMLPreview)
@@ -663,14 +570,12 @@ func (e *ProcessingError) LogValue() slog.Value {
 	if e.Schema != "" {
 		attrs = append(attrs, slog.String("schema", e.Schema))
 	}
-	if e.DocType != "" {
-		attrs = append(attrs, slog.String("tipo_documento", e.DocType))
-	}
-	if e.EventType != "" {
-		attrs = append(attrs, slog.String("tipo_evento", e.EventType))
-	}
+	attrs = append(attrs, e.Attrs...)
 	if e.XMLPreview != "" {
 		attrs = append(attrs, slog.String("xml_preview", e.XMLPreview))
+	}
+	if e.RawHash != "" {
+		attrs = append(attrs, slog.String("raw_hash", e.RawHash))
 	}
 	return slog.GroupValue(attrs...)
 }

@@ -22,6 +22,7 @@ type Company struct {
 	InitialSyncCompletedAt sql.NullString
 	CreatedAt              string
 	UpdatedAt              string
+	Uf                     string
 }
 
 type CompanyDocument struct {
@@ -34,6 +35,47 @@ type CompanyDocument struct {
 	LastSeenNsu      sql.NullInt64
 	FirstSyncedAt    string
 	LastSyncedAt     string
+	ViewedAt         sql.NullString
+}
+
+type CompanyDocumentExportMark struct {
+	CompanyID    string
+	DocumentID   string
+	ExportKind   string
+	ExportedHash string
+	ExportedAt   string
+}
+
+type CompanyNfeDocument struct {
+	RelationID       string
+	CompanyID        string
+	NfeDocumentID    string
+	CompanyRole      string
+	VisibilityReason string
+	Manifestacao     string
+	ManifestacaoAt   sql.NullString
+	FirstSeenNsu     sql.NullInt64
+	LastSeenNsu      sql.NullInt64
+	FirstSyncedAt    string
+	LastSyncedAt     string
+	ViewedAt         sql.NullString
+}
+
+type CompanyNfeExportMark struct {
+	CompanyID     string
+	NfeDocumentID string
+	ExportKind    string
+	ExportedHash  string
+	ExportedAt    string
+}
+
+type CompanySyncSource struct {
+	CompanyID              string
+	Source                 string
+	InitialSyncCompletedAt sql.NullString
+	BlockedUntil           sql.NullString
+	BlockedReason          sql.NullString
+	UpdatedAt              string
 }
 
 type Credential struct {
@@ -95,6 +137,91 @@ type Event struct {
 	CreatedAt              string
 }
 
+type NfeDocument struct {
+	ID                string
+	ChaveAcesso       string
+	Modelo            string
+	Serie             string
+	Numero            string
+	IssueDate         string
+	Competence        string
+	AuthorizedAt      sql.NullString
+	Protocolo         string
+	EmitenteCnpj      string
+	EmitenteName      string
+	EmitenteIe        string
+	EmitenteUf        string
+	DestinatarioCnpj  string
+	DestinatarioName  string
+	TransportadorCnpj string
+	AutorizadosCnpj   string
+	TpNf              string
+	FinNfe            string
+	NatOp             string
+	TotalValue        int64
+	IcmsValue         int64
+	IpiValue          int64
+	Situacao          string
+	Completeness      string
+	LayoutVersion     string
+	RawHash           string
+	ResumoRawHash     sql.NullString
+	ParseWarnings     sql.NullString
+	CreatedAt         string
+	UpdatedAt         string
+}
+
+type NfeEvent struct {
+	ID            string
+	NfeDocumentID sql.NullString
+	ChaveAcesso   string
+	TpEvento      string
+	Type          string
+	NSeqEvento    int64
+	EventAt       sql.NullString
+	RegisteredAt  sql.NullString
+	Registered    int64
+	CStat         string
+	XMotivo       string
+	Protocolo     string
+	AutorCnpj     string
+	Description   string
+	Justificativa string
+	Correcao      string
+	Completeness  string
+	SentByNanci   int64
+	RawHash       string
+	ParseWarnings sql.NullString
+	CreatedAt     string
+	UpdatedAt     string
+}
+
+type NfeManifestacao struct {
+	ID              string
+	CompanyID       string
+	ChaveAcesso     string
+	TpEvento        string
+	NSeqEvento      int64
+	Justificativa   string
+	IDLote          string
+	Status          string
+	CStat           string
+	XMotivo         string
+	Protocolo       string
+	RegisteredAt    sql.NullString
+	RequestRawHash  sql.NullString
+	ResponseRawHash sql.NullString
+	CreatedAt       string
+	TpAmb           string
+}
+
+type SyncRequest struct {
+	ID          int64
+	CompanyID   string
+	Source      string
+	RequestedAt string
+}
+
 type SyncRun struct {
 	ID                    string
 	CompanyID             string
@@ -116,4 +243,24 @@ type SyncRun struct {
 	LastFoundNsu          sql.NullInt64
 	Status                string
 	StopReason            sql.NullString
+	Source                string
+}
+
+type SyncState struct {
+	CompanyID         string
+	Source            string
+	Environment       string
+	ConsultationCnpj  string
+	LastCheckedNsu    int64
+	LastFoundNsu      sql.NullInt64
+	MaxNsu            sql.NullInt64
+	LastEmptyStreak   int64
+	LastSuccessAt     sql.NullString
+	LastErrorAt       sql.NullString
+	LastErrorCode     sql.NullString
+	LastErrorMessage  sql.NullString
+	CreatedAt         string
+	UpdatedAt         string
+	FailedNsu         sql.NullInt64
+	FailedNsuAttempts int64
 }

@@ -361,6 +361,12 @@ const (
 	SyncStopReasonContextCanceled SyncStopReason = "context_canceled"
 	SyncStopReasonFetchError      SyncStopReason = "fetch_error"
 	SyncStopReasonProcessError    SyncStopReason = "process_error"
+	// SyncStopReasonCaughtUp means the source reported no documents beyond the cursor.
+	SyncStopReasonCaughtUp SyncStopReason = "caught_up"
+	// SyncStopReasonConsumoIndevido is the tax authority's rejection for querying too often.
+	SyncStopReasonConsumoIndevido SyncStopReason = "consumo_indevido"
+	// SyncStopReasonRateBudget means the local hourly request budget is exhausted.
+	SyncStopReasonRateBudget SyncStopReason = "rate_budget"
 )
 
 func ParseSyncStopReason(val string) (SyncStopReason, error) {
@@ -373,7 +379,8 @@ func ParseSyncStopReason(val string) (SyncStopReason, error) {
 
 func (r SyncStopReason) Valid() bool {
 	switch r {
-	case SyncStopReasonEmptyLimit, SyncStopReasonContextCanceled, SyncStopReasonFetchError, SyncStopReasonProcessError:
+	case SyncStopReasonEmptyLimit, SyncStopReasonContextCanceled, SyncStopReasonFetchError, SyncStopReasonProcessError,
+		SyncStopReasonCaughtUp, SyncStopReasonConsumoIndevido, SyncStopReasonRateBudget:
 		return true
 	default:
 		return false

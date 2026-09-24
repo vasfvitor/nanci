@@ -51,11 +51,13 @@ func main() {
 
 	HelpMenu := AppMenu.AddSubmenu("Ajuda")
 	HelpMenu.AddText("Sobre", nil, func(_ *menu.CallbackData) {
-		runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
+		if _, err := runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
 			Type:    runtime.InfoDialog,
 			Title:   "Sobre o Nanci",
 			Message: fmt.Sprintf("Nanci %s\nCommit: %s\n\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version, buildinfo.Commit),
-		})
+		}); err != nil {
+			runtime.LogErrorf(app.ctx, "abrir diálogo Sobre: %v", err)
+		}
 	})
 
 	err := wails.Run(&options.App{

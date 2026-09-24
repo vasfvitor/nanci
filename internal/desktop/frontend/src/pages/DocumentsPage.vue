@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
     <div class="row items-center justify-between q-mb-md">
-      <h5 class="q-my-none">Documentos Fiscais</h5>
+      <h5 class="q-my-none">NFS-e</h5>
     </div>
 
     <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
@@ -10,34 +10,7 @@ v-model="filter.CNPJ" class="col-12 col-md-3" :options="companyOptions" label="E
         map-options outlined dense options-dense :disable="loading" @update:model-value="handleCompanyChange" />
 
       <div class="col-12 col-md-3">
-        <div class="row no-wrap items-center q-gutter-xs">
-          <q-btn
-color="grey-7" icon="chevron_left" dense flat round :disable="loading || !filter.Competence"
-            title="Competência anterior" aria-label="Competência anterior" @click="shiftCompetence(-1)" />
-
-          <q-input
-v-model="filter.Competence" class="col" label="Competência" outlined dense clearable mask="####-##"
-            :disable="loading">
-            <template #append>
-              <q-icon name="event" class="cursor-pointer">
-                <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
-                  <q-date
-v-model="filter.Competence" minimal mask="YYYY-MM" emit-immediately default-view="Months"
-                    years-in-month-view @update:model-value="onDateChange">
-                    <div class="row items-center justify-end">
-                      <q-btn label="Mês Atual" color="primary" flat @click="setToday" />
-                      <q-btn v-close-popup label="Fechar" color="primary" flat />
-                    </div>
-                  </q-date>
-                </q-popup-proxy>
-              </q-icon>
-            </template>
-          </q-input>
-
-          <q-btn
-color="grey-7" icon="chevron_right" dense flat round :disable="loading || !filter.Competence"
-            title="Próxima competência" aria-label="Próxima competência" @click="shiftCompetence(1)" />
-        </div>
+        <CompetencePicker v-model="filter.Competence" :disable="loading" />
       </div>
 
       <q-select
@@ -73,12 +46,12 @@ color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" 
 v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocuments" :columns="columns"
       row-key="RelationID" selection="multiple"
       :loading="loading" no-data-label="Nenhum documento encontrado." binary-state-sort flat bordered dense
-      class="full-height">
+      class="full-height documents-table">
       <template #top>
         <div class="column full-width q-gutter-y-sm">
           <div class="row items-center justify-between full-width">
             <div class="text-subtitle1 text-weight-bold">
-              Documentos Fiscais Carregados
+              Notas fiscais de serviço
             </div>
 
             <q-input
@@ -239,7 +212,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
               <div class="text-weight-medium">
                 {{ props.row.PrestadorCNPJ ? formatCpfCnpj(props.row.PrestadorCNPJ) : '-' }}
               </div>
-              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.PrestadorName || ''">
+              <div class="text-caption text-grey-6 partner-name" :title="props.row.PrestadorName || ''">
                 {{ props.row.PrestadorName || '-' }}
               </div>
             </template>
@@ -248,7 +221,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
               <div class="text-weight-medium">
                 {{ props.row.TomadorCNPJ ? formatCpfCnpj(props.row.TomadorCNPJ) : '-' }}
               </div>
-              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.TomadorName || ''">
+              <div class="text-caption text-grey-6 partner-name" :title="props.row.TomadorName || ''">
                 {{ props.row.TomadorName || '-' }}
               </div>
             </template>
@@ -262,7 +235,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
         </q-tr>
 
         <q-tr v-if="props.expand" :props="props" :class="['detail-container-borders', $q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
-          <q-td :colspan="props.cols.length + 1" class="q-pa-md">
+          <q-td :colspan="props.cols.length + 1" class="q-pa-md document-detail-cell">
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-7">
                 <div class="text-subtitle2 text-primary q-mb-xs">
@@ -351,15 +324,18 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { copyToClipboard, date, useQuasar, type QTableColumn } from 'quasar'
+import { useQuasar, type QTableColumn } from 'quasar'
+import CompetencePicker from '../components/CompetencePicker.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import { useDocuments } from '@/composables/useDocuments'
+import { useNotify } from '@/composables/useNotify'
 import {
   formatChaveAcesso,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
+  normalizeText,
 } from '@/utils/formatters'
 import {
   getRoleAbbreviation,
@@ -414,6 +390,7 @@ type DocumentRow = {
 const $q = useQuasar()
 const route = useRoute()
 const documentsApi = useDocuments()
+const { notifyError, copyChave } = useNotify()
 
 const {
   filter,
@@ -428,8 +405,6 @@ const showEventsDialog = ref(false)
 const selectedDocumentId = ref('')
 const filterText = ref('')
 const selected = ref<DocumentRow[]>([])
-
-const datePopup = ref<{ hide: () => void } | null>(null)
 
 const directionOptions: SelectOption<Direction>[] = [
   { label: 'Todos', value: '' },
@@ -543,48 +518,12 @@ onMounted(() => {
   void loadCompanies()
 })
 
-function normalizeText(value: unknown): string {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .trim()
-}
-
 function hasEvents(document: DocumentRow): boolean {
   return document.Status === 'cancelada' || document.Status === 'substituida'
 }
 
 function formatChave(chave?: string): string {
   return chave ? formatChaveAcesso(chave) : '-'
-}
-
-function onDateChange(_value: string, reason: string) {
-  if (reason === 'month') {
-    datePopup.value?.hide()
-  }
-}
-
-function setToday() {
-  filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
-  datePopup.value?.hide()
-}
-
-function shiftCompetence(monthDelta: number) {
-  if (!filter.value.Competence) {
-    filter.value.Competence = date.formatDate(Date.now(), 'YYYY-MM')
-  }
-
-  const [yearText, monthText] = filter.value.Competence.split('-')
-  const year = Number(yearText)
-  const month = Number(monthText)
-
-  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return
-  }
-
-  const next = new Date(year, month - 1 + monthDelta, 1)
-  filter.value.Competence = date.formatDate(next, 'YYYY-MM')
 }
 
 function parseRouteQueryParam(param: unknown): string {
@@ -622,21 +561,6 @@ function selectDefaultCompany() {
   filter.value.CNPJ = firstCompany.value
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return String(error)
-}
-
-function notifyError(message: string, error: unknown) {
-  $q.notify({
-    type: 'negative',
-    message: `${message}: ${errorMessage(error)}`,
-  })
-}
-
 function notifyExportSuccess(label: string, result: ExportResult | null | undefined) {
   if (!result) return
 
@@ -666,24 +590,6 @@ async function handleCompanyChange() {
   }
 
   await search()
-}
-
-async function copyChave(chave?: string) {
-  if (!chave) {
-    return
-  }
-
-  try {
-    await copyToClipboard(chave.replace(/^NFS/i, ''))
-
-    $q.notify({
-      type: 'positive',
-      message: 'Chave copiada!',
-      timeout: 1000,
-    })
-  } catch (error) {
-    notifyError('Erro ao copiar chave', error)
-  }
 }
 
 async function loadCompanies() {
@@ -827,9 +733,14 @@ function openEventsDialog(documentId?: string) {
   table-layout: auto;
 }
 
-:deep(.q-table td) {
+/* Values stay on one line and the table scrolls sideways; only the partner
+   names and the expanded details wrap. */
+.documents-table :deep(td) {
+  white-space: nowrap;
+}
+
+.documents-table :deep(td.document-detail-cell) {
   white-space: normal;
-  word-break: break-word;
 }
 
 .document-search-input {
@@ -850,7 +761,10 @@ function openEventsDialog(documentId?: string) {
 }
 
 .partner-name {
-  max-width: 180px;
+  min-width: 180px;
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .service-description {
