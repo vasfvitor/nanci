@@ -433,22 +433,22 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 	}
 	if in.Situacao != "" {
 		if filter.Situacao, err = nfe.ParseSituacao(in.Situacao); err != nil {
-			return nil, nfe.DocumentFilter{}, fmt.Errorf("situação inválida %q", in.Situacao)
+			return nil, nfe.DocumentFilter{}, fmt.Errorf("situação inválida: %w", err)
 		}
 	}
 	if in.Completeness != "" {
 		if filter.Completeness, err = nfe.ParseCompleteness(in.Completeness); err != nil {
-			return nil, nfe.DocumentFilter{}, fmt.Errorf("completude inválida %q", in.Completeness)
+			return nil, nfe.DocumentFilter{}, fmt.Errorf("completude inválida: %w", err)
 		}
 	}
 	if in.Role != "" {
 		if filter.Role, err = nfe.ParseCompanyRole(in.Role); err != nil {
-			return nil, nfe.DocumentFilter{}, fmt.Errorf("papel inválido %q", in.Role)
+			return nil, nfe.DocumentFilter{}, fmt.Errorf("papel inválido: %w", err)
 		}
 	}
 	if in.Manifestacao != "" {
 		if filter.Manifestacao, err = nfe.ParseManifestacao(in.Manifestacao); err != nil {
-			return nil, nfe.DocumentFilter{}, fmt.Errorf("manifestação inválida %q", in.Manifestacao)
+			return nil, nfe.DocumentFilter{}, fmt.Errorf("manifestação inválida: %w", err)
 		}
 	}
 	return comp, filter, nil
@@ -462,7 +462,7 @@ func (s *NFeService) companyDocument(ctx context.Context, companyID nfse.Company
 	}
 	doc, err := s.NFeRepo.CompanyDocumentByChave(ctx, companyID, string(chave))
 	if errors.Is(err, nfe.ErrDocumentNotFound) {
-		return nfe.CompanyDocument{}, fmt.Errorf("NF-e %s não encontrada para a empresa", chave)
+		return nfe.CompanyDocument{}, fmt.Errorf("chave %s: %w", chave, err)
 	}
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("buscar NF-e: %w", err)

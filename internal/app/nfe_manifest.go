@@ -357,7 +357,7 @@ func conclusiveBlockReason(doc nfe.CompanyDocument) string {
 func parseConclusiveManifestacao(raw string) (nfe.TipoManifestacao, error) {
 	tipo, err := nfe.ParseTipoManifestacao(raw)
 	if err != nil {
-		return "", fmt.Errorf("tipo de manifestação inválido %q: use confirmacao, desconhecimento ou nao_realizada", raw)
+		return "", fmt.Errorf("tipo de manifestação inválido (use confirmacao, desconhecimento ou nao_realizada): %w", err)
 	}
 	if tipo == nfe.TipoManifestacaoCiencia {
 		return "", errors.New("a ciência da operação é enviada pela ciência em lote")

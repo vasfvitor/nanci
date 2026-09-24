@@ -1,12 +1,15 @@
 package nfe
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-func TestManifestacaoType(t *testing.T) {
+func TestTipoManifestacao(t *testing.T) {
 	tests := []struct {
 		tipo       TipoManifestacao
 		tpEvento   string
@@ -151,7 +154,7 @@ func TestManifestacaoAndTimeFromEvents(t *testing.T) {
 	}
 }
 
-func TestManifestacaoDeadlines(t *testing.T) {
+func TestManifestacaoPrazos(t *testing.T) {
 	loc := time.FixedZone("-03", -3*60*60)
 	authorized := time.Date(2026, 9, 1, 9, 15, 42, 0, loc)
 	issued := time.Date(2026, 8, 31, 18, 0, 0, 0, loc)
@@ -291,6 +294,10 @@ func TestValidateJustificativa(t *testing.T) {
 	_, err := ValidateJustificativa(TipoManifestacaoNaoRealizada, "curta")
 	if want := "justificativa inválida: informe de 15 a 255 caracteres"; err == nil || err.Error() != want {
 		t.Errorf("error = %v, want %q", err, want)
+	}
+	_, err = ValidateJustificativa(TipoManifestacao("x"), "")
+	if err == nil || !errors.Is(err, nfse.ErrInvalidEnum) || !strings.HasPrefix(err.Error(), "tipo de manifestação inválido") {
+		t.Errorf("error = %v, want the Portuguese message wrapping nfse.ErrInvalidEnum", err)
 	}
 	_, err = ValidateJustificativa(TipoManifestacaoConfirmacao, "mercadoria não recebida no prazo")
 	if want := "justificativa só é aceita para operação não realizada"; err == nil || err.Error() != want {

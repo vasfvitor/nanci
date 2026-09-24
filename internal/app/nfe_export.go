@@ -134,7 +134,7 @@ func (s *NFeService) exportDocuments(ctx context.Context, companyID nfse.Company
 	if in.Role != "" {
 		role, err := nfe.ParseCompanyRole(in.Role)
 		if err != nil {
-			return nil, 0, fmt.Errorf("papel inválido %q", in.Role)
+			return nil, 0, fmt.Errorf("papel inválido: %w", err)
 		}
 		filter.Role = role
 	}

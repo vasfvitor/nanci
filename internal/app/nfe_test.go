@@ -255,8 +255,15 @@ func TestNFeListDocumentsFilters(t *testing.T) {
 		})
 	}
 
-	if _, err := env.app.NFe.ListDocuments(ctx, NFeListInput{CNPJ: nfeTestCNPJ, Situacao: "rascunho"}); err == nil {
-		t.Error("an invalid situação was accepted")
+	for name, in := range map[string]NFeListInput{
+		"situação":     {CNPJ: nfeTestCNPJ, Situacao: "rascunho"},
+		"completude":   {CNPJ: nfeTestCNPJ, Completeness: "parcial"},
+		"papel":        {CNPJ: nfeTestCNPJ, Role: "tomador"},
+		"manifestação": {CNPJ: nfeTestCNPJ, Manifestacao: "aceita"},
+	} {
+		if _, err := env.app.NFe.ListDocuments(ctx, in); !errors.Is(err, nfse.ErrInvalidEnum) {
+			t.Errorf("invalid %s: err = %v, want nfse.ErrInvalidEnum", name, err)
+		}
 	}
 
 	events, err := env.app.NFe.ListEvents(ctx, nfeTestCNPJ, nfeChaveProc)
@@ -266,8 +273,8 @@ func TestNFeListDocumentsFilters(t *testing.T) {
 	if len(events) != 1 || events[0].TpEvento != nfe.TpEventoCiencia {
 		t.Errorf("events = %+v, want the ciência", events)
 	}
-	if _, err := env.app.NFe.ListEvents(ctx, nfeTestCNPJ, testChave(t, 7)); err == nil {
-		t.Error("ListEvents of a chave the company does not see succeeded")
+	if _, err := env.app.NFe.ListEvents(ctx, nfeTestCNPJ, testChave(t, 7)); !errors.Is(err, nfe.ErrDocumentNotFound) {
+		t.Errorf("ListEvents of a chave the company does not see: err = %v, want nfe.ErrDocumentNotFound", err)
 	}
 }
 
@@ -318,7 +325,7 @@ func TestNFeStatusCounts(t *testing.T) {
 	}
 }
 
-func TestNFeListPendingManifestacaosOrderAndFlags(t *testing.T) {
+func TestNFeListPendingManifestacoesOrderAndFlags(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()
 	early := env.seedResumo(10, "2026-08-20T10:00:00-03:00", "11222333000181")

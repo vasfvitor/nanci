@@ -11,7 +11,7 @@ import (
 const ExportKindXML = "xml"
 
 // ErrDocumentNotFound is returned when the company does not see a chave.
-var ErrDocumentNotFound = errors.New("NF-e not found for the company")
+var ErrDocumentNotFound = errors.New("NF-e não encontrada para a empresa")
 
 // DocumentFilter selects company NF-e rows. Zero values do not filter.
 type DocumentFilter struct {
