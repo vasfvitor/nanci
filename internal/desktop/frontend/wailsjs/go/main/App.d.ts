@@ -12,6 +12,10 @@ export function CancelCertPassword(arg1:string):Promise<void>;
 
 export function CountPendingExports(arg1:desktopapi.ExportDocumentsInput):Promise<number>;
 
+export function ExportCTeXML(arg1:desktopapi.ExportCTeXMLInput):Promise<desktopapi.ExportResult>;
+
+export function ExportCTeZIP(arg1:desktopapi.ExportCTeZIPInput):Promise<desktopapi.ExportResult>;
+
 export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
 
 export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
@@ -29,6 +33,10 @@ export function ExportXML(arg1:desktopapi.ExportXMLInput):Promise<desktopapi.Exp
 export function GetBuildInfo():Promise<desktopapi.BuildInfo>;
 
 export function GetDataDirectory():Promise<string>;
+
+export function ListCTe(arg1:desktopapi.ListCTeInput):Promise<Array<desktopapi.CTeRow>>;
+
+export function ListCTeEvents(arg1:desktopapi.CTeKeyInput):Promise<Array<desktopapi.CTeEvent>>;
 
 export function ListCompanies():Promise<Array<desktopapi.CompanySummary>>;
 
@@ -52,7 +60,11 @@ export function OpenLogsDirectory():Promise<void>;
 
 export function PlanNFeCiencia(arg1:desktopapi.RegisterNFeCienciaInput):Promise<desktopapi.NFeCienciaPlan>;
 
+export function PreviewResetCTe(arg1:string):Promise<desktopapi.CTeResetResult>;
+
 export function Pull(arg1:desktopapi.PullInput):Promise<desktopapi.PullResult>;
+
+export function PullCTe(arg1:desktopapi.PullCTeInput):Promise<desktopapi.PullCTeResult>;
 
 export function PullNFe(arg1:desktopapi.PullNFeInput):Promise<desktopapi.PullNFeResult>;
 
@@ -61,6 +73,8 @@ export function QueryNFSeEvents(arg1:desktopapi.QueryNFSeInput):Promise<string>;
 export function RegisterNFeCiencia(arg1:desktopapi.RegisterNFeCienciaInput):Promise<desktopapi.NFeEventBatchResult>;
 
 export function RegisterNFeManifestacao(arg1:desktopapi.RegisterNFeManifestacaoInput):Promise<desktopapi.NFeEventResult>;
+
+export function ResetCTe(arg1:string):Promise<desktopapi.CTeResetResult>;
 
 export function ResetNFe(arg1:string):Promise<desktopapi.NFeResetResult>;
 
@@ -76,9 +90,13 @@ export function SetLogLevel(arg1:string):Promise<void>;
 
 export function Status(arg1:string):Promise<desktopapi.StatusResult>;
 
+export function StatusCTe(arg1:string):Promise<desktopapi.CTeStatusResult>;
+
 export function StatusNFe(arg1:string):Promise<desktopapi.NFeStatusResult>;
 
 export function SubmitCertPassword(arg1:string,arg2:string):Promise<void>;
+
+export function TestCTeConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
 
 export function TestConnection(arg1:string):Promise<desktopapi.ConnectionTestResult>;
 
