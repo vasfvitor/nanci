@@ -13,6 +13,7 @@ import router from './router'
 import { createPinia } from 'pinia'
 import { useConsoleStore } from '@/stores/console'
 import { desktopRuntime } from '@/platform/wails/runtime'
+import { errorMessage } from '@/platform/wails/client'
 
 const myApp = createApp(App)
 const pinia = createPinia()
@@ -49,7 +50,7 @@ consoleStore.initLogListeners()
 consoleStore.syncInitialLogLevel().catch((error: unknown) => {
   Notify.create({
     type: 'negative',
-    message: 'Não foi possível aplicar o nível de log inicial: ' + String(error),
+    message: 'Não foi possível aplicar o nível de log inicial: ' + errorMessage(error),
   })
 })
 

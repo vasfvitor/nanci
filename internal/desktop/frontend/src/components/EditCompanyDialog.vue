@@ -79,7 +79,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { CompanySummary, SyncStartPolicy } from '@/types/desktop'
 import { UF_SIGLAS } from '@/utils/uf'
 
@@ -163,7 +163,7 @@ async function submit() {
     emit('updated')
     isOpen.value = false
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao atualizar empresa: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar empresa: ' + errorMessage(err) })
   } finally {
     loading.value = false
   }

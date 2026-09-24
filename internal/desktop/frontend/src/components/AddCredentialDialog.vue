@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, errorMessage } from '@/platform/wails/client'
 
 const props = defineProps<{
   modelValue: boolean
@@ -79,7 +79,7 @@ async function selectCert() {
       }
     }
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + errorMessage(err) })
   }
 }
 
@@ -97,7 +97,7 @@ async function submit() {
     isOpen.value = false
     resetForm()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + errorMessage(err) })
   } finally {
     loading.value = false
   }

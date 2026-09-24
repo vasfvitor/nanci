@@ -25,6 +25,7 @@ vi.mock('@/platform/wails/client', () => ({
     testConnection: vi.fn(),
     setLogLevel: vi.fn(),
   },
+  errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
 }))
 
 vi.mock('@/platform/wails/runtime', () => ({
@@ -82,7 +83,7 @@ describe('SettingsPage', () => {
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'negative',
-        message: expect.stringContaining('Erro ao atualizar modo debug: Error: boom'),
+        message: expect.stringContaining('Erro ao atualizar modo debug: boom'),
       })
     )
   })

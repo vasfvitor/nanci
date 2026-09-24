@@ -88,6 +88,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { errorMessage } from '@/platform/wails/client'
 import { useQuery } from '@/composables/useQuery'
 
 const $q = useQuasar()
@@ -98,7 +99,7 @@ onMounted(async () => {
   try {
     await query.loadCompanies()
   } catch (e) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas para consulta: ' + String(e) })
+    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas para consulta: ' + errorMessage(e) })
   }
 })
 
@@ -124,7 +125,7 @@ async function runQuery() {
   try {
     await query.runQuery()
   } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: 'Erro na consulta: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro na consulta: ' + errorMessage(err) })
   }
 }
 

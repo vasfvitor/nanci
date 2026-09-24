@@ -176,7 +176,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, errorMessage } from '@/platform/wails/client'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
 import { useConsoleStore } from '@/stores/console'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -218,7 +218,7 @@ async function loadCompanies() {
       value: company.CNPJ,
     }))
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + errorMessage(err) })
   }
 }
 
@@ -228,7 +228,7 @@ onMounted(async () => {
     dataDir.value = await desktopClient.getDataDirectory()
     await loadCompanies()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar dados de sistema: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao carregar dados de sistema: ' + errorMessage(err) })
   }
 })
 
@@ -248,7 +248,7 @@ async function handleDebugToggle(val: boolean) {
   try {
     await consoleStore.setLogFilter(val ? 'debug' : 'info')
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao atualizar modo debug: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar modo debug: ' + errorMessage(err) })
   } finally {
     updatingDebug.value = false
   }
@@ -258,7 +258,7 @@ async function openDataDir() {
   try {
     await desktopClient.openDataDirectory()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de dados: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de dados: ' + errorMessage(err) })
   }
 }
 
@@ -266,7 +266,7 @@ async function openLogsDir() {
   try {
     await desktopClient.openLogsDirectory()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de logs: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de logs: ' + errorMessage(err) })
   }
 }
 
@@ -277,7 +277,7 @@ async function exportDiagnosticLogs() {
       $q.notify({ type: 'positive', message: 'Logs exportados com sucesso para ' + result })
     }
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao exportar logs: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao exportar logs: ' + errorMessage(err) })
   }
 }
 
@@ -288,7 +288,7 @@ async function runConnectionTest() {
   try {
     testResult.value = await desktopClient.testConnection(selectedCompany.value)
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Falha ao executar teste de conexão: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Falha ao executar teste de conexão: ' + errorMessage(err) })
   } finally {
     testing.value = false
   }

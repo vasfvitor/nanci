@@ -103,7 +103,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { date, useQuasar } from 'quasar'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
 import { UF_SIGLAS } from '@/utils/uf'
 
@@ -174,7 +174,7 @@ async function loadCredentials() {
       }
     }
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar credenciais: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao carregar credenciais: ' + errorMessage(err) })
   }
 }
 
@@ -188,7 +188,7 @@ async function selectCert() {
       }
     }
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao selecionar certificado: ' + errorMessage(err) })
   }
 }
 
@@ -226,7 +226,7 @@ async function submit() {
     isOpen.value = false
     resetForm()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + errorMessage(err) })
   } finally {
     loading.value = false
   }

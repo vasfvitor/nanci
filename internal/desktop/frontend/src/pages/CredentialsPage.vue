@@ -75,6 +75,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
+import { errorMessage } from '@/platform/wails/client'
 import AddCredentialDialog from '../components/AddCredentialDialog.vue'
 import EditCredentialDialog from '../components/EditCredentialDialog.vue'
 import { useCredentials } from '@/composables/useCredentials'
@@ -114,7 +115,7 @@ async function loadCredentials() {
   try {
     await credentialsApi.loadCredentials()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao listar credenciais: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao listar credenciais: ' + errorMessage(err) })
   }
 }
 
@@ -126,7 +127,7 @@ async function changePath(credentialID: string) {
     $q.notify({ type: 'positive', message: 'Caminho da credencial atualizado.' })
     await loadCredentials()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao atualizar credencial: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar credencial: ' + errorMessage(err) })
   }
 }
 

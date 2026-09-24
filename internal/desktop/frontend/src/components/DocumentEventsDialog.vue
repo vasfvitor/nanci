@@ -56,6 +56,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { errorMessage } from '@/platform/wails/client'
 import { useDocuments } from '@/composables/useDocuments'
 import type { DocumentEvent } from '@/types/desktop'
 
@@ -100,7 +101,7 @@ async function loadEvents() {
     const res = await loadDocumentEvents(props.documentId)
     events.value = res || []
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar eventos: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao carregar eventos: ' + errorMessage(err) })
   } finally {
     loading.value = false
   }
