@@ -247,6 +247,63 @@ func TestMigration009AddsCompanyUF(t *testing.T) {
 	}
 }
 
+func TestMigration010AddsSyncItemFailures(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 9); err != nil {
+		t.Fatalf("migrate to version 9: %v", err)
+	}
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	mustExec(t, db, `
+		INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, created_at, updated_at)
+		VALUES ('comp-1', 'nfe', 'producao', '70860312000150', 42, ?, ?)
+	`, now, now)
+
+	if _, err := provider.UpTo(ctx, 10); err != nil {
+		t.Fatalf("migrate to version 10: %v", err)
+	}
+	var failedNSU sql.NullInt64
+	var attempts int
+	if err := db.QueryRowContext(ctx, `SELECT failed_nsu, failed_nsu_attempts FROM sync_state WHERE company_id = 'comp-1'`).
+		Scan(&failedNSU, &attempts); err != nil {
+		t.Fatalf("read sync_state failure columns: %v", err)
+	}
+	if failedNSU.Valid || attempts != 0 {
+		t.Errorf("failure columns of an existing state = (%v, %d), want (NULL, 0)", failedNSU, attempts)
+	}
+
+	if _, err := provider.DownTo(ctx, 9); err != nil {
+		t.Fatalf("migrate down to version 9: %v", err)
+	}
+	var lastChecked int64
+	if err := db.QueryRowContext(ctx, `SELECT last_checked_nsu FROM sync_state WHERE company_id = 'comp-1'`).Scan(&lastChecked); err != nil {
+		t.Fatalf("read sync_state after down: %v", err)
+	}
+	if lastChecked != 42 {
+		t.Errorf("last_checked_nsu after down = %d, want 42", lastChecked)
+	}
+	if _, err := db.ExecContext(ctx, `SELECT failed_nsu FROM sync_state`); err == nil {
+		t.Error("failed_nsu still exists after down")
+	}
+}
+
 func TestMigration011AddsManifestacaoTpAmb(t *testing.T) {
 	ctx := context.Background()
 	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
