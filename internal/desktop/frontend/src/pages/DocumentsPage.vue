@@ -142,7 +142,7 @@ v-model="filterText" class="document-search-input"
       <template #body="props">
         <q-tr :props="props">
           <q-td auto-width>
-            <q-checkbox v-model="props.selected" />
+            <q-checkbox v-model="props.selected" dense />
           </q-td>
           <q-td v-for="col in props.cols" :key="col.name" :props="props">
             <template v-if="col.name === 'actions'">
@@ -212,7 +212,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
               <div class="text-weight-medium">
                 {{ props.row.PrestadorCNPJ ? formatCpfCnpj(props.row.PrestadorCNPJ) : '-' }}
               </div>
-              <div class="text-caption text-grey-6 partner-name" :title="props.row.PrestadorName || ''">
+              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.PrestadorName || ''">
                 {{ props.row.PrestadorName || '-' }}
               </div>
             </template>
@@ -221,7 +221,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
               <div class="text-weight-medium">
                 {{ props.row.TomadorCNPJ ? formatCpfCnpj(props.row.TomadorCNPJ) : '-' }}
               </div>
-              <div class="text-caption text-grey-6 partner-name" :title="props.row.TomadorName || ''">
+              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.TomadorName || ''">
                 {{ props.row.TomadorName || '-' }}
               </div>
             </template>
@@ -235,78 +235,80 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
         </q-tr>
 
         <q-tr v-if="props.expand" :props="props" :class="['detail-container-borders', $q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
-          <q-td :colspan="props.cols.length + 1" class="q-pa-md document-detail-cell">
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-7">
-                <div class="text-subtitle2 text-primary q-mb-xs">
-                  Dados do Serviço
-                </div>
-
-                <div class="row q-col-gutter-sm text-body2">
-                  <div class="col-6">
-                    <span class="text-weight-bold">Número da NFSe:</span>
-                    {{ props.row.NFSeNumber || 'N/A' }}
+          <q-td :colspan="props.cols.length + 1" class="document-detail-cell">
+            <div class="document-detail q-pa-md">
+              <div class="row q-col-gutter-md">
+                <div class="col-12 col-md-7">
+                  <div class="text-subtitle2 text-primary q-mb-xs">
+                    Dados do Serviço
                   </div>
 
-                  <div class="col-6">
-                    <span class="text-weight-bold">Versão Layout:</span>
-                    {{ props.row.LayoutVersion || 'N/A' }}
+                  <div class="row q-col-gutter-sm text-body2">
+                    <div class="col-6">
+                      <span class="text-weight-bold">Número da NFSe:</span>
+                      {{ props.row.NFSeNumber || 'N/A' }}
+                    </div>
+
+                    <div class="col-6">
+                      <span class="text-weight-bold">Versão Layout:</span>
+                      {{ props.row.LayoutVersion || 'N/A' }}
+                    </div>
+                  </div>
+
+                  <div class="q-mt-sm">
+                    <span class="text-weight-bold text-body2">Descrição do Serviço:</span>
+                    <div
+                      :class="['q-mt-xs q-pa-sm text-body2 shadow-1 rounded-borders service-description custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
+                      {{ props.row.ServiceDescription || 'Sem descrição.' }}
+                    </div>
                   </div>
                 </div>
 
-                <div class="q-mt-sm">
-                  <span class="text-weight-bold text-body2">Descrição do Serviço:</span>
-                  <div
-                    :class="['q-mt-xs q-pa-sm text-body2 shadow-1 rounded-borders service-description custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
-                    {{ props.row.ServiceDescription || 'Sem descrição.' }}
+                <div class="col-12 col-md-5">
+                  <div class="text-subtitle2 text-primary q-mb-xs">
+                    Retenções e Tributos
                   </div>
-                </div>
-              </div>
 
-              <div class="col-12 col-md-5">
-                <div class="text-subtitle2 text-primary q-mb-xs">
-                  Retenções e Tributos
-                </div>
+                  <div :class="['q-pa-md shadow-1 rounded-borders custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
+                    <div class="row q-col-gutter-xs text-body2">
+                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">ISS Retido:</div>
+                      <div class="col-6 text-right text-weight-medium">
+                        {{ formatCurrencyCents(props.row.ISSValue) }}
+                      </div>
 
-                <div :class="['q-pa-md shadow-1 rounded-borders custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
-                  <div class="row q-col-gutter-xs text-body2">
-                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">ISS Retido:</div>
-                    <div class="col-6 text-right text-weight-medium">
-                      {{ formatCurrencyCents(props.row.ISSValue) }}
-                    </div>
+                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">IRRF:</div>
+                      <div class="col-6 text-right text-weight-medium">
+                        {{ formatCurrencyCents(props.row.IRRFValue) }}
+                      </div>
 
-                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">IRRF:</div>
-                    <div class="col-6 text-right text-weight-medium">
-                      {{ formatCurrencyCents(props.row.IRRFValue) }}
-                    </div>
+                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">INSS:</div>
+                      <div class="col-6 text-right text-weight-medium">
+                        {{ formatCurrencyCents(props.row.INSSValue) }}
+                      </div>
 
-                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">INSS:</div>
-                    <div class="col-6 text-right text-weight-medium">
-                      {{ formatCurrencyCents(props.row.INSSValue) }}
-                    </div>
+                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">PIS:</div>
+                      <div class="col-6 text-right text-weight-medium">
+                        {{ formatCurrencyCents(props.row.PISValue) }}
+                      </div>
 
-                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">PIS:</div>
-                    <div class="col-6 text-right text-weight-medium">
-                      {{ formatCurrencyCents(props.row.PISValue) }}
-                    </div>
+                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">COFINS:</div>
+                      <div class="col-6 text-right text-weight-medium">
+                        {{ formatCurrencyCents(props.row.COFINSValue) }}
+                      </div>
 
-                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">COFINS:</div>
-                    <div class="col-6 text-right text-weight-medium">
-                      {{ formatCurrencyCents(props.row.COFINSValue) }}
-                    </div>
+                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">CSLL:</div>
+                      <div class="col-6 text-right text-weight-medium">
+                        {{ formatCurrencyCents(props.row.CSLLValue) }}
+                      </div>
 
-                    <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">CSLL:</div>
-                    <div class="col-6 text-right text-weight-medium">
-                      {{ formatCurrencyCents(props.row.CSLLValue) }}
-                    </div>
+                      <q-separator class="col-12 q-my-xs" />
 
-                    <q-separator class="col-12 q-my-xs" />
-
-                    <div class="col-6 text-weight-bold text-primary">
-                      Total Retenções:
-                    </div>
-                    <div class="col-6 text-right text-weight-bold text-primary">
-                      {{ formatCurrencyCents(props.row.TotalRetentions) }}
+                      <div class="col-6 text-weight-bold text-primary">
+                        Total Retenções:
+                      </div>
+                      <div class="col-6 text-right text-weight-bold text-primary">
+                        {{ formatCurrencyCents(props.row.TotalRetentions) }}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -733,14 +735,29 @@ function openEventsDialog(documentId?: string) {
   table-layout: auto;
 }
 
-/* Values stay on one line and the table scrolls sideways; only the partner
-   names and the expanded details wrap. */
+/* Values stay on one line and the table scrolls sideways; partner names are
+   cut with an ellipsis and only the expanded details wrap. */
 .documents-table :deep(td) {
   white-space: nowrap;
 }
 
 .documents-table :deep(td.document-detail-cell) {
+  padding: 0;
   white-space: normal;
+}
+
+/* The expanded details span every column, which is wider than the visible
+   table when it scrolls sideways. Size them to the scroll area (100cqw) and
+   pin them to its left edge so they wrap inside what the user sees. */
+.documents-table :deep(.q-table__middle) {
+  container-type: inline-size;
+}
+
+.document-detail {
+  position: sticky;
+  left: 0;
+  width: 100cqw;
+  overflow-wrap: anywhere;
 }
 
 .document-search-input {
@@ -760,11 +777,10 @@ function openEventsDialog(documentId?: string) {
   min-width: 100px;
 }
 
+/* About the width of the formatted CNPJ above it, so the name does not widen
+   the column. The full name is in the title tooltip. */
 .partner-name {
-  min-width: 180px;
-  max-width: 240px;
-  white-space: normal;
-  overflow-wrap: break-word;
+  max-width: 130px;
 }
 
 .service-description {

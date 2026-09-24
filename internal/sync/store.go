@@ -586,37 +586,17 @@ func (r *Store) SourceState(ctx context.Context, companyID nfse.CompanyID, sourc
 }
 
 // MarkInitialSyncCompleted records the first time the source caught up for
-// the company. For NFS-e it also sets companies.initial_sync_completed_at,
-// which the company list and the desktop start-policy lock still read.
+// the company.
 func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
 	now := time.Now().UTC().Format(time.RFC3339)
-	if _, err := tx.ExecContext(ctx, `
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
 		VALUES (?, ?, ?, ?)
 		ON CONFLICT (company_id, source) DO UPDATE SET
 			initial_sync_completed_at = COALESCE(initial_sync_completed_at, excluded.initial_sync_completed_at),
 			updated_at = excluded.updated_at
-	`, string(companyID), string(source), now, now); err != nil {
-		return err
-	}
-	if source == nfse.SyncSourceNFSe {
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE companies
-			SET initial_sync_completed_at = COALESCE(initial_sync_completed_at, ?),
-				updated_at = ?
-			WHERE id = ?
-		`, now, now, string(companyID)); err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
+	`, string(companyID), string(source), now, now)
+	return err
 }
 
 // SetBlockedUntil records that the source must not be queried for the

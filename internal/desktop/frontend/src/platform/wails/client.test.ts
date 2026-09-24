@@ -588,28 +588,36 @@ describe('Wails error codes', () => {
   })
 
   it.each([
-    ['ERR_CANCELED: operação cancelada', 'canceled'],
-    ['ERR_SEFAZ_BLOCKED: consultas bloqueadas até 15:00', 'sefaz_blocked'],
-    ['ERR_SYNC_RUNNING: sincronização em andamento', 'sync_running'],
-    ['ERR_UNKNOWN: algo', ''],
-    ['falha de rede ERR_CANCELED:', ''],
-    ['boom', ''],
-  ])('parses %s', async (message, code) => {
-    vi.mocked(PullNFe).mockRejectedValue(message)
+    [{ code: 'canceled', message: 'operação cancelada' }, 'canceled', 'operação cancelada'],
+    [{ code: 'sefaz_blocked', message: 'consultas bloqueadas até 15:00' }, 'sefaz_blocked', 'consultas bloqueadas até 15:00'],
+    [{ code: 'sync_running', message: 'sincronização em andamento' }, 'sync_running', 'sincronização em andamento'],
+    [{ code: '', message: 'empresa não encontrada' }, '', 'empresa não encontrada'],
+    [{ code: 'unknown', message: 'algo' }, '', 'algo'],
+    ['error parsing arguments: boom', '', 'error parsing arguments: boom'],
+    [new Error('boom'), '', 'boom'],
+  ])('normalizes %o', async (rejection, code, message) => {
+    vi.mocked(PullNFe).mockRejectedValue(rejection)
 
     const error = await desktopClient.pullNFe('123').catch((err: unknown) => err)
 
     expect(error).toBeInstanceOf(WailsClientError)
     expect((error as WailsClientError).code).toBe(code)
     expect((error as WailsClientError).message).toBe(message)
+    expect((error as WailsClientError).cause).toBe(rejection)
     expect(wailsErrorCode(error)).toBe(code)
-    expect(wailsErrorCode(new Error(message))).toBe(code)
+    expect(wailsErrorCode(rejection)).toBe(code)
+    expect(errorMessage(rejection)).toBe(message)
+  })
+
+  it('does not read codes from the message text', () => {
+    expect(wailsErrorCode(new Error('ERR_CANCELED: cancelado'))).toBe('')
+    expect(wailsErrorCode('canceled')).toBe('')
   })
 })
 
 describe('errorMessage', () => {
   it('reads the message of errors and stringifies anything else', () => {
-    expect(errorMessage(new WailsClientError('ERR_CANCELED: cancelado'))).toBe('ERR_CANCELED: cancelado')
+    expect(errorMessage(new WailsClientError('cancelado', 'canceled'))).toBe('cancelado')
     expect(errorMessage(new Error('boom'))).toBe('boom')
     expect(errorMessage('texto')).toBe('texto')
     expect(errorMessage(undefined)).toBe('undefined')

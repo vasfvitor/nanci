@@ -94,8 +94,9 @@ func main() {
 			BackdropType:      windows.Mica,
 			DisableWindowIcon: false,
 		},
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
+		OnStartup:      app.startup,
+		OnShutdown:     app.shutdown,
+		ErrorFormatter: formatError,
 		Bind: []any{
 			app,
 		},

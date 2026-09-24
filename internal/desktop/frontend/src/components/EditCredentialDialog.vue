@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { CredentialSummary } from '@/types/desktop'
 
 const props = defineProps<{
@@ -74,7 +74,7 @@ async function submit() {
     emit('updated')
     isOpen.value = false
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao atualizar credencial: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar credencial: ' + errorMessage(err) })
   } finally {
     loading.value = false
   }

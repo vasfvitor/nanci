@@ -2,7 +2,7 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CompaniesPage from './CompaniesPage.vue'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, WailsClientError } from '@/platform/wails/client'
 
 const notify = vi.fn()
 
@@ -167,7 +167,7 @@ describe('CompaniesPage sync errors', () => {
   }
 
   it('warns instead of failing when a sync is already running', async () => {
-    await clickSync(new Error('ERR_SYNC_RUNNING: sincronização já em andamento'))
+    await clickSync(new WailsClientError('sincronização já em andamento', 'sync_running'))
 
     expect(notify).toHaveBeenCalledWith({
       type: 'warning',
@@ -177,7 +177,7 @@ describe('CompaniesPage sync errors', () => {
   })
 
   it('warns when the password prompt was cancelled', async () => {
-    await clickSync(new Error('ERR_CANCELED: operação cancelada'))
+    await clickSync(new WailsClientError('operação cancelada', 'canceled'))
 
     expect(notify).toHaveBeenCalledWith({ type: 'warning', message: 'Sincronização cancelada.' })
   })

@@ -8,6 +8,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
+// ErrorPayload is the value a bound method's promise rejects with. Code names
+// the errors the frontend branches on ("canceled", "sefaz_blocked",
+// "sync_running") and is empty for any other error.
+type ErrorPayload struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type StatusResult struct {
 	CompanyName        string
 	CNPJ               string

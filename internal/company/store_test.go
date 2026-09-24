@@ -139,3 +139,63 @@ func TestCompanyStore(t *testing.T) {
 		t.Errorf("Expected ErrCompanyNotFound for non-existent company assignment, got %v", err)
 	}
 }
+
+func TestStoreReadsNFSeInitialSyncFromCompanySyncSources(t *testing.T) {
+	db := storetest.OpenTestDB(t)
+	repo := company.NewStore(db)
+	credRepo := credential.NewStore(db)
+	ctx := context.Background()
+
+	cred := storetest.TestCredential("cred-1")
+	if err := credRepo.CreateCredential(ctx, cred); err != nil {
+		t.Fatal(err)
+	}
+	synced := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
+	nfeOnly := storetest.TestCompany("comp-2", "11222333000262", nfse.EnvironmentRestricted, cred)
+	for _, c := range []*nfse.Company{synced, nfeOnly} {
+		if err := repo.CreateCompany(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	const doneAt = "2026-06-01T10:00:00Z"
+	insertSource := `INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at) VALUES (?, ?, ?, ?)`
+	if _, err := db.ExecContext(ctx, insertSource, string(synced.ID), "nfse", doneAt, doneAt); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, insertSource, string(synced.ID), "nfe", "2026-07-01T10:00:00Z", doneAt); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, insertSource, string(nfeOnly.ID), "nfe", doneAt, doneAt); err != nil {
+		t.Fatal(err)
+	}
+
+	want := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	fetched, err := repo.CompanyByCNPJ(ctx, synced.CNPJ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fetched.InitialSyncDoneAt == nil || !fetched.InitialSyncDoneAt.Equal(want) {
+		t.Errorf("CompanyByCNPJ InitialSyncDoneAt = %v, want %v", fetched.InitialSyncDoneAt, want)
+	}
+
+	list, err := repo.ListCompanies(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("ListCompanies returned %d companies, want 2", len(list))
+	}
+	for _, c := range list {
+		switch c.ID {
+		case synced.ID:
+			if c.InitialSyncDoneAt == nil || !c.InitialSyncDoneAt.Equal(want) {
+				t.Errorf("%s InitialSyncDoneAt = %v, want %v", c.ID, c.InitialSyncDoneAt, want)
+			}
+		case nfeOnly.ID:
+			if c.InitialSyncDoneAt != nil {
+				t.Errorf("%s InitialSyncDoneAt = %v, want nil: only its NF-e initial sync is done", c.ID, c.InitialSyncDoneAt)
+			}
+		}
+	}
+}

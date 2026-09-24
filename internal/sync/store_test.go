@@ -464,17 +464,18 @@ func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
 	if nfseState.InitialSyncDoneAt == nil {
 		t.Error("nfse initial sync was cleared by an nfe reset")
 	}
-	if !companyInitialSyncSet(t, db, company.ID) {
-		t.Error("companies.initial_sync_completed_at was cleared by an nfe reset")
-	}
 	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFe, false)
 	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, true)
 
 	if err := syncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe}); err != nil {
 		t.Fatal(err)
 	}
-	if companyInitialSyncSet(t, db, company.ID) {
-		t.Error("companies.initial_sync_completed_at survived an nfse reset")
+	nfseState, err = syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nfseState.InitialSyncDoneAt != nil {
+		t.Errorf("nfse initial sync after an nfse reset = %v, want nil", nfseState.InitialSyncDoneAt)
 	}
 	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, false)
 }
@@ -527,15 +528,6 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 	if count != 0 || oldest != nil {
 		t.Errorf("RequestsSince for a source without requests = (%d, %v), want (0, nil)", count, oldest)
 	}
-}
-
-func companyInitialSyncSet(t *testing.T, db *sql.DB, companyID nfse.CompanyID) bool {
-	t.Helper()
-	var completedAt sql.NullString
-	if err := db.QueryRowContext(context.Background(), `SELECT initial_sync_completed_at FROM companies WHERE id = ?`, string(companyID)).Scan(&completedAt); err != nil {
-		t.Fatal(err)
-	}
-	return completedAt.Valid
 }
 
 func assertHasSyncState(t *testing.T, syncRepo *sync.Store, companyID nfse.CompanyID, source nfse.SyncSource, want bool) {

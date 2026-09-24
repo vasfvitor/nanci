@@ -159,7 +159,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `013` em `internal/store/migrations_v2/`:
+Migrações `007` a `014` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -168,6 +168,7 @@ Migrações `007` a `013` em `internal/store/migrations_v2/`:
 - `011`: adiciona o `tpAmb` de cada envio de manifestação. Envios anteriores a ela ficam com `tpAmb` vazio.
 - `012`: indexa `company_nfe_documents` por nota, para a redefinição de NF-e.
 - `013`: renomeia `nfe_manifestations` para `nfe_manifestacoes` e o índice `idx_company_nfe_documents_viewed` para `idx_company_nfe_documents_viewed_at`, e recria `sync_requests` com o mesmo `CHECK` de origem das outras tabelas de sincronização.
+- `014`: remove `companies.initial_sync_completed_at`. A carga inicial da NFS-e, mostrada na lista de empresas e usada pela trava da política inicial no desktop, passa a vir só de `company_sync_sources`.
 
 Tabelas de NF-e:
 
@@ -190,8 +191,6 @@ O estado da manifestação em `company_nfe_documents` é derivado dos eventos re
 
 - CT-e pela mesma interface `Source` (`CTeDistribuicaoDFe`), com tabelas e tela próprias.
 - Importação de XML avulso.
-- Mascarar nos logs a chave de 50 caracteres da NFS-e, que também contém a inscrição do emitente (a chave de 44 caracteres da NF-e já é mascarada).
-- Deixar de espelhar `companies.initial_sync_completed_at`: a coluna ainda é atualizada para a NFS-e porque a lista de empresas e a trava da política inicial no desktop a leem; a fonte da verdade é `company_sync_sources`.
 
 ## Atribuição
 

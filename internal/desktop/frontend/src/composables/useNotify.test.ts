@@ -2,6 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { copyToClipboard } from 'quasar'
 import { useNotify } from './useNotify'
+import { WailsClientError } from '@/platform/wails/client'
 
 const notify = vi.fn()
 
@@ -23,9 +24,9 @@ describe('useNotify', () => {
   it('warns about canceled, running and blocked syncs and reports other failures', () => {
     const { notifySyncError } = useNotify()
 
-    notifySyncError('Erro na sincronização', new Error('ERR_CANCELED: senha não informada'))
-    notifySyncError('Erro na sincronização', new Error('ERR_SYNC_RUNNING: em andamento'))
-    notifySyncError('Erro na sincronização', new Error('ERR_SEFAZ_BLOCKED: bloqueado'))
+    notifySyncError('Erro na sincronização', new WailsClientError('senha não informada', 'canceled'))
+    notifySyncError('Erro na sincronização', new WailsClientError('em andamento', 'sync_running'))
+    notifySyncError('Erro na sincronização', { code: 'sefaz_blocked', message: 'bloqueado' })
     notifySyncError('Erro na sincronização', new Error('boom'))
 
     expect(notify.mock.calls.map(([options]) => options)).toEqual([

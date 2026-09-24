@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -8,73 +9,58 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
-func TestDesktopError(t *testing.T) {
+func TestFormatError(t *testing.T) {
 	until := time.Date(2026, 9, 23, 14, 32, 0, 0, time.Local)
 	blocked := &nsync.BlockedError{Source: nfse.SyncSourceNFe, Until: until, Reason: nfse.SyncStopReasonConsumoIndevido}
 
 	tests := []struct {
-		name       string
-		err        error
-		wantPrefix string
-		wantText   string
-		wantIs     error
+		name     string
+		err      error
+		wantCode string
+		wantText string
 	}{
-		{"canceled", fmt.Errorf("carregar certificado: %w", app.ErrOperationCanceled), "ERR_CANCELED: ", "operação cancelada", app.ErrOperationCanceled},
-		{"blocked", fmt.Errorf("pull: %w", blocked), "ERR_SEFAZ_BLOCKED: ", "bloqueada até 23/09/2026 14:32", app.ErrSourceBlocked},
-		{"blocked sentinel", app.ErrSourceBlocked, "ERR_SEFAZ_BLOCKED: ", "bloqueada", app.ErrSourceBlocked},
-		{"sync running", fmt.Errorf("%w (NF-e)", app.ErrSyncRunning), "ERR_SYNC_RUNNING: ", "já em andamento", app.ErrSyncRunning},
+		{"canceled", fmt.Errorf("carregar certificado: %w", app.ErrOperationCanceled), "canceled", "operação cancelada"},
+		{"blocked", fmt.Errorf("pull: %w", blocked), "sefaz_blocked", "bloqueada até 23/09/2026 14:32"},
+		{"blocked sentinel", app.ErrSourceBlocked, "sefaz_blocked", "bloqueada"},
+		{"sync running", fmt.Errorf("%w (NF-e)", app.ErrSyncRunning), "sync_running", "já em andamento"},
+		{"plain", errors.New("empresa não encontrada"), "", "empresa não encontrada"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := desktopError(tt.err)
-			if got == nil {
-				t.Fatal("got nil")
+			got, ok := formatError(tt.err).(desktopapi.ErrorPayload)
+			if !ok {
+				t.Fatalf("formatError returned %T, want desktopapi.ErrorPayload", formatError(tt.err))
 			}
-			msg := got.Error()
-			if !strings.HasPrefix(msg, tt.wantPrefix) {
-				t.Errorf("message %q, want prefix %q", msg, tt.wantPrefix)
+			if got.Code != tt.wantCode {
+				t.Errorf("Code = %q, want %q", got.Code, tt.wantCode)
 			}
-			if !strings.Contains(msg, tt.wantText) {
-				t.Errorf("message %q, want it to contain %q", msg, tt.wantText)
+			if got.Message != tt.err.Error() {
+				t.Errorf("Message = %q, want the original message %q", got.Message, tt.err.Error())
 			}
-			if !errors.Is(got, tt.wantIs) {
-				t.Errorf("errors.Is(%v, %v) = false", got, tt.wantIs)
+			if !strings.Contains(got.Message, tt.wantText) {
+				t.Errorf("Message = %q, want it to contain %q", got.Message, tt.wantText)
 			}
 		})
 	}
 }
 
-func TestDesktopErrorBlockedKeepsDetails(t *testing.T) {
-	blocked := &nsync.BlockedError{Source: nfse.SyncSourceNFe, Until: time.Now().Add(time.Hour)}
-	var target *nsync.BlockedError
-	if !errors.As(desktopError(blocked), &target) || !target.Until.Equal(blocked.Until) {
-		t.Errorf("errors.As lost the *BlockedError")
+func TestFormatErrorJSON(t *testing.T) {
+	// The dispatcher marshals the payload into the callback's error field;
+	// client.ts reads these exact keys.
+	data, err := json.Marshal(formatError(app.ErrOperationCanceled))
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestDesktopErrorNil(t *testing.T) {
-	if err := desktopError(nil); err != nil {
-		t.Errorf("desktopError(nil) = %v, want nil", err)
+	var got map[string]string
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestDesktopErrorPassthrough(t *testing.T) {
-	plain := errors.New("empresa não encontrada")
-	got := desktopError(plain)
-	if !errors.Is(got, plain) || got.Error() != plain.Error() {
-		t.Errorf("desktopError(plain) = %v, want it unchanged", got)
-	}
-}
-
-func TestDesktopErrorCanceledMatchesPullOutput(t *testing.T) {
-	// CompaniesPage matches "ERR_CANCELED" in the message; Pull used to build
-	// it inline with this exact format.
-	want := fmt.Errorf("ERR_CANCELED: %w", app.ErrOperationCanceled).Error()
-	if got := desktopError(app.ErrOperationCanceled).Error(); got != want {
-		t.Errorf("got %q, want %q", got, want)
+	if len(got) != 2 || got["code"] != "canceled" || got["message"] != app.ErrOperationCanceled.Error() {
+		t.Errorf("json = %s, want code and message keys only", data)
 	}
 }

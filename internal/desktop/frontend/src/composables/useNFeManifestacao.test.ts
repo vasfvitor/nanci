@@ -155,8 +155,8 @@ describe('useNFeManifestacao', () => {
     const sending = manifestacao.registerCiencia(['a'])
     expect(manifestacao.isChaveBusy('a')).toBe(true)
 
-    call.reject(new Error('ERR_CANCELED: senha não informada'))
-    await expect(sending).rejects.toThrow('ERR_CANCELED')
+    call.reject(new Error('senha não informada'))
+    await expect(sending).rejects.toThrow('senha não informada')
 
     expect(manifestacao.cienciaInFlight.value).toBeNull()
     expect(manifestacao.isChaveBusy('a')).toBe(false)

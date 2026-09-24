@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pressly/goose/v3"
 
+	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -484,6 +486,84 @@ func TestMigration013RenamesManifestacoesAndChecksSyncRequestSource(t *testing.T
 	for _, name := range []string{"idx_nfe_manifestations_company_chave", "idx_company_nfe_documents_viewed", "idx_sync_requests_window"} {
 		if n := countIndex(name); n != 1 {
 			t.Errorf("index %s after down = %d, want 1", name, n)
+		}
+	}
+}
+
+func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 13); err != nil {
+		t.Fatalf("migrate to version 13: %v", err)
+	}
+
+	const syncedAt = "2026-06-01T10:00:00Z"
+	const mirrorOnlyAt = "2026-05-01T10:00:00Z"
+	const now = "2026-09-01T10:00:00Z"
+	insertCompany := `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, initial_sync_completed_at, created_at, updated_at)
+		VALUES (?, ?, '11222333', ?, 'producao', 'all', ?, ?, ?)
+	`
+	mustExec(t, db, insertCompany, "comp-1", "11222333000181", "A synced", syncedAt, now, now)
+	mustExec(t, db, insertCompany, "comp-2", "11222333000262", "B mirror only", mirrorOnlyAt, now, now)
+	mustExec(t, db, insertCompany, "comp-3", "11222333000343", "C never synced", nil, now, now)
+	mustExec(t, db, `
+		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
+		VALUES ('comp-1', 'nfse', ?, ?), ('comp-3', 'nfe', ?, ?)
+	`, syncedAt, now, syncedAt, now)
+
+	if _, err := provider.UpTo(ctx, 14); err != nil {
+		t.Fatalf("migrate to version 14: %v", err)
+	}
+	var mirrorColumns int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('companies') WHERE name = 'initial_sync_completed_at'`).Scan(&mirrorColumns); err != nil {
+		t.Fatal(err)
+	}
+	if mirrorColumns != 0 {
+		t.Error("companies.initial_sync_completed_at still exists after up")
+	}
+
+	companies, err := store.NewCompanyRepository(db).ListCompanies(ctx)
+	if err != nil {
+		t.Fatalf("list companies after up: %v", err)
+	}
+	wantDone := map[nfse.CompanyID]string{"comp-1": syncedAt, "comp-2": mirrorOnlyAt, "comp-3": ""}
+	if len(companies) != len(wantDone) {
+		t.Fatalf("companies after up = %d, want %d", len(companies), len(wantDone))
+	}
+	for _, c := range companies {
+		var got string
+		if c.InitialSyncDoneAt != nil {
+			got = c.InitialSyncDoneAt.Format(time.RFC3339)
+		}
+		if got != wantDone[c.ID] {
+			t.Errorf("%s NFS-e initial sync = %q, want %q", c.ID, got, wantDone[c.ID])
+		}
+	}
+
+	if _, err := provider.DownTo(ctx, 13); err != nil {
+		t.Fatalf("migrate down to version 13: %v", err)
+	}
+	for id, want := range wantDone {
+		var got sql.NullString
+		if err := db.QueryRowContext(ctx, `SELECT initial_sync_completed_at FROM companies WHERE id = ?`, string(id)).Scan(&got); err != nil {
+			t.Fatalf("read companies.initial_sync_completed_at after down: %v", err)
+		}
+		if got.String != want {
+			t.Errorf("%s companies.initial_sync_completed_at after down = %v, want %q", id, got, want)
 		}
 	}
 }

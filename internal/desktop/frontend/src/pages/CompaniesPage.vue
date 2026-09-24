@@ -126,6 +126,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { useRouter } from 'vue-router'
+import { errorMessage } from '@/platform/wails/client'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useConsoleStore } from '@/stores/console'
@@ -198,7 +199,7 @@ async function reloadData() {
     await companiesApi.loadCredentials()
     await loadCompanies()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + errorMessage(err) })
   }
 }
 
@@ -214,7 +215,7 @@ async function assignCredential(cnpj: string) {
     await loadCompanies()
   } catch (err) {
     selectedCredentials.value[cnpj] = previousCredId
-    $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + String(err) })
+    $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + errorMessage(err) })
   }
 }
 
@@ -253,7 +254,7 @@ function confirmResetSync(company: CompanySummary) {
       })
       await loadCompanies()
     } catch (err) {
-      $q.notify({ type: 'negative', message: 'Erro ao resetar sincronização: ' + String(err) })
+      $q.notify({ type: 'negative', message: 'Erro ao resetar sincronização: ' + errorMessage(err) })
     }
   })
 }

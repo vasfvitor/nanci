@@ -9,7 +9,6 @@ CREATE TABLE companies (
     environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     sync_start_policy TEXT NOT NULL DEFAULT 'from_now' CHECK (sync_start_policy IN ('all', 'since_date', 'from_now')),
     sync_start_date TEXT,
-    initial_sync_completed_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     uf TEXT NOT NULL DEFAULT ''

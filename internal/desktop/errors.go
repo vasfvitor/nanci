@@ -2,26 +2,24 @@ package main
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
-// desktopError tags the errors the frontend branches on. The prefix is parsed
-// by platform/wails/client.ts into WailsClientError.code; the rest of the
-// message is the original error. A blocked source error already names the
-// time the source may be queried again.
-func desktopError(err error) error {
+// formatError is the Wails ErrorFormatter: every error a bound method returns
+// reaches the frontend as the payload built here. platform/wails/client.ts
+// reads Code into WailsClientError.code. A blocked source error already names
+// the time the source may be queried again.
+func formatError(err error) any {
+	payload := desktopapi.ErrorPayload{Message: err.Error()}
 	switch {
-	case err == nil:
-		return nil
 	case errors.Is(err, app.ErrOperationCanceled):
-		return fmt.Errorf("ERR_CANCELED: %w", err)
+		payload.Code = "canceled"
 	case errors.Is(err, app.ErrSourceBlocked):
-		return fmt.Errorf("ERR_SEFAZ_BLOCKED: %w", err)
+		payload.Code = "sefaz_blocked"
 	case errors.Is(err, app.ErrSyncRunning):
-		return fmt.Errorf("ERR_SYNC_RUNNING: %w", err)
-	default:
-		return err
+		payload.Code = "sync_running"
 	}
+	return payload
 }
