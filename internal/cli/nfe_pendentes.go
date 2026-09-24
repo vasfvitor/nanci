@@ -27,7 +27,7 @@ func newNFePendentesCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			}
 			defer cleanup()
 
-			pending, err := application.NFe.ListPendingManifestations(cmd.Context(), app.NFePendingInput{
+			pending, err := application.NFe.ListPendingManifestacoes(cmd.Context(), app.NFePendingInput{
 				CNPJ:          *cnpjFlag,
 				DueWithinDays: vencendoEmFlag,
 			})
@@ -66,7 +66,7 @@ func newNFePendentesCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 }
 
 // pendingAlert is the ALERTA column of `nfe pendentes`.
-func pendingAlert(p app.NFePendingManifestation) string {
+func pendingAlert(p app.NFePendingManifestacao) string {
 	switch {
 	case p.TacitlyConfirmed:
 		return "confirmada tacitamente (prazo expirado)"

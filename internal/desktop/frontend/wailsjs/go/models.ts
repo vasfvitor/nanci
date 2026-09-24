@@ -960,7 +960,7 @@ export namespace desktopapi {
 	    Documents: number;
 	    Events: number;
 	    ExportMarks: number;
-	    ManifestationsKept: number;
+	    ManifestacoesKept: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new NFeResetResult(source);
@@ -974,7 +974,7 @@ export namespace desktopapi {
 	        this.Documents = source["Documents"];
 	        this.Events = source["Events"];
 	        this.ExportMarks = source["ExportMarks"];
-	        this.ManifestationsKept = source["ManifestationsKept"];
+	        this.ManifestacoesKept = source["ManifestacoesKept"];
 	    }
 	}
 	
@@ -1197,12 +1197,12 @@ export namespace desktopapi {
 	        this.ChaveAcesso = source["ChaveAcesso"];
 	    }
 	}
-	export class RegisterCienciaInput {
+	export class RegisterNFeCienciaInput {
 	    CNPJ: string;
 	    ChavesAcesso: string[];
 	
 	    static createFrom(source: any = {}) {
-	        return new RegisterCienciaInput(source);
+	        return new RegisterNFeCienciaInput(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1211,14 +1211,14 @@ export namespace desktopapi {
 	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
-	export class RegisterManifestationInput {
+	export class RegisterNFeManifestacaoInput {
 	    CNPJ: string;
 	    ChaveAcesso: string;
 	    Tipo: string;
 	    Justificativa: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new RegisterManifestationInput(source);
+	        return new RegisterNFeManifestacaoInput(source);
 	    }
 	
 	    constructor(source: any = {}) {

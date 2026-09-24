@@ -127,26 +127,26 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			defer cleanup()
 
 			out := cmd.OutOrStdout()
-			input := app.NFeManifestationInput{
+			input := app.NFeManifestacaoInput{
 				CNPJ:          *cnpjFlag,
 				ChaveAcesso:   string(chave),
 				Tipo:          tipoFlag,
 				Justificativa: justificativaFlag,
 			}
 			if !confirmarFlag {
-				plan, err := application.NFe.PlanManifestation(cmd.Context(), input)
+				plan, err := application.NFe.PlanManifestacao(cmd.Context(), input)
 				if err != nil {
 					return fmt.Errorf("erro: %w", err)
 				}
 				if plan.BlockReason != "" {
 					return errors.New("erro: " + plan.BlockReason)
 				}
-				printNFeManifestationPlan(out, plan)
+				printNFeManifestacaoPlan(out, plan)
 				_, _ = fmt.Fprintln(out, "\nNada foi enviado. Use --confirmar para registrar a manifestação.")
 				return nil
 			}
 
-			outcome, err := application.NFe.RegisterManifestation(cmd.Context(), input)
+			outcome, err := application.NFe.RegisterManifestacao(cmd.Context(), input)
 			if outcome.ChaveAcesso != "" {
 				printNFeOutcomes(out, []app.NFeEventOutcome{outcome})
 			}
@@ -165,9 +165,9 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 	return cmd
 }
 
-// printNFeManifestationPlan prints what `nfe manifestar --confirmar` would
+// printNFeManifestacaoPlan prints what `nfe manifestar --confirmar` would
 // send.
-func printNFeManifestationPlan(out io.Writer, plan app.NFeManifestationPlan) {
+func printNFeManifestacaoPlan(out io.Writer, plan app.NFeManifestacaoPlan) {
 	doc := plan.Document
 	_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", plan.Tipo.Label(), plan.Tipo.TpEvento())
 	_, _ = fmt.Fprintf(out, "Chave de acesso: %s\n", doc.ChaveAcesso)

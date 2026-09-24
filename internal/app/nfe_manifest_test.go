@@ -105,9 +105,9 @@ func (e *nfeTestEnv) seedResumos(count int) []string {
 	return chaves
 }
 
-func (e *nfeTestEnv) manifestationStatuses() map[string]int {
+func (e *nfeTestEnv) manifestacaoStatuses() map[string]int {
 	e.t.Helper()
-	rows, err := e.db.QueryContext(context.Background(), `SELECT status, COUNT(*) FROM nfe_manifestations GROUP BY status`)
+	rows, err := e.db.QueryContext(context.Background(), `SELECT status, COUNT(*) FROM nfe_manifestacoes GROUP BY status`)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -207,12 +207,12 @@ func TestNFeRegisterCienciaSendsLotesOfTwenty(t *testing.T) {
 			t.Fatalf("%s manifestacao = %s, want ciencia", chave, got)
 		}
 	}
-	if got := env.manifestationStatuses(); got[nfe.ManifestationStatusRegistrada] != 45 || len(got) != 1 {
+	if got := env.manifestacaoStatuses(); got[nfe.ManifestacaoStatusRegistrada] != 45 || len(got) != 1 {
 		t.Errorf("stored statuses = %v, want 45 registrada", got)
 	}
 	var tpAmbs, withoutTpAmb int
 	err = env.db.QueryRowContext(context.Background(), `
-		SELECT COUNT(DISTINCT tp_amb), COUNT(*) FILTER (WHERE tp_amb <> ?) FROM nfe_manifestations
+		SELECT COUNT(DISTINCT tp_amb), COUNT(*) FILTER (WHERE tp_amb <> ?) FROM nfe_manifestacoes
 	`, sefaz.TpAmbProducao).Scan(&tpAmbs, &withoutTpAmb)
 	if err != nil {
 		t.Fatal(err)
@@ -276,11 +276,11 @@ func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {
 		t.Errorf("655 events = %+v, %v; want none", events, err)
 	}
 	wantStatuses := map[string]int{
-		nfe.ManifestationStatusRegistrada:   1,
-		nfe.ManifestationStatusJaRegistrada: 1,
-		nfe.ManifestationStatusRejeitada:    2,
+		nfe.ManifestacaoStatusRegistrada:   1,
+		nfe.ManifestacaoStatusJaRegistrada: 1,
+		nfe.ManifestacaoStatusRejeitada:    2,
 	}
-	if got := env.manifestationStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
+	if got := env.manifestacaoStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
 		t.Errorf("stored statuses = %v, want %v", got, wantStatuses)
 	}
 	events, err := env.app.NFe.ListEvents(context.Background(), nfeTestCNPJ, chaves[0])
@@ -327,13 +327,13 @@ func TestNFeRegisterCienciaTransportFailureInterruptsWithoutError(t *testing.T) 
 	if registered != 20 {
 		t.Errorf("documents with ciência = %d, want 20", registered)
 	}
-	wantStatuses := map[string]int{nfe.ManifestationStatusRegistrada: 20, nfe.ManifestationStatusErro: 20}
-	if got := env.manifestationStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
+	wantStatuses := map[string]int{nfe.ManifestacaoStatusRegistrada: 20, nfe.ManifestacaoStatusErro: 20}
+	if got := env.manifestacaoStatuses(); fmt.Sprint(got) != fmt.Sprint(wantStatuses) {
 		t.Errorf("stored statuses = %v, want %v", got, wantStatuses)
 	}
 }
 
-func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
+func TestNFeRegisterManifestacaoValidatesBeforePassword(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()
 	emitida := env.seedResumo(11, "2026-08-21T10:00:00-03:00", nfeTestCNPJ)
@@ -342,21 +342,21 @@ func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
 
 	tests := []struct {
 		name string
-		in   NFeManifestationInput
+		in   NFeManifestacaoInput
 		want string
 	}{
-		{"não realizada without justificativa", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "210240"}, "justificativa inválida"},
-		{"não realizada with a short justificativa", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "nao_realizada", Justificativa: "curta"}, "justificativa inválida"},
-		{"justificativa on confirmação", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "confirmacao", Justificativa: "mercadoria recebida conforme pedido"}, "justificativa só é aceita"},
-		{"ciência", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "210210"}, "ciência em lote"},
-		{"unknown tipo", NFeManifestationInput{ChaveAcesso: nfeChaveProc, Tipo: "aceite"}, "tipo de manifestação inválido"},
-		{"emitente role", NFeManifestationInput{ChaveAcesso: emitida, Tipo: "confirmacao"}, "não é a destinatária"},
-		{"cancelada", NFeManifestationInput{ChaveAcesso: nfeChaveCancelada, Tipo: "desconhecimento"}, "NF-e cancelada"},
+		{"não realizada without justificativa", NFeManifestacaoInput{ChaveAcesso: nfeChaveProc, Tipo: "210240"}, "justificativa inválida"},
+		{"não realizada with a short justificativa", NFeManifestacaoInput{ChaveAcesso: nfeChaveProc, Tipo: "nao_realizada", Justificativa: "curta"}, "justificativa inválida"},
+		{"justificativa on confirmação", NFeManifestacaoInput{ChaveAcesso: nfeChaveProc, Tipo: "confirmacao", Justificativa: "mercadoria recebida conforme pedido"}, "justificativa só é aceita"},
+		{"ciência", NFeManifestacaoInput{ChaveAcesso: nfeChaveProc, Tipo: "210210"}, "ciência em lote"},
+		{"unknown tipo", NFeManifestacaoInput{ChaveAcesso: nfeChaveProc, Tipo: "aceite"}, "tipo de manifestação inválido"},
+		{"emitente role", NFeManifestacaoInput{ChaveAcesso: emitida, Tipo: "confirmacao"}, "não é a destinatária"},
+		{"cancelada", NFeManifestacaoInput{ChaveAcesso: nfeChaveCancelada, Tipo: "desconhecimento"}, "NF-e cancelada"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.in.CNPJ = nfeTestCNPJ
-			_, err := env.app.NFe.RegisterManifestation(ctx, tc.in)
+			_, err := env.app.NFe.RegisterManifestacao(ctx, tc.in)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want %q", err, tc.want)
 			}
@@ -367,7 +367,7 @@ func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
 	}
 
 	justificativa := "Mercadoria nunca foi entregue no endereço"
-	outcome, err := env.app.NFe.RegisterManifestation(ctx, NFeManifestationInput{
+	outcome, err := env.app.NFe.RegisterManifestacao(ctx, NFeManifestacaoInput{
 		CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "nao-realizada", Justificativa: justificativa,
 	})
 	if err != nil {
@@ -388,13 +388,13 @@ func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
 
 	// Once a conclusive manifestação is registered, every conclusive type
 	// is refused before the password prompt, the same one included.
-	for _, in := range []NFeManifestationInput{
+	for _, in := range []NFeManifestacaoInput{
 		{Tipo: "nao_realizada", Justificativa: justificativa},
 		{Tipo: "confirmacao"},
 		{Tipo: "desconhecimento"},
 	} {
 		in.CNPJ, in.ChaveAcesso = nfeTestCNPJ, nfeChaveProc
-		_, err = env.app.NFe.RegisterManifestation(ctx, in)
+		_, err = env.app.NFe.RegisterManifestacao(ctx, in)
 		const want = "NF-e já possui manifestação conclusiva (Operação não realizada)"
 		if err == nil || err.Error() != want {
 			t.Errorf("%s after nao_realizada: %v, want %q", in.Tipo, err, want)
@@ -405,7 +405,7 @@ func TestNFeRegisterManifestationValidatesBeforePassword(t *testing.T) {
 	}
 }
 
-func TestNFePlanManifestationNeedsNoNetworkOrPassword(t *testing.T) {
+func TestNFePlanManifestacaoNeedsNoNetworkOrPassword(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()
 	emitida := env.seedResumo(11, "2026-08-21T10:00:00-03:00", nfeTestCNPJ)
@@ -413,13 +413,13 @@ func TestNFePlanManifestationNeedsNoNetworkOrPassword(t *testing.T) {
 	ctx := context.Background()
 	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-09-15T12:00:00-03:00") }
 
-	plan, err := env.app.NFe.PlanManifestation(ctx, NFeManifestationInput{
+	plan, err := env.app.NFe.PlanManifestacao(ctx, NFeManifestacaoInput{
 		CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "nao-realizada", Justificativa: "  Mercadoria nunca\tfoi entregue  ",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plan.Tipo != nfe.ManifestationNaoRealizada || plan.Justificativa != "Mercadoria nunca foi entregue" ||
+	if plan.Tipo != nfe.TipoManifestacaoNaoRealizada || plan.Justificativa != "Mercadoria nunca foi entregue" ||
 		string(plan.Document.ChaveAcesso) != nfeChaveProc || plan.BlockReason != "" {
 		t.Errorf("plan = %+v", plan)
 	}
@@ -428,7 +428,7 @@ func TestNFePlanManifestationNeedsNoNetworkOrPassword(t *testing.T) {
 	}
 
 	env.app.NFe.now = func() time.Time { return mustTime(t, "2027-01-15T12:00:00-03:00") }
-	late, err := env.app.NFe.PlanManifestation(ctx, NFeManifestationInput{CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "confirmacao"})
+	late, err := env.app.NFe.PlanManifestacao(ctx, NFeManifestacaoInput{CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveProc, Tipo: "confirmacao"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func TestNFePlanManifestationNeedsNoNetworkOrPassword(t *testing.T) {
 		t.Errorf("late plan: days left %d, tacitly confirmed %v, block %q", late.DaysLeft, late.TacitlyConfirmed, late.BlockReason)
 	}
 
-	blocked, err := env.app.NFe.PlanManifestation(ctx, NFeManifestationInput{CNPJ: nfeTestCNPJ, ChaveAcesso: emitida, Tipo: "confirmacao"})
+	blocked, err := env.app.NFe.PlanManifestacao(ctx, NFeManifestacaoInput{CNPJ: nfeTestCNPJ, ChaveAcesso: emitida, Tipo: "confirmacao"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -247,7 +247,7 @@ func TestMigration009AddsCompanyUF(t *testing.T) {
 	}
 }
 
-func TestMigration011AddsManifestationTpAmb(t *testing.T) {
+func TestMigration011AddsManifestacaoTpAmb(t *testing.T) {
 	ctx := context.Background()
 	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
 	if err != nil {
@@ -345,6 +345,89 @@ func TestMigration012IndexesCompanyNFeDocumentsByDocument(t *testing.T) {
 	}
 	if n := countIndex(); n != 0 {
 		t.Errorf("idx_company_nfe_documents_document after down = %d, want 0", n)
+	}
+}
+
+func TestMigration013RenamesManifestacoesAndChecksSyncRequestSource(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 12); err != nil {
+		t.Fatalf("migrate to version 12: %v", err)
+	}
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	mustExec(t, db, `
+		INSERT INTO nfe_manifestations (id, company_id, chave_acesso, tp_evento, n_seq_evento, justificativa,
+			id_lote, status, c_stat, x_motivo, protocolo, created_at, tp_amb)
+		VALUES ('m-1', 'comp-1', '35260911222333000181550010000012341123456787', '210210', 1, '',
+			'1', 'registrada', '135', 'Evento registrado', '891260000000001', ?, '1')
+	`, now)
+	mustExec(t, db, `INSERT INTO sync_requests (company_id, source, requested_at) VALUES ('comp-1', 'nfe', ?)`, now)
+
+	countIndex := func(name string) int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?`, name).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	countRows := func(table string) int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(&n); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 13); err != nil {
+		t.Fatalf("migrate to version 13: %v", err)
+	}
+	if n := countRows("nfe_manifestacoes"); n != 1 {
+		t.Errorf("nfe_manifestacoes rows = %d, want 1", n)
+	}
+	if n := countRows("sync_requests"); n != 1 {
+		t.Errorf("sync_requests rows = %d, want 1", n)
+	}
+	for _, name := range []string{"idx_nfe_manifestacoes_company_chave", "idx_company_nfe_documents_viewed_at", "idx_sync_requests_window"} {
+		if n := countIndex(name); n != 1 {
+			t.Errorf("index %s after up = %d, want 1", name, n)
+		}
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO sync_requests (company_id, source, requested_at) VALUES ('comp-1', 'bogus', ?)`, now); err == nil {
+		t.Error("sync_requests accepted source 'bogus' after up, want a CHECK failure")
+	}
+
+	if _, err := provider.DownTo(ctx, 12); err != nil {
+		t.Fatalf("migrate down to version 12: %v", err)
+	}
+	if n := countRows("nfe_manifestations"); n != 1 {
+		t.Errorf("nfe_manifestations rows after down = %d, want 1", n)
+	}
+	if n := countRows("sync_requests"); n != 1 {
+		t.Errorf("sync_requests rows after down = %d, want 1", n)
+	}
+	for _, name := range []string{"idx_nfe_manifestations_company_chave", "idx_company_nfe_documents_viewed", "idx_sync_requests_window"} {
+		if n := countIndex(name); n != 1 {
+			t.Errorf("index %s after down = %d, want 1", name, n)
+		}
 	}
 }
 

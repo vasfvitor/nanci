@@ -317,7 +317,7 @@ export type NFePendingInput = {
   DueWithinDays: number
 }
 
-export type RegisterCienciaInput = {
+export type RegisterNFeCienciaInput = {
   CNPJ: string
   ChavesAcesso: string[]
 }
@@ -332,7 +332,7 @@ export type NFeCienciaPlan = {
   Skipped: NFeSkipped[]
 }
 
-export type RegisterManifestationInput = {
+export type RegisterNFeManifestacaoInput = {
   CNPJ: string
   ChaveAcesso: string
   Tipo: NFeConclusiveTipo
@@ -365,7 +365,7 @@ export type NFeResetResult = {
   Documents: number
   Events: number
   ExportMarks: number
-  ManifestationsKept: number
+  ManifestacoesKept: number
 }
 
 export type PullNFeInput = {

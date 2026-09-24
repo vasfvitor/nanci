@@ -12,48 +12,48 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-// ManifestationType is a manifestação do destinatário nanci can send.
-type ManifestationType string
+// TipoManifestacao is a manifestação do destinatário nanci can send.
+type TipoManifestacao string
 
 const (
-	ManifestationCiencia         ManifestationType = "ciencia"
-	ManifestationConfirmacao     ManifestationType = "confirmacao"
-	ManifestationDesconhecimento ManifestationType = "desconhecimento"
-	ManifestationNaoRealizada    ManifestationType = "nao_realizada"
+	TipoManifestacaoCiencia         TipoManifestacao = "ciencia"
+	TipoManifestacaoConfirmacao     TipoManifestacao = "confirmacao"
+	TipoManifestacaoDesconhecimento TipoManifestacao = "desconhecimento"
+	TipoManifestacaoNaoRealizada    TipoManifestacao = "nao_realizada"
 )
 
-// ParseManifestationType reads a manifestação type by name or by tpEvento
+// ParseTipoManifestacao reads a manifestação type by name or by tpEvento
 // code, ignoring case and surrounding spaces. "nao-realizada" is accepted as
 // nao_realizada.
-func ParseManifestationType(val string) (ManifestationType, error) {
+func ParseTipoManifestacao(val string) (TipoManifestacao, error) {
 	switch strings.ToLower(strings.TrimSpace(val)) {
-	case string(ManifestationCiencia), TpEventoCiencia:
-		return ManifestationCiencia, nil
-	case string(ManifestationConfirmacao), TpEventoConfirmacao:
-		return ManifestationConfirmacao, nil
-	case string(ManifestationDesconhecimento), TpEventoDesconhecimento:
-		return ManifestationDesconhecimento, nil
-	case string(ManifestationNaoRealizada), "nao-realizada", TpEventoNaoRealizada:
-		return ManifestationNaoRealizada, nil
+	case string(TipoManifestacaoCiencia), TpEventoCiencia:
+		return TipoManifestacaoCiencia, nil
+	case string(TipoManifestacaoConfirmacao), TpEventoConfirmacao:
+		return TipoManifestacaoConfirmacao, nil
+	case string(TipoManifestacaoDesconhecimento), TpEventoDesconhecimento:
+		return TipoManifestacaoDesconhecimento, nil
+	case string(TipoManifestacaoNaoRealizada), "nao-realizada", TpEventoNaoRealizada:
+		return TipoManifestacaoNaoRealizada, nil
 	default:
-		return "", fmt.Errorf("invalid manifestation type %q: %w", val, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid tipo manifestacao %q: %w", val, nfse.ErrInvalidEnum)
 	}
 }
 
-func (t ManifestationType) Valid() bool {
+func (t TipoManifestacao) Valid() bool {
 	return t.TpEvento() != ""
 }
 
 // TpEvento returns the tpEvento code, or "" for an invalid type.
-func (t ManifestationType) TpEvento() string {
+func (t TipoManifestacao) TpEvento() string {
 	switch t {
-	case ManifestationCiencia:
+	case TipoManifestacaoCiencia:
 		return TpEventoCiencia
-	case ManifestationConfirmacao:
+	case TipoManifestacaoConfirmacao:
 		return TpEventoConfirmacao
-	case ManifestationDesconhecimento:
+	case TipoManifestacaoDesconhecimento:
 		return TpEventoDesconhecimento
-	case ManifestationNaoRealizada:
+	case TipoManifestacaoNaoRealizada:
 		return TpEventoNaoRealizada
 	default:
 		return ""
@@ -63,15 +63,15 @@ func (t ManifestationType) TpEvento() string {
 // DescEvento returns the descEvento text required by the event schema. The
 // schema enumerates these strings without accents, so they must be sent
 // exactly like this.
-func (t ManifestationType) DescEvento() string {
+func (t TipoManifestacao) DescEvento() string {
 	switch t {
-	case ManifestationCiencia:
+	case TipoManifestacaoCiencia:
 		return "Ciencia da Operacao"
-	case ManifestationConfirmacao:
+	case TipoManifestacaoConfirmacao:
 		return "Confirmacao da Operacao"
-	case ManifestationDesconhecimento:
+	case TipoManifestacaoDesconhecimento:
 		return "Desconhecimento da Operacao"
-	case ManifestationNaoRealizada:
+	case TipoManifestacaoNaoRealizada:
 		return "Operacao nao Realizada"
 	default:
 		return ""
@@ -80,15 +80,15 @@ func (t ManifestationType) DescEvento() string {
 
 // Label returns the name of the event shown to the user, or "" for an
 // invalid type.
-func (t ManifestationType) Label() string {
+func (t TipoManifestacao) Label() string {
 	switch t {
-	case ManifestationCiencia:
+	case TipoManifestacaoCiencia:
 		return "Ciência da Operação"
-	case ManifestationConfirmacao:
+	case TipoManifestacaoConfirmacao:
 		return "Confirmação da Operação"
-	case ManifestationDesconhecimento:
+	case TipoManifestacaoDesconhecimento:
 		return "Desconhecimento da Operação"
-	case ManifestationNaoRealizada:
+	case TipoManifestacaoNaoRealizada:
 		return "Operação não Realizada"
 	default:
 		return ""
@@ -188,9 +188,9 @@ type Deadlines struct {
 	ConclusiveDue time.Time
 }
 
-// ManifestationDeadlines computes the deadlines from AuthorizedAt, falling
+// ManifestacaoPrazos computes the deadlines from AuthorizedAt, falling
 // back to IssueDate.
-func ManifestationDeadlines(doc Document) Deadlines {
+func ManifestacaoPrazos(doc Document) Deadlines {
 	var start time.Time
 	switch {
 	case doc.AuthorizedAt != nil:
@@ -222,7 +222,7 @@ func TacitlyConfirmed(doc CompanyDocument, now time.Time) bool {
 	if doc.Manifestacao != ManifestacaoNenhuma && doc.Manifestacao != ManifestacaoCiencia {
 		return false
 	}
-	due := ManifestationDeadlines(doc.Document).ConclusiveDue
+	due := ManifestacaoPrazos(doc.Document).ConclusiveDue
 	return !due.IsZero() && now.After(due)
 }
 
@@ -247,14 +247,14 @@ const (
 // against tipo. Operação não Realizada requires 15 to 255 characters; every
 // other type rejects a non-empty justificativa. It returns the cleaned text,
 // or an error whose message can be shown to the user.
-func ValidateJustificativa(tipo ManifestationType, xJust string) (string, error) {
+func ValidateJustificativa(tipo TipoManifestacao, xJust string) (string, error) {
 	if !tipo.Valid() {
-		return "", fmt.Errorf("invalid manifestation type %q: %w", tipo, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("tipo de manifestação inválido %q: %w", tipo, nfse.ErrInvalidEnum)
 	}
 	cleaned := cleanText(xJust)
 	length := utf8.RuneCountInString(cleaned)
 
-	if tipo != ManifestationNaoRealizada {
+	if tipo != TipoManifestacaoNaoRealizada {
 		if length > 0 {
 			return "", errors.New("justificativa só é aceita para operação não realizada")
 		}

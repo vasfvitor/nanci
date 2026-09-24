@@ -44,7 +44,7 @@ RETURNING id;
 -- name: UpdateNFeSituacao :exec
 UPDATE nfe_documents SET situacao = ?, updated_at = ? WHERE chave_acesso = ?;
 
--- name: CompanyNFeDocumentExists :one
+-- name: HasCompanyNFeDocument :one
 SELECT COUNT(*) FROM company_nfe_documents cd
 INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
 WHERE cd.company_id = ? AND d.chave_acesso = ?;
@@ -78,7 +78,7 @@ WHERE d.chave_acesso = ?;
 -- name: UpdateCompanyNFeManifestacao :exec
 UPDATE company_nfe_documents SET manifestacao = ?, manifestacao_at = ? WHERE relation_id = ?;
 
--- name: NFeEventExists :one
+-- name: HasNFeEvent :one
 SELECT COUNT(*) FROM nfe_events WHERE chave_acesso = ? AND tp_evento = ? AND n_seq_evento = ?;
 
 -- name: UpsertNFeEvent :exec
@@ -117,8 +117,8 @@ SELECT * FROM nfe_events
 WHERE chave_acesso = ?
 ORDER BY COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento;
 
--- name: InsertNFeManifestation :exec
-INSERT INTO nfe_manifestations (
+-- name: InsertNFeManifestacao :exec
+INSERT INTO nfe_manifestacoes (
     id, company_id, chave_acesso, tp_evento, n_seq_evento, justificativa, id_lote,
     status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at,
     tp_amb

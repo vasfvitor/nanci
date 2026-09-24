@@ -157,11 +157,11 @@ func (e *nfeTestRoot) seed(fixture string, nsu int64) {
 	}
 }
 
-// manifestationCount is how many manifestação events nanci recorded as sent.
-func (e *nfeTestRoot) manifestationCount() int {
+// manifestacaoCount is how many manifestação events nanci recorded as sent.
+func (e *nfeTestRoot) manifestacaoCount() int {
 	e.t.Helper()
 	var count int
-	if err := e.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM nfe_manifestations`).Scan(&count); err != nil {
+	if err := e.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM nfe_manifestacoes`).Scan(&count); err != nil {
 		e.t.Fatal(err)
 	}
 	return count
@@ -209,7 +209,7 @@ func TestNFeManifestar_ValidatesJustificativa(t *testing.T) {
 	}
 }
 
-func TestNFeManifestationDryRunSendsNothing(t *testing.T) {
+func TestNFeManifestacaoDryRunSendsNothing(t *testing.T) {
 	env := newNFeTestRoot(t)
 	env.seed("resnfe.xml", 1)
 
@@ -238,7 +238,7 @@ func TestNFeManifestationDryRunSendsNothing(t *testing.T) {
 	if env.passwords.requests != 0 {
 		t.Errorf("password requests = %d, want 0", env.passwords.requests)
 	}
-	if n := env.manifestationCount(); n != 0 {
+	if n := env.manifestacaoCount(); n != 0 {
 		t.Errorf("manifestações recorded = %d, want 0", n)
 	}
 }
@@ -247,7 +247,7 @@ func TestNFeManifestarDryRunRefusesSecondConclusive(t *testing.T) {
 	env := newNFeTestRoot(t)
 	env.seed("procnfe.xml", 1)
 	registeredAt := time.Date(2026, 9, 10, 15, 0, 0, 0, time.UTC)
-	err := env.repo.RecordManifestations(context.Background(), []nfe.ManifestationRecord{{
+	err := env.repo.RecordManifestacoes(context.Background(), []nfe.ManifestacaoRecord{{
 		CompanyID:    env.company.ID,
 		CompanyCNPJ:  env.company.CNPJ,
 		IDLote:       "1",
@@ -256,7 +256,7 @@ func TestNFeManifestarDryRunRefusesSecondConclusive(t *testing.T) {
 		TpEvento:     nfe.TpEventoConfirmacao,
 		NSeqEvento:   1,
 		EventAt:      &registeredAt,
-		Status:       nfe.ManifestationStatusRegistrada,
+		Status:       nfe.ManifestacaoStatusRegistrada,
 		CStat:        "135",
 		Protocolo:    "891260000000099",
 		RegisteredAt: &registeredAt,
@@ -264,7 +264,7 @@ func TestNFeManifestarDryRunRefusesSecondConclusive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recorded := env.manifestationCount()
+	recorded := env.manifestacaoCount()
 
 	for _, args := range [][]string{
 		{"--tipo", "confirmacao"},
@@ -283,7 +283,7 @@ func TestNFeManifestarDryRunRefusesSecondConclusive(t *testing.T) {
 	if env.passwords.requests != 0 {
 		t.Errorf("password requests = %d, want 0", env.passwords.requests)
 	}
-	if n := env.manifestationCount(); n != recorded {
+	if n := env.manifestacaoCount(); n != recorded {
 		t.Errorf("manifestações recorded = %d, want %d", n, recorded)
 	}
 }
@@ -352,12 +352,12 @@ func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 func TestPendingAlert(t *testing.T) {
 	tests := []struct {
 		name string
-		p    app.NFePendingManifestation
+		p    app.NFePendingManifestacao
 		want string
 	}{
-		{"expired", app.NFePendingManifestation{NFeDocument: app.NFeDocument{TacitlyConfirmed: true}, CienciaOverdue: true}, "confirmada tacitamente (prazo expirado)"},
-		{"ciência overdue", app.NFePendingManifestation{CienciaOverdue: true}, "ciência atrasada"},
-		{"on time", app.NFePendingManifestation{}, "-"},
+		{"expired", app.NFePendingManifestacao{NFeDocument: app.NFeDocument{TacitlyConfirmed: true}, CienciaOverdue: true}, "confirmada tacitamente (prazo expirado)"},
+		{"ciência overdue", app.NFePendingManifestacao{CienciaOverdue: true}, "ciência atrasada"},
+		{"on time", app.NFePendingManifestacao{}, "-"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

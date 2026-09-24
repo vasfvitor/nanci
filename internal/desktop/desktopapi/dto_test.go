@@ -100,7 +100,7 @@ func TestNFeRows(t *testing.T) {
 
 func TestNFePendingRows(t *testing.T) {
 	conclusive := time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC)
-	rows := NFePendingRows([]app.NFePendingManifestation{{
+	rows := NFePendingRows([]app.NFePendingManifestacao{{
 		NFeDocument: app.NFeDocument{
 			CompanyDocument: nfe.CompanyDocument{
 				Document: nfe.Document{
@@ -139,9 +139,9 @@ func TestNFePendingRows(t *testing.T) {
 	}
 }
 
-func TestNFeEventBatch(t *testing.T) {
+func TestNFeEventResults(t *testing.T) {
 	registeredAt := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
-	got := NFeEventBatch(app.NFeManifestationSummary{
+	got := NFeEventResults(app.NFeManifestacaoSummary{
 		Outcomes: []app.NFeEventOutcome{
 			{ChaveAcesso: "a", TpEvento: "210210", Status: app.NFeOutcomeRegistrada, CStat: "135", Protocolo: "p1", RegisteredAt: &registeredAt},
 			{ChaveAcesso: "b", TpEvento: "210210", Status: app.NFeOutcomeJaRegistrada, CStat: "573"},
@@ -173,16 +173,42 @@ func TestNFeEventBatch(t *testing.T) {
 	}
 }
 
-func TestNFeEventBatchEmptyListsAreNotNil(t *testing.T) {
-	got := NFeEventBatch(app.NFeManifestationSummary{})
+func TestNFeEventResultsEmptyListsAreNotNil(t *testing.T) {
+	got := NFeEventResults(app.NFeManifestacaoSummary{})
 	if got.Results == nil || got.Skipped == nil {
 		t.Errorf("Results = %v, Skipped = %v, want empty slices so the frontend gets []", got.Results, got.Skipped)
 	}
 }
 
-func TestNFeCienciaPlanDTO(t *testing.T) {
+func TestNFeEventResultFrom(t *testing.T) {
+	registeredAt := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
+	outcome := app.NFeEventOutcome{
+		ChaveAcesso:  "a",
+		TpEvento:     "210200",
+		Status:       "registrada",
+		CStat:        "135",
+		XMotivo:      "Evento registrado",
+		Protocolo:    "p1",
+		RegisteredAt: &registeredAt,
+	}
+	got := NFeEventResultFrom(outcome)
+	want := NFeEventResult{
+		ChaveAcesso:  "a",
+		TpEvento:     "210200",
+		Status:       "registrada",
+		CStat:        "135",
+		XMotivo:      "Evento registrado",
+		Protocolo:    "p1",
+		RegisteredAt: &registeredAt,
+	}
+	if got != want {
+		t.Errorf("NFeEventResultFrom = %+v, want %+v", got, want)
+	}
+}
+
+func TestNFeCienciaPlanFrom(t *testing.T) {
 	due := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
-	got := NFeCienciaPlanDTO(app.NFeCienciaPlan{
+	got := NFeCienciaPlanFrom(app.NFeCienciaPlan{
 		Eligible: []app.NFeDocument{{
 			CompanyDocument: nfe.CompanyDocument{Document: nfe.Document{ChaveAcesso: "a", TotalValue: nfse.NewMoneyFromCents(5050)}},
 			Deadlines:       nfe.Deadlines{CienciaDue: due},

@@ -19,16 +19,16 @@ import {
   ListEventsForDocument,
   ListNFe,
   ListNFeEvents,
-  ListPendingManifestations,
+  ListNFePendingManifestacoes,
   MarkDocumentsViewed,
   OpenDataDirectory,
   OpenLogsDirectory,
-  PlanCiencia,
+  PlanNFeCiencia,
   Pull,
   PullNFe,
   QueryNFSeEvents,
-  RegisterCiencia,
-  RegisterManifestation,
+  RegisterNFeCiencia,
+  RegisterNFeManifestacao,
   ResetNFe,
   ResetSyncState,
   SelectCertificate,
@@ -82,7 +82,7 @@ import type {
   PullNFeResult,
   PullResult,
   QueryNFSeInput,
-  RegisterManifestationInput,
+  RegisterNFeManifestacaoInput,
   ResetSyncInput,
   UpdateCompanyInput,
   UpdateCredentialDataInput,
@@ -483,7 +483,7 @@ export function mapNFeResetResult(raw: unknown): NFeResetResult {
     Documents: asNumber(item['Documents']),
     Events: asNumber(item['Events']),
     ExportMarks: asNumber(item['ExportMarks']),
-    ManifestationsKept: asNumber(item['ManifestationsKept']),
+    ManifestacoesKept: asNumber(item['ManifestacoesKept']),
   }
 }
 
@@ -673,20 +673,20 @@ export const desktopClient = {
   // dueWithinDays 0 lists every pending manifestação.
   async listPendingManifestations(cnpj: string, dueWithinDays = 0): Promise<NFePendingRow[]> {
     const res = await callWails(() =>
-      ListPendingManifestations({ CNPJ: cnpj, DueWithinDays: dueWithinDays })
+      ListNFePendingManifestacoes({ CNPJ: cnpj, DueWithinDays: dueWithinDays })
     )
     return (res || []).map(mapNFePendingRow)
   },
   async planCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeCienciaPlan> {
-    const res = await callWails(() => PlanCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
+    const res = await callWails(() => PlanNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
     return mapNFeCienciaPlan(res)
   },
   async registerCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeEventBatchResult> {
-    const res = await callWails(() => RegisterCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
+    const res = await callWails(() => RegisterNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
     return mapNFeEventBatchResult(res)
   },
-  async registerManifestation(input: RegisterManifestationInput): Promise<NFeEventResult> {
-    const res = await callWails(() => RegisterManifestation(input))
+  async registerManifestation(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
+    const res = await callWails(() => RegisterNFeManifestacao(input))
     return mapNFeEventResult(res)
   },
   async exportNFeXML(

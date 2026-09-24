@@ -63,7 +63,7 @@ func printNFeResetCounts(out io.Writer, result app.NFeResetResult, verb string) 
 	_, _ = fmt.Fprintf(out, "  Documentos que nenhuma outra empresa vê (%s): %d\n", verb, result.Documents)
 	_, _ = fmt.Fprintf(out, "  Eventos (%s): %d\n", verb, result.Events)
 	_, _ = fmt.Fprintf(out, "  Marcas de exportação (%s): %d\n", verb, result.ExportMarks)
-	_, _ = fmt.Fprintf(out, "  Manifestações enviadas mantidas no histórico: %d\n", result.ManifestationsKept)
+	_, _ = fmt.Fprintf(out, "  Manifestações enviadas mantidas no histórico: %d\n", result.ManifestacoesKept)
 	_, _ = fmt.Fprintln(out, "O cursor NF-e volta ao NSU 0; um bloqueio da SEFAZ em vigor continua valendo.")
 	_, _ = fmt.Fprintln(out, "As manifestações registradas na SEFAZ não são afetadas.")
 }

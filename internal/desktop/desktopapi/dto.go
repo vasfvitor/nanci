@@ -435,8 +435,8 @@ type NFePendingRow struct {
 	CienciaOverdue bool   // no manifestação and CienciaDue has passed
 }
 
-// RegisterCienciaInput selects the NF-e for Ciência da Operação.
-type RegisterCienciaInput struct {
+// RegisterNFeCienciaInput selects the NF-e for Ciência da Operação.
+type RegisterNFeCienciaInput struct {
 	CNPJ         string
 	ChavesAcesso []string
 }
@@ -447,15 +447,15 @@ type NFeSkipped struct {
 	Reason      string
 }
 
-// NFeCienciaPlan is what RegisterCiencia would send, for the confirmation
+// NFeCienciaPlan is what RegisterNFeCiencia would send, for the confirmation
 // dialog.
 type NFeCienciaPlan struct {
 	Eligible []NFeRow
 	Skipped  []NFeSkipped
 }
 
-// RegisterManifestationInput is one conclusive manifestação.
-type RegisterManifestationInput struct {
+// RegisterNFeManifestacaoInput is one conclusive manifestação.
+type RegisterNFeManifestacaoInput struct {
 	CNPJ        string
 	ChaveAcesso string
 	// Tipo is confirmacao, desconhecimento or nao_realizada, or the tpEvento
@@ -475,7 +475,7 @@ type NFeEventResult struct {
 	RegisteredAt *time.Time
 }
 
-// NFeEventBatchResult is the result of RegisterCiencia: one result per
+// NFeEventBatchResult is the result of RegisterNFeCiencia: one result per
 // eligible chave, in the order sent.
 type NFeEventBatchResult struct {
 	Results []NFeEventResult
@@ -534,13 +534,13 @@ type NFeStatusResult struct {
 // NFeResetResult is what ResetNFe removed for one company. The manifestações
 // sent stay as the audit trail.
 type NFeResetResult struct {
-	CompanyName        string
-	CNPJ               string
-	CompanyDocuments   int // the company's notes
-	Documents          int // notes no other company sees
-	Events             int
-	ExportMarks        int
-	ManifestationsKept int
+	CompanyName       string
+	CNPJ              string
+	CompanyDocuments  int // the company's notes
+	Documents         int // notes no other company sees
+	Events            int
+	ExportMarks       int
+	ManifestacoesKept int
 }
 
 type ExportNFeXMLInput struct {
@@ -635,7 +635,7 @@ func NFeEvents(events []nfe.Event) []NFeEvent {
 	return out
 }
 
-func NFePendingRows(pending []app.NFePendingManifestation) []NFePendingRow {
+func NFePendingRows(pending []app.NFePendingManifestacao) []NFePendingRow {
 	out := make([]NFePendingRow, len(pending))
 	for i, p := range pending {
 		out[i] = NFePendingRow{
@@ -647,22 +647,34 @@ func NFePendingRows(pending []app.NFePendingManifestation) []NFePendingRow {
 	return out
 }
 
-func NFeCienciaPlanDTO(plan app.NFeCienciaPlan) NFeCienciaPlan {
+func NFeCienciaPlanFrom(plan app.NFeCienciaPlan) NFeCienciaPlan {
 	return NFeCienciaPlan{
 		Eligible: NFeRows(plan.Eligible),
 		Skipped:  nfeSkipped(plan.Skipped),
 	}
 }
 
-func NFeEventBatch(summary app.NFeManifestationSummary) NFeEventBatchResult {
+func NFeEventResults(summary app.NFeManifestacaoSummary) NFeEventBatchResult {
 	results := make([]NFeEventResult, len(summary.Outcomes))
 	for i, outcome := range summary.Outcomes {
-		results[i] = NFeEventResult(outcome)
+		results[i] = NFeEventResultFrom(outcome)
 	}
 	return NFeEventBatchResult{
 		Results:     results,
 		Skipped:     nfeSkipped(summary.Skipped),
 		Interrupted: summary.Interrupted,
+	}
+}
+
+func NFeEventResultFrom(outcome app.NFeEventOutcome) NFeEventResult {
+	return NFeEventResult{
+		ChaveAcesso:  outcome.ChaveAcesso,
+		TpEvento:     outcome.TpEvento,
+		Status:       outcome.Status,
+		CStat:        outcome.CStat,
+		XMotivo:      outcome.XMotivo,
+		Protocolo:    outcome.Protocolo,
+		RegisteredAt: outcome.RegisteredAt,
 	}
 }
 

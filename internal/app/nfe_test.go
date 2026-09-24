@@ -318,7 +318,7 @@ func TestNFeStatusCounts(t *testing.T) {
 	}
 }
 
-func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
+func TestNFeListPendingManifestacaosOrderAndFlags(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()
 	early := env.seedResumo(10, "2026-08-20T10:00:00-03:00", "11222333000181")
@@ -326,7 +326,7 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 	ctx := context.Background()
 
 	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-09-15T12:00:00-03:00") }
-	pending, err := env.app.NFe.ListPendingManifestations(ctx, NFePendingInput{CNPJ: nfeTestCNPJ})
+	pending, err := env.app.NFe.ListPendingManifestacoes(ctx, NFePendingInput{CNPJ: nfeTestCNPJ})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 			second.Kind, second.CienciaOverdue, second.Manifestacao)
 	}
 
-	due, err := env.app.NFe.ListPendingManifestations(ctx, NFePendingInput{CNPJ: nfeTestCNPJ, DueWithinDays: 70})
+	due, err := env.app.NFe.ListPendingManifestacoes(ctx, NFePendingInput{CNPJ: nfeTestCNPJ, DueWithinDays: 70})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func TestNFeListPendingManifestationsOrderAndFlags(t *testing.T) {
 	}
 
 	env.app.NFe.now = func() time.Time { return mustTime(t, "2026-12-01T12:00:00-03:00") }
-	expired, err := env.app.NFe.ListPendingManifestations(ctx, NFePendingInput{CNPJ: nfeTestCNPJ})
+	expired, err := env.app.NFe.ListPendingManifestacoes(ctx, NFePendingInput{CNPJ: nfeTestCNPJ})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,7 +494,7 @@ func TestNFeTestConnectionOnlyChecksTLS(t *testing.T) {
 	}
 }
 
-func TestNFeListDocumentsDerivesManifestationState(t *testing.T) {
+func TestNFeListDocumentsDerivesManifestacaoState(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()
 	ctx := context.Background()

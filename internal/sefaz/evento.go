@@ -76,7 +76,7 @@ type Evento struct {
 	// CNPJ is the destinatário, which must share its CNPJ-Base with the
 	// signing certificate.
 	CNPJ string
-	// TpEvento and DescEvento come from nfe.ManifestationType.
+	// TpEvento and DescEvento come from nfe.TipoManifestacao.
 	TpEvento   string
 	DescEvento string
 	// NSeqEvento is 1 for the first evento of a type on a key.

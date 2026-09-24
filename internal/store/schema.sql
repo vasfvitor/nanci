@@ -159,7 +159,7 @@ CREATE TABLE company_sync_sources (
 CREATE TABLE sync_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id TEXT NOT NULL REFERENCES companies(id),
-    source TEXT NOT NULL,
+    source TEXT NOT NULL CHECK (source IN ('nfse', 'nfe', 'cte')),
     requested_at TEXT NOT NULL
 );
 
@@ -215,7 +215,7 @@ CREATE TABLE company_nfe_documents (
     viewed_at TEXT,
     UNIQUE (company_id, nfe_document_id)
 );
-CREATE INDEX idx_company_nfe_documents_viewed ON company_nfe_documents(company_id, viewed_at);
+CREATE INDEX idx_company_nfe_documents_viewed_at ON company_nfe_documents(company_id, viewed_at);
 CREATE INDEX idx_company_nfe_documents_manifestacao ON company_nfe_documents(company_id, manifestacao);
 CREATE INDEX idx_company_nfe_documents_document ON company_nfe_documents(nfe_document_id);
 
@@ -250,7 +250,7 @@ CREATE TABLE nfe_events (
 
 -- Outbound manifestação attempts (audit and error display). Registered ones
 -- also land in nfe_events.
-CREATE TABLE nfe_manifestations (
+CREATE TABLE nfe_manifestacoes (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES companies(id),
     chave_acesso TEXT NOT NULL,
@@ -268,7 +268,7 @@ CREATE TABLE nfe_manifestations (
     created_at TEXT NOT NULL,
     tp_amb TEXT NOT NULL DEFAULT ''
 );
-CREATE INDEX idx_nfe_manifestations_company_chave ON nfe_manifestations(company_id, chave_acesso);
+CREATE INDEX idx_nfe_manifestacoes_company_chave ON nfe_manifestacoes(company_id, chave_acesso);
 
 CREATE TABLE company_nfe_export_marks (
     company_id TEXT NOT NULL,

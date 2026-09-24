@@ -82,8 +82,8 @@ export function ListNFeEvents(arg1) {
   return window['go']['main']['App']['ListNFeEvents'](arg1);
 }
 
-export function ListPendingManifestations(arg1) {
-  return window['go']['main']['App']['ListPendingManifestations'](arg1);
+export function ListNFePendingManifestacoes(arg1) {
+  return window['go']['main']['App']['ListNFePendingManifestacoes'](arg1);
 }
 
 export function MarkDocumentsViewed(arg1) {
@@ -98,8 +98,8 @@ export function OpenLogsDirectory() {
   return window['go']['main']['App']['OpenLogsDirectory']();
 }
 
-export function PlanCiencia(arg1) {
-  return window['go']['main']['App']['PlanCiencia'](arg1);
+export function PlanNFeCiencia(arg1) {
+  return window['go']['main']['App']['PlanNFeCiencia'](arg1);
 }
 
 export function Pull(arg1) {
@@ -114,12 +114,12 @@ export function QueryNFSeEvents(arg1) {
   return window['go']['main']['App']['QueryNFSeEvents'](arg1);
 }
 
-export function RegisterCiencia(arg1) {
-  return window['go']['main']['App']['RegisterCiencia'](arg1);
+export function RegisterNFeCiencia(arg1) {
+  return window['go']['main']['App']['RegisterNFeCiencia'](arg1);
 }
 
-export function RegisterManifestation(arg1) {
-  return window['go']['main']['App']['RegisterManifestation'](arg1);
+export function RegisterNFeManifestacao(arg1) {
+  return window['go']['main']['App']['RegisterNFeManifestacao'](arg1);
 }
 
 export function ResetNFe(arg1) {

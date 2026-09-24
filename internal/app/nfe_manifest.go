@@ -20,10 +20,10 @@ import (
 // Outcomes of one manifestação, per chave. The first three are also the
 // statuses stored for answered events.
 const (
-	NFeOutcomeRegistrada   = nfe.ManifestationStatusRegistrada   // SEFAZ registered the event (135/136)
-	NFeOutcomeJaRegistrada = nfe.ManifestationStatusJaRegistrada // the same event was registered before (573)
-	NFeOutcomeRejeitada    = nfe.ManifestationStatusRejeitada    // SEFAZ refused the event; see CStat and XMotivo
-	NFeOutcomeNaoEnviada   = "nao_enviada"                       // the lote got no SEFAZ answer, or was never sent
+	NFeOutcomeRegistrada   = nfe.ManifestacaoStatusRegistrada   // SEFAZ registered the event (135/136)
+	NFeOutcomeJaRegistrada = nfe.ManifestacaoStatusJaRegistrada // the same event was registered before (573)
+	NFeOutcomeRejeitada    = nfe.ManifestacaoStatusRejeitada    // SEFAZ refused the event; see CStat and XMotivo
+	NFeOutcomeNaoEnviada   = "nao_enviada"                      // the lote got no SEFAZ answer, or was never sent
 )
 
 // NFeCienciaInput selects the NF-e for Ciência da Operação: either the
@@ -59,9 +59,9 @@ type NFeEventOutcome struct {
 	RegisteredAt *time.Time
 }
 
-// NFeManifestationSummary is the result of RegisterCiencia: one outcome per
+// NFeManifestacaoSummary is the result of RegisterCiencia: one outcome per
 // eligible chave, in the order sent.
-type NFeManifestationSummary struct {
+type NFeManifestacaoSummary struct {
 	Outcomes []NFeEventOutcome
 	Skipped  []NFeSkipped
 	// Interrupted is the error that stopped the sending, such as a transport
@@ -70,8 +70,8 @@ type NFeManifestationSummary struct {
 	Interrupted string
 }
 
-// NFeManifestationInput is one conclusive manifestação.
-type NFeManifestationInput struct {
+// NFeManifestacaoInput is one conclusive manifestação.
+type NFeManifestacaoInput struct {
 	CNPJ        string
 	ChaveAcesso string
 	// Tipo is confirmacao, desconhecimento or nao_realizada (nao-realizada
@@ -82,9 +82,9 @@ type NFeManifestationInput struct {
 	Justificativa string
 }
 
-// NFeManifestationPlan is what RegisterManifestation would send.
-type NFeManifestationPlan struct {
-	Tipo nfe.ManifestationType
+// NFeManifestacaoPlan is what RegisterManifestacao would send.
+type NFeManifestacaoPlan struct {
+	Tipo nfe.TipoManifestacao
 	// Justificativa is the cleaned text sent as xJust; empty unless Tipo is
 	// nao_realizada.
 	Justificativa string
@@ -117,25 +117,25 @@ func (s *NFeService) PlanCiencia(ctx context.Context, in NFeCienciaInput) (NFeCi
 // canceled, certificate problem). Once sending starts, failures are reported
 // per chave, and a lote without answer stops the sending and sets
 // Interrupted.
-func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (NFeManifestationSummary, error) {
+func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (NFeManifestacaoSummary, error) {
 	comp, plan, err := s.planCiencia(ctx, in)
 	if err != nil {
-		return NFeManifestationSummary{}, err
+		return NFeManifestacaoSummary{}, err
 	}
 	if len(plan.Eligible) == 0 {
-		return NFeManifestationSummary{}, fmt.Errorf("nenhuma NF-e elegível para ciência (%d ignoradas)", len(plan.Skipped))
+		return NFeManifestacaoSummary{}, fmt.Errorf("nenhuma NF-e elegível para ciência (%d ignoradas)", len(plan.Skipped))
 	}
 
 	sender, err := s.newSender(ctx, comp, fmt.Sprintf("Assinatura: Ciência da Operação (%d notas)", len(plan.Eligible)))
 	if err != nil {
-		return NFeManifestationSummary{}, err
+		return NFeManifestacaoSummary{}, err
 	}
 
-	summary := NFeManifestationSummary{Skipped: plan.Skipped}
+	summary := NFeManifestacaoSummary{Skipped: plan.Skipped}
 	for lote := range slices.Chunk(plan.Eligible, sefaz.MaxEventosPorLote) {
 		eventos := make([]sefaz.Evento, 0, len(lote))
 		for _, c := range lote {
-			eventos = append(eventos, s.evento(comp, string(c.ChaveAcesso), nfe.ManifestationCiencia, ""))
+			eventos = append(eventos, s.evento(comp, string(c.ChaveAcesso), nfe.TipoManifestacaoCiencia, ""))
 		}
 
 		var outcomes []NFeEventOutcome
@@ -152,16 +152,16 @@ func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (N
 	return summary, nil
 }
 
-// PlanManifestation checks one conclusive manifestação and returns what
-// RegisterManifestation would send. It makes no network call and asks for no
+// PlanManifestacao checks one conclusive manifestação and returns what
+// RegisterManifestacao would send. It makes no network call and asks for no
 // password. Invalid input is an error; a document that cannot receive the
 // manifestação is reported in BlockReason.
-func (s *NFeService) PlanManifestation(ctx context.Context, in NFeManifestationInput) (NFeManifestationPlan, error) {
-	_, plan, err := s.planManifestation(ctx, in)
+func (s *NFeService) PlanManifestacao(ctx context.Context, in NFeManifestacaoInput) (NFeManifestacaoPlan, error) {
+	_, plan, err := s.planManifestacao(ctx, in)
 	return plan, err
 }
 
-// RegisterManifestation sends one conclusive manifestação (confirmação,
+// RegisterManifestacao sends one conclusive manifestação (confirmação,
 // desconhecimento or operação não realizada). Tipo, justificativa, the
 // company's role, the NF-e situação and the absence of an earlier conclusive
 // manifestação are checked before the password prompt. The deadline is not
@@ -169,8 +169,8 @@ func (s *NFeService) PlanManifestation(ctx context.Context, in NFeManifestationI
 // without error, whatever its outcome. A request without answer, or an
 // answer that could not be recorded, is an error; the outcome is returned
 // with it.
-func (s *NFeService) RegisterManifestation(ctx context.Context, in NFeManifestationInput) (NFeEventOutcome, error) {
-	comp, plan, err := s.planManifestation(ctx, in)
+func (s *NFeService) RegisterManifestacao(ctx context.Context, in NFeManifestacaoInput) (NFeEventOutcome, error) {
+	comp, plan, err := s.planManifestacao(ctx, in)
 	if err != nil {
 		return NFeEventOutcome{}, err
 	}
@@ -190,29 +190,29 @@ func (s *NFeService) RegisterManifestation(ctx context.Context, in NFeManifestat
 	return outcomes[0], nil
 }
 
-// planManifestation validates the input, resolves the company and the NF-e
+// planManifestacao validates the input, resolves the company and the NF-e
 // and says whether the manifestação can be sent.
-func (s *NFeService) planManifestation(ctx context.Context, in NFeManifestationInput) (*nfse.Company, NFeManifestationPlan, error) {
-	tipo, err := parseConclusiveManifestation(in.Tipo)
+func (s *NFeService) planManifestacao(ctx context.Context, in NFeManifestacaoInput) (*nfse.Company, NFeManifestacaoPlan, error) {
+	tipo, err := parseConclusiveManifestacao(in.Tipo)
 	if err != nil {
-		return nil, NFeManifestationPlan{}, err
+		return nil, NFeManifestacaoPlan{}, err
 	}
 	xJust, err := nfe.ValidateJustificativa(tipo, in.Justificativa)
 	if err != nil {
-		return nil, NFeManifestationPlan{}, err
+		return nil, NFeManifestacaoPlan{}, err
 	}
 	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
-		return nil, NFeManifestationPlan{}, err
+		return nil, NFeManifestacaoPlan{}, err
 	}
 	doc, err := s.companyDocument(ctx, comp.ID, in.ChaveAcesso)
 	if err != nil {
-		return nil, NFeManifestationPlan{}, err
+		return nil, NFeManifestacaoPlan{}, err
 	}
 
 	now := s.now()
-	deadlines := nfe.ManifestationDeadlines(doc.Document)
-	plan := NFeManifestationPlan{
+	deadlines := nfe.ManifestacaoPrazos(doc.Document)
+	plan := NFeManifestacaoPlan{
 		Tipo:             tipo,
 		Justificativa:    xJust,
 		Document:         doc,
@@ -221,7 +221,7 @@ func (s *NFeService) planManifestation(ctx context.Context, in NFeManifestationI
 		DaysLeft:         daysLeft(deadlines.ConclusiveDue, now),
 		TacitlyConfirmed: nfe.TacitlyConfirmed(doc, now),
 	}
-	if reason := manifestationBlockReason(doc); reason != "" {
+	if reason := manifestacaoBlockReason(doc); reason != "" {
 		plan.BlockReason = fmt.Sprintf("NF-e %s: %s", doc.ChaveAcesso, reason)
 	} else {
 		plan.BlockReason = nfe.ConclusiveBlockReason(doc.Manifestacao)
@@ -319,9 +319,9 @@ func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, r
 	return nil
 }
 
-// manifestationBlockReason says why the company cannot manifest on doc at
+// manifestacaoBlockReason says why the company cannot manifest on doc at
 // all, or "" when it can.
-func manifestationBlockReason(doc nfe.CompanyDocument) string {
+func manifestacaoBlockReason(doc nfe.CompanyDocument) string {
 	if doc.CompanyRole != nfe.CompanyRoleDestinatario {
 		return "a empresa não é a destinatária"
 	}
@@ -334,7 +334,7 @@ func manifestationBlockReason(doc nfe.CompanyDocument) string {
 // cienciaBlockReason says why doc cannot receive Ciência da Operação, or ""
 // when it can.
 func cienciaBlockReason(doc nfe.CompanyDocument) string {
-	if reason := manifestationBlockReason(doc); reason != "" {
+	if reason := manifestacaoBlockReason(doc); reason != "" {
 		return reason
 	}
 	if doc.Manifestacao != nfe.ManifestacaoNenhuma {
@@ -346,26 +346,26 @@ func cienciaBlockReason(doc nfe.CompanyDocument) string {
 // conclusiveBlockReason says why doc cannot receive a conclusive
 // manifestação, or "" when it can.
 func conclusiveBlockReason(doc nfe.CompanyDocument) string {
-	if reason := manifestationBlockReason(doc); reason != "" {
+	if reason := manifestacaoBlockReason(doc); reason != "" {
 		return reason
 	}
 	return nfe.ConclusiveBlockReason(doc.Manifestacao)
 }
 
-// parseConclusiveManifestation reads a conclusive type by name or tpEvento
+// parseConclusiveManifestacao reads a conclusive type by name or tpEvento
 // code. Ciência is refused: it has its own bulk entry point.
-func parseConclusiveManifestation(raw string) (nfe.ManifestationType, error) {
-	tipo, err := nfe.ParseManifestationType(raw)
+func parseConclusiveManifestacao(raw string) (nfe.TipoManifestacao, error) {
+	tipo, err := nfe.ParseTipoManifestacao(raw)
 	if err != nil {
 		return "", fmt.Errorf("tipo de manifestação inválido %q: use confirmacao, desconhecimento ou nao_realizada", raw)
 	}
-	if tipo == nfe.ManifestationCiencia {
+	if tipo == nfe.TipoManifestacaoCiencia {
 		return "", errors.New("a ciência da operação é enviada pela ciência em lote")
 	}
 	return tipo, nil
 }
 
-func (s *NFeService) evento(comp *nfse.Company, chave string, tipo nfe.ManifestationType, xJust string) sefaz.Evento {
+func (s *NFeService) evento(comp *nfse.Company, chave string, tipo nfe.TipoManifestacao, xJust string) sefaz.Evento {
 	return sefaz.Evento{
 		ChaveAcesso: chave,
 		CNPJ:        comp.CNPJ,
@@ -420,14 +420,14 @@ func (e *eventSender) send(ctx context.Context, eventos []sefaz.Evento) ([]NFeEv
 	idLote := sefaz.NewIDLote(e.service.now())
 	lote, sendErr := e.client.EnviarEventos(ctx, e.signer, idLote, eventos)
 	if sendErr != nil {
-		records := make([]nfe.ManifestationRecord, 0, len(eventos))
+		records := make([]nfe.ManifestacaoRecord, 0, len(eventos))
 		for _, ev := range eventos {
 			record := e.record(idLote, ev)
-			record.Status = nfe.ManifestationStatusErro
+			record.Status = nfe.ManifestacaoStatusErro
 			record.XMotivo = sendErr.Error()
 			records = append(records, record)
 		}
-		if err := e.service.NFeRepo.RecordManifestations(ctx, records); err != nil {
+		if err := e.service.NFeRepo.RecordManifestacoes(ctx, records); err != nil {
 			e.service.Log.WarnContext(ctx, "Falha ao registrar lote de manifestação não enviado", slog.Any("err", err))
 		}
 		outcomes := notSentOutcomes(eventos)
@@ -437,7 +437,7 @@ func (e *eventSender) send(ctx context.Context, eventos []sefaz.Evento) ([]NFeEv
 		return outcomes, sendErr
 	}
 
-	records := make([]nfe.ManifestationRecord, 0, len(eventos))
+	records := make([]nfe.ManifestacaoRecord, 0, len(eventos))
 	outcomes := make([]NFeEventOutcome, 0, len(eventos))
 	for i, ev := range eventos {
 		// EnviarEventos answers every evento in order; a missing answer is
@@ -447,7 +447,7 @@ func (e *eventSender) send(ctx context.Context, eventos []sefaz.Evento) ([]NFeEv
 			result = lote.Eventos[i]
 		}
 		record := e.record(idLote, ev)
-		record.Status = manifestationStatus(result.CStat)
+		record.Status = manifestacaoStatus(result.CStat)
 		if result.CStat != 0 {
 			record.CStat = strconv.Itoa(result.CStat)
 		}
@@ -457,7 +457,7 @@ func (e *eventSender) send(ctx context.Context, eventos []sefaz.Evento) ([]NFeEv
 		record.RequestRawHash = e.keepXML(ctx, result.SignedEvento)
 		if result.RetEvento != nil {
 			record.ResponseRawHash = e.keepXML(ctx, result.RetEvento)
-			if record.Status != nfe.ManifestationStatusRejeitada {
+			if record.Status != nfe.ManifestacaoStatusRejeitada {
 				record.ProcEventoRawHash = e.keepXML(ctx, sefaz.ProcEventoNFe(result.SignedEvento, result.RetEvento))
 			}
 		}
@@ -473,15 +473,15 @@ func (e *eventSender) send(ctx context.Context, eventos []sefaz.Evento) ([]NFeEv
 			RegisteredAt: record.RegisteredAt,
 		})
 	}
-	if err := e.service.NFeRepo.RecordManifestations(ctx, records); err != nil {
+	if err := e.service.NFeRepo.RecordManifestacoes(ctx, records); err != nil {
 		return outcomes, fmt.Errorf("gravar resultado do lote %s: %w", idLote, err)
 	}
 	return outcomes, nil
 }
 
-func (e *eventSender) record(idLote string, ev sefaz.Evento) nfe.ManifestationRecord {
+func (e *eventSender) record(idLote string, ev sefaz.Evento) nfe.ManifestacaoRecord {
 	eventAt := ev.DhEvento
-	return nfe.ManifestationRecord{
+	return nfe.ManifestacaoRecord{
 		CompanyID:     e.company.ID,
 		CompanyCNPJ:   e.company.CNPJ,
 		IDLote:        idLote,
@@ -520,18 +520,18 @@ func outcomeMotivo(cStat int, xMotivo string) string {
 	return xMotivo
 }
 
-// manifestationStatus maps an evento cStat to the stored status, which is
+// manifestacaoStatus maps an evento cStat to the stored status, which is
 // also the outcome reported for it. Only 135/136 and 573 store an event;
 // everything else, 655 included, is a rejection and leaves the
 // manifestação unchanged.
-func manifestationStatus(cStat int) string {
+func manifestacaoStatus(cStat int) string {
 	switch {
 	case sefaz.IsRegistered(cStat):
-		return nfe.ManifestationStatusRegistrada
+		return nfe.ManifestacaoStatusRegistrada
 	case sefaz.IsAlreadyDone(cStat):
-		return nfe.ManifestationStatusJaRegistrada
+		return nfe.ManifestacaoStatusJaRegistrada
 	default:
-		return nfe.ManifestationStatusRejeitada
+		return nfe.ManifestacaoStatusRejeitada
 	}
 }
 

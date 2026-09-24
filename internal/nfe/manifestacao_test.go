@@ -6,23 +6,23 @@ import (
 	"time"
 )
 
-func TestManifestationType(t *testing.T) {
+func TestManifestacaoType(t *testing.T) {
 	tests := []struct {
-		tipo       ManifestationType
+		tipo       TipoManifestacao
 		tpEvento   string
 		descEvento string
 		label      string
 	}{
-		{ManifestationCiencia, "210210", "Ciencia da Operacao", "Ciência da Operação"},
-		{ManifestationConfirmacao, "210200", "Confirmacao da Operacao", "Confirmação da Operação"},
-		{ManifestationDesconhecimento, "210220", "Desconhecimento da Operacao", "Desconhecimento da Operação"},
-		{ManifestationNaoRealizada, "210240", "Operacao nao Realizada", "Operação não Realizada"},
+		{TipoManifestacaoCiencia, "210210", "Ciencia da Operacao", "Ciência da Operação"},
+		{TipoManifestacaoConfirmacao, "210200", "Confirmacao da Operacao", "Confirmação da Operação"},
+		{TipoManifestacaoDesconhecimento, "210220", "Desconhecimento da Operacao", "Desconhecimento da Operação"},
+		{TipoManifestacaoNaoRealizada, "210240", "Operacao nao Realizada", "Operação não Realizada"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.tipo), func(t *testing.T) {
-			parsed, err := ParseManifestationType(string(tt.tipo))
+			parsed, err := ParseTipoManifestacao(string(tt.tipo))
 			if err != nil || parsed != tt.tipo {
-				t.Fatalf("ParseManifestationType(%q) = %q, %v", tt.tipo, parsed, err)
+				t.Fatalf("ParseTipoManifestacao(%q) = %q, %v", tt.tipo, parsed, err)
 			}
 			if got := tt.tipo.TpEvento(); got != tt.tpEvento {
 				t.Errorf("TpEvento() = %q, want %q", got, tt.tpEvento)
@@ -42,27 +42,27 @@ func TestManifestationType(t *testing.T) {
 
 	aliases := []struct {
 		raw  string
-		want ManifestationType
+		want TipoManifestacao
 	}{
-		{"210200", ManifestationConfirmacao},
-		{" Confirmacao ", ManifestationConfirmacao},
-		{"nao-realizada", ManifestationNaoRealizada},
-		{"NAO_REALIZADA", ManifestationNaoRealizada},
-		{"210240", ManifestationNaoRealizada},
-		{"210210", ManifestationCiencia},
-		{"desconhecimento", ManifestationDesconhecimento},
+		{"210200", TipoManifestacaoConfirmacao},
+		{" Confirmacao ", TipoManifestacaoConfirmacao},
+		{"nao-realizada", TipoManifestacaoNaoRealizada},
+		{"NAO_REALIZADA", TipoManifestacaoNaoRealizada},
+		{"210240", TipoManifestacaoNaoRealizada},
+		{"210210", TipoManifestacaoCiencia},
+		{"desconhecimento", TipoManifestacaoDesconhecimento},
 	}
 	for _, tt := range aliases {
-		if got, err := ParseManifestationType(tt.raw); err != nil || got != tt.want {
-			t.Errorf("ParseManifestationType(%q) = %q, %v, want %q", tt.raw, got, err, tt.want)
+		if got, err := ParseTipoManifestacao(tt.raw); err != nil || got != tt.want {
+			t.Errorf("ParseTipoManifestacao(%q) = %q, %v, want %q", tt.raw, got, err, tt.want)
 		}
 	}
 	for _, raw := range []string{"cancelamento", "110111", ""} {
-		if _, err := ParseManifestationType(raw); err == nil {
-			t.Errorf("ParseManifestationType(%q) should fail", raw)
+		if _, err := ParseTipoManifestacao(raw); err == nil {
+			t.Errorf("ParseTipoManifestacao(%q) should fail", raw)
 		}
 	}
-	if ManifestationType("x").TpEvento() != "" || ManifestationType("x").DescEvento() != "" || ManifestationType("x").Label() != "" {
+	if TipoManifestacao("x").TpEvento() != "" || TipoManifestacao("x").DescEvento() != "" || TipoManifestacao("x").Label() != "" {
 		t.Error("invalid type should have empty TpEvento, DescEvento and Label")
 	}
 }
@@ -151,31 +151,31 @@ func TestManifestacaoAndTimeFromEvents(t *testing.T) {
 	}
 }
 
-func TestManifestationDeadlines(t *testing.T) {
+func TestManifestacaoDeadlines(t *testing.T) {
 	loc := time.FixedZone("-03", -3*60*60)
 	authorized := time.Date(2026, 9, 1, 9, 15, 42, 0, loc)
 	issued := time.Date(2026, 8, 31, 18, 0, 0, 0, loc)
 
-	d := ManifestationDeadlines(Document{AuthorizedAt: &authorized, IssueDate: issued})
+	d := ManifestacaoPrazos(Document{AuthorizedAt: &authorized, IssueDate: issued})
 	if want := time.Date(2026, 9, 11, 9, 15, 42, 0, loc); !d.CienciaDue.Equal(want) {
 		t.Errorf("CienciaDue = %s, want %s", d.CienciaDue, want)
 	}
 	if want := time.Date(2026, 11, 30, 9, 15, 42, 0, loc); !d.ConclusiveDue.Equal(want) {
 		t.Errorf("ConclusiveDue = %s, want %s", d.ConclusiveDue, want)
 	}
-	fallback := ManifestationDeadlines(Document{IssueDate: issued})
+	fallback := ManifestacaoPrazos(Document{IssueDate: issued})
 	if !fallback.CienciaDue.Equal(issued.AddDate(0, 0, CienciaWarningDays)) {
 		t.Errorf("fallback deadlines = %+v", fallback)
 	}
 
-	if none := ManifestationDeadlines(Document{}); !none.CienciaDue.IsZero() || !none.ConclusiveDue.IsZero() {
+	if none := ManifestacaoPrazos(Document{}); !none.CienciaDue.IsZero() || !none.ConclusiveDue.IsZero() {
 		t.Errorf("deadlines without dates = %+v, want zero", none)
 	}
 }
 
 func TestDeadlineWarnings(t *testing.T) {
 	authorized := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	d := ManifestationDeadlines(Document{AuthorizedAt: &authorized})
+	d := ManifestacaoPrazos(Document{AuthorizedAt: &authorized})
 
 	tests := []struct {
 		name        string
@@ -242,33 +242,33 @@ func TestTacitlyConfirmed(t *testing.T) {
 func TestValidateJustificativa(t *testing.T) {
 	tests := []struct {
 		name    string
-		tipo    ManifestationType
+		tipo    TipoManifestacao
 		xJust   string
 		want    string
 		wantErr bool
 	}{
-		{"14 characters", ManifestationNaoRealizada, strings.Repeat("a", 14), "", true},
-		{"15 characters", ManifestationNaoRealizada, strings.Repeat("a", 15), strings.Repeat("a", 15), false},
-		{"255 characters", ManifestationNaoRealizada, strings.Repeat("a", 255), strings.Repeat("a", 255), false},
-		{"256 characters", ManifestationNaoRealizada, strings.Repeat("a", 256), "", true},
-		{"accented characters count once", ManifestationNaoRealizada, strings.Repeat("ç", 15), strings.Repeat("ç", 15), false},
-		{"empty for nao_realizada", ManifestationNaoRealizada, "   ", "", true},
+		{"14 characters", TipoManifestacaoNaoRealizada, strings.Repeat("a", 14), "", true},
+		{"15 characters", TipoManifestacaoNaoRealizada, strings.Repeat("a", 15), strings.Repeat("a", 15), false},
+		{"255 characters", TipoManifestacaoNaoRealizada, strings.Repeat("a", 255), strings.Repeat("a", 255), false},
+		{"256 characters", TipoManifestacaoNaoRealizada, strings.Repeat("a", 256), "", true},
+		{"accented characters count once", TipoManifestacaoNaoRealizada, strings.Repeat("ç", 15), strings.Repeat("ç", 15), false},
+		{"empty for nao_realizada", TipoManifestacaoNaoRealizada, "   ", "", true},
 		{
 			"whitespace padding does not count",
-			ManifestationNaoRealizada,
+			TipoManifestacaoNaoRealizada,
 			"   " + strings.Repeat("a", 14) + "   ",
 			"", true,
 		},
 		{
 			"cleans control characters and whitespace",
-			ManifestationNaoRealizada,
+			TipoManifestacaoNaoRealizada,
 			"  Mercadoria\tnao\r\nentregue \x00 pelo   fornecedor  ",
 			"Mercadoria nao entregue pelo fornecedor", false,
 		},
-		{"empty for ciencia", ManifestationCiencia, "", "", false},
-		{"blank for confirmacao", ManifestationConfirmacao, " \t ", "", false},
-		{"rejected for desconhecimento", ManifestationDesconhecimento, "Nao reconheco esta operacao", "", true},
-		{"invalid type", ManifestationType("x"), "", "", true},
+		{"empty for ciencia", TipoManifestacaoCiencia, "", "", false},
+		{"blank for confirmacao", TipoManifestacaoConfirmacao, " \t ", "", false},
+		{"rejected for desconhecimento", TipoManifestacaoDesconhecimento, "Nao reconheco esta operacao", "", true},
+		{"invalid type", TipoManifestacao("x"), "", "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -288,11 +288,11 @@ func TestValidateJustificativa(t *testing.T) {
 		})
 	}
 
-	_, err := ValidateJustificativa(ManifestationNaoRealizada, "curta")
+	_, err := ValidateJustificativa(TipoManifestacaoNaoRealizada, "curta")
 	if want := "justificativa inválida: informe de 15 a 255 caracteres"; err == nil || err.Error() != want {
 		t.Errorf("error = %v, want %q", err, want)
 	}
-	_, err = ValidateJustificativa(ManifestationConfirmacao, "mercadoria não recebida no prazo")
+	_, err = ValidateJustificativa(TipoManifestacaoConfirmacao, "mercadoria não recebida no prazo")
 	if want := "justificativa só é aceita para operação não realizada"; err == nil || err.Error() != want {
 		t.Errorf("error = %v, want %q", err, want)
 	}

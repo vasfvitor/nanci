@@ -27,7 +27,7 @@ type NFeRepository interface {
 	CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error)
 	CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error)
 	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error
-	RecordManifestations(ctx context.Context, items []nfe.ManifestationRecord) error
+	RecordManifestacoes(ctx context.Context, items []nfe.ManifestacaoRecord) error
 	ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
 	PreviewResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
 }
@@ -213,7 +213,7 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 	result.TotalResumos = counts.Resumos
 	result.TotalCompletas = counts.Completas
 
-	pending, err := s.pendingManifestations(ctx, comp.ID, now)
+	pending, err := s.pendingManifestacoes(ctx, comp.ID, now)
 	if err != nil {
 		return NFeStatusResult{}, err
 	}
@@ -267,7 +267,7 @@ type NFeDocument struct {
 func newNFeDocument(doc nfe.CompanyDocument, now time.Time) NFeDocument {
 	d := NFeDocument{
 		CompanyDocument:       doc,
-		Deadlines:             nfe.ManifestationDeadlines(doc.Document),
+		Deadlines:             nfe.ManifestacaoPrazos(doc.Document),
 		TacitlyConfirmed:      nfe.TacitlyConfirmed(doc, now),
 		CienciaBlockReason:    cienciaBlockReason(doc),
 		ConclusiveBlockReason: conclusiveBlockReason(doc),
@@ -324,30 +324,30 @@ type NFePendingInput struct {
 	DueWithinDays int
 }
 
-// NFePendingManifestation is an authorized NF-e addressed to the company
+// NFePendingManifestacao is an authorized NF-e addressed to the company
 // that still lacks a conclusive manifestação. ConclusiveDue is the deadline
 // shown; nanci never blocks on it.
-type NFePendingManifestation struct {
+type NFePendingManifestacao struct {
 	NFeDocument
 	Kind           string // sem_ciencia | sem_conclusiva
 	CienciaOverdue bool   // no manifestação and CienciaDue has passed
 }
 
-// ListPendingManifestations returns the company's pending manifestações,
+// ListPendingManifestacoes returns the company's pending manifestações,
 // nearest conclusive deadline first.
-func (s *NFeService) ListPendingManifestations(ctx context.Context, in NFePendingInput) ([]NFePendingManifestation, error) {
+func (s *NFeService) ListPendingManifestacoes(ctx context.Context, in NFePendingInput) ([]NFePendingManifestacao, error) {
 	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, err
 	}
-	pending, err := s.pendingManifestations(ctx, comp.ID, s.now())
+	pending, err := s.pendingManifestacoes(ctx, comp.ID, s.now())
 	if err != nil {
 		return nil, err
 	}
 	if in.DueWithinDays <= 0 {
 		return pending, nil
 	}
-	var due []NFePendingManifestation
+	var due []NFePendingManifestacao
 	for _, p := range pending {
 		if p.DaysLeft <= in.DueWithinDays {
 			due = append(due, p)
@@ -356,22 +356,22 @@ func (s *NFeService) ListPendingManifestations(ctx context.Context, in NFePendin
 	return due, nil
 }
 
-func (s *NFeService) pendingManifestations(ctx context.Context, companyID nfse.CompanyID, now time.Time) ([]NFePendingManifestation, error) {
-	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{PendingManifestation: true})
+func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID nfse.CompanyID, now time.Time) ([]NFePendingManifestacao, error) {
+	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{PendingManifestacao: true})
 	if err != nil {
 		return nil, fmt.Errorf("listar manifestações pendentes: %w", err)
 	}
 
-	pending := make([]NFePendingManifestation, 0, len(docs))
+	pending := make([]NFePendingManifestacao, 0, len(docs))
 	for _, doc := range docs {
-		p := NFePendingManifestation{NFeDocument: newNFeDocument(doc, now), Kind: NFePendingSemConclusiva}
+		p := NFePendingManifestacao{NFeDocument: newNFeDocument(doc, now), Kind: NFePendingSemConclusiva}
 		if doc.Manifestacao == nfe.ManifestacaoNenhuma {
 			p.Kind = NFePendingSemCiencia
 			p.CienciaOverdue = p.CienciaWarning(now)
 		}
 		pending = append(pending, p)
 	}
-	slices.SortFunc(pending, func(a, b NFePendingManifestation) int {
+	slices.SortFunc(pending, func(a, b NFePendingManifestacao) int {
 		return cmp.Or(a.ConclusiveDue.Compare(b.ConclusiveDue), cmp.Compare(a.ChaveAcesso, b.ChaveAcesso))
 	})
 	return pending, nil

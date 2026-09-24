@@ -42,7 +42,7 @@ export function ListNFe(arg1:desktopapi.ListNFeInput):Promise<Array<desktopapi.N
 
 export function ListNFeEvents(arg1:desktopapi.NFeKeyInput):Promise<Array<desktopapi.NFeEvent>>;
 
-export function ListPendingManifestations(arg1:desktopapi.NFePendingInput):Promise<Array<desktopapi.NFePendingRow>>;
+export function ListNFePendingManifestacoes(arg1:desktopapi.NFePendingInput):Promise<Array<desktopapi.NFePendingRow>>;
 
 export function MarkDocumentsViewed(arg1:desktopapi.ListInput):Promise<number>;
 
@@ -50,7 +50,7 @@ export function OpenDataDirectory():Promise<void>;
 
 export function OpenLogsDirectory():Promise<void>;
 
-export function PlanCiencia(arg1:desktopapi.RegisterCienciaInput):Promise<desktopapi.NFeCienciaPlan>;
+export function PlanNFeCiencia(arg1:desktopapi.RegisterNFeCienciaInput):Promise<desktopapi.NFeCienciaPlan>;
 
 export function Pull(arg1:desktopapi.PullInput):Promise<desktopapi.PullResult>;
 
@@ -58,9 +58,9 @@ export function PullNFe(arg1:desktopapi.PullNFeInput):Promise<desktopapi.PullNFe
 
 export function QueryNFSeEvents(arg1:desktopapi.QueryNFSeInput):Promise<string>;
 
-export function RegisterCiencia(arg1:desktopapi.RegisterCienciaInput):Promise<desktopapi.NFeEventBatchResult>;
+export function RegisterNFeCiencia(arg1:desktopapi.RegisterNFeCienciaInput):Promise<desktopapi.NFeEventBatchResult>;
 
-export function RegisterManifestation(arg1:desktopapi.RegisterManifestationInput):Promise<desktopapi.NFeEventResult>;
+export function RegisterNFeManifestacao(arg1:desktopapi.RegisterNFeManifestacaoInput):Promise<desktopapi.NFeEventResult>;
 
 export function ResetNFe(arg1:string):Promise<desktopapi.NFeResetResult>;
 

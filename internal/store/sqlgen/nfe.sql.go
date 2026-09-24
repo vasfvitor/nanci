@@ -10,24 +10,6 @@ import (
 	"database/sql"
 )
 
-const companyNFeDocumentExists = `-- name: CompanyNFeDocumentExists :one
-SELECT COUNT(*) FROM company_nfe_documents cd
-INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
-WHERE cd.company_id = ? AND d.chave_acesso = ?
-`
-
-type CompanyNFeDocumentExistsParams struct {
-	CompanyID   string
-	ChaveAcesso string
-}
-
-func (q *Queries) CompanyNFeDocumentExists(ctx context.Context, arg CompanyNFeDocumentExistsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, companyNFeDocumentExists, arg.CompanyID, arg.ChaveAcesso)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const getNFeDocumentByChave = `-- name: GetNFeDocumentByChave :one
 SELECT id, chave_acesso, modelo, serie, numero, issue_date, competence, authorized_at, protocolo, emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name, transportador_cnpj, autorizados_cnpj, tp_nf, fin_nfe, nat_op, total_value, icms_value, ipi_value, situacao, completeness, layout_version, raw_hash, resumo_raw_hash, parse_warnings, created_at, updated_at FROM nfe_documents WHERE chave_acesso = ? LIMIT 1
 `
@@ -71,15 +53,50 @@ func (q *Queries) GetNFeDocumentByChave(ctx context.Context, chaveAcesso string)
 	return i, err
 }
 
-const insertNFeManifestation = `-- name: InsertNFeManifestation :exec
-INSERT INTO nfe_manifestations (
+const hasCompanyNFeDocument = `-- name: HasCompanyNFeDocument :one
+SELECT COUNT(*) FROM company_nfe_documents cd
+INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
+WHERE cd.company_id = ? AND d.chave_acesso = ?
+`
+
+type HasCompanyNFeDocumentParams struct {
+	CompanyID   string
+	ChaveAcesso string
+}
+
+func (q *Queries) HasCompanyNFeDocument(ctx context.Context, arg HasCompanyNFeDocumentParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, hasCompanyNFeDocument, arg.CompanyID, arg.ChaveAcesso)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const hasNFeEvent = `-- name: HasNFeEvent :one
+SELECT COUNT(*) FROM nfe_events WHERE chave_acesso = ? AND tp_evento = ? AND n_seq_evento = ?
+`
+
+type HasNFeEventParams struct {
+	ChaveAcesso string
+	TpEvento    string
+	NSeqEvento  int64
+}
+
+func (q *Queries) HasNFeEvent(ctx context.Context, arg HasNFeEventParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, hasNFeEvent, arg.ChaveAcesso, arg.TpEvento, arg.NSeqEvento)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const insertNFeManifestacao = `-- name: InsertNFeManifestacao :exec
+INSERT INTO nfe_manifestacoes (
     id, company_id, chave_acesso, tp_evento, n_seq_evento, justificativa, id_lote,
     status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at,
     tp_amb
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
-type InsertNFeManifestationParams struct {
+type InsertNFeManifestacaoParams struct {
 	ID              string
 	CompanyID       string
 	ChaveAcesso     string
@@ -98,8 +115,8 @@ type InsertNFeManifestationParams struct {
 	TpAmb           string
 }
 
-func (q *Queries) InsertNFeManifestation(ctx context.Context, arg InsertNFeManifestationParams) error {
-	_, err := q.db.ExecContext(ctx, insertNFeManifestation,
+func (q *Queries) InsertNFeManifestacao(ctx context.Context, arg InsertNFeManifestacaoParams) error {
+	_, err := q.db.ExecContext(ctx, insertNFeManifestacao,
 		arg.ID,
 		arg.CompanyID,
 		arg.ChaveAcesso,
@@ -246,23 +263,6 @@ func (q *Queries) MarkNFeExported(ctx context.Context, arg MarkNFeExportedParams
 		arg.ExportedAt,
 	)
 	return err
-}
-
-const nFeEventExists = `-- name: NFeEventExists :one
-SELECT COUNT(*) FROM nfe_events WHERE chave_acesso = ? AND tp_evento = ? AND n_seq_evento = ?
-`
-
-type NFeEventExistsParams struct {
-	ChaveAcesso string
-	TpEvento    string
-	NSeqEvento  int64
-}
-
-func (q *Queries) NFeEventExists(ctx context.Context, arg NFeEventExistsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, nFeEventExists, arg.ChaveAcesso, arg.TpEvento, arg.NSeqEvento)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
 }
 
 const updateCompanyNFeManifestacao = `-- name: UpdateCompanyNFeManifestacao :exec

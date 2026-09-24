@@ -29,7 +29,7 @@ func retEventoXML(cStat int, xMotivo, chave, tpEvento, dhReg, nProt string) stri
 		nProt, cStat, xMotivo, chave, tpEvento, dhReg, nProt)
 }
 
-func manifestacao(chave string, tipo nfe.ManifestationType) Evento {
+func manifestacao(chave string, tipo nfe.TipoManifestacao) Evento {
 	e := cienciaEvento()
 	e.ChaveAcesso = chave
 	e.TpEvento = tipo.TpEvento()
@@ -39,9 +39,9 @@ func manifestacao(chave string, tipo nfe.ManifestationType) Evento {
 
 func TestEnviarEventos_MatchesEachRetEvento(t *testing.T) {
 	eventos := []Evento{
-		manifestacao(testChave, nfe.ManifestationCiencia),
-		manifestacao(testChave, nfe.ManifestationConfirmacao),
-		manifestacao(testChave2, nfe.ManifestationCiencia),
+		manifestacao(testChave, nfe.TipoManifestacaoCiencia),
+		manifestacao(testChave, nfe.TipoManifestacaoConfirmacao),
+		manifestacao(testChave2, nfe.TipoManifestacaoCiencia),
 	}
 	// Answers come in a different order than the eventos were sent.
 	retEventos := retEventoXML(650, "Rejeicao: Evento de Ciencia da Operacao para NF-e Cancelada ou Denegada", testChave2, "210210", "2026-09-23T10:31:05-03:00", "") +

@@ -196,7 +196,7 @@ type NfeEvent struct {
 	UpdatedAt     string
 }
 
-type NfeManifestation struct {
+type NfeManifestacao struct {
 	ID              string
 	CompanyID       string
 	ChaveAcesso     string

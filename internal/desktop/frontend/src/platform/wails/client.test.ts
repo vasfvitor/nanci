@@ -28,11 +28,11 @@ import {
   ListEventsForDocument,
   ListNFe,
   ListNFeEvents,
-  ListPendingManifestations,
-  PlanCiencia,
+  ListNFePendingManifestacoes,
+  PlanNFeCiencia,
   PullNFe,
-  RegisterCiencia,
-  RegisterManifestation,
+  RegisterNFeCiencia,
+  RegisterNFeManifestacao,
   ResetNFe,
   SelectCertificate,
   SelectSaveFile,
@@ -55,13 +55,13 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ListEventsForDocument: vi.fn(),
   ListNFe: vi.fn(),
   ListNFeEvents: vi.fn(),
-  ListPendingManifestations: vi.fn(),
-  PlanCiencia: vi.fn(),
+  ListNFePendingManifestacoes: vi.fn(),
+  PlanNFeCiencia: vi.fn(),
   Pull: vi.fn(),
   PullNFe: vi.fn(),
   QueryNFSeEvents: vi.fn(),
-  RegisterCiencia: vi.fn(),
-  RegisterManifestation: vi.fn(),
+  RegisterNFeCiencia: vi.fn(),
+  RegisterNFeManifestacao: vi.fn(),
   ResetNFe: vi.fn(),
   ResetSyncState: vi.fn(),
   SelectCertificate: vi.fn(),
@@ -444,10 +444,10 @@ describe('NF-e client calls', () => {
     vi.mocked(ResetNFe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
     vi.mocked(ListNFe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
     vi.mocked(ListNFeEvents).mockResolvedValue(null as never)
-    vi.mocked(ListPendingManifestations).mockResolvedValue([{ ChaveAcesso: chave }] as never)
-    vi.mocked(PlanCiencia).mockResolvedValue({ Eligible: [], Skipped: [] } as never)
-    vi.mocked(RegisterCiencia).mockResolvedValue({ Interrupted: 'timeout' } as never)
-    vi.mocked(RegisterManifestation).mockResolvedValue({ Status: 'registrada' } as never)
+    vi.mocked(ListNFePendingManifestacoes).mockResolvedValue([{ ChaveAcesso: chave }] as never)
+    vi.mocked(PlanNFeCiencia).mockResolvedValue({ Eligible: [], Skipped: [] } as never)
+    vi.mocked(RegisterNFeCiencia).mockResolvedValue({ Interrupted: 'timeout' } as never)
+    vi.mocked(RegisterNFeManifestacao).mockResolvedValue({ Status: 'registrada' } as never)
 
     const listInput = {
       CNPJ: '123',
@@ -468,7 +468,7 @@ describe('NF-e client calls', () => {
       Documents: 0,
       Events: 0,
       ExportMarks: 0,
-      ManifestationsKept: 0,
+      ManifestacoesKept: 0,
     })
     expect(ResetNFe).toHaveBeenCalledWith('123')
     await expect(desktopClient.listNFe(listInput)).resolves.toMatchObject([
@@ -496,11 +496,11 @@ describe('NF-e client calls', () => {
     expect(StatusNFe).toHaveBeenCalledWith('123')
     expect(ListNFe).toHaveBeenCalledWith({ ...listInput, ChavesAcesso: [] })
     expect(ListNFeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave })
-    expect(ListPendingManifestations).toHaveBeenNthCalledWith(1, { CNPJ: '123', DueWithinDays: 0 })
-    expect(ListPendingManifestations).toHaveBeenNthCalledWith(2, { CNPJ: '123', DueWithinDays: 10 })
-    expect(PlanCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
-    expect(RegisterCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
-    expect(RegisterManifestation).toHaveBeenCalledWith({
+    expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(1, { CNPJ: '123', DueWithinDays: 0 })
+    expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(2, { CNPJ: '123', DueWithinDays: 10 })
+    expect(PlanNFeCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
+    expect(RegisterNFeCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
+    expect(RegisterNFeManifestacao).toHaveBeenCalledWith({
       CNPJ: '123',
       ChaveAcesso: chave,
       Tipo: '210240',

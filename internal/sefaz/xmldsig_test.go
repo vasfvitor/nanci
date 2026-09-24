@@ -52,8 +52,8 @@ func cienciaEvento() Evento {
 	return Evento{
 		ChaveAcesso: testChave,
 		CNPJ:        testCNPJ,
-		TpEvento:    nfe.ManifestationCiencia.TpEvento(),
-		DescEvento:  nfe.ManifestationCiencia.DescEvento(),
+		TpEvento:    nfe.TipoManifestacaoCiencia.TpEvento(),
+		DescEvento:  nfe.TipoManifestacaoCiencia.DescEvento(),
 		NSeqEvento:  1,
 		DhEvento:    time.Date(2026, 9, 23, 10, 30, 58, 0, time.FixedZone("", -3*60*60)),
 	}
@@ -103,8 +103,8 @@ func TestSignEvento_IndependentVerification(t *testing.T) {
 	}
 
 	justificada := cienciaEvento()
-	justificada.TpEvento = nfe.ManifestationNaoRealizada.TpEvento()
-	justificada.DescEvento = nfe.ManifestationNaoRealizada.DescEvento()
+	justificada.TpEvento = nfe.TipoManifestacaoNaoRealizada.TpEvento()
+	justificada.DescEvento = nfe.TipoManifestacaoNaoRealizada.DescEvento()
 	justificada.XJust = `Mercadoria "devolvida" & recusada <sem nota> 'x'`
 
 	for name, e := range map[string]Evento{"ciencia": cienciaEvento(), "nao realizada": justificada} {
@@ -209,7 +209,7 @@ func TestInfEventoDigest_RealEvent(t *testing.T) {
 		ChaveAcesso: "35170349607369000156550010000229481398694060",
 		CNPJ:        "69161982000108",
 		TpEvento:    nfe.TpEventoCiencia,
-		DescEvento:  nfe.ManifestationCiencia.DescEvento(),
+		DescEvento:  nfe.TipoManifestacaoCiencia.DescEvento(),
 		NSeqEvento:  1,
 		DhEvento:    dhEvento,
 	}, TpAmbProducao)

@@ -787,8 +787,8 @@ func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent
 	return desktopapi.NFeEvents(events), nil
 }
 
-func (a *App) ListPendingManifestations(input desktopapi.NFePendingInput) ([]desktopapi.NFePendingRow, error) {
-	pending, err := a.core.NFe.ListPendingManifestations(a.ctx, app.NFePendingInput{
+func (a *App) ListNFePendingManifestacoes(input desktopapi.NFePendingInput) ([]desktopapi.NFePendingRow, error) {
+	pending, err := a.core.NFe.ListPendingManifestacoes(a.ctx, app.NFePendingInput{
 		CNPJ:          input.CNPJ,
 		DueWithinDays: input.DueWithinDays,
 	})
@@ -798,9 +798,9 @@ func (a *App) ListPendingManifestations(input desktopapi.NFePendingInput) ([]des
 	return desktopapi.NFePendingRows(pending), nil
 }
 
-// PlanCiencia lists which NF-e RegisterCiencia would send and which it would
+// PlanNFeCiencia lists which NF-e RegisterNFeCiencia would send and which it would
 // skip. It sends nothing and asks for no password.
-func (a *App) PlanCiencia(input desktopapi.RegisterCienciaInput) (desktopapi.NFeCienciaPlan, error) {
+func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeCienciaPlan, error) {
 	plan, err := a.core.NFe.PlanCiencia(a.ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
@@ -808,12 +808,12 @@ func (a *App) PlanCiencia(input desktopapi.RegisterCienciaInput) (desktopapi.NFe
 	if err != nil {
 		return desktopapi.NFeCienciaPlan{}, desktopError(err)
 	}
-	return desktopapi.NFeCienciaPlanDTO(plan), nil
+	return desktopapi.NFeCienciaPlanFrom(plan), nil
 }
 
-// RegisterCiencia sends Ciência da Operação for the eligible NF-e. Failures
+// RegisterNFeCiencia sends Ciência da Operação for the eligible NF-e. Failures
 // after sending started are reported per chave in the result, not as an error.
-func (a *App) RegisterCiencia(input desktopapi.RegisterCienciaInput) (desktopapi.NFeEventBatchResult, error) {
+func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeEventBatchResult, error) {
 	summary, err := a.core.NFe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
@@ -821,11 +821,11 @@ func (a *App) RegisterCiencia(input desktopapi.RegisterCienciaInput) (desktopapi
 	if err != nil {
 		return desktopapi.NFeEventBatchResult{}, desktopError(err)
 	}
-	return desktopapi.NFeEventBatch(summary), nil
+	return desktopapi.NFeEventResults(summary), nil
 }
 
-func (a *App) RegisterManifestation(input desktopapi.RegisterManifestationInput) (desktopapi.NFeEventResult, error) {
-	outcome, err := a.core.NFe.RegisterManifestation(a.ctx, app.NFeManifestationInput{
+func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoInput) (desktopapi.NFeEventResult, error) {
+	outcome, err := a.core.NFe.RegisterManifestacao(a.ctx, app.NFeManifestacaoInput{
 		CNPJ:          input.CNPJ,
 		ChaveAcesso:   input.ChaveAcesso,
 		Tipo:          input.Tipo,
@@ -834,7 +834,7 @@ func (a *App) RegisterManifestation(input desktopapi.RegisterManifestationInput)
 	if err != nil {
 		return desktopapi.NFeEventResult{}, desktopError(err)
 	}
-	return desktopapi.NFeEventResult(outcome), nil
+	return desktopapi.NFeEventResultFrom(outcome), nil
 }
 
 func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.ExportResult, error) {
@@ -884,12 +884,12 @@ func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
 		return desktopapi.NFeResetResult{}, desktopError(err)
 	}
 	return desktopapi.NFeResetResult{
-		CompanyName:        res.CompanyName,
-		CNPJ:               res.CNPJ,
-		CompanyDocuments:   res.CompanyDocuments,
-		Documents:          res.Documents,
-		Events:             res.Events,
-		ExportMarks:        res.ExportMarks,
-		ManifestationsKept: res.ManifestationsKept,
+		CompanyName:       res.CompanyName,
+		CNPJ:              res.CNPJ,
+		CompanyDocuments:  res.CompanyDocuments,
+		Documents:         res.Documents,
+		Events:            res.Events,
+		ExportMarks:       res.ExportMarks,
+		ManifestacoesKept: res.ManifestacoesKept,
 	}, nil
 }

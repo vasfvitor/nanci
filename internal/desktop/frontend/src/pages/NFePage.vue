@@ -627,7 +627,7 @@ async function resetNFe() {
     $q.notify({
       type: 'positive',
       message: `NF-e redefinidas: ${result.CompanyDocuments} notas e ${result.Events} eventos removidos.`,
-      caption: `${result.ManifestationsKept} manifestações enviadas mantidas no histórico.`,
+      caption: `${result.ManifestacoesKept} manifestações enviadas mantidas no histórico.`,
     })
   } catch (error) {
     if (wailsErrorCode(error) === 'sync_running') {

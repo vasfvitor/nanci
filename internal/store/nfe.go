@@ -81,7 +81,7 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		return false, fmt.Errorf("upsert nfe document %s: %w", chave, err)
 	}
 
-	seen, err := q.CompanyNFeDocumentExists(ctx, sqlgen.CompanyNFeDocumentExistsParams{
+	seen, err := q.HasCompanyNFeDocument(ctx, sqlgen.HasCompanyNFeDocumentParams{
 		CompanyID:   string(p.CompanyID),
 		ChaveAcesso: chave,
 	})
@@ -134,7 +134,7 @@ func (r *NFeRepository) ApplyEventTx(ctx context.Context, tx *sql.Tx, p ApplyNFe
 
 // CompanyDocumentExists reports whether the company already sees the chave.
 func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
-	count, err := r.queries.CompanyNFeDocumentExists(ctx, sqlgen.CompanyNFeDocumentExistsParams{
+	count, err := r.queries.HasCompanyNFeDocument(ctx, sqlgen.HasCompanyNFeDocumentParams{
 		CompanyID:   string(companyID),
 		ChaveAcesso: chave,
 	})
@@ -286,12 +286,12 @@ func (r *NFeRepository) MarkExported(ctx context.Context, companyID nfse.Company
 	return tx.Commit()
 }
 
-// RecordManifestations stores the outcomes of one lote in one transaction.
-// Every item is kept in nfe_manifestations. A registered event is also
+// RecordManifestacoes stores the outcomes of one lote in one transaction.
+// Every item is kept in nfe_manifestacoes. A registered event is also
 // stored in nfe_events as a completa authored by the company; an event SEFAZ
 // reports as already registered is stored the same way unless nfe_events
 // already has it. Manifestação is then recomputed for the chave.
-func (r *NFeRepository) RecordManifestations(ctx context.Context, items []nfe.ManifestationRecord) error {
+func (r *NFeRepository) RecordManifestacoes(ctx context.Context, items []nfe.ManifestacaoRecord) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -304,7 +304,7 @@ func (r *NFeRepository) RecordManifestations(ctx context.Context, items []nfe.Ma
 	q := r.queries.WithTx(tx)
 	now := time.Now().UTC().Format(time.RFC3339)
 	for _, item := range items {
-		err := q.InsertNFeManifestation(ctx, sqlgen.InsertNFeManifestationParams{
+		err := q.InsertNFeManifestacao(ctx, sqlgen.InsertNFeManifestacaoParams{
 			ID:              nfse.GenerateID(),
 			CompanyID:       string(item.CompanyID),
 			ChaveAcesso:     item.ChaveAcesso,
@@ -326,11 +326,11 @@ func (r *NFeRepository) RecordManifestations(ctx context.Context, items []nfe.Ma
 			return fmt.Errorf("record manifestação %s %s: %w", item.TpEvento, item.ChaveAcesso, err)
 		}
 
-		if item.Status != nfe.ManifestationStatusRegistrada && item.Status != nfe.ManifestationStatusJaRegistrada {
+		if item.Status != nfe.ManifestacaoStatusRegistrada && item.Status != nfe.ManifestacaoStatusJaRegistrada {
 			continue
 		}
-		event := manifestationEvent(item)
-		if item.Status == nfe.ManifestationStatusJaRegistrada {
+		event := manifestacaoEvent(item)
+		if item.Status == nfe.ManifestacaoStatusJaRegistrada {
 			exists, err := eventExists(ctx, q, event)
 			if err != nil {
 				return err
@@ -349,7 +349,7 @@ func (r *NFeRepository) RecordManifestations(ctx context.Context, items []nfe.Ma
 	return tx.Commit()
 }
 
-func manifestationEvent(item nfe.ManifestationRecord) nfe.Event {
+func manifestacaoEvent(item nfe.ManifestacaoRecord) nfe.Event {
 	return nfe.Event{
 		ChaveAcesso:   nfe.AccessKey(item.ChaveAcesso),
 		TpEvento:      item.TpEvento,
@@ -437,7 +437,7 @@ func refreshChave(ctx context.Context, q *sqlgen.Queries, chave, now string) err
 }
 
 func eventExists(ctx context.Context, q *sqlgen.Queries, e nfe.Event) (bool, error) {
-	count, err := q.NFeEventExists(ctx, sqlgen.NFeEventExistsParams{
+	count, err := q.HasNFeEvent(ctx, sqlgen.HasNFeEventParams{
 		ChaveAcesso: string(e.ChaveAcesso),
 		TpEvento:    e.TpEvento,
 		NSeqEvento:  int64(e.NSeqEvento),
@@ -582,7 +582,7 @@ func buildNFeFilterSQL(companyID nfse.CompanyID, f nfe.DocumentFilter) (string, 
 		args = append(args, string(chaves))
 	}
 
-	if f.PendingManifestation {
+	if f.PendingManifestacao {
 		where += " AND cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao IN ('nenhuma', 'ciencia')"
 	}
 	return where, args
@@ -789,7 +789,7 @@ func boolToInt(v bool) int64 {
 // document. Events authored by another registered company are kept, unlinked
 // from a removed document. The company's NF-e sync cursor and initial-sync
 // flag are reset in the same transaction, so the next pull starts over from
-// NSU 0. nfe_manifestations are kept as the audit trail, and the XML blobs
+// NSU 0. nfe_manifestacoes are kept as the audit trail, and the XML blobs
 // stay on disk.
 func (r *NFeRepository) ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error) {
 	return r.resetCompany(ctx, companyID, true)
@@ -812,8 +812,8 @@ func (r *NFeRepository) resetCompany(ctx context.Context, companyID nfse.Company
 
 	id := string(companyID)
 	var counts nfe.ResetCounts
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_manifestations WHERE company_id = ?`, id).Scan(&counts.ManifestationsKept); err != nil {
-		return nfe.ResetCounts{}, fmt.Errorf("count nfe manifestations: %w", err)
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_manifestacoes WHERE company_id = ?`, id).Scan(&counts.ManifestacoesKept); err != nil {
+		return nfe.ResetCounts{}, fmt.Errorf("count nfe manifestacoes: %w", err)
 	}
 
 	// The documents only this company sees go with its rows.

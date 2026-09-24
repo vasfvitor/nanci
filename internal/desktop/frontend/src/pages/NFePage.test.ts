@@ -342,7 +342,7 @@ describe('NFePage', () => {
       Documents: 3,
       Events: 4,
       ExportMarks: 0,
-      ManifestationsKept: 1,
+      ManifestacoesKept: 1,
     })
 
     const wrapper = mountPage()
