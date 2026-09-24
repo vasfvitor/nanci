@@ -205,4 +205,23 @@ describe('useNFeDocuments', () => {
       Incremental: false,
     })
   })
+
+  it('exports for the company in the list input, as the grid shows it', async () => {
+    const nfe = useNFeDocuments()
+    // A cleared select sets null; listInput normalizes it.
+    nfe.filter.value.CNPJ = null as unknown as string
+
+    await expect(nfe.exportXML('chave-1')).resolves.toBeNull()
+    await expect(nfe.exportZIP(['chave-1'])).resolves.toBeNull()
+    expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
+    expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
+
+    nfe.filter.value.CNPJ = '123'
+    await nfe.exportXML('chave-1')
+    await nfe.exportZIP(['chave-1'])
+
+    const cnpj = useNFeDocumentsStore().listInput.CNPJ
+    expect(desktopClient.exportNFeXML).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
+    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
+  })
 })

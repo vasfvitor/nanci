@@ -96,14 +96,14 @@ export function useNFeDocuments() {
     }
   }
 
+  // The exports read the company from listInput, like the search that
+  // filled the grid.
   async function exportXML(chaveAcesso: string) {
-    if (exporting.value) return null
+    const cnpj = store.listInput.CNPJ
+    if (!cnpj || exporting.value) return null
     exporting.value = true
     try {
-      return await desktopClient.exportNFeXML({
-        CNPJ: filter.value.CNPJ,
-        ChaveAcesso: chaveAcesso,
-      })
+      return await desktopClient.exportNFeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso })
     } finally {
       exporting.value = false
     }
@@ -113,11 +113,12 @@ export function useNFeDocuments() {
   // selected. Competence and Role are left empty: the grid may hold the
   // result of an earlier search, and an empty list would export everything.
   async function exportZIP(chavesAcesso: string[], options: NFeExportZIPOptions = {}) {
-    if (exporting.value || chavesAcesso.length === 0) return null
+    const cnpj = store.listInput.CNPJ
+    if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
     exporting.value = true
     try {
       return await desktopClient.exportNFeZIP({
-        CNPJ: store.listInput.CNPJ,
+        CNPJ: cnpj,
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
