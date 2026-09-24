@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfe"
 )
@@ -258,7 +259,7 @@ func ProcEventoNFe(signedEvento, retEvento []byte) []byte {
 // tags, Id as the only attribute. It returns the Id and the element without
 // a namespace declaration, as embedded in the evento.
 func buildInfEvento(e Evento, tpAmb string) (id, infEvento string, err error) {
-	key, err := nfe.ParseAccessKey(e.ChaveAcesso)
+	key, err := dfe.ParseAccessKey(e.ChaveAcesso)
 	if err != nil {
 		return "", "", err
 	}

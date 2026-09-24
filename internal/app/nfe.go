@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -448,7 +449,7 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 
 // companyDocument returns the company's row for the chave.
 func (s *NFeService) companyDocument(ctx context.Context, companyID nfse.CompanyID, rawChave string) (nfe.CompanyDocument, error) {
-	chave, err := nfe.ParseAccessKey(rawChave)
+	chave, err := dfe.ParseAccessKey(rawChave)
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("chave de acesso inválida: %w", err)
 	}

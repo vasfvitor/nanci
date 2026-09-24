@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // ParseResNFe parses a resNFe (schema resNFe_v1.01), the summary SEFAZ
@@ -55,7 +57,7 @@ func ParseResNFe(data []byte) (Document, error) {
 	if chave == "" {
 		return Document{}, errors.New("missing essential field: chNFe")
 	}
-	key, err := ParseAccessKey(chave)
+	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {
 		return Document{}, fmt.Errorf("chNFe: %w", err)
 	}

@@ -1,12 +1,16 @@
 package nfe
 
-import "time"
+import (
+	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
+)
 
 // Event is an NF-e event (cancelamento, carta de correção, manifestação, ...)
 // built from a resEvento (resumo) or a procEventoNFe (completa).
 type Event struct {
 	ID            string
-	ChaveAcesso   AccessKey
+	ChaveAcesso   dfe.AccessKey
 	TpEvento      string
 	Type          EventType
 	NSeqEvento    int

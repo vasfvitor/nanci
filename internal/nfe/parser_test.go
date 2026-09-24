@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -77,7 +78,7 @@ func TestFixturesHaveValidCheckDigits(t *testing.T) {
 		}
 		for _, m := range keyRe.FindAllSubmatch(data, -1) {
 			key := string(m[1]) + string(m[2])
-			if _, err := ParseAccessKey(key); err != nil {
+			if _, err := dfe.ParseAccessKey(key); err != nil {
 				t.Errorf("%s: key %s: %v", file, key, err)
 			}
 		}

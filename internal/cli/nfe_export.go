@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
-	"github.com/vasfvitor/nanci/internal/nfe"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 func newNFeExportCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
@@ -77,7 +77,7 @@ func newNFeExportXMLCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 		Use:   "xml",
 		Short: "Exporta o XML de uma NF-e (procNFe, ou resNFe de um resumo)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			chave, err := nfe.ParseAccessKey(chaveFlag)
+			chave, err := dfe.ParseAccessKey(chaveFlag)
 			if err != nil {
 				return fmt.Errorf("chave de acesso inválida: %w", err)
 			}

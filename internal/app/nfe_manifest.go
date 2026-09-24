@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
@@ -278,7 +279,7 @@ func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, r
 	var chaves []string
 	seen := make(map[string]bool, len(rawChaves))
 	for _, raw := range rawChaves {
-		chave, err := nfe.ParseAccessKey(raw)
+		chave, err := dfe.ParseAccessKey(raw)
 		if err != nil {
 			plan.Skipped = append(plan.Skipped, NFeSkipped{ChaveAcesso: strings.TrimSpace(raw), Reason: "chave de acesso inválida"})
 			continue

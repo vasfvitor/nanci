@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // ParseProcNFe parses a procNFe (nfeProc: the signed NFe plus protNFe), the
@@ -118,7 +120,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 
 // procNFeKey picks the access key from protNFe/infProt/chNFe, falling back to
 // infNFe@Id ("NFe" + key). When both are present they must agree.
-func procNFeKey(protChave, infNFeID string, warnings *[]string) (AccessKey, error) {
+func procNFeKey(protChave, infNFeID string, warnings *[]string) (dfe.AccessKey, error) {
 	idChave := strings.TrimPrefix(infNFeID, "NFe")
 	switch {
 	case protChave == "" && idChave == "":
@@ -129,7 +131,7 @@ func procNFeKey(protChave, infNFeID string, warnings *[]string) (AccessKey, erro
 	case idChave != "" && idChave != protChave:
 		return "", fmt.Errorf("protNFe chNFe %s does not match infNFe Id %s", protChave, infNFeID)
 	}
-	key, err := ParseAccessKey(protChave)
+	key, err := dfe.ParseAccessKey(protChave)
 	if err != nil {
 		return "", fmt.Errorf("chNFe: %w", err)
 	}

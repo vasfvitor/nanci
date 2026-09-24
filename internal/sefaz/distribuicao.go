@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfe"
 )
 
 const (
@@ -106,7 +106,7 @@ func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, ns
 
 // ConsChNFe asks for the NF-e with the given access key (consChNFe).
 func (c *Client) ConsChNFe(ctx context.Context, cnpjValue string, cUFAutor int, chave string) (DistResult, error) {
-	key, err := nfe.ParseAccessKey(chave)
+	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {
 		return DistResult{}, err
 	}

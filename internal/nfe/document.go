@@ -3,6 +3,7 @@ package nfe
 import (
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -10,7 +11,7 @@ import (
 // (completa). Fields that a resumo does not carry stay empty or zero.
 type Document struct {
 	ID                string
-	ChaveAcesso       AccessKey
+	ChaveAcesso       dfe.AccessKey
 	Modelo            string     // "55"
 	Serie             string     // ide/serie (completa) or the key slot (resumo)
 	Numero            string     // ide/nNF (completa) or the key slot (resumo)

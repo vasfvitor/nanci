@@ -20,6 +20,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -190,7 +191,7 @@ func testChave(t *testing.T, n int) string {
 		dv = 11 - r
 	}
 	chave := base + strconv.Itoa(dv)
-	if _, err := nfe.ParseAccessKey(chave); err != nil {
+	if _, err := dfe.ParseAccessKey(chave); err != nil {
 		t.Fatal(err)
 	}
 	return chave

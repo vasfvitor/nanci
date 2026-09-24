@@ -1,5 +1,5 @@
-// Package nfe holds the NF-e (modelo 55) domain: access keys, documents,
-// events, participation rules and the parsers for the payloads distributed by
+// Package nfe holds the NF-e (modelo 55) domain: documents, events,
+// participation rules and the parsers for the payloads distributed by
 // NFeDistribuicaoDFe. It has no database or network code.
 package nfe
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -351,7 +352,7 @@ func (r *NFeRepository) RecordManifestacoes(ctx context.Context, items []nfe.Man
 
 func manifestacaoEvent(item nfe.ManifestacaoRecord) nfe.Event {
 	return nfe.Event{
-		ChaveAcesso:   nfe.AccessKey(item.ChaveAcesso),
+		ChaveAcesso:   dfe.AccessKey(item.ChaveAcesso),
 		TpEvento:      item.TpEvento,
 		Type:          nfe.EventTypeFromTpEvento(item.TpEvento),
 		NSeqEvento:    item.NSeqEvento,
@@ -637,7 +638,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 func documentFromRow(row sqlgen.NfeDocument) (nfe.Document, error) {
 	doc := nfe.Document{
 		ID:                row.ID,
-		ChaveAcesso:       nfe.AccessKey(row.ChaveAcesso),
+		ChaveAcesso:       dfe.AccessKey(row.ChaveAcesso),
 		Modelo:            row.Modelo,
 		Serie:             row.Serie,
 		Numero:            row.Numero,
@@ -730,7 +731,7 @@ func eventsFromRows(rows []sqlgen.NfeEvent) ([]nfe.Event, error) {
 	for _, row := range rows {
 		e := nfe.Event{
 			ID:            row.ID,
-			ChaveAcesso:   nfe.AccessKey(row.ChaveAcesso),
+			ChaveAcesso:   dfe.AccessKey(row.ChaveAcesso),
 			TpEvento:      row.TpEvento,
 			Type:          nfe.EventType(row.Type),
 			NSeqEvento:    int(row.NSeqEvento),

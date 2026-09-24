@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // ParseResEvento parses a resEvento (schema resEvento_v1.01), the summary of
@@ -127,7 +129,7 @@ func setEventIdentity(ev *Event, chave, tpEvento, nSeqEvento string) error {
 	if chave == "" {
 		return errors.New("missing essential field: chNFe")
 	}
-	key, err := ParseAccessKey(chave)
+	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {
 		return fmt.Errorf("chNFe: %w", err)
 	}
