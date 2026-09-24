@@ -10,9 +10,13 @@ import {
   cteModeloColor,
   cteModeloFilterOptions,
   cteModeloLabel,
+  cteMunicipioLabel,
+  cteOtherPapeis,
   ctePapelColor,
   ctePapelFilterOptions,
   ctePapelLabel,
+  cteParticipantes,
+  ctePercurso,
   cteSituacaoColor,
   cteSituacaoFilterOptions,
   cteSituacaoLabel,
@@ -20,7 +24,7 @@ import {
   cteTipoDocumentoLabel,
   cteTpServLabel,
 } from './cteDisplay'
-import type { CTeEventType, CTeStatusResult } from '@/types/desktop'
+import type { CTeEventType, CTeRow, CTeStatusResult } from '@/types/desktop'
 
 describe('cteDisplay', () => {
   it('maps situação values', () => {
@@ -162,5 +166,35 @@ describe('cteDisplay', () => {
     expect(cteDocumentCount(null)).toBe(0)
     expect(cteStatusLine(status)).toBe('Última sincronização: nunca · NSU 10/— · CT-e: 10')
     expect(cteStatusLine({ ...status, MaxNSU: 12 })).toContain('NSU 10/12')
+  })
+
+  it('names municípios and the percurso', () => {
+    const saoPaulo = { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' }
+    expect(cteMunicipioLabel(saoPaulo)).toBe('São Paulo/SP')
+    expect(cteMunicipioLabel({ Codigo: '3550308', Nome: '', UF: '' })).toBe('3550308')
+    expect(cteMunicipioLabel({ Codigo: '', Nome: '', UF: '' })).toBe('—')
+    expect(ctePercurso({ MunIni: saoPaulo, MunFim: { Codigo: '4106902', Nome: 'Curitiba', UF: 'PR' } })).toBe(
+      'São Paulo/SP → Curitiba/PR'
+    )
+  })
+
+  it('lists the parties present and the other roles of the company', () => {
+    const row = {
+      RemetenteCNPJ: '11222333000181',
+      RemetenteName: 'Remetente',
+      DestinatarioCNPJ: '',
+      DestinatarioName: '',
+      ExpedidorCNPJ: '',
+      ExpedidorName: '',
+      RecebedorCNPJ: '',
+      RecebedorName: 'Só o nome',
+      TomadorCNPJ: '11222333000181',
+      TomadorName: 'Remetente',
+      CompanyRole: 'tomador',
+      Papeis: ['tomador', 'remetente'],
+    } as CTeRow
+
+    expect(cteParticipantes(row).map((party) => party.label)).toEqual(['Remetente', 'Recebedor', 'Tomador'])
+    expect(cteOtherPapeis(row)).toEqual(['remetente'])
   })
 })

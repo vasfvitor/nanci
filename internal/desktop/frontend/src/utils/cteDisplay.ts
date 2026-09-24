@@ -1,4 +1,4 @@
-import type { CTeEvent, CTeRow, CTeStatusResult } from '@/types/desktop'
+import type { CTeEvent, CTeMunicipio, CTeRow, CTeStatusResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
 import { displayTable } from '@/utils/sefazDisplay'
 
@@ -140,4 +140,35 @@ export function cteStatusLine(status: CTeStatusResult) {
     `NSU ${status.LastNSU}/${status.MaxNSU ?? '—'}`,
     `CT-e: ${cteDocumentCount(status)}`,
   ].join(' · ')
+}
+
+// cteMunicipioLabel names a município as "Nome/UF", falling back to its IBGE
+// code.
+export function cteMunicipioLabel(municipio: CTeMunicipio) {
+  if (!municipio.Nome) return municipio.Codigo || '—'
+  return municipio.UF ? `${municipio.Nome}/${municipio.UF}` : municipio.Nome
+}
+
+// ctePercurso is where the transport starts and ends.
+export function ctePercurso(row: Pick<CTeRow, 'MunIni' | 'MunFim'>) {
+  return `${cteMunicipioLabel(row.MunIni)} → ${cteMunicipioLabel(row.MunFim)}`
+}
+
+export type CTeParticipante = { label: string; cnpj: string; name: string }
+
+// cteParticipantes lists the parties the CT-e names besides the emitente,
+// in the XML order, leaving out the absent ones.
+export function cteParticipantes(row: CTeRow): CTeParticipante[] {
+  return [
+    { label: 'Remetente', cnpj: row.RemetenteCNPJ, name: row.RemetenteName },
+    { label: 'Destinatário', cnpj: row.DestinatarioCNPJ, name: row.DestinatarioName },
+    { label: 'Expedidor', cnpj: row.ExpedidorCNPJ, name: row.ExpedidorName },
+    { label: 'Recebedor', cnpj: row.RecebedorCNPJ, name: row.RecebedorName },
+    { label: 'Tomador', cnpj: row.TomadorCNPJ, name: row.TomadorName },
+  ].filter((party) => party.cnpj || party.name)
+}
+
+// cteOtherPapeis are the roles the company plays besides the primary one.
+export function cteOtherPapeis(row: Pick<CTeRow, 'CompanyRole' | 'Papeis'>) {
+  return row.Papeis.filter((papel) => papel !== row.CompanyRole)
 }
