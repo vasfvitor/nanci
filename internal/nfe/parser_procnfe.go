@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/foundation/xmlwalk"
 )
 
 // ParseProcNFe parses a procNFe (nfeProc: the signed NFe plus protNFe), the
@@ -19,8 +20,8 @@ func ParseProcNFe(data []byte) (Document, error) {
 
 	onStart := func(path string, attrs []xml.Attr) {
 		if strings.HasSuffix(path, "/NFe/infNFe") {
-			infNFeID = attrValue(attrs, "Id")
-			doc.LayoutVersion = attrValue(attrs, "versao")
+			infNFeID = xmlwalk.AttrValue(attrs, "Id")
+			doc.LayoutVersion = xmlwalk.AttrValue(attrs, "versao")
 		}
 	}
 	onText := func(path, value string) error {
@@ -44,7 +45,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 			doc.NatOp = value
 
 		// parties
-		case hasAnySuffix(path, "/infNFe/emit/CNPJ", "/infNFe/emit/CPF"):
+		case xmlwalk.HasAnySuffix(path, "/infNFe/emit/CNPJ", "/infNFe/emit/CPF"):
 			doc.EmitenteCNPJ = value
 		case strings.HasSuffix(path, "/infNFe/emit/xNome"):
 			doc.EmitenteName = value
@@ -52,13 +53,13 @@ func ParseProcNFe(data []byte) (Document, error) {
 			doc.EmitenteIE = value
 		case strings.HasSuffix(path, "/infNFe/emit/enderEmit/UF"):
 			doc.EmitenteUF = value
-		case hasAnySuffix(path, "/infNFe/dest/CNPJ", "/infNFe/dest/CPF", "/infNFe/dest/idEstrangeiro"):
+		case xmlwalk.HasAnySuffix(path, "/infNFe/dest/CNPJ", "/infNFe/dest/CPF", "/infNFe/dest/idEstrangeiro"):
 			doc.DestinatarioCNPJ = value
 		case strings.HasSuffix(path, "/infNFe/dest/xNome"):
 			doc.DestinatarioName = value
-		case hasAnySuffix(path, "/infNFe/transp/transporta/CNPJ", "/infNFe/transp/transporta/CPF"):
+		case xmlwalk.HasAnySuffix(path, "/infNFe/transp/transporta/CNPJ", "/infNFe/transp/transporta/CPF"):
 			doc.TransportadorCNPJ = value
-		case hasAnySuffix(path, "/infNFe/autXML/CNPJ", "/infNFe/autXML/CPF"):
+		case xmlwalk.HasAnySuffix(path, "/infNFe/autXML/CNPJ", "/infNFe/autXML/CPF"):
 			doc.AutorizadosCNPJ = append(doc.AutorizadosCNPJ, value)
 
 		// totals
@@ -83,7 +84,7 @@ func ParseProcNFe(data []byte) (Document, error) {
 		}
 		return nil
 	}
-	if err := walkXML(data, onStart, onText); err != nil {
+	if err := xmlwalk.Walk(data, onStart, onText); err != nil {
 		return Document{}, err
 	}
 

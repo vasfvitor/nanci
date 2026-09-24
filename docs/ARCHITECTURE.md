@@ -16,6 +16,7 @@
 - `internal/foundation`: Utilitários gerais do projeto (parsers de CNPJ, códigos de UF em `uf`, handlers de build, criptografia).
 - `internal/foundation/httpclient`: Cliente HTTP mTLS neutro compartilhado por `internal/adn` e `internal/sefaz`: transporte TLS, retry, leitura limitada do corpo e registros de log. Quem chama define cabeçalhos, formato do payload, o significado de cada status e como mascarar identificadores (CNPJ, chave de acesso) antes de irem para o log.
 - `internal/foundation/redact`: Mascaramento de identificadores fiscais (CNPJ, CPF, chave de acesso, nomes) em XML de NF-e, CT-e e NFS-e, usado nos logs de `internal/adn`, `internal/sefaz` e `internal/sync`.
+- `internal/foundation/xmlwalk`: Leitura de XML em fluxo que entrega cada elemento pelo caminho a partir da raiz (`Walk`, `HasAnySuffix`, `AttrValue`), para os parsers de documentos fiscais casarem campos por sufixo de caminho. Usado por `internal/nfe`.
 - `third_party/gonfe`: Licença do [gonfe](https://github.com/mschunke/gonfe) (MIT), do qual partes de `internal/sefaz` foram adaptadas.
 
 ## Fluxo de Dados

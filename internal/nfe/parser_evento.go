@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/foundation/xmlwalk"
 )
 
 // ParseResEvento parses a resEvento (schema resEvento_v1.01), the summary of
@@ -21,7 +22,7 @@ func ParseResEvento(data []byte) (Event, error) {
 		switch {
 		case strings.HasSuffix(path, "/resEvento/chNFe"):
 			chave = value
-		case hasAnySuffix(path, "/resEvento/CNPJ", "/resEvento/CPF"):
+		case xmlwalk.HasAnySuffix(path, "/resEvento/CNPJ", "/resEvento/CPF"):
 			ev.AutorCNPJ = value
 		case strings.HasSuffix(path, "/resEvento/dhEvento"):
 			ev.EventAt = parseDateTime("dhEvento", value, &warnings)
@@ -38,7 +39,7 @@ func ParseResEvento(data []byte) (Event, error) {
 		}
 		return nil
 	}
-	if err := walkXML(data, nil, onText); err != nil {
+	if err := xmlwalk.Walk(data, nil, onText); err != nil {
 		return Event{}, err
 	}
 
@@ -64,7 +65,7 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 		// evento: what the author sent
 		case strings.HasSuffix(path, "/evento/infEvento/chNFe"):
 			chave = value
-		case hasAnySuffix(path, "/evento/infEvento/CNPJ", "/evento/infEvento/CPF"):
+		case xmlwalk.HasAnySuffix(path, "/evento/infEvento/CNPJ", "/evento/infEvento/CPF"):
 			ev.AutorCNPJ = value
 		case strings.HasSuffix(path, "/evento/infEvento/dhEvento"):
 			ev.EventAt = parseDateTime("dhEvento", value, &warnings)
@@ -93,7 +94,7 @@ func ParseProcEventoNFe(data []byte) (Event, error) {
 		}
 		return nil
 	}
-	if err := walkXML(data, nil, onText); err != nil {
+	if err := xmlwalk.Walk(data, nil, onText); err != nil {
 		return Event{}, err
 	}
 
