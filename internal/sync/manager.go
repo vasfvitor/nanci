@@ -23,15 +23,18 @@ import (
 var (
 	loadPKCS12   = cert.LoadPKCS12
 	newADNClient = adn.NewClient
-	// newSEFAZClient builds the NF-e distribution client; tests swap it.
-	newSEFAZClient = func(cfg sefaz.ClientConfig) (nfeFetcher, error) {
-		return sefaz.NewClient(cfg)
-	}
-	// newSEFAZCTeClient builds the CT-e distribution client; tests swap it.
-	newSEFAZCTeClient = func(cfg sefaz.ClientConfig) (cteFetcher, error) {
+	// newSEFAZClient builds the NF-e and CT-e distribution client; tests
+	// swap it.
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
 		return sefaz.NewClient(cfg)
 	}
 )
+
+// sefazFetcher queries both SEFAZ distributions.
+type sefazFetcher interface {
+	nfeFetcher
+	cteFetcher
+}
 
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest struct {
@@ -314,12 +317,7 @@ func (m *Manager) SourceLimits(ctx context.Context, companyID dfe.CompanyID, sou
 		return SourceLimits{}, fmt.Errorf("contar consultas da última hora: %w", err)
 	}
 	limits.RequestsLastHour = count
-	switch source {
-	case nfse.SyncSourceNFe:
-		limits.RequestBudget = NFeRequestsPerHour
-	case nfse.SyncSourceCTe:
-		limits.RequestBudget = CTeRequestsPerHour
-	}
+	limits.RequestBudget = requestsPerHour(source)
 	return limits, nil
 }
 
@@ -329,15 +327,9 @@ func (m *Manager) checkSource(company *nfse.Company, source nfse.SyncSource) err
 	switch source {
 	case nfse.SyncSourceNFSe:
 		return nil
-	case nfse.SyncSourceNFe:
-		if m.NFeRepo == nil {
-			return errors.New("repositório de NF-e não configurado")
-		}
-		_, err := companyUFCode(company)
-		return err
-	case nfse.SyncSourceCTe:
-		if m.CTeRepo == nil {
-			return errors.New("repositório de CT-e não configurado")
+	case nfse.SyncSourceNFe, nfse.SyncSourceCTe:
+		if (source == nfse.SyncSourceNFe && m.NFeRepo == nil) || (source == nfse.SyncSourceCTe && m.CTeRepo == nil) {
+			return fmt.Errorf("repositório de %s não configurado", sourceLabel(source))
 		}
 		_, err := companyUFCode(company)
 		return err
@@ -360,7 +352,7 @@ func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCe
 			return nil, fmt.Errorf("configurar cliente ADN: %w", err)
 		}
 		return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
-	case nfse.SyncSourceNFe:
+	case nfse.SyncSourceNFe, nfse.SyncSourceCTe:
 		cUFAutor, err := companyUFCode(company)
 		if err != nil {
 			return nil, err
@@ -374,20 +366,8 @@ func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCe
 		if err != nil {
 			return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
 		}
-		return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
-	case nfse.SyncSourceCTe:
-		cUFAutor, err := companyUFCode(company)
-		if err != nil {
-			return nil, err
-		}
-		client, err := newSEFAZCTeClient(sefaz.ClientConfig{
-			Environment: company.Environment,
-			Certificate: &tlsCert,
-			Log:         m.Log,
-			Endpoints:   m.SEFAZEndpoints,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
+		if source == nfse.SyncSourceNFe {
+			return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
 		}
 		return NewCTeSource(client, m.CTeRepo, m.XMLStore, m.Log, cUFAutor), nil
 	default:

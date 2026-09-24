@@ -27,16 +27,26 @@ const (
 	nfeCompanyCNPJ    = "70860312000150"                               // destinatário of the fixtures
 )
 
-// scriptedFetcher answers DistNSU from a script keyed by the requested
-// ultNSU. A cursor without a script gets cStat 137.
+// scriptedFetcher answers DistNSU and DistCTeNSU from a script keyed by the
+// requested ultNSU. A cursor without a script gets cStat 137.
 type scriptedFetcher struct {
 	responses map[int64]sefaz.DistResult
 	cursors   []int64
 	cUFAutors []int
 	cnpjs     []string
+	services  []string // "nfe" or "cte" for each request
 }
 
 func (f *scriptedFetcher) DistNSU(_ context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
+	return f.answer("nfe", cnpj, cUFAutor, ultNSU)
+}
+
+func (f *scriptedFetcher) DistCTeNSU(_ context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
+	return f.answer("cte", cnpj, cUFAutor, ultNSU)
+}
+
+func (f *scriptedFetcher) answer(service, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
+	f.services = append(f.services, service)
 	f.cursors = append(f.cursors, ultNSU)
 	f.cUFAutors = append(f.cUFAutors, cUFAutor)
 	f.cnpjs = append(f.cnpjs, cnpj)
@@ -299,24 +309,6 @@ func TestNFeSourceRecordsTpAmb(t *testing.T) {
 	}
 }
 
-func TestCheckTpAmb(t *testing.T) {
-	tests := []struct {
-		xml, want    string
-		wantWarnings int
-	}{
-		{"", "1", 0},
-		{"1", "1", 0},
-		{"2", "2", 1},
-		{"9", "1", 1},
-	}
-	for _, tt := range tests {
-		var warnings []string
-		if got := checkTpAmb(tt.xml, "1", &warnings); got != tt.want || len(warnings) != tt.wantWarnings {
-			t.Errorf("checkTpAmb(%q, 1) = %q with %v, want %q with %d warnings", tt.xml, got, warnings, tt.want, tt.wantWarnings)
-		}
-	}
-}
-
 func TestNFeSourceKeepsOnlyOwnEventsWithoutLocalDocument(t *testing.T) {
 	h := newNFeTestHelper(t)
 	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{
@@ -485,7 +477,7 @@ func TestNFeSourceRejectionFailsRunAsFetchError(t *testing.T) {
 
 // newNFePullTestManager is newPullTestManager with the company given a UF,
 // an NF-e repository and a scripted SEFAZ client.
-func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher nfeFetcher) (*Manager, *nfse.Company) {
+func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *scriptedFetcher) (*Manager, *nfse.Company) {
 	t.Helper()
 	mgr, comp := newPullTestManager(t, passwords)
 	if _, err := mgr.SyncRepo.db.ExecContext(context.Background(), `UPDATE companies SET uf = 'SP' WHERE id = ?`, string(comp.ID)); err != nil {
@@ -500,7 +492,7 @@ func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher n
 		nfeRequestDelay = originalDelay
 	})
 	nfeRequestDelay = 0
-	newSEFAZClient = func(cfg sefaz.ClientConfig) (nfeFetcher, error) {
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
 		if cfg.Environment != nfse.EnvironmentProduction || cfg.Certificate == nil {
 			t.Errorf("SEFAZ client config = %+v", cfg)
 		}

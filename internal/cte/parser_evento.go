@@ -82,16 +82,15 @@ func ParseProcEventoCTe(data []byte) (Event, error) {
 	if err := setEventIdentity(&ev, chave, tpEvento, nSeqEvento); err != nil {
 		return Event{}, err
 	}
+	// A missing or invalid tpAmb is not an error here: the sync decides the
+	// tpAmb to store against the environment it queried.
 	switch {
 	case ev.TpAmb != "":
 	case retTpAmb != "":
 		warnings = append(warnings, "missing eventoCTe tpAmb; using retEventoCTe tpAmb")
 		ev.TpAmb = retTpAmb
 	default:
-		return Event{}, errors.New("missing essential field: infEvento/tpAmb")
-	}
-	if ev.TpAmb != "1" && ev.TpAmb != "2" {
-		return Event{}, fmt.Errorf("invalid tpAmb %q", ev.TpAmb)
+		warnings = append(warnings, "missing eventoCTe tpAmb")
 	}
 	if ev.Description == "" {
 		ev.Description = xEvento

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -392,6 +393,25 @@ func TestParseProcCTeKeySources(t *testing.T) {
 			t.Errorf("(tpAmb, warnings) = (%q, %v), want (1, one warning)", doc.TpAmb, doc.ParseWarnings)
 		}
 	})
+	// The sync decides what to store for these (see sync.checkTpAmb).
+	t.Run("missing tpAmb is a warning", func(t *testing.T) {
+		doc, err := ParseProcCTe([]byte(strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "")))
+		if err != nil {
+			t.Fatalf("ParseProcCTe: %v", err)
+		}
+		if doc.TpAmb != "" || !slices.Contains(doc.ParseWarnings, "missing ide/tpAmb") {
+			t.Errorf("(tpAmb, warnings) = (%q, %v), want empty with a warning", doc.TpAmb, doc.ParseWarnings)
+		}
+	})
+	t.Run("invalid tpAmb is kept as written", func(t *testing.T) {
+		doc, err := ParseProcCTe([]byte(strings.Replace(valid, "<tpAmb>1</tpAmb>\n        <tpCTe>", "<tpAmb>3</tpAmb><tpCTe>", 1)))
+		if err != nil {
+			t.Fatalf("ParseProcCTe: %v", err)
+		}
+		if doc.TpAmb != "3" {
+			t.Errorf("TpAmb = %q, want 3", doc.TpAmb)
+		}
+	})
 }
 
 func TestParseProcCTeSituacao(t *testing.T) {
@@ -431,8 +451,6 @@ func TestParseProcCTeRejects(t *testing.T) {
 		{"bad key check digit", strings.ReplaceAll(valid, keyProcCTe, keyProcCTe[:43]+"5")},
 		{"unknown cStat", strings.Replace(valid, "<cStat>100</cStat>", "<cStat>999</cStat>", 1)},
 		{"missing cStat", strings.Replace(valid, "<cStat>100</cStat>", "", 1)},
-		{"missing tpAmb", strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "")},
-		{"invalid tpAmb", strings.Replace(valid, "<tpAmb>1</tpAmb>\n        <tpCTe>", "<tpAmb>3</tpAmb><tpCTe>", 1)},
 		{"bad vTPrest", strings.Replace(valid, "<vTPrest>1500.00</vTPrest>", "<vTPrest>1.500,00</vTPrest>", 1)},
 	}
 	for _, tt := range tests {
@@ -585,7 +603,6 @@ func TestParseProcEventoCTeRejects(t *testing.T) {
 		{"short tpEvento", strings.ReplaceAll(valid, "<tpEvento>110111</tpEvento>", "<tpEvento>11011</tpEvento>")},
 		{"tpEvento with a letter", strings.ReplaceAll(valid, "<tpEvento>110111</tpEvento>", "<tpEvento>11011a</tpEvento>")},
 		{"bad key", strings.ReplaceAll(valid, keyProcCTe, keyProcCTe[:43]+"0")},
-		{"missing tpAmb", strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -593,6 +610,28 @@ func TestParseProcEventoCTeRejects(t *testing.T) {
 				t.Fatal("expected an error")
 			}
 		})
+	}
+}
+
+// The sync decides what to store for a missing or invalid tpAmb (see
+// sync.checkTpAmb).
+func TestParseProcEventoCTeTpAmbIsNotEssential(t *testing.T) {
+	valid := string(readFixture(t, "proceventocte-cancelamento.xml"))
+
+	ev, err := ParseProcEventoCTe([]byte(strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "")))
+	if err != nil {
+		t.Fatalf("missing tpAmb: %v", err)
+	}
+	if ev.TpAmb != "" || !slices.Contains(ev.ParseWarnings, "missing eventoCTe tpAmb") {
+		t.Errorf("missing tpAmb: (tpAmb, warnings) = (%q, %v), want empty with a warning", ev.TpAmb, ev.ParseWarnings)
+	}
+
+	ev, err = ParseProcEventoCTe([]byte(strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "<tpAmb>3</tpAmb>")))
+	if err != nil {
+		t.Fatalf("invalid tpAmb: %v", err)
+	}
+	if ev.TpAmb != "3" {
+		t.Errorf("invalid tpAmb: TpAmb = %q, want 3", ev.TpAmb)
 	}
 }
 

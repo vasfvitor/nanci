@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -29,18 +30,8 @@ const (
 	cteEmitente   = "12345678000195"                               // emitente and event author of the fixtures
 )
 
-// scriptedCTeFetcher answers DistCTeNSU from the same script format as
-// scriptedFetcher.
-type scriptedCTeFetcher struct {
-	scriptedFetcher
-}
-
-func (f *scriptedCTeFetcher) DistCTeNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {
-	return f.DistNSU(ctx, cnpj, cUFAutor, ultNSU)
-}
-
-func newScriptedCTeFetcher(responses map[int64]sefaz.DistResult) *scriptedCTeFetcher {
-	return &scriptedCTeFetcher{scriptedFetcher{responses: responses}}
+func newScriptedCTeFetcher(responses map[int64]sefaz.DistResult) *scriptedFetcher {
+	return &scriptedFetcher{responses: responses}
 }
 
 type cteTestHelper struct {
@@ -91,18 +82,6 @@ func (h *cteTestHelper) run(fetcher cteFetcher) (nfse.ProgressEvent, error) {
 		last = e
 	})
 	return last, err
-}
-
-func (h *cteTestHelper) setCTeCursor(nsu int64) {
-	h.t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := h.db.ExecContext(context.Background(), `
-		INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, created_at, updated_at)
-		VALUES (?, 'cte', ?, ?, ?, ?, ?)
-	`, string(h.company.ID), string(h.company.Environment), h.company.CNPJ, nsu, now, now)
-	if err != nil {
-		h.t.Fatalf("set cte cursor: %v", err)
-	}
 }
 
 func (h *cteTestHelper) documents() map[string]cte.CompanyDocument {
@@ -257,6 +236,33 @@ func TestCTeSourceWarnsOnTpAmbMismatch(t *testing.T) {
 	}
 }
 
+// A CT-e with an invalid tpAmb is stored at once with the queried tpAmb and
+// a warning; it is not retried as a parse failure.
+func TestCTeSourceStoresInvalidTpAmbWithWarning(t *testing.T) {
+	h := newCTeTestHelper(t)
+	xml := strings.ReplaceAll(readCTeFixture(t, "procteos.xml"), "<tpAmb>1</tpAmb>", "<tpAmb>3</tpAmb>")
+	fetcher := newScriptedCTeFetcher(map[int64]sefaz.DistResult{
+		0: {CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 1, MaxNSU: 1, Docs: []sefaz.DocZip{
+			{NSU: 1, Schema: "procCTeOS_v4.00.xsd", Content: mustEncodeGzipBase64(t, xml)},
+		}},
+	})
+
+	if _, err := h.run(fetcher); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	got, ok := h.documents()[cteChaveOS]
+	if !ok {
+		t.Fatal("CT-e OS with an invalid tpAmb not stored")
+	}
+	if got.TpAmb != "1" || !slices.ContainsFunc(got.ParseWarnings, func(w string) bool { return strings.Contains(w, `invalid tpAmb "3"`) }) {
+		t.Errorf("(tpAmb, warnings) = (%q, %v), want the queried 1 with an invalid tpAmb warning", got.TpAmb, got.ParseWarnings)
+	}
+	if len(fetcher.cursors) != 1 {
+		t.Errorf("SEFAZ requests = %d, want 1 (no retries)", len(fetcher.cursors))
+	}
+}
+
 func TestCTeSourceKeepsOnlyOwnEventsWithoutLocalDocument(t *testing.T) {
 	h := newCTeTestHelper(t)
 	ownEvent := strings.Replace(readCTeFixture(t, "proceventocte-cancelamento.xml"),
@@ -357,83 +363,9 @@ func TestCTeSourceSkipsDocumentAfterRepeatedParseFailures(t *testing.T) {
 	}
 }
 
-func TestCTeSourceNenhumDocumentoNeverMovesCursorBack(t *testing.T) {
-	h := newCTeTestHelper(t)
-	h.setCTeCursor(10)
-	fetcher := newScriptedCTeFetcher(map[int64]sefaz.DistResult{
-		10: {CStat: sefaz.CStatNenhumDocumento, UltNSU: 8, MaxNSU: 8},
-	})
-
-	if _, err := h.run(fetcher); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceCTe); cursor != 10 {
-		t.Errorf("cursor = %d, want 10", cursor)
-	}
-	h.assertSourceRun(nfse.SyncSourceCTe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceCTe)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertRecentWait(t, state, nfse.SyncStopReasonCaughtUp)
-}
-
-func TestCTeSourceConsumoIndevidoKeepsCursorAndBlocks(t *testing.T) {
-	tests := []struct {
-		name       string
-		ultNSU     int64
-		wantCursor int64
-	}{
-		{"lower ultNSU", 4, 10},
-		{"higher ultNSU", 12, 12},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := newCTeTestHelper(t)
-			h.setCTeCursor(10)
-			fetcher := newScriptedCTeFetcher(map[int64]sefaz.DistResult{
-				10: {CStat: sefaz.CStatConsumoIndevido, UltNSU: tt.ultNSU},
-			})
-
-			if _, err := h.run(fetcher); err != nil {
-				t.Fatalf("Sync: %v", err)
-			}
-
-			if cursor, _ := h.sourceCursor(nfse.SyncSourceCTe); cursor != tt.wantCursor {
-				t.Errorf("cursor = %d, want %d (the cursor only moves forward)", cursor, tt.wantCursor)
-			}
-			h.assertSourceRun(nfse.SyncSourceCTe, nfse.SyncStatusCompleted, nfse.SyncStopReasonConsumoIndevido)
-			state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceCTe)
-			if err != nil {
-				t.Fatal(err)
-			}
-			assertRecentWait(t, state, nfse.SyncStopReasonConsumoIndevido)
-			if state.InitialSyncDoneAt != nil {
-				t.Error("656 must not mark the initial sync")
-			}
-		})
-	}
-}
-
-func TestCTeSourceRejectionFailsRunAsFetchError(t *testing.T) {
-	h := newCTeTestHelper(t)
-	fetcher := newScriptedCTeFetcher(map[int64]sefaz.DistResult{
-		0: {CStat: 593, XMotivo: "CNPJ-Base consultado difere do CNPJ-Base do Certificado Digital"},
-	})
-
-	_, err := h.run(fetcher)
-	var rejection *sefaz.RejectionError
-	if !errors.As(err, &rejection) || rejection.CStat != 593 {
-		t.Fatalf("Sync error = %v, want the 593 rejection", err)
-	}
-	h.assertSourceRun(nfse.SyncSourceCTe, nfse.SyncStatusFailed, nfse.SyncStopReasonFetchError)
-}
-
 // newCTePullTestManager is newPullTestManager with the company given a UF, a
-// CT-e repository and a scripted CT-e client. The NF-e client must not be
-// built.
-func newCTePullTestManager(t *testing.T, passwords CredentialProvider, fetcher cteFetcher) (*Manager, *nfse.Company) {
+// CT-e repository and a scripted SEFAZ client.
+func newCTePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *scriptedFetcher) (*Manager, *nfse.Company) {
 	t.Helper()
 	mgr, comp := newPullTestManager(t, passwords)
 	if _, err := mgr.SyncRepo.db.ExecContext(context.Background(), `UPDATE companies SET uf = 'SP' WHERE id = ?`, string(comp.ID)); err != nil {
@@ -442,19 +374,13 @@ func newCTePullTestManager(t *testing.T, passwords CredentialProvider, fetcher c
 	mgr.CTeRepo = dbstore.NewCTeRepository(mgr.SyncRepo.db)
 
 	originalNewSEFAZClient := newSEFAZClient
-	originalNewSEFAZCTeClient := newSEFAZCTeClient
 	originalDelay := cteRequestDelay
 	t.Cleanup(func() {
 		newSEFAZClient = originalNewSEFAZClient
-		newSEFAZCTeClient = originalNewSEFAZCTeClient
 		cteRequestDelay = originalDelay
 	})
 	cteRequestDelay = 0
-	newSEFAZClient = func(sefaz.ClientConfig) (nfeFetcher, error) {
-		t.Error("a CT-e pull built the NF-e client")
-		return nil, errors.New("unexpected NF-e client")
-	}
-	newSEFAZCTeClient = func(cfg sefaz.ClientConfig) (cteFetcher, error) {
+	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
 		if cfg.Environment != nfse.EnvironmentProduction || cfg.Certificate == nil {
 			t.Errorf("SEFAZ client config = %+v", cfg)
 		}
@@ -487,8 +413,11 @@ func TestPullCTeStoresDocumentsReportsLimitsAndBlocks(t *testing.T) {
 	if result.CompletasSaved != 1 || result.ResumosSaved != 0 {
 		t.Errorf("completas/resumos = %d/%d, want 1/0", result.CompletasSaved, result.ResumosSaved)
 	}
-	if result.RequestsLastHour != 2 || result.RequestBudget != CTeRequestsPerHour {
-		t.Errorf("requests = %d of %d, want 2 of %d", result.RequestsLastHour, result.RequestBudget, CTeRequestsPerHour)
+	if result.RequestsLastHour != 2 || result.RequestBudget != requestsPerHour(nfse.SyncSourceCTe) {
+		t.Errorf("requests = %d of %d, want 2 of %d", result.RequestsLastHour, result.RequestBudget, requestsPerHour(nfse.SyncSourceCTe))
+	}
+	if !slices.Equal(fetcher.services, []string{"cte", "cte"}) {
+		t.Errorf("SEFAZ services = %v, want only the CT-e distribution", fetcher.services)
 	}
 	if result.NextAllowedAt == nil || time.Until(*result.NextAllowedAt) < 55*time.Minute {
 		t.Errorf("NextAllowedAt = %v, want about an hour from now", result.NextAllowedAt)

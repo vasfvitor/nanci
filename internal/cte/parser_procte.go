@@ -29,8 +29,8 @@ var tipoByElement = map[string]TipoDocumento{
 // recognized. Fields a kind does not carry stay empty.
 //
 // The tomador is resolved after the walk (see resolveTomador). Only the
-// access key, tpAmb and the protocol cStat are essential; everything else
-// that is missing or unexpected becomes a parse warning.
+// access key and the protocol cStat are essential; everything else that is
+// missing or unexpected becomes a parse warning.
 func ParseProcCTe(data []byte) (Document, error) {
 	var doc Document
 	var warnings []string
@@ -185,16 +185,15 @@ func ParseProcCTe(data []byte) (Document, error) {
 		doc.Emitente.UF = key.UF()
 	}
 
+	// A missing or invalid tpAmb is not an error here: the sync decides the
+	// tpAmb to store against the environment it queried.
 	switch {
 	case doc.TpAmb != "":
 	case protTpAmb != "":
 		warnings = append(warnings, "missing ide/tpAmb; using protocol tpAmb")
 		doc.TpAmb = protTpAmb
 	default:
-		return Document{}, errors.New("missing essential field: ide/tpAmb")
-	}
-	if doc.TpAmb != "1" && doc.TpAmb != "2" {
-		return Document{}, fmt.Errorf("invalid tpAmb %q", doc.TpAmb)
+		warnings = append(warnings, "missing ide/tpAmb")
 	}
 
 	switch cStat {

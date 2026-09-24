@@ -21,15 +21,6 @@ import (
 // var so tests can drop it.
 var nfeRequestDelay = 2 * time.Second
 
-const (
-	// NFeRequestsPerHour is the SEFAZ limit per CNPJ; going over it gets
-	// cStat 656 and an hour of blocking.
-	NFeRequestsPerHour = 20
-	// nfeWaitAfterStop is how long SEFAZ wants us to wait after catching up
-	// (cStat 137, or ultNSU = maxNSU) and after cStat 656.
-	nfeWaitAfterStop = time.Hour
-)
-
 type nfeFetcher interface {
 	DistNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error)
 }
@@ -62,64 +53,22 @@ func (s *nfeSource) Kind() nfse.SyncSource {
 }
 
 func (s *nfeSource) Policy() SourcePolicy {
-	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: NFeRequestsPerHour}
+	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: requestsPerHour(nfse.SyncSourceNFe)}
 }
 
-// Fetch asks for the documents after cursor and turns the cStat into the
-// loop's stop rules:
-//
-//   - 138: items; the next cursor is ultNSU; ultNSU >= maxNSU means caught up.
-//   - 137: nothing new; caught up.
-//   - 656: consumo indevido; stop and wait.
-//
-// Caught up and 656 both ask the loop to wait an hour before the next query.
+// Fetch asks for the documents after cursor; distBatch applies the stop
+// rules.
 func (s *nfeSource) Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error) {
 	resp, err := s.client.DistNSU(ctx, company.CNPJ, s.cUFAutor, cursor)
 	if err != nil {
 		return Batch{}, err
 	}
+	return distBatch(ctx, s.log, resp, cursor, isNFeEvent, "NF-e")
+}
 
-	batch := Batch{
-		UltNSU:     resp.UltNSU,
-		MaxNSU:     resp.MaxNSU,
-		NextCursor: resp.UltNSU,
-	}
-	waitUntil := time.Now().UTC().Add(nfeWaitAfterStop)
-
-	switch resp.CStat {
-	case sefaz.CStatDocumentoLocalizado:
-		batch.Items = make([]Item, 0, len(resp.Docs))
-		for _, doc := range resp.Docs {
-			kind := nfe.ClassifySchema(doc.Schema)
-			batch.Items = append(batch.Items, Item{
-				NSU:     doc.NSU,
-				Schema:  doc.Schema,
-				Payload: doc.Content,
-				IsEvent: kind == nfe.SchemaResEvento || kind == nfe.SchemaProcEventoNFe,
-			})
-		}
-		if resp.UltNSU >= resp.MaxNSU {
-			batch.Done = true
-			batch.StopReason = nfse.SyncStopReasonCaughtUp
-			batch.WaitUntil = &waitUntil
-		}
-	case sefaz.CStatNenhumDocumento:
-		batch.NextCursor = max(cursor, resp.UltNSU)
-		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonCaughtUp
-		batch.WaitUntil = &waitUntil
-	case sefaz.CStatConsumoIndevido:
-		// The loop only adopts a cursor that moves forward.
-		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonConsumoIndevido
-		batch.WaitUntil = &waitUntil
-		s.log.WarnContext(ctx, "SEFAZ bloqueou a consulta por consumo indevido",
-			slog.Int64("ult_nsu", resp.UltNSU),
-			slog.Time("next_allowed_at", waitUntil))
-	default:
-		return Batch{}, &sefaz.RejectionError{CStat: resp.CStat, XMotivo: resp.XMotivo}
-	}
-	return batch, nil
+func isNFeEvent(schema string) bool {
+	kind := nfe.ClassifySchema(schema)
+	return kind == nfe.SchemaResEvento || kind == nfe.SchemaProcEventoNFe
 }
 
 func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
@@ -218,25 +167,6 @@ func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, tpA
 		return ItemOutcome{}, fmt.Errorf("db apply nfe event failed: %w", err)
 	}
 	return outcome, nil
-}
-
-// checkTpAmb returns the tpAmb to store for an item of a pull that queried
-// pullTpAmb. The XML wins, with a warning when it names the other
-// environment. A resumo carries no tpAmb and takes the pull's, and so does an
-// XML with an invalid one.
-func checkTpAmb(xmlTpAmb, pullTpAmb string, warnings *[]string) string {
-	switch xmlTpAmb {
-	case "":
-		return pullTpAmb
-	case pullTpAmb:
-		return xmlTpAmb
-	case sefaz.TpAmbProducao, sefaz.TpAmbHomologacao:
-		*warnings = append(*warnings, fmt.Sprintf("tpAmb %s differs from the queried tpAmb %s; kept the XML's", xmlTpAmb, pullTpAmb))
-		return xmlTpAmb
-	default:
-		*warnings = append(*warnings, fmt.Sprintf("invalid tpAmb %q; using the queried tpAmb %s", xmlTpAmb, pullTpAmb))
-		return pullTpAmb
-	}
 }
 
 // processUnsupported keeps the XML of a schema nanci does not read and lets

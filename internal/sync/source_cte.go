@@ -21,15 +21,6 @@ import (
 // var so tests can drop it.
 var cteRequestDelay = 2 * time.Second
 
-const (
-	// CTeRequestsPerHour is the hourly budget per CNPJ. The CT-e technical
-	// note does not publish a limit; this follows the NF-e one.
-	CTeRequestsPerHour = 20
-	// cteWaitAfterStop is how long to wait after catching up (cStat 137, or
-	// ultNSU = maxNSU) and after cStat 656.
-	cteWaitAfterStop = time.Hour
-)
-
 type cteFetcher interface {
 	DistCTeNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error)
 }
@@ -62,63 +53,21 @@ func (s *cteSource) Kind() nfse.SyncSource {
 }
 
 func (s *cteSource) Policy() SourcePolicy {
-	return SourcePolicy{RequestDelay: cteRequestDelay, RequestsPerHour: CTeRequestsPerHour}
+	return SourcePolicy{RequestDelay: cteRequestDelay, RequestsPerHour: requestsPerHour(nfse.SyncSourceCTe)}
 }
 
-// Fetch asks for the documents after cursor and turns the cStat into the
-// loop's stop rules, the same as the NF-e distribution:
-//
-//   - 138: items; the next cursor is ultNSU; ultNSU >= maxNSU means caught up.
-//   - 137: nothing new; caught up.
-//   - 656: consumo indevido; stop and wait.
-//
-// Caught up and 656 both ask the loop to wait an hour before the next query.
+// Fetch asks for the documents after cursor; distBatch applies the stop
+// rules, the same as for the NF-e distribution.
 func (s *cteSource) Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error) {
 	resp, err := s.client.DistCTeNSU(ctx, company.CNPJ, s.cUFAutor, cursor)
 	if err != nil {
 		return Batch{}, err
 	}
+	return distBatch(ctx, s.log, resp, cursor, isCTeEvent, "CT-e")
+}
 
-	batch := Batch{
-		UltNSU:     resp.UltNSU,
-		MaxNSU:     resp.MaxNSU,
-		NextCursor: resp.UltNSU,
-	}
-	waitUntil := time.Now().UTC().Add(cteWaitAfterStop)
-
-	switch resp.CStat {
-	case sefaz.CStatDocumentoLocalizado:
-		batch.Items = make([]Item, 0, len(resp.Docs))
-		for _, doc := range resp.Docs {
-			batch.Items = append(batch.Items, Item{
-				NSU:     doc.NSU,
-				Schema:  doc.Schema,
-				Payload: doc.Content,
-				IsEvent: cte.ClassifySchema(doc.Schema) == cte.SchemaProcEventoCTe,
-			})
-		}
-		if resp.UltNSU >= resp.MaxNSU {
-			batch.Done = true
-			batch.StopReason = nfse.SyncStopReasonCaughtUp
-			batch.WaitUntil = &waitUntil
-		}
-	case sefaz.CStatNenhumDocumento:
-		batch.NextCursor = max(cursor, resp.UltNSU)
-		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonCaughtUp
-		batch.WaitUntil = &waitUntil
-	case sefaz.CStatConsumoIndevido:
-		// The loop only adopts a cursor that moves forward.
-		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonConsumoIndevido
-		batch.WaitUntil = &waitUntil
-		s.log.WarnContext(ctx, "SEFAZ bloqueou a consulta de CT-e por consumo indevido",
-			slog.Int64("ult_nsu", resp.UltNSU),
-			slog.Time("next_allowed_at", waitUntil))
-	default:
-		return Batch{}, &sefaz.RejectionError{CStat: resp.CStat, XMotivo: resp.XMotivo}
-	}
-	return batch, nil
+func isCTeEvent(schema string) bool {
+	return cte.ClassifySchema(schema) == cte.SchemaProcEventoCTe
 }
 
 func (s *cteSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
