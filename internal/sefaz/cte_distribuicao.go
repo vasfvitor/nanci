@@ -10,9 +10,8 @@ const (
 )
 
 // cteDist is CTeDistribuicaoDFe (NT 2015.002). The answer is the same
-// retDistDFeInt as the NF-e one, in the CT-e namespace. The action follows
-// the NF-e service and is not confirmed against the published WSDL; a wrong
-// one comes back as a SOAP fault.
+// retDistDFeInt as the NF-e one, in the CT-e namespace. The action and the
+// envelope were accepted by the production service on 2026-09-24 (cStat 137).
 var cteDist = distService{
 	name:      "CT-e",
 	namespace: cteNamespace,
