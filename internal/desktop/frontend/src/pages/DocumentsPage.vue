@@ -46,7 +46,7 @@ color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" 
 v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocuments" :columns="columns"
       row-key="RelationID" selection="multiple"
       :loading="loading" no-data-label="Nenhum documento encontrado." binary-state-sort flat bordered dense
-      class="full-height">
+      class="full-height documents-table">
       <template #top>
         <div class="column full-width q-gutter-y-sm">
           <div class="row items-center justify-between full-width">
@@ -212,7 +212,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
               <div class="text-weight-medium">
                 {{ props.row.PrestadorCNPJ ? formatCpfCnpj(props.row.PrestadorCNPJ) : '-' }}
               </div>
-              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.PrestadorName || ''">
+              <div class="text-caption text-grey-6 partner-name" :title="props.row.PrestadorName || ''">
                 {{ props.row.PrestadorName || '-' }}
               </div>
             </template>
@@ -221,7 +221,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
               <div class="text-weight-medium">
                 {{ props.row.TomadorCNPJ ? formatCpfCnpj(props.row.TomadorCNPJ) : '-' }}
               </div>
-              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.TomadorName || ''">
+              <div class="text-caption text-grey-6 partner-name" :title="props.row.TomadorName || ''">
                 {{ props.row.TomadorName || '-' }}
               </div>
             </template>
@@ -235,7 +235,7 @@ dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chav
         </q-tr>
 
         <q-tr v-if="props.expand" :props="props" :class="['detail-container-borders', $q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
-          <q-td :colspan="props.cols.length + 1" class="q-pa-md">
+          <q-td :colspan="props.cols.length + 1" class="q-pa-md document-detail-cell">
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-7">
                 <div class="text-subtitle2 text-primary q-mb-xs">
@@ -733,9 +733,14 @@ function openEventsDialog(documentId?: string) {
   table-layout: auto;
 }
 
-:deep(.q-table td) {
+/* Values stay on one line and the table scrolls sideways; only the partner
+   names and the expanded details wrap. */
+.documents-table :deep(td) {
+  white-space: nowrap;
+}
+
+.documents-table :deep(td.document-detail-cell) {
   white-space: normal;
-  word-break: break-word;
 }
 
 .document-search-input {
@@ -756,7 +761,10 @@ function openEventsDialog(documentId?: string) {
 }
 
 .partner-name {
-  max-width: 180px;
+  min-width: 180px;
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .service-description {
