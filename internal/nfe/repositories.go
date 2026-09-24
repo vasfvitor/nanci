@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // ExportKindXML is the only export kind tracked for NF-e.
@@ -56,7 +56,7 @@ const (
 // ManifestacaoRecord is the outcome of one event of a lote sent to SEFAZ.
 // Fields are plain values so the store does not depend on the SEFAZ client.
 type ManifestacaoRecord struct {
-	CompanyID     nfse.CompanyID
+	CompanyID     dfe.CompanyID
 	CompanyCNPJ   string
 	IDLote        string
 	TpAmb         string // tpAmb the lote was sent to: 1 produção, 2 homologação

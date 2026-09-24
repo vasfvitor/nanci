@@ -12,7 +12,6 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const (
@@ -103,7 +102,7 @@ func TestParseResNFe(t *testing.T) {
 		EmitenteIE:    "111222333444",
 		EmitenteUF:    "SP",
 		TpNF:          "1",
-		TotalValue:    nfse.NewMoneyFromCents(125050),
+		TotalValue:    dfe.NewMoneyFromCents(125050),
 		Situacao:      SituacaoAutorizada,
 		Completeness:  CompletenessResumo,
 		LayoutVersion: "1.01",
@@ -185,9 +184,9 @@ func TestParseProcNFe(t *testing.T) {
 		NatOp:             "VENDA DE MERCADORIA",
 		// Items carry vICMS 180.00 and 24.00 and vIPI 50.00 and 0.50; only
 		// the ICMSTot values may land here.
-		TotalValue:    nfse.NewMoneyFromCents(125050),
-		ICMSValue:     nfse.NewMoneyFromCents(20400),
-		IPIValue:      nfse.NewMoneyFromCents(5050),
+		TotalValue:    dfe.NewMoneyFromCents(125050),
+		ICMSValue:     dfe.NewMoneyFromCents(20400),
+		IPIValue:      dfe.NewMoneyFromCents(5050),
 		Situacao:      SituacaoAutorizada,
 		Completeness:  CompletenessCompleta,
 		LayoutVersion: "4.00",

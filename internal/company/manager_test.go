@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -29,7 +30,7 @@ func (f *fakeStore) UpdateCompany(ctx context.Context, c *nfse.Company) error {
 	f.companies[0] = *c
 	return nil
 }
-func (f *fakeStore) AssignCredential(ctx context.Context, companyID nfse.CompanyID, credentialID nfse.CredentialID) error {
+func (f *fakeStore) AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID nfse.CredentialID) error {
 	return nil
 }
 
@@ -46,7 +47,7 @@ type fakeSync struct {
 	cursors []nfse.SyncSource
 }
 
-func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error) {
+func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error) {
 	return nfse.SyncSnapshot{}, nil
 }
 func (f *fakeSync) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {

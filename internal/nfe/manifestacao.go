@@ -8,8 +8,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // TipoManifestacao is a manifestação do destinatário nanci can send.
@@ -36,7 +36,7 @@ func ParseTipoManifestacao(val string) (TipoManifestacao, error) {
 	case string(TipoManifestacaoNaoRealizada), "nao-realizada", TpEventoNaoRealizada:
 		return TipoManifestacaoNaoRealizada, nil
 	default:
-		return "", fmt.Errorf("invalid tipo manifestacao %q: %w", val, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid tipo manifestacao %q: %w", val, dfe.ErrInvalidEnum)
 	}
 }
 
@@ -249,7 +249,7 @@ const (
 // or an error whose message can be shown to the user.
 func ValidateJustificativa(tipo TipoManifestacao, xJust string) (string, error) {
 	if !tipo.Valid() {
-		return "", fmt.Errorf("tipo de manifestação inválido %q: %w", tipo, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("tipo de manifestação inválido %q: %w", tipo, dfe.ErrInvalidEnum)
 	}
 	cleaned := cleanText(xJust)
 	length := utf8.RuneCountInString(cleaned)

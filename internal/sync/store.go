@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
@@ -500,7 +501,7 @@ func (r *Store) FinishRun(ctx context.Context, params nfse.FinishRunParams) erro
 	return err
 }
 
-func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error) {
+func (r *Store) LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (nfse.SyncSnapshot, error) {
 	var snapshot nfse.SyncSnapshot
 
 	state, err := r.getSyncState(ctx, companyID, source, environment, consultationCNPJ)
@@ -564,7 +565,7 @@ type SourceState struct {
 
 // SourceState returns the company's facts for the source. A company that
 // never synced the source gets the zero SourceState.
-func (r *Store) SourceState(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) (SourceState, error) {
+func (r *Store) SourceState(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) (SourceState, error) {
 	var initialSyncDoneAt, blockedUntil, blockedReason sql.NullString
 	err := r.db.QueryRowContext(ctx, `
 		SELECT initial_sync_completed_at, blocked_until, blocked_reason
@@ -587,7 +588,7 @@ func (r *Store) SourceState(ctx context.Context, companyID nfse.CompanyID, sourc
 
 // MarkInitialSyncCompleted records the first time the source caught up for
 // the company.
-func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) error {
+func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
@@ -601,7 +602,7 @@ func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID nfse.Com
 
 // SetBlockedUntil records that the source must not be queried for the
 // company before until, and why.
-func (r *Store) SetBlockedUntil(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, until time.Time, reason nfse.SyncStopReason) error {
+func (r *Store) SetBlockedUntil(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, until time.Time, reason nfse.SyncStopReason) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO company_sync_sources (company_id, source, blocked_until, blocked_reason, updated_at)
@@ -620,7 +621,7 @@ const requestRetention = 24 * time.Hour
 
 // RecordRequest logs one outbound distribution request for the source's
 // rolling budget and prunes rows older than requestRetention.
-func (r *Store) RecordRequest(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, at time.Time) error {
+func (r *Store) RecordRequest(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, at time.Time) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -645,7 +646,7 @@ func (r *Store) RecordRequest(ctx context.Context, companyID nfse.CompanyID, sou
 
 // RequestsSince counts the source's requests for the company at or after
 // since, and returns the oldest of them (nil when there are none).
-func (r *Store) RequestsSince(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, since time.Time) (int, *time.Time, error) {
+func (r *Store) RequestsSince(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, since time.Time) (int, *time.Time, error) {
 	var count int
 	var oldest sql.NullString
 	err := r.db.QueryRowContext(ctx, `
@@ -684,7 +685,7 @@ func (r *Store) RecordItemFailure(ctx context.Context, key nfse.GetOrCreateSyncS
 	return attempts, err
 }
 
-func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID nfse.CompanyID, chave string) (bool, error) {
+func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID dfe.CompanyID, chave string) (bool, error) {
 	var exists int
 	err := r.db.QueryRowContext(ctx, `
 		SELECT 1
@@ -702,7 +703,7 @@ func (r *Store) CompanyDocumentExistsByAccessKey(ctx context.Context, companyID 
 	return true, nil
 }
 
-func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
+func (r *Store) getSyncState(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncState, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
 			company_id, source, environment, consultation_cnpj,
@@ -752,7 +753,7 @@ func (r *Store) getSyncState(ctx context.Context, companyID nfse.CompanyID, sour
 	return &state, nil
 }
 
-func (r *Store) latestRun(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncRun, error) {
+func (r *Store) latestRun(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, environment nfse.Environment, consultationCNPJ string) (*nfse.SyncRun, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
 			id, company_id, source, credential_id, environment, credential_cnpj, consultation_cnpj,

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // Document is the canonical NF-e, built from a resNFe (resumo) or a procNFe
@@ -30,9 +29,9 @@ type Document struct {
 	TpNF              string   // "0" entrada, "1" saída
 	FinNFe            string   // empty on resumo
 	NatOp             string   // empty on resumo
-	TotalValue        nfse.Money
-	ICMSValue         nfse.Money // total/ICMSTot/vICMS; zero on resumo
-	IPIValue          nfse.Money // total/ICMSTot/vIPI; zero on resumo
+	TotalValue        dfe.Money
+	ICMSValue         dfe.Money // total/ICMSTot/vICMS; zero on resumo
+	IPIValue          dfe.Money // total/ICMSTot/vIPI; zero on resumo
 	Situacao          Situacao
 	Completeness      Completeness
 	LayoutVersion     string // infNFe@versao or resNFe@versao
@@ -45,7 +44,7 @@ type Document struct {
 type CompanyDocument struct {
 	Document
 	RelationID       string
-	CompanyID        nfse.CompanyID
+	CompanyID        dfe.CompanyID
 	CompanyRole      CompanyRole
 	VisibilityReason VisibilityReason
 	Manifestacao     Manifestacao

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func TestNFeRows(t *testing.T) {
@@ -25,7 +25,7 @@ func TestNFeRows(t *testing.T) {
 					AuthorizedAt: &authorized,
 					Protocolo:    "135260000000001",
 					TpNF:         "1",
-					TotalValue:   nfse.NewMoneyFromCents(123456),
+					TotalValue:   dfe.NewMoneyFromCents(123456),
 					Situacao:     nfe.SituacaoAutorizada,
 					Completeness: nfe.CompletenessCompleta,
 				},
@@ -109,7 +109,7 @@ func TestNFePendingRows(t *testing.T) {
 			CompanyDocument: nfe.CompanyDocument{
 				Document: nfe.Document{
 					ChaveAcesso:  "35260912345678000195550010000123451000123456",
-					TotalValue:   nfse.NewMoneyFromCents(990),
+					TotalValue:   dfe.NewMoneyFromCents(990),
 					Situacao:     nfe.SituacaoAutorizada,
 					Completeness: nfe.CompletenessResumo,
 				},
@@ -214,7 +214,7 @@ func TestNFeCienciaPlanFrom(t *testing.T) {
 	due := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	got := NFeCienciaPlanFrom(app.NFeCienciaPlan{
 		Eligible: []app.NFeDocument{{
-			CompanyDocument: nfe.CompanyDocument{Document: nfe.Document{ChaveAcesso: "a", TotalValue: nfse.NewMoneyFromCents(5050)}},
+			CompanyDocument: nfe.CompanyDocument{Document: nfe.Document{ChaveAcesso: "a", TotalValue: dfe.NewMoneyFromCents(5050)}},
 			Deadlines:       nfe.Deadlines{CienciaDue: due},
 		}},
 		Skipped: []app.NFeSkipped{{ChaveAcesso: "b", Reason: "NF-e cancelada"}},

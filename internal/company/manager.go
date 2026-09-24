@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/uf"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -29,7 +30,7 @@ type storeInterface interface {
 	ListCompanies(ctx context.Context) ([]nfse.Company, error)
 	CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error)
 	UpdateCompany(ctx context.Context, c *nfse.Company) error
-	AssignCredential(ctx context.Context, companyID nfse.CompanyID, credentialID nfse.CredentialID) error
+	AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID nfse.CredentialID) error
 }
 
 type credentialProvider interface {
@@ -38,7 +39,7 @@ type credentialProvider interface {
 }
 
 type syncProvider interface {
-	LatestSyncSnapshot(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
+	LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
 	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
 }
 
@@ -104,7 +105,7 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	}
 
 	company := &nfse.Company{
-		ID:                 nfse.CompanyID(nfse.GenerateID()),
+		ID:                 dfe.CompanyID(nfse.GenerateID()),
 		CNPJ:               cleanedCNPJ,
 		CNPJRoot:           root,
 		Name:               input.Name,
@@ -296,7 +297,7 @@ func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy,
 		}
 		return policy, &parsed, nil
 	default:
-		return "", nil, fmt.Errorf("invalid sync start policy %q: %w", policy, nfse.ErrInvalidEnum)
+		return "", nil, fmt.Errorf("invalid sync start policy %q: %w", policy, dfe.ErrInvalidEnum)
 	}
 }
 

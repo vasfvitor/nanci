@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
@@ -207,7 +208,7 @@ func testDocument(id, accessKey, hash string) nfse.Document {
 	}
 }
 
-func applyDocument(t *testing.T, repo *sync.Store, companyID nfse.CompanyID, document nfse.Document, nsu int64) {
+func applyDocument(t *testing.T, repo *sync.Store, companyID dfe.CompanyID, document nfse.Document, nsu int64) {
 	t.Helper()
 	_, err := repo.ApplyDocument(context.Background(), nfse.ApplyDocumentParams{
 		Document: document,
@@ -223,7 +224,7 @@ func applyDocument(t *testing.T, repo *sync.Store, companyID nfse.CompanyID, doc
 	}
 }
 
-func applyEvent(t *testing.T, repo *sync.Store, event nfse.Event, companyID nfse.CompanyID, nsu int64) {
+func applyEvent(t *testing.T, repo *sync.Store, event nfse.Event, companyID dfe.CompanyID, nsu int64) {
 	t.Helper()
 	if _, err := repo.ApplyEvent(context.Background(), nfse.ApplyEventParams{
 		Event:     event,
@@ -530,7 +531,7 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 	}
 }
 
-func assertHasSyncState(t *testing.T, syncRepo *sync.Store, companyID nfse.CompanyID, source nfse.SyncSource, want bool) {
+func assertHasSyncState(t *testing.T, syncRepo *sync.Store, companyID dfe.CompanyID, source nfse.SyncSource, want bool) {
 	t.Helper()
 	got, err := syncRepo.HasSyncState(context.Background(), nfse.HasSyncStateParams{CompanyID: companyID, Source: source})
 	if err != nil {

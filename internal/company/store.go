@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
@@ -89,7 +90,7 @@ func (r *Store) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 // read from company_sync_sources.
 func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *nfse.Company {
 	c := &nfse.Company{
-		ID:                 nfse.CompanyID(row.ID),
+		ID:                 dfe.CompanyID(row.ID),
 		CNPJ:               row.Cnpj,
 		CNPJRoot:           row.CnpjRoot,
 		Name:               row.Name,
@@ -108,7 +109,7 @@ func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *n
 	return c
 }
 
-func (r *Store) AssignCredential(ctx context.Context, companyID nfse.CompanyID, credID nfse.CredentialID) error {
+func (r *Store) AssignCredential(ctx context.Context, companyID dfe.CompanyID, credID nfse.CredentialID) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	affected, err := r.queries.AssignCredentialToCompany(ctx, sqlgen.AssignCredentialToCompanyParams{
 		CredentialID: sql.NullString{String: string(credID), Valid: credID != ""},

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
@@ -33,7 +34,7 @@ func NewDocumentService(d Dependencies) *DocumentService {
 
 // buildFilter resolves a ListInput into an nfse.DocumentFilter, applying
 // the company's sync-start policy as a date floor.
-func (s *DocumentService) buildFilter(ctx context.Context, input ListInput) (nfse.CompanyID, nfse.DocumentFilter, error) {
+func (s *DocumentService) buildFilter(ctx context.Context, input ListInput) (dfe.CompanyID, nfse.DocumentFilter, error) {
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return "", nfse.DocumentFilter{}, err

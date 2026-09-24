@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // walkXML streams data with encoding/xml, keeping a stack of local element
@@ -111,8 +111,8 @@ func withoutLeadingZeros(s string) string {
 }
 
 // parseMoneyInto parses an XSD decimal into dst, naming field in the error.
-func parseMoneyInto(dst *nfse.Money, field, value string) error {
-	m, err := nfse.ParseMoney(value)
+func parseMoneyInto(dst *dfe.Money, field, value string) error {
+	m, err := dfe.ParseMoney(value)
 	if err != nil {
 		return fmt.Errorf("%s: %w", field, err)
 	}

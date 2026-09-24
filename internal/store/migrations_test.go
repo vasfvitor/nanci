@@ -9,7 +9,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -540,7 +540,7 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list companies after up: %v", err)
 	}
-	wantDone := map[nfse.CompanyID]string{"comp-1": syncedAt, "comp-2": mirrorOnlyAt, "comp-3": ""}
+	wantDone := map[dfe.CompanyID]string{"comp-1": syncedAt, "comp-2": mirrorOnlyAt, "comp-3": ""}
 	if len(companies) != len(wantDone) {
 		t.Fatalf("companies after up = %d, want %d", len(companies), len(wantDone))
 	}

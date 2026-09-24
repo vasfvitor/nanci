@@ -8,6 +8,8 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // ParseDocumentXML parses a National NFS-e XML document using strict, namespace-aware path tracking.
@@ -111,43 +113,43 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 			} else if strings.HasSuffix(currentPath, "/interm/xNome") { //nolint:misspell // Official XML tag.
 				doc.IntermediarioName = val
 			} else if strings.HasSuffix(currentPath, "/vServ") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vServ: %w", err)
 				}
 				doc.ServiceValue = m
 			} else if strings.HasSuffix(currentPath, "/vISS") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vISS: %w", err)
 				}
 				doc.ISSValue = m
 			} else if strings.HasSuffix(currentPath, "/vIRRF") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vIRRF: %w", err)
 				}
 				doc.IRRFValue = m
 			} else if strings.HasSuffix(currentPath, "/vINSS") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vINSS: %w", err)
 				}
 				doc.INSSValue = m
 			} else if strings.HasSuffix(currentPath, "/vPIS") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vPIS: %w", err)
 				}
 				doc.PISValue = m
 			} else if strings.HasSuffix(currentPath, "/vCOFINS") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vCOFINS: %w", err)
 				}
 				doc.COFINSValue = m
 			} else if strings.HasSuffix(currentPath, "/vCSLL") {
-				m, err := ParseMoney(val)
+				m, err := dfe.ParseMoney(val)
 				if err != nil {
 					return doc, nil, fmt.Errorf("vCSLL: %w", err)
 				}

@@ -10,6 +10,7 @@ package sefaz
 import (
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -54,7 +55,7 @@ func EndpointsFor(env nfse.Environment) (Endpoints, error) {
 			RecepcaoEvento:  RecepcaoEventoHomologacao,
 		}, nil
 	default:
-		return Endpoints{}, fmt.Errorf("invalid environment %q: %w", env, nfse.ErrInvalidEnum)
+		return Endpoints{}, fmt.Errorf("invalid environment %q: %w", env, dfe.ErrInvalidEnum)
 	}
 }
 
@@ -67,6 +68,6 @@ func TpAmb(env nfse.Environment) (string, error) {
 	case nfse.EnvironmentRestricted:
 		return TpAmbHomologacao, nil
 	default:
-		return "", fmt.Errorf("invalid environment %q: %w", env, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid environment %q: %w", env, dfe.ErrInvalidEnum)
 	}
 }

@@ -2,11 +2,13 @@ package nfse
 
 import (
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // Company represents a company that syncs documents.
 type Company struct {
-	ID                 CompanyID
+	ID                 dfe.CompanyID
 	CNPJ               string // stored as a 14-char identifier; current input policy accepts validated numeric CNPJ only
 	CNPJRoot           string // first 8 chars - groups branches
 	Name               string

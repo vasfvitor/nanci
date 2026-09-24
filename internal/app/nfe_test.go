@@ -262,8 +262,8 @@ func TestNFeListDocumentsFilters(t *testing.T) {
 		"papel":        {CNPJ: nfeTestCNPJ, Role: "tomador"},
 		"manifestação": {CNPJ: nfeTestCNPJ, Manifestacao: "aceita"},
 	} {
-		if _, err := env.app.NFe.ListDocuments(ctx, in); !errors.Is(err, nfse.ErrInvalidEnum) {
-			t.Errorf("invalid %s: err = %v, want nfse.ErrInvalidEnum", name, err)
+		if _, err := env.app.NFe.ListDocuments(ctx, in); !errors.Is(err, dfe.ErrInvalidEnum) {
+			t.Errorf("invalid %s: err = %v, want dfe.ErrInvalidEnum", name, err)
 		}
 	}
 

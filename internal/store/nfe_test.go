@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
@@ -101,7 +101,7 @@ func (f *nfeFixture) applyDocument(companyID, companyCNPJ string, doc nfe.Docume
 		var err error
 		inserted, err = f.repo.ApplyDocumentTx(context.Background(), tx, store.ApplyNFeDocumentParams{
 			Document:    doc,
-			CompanyID:   nfse.CompanyID(companyID),
+			CompanyID:   dfe.CompanyID(companyID),
 			CompanyCNPJ: companyCNPJ,
 			NSU:         nsu,
 		})
@@ -138,7 +138,7 @@ func (f *nfeFixture) inTx(fn func(tx *sql.Tx) error) {
 
 func (f *nfeFixture) companyDocument(companyID, chave string) nfe.CompanyDocument {
 	f.t.Helper()
-	doc, err := f.repo.CompanyDocumentByChave(context.Background(), nfse.CompanyID(companyID), chave)
+	doc, err := f.repo.CompanyDocumentByChave(context.Background(), dfe.CompanyID(companyID), chave)
 	if err != nil {
 		f.t.Fatalf("CompanyDocumentByChave(%s, %s): %v", companyID, chave, err)
 	}
@@ -163,7 +163,7 @@ func (f *nfeFixture) record(items ...nfe.ManifestacaoRecord) {
 
 func (f *nfeFixture) list(companyID string, filter nfe.DocumentFilter) []string {
 	f.t.Helper()
-	docs, err := f.repo.ListCompanyDocuments(context.Background(), nfse.CompanyID(companyID), filter)
+	docs, err := f.repo.ListCompanyDocuments(context.Background(), dfe.CompanyID(companyID), filter)
 	if err != nil {
 		f.t.Fatalf("ListCompanyDocuments: %v", err)
 	}

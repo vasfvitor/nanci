@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
@@ -17,7 +18,7 @@ func TestStore_CreateCompany(t *testing.T) {
 	s := company.NewStore(db)
 
 	c := &nfse.Company{
-		ID:              nfse.CompanyID("comp_12345"),
+		ID:              dfe.CompanyID("comp_12345"),
 		CNPJ:            "11222333000181",
 		Name:            "Test Company",
 		Environment:     nfse.EnvironmentRestricted,

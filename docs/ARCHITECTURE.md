@@ -9,7 +9,8 @@
 - `internal/sync`: Loop de sincronização por NSU, genérico por origem (NFS-e e NF-e), com orçamento de consultas, bloqueios e carregamento do certificado (`CertificateLoader`).
 - `internal/store`: Camada de persistência. Contém as queries (frequentemente geradas via sqlc), conexões SQLite e a pasta `migrations_v2/` com o schema do banco.
 - `internal/nfse` e `internal/adn`: Modelos da Nota Fiscal de Serviço Eletrônica e cliente da API do Ambiente de Dados Nacional.
-- `internal/nfe`: Modelos da NF-e (modelo 55): chave de acesso, leitura de `resNFe`, `procNFe` e eventos, papel da empresa na nota, regras de mesclagem resumo/completa, estado e prazos da manifestação.
+- `internal/dfe`: Vocabulário comum dos documentos fiscais eletrônicos da SEFAZ (NF-e, CT-e): chave de acesso de 44 caracteres, valores monetários (`Money`), `CompanyID` e `ErrInvalidEnum`. Sem código de rede ou banco.
+- `internal/nfe`: Modelos da NF-e (modelo 55): leitura de `resNFe`, `procNFe` e eventos, papel da empresa na nota, regras de mesclagem resumo/completa, estado e prazos da manifestação.
 - `internal/sefaz`: Cliente SOAP dos webservices do Ambiente Nacional da NF-e (`NFeDistribuicaoDFe` e `NFeRecepcaoEvento4`) e assinatura XMLDSig dos eventos. Só fala o protocolo; regras de armazenamento e sincronização ficam com quem chama.
 - `internal/report`: Classes de exportação que formatam os dados do banco para `.xlsx`, `.csv` e `.zip`.
 - `internal/foundation`: Utilitários gerais do projeto (parsers de CNPJ, códigos de UF em `uf`, handlers de build, criptografia).
@@ -49,4 +50,4 @@ Uma nova origem (por exemplo, CT-e) precisa de um `Source`, tabelas e tela próp
 O `golangci-lint` (regra `depguard` em `.golangci.yml`) impede que:
 
 - `internal/app` dependa de `internal/store` ou de `database/sql`;
-- os pacotes de domínio `internal/nfse` e `internal/nfe` dependam de `internal/app`, `internal/store` ou `database/sql`.
+- os pacotes de domínio `internal/nfse`, `internal/nfe` e `internal/dfe` dependam de `internal/app`, `internal/store` ou `database/sql`.

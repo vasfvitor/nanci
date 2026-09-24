@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
@@ -59,7 +60,7 @@ type credentialProvider interface {
 }
 
 type documentProvider interface {
-	CountDocumentsByRole(ctx context.Context, companyID nfse.CompanyID) (map[string]int64, error)
+	CountDocumentsByRole(ctx context.Context, companyID dfe.CompanyID) (map[string]int64, error)
 }
 
 // xmlStore reuses files.XMLStore
@@ -258,7 +259,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 // pulls out. A second reservation of the same pair gets ErrSyncRunning
 // instead of interrupting the first. This does not guard against another
 // process; StartRun cleans up after a crashed one.
-func (m *Manager) ReserveSource(companyID nfse.CompanyID, source nfse.SyncSource) (func(), error) {
+func (m *Manager) ReserveSource(companyID dfe.CompanyID, source nfse.SyncSource) (func(), error) {
 	key := string(companyID) + ":" + string(source)
 
 	m.runningMu.Lock()
@@ -288,7 +289,7 @@ type SourceLimits struct {
 }
 
 // SourceLimits reports the request limits of the company's source now.
-func (m *Manager) SourceLimits(ctx context.Context, companyID nfse.CompanyID, source nfse.SyncSource) (SourceLimits, error) {
+func (m *Manager) SourceLimits(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) (SourceLimits, error) {
 	now := time.Now().UTC()
 	state, err := m.SyncRepo.SourceState(ctx, companyID, source)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -47,10 +48,10 @@ func TestEndpointsFor(t *testing.T) {
 }
 
 func TestEndpointsFor_InvalidEnvironment(t *testing.T) {
-	if _, err := EndpointsFor("homologacao"); !errors.Is(err, nfse.ErrInvalidEnum) {
+	if _, err := EndpointsFor("homologacao"); !errors.Is(err, dfe.ErrInvalidEnum) {
 		t.Errorf("EndpointsFor: err = %v, want ErrInvalidEnum", err)
 	}
-	if _, err := TpAmb(""); !errors.Is(err, nfse.ErrInvalidEnum) {
+	if _, err := TpAmb(""); !errors.Is(err, dfe.ErrInvalidEnum) {
 		t.Errorf("TpAmb: err = %v, want ErrInvalidEnum", err)
 	}
 }

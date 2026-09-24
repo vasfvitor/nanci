@@ -275,7 +275,7 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse
 	return comp, plan, nil
 }
 
-func (s *NFeService) planChaves(ctx context.Context, companyID nfse.CompanyID, rawChaves []string, now time.Time, plan *NFeCienciaPlan) error {
+func (s *NFeService) planChaves(ctx context.Context, companyID dfe.CompanyID, rawChaves []string, now time.Time, plan *NFeCienciaPlan) error {
 	var chaves []string
 	seen := make(map[string]bool, len(rawChaves))
 	for _, raw := range rawChaves {

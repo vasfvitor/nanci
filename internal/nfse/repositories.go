@@ -2,6 +2,8 @@ package nfse
 
 import (
 	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 type DocumentFilter struct {
@@ -23,7 +25,7 @@ type DocumentExportMark struct {
 }
 
 type StartRunParams struct {
-	CompanyID         CompanyID
+	CompanyID         dfe.CompanyID
 	Source            SyncSource
 	CredentialID      CredentialID
 	Environment       Environment
@@ -36,7 +38,7 @@ type StartRunParams struct {
 }
 
 type GetOrCreateSyncStateParams struct {
-	CompanyID        CompanyID
+	CompanyID        dfe.CompanyID
 	Source           SyncSource
 	Environment      Environment
 	ConsultationCNPJ string
@@ -45,13 +47,13 @@ type GetOrCreateSyncStateParams struct {
 type ApplyDocumentParams struct {
 	Document      Document
 	Participation CompanyParticipation
-	CompanyID     CompanyID
+	CompanyID     dfe.CompanyID
 	NSU           int64
 }
 
 type ApplyEventParams struct {
 	Event     Event
-	CompanyID CompanyID
+	CompanyID dfe.CompanyID
 	NSU       int64
 }
 
@@ -65,7 +67,7 @@ type ApplyDocumentAndProgressParams struct {
 }
 
 type PersistSyncProgressParams struct {
-	CompanyID             CompanyID
+	CompanyID             dfe.CompanyID
 	Source                SyncSource
 	RunID                 SyncRunID
 	Environment           Environment
@@ -104,12 +106,12 @@ type SyncSnapshot struct {
 }
 
 type ResetSyncStateParams struct {
-	CompanyID CompanyID
+	CompanyID dfe.CompanyID
 	Source    SyncSource
 }
 
 // HasSyncStateParams asks whether the company has a sync cursor for Source.
 type HasSyncStateParams struct {
-	CompanyID CompanyID
+	CompanyID dfe.CompanyID
 	Source    SyncSource
 }

@@ -349,7 +349,7 @@ func (s *NFeService) ListPendingManifestacoes(ctx context.Context, in NFePending
 	return due, nil
 }
 
-func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID nfse.CompanyID, now time.Time) ([]NFePendingManifestacao, error) {
+func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.CompanyID, now time.Time) ([]NFePendingManifestacao, error) {
 	docs, err := s.NFeRepo.ListCompanyDocuments(ctx, companyID, nfe.DocumentFilter{PendingManifestacao: true})
 	if err != nil {
 		return nil, fmt.Errorf("listar manifestações pendentes: %w", err)
@@ -448,7 +448,7 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 }
 
 // companyDocument returns the company's row for the chave.
-func (s *NFeService) companyDocument(ctx context.Context, companyID nfse.CompanyID, rawChave string) (nfe.CompanyDocument, error) {
+func (s *NFeService) companyDocument(ctx context.Context, companyID dfe.CompanyID, rawChave string) (nfe.CompanyDocument, error) {
 	chave, err := dfe.ParseAccessKey(rawChave)
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("chave de acesso inválida: %w", err)

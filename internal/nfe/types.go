@@ -6,7 +6,7 @@ package nfe
 import (
 	"fmt"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // Situacao is the fiscal state of an NF-e.
@@ -21,7 +21,7 @@ const (
 func ParseSituacao(val string) (Situacao, error) {
 	s := Situacao(val)
 	if !s.Valid() {
-		return "", fmt.Errorf("invalid situacao %q: %w", val, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid situacao %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return s, nil
 }
@@ -47,7 +47,7 @@ const (
 func ParseCompleteness(val string) (Completeness, error) {
 	c := Completeness(val)
 	if !c.Valid() {
-		return "", fmt.Errorf("invalid completeness %q: %w", val, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid completeness %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return c, nil
 }
@@ -75,7 +75,7 @@ const (
 func ParseCompanyRole(val string) (CompanyRole, error) {
 	r := CompanyRole(val)
 	if !r.Valid() {
-		return "", fmt.Errorf("invalid company role %q: %w", val, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid company role %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return r, nil
 }
@@ -183,7 +183,7 @@ const (
 func ParseManifestacao(val string) (Manifestacao, error) {
 	m := Manifestacao(val)
 	if !m.Valid() {
-		return "", fmt.Errorf("invalid manifestacao %q: %w", val, nfse.ErrInvalidEnum)
+		return "", fmt.Errorf("invalid manifestacao %q: %w", val, dfe.ErrInvalidEnum)
 	}
 	return m, nil
 }
