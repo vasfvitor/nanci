@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeManifestacao } from './useNFeManifestacao'
 import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
+import type { NFeCienciaPlan, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -79,6 +79,32 @@ describe('useNFeManifestacao', () => {
 
     expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
     expect(desktopClient.planNFeCiencia).toHaveBeenCalledWith('123', ['a'])
+  })
+
+  it('keeps a ciência plan in flight visible across a route remount', async () => {
+    const call = deferred<NFeCienciaPlan>()
+    vi.mocked(desktopClient.planNFeCiencia).mockReturnValue(call.promise)
+
+    const firstPage = useNFeManifestacao()
+    const planning = firstPage.planCiencia(['a'])
+
+    const remountedPage = useNFeManifestacao()
+    expect(remountedPage.planningCiencia.value).toBe(true)
+    await expect(remountedPage.planCiencia(['b'])).resolves.toBeNull()
+    expect(desktopClient.planNFeCiencia).toHaveBeenCalledTimes(1)
+
+    const plan: NFeCienciaPlan = { Eligible: [nfeRow('a')], Skipped: [] }
+    call.resolve(plan)
+    await expect(planning).resolves.toEqual(plan)
+    expect(remountedPage.planningCiencia.value).toBe(false)
+  })
+
+  it('clears the planning marker when the plan fails', async () => {
+    vi.mocked(desktopClient.planNFeCiencia).mockRejectedValue(new Error('boom'))
+
+    const manifestacao = useNFeManifestacao()
+    await expect(manifestacao.planCiencia(['a'])).rejects.toThrow('boom')
+    expect(manifestacao.planningCiencia.value).toBe(false)
   })
 
   it('keeps a pending ciência visible across a route remount', async () => {

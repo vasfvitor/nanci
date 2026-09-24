@@ -9,16 +9,23 @@ import type { NFeConclusiveTipo } from '@/types/desktop'
 // nfeDocuments store and the follow-up refresh does not depend on the page.
 export function useNFeManifestacao() {
   const store = useNFeDocumentsStore()
-  const { selected, pending, pendingLoading, cienciaInFlight, manifestacaoInFlight } =
+  const { selected, pending, pendingLoading, planningCiencia, cienciaInFlight, manifestacaoInFlight } =
     storeToRefs(store)
   const { loadPending, refresh, refreshNote } = useNFeLoaders()
 
   // planCiencia asks the backend which notes a ciência would send. It sends
-  // nothing and asks for no password.
+  // nothing and asks for no password. It returns null while another plan is
+  // in flight.
   async function planCiencia(chavesAcesso: string[]) {
     const cnpj = store.filter.CNPJ
-    if (!cnpj || chavesAcesso.length === 0) return null
-    return desktopClient.planNFeCiencia(cnpj, chavesAcesso)
+    if (!cnpj || chavesAcesso.length === 0 || planningCiencia.value) return null
+
+    planningCiencia.value = true
+    try {
+      return await desktopClient.planNFeCiencia(cnpj, chavesAcesso)
+    } finally {
+      planningCiencia.value = false
+    }
   }
 
   async function registerCiencia(chavesAcesso: string[]) {
@@ -67,6 +74,7 @@ export function useNFeManifestacao() {
   return {
     pending,
     pendingLoading,
+    planningCiencia,
     cienciaInFlight,
     manifestacaoInFlight,
     isChaveBusy: (chaveAcesso: string) => store.isChaveBusy(chaveAcesso),

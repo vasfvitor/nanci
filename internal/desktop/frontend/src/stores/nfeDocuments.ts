@@ -37,6 +37,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const activeTab = shallowRef<NFeTab>('notas')
   const pending = ref<NFePendingRow[]>([])
   const pendingLoading = shallowRef(false)
+  // planningCiencia is true while the backend plans a ciência.
+  const planningCiencia = shallowRef(false)
   // cienciaInFlight holds the chaves of the ciência being sent, or null.
   const cienciaInFlight = shallowRef<string[] | null>(null)
   // manifestacaoInFlight holds the chaves whose conclusive manifestação is
@@ -86,6 +88,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     activeTab,
     pending,
     pendingLoading,
+    planningCiencia,
     cienciaInFlight,
     manifestacaoInFlight,
     resettingCNPJ,

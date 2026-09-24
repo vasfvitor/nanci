@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFePage from './NFePage.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
+import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeCienciaPlan, NFeRow, NFeStatusResult } from '@/types/desktop'
 
 type OkHandler = (payload: unknown) => void
@@ -216,6 +217,18 @@ describe('NFePage', () => {
     await selectRows(wrapper, [emitida, destinatario])
     expect(button().props('label')).toBe('Registrar ciência (1)')
     expect(button().props('disable')).toBe(false)
+  })
+
+  it('keeps the ciência button busy while a plan from an earlier mount is in flight', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    await selectRows(wrapper, [destinatario])
+
+    useNFeDocumentsStore().planningCiencia = true
+    await flushPromises()
+    const button = buttonStartingWith(wrapper, 'Registrar ciência')
+    expect(button.props('loading')).toBe(true)
+    expect(button.props('disable')).toBe(true)
   })
 
   it('opens the confirm dialog with the eligible chaves from planNFeCiencia', async () => {

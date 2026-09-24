@@ -152,8 +152,8 @@
             color="primary"
             icon="task_alt"
             :label="`Registrar ciência (${eligibleSelection.length})`"
-            :disable="eligibleSelection.length === 0 || planning || Boolean(cienciaInFlight)"
-            :loading="planning"
+            :disable="eligibleSelection.length === 0 || planningCiencia || Boolean(cienciaInFlight)"
+            :loading="planningCiencia"
             dense
             flat
             @click="registerSelectedCiencia"
@@ -433,10 +433,9 @@ const {
   isResetting,
   syncBlockedUntil,
 } = nfe
-const { pending, pendingLoading, cienciaInFlight, isChaveBusy } = manifestacao
+const { pending, pendingLoading, planningCiencia, cienciaInFlight, isChaveBusy } = manifestacao
 
 const filterText = ref('')
-const planning = ref(false)
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
 
@@ -646,17 +645,12 @@ function registerSelectedCiencia() {
 // startCiencia asks the backend which notes can receive ciência, then asks
 // the user to confirm exactly those notes.
 async function startCiencia(chavesAcesso: string[]) {
-  if (chavesAcesso.length === 0 || planning.value) return
-
-  planning.value = true
   let plan
   try {
     plan = await manifestacao.planCiencia(chavesAcesso)
   } catch (error) {
     notifyError('Erro ao preparar a ciência', error)
     return
-  } finally {
-    planning.value = false
   }
   if (!plan) return
 
