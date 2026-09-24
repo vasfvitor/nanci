@@ -109,6 +109,20 @@ nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
 
 Detalhes de limites, prazos e TLS em [docs/NFE_SEFAZ.md](docs/NFE_SEFAZ.md).
 
+#### CT-e (modelos 57, 64 e 67)
+
+Os comandos ficam em `nanci cte`, recebem a empresa por `--cnpj` e usam o mesmo certificado da NF-e. A empresa recebe os CT-e em que é tomadora, remetente, destinatária, expedidora, recebedora, emitente ou autorizada no XML.
+
+| Comando | O que faz |
+|---|---|
+| `cte testar-conexao` | Carrega o certificado e testa o TLS com a SEFAZ, sem consumir consultas. |
+| `cte pull` | Baixa CT-e, CT-e OS, GTV-e e eventos (até 20 consultas por hora). |
+| `cte status` | Mostra cursor, bloqueios, consultas da última hora e totais por papel. |
+| `cte list` | Lista os CT-e. Filtros: `--competencia`/`-m`, `--situacao`, `--papel`/`-p` (casa com qualquer papel da empresa no documento), `--modelo` (57, 64 ou 67), `--emitente`, `--tomador`, `--nfe` (chave de uma NF-e transportada) e `--chave` (pode repetir). |
+| `cte export zip` | Exporta os XMLs e eventos em ZIP (`--out`/`-o`, padrão `cte.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incremental` exporta só o que ainda não foi exportado. |
+| `cte export xml` | Exporta o XML de um CT-e (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
+| `cte reset` | Remove os CT-e da empresa, nos dois ambientes, e reinicia a sincronização CT-e. Simulação sem `--confirmar`. |
+
 
 
 ## Relato de Problemas e Contribuição
