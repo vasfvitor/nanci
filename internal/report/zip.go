@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/vasfvitor/nanci/internal/files"
 )
@@ -29,6 +30,13 @@ func NFSeZipEntries(rows []ReportRow) []ZipEntry {
 		entries = append(entries, ZipEntry{Path: entryPath, RawHash: row.RawHash})
 	}
 	return entries
+}
+
+// eventZipEntry places an NF-e or CT-e event of chave in the eventos folder
+// of its document: <folder>/eventos/<chave>-<tpEvento>-<nSeq>.xml.
+func eventZipEntry(folder, chave, tpEvento string, nSeq int, rawHash string) ZipEntry {
+	name := chave + "-" + tpEvento + "-" + strconv.Itoa(nSeq) + ".xml"
+	return ZipEntry{Path: path.Join(folder, "eventos", name), RawHash: rawHash}
 }
 
 // RoleFolder is the archive folder of a document: <competencia>/<papel>, or

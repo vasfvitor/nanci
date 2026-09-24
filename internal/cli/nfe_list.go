@@ -54,7 +54,7 @@ func newNFeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			_, _ = fmt.Fprintln(w, "-------\t---------------\t-----\t----------\t--------\t--------\t-------------\t----------\t------------")
 			for _, d := range docs {
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					formatNFeDate(d.IssueDate),
+					formatDate(d.IssueDate),
 					d.ChaveAcesso,
 					d.CompanyRole,
 					d.Completeness,

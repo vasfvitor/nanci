@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"text/tabwriter"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/nfe"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // newNFeCommand builds the `nfe` subcommand tree. Every leaf acts on the
@@ -35,17 +37,52 @@ func newNFeCommand(env CommandEnv) *cobra.Command {
 	return nfeCmd
 }
 
-// formatNFeDate prints the calendar date of t, or "-" when t is zero.
-func formatNFeDate(t time.Time) string {
+// formatDate prints the calendar date of t, or "-" when t is zero.
+func formatDate(t time.Time) string {
 	if t.IsZero() {
 		return "-"
 	}
 	return t.Format("2006-01-02")
 }
 
-// formatNFeDateTime prints t in local time, to the minute.
-func formatNFeDateTime(t time.Time) string {
+// formatDateTime prints t in local time, to the minute.
+func formatDateTime(t time.Time) string {
 	return t.Local().Format("2006-01-02 15:04")
+}
+
+// printConnectionTest prints the result of an NF-e or CT-e connection test
+// and returns an error when SEFAZ was not reached.
+func printConnectionTest(out io.Writer, r app.ConnectionTestResult) error {
+	if r.CertLoaded {
+		_, _ = fmt.Fprintf(out, "Certificado: carregado (%s, válido até %s)\n", r.CertSubject, dashIfEmpty(r.CertExpiration))
+	} else {
+		_, _ = fmt.Fprintln(out, "Certificado: não carregado")
+	}
+	if r.EndpointReached {
+		_, _ = fmt.Fprintln(out, "Conexão TLS com a SEFAZ: ok")
+	} else {
+		_, _ = fmt.Fprintln(out, "Conexão TLS com a SEFAZ: falhou")
+	}
+	_, _ = fmt.Fprintln(out, r.StatusExplanation)
+	_, _ = fmt.Fprintln(out, "Nenhuma consulta foi consumida.")
+
+	if !r.EndpointReached {
+		return errors.New("teste de conexão com a SEFAZ falhou")
+	}
+	return nil
+}
+
+// pullError returns the error of a failed NF-e or CT-e pull. For a blocked
+// source it first prints when the next query is allowed.
+func pullError(out io.Writer, err error) error {
+	var blocked *sync.BlockedError
+	if errors.As(err, &blocked) {
+		_, _ = fmt.Fprintf(out, "Próxima consulta permitida após: %s\n", formatDateTime(blocked.Until))
+	}
+	if errors.Is(err, app.ErrSyncRunning) {
+		return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
+	}
+	return fmt.Errorf("erro: %w", err)
 }
 
 // formatNSU prints an NSU with the 15 digits SEFAZ uses.

@@ -136,7 +136,7 @@ func (f *cteFixture) inTx(fn func(tx *sql.Tx) error) {
 
 func (f *cteFixture) companyDocument(companyID, chave string) cte.CompanyDocument {
 	f.t.Helper()
-	doc, err := f.repo.CompanyDocumentByChave(context.Background(), dfe.CompanyID(companyID), chave)
+	doc, err := f.repo.CompanyDocumentByChave(context.Background(), dfe.CompanyID(companyID), "", chave)
 	if err != nil {
 		f.t.Fatalf("CompanyDocumentByChave(%s, %s): %v", companyID, chave, err)
 	}
@@ -315,8 +315,14 @@ func TestCTeDocumentSeenByTwoCompanies(t *testing.T) {
 	if err != nil || !exists {
 		t.Errorf("CompanyDocumentExists(remetente) = %v, %v", exists, err)
 	}
-	if _, err := f.repo.CompanyDocumentByChave(context.Background(), "remetente", cteKeyProc); !errors.Is(err, cte.ErrDocumentNotFound) {
+	if _, err := f.repo.CompanyDocumentByChave(context.Background(), "remetente", "1", cteKeyProc); !errors.Is(err, cte.ErrDocumentNotFound) {
 		t.Errorf("CompanyDocumentByChave of an unseen chave error = %v, want ErrDocumentNotFound", err)
+	}
+	if _, err := f.repo.CompanyDocumentByChave(context.Background(), "remetente", "2", cteKeyToma4); !errors.Is(err, cte.ErrDocumentNotFound) {
+		t.Errorf("CompanyDocumentByChave in the other environment error = %v, want ErrDocumentNotFound", err)
+	}
+	if _, err := f.repo.CompanyDocumentByChave(context.Background(), "remetente", "1", cteKeyToma4); err != nil {
+		t.Errorf("CompanyDocumentByChave in its environment: %v", err)
 	}
 }
 

@@ -60,7 +60,7 @@ func newCTeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 					d.Modelo,
 					d.Numero,
 					d.Serie,
-					formatNFeDate(d.IssueDate),
+					formatDate(d.IssueDate),
 					cnpj.Format(d.Emitente.CNPJ),
 					truncateText(d.Emitente.Name, 30),
 					dashIfEmpty(cnpj.Format(d.Tomador.CNPJ)),

@@ -15,6 +15,15 @@ type Participation struct {
 	VisibilityReason VisibilityReason
 }
 
+// PapeisStrings returns papeis as plain strings, in the same order.
+func PapeisStrings(papeis []CompanyRole) []string {
+	out := make([]string, len(papeis))
+	for i, p := range papeis {
+		out[i] = string(p)
+	}
+	return out
+}
+
 // ClassifyParticipation decides the roles of companyCNPJ in doc. Every party
 // the company matches exactly adds its role, in this order, and the first
 // one is the primary role:

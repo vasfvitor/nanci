@@ -892,10 +892,6 @@ func CTeRows(documents []cte.CompanyDocument) []CTeRow {
 }
 
 func cteRow(document cte.CompanyDocument) CTeRow {
-	papeis := make([]string, len(document.Papeis))
-	for i, papel := range document.Papeis {
-		papeis[i] = string(papel)
-	}
 	return CTeRow{
 		ID:                  document.RelationID,
 		DocumentID:          document.ID,
@@ -941,7 +937,7 @@ func cteRow(document cte.CompanyDocument) CTeRow {
 		NFeChaves:        append([]string{}, document.NFeChaves...),
 		Situacao:         string(document.Situacao),
 		CompanyRole:      string(document.CompanyRole),
-		Papeis:           papeis,
+		Papeis:           cte.PapeisStrings(document.Papeis),
 		VisibilityReason: string(document.VisibilityReason),
 		EventCount:       document.EventCount,
 		FirstSeenNSU:     document.FirstSeenNSU,

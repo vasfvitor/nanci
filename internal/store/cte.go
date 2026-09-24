@@ -96,7 +96,7 @@ func (r *CTeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		CompanyID:        string(p.CompanyID),
 		CteDocumentID:    documentID,
 		CompanyRole:      string(participation.CompanyRole),
-		Papeis:           joinPapeis(participation.Papeis),
+		Papeis:           strings.Join(cte.PapeisStrings(participation.Papeis), ","),
 		VisibilityReason: string(participation.VisibilityReason),
 		FirstSeenNsu:     sql.NullInt64{Int64: p.NSU, Valid: true},
 		LastSeenNsu:      sql.NullInt64{Int64: p.NSU, Valid: true},
@@ -166,9 +166,10 @@ func (r *CTeRepository) ListPendingExport(ctx context.Context, companyID dfe.Com
 }
 
 // CompanyDocumentByChave returns cte.ErrDocumentNotFound when the company
-// does not see the chave.
-func (r *CTeRepository) CompanyDocumentByChave(ctx context.Context, companyID dfe.CompanyID, chave string) (*cte.CompanyDocument, error) {
-	docs, err := r.listCompanyDocuments(ctx, companyID, cte.DocumentFilter{ChavesAcesso: []string{chave}, Limit: 1}, "")
+// does not see the chave in the tpAmb environment. An empty tpAmb matches
+// either environment.
+func (r *CTeRepository) CompanyDocumentByChave(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (*cte.CompanyDocument, error) {
+	docs, err := r.listCompanyDocuments(ctx, companyID, cte.DocumentFilter{ChavesAcesso: []string{chave}, TpAmb: tpAmb, Limit: 1}, "")
 	if err != nil {
 		return nil, err
 	}
@@ -809,14 +810,6 @@ func cteEventsFromRows(rows []sqlgen.CteEvent) ([]cte.Event, error) {
 		events = append(events, e)
 	}
 	return events, nil
-}
-
-func joinPapeis(papeis []cte.CompanyRole) string {
-	parts := make([]string, len(papeis))
-	for i, p := range papeis {
-		parts[i] = string(p)
-	}
-	return strings.Join(parts, ",")
 }
 
 func splitPapeis(csv string) []cte.CompanyRole {

@@ -66,10 +66,10 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 						c.ChaveAcesso,
 						cnpj.Format(c.EmitenteCNPJ),
 						truncateText(c.EmitenteName, 30),
-						formatNFeDate(c.IssueDate),
+						formatDate(c.IssueDate),
 						c.TotalValue.FormatBRL(),
-						formatNFeDate(c.CienciaDue),
-						formatNFeDate(c.ConclusiveDue),
+						formatDate(c.CienciaDue),
+						formatDate(c.ConclusiveDue),
 					)
 				}
 				_ = w.Flush()
@@ -193,7 +193,7 @@ func printNFeManifestacaoPlan(out io.Writer, plan app.NFeManifestacaoPlan) {
 	_, _ = fmt.Fprintf(out, "Evento: %s (%s)\n", plan.Tipo.Label(), plan.Tipo.TpEvento())
 	_, _ = fmt.Fprintf(out, "Chave de acesso: %s\n", doc.ChaveAcesso)
 	_, _ = fmt.Fprintf(out, "Número: %s | Série: %s | Emissão: %s | Valor (R$): %s\n",
-		doc.Numero, doc.Serie, formatNFeDate(doc.IssueDate), doc.TotalValue.FormatBRL())
+		doc.Numero, doc.Serie, formatDate(doc.IssueDate), doc.TotalValue.FormatBRL())
 	_, _ = fmt.Fprintf(out, "Emitente: %s %s\n", cnpj.Format(doc.EmitenteCNPJ), doc.EmitenteName)
 	_, _ = fmt.Fprintf(out, "Manifestação atual: %s\n", doc.Manifestacao)
 	if !plan.ConclusiveDue.IsZero() {
@@ -201,7 +201,7 @@ func printNFeManifestacaoPlan(out io.Writer, plan app.NFeManifestacaoPlan) {
 		if plan.DaysLeft < 0 {
 			daysLeft = fmt.Sprintf("vencido há %d dia(s)", -plan.DaysLeft)
 		}
-		_, _ = fmt.Fprintf(out, "Prazo da manifestação conclusiva: %s (%s)\n", formatNFeDate(plan.ConclusiveDue), daysLeft)
+		_, _ = fmt.Fprintf(out, "Prazo da manifestação conclusiva: %s (%s)\n", formatDate(plan.ConclusiveDue), daysLeft)
 	}
 	if plan.TacitlyConfirmed {
 		_, _ = fmt.Fprintf(out, "Atenção: passados %d dias da autorização sem manifestação conclusiva, a operação já é considerada confirmada. A SEFAZ deve rejeitar o evento (cStat 596).\n",

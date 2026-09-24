@@ -31,7 +31,7 @@ func newCTeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			_, _ = fmt.Fprintln(out, "\nSincronização:")
 			_, _ = fmt.Fprintf(out, "  Último NSU: %s / máximo: %s\n", formatNSU(result.LastNSU), formatMaxNSU(result.MaxNSU))
 			if result.LastSyncAt != nil {
-				_, _ = fmt.Fprintf(out, "  Última sincronização: %s\n", formatNFeDateTime(*result.LastSyncAt))
+				_, _ = fmt.Fprintf(out, "  Última sincronização: %s\n", formatDateTime(*result.LastSyncAt))
 			}
 			if result.LastRunStatus != "" {
 				_, _ = fmt.Fprintf(out, "  Última execução: %s", result.LastRunStatus)
@@ -41,13 +41,13 @@ func newCTeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				_, _ = fmt.Fprintln(out)
 			}
 			if result.InitialSyncDoneAt != nil {
-				_, _ = fmt.Fprintf(out, "  Carga inicial concluída em: %s\n", formatNFeDateTime(*result.InitialSyncDoneAt))
+				_, _ = fmt.Fprintf(out, "  Carga inicial concluída em: %s\n", formatDateTime(*result.InitialSyncDoneAt))
 			} else {
 				_, _ = fmt.Fprintln(out, "  Carga inicial: pendente")
 			}
 			_, _ = fmt.Fprintf(out, "  Consultas na última hora: %d/%d\n", result.RequestsLastHour, result.RequestBudget)
 			if result.NextAllowedAt != nil {
-				_, _ = fmt.Fprintf(out, "  Próxima consulta permitida após: %s (%s)\n", formatNFeDateTime(*result.NextAllowedAt), result.BlockedReason)
+				_, _ = fmt.Fprintf(out, "  Próxima consulta permitida após: %s (%s)\n", formatDateTime(*result.NextAllowedAt), result.BlockedReason)
 			}
 
 			_, _ = fmt.Fprintln(out, "\nDocumentos, pelo papel principal:")

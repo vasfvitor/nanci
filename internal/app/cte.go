@@ -328,16 +328,12 @@ func (s *CTeService) companyDocument(ctx context.Context, comp *nfse.Company, ra
 	if err != nil {
 		return cte.CompanyDocument{}, err
 	}
-	docs, err := s.CTeRepo.ListCompanyDocuments(ctx, comp.ID, cte.DocumentFilter{
-		ChavesAcesso: []string{string(chave)},
-		TpAmb:        tpAmb,
-		Limit:        1,
-	})
+	doc, err := s.CTeRepo.CompanyDocumentByChave(ctx, comp.ID, tpAmb, string(chave))
+	if errors.Is(err, cte.ErrDocumentNotFound) {
+		return cte.CompanyDocument{}, fmt.Errorf("chave %s: %w", chave, err)
+	}
 	if err != nil {
 		return cte.CompanyDocument{}, fmt.Errorf("buscar CT-e: %w", err)
 	}
-	if len(docs) == 0 {
-		return cte.CompanyDocument{}, fmt.Errorf("chave %s: %w", chave, cte.ErrDocumentNotFound)
-	}
-	return docs[0], nil
+	return *doc, nil
 }

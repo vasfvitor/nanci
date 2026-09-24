@@ -2,7 +2,6 @@ package report
 
 import (
 	"path"
-	"strconv"
 
 	"github.com/vasfvitor/nanci/internal/cte"
 )
@@ -26,8 +25,7 @@ func CTeZipEntries(docs []cte.CompanyDocument, eventsByChave map[string][]cte.Ev
 			if ev.RawHash == "" {
 				continue
 			}
-			name := chave + "-" + ev.TpEvento + "-" + strconv.Itoa(ev.NSeqEvento) + ".xml"
-			entries = append(entries, ZipEntry{Path: path.Join(folder, "eventos", name), RawHash: ev.RawHash})
+			entries = append(entries, eventZipEntry(folder, chave, ev.TpEvento, ev.NSeqEvento, ev.RawHash))
 		}
 	}
 	return entries

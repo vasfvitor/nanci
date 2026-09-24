@@ -34,9 +34,5 @@ func ctePapelLabel(doc cte.CompanyDocument) string {
 	if len(doc.Papeis) <= 1 {
 		return string(doc.CompanyRole)
 	}
-	papeis := make([]string, len(doc.Papeis))
-	for i, p := range doc.Papeis {
-		papeis[i] = string(p)
-	}
-	return strings.Join(papeis, ",")
+	return strings.Join(cte.PapeisStrings(doc.Papeis), ",")
 }

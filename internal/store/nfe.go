@@ -676,9 +676,7 @@ func documentFromRow(row sqlgen.NfeDocument) (nfe.Document, error) {
 		RawHash:           row.RawHash,
 		ResumoRawHash:     row.ResumoRawHash.String,
 	}
-	if row.AutorizadosCnpj != "" {
-		doc.AutorizadosCNPJ = strings.Split(row.AutorizadosCnpj, ",")
-	}
+	doc.AutorizadosCNPJ = splitCSV(row.AutorizadosCnpj)
 
 	var err error
 	if row.IssueDate != "" {
