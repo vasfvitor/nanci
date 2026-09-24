@@ -4,7 +4,13 @@ import { useNFeDocuments } from './useNFeDocuments'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { NFeResetResult, NFeStatusResult, PullNFeResult } from '@/types/desktop'
+import type {
+  ExportResult,
+  NFeExportResult,
+  NFeResetResult,
+  NFeStatusResult,
+  PullNFeResult,
+} from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -223,5 +229,42 @@ describe('useNFeDocuments', () => {
     const cnpj = useNFeDocumentsStore().listInput.CNPJ
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
     expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
+  })
+
+  it('keeps an export visible to a second instance while it is pending', async () => {
+    let resolveExport!: (value: NFeExportResult | null) => void
+    vi.mocked(desktopClient.exportNFeZIP).mockReturnValue(
+      new Promise((resolve) => {
+        resolveExport = resolve
+      })
+    )
+
+    const firstPage = useNFeDocuments()
+    firstPage.filter.value.CNPJ = '123'
+    const exporting = firstPage.exportZIP(['chave-1'])
+
+    const remountedPage = useNFeDocuments()
+    expect(remountedPage.exporting.value).toBe(true)
+    await expect(remountedPage.exportXML('chave-1')).resolves.toBeNull()
+    await expect(remountedPage.exportZIP(['chave-1'])).resolves.toBeNull()
+    expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
+    expect(desktopClient.exportNFeZIP).toHaveBeenCalledTimes(1)
+
+    resolveExport({ OutPath: 'out.zip', ExportedCount: 1, SkippedResumos: 0 } as NFeExportResult)
+    await exporting
+
+    expect(remountedPage.exporting.value).toBe(false)
+  })
+
+  it('clears the export marker when the export fails', async () => {
+    vi.mocked(desktopClient.exportNFeXML).mockRejectedValue(new Error('boom'))
+
+    const nfe = useNFeDocuments()
+    nfe.filter.value.CNPJ = '123'
+
+    await expect(nfe.exportXML('chave-1')).rejects.toThrow('boom')
+    expect(nfe.exporting.value).toBe(false)
+    vi.mocked(desktopClient.exportNFeXML).mockResolvedValue({ OutPath: 'a.xml' } as ExportResult)
+    await expect(nfe.exportXML('chave-1')).resolves.toMatchObject({ OutPath: 'a.xml' })
   })
 })
