@@ -16,6 +16,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/cte"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -99,6 +100,7 @@ func TestCTeList_RejectsInvalidFlags(t *testing.T) {
 		{"situacao", []string{"--situacao", "anulada"}, "situação inválida"},
 		{"papel", []string{"--papel", "transportador"}, "papel inválido"},
 		{"nfe key", []string{"--nfe", "3526091122233300018155001000001234112345678"}, "chave de NF-e inválida"},
+		{"chave", []string{"--chave", cteChaveOS[:43] + "5"}, "chave de acesso inválida"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -169,6 +171,7 @@ func TestCTeList_Filters(t *testing.T) {
 		{[]string{"--situacao", "cancelada"}, cteChaveProc},
 		{[]string{"-p", "destinatario"}, cteChaveProc},
 		{[]string{"--chave", cteChaveOS}, cteChaveOS},
+		{[]string{"--chave", " " + cteChaveOS + " "}, cteChaveOS},
 	}
 	for _, tc := range tests {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
@@ -312,6 +315,26 @@ func TestCTeExportZip_Layout(t *testing.T) {
 	}
 	if got := env.out.String(); !strings.Contains(got, "Nenhum documento pendente para exportação incremental.") {
 		t.Errorf("export zip --incremental output:\n%s", got)
+	}
+}
+
+func TestCTeExportZip_ValidatesChave(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	outPath := filepath.Join(t.TempDir(), "cte.zip")
+
+	err := env.run("cte", "export", "zip", "-c", nfeTestCNPJ, "--out", outPath, "--chave", "35260912345678000195")
+	if !errors.Is(err, dfe.ErrInvalidAccessKey) {
+		t.Fatalf("export zip with an invalid --chave = %v, want dfe.ErrInvalidAccessKey", err)
+	}
+
+	env = newCTeTestRoot(t) // flag values stick to a command tree
+	env.seedListFixtures()
+	if err := env.run("cte", "export", "zip", "-c", nfeTestCNPJ, "--out", outPath, "--chave", " "+cteChaveOS+" "); err != nil {
+		t.Fatalf("export zip with a spaced --chave: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, "Documentos exportados: 1") {
+		t.Errorf("export zip output:\n%s", got)
 	}
 }
 

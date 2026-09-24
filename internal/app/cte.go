@@ -279,11 +279,15 @@ func cteFilter(comp *nfse.Company, in ListCTeInput) (cte.DocumentFilter, error) 
 	if err != nil {
 		return cte.DocumentFilter{}, err
 	}
+	chaves, err := parseAccessKeys(in.ChavesAcesso)
+	if err != nil {
+		return cte.DocumentFilter{}, err
+	}
 	filter := cte.DocumentFilter{
 		Competence:   in.Competence,
 		EmitenteCNPJ: in.EmitenteCNPJ,
 		TomadorCNPJ:  in.TomadorCNPJ,
-		ChavesAcesso: in.ChavesAcesso,
+		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
 		Limit:        in.Limit,
 	}

@@ -581,6 +581,9 @@ func TestParseProcEventoCTeRejects(t *testing.T) {
 		{"invalid xml fixture", string(readFixture(t, "invalid.xml"))},
 		{"missing tpEvento", strings.Replace(valid, "<tpEvento>110111</tpEvento>\n      <nSeqEvento>", "<nSeqEvento>", 1)},
 		{"bad nSeqEvento", strings.Replace(valid, "<nSeqEvento>1</nSeqEvento>\n      <detEvento", "<nSeqEvento>x</nSeqEvento><detEvento", 1)},
+		{"tpEvento with a path", strings.ReplaceAll(valid, "<tpEvento>110111</tpEvento>", "<tpEvento>../../x</tpEvento>")},
+		{"short tpEvento", strings.ReplaceAll(valid, "<tpEvento>110111</tpEvento>", "<tpEvento>11011</tpEvento>")},
+		{"tpEvento with a letter", strings.ReplaceAll(valid, "<tpEvento>110111</tpEvento>", "<tpEvento>11011a</tpEvento>")},
 		{"bad key", strings.ReplaceAll(valid, keyProcCTe, keyProcCTe[:43]+"0")},
 		{"missing tpAmb", strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "")},
 	}

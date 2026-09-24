@@ -20,6 +20,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -339,6 +340,25 @@ func TestNFeList_PrintsColumns(t *testing.T) {
 	}
 	if got := env.out.String(); !strings.Contains(got, nfeChaveCancelada) || strings.Contains(got, nfeChaveProc) || !strings.Contains(got, "Total de 1 nota(s) listada(s).") {
 		t.Errorf("list --completude resumo -p destinatario:\n%s", got)
+	}
+}
+
+func TestNFeList_ValidatesChave(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	env.seed("procnfe-denegada.xml", 2)
+
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--chave", " "+nfeChaveProc+" "); err != nil {
+		t.Fatalf("list with a spaced --chave: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, nfeChaveProc) || !strings.Contains(got, "Total de 1 nota(s) listada(s).") {
+		t.Errorf("list --chave:\n%s", got)
+	}
+
+	env = newNFeTestRoot(t) // flag values stick to a command tree
+	err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--chave", nfeChaveProc[:43]+"0")
+	if !errors.Is(err, dfe.ErrInvalidAccessKey) {
+		t.Errorf("list with an invalid --chave = %v, want dfe.ErrInvalidAccessKey", err)
 	}
 }
 

@@ -197,6 +197,9 @@ func setEventIdentity(ev *Event, chave, tpEvento, nSeqEvento string) error {
 	if tpEvento == "" {
 		return errors.New("missing essential field: tpEvento")
 	}
+	if !isTpEvento(tpEvento) {
+		return fmt.Errorf("invalid tpEvento %q", tpEvento)
+	}
 	if nSeqEvento == "" {
 		return errors.New("missing essential field: nSeqEvento")
 	}
@@ -210,4 +213,18 @@ func setEventIdentity(ev *Event, chave, tpEvento, nSeqEvento string) error {
 	ev.Type = EventTypeFromTpEvento(tpEvento)
 	ev.NSeqEvento = seq
 	return nil
+}
+
+// isTpEvento reports whether s is a tpEvento code: exactly six ASCII digits.
+// The code names ZIP entries on export, so nothing else may pass.
+func isTpEvento(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }

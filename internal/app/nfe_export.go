@@ -131,9 +131,13 @@ func (s *NFeService) exportDocuments(ctx context.Context, comp *nfse.Company, in
 	if err != nil {
 		return nil, 0, err
 	}
+	chaves, err := parseAccessKeys(in.ChavesAcesso)
+	if err != nil {
+		return nil, 0, err
+	}
 	filter := nfe.DocumentFilter{
 		Competence:   in.Competence,
-		ChavesAcesso: in.ChavesAcesso,
+		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
 	}
 	if in.Role != "" {

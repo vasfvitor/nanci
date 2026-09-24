@@ -427,10 +427,14 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 	if err != nil {
 		return nil, nfe.DocumentFilter{}, err
 	}
+	chaves, err := parseAccessKeys(in.ChavesAcesso)
+	if err != nil {
+		return nil, nfe.DocumentFilter{}, err
+	}
 	filter := nfe.DocumentFilter{
 		Competence:   in.Competence,
 		EmitenteCNPJ: in.EmitenteCNPJ,
-		ChavesAcesso: in.ChavesAcesso,
+		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
 		Limit:        in.Limit,
 	}
