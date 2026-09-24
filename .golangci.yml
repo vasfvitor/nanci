@@ -72,6 +72,7 @@ linters:
             - "**/internal/nfse/**/*.go"
             - "**/internal/nfe/**/*.go"
             - "**/internal/dfe/**/*.go"
+            - "**/internal/cte/**/*.go"
             - "!**/*_test.go"
           deny:
             - pkg: "github.com/vasfvitor/nanci/internal/app"
