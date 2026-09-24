@@ -39,7 +39,8 @@ func TestNewClient_DefaultsFromEnvironment(t *testing.T) {
 	if client.tpAmb != TpAmbHomologacao {
 		t.Errorf("tpAmb = %q, want %q", client.tpAmb, TpAmbHomologacao)
 	}
-	if client.endpoints.Distribuicao != DistribuicaoHomologacao || client.endpoints.RecepcaoEvento != RecepcaoEventoHomologacao {
+	if client.endpoints.Distribuicao != DistribuicaoHomologacao || client.endpoints.DistribuicaoCTe != DistribuicaoCTeHomologacao ||
+		client.endpoints.RecepcaoEvento != RecepcaoEventoHomologacao {
 		t.Errorf("endpoints = %+v", client.endpoints)
 	}
 	if client.timeout != DefaultTimeout {

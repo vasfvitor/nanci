@@ -50,7 +50,8 @@ var nfeDist = distService{
 	endpoint:  func(e Endpoints) string { return e.Distribuicao },
 }
 
-// cStat values of NFeDistribuicaoDFe that are answers rather than errors.
+// cStat values of NFeDistribuicaoDFe and CTeDistribuicaoDFe that are answers
+// rather than errors.
 const (
 	// CStatNenhumDocumento: no document after the NSU sent; wait an hour
 	// before asking again.
