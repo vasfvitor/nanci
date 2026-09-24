@@ -412,6 +412,7 @@ import {
   cienciaBlockReason,
   conclusiveBlockReason,
   countOutcomes,
+  isProblemOutcome,
   noEligibleCienciaMessage,
 } from '@/utils/nfeManifestacao'
 
@@ -640,7 +641,7 @@ async function sendCiencia(chavesAcesso: string[]) {
 
 function notifyCienciaResult(result: NFeEventBatchResult) {
   const counts = countOutcomes(result.Results)
-  const hasProblems = counts.rejeitada > 0 || counts.nao_enviada > 0 || Boolean(result.Interrupted)
+  const hasProblems = result.Results.some(isProblemOutcome) || Boolean(result.Interrupted)
   $q.notify({
     type: hasProblems ? 'warning' : 'positive',
     message: `Ciência: ${counts.registrada} registradas, ${counts.ja_registrada} já registradas, ${counts.rejeitada} rejeitadas, ${counts.nao_enviada} não enviadas.`,

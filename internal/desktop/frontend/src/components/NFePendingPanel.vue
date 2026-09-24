@@ -138,7 +138,7 @@
 import { computed } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import type { ISODateValue, NFePendingRow } from '@/types/desktop'
-import { formatCpfCnpj, formatCurrencyCents, formatDate, formatNFeNumber } from '@/utils/formatters'
+import { formatCurrencyCents, formatDate, formatNFeNumber, formatParty } from '@/utils/formatters'
 import {
   conclusiveDeadlineLabel,
   deadlineColor,
@@ -176,7 +176,7 @@ const columns: QTableColumn<NFePendingRow>[] = [
   {
     name: 'emitente',
     label: 'Emitente',
-    field: (row) => row.EmitenteName || formatCpfCnpj(row.EmitenteCNPJ),
+    field: (row) => formatParty(row.EmitenteName, row.EmitenteCNPJ),
     align: 'left',
   },
   {

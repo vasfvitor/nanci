@@ -56,7 +56,7 @@ import { useDialogPluginComponent, useQuasar, type QTableColumn } from 'quasar'
 import type { NFeEventBatchResult, NFeEventResult } from '@/types/desktop'
 import { formatChaveNFe } from '@/utils/formatters'
 import { badgeColor, badgeTextColor, outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
-import { countOutcomes } from '@/utils/nfeManifestacao'
+import { countOutcomes, isProblemOutcome } from '@/utils/nfeManifestacao'
 
 const props = defineProps<{
   result: NFeEventBatchResult
@@ -72,11 +72,7 @@ const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent()
 
 const counts = computed(() => countOutcomes(props.result.Results))
 
-const problemResults = computed(() =>
-  props.result.Results.filter(
-    (item) => item.Status !== 'registrada' && item.Status !== 'ja_registrada'
-  )
-)
+const problemResults = computed(() => props.result.Results.filter(isProblemOutcome))
 
 const columns: QTableColumn<NFeEventResult>[] = [
   {

@@ -5,6 +5,7 @@ import {
   formatCurrencyCents,
   formatDate,
   formatNFeNumber,
+  formatParty,
   formatTime,
   normalizeText,
   parseDate,
@@ -87,6 +88,12 @@ describe('formatters', () => {
     expect(formatNFeNumber('', '2')).toBe('série 2')
     expect(formatNFeNumber('', '')).toBe('')
     expect(formatNFeNumber('ABC', '1')).toBe('ABC / série 1')
+  })
+
+  it('names a party by name, else by its formatted CPF/CNPJ', () => {
+    expect(formatParty('Fornecedor', '12345678000199')).toBe('Fornecedor')
+    expect(formatParty('', '12345678000199')).toBe('12.345.678/0001-99')
+    expect(formatParty(null, null)).toBe('')
   })
 
   it('formats local HH:MM times', () => {

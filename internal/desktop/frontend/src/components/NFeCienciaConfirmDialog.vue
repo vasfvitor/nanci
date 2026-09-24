@@ -28,7 +28,7 @@
           <q-item v-for="note in plan.Eligible" :key="note.ChaveAcesso">
             <q-item-section>
               <q-item-label>
-                {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ note.EmitenteName || formatCpfCnpj(note.EmitenteCNPJ) }}
+                {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
               </q-item-label>
               <q-item-label caption class="text-mono">{{ formatChaveNFe(note.ChaveAcesso) }}</q-item-label>
             </q-item-section>
@@ -98,6 +98,7 @@ import {
   formatCpfCnpj,
   formatCurrencyCents,
   formatNFeNumber,
+  formatParty,
 } from '@/utils/formatters'
 import { ambienteColor, ambienteLabel, badgeColor, badgeTextColor } from '@/utils/nfeDisplay'
 

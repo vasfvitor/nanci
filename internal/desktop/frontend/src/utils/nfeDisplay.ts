@@ -66,7 +66,7 @@ const nfeEvent = displayTable(
     '210210': { label: 'Ciência', color: 'info' },
     '210200': { label: 'Confirmação', color: 'positive' },
     '210220': { label: 'Desconhecimento', color: 'negative' },
-    '210240': { label: 'Operação não Realizada', color: 'warning' },
+    '210240': { label: 'Operação não realizada', color: 'warning' },
   },
   (tpEvento) => `Evento ${tpEvento}`
 )

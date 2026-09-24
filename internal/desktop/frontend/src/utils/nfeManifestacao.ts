@@ -44,6 +44,12 @@ export function validateJustificativa(text: string | null | undefined): string |
   return null
 }
 
+// isProblemOutcome reports whether an event was not registered: rejected,
+// not sent, or with an unknown status.
+export function isProblemOutcome(result: Pick<NFeEventResult, 'Status'>): boolean {
+  return result.Status !== 'registrada' && result.Status !== 'ja_registrada'
+}
+
 // countOutcomes counts ciência results by outcome. A result with an unknown
 // status counts as not sent.
 export function countOutcomes(results: readonly NFeEventResult[]): Record<NFeEventOutcome, number> {

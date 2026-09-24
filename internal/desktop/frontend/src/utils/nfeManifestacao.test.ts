@@ -4,6 +4,7 @@ import {
   cienciaBlockReason,
   conclusiveBlockReason,
   countOutcomes,
+  isProblemOutcome,
   noEligibleCienciaMessage,
   validateJustificativa,
 } from './nfeManifestacao'
@@ -118,5 +119,15 @@ describe('noEligibleCienciaMessage', () => {
       'Nenhuma nota elegível para ciência.'
     )
     expect(noEligibleCienciaMessage({ Eligible: [row()], Skipped: [] })).toBeNull()
+  })
+})
+
+describe('isProblemOutcome', () => {
+  it('flags every outcome but registered and already registered', () => {
+    expect(isProblemOutcome({ Status: 'registrada' })).toBe(false)
+    expect(isProblemOutcome({ Status: 'ja_registrada' })).toBe(false)
+    expect(isProblemOutcome({ Status: 'rejeitada' })).toBe(true)
+    expect(isProblemOutcome({ Status: 'nao_enviada' })).toBe(true)
+    expect(isProblemOutcome({ Status: '' })).toBe(true)
   })
 })

@@ -89,6 +89,17 @@ describe('NFeManifestacaoDialog', () => {
     vi.clearAllMocks()
   })
 
+  it('labels the options from the NF-e event table', () => {
+    const options = mountDialog().getComponent({ name: 'QOptionGroup' }).props('options') as {
+      label: string
+    }[]
+    expect(options.map((option) => option.label)).toEqual([
+      'Confirmação',
+      'Desconhecimento',
+      'Operação não realizada',
+    ])
+  })
+
   it('keeps review disabled until a valid justificativa is typed for 210240', async () => {
     const wrapper = mountDialog()
     expect(button(wrapper, 'Revisar').props('disable')).toBe(true)

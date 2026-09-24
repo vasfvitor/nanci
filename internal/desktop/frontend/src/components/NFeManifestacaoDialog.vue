@@ -15,7 +15,7 @@
 
       <q-card-section class="q-pt-none">
         <div class="text-body2 text-weight-medium">
-          NF-e {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ note.EmitenteName || formatCpfCnpj(note.EmitenteCNPJ) }}
+          NF-e {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
         </div>
         <div class="text-caption text-app-muted text-mono">{{ formatChaveNFe(note.ChaveAcesso) }}</div>
         <div class="text-caption text-app-muted">Valor: {{ formatCurrencyCents(note.TotalValue) }}</div>
@@ -102,13 +102,15 @@
 import { computed, ref } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import type { NFeConclusiveTipo, NFeRow } from '@/types/desktop'
+import { formatChaveNFe, formatCurrencyCents, formatNFeNumber, formatParty } from '@/utils/formatters'
 import {
-  formatChaveNFe,
-  formatCpfCnpj,
-  formatCurrencyCents,
-  formatNFeNumber,
-} from '@/utils/formatters'
-import { ambienteColor, ambienteLabel, badgeColor, badgeTextColor, nfeEventColor } from '@/utils/nfeDisplay'
+  ambienteColor,
+  ambienteLabel,
+  badgeColor,
+  badgeTextColor,
+  nfeEventColor,
+  nfeEventLabel,
+} from '@/utils/nfeDisplay'
 import {
   CONCLUSIVE_TIPOS,
   conclusiveBlockReason,
@@ -130,17 +132,11 @@ defineEmits<{
 const $q = useQuasar()
 const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
 
-const tipoLabels: Record<NFeConclusiveTipo, string> = {
-  '210200': 'Confirmação da operação',
-  '210220': 'Desconhecimento da operação',
-  '210240': 'Operação não realizada',
-}
-
 const options = computed(() => {
   const reason = conclusiveBlockReason(props.note)
   return CONCLUSIVE_TIPOS.map((value) => ({
     value,
-    label: tipoLabels[value],
+    label: nfeEventLabel(value),
     disable: reason !== null,
     reason,
   }))
@@ -161,7 +157,7 @@ const canReview = computed(() => {
   return Boolean(selected && !selected.disable && !justificativaError.value)
 })
 
-const selectedLabel = computed(() => (tipo.value ? tipoLabels[tipo.value] : ''))
+const selectedLabel = computed(() => (tipo.value ? nfeEventLabel(tipo.value) : ''))
 
 function onOKClick() {
   if (!canReview.value || !tipo.value) return

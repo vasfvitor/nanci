@@ -77,7 +77,7 @@ describe('nfeDisplay', () => {
     expect(nfeEventLabel('210210')).toBe('Ciência')
     expect(nfeEventLabel('210200')).toBe('Confirmação')
     expect(nfeEventLabel('210220')).toBe('Desconhecimento')
-    expect(nfeEventLabel('210240')).toBe('Operação não Realizada')
+    expect(nfeEventLabel('210240')).toBe('Operação não realizada')
     expect(nfeEventColor('110111')).toBe('negative')
     expect(nfeEventColor('110110')).toBe('info')
     expect(nfeEventColor('210210')).toBe('info')

@@ -15,6 +15,12 @@ export function formatCpfCnpj(value: string | null | undefined) {
   return value
 }
 
+// formatParty names a party by its name, or by its formatted CPF/CNPJ when
+// the name is empty.
+export function formatParty(name: string | null | undefined, cpfCnpj: string | null | undefined) {
+  return name || formatCpfCnpj(cpfCnpj)
+}
+
 // normalizeText folds case and accents, so a text search matches "sao" to
 // "São".
 export function normalizeText(value: unknown): string {
