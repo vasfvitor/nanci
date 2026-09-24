@@ -1,6 +1,9 @@
 package redact
 
-import "testing"
+import (
+	"testing"
+	"unicode/utf8"
+)
 
 func TestMaskIdentifier(t *testing.T) {
 	tests := []struct {
@@ -12,10 +15,17 @@ func TestMaskIdentifier(t *testing.T) {
 		{in: "abcd", want: "****"},
 		{in: "abcde", want: "ab*de"},
 		{in: "12345678000195", want: "12**********95"},
+		{in: "Ação", want: "****"},
+		{in: "Érica Conceição", want: "Ér***********ão"},
+		{in: "ÁGUA SÃO JOÃO", want: "ÁG*********ÃO"},
 	}
 	for _, tt := range tests {
-		if got := MaskIdentifier(tt.in); got != tt.want {
+		got := MaskIdentifier(tt.in)
+		if got != tt.want {
 			t.Errorf("MaskIdentifier(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+		if !utf8.ValidString(got) {
+			t.Errorf("MaskIdentifier(%q) = %q, not valid UTF-8", tt.in, got)
 		}
 	}
 }
@@ -45,6 +55,11 @@ func TestMaskXMLIdentifiers(t *testing.T) {
 			name: "event answers",
 			in:   `<ns2:CPF>12345678909</ns2:CPF><CNPJDest>70860312000150</CNPJDest><CPFDest>12345678909</CPFDest>`,
 			want: `<ns2:CPF>12*******09</ns2:CPF><CNPJDest>70**********50</CNPJDest><CPFDest>12*******09</CPFDest>`,
+		},
+		{
+			name: "accented names",
+			in:   `<emit><xNome>ÁGUA SÃO JOÃO</xNome><xFant>Ótica Ê</xFant></emit>`,
+			want: `<emit><xNome>ÁG*********ÃO</xNome><xFant>Ót*** Ê</xFant></emit>`,
 		},
 		{
 			name: "similar names and values are kept",

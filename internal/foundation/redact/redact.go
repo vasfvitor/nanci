@@ -8,12 +8,14 @@ import (
 )
 
 // MaskIdentifier keeps the first and last two characters of v and stars the
-// rest, so masked values stay recognisable without being reusable.
+// rest, so masked values stay recognisable without being reusable. It counts
+// runes, so accented names keep whole characters at the edges.
 func MaskIdentifier(v string) string {
-	if len(v) <= 4 {
-		return strings.Repeat("*", len(v))
+	r := []rune(v)
+	if len(r) <= 4 {
+		return strings.Repeat("*", len(r))
 	}
-	return v[:2] + strings.Repeat("*", len(v)-4) + v[len(v)-2:]
+	return string(r[:2]) + strings.Repeat("*", len(r)-4) + string(r[len(r)-2:])
 }
 
 // identifierElement matches the text of XML elements that identify a
