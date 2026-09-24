@@ -1,0 +1,2 @@
+# Vendored go-pkcs12 assigns the oidPKCS8ShroundedKeyBag OID constant; not a secret.
+86e7ae9077351bd2eaf5978bd647abfc7df6c93a:internal/thirdparty/go-pkcs12/pkcs12.go:generic-api-key:735
