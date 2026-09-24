@@ -209,7 +209,7 @@ func ParseProcCTe(data []byte) (Document, error) {
 	}
 
 	resolveTomador(&doc, named, &warnings)
-	doc.NFeChaves = validNFeChaves(nfeChaves, &warnings)
+	doc.NFeChaves, doc.MaskedKeys = validNFeChaves(nfeChaves, &warnings)
 
 	if doc.IssueDate.IsZero() {
 		warnings = append(warnings, "missing dhEmi; competence is unknown")
@@ -294,14 +294,14 @@ func resolveTomador(doc *Document, named Party, warnings *[]string) {
 
 // validNFeChaves keeps the NF-e keys that pass validation, without
 // duplicates. Keys masked with 9s, which the Ambiente Nacional sends to
-// autXML parties, are dropped with a single warning counting them; any other
-// invalid key gets its own warning.
-func validNFeChaves(raw []string, warnings *[]string) []string {
-	var chaves []string
-	masked := 0
+// autXML parties, are dropped with a single warning counting them, and
+// masked reports that there were any; any other invalid key gets its own
+// warning.
+func validNFeChaves(raw []string, warnings *[]string) (chaves []string, masked bool) {
+	maskedCount := 0
 	for _, r := range raw {
 		if strings.Trim(r, "9") == "" {
-			masked++
+			maskedCount++
 			continue
 		}
 		key, err := dfe.ParseAccessKey(r)
@@ -313,10 +313,10 @@ func validNFeChaves(raw []string, warnings *[]string) []string {
 			chaves = append(chaves, string(key))
 		}
 	}
-	if masked > 0 {
-		*warnings = append(*warnings, fmt.Sprintf("%d NF-e chaves masked with 9s were dropped", masked))
+	if maskedCount > 0 {
+		*warnings = append(*warnings, fmt.Sprintf("%d NF-e chaves masked with 9s were dropped", maskedCount))
 	}
-	return chaves
+	return chaves, maskedCount > 0
 }
 
 // procCTeKey picks the access key from infProt/chCTe, falling back to

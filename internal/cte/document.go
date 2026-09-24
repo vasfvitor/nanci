@@ -69,6 +69,10 @@ type Document struct {
 	// NFeChaves are the NF-e access keys the CT-e transported, in document
 	// order. Keys masked with 9s for autXML parties are left out.
 	NFeChaves []string
+	// MaskedKeys is set when the parser dropped NF-e keys masked with 9s:
+	// the document is the copy the Ambiente Nacional sends to autXML
+	// parties, not the full one.
+	MaskedKeys bool
 
 	Situacao      Situacao
 	LayoutVersion string // infCte@versao

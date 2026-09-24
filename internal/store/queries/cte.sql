@@ -10,7 +10,7 @@ INSERT INTO cte_documents (
     remetente_cnpj, remetente_name, destinatario_cnpj, destinatario_name,
     expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
     tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
-    autorizados_cnpj, nfe_chaves,
+    autorizados_cnpj, nfe_chaves, masked_keys,
     total_value, receivable_value, icms_value, tot_trib_value, carga_value, produto_predominante,
     situacao, layout_version, raw_hash, parse_warnings, created_at, updated_at
 ) VALUES (
@@ -21,7 +21,7 @@ INSERT INTO cte_documents (
     ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?, ?,
-    ?, ?,
+    ?, ?, ?,
     ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?
 )
@@ -65,6 +65,7 @@ ON CONFLICT(chave_acesso) DO UPDATE SET
     tomador_uf = excluded.tomador_uf,
     autorizados_cnpj = excluded.autorizados_cnpj,
     nfe_chaves = excluded.nfe_chaves,
+    masked_keys = excluded.masked_keys,
     total_value = excluded.total_value,
     receivable_value = excluded.receivable_value,
     icms_value = excluded.icms_value,

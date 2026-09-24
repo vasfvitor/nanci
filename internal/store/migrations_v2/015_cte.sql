@@ -41,6 +41,7 @@ CREATE TABLE cte_documents (
     tomador_uf TEXT NOT NULL,
     autorizados_cnpj TEXT NOT NULL DEFAULT '',
     nfe_chaves TEXT NOT NULL DEFAULT '',
+    masked_keys INTEGER NOT NULL DEFAULT 0,
     total_value INTEGER NOT NULL DEFAULT 0,
     receivable_value INTEGER NOT NULL DEFAULT 0,
     icms_value INTEGER NOT NULL DEFAULT 0,

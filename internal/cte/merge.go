@@ -9,8 +9,14 @@ import "slices"
 //   - ID is always the existing one.
 //   - Situacao is the more severe of the two:
 //     cancelada > denegada > autorizada.
+//   - A masked copy (the one autXML parties receive, see
+//     Document.MaskedKeys) never replaces a full one: the existing document
+//     is kept whole and only its Situacao can change.
 func MergeDocument(existing, incoming Document) Document {
 	merged := incoming
+	if incoming.MaskedKeys && !existing.MaskedKeys {
+		merged = existing
+	}
 	merged.ID = existing.ID
 	merged.Situacao = moreSevere(existing.Situacao, incoming.Situacao)
 	return merged

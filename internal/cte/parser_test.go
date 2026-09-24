@@ -163,6 +163,9 @@ func TestParseProcCTeToma4AndMaskedChaves(t *testing.T) {
 	if !reflect.DeepEqual(doc.NFeChaves, []string{nfeKeyToma4}) {
 		t.Errorf("NFeChaves = %v, want only the unmasked key", doc.NFeChaves)
 	}
+	if !doc.MaskedKeys {
+		t.Error("MaskedKeys = false, want true for a copy with masked keys")
+	}
 	if want := []string{"2 NF-e chaves masked with 9s were dropped"}; !reflect.DeepEqual(doc.ParseWarnings, want) {
 		t.Errorf("ParseWarnings = %v, want %v", doc.ParseWarnings, want)
 	}

@@ -320,6 +320,49 @@ func TestCTeDocumentSeenByTwoCompanies(t *testing.T) {
 	}
 }
 
+func TestCTeMaskedCopyKeepsTheFullDocument(t *testing.T) {
+	const cnpjAutorizado = "45678901000175" // autXML of procte.xml
+	masked := strings.Repeat("9", 44)
+	maskedCopy := []string{cteNFeKeyA, masked, cteNFeKeyB, masked}
+
+	tests := []struct {
+		name  string
+		order []string // the raw hash of each apply, in order
+	}{
+		{"full then masked", []string{"hash-full", "hash-masked"}},
+		{"masked then full", []string{"hash-masked", "hash-full"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newCTeFixture(t)
+			mustExec(t, f.db, `
+				INSERT INTO companies (id, cnpj, cnpj_root, name, environment, created_at, updated_at)
+				VALUES ('autorizado', ?, ?, 'autorizado', 'producao', '2026-09-01T00:00:00Z', '2026-09-01T00:00:00Z')
+			`, cnpjAutorizado, cnpjAutorizado[:8])
+			for i, hash := range tt.order {
+				if hash == "hash-full" {
+					f.applyDocument("mock", cnpjMock, f.document("procte.xml", hash), int64(i+1))
+				} else {
+					f.applyDocument("autorizado", cnpjAutorizado, f.document("procte.xml", hash, maskedCopy...), int64(i+1))
+				}
+			}
+
+			for _, company := range []string{"mock", "autorizado"} {
+				got := f.companyDocument(company, cteKeyProc)
+				if got.RawHash != "hash-full" || got.MaskedKeys || !slices.Equal(got.NFeChaves, []string{cteNFeKeyA, cteNFeKeyB}) {
+					t.Errorf("%s sees (raw hash, masked, NF-e chaves) = (%s, %v, %v), want the full document", company, got.RawHash, got.MaskedKeys, got.NFeChaves)
+				}
+			}
+			if got := f.companyDocument("autorizado", cteKeyProc); got.CompanyRole != cte.CompanyRoleAutorizado {
+				t.Errorf("autorizado role = %s, want autorizado", got.CompanyRole)
+			}
+			if got := f.list("mock", cte.DocumentFilter{NFeChave: cteNFeKeyB}); !slices.Equal(got, []string{cteKeyProc}) {
+				t.Errorf("mock list by NF-e chave = %v, want %s", got, cteKeyProc)
+			}
+		})
+	}
+}
+
 func TestCTeListFilters(t *testing.T) {
 	f := newCTeFixture(t)
 	for i, name := range []string{"procte.xml", "procte-toma4.xml", "procte-v200-toma03.xml", "procteos.xml", "procgtve.xml"} {

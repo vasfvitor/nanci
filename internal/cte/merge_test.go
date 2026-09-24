@@ -70,6 +70,40 @@ func TestMergeDocument(t *testing.T) {
 	}
 }
 
+func TestMergeDocumentMaskedCopy(t *testing.T) {
+	full := Document{
+		ID:        "existing-id",
+		NFeChaves: []string{"35260911222333000181550010000012341123456787"},
+		Situacao:  SituacaoAutorizada,
+		RawHash:   "hash-full",
+	}
+	masked := Document{
+		ID:         "incoming-id",
+		MaskedKeys: true,
+		Situacao:   SituacaoCancelada,
+		RawHash:    "hash-masked",
+	}
+
+	got := MergeDocument(full, masked)
+	if got.RawHash != "hash-full" || len(got.NFeChaves) != 1 || got.MaskedKeys {
+		t.Errorf("masked over full = %+v, want the full document", got)
+	}
+	if got.ID != "existing-id" || got.Situacao != SituacaoCancelada {
+		t.Errorf("(ID, Situacao) = (%q, %q), want (existing-id, cancelada)", got.ID, got.Situacao)
+	}
+
+	got = MergeDocument(masked, full)
+	if got.RawHash != "hash-full" || got.MaskedKeys || got.ID != "incoming-id" || got.Situacao != SituacaoCancelada {
+		t.Errorf("full over masked = %+v, want the full document with the existing ID and the worse situação", got)
+	}
+
+	other := masked
+	other.RawHash = "hash-masked-2"
+	if got = MergeDocument(masked, other); got.RawHash != "hash-masked-2" {
+		t.Errorf("masked over masked raw hash = %q, want the incoming one", got.RawHash)
+	}
+}
+
 func TestSituacaoFromEvents(t *testing.T) {
 	tests := []struct {
 		name   string

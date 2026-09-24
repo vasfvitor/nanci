@@ -155,6 +155,7 @@ type CteDocument struct {
 	TomadorUf           string
 	AutorizadosCnpj     string
 	NfeChaves           string
+	MaskedKeys          int64
 	TotalValue          int64
 	ReceivableValue     int64
 	IcmsValue           int64

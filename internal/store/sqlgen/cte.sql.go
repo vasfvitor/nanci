@@ -11,7 +11,7 @@ import (
 )
 
 const getCTeDocumentByChave = `-- name: GetCTeDocumentByChave :one
-SELECT id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op, issue_date, competence, authorized_at, protocolo, tp_cte, tp_serv, modal, mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim, emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name, destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name, tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf, autorizados_cnpj, nfe_chaves, total_value, receivable_value, icms_value, tot_trib_value, carga_value, produto_predominante, situacao, layout_version, raw_hash, parse_warnings, created_at, updated_at FROM cte_documents WHERE chave_acesso = ? LIMIT 1
+SELECT id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op, issue_date, competence, authorized_at, protocolo, tp_cte, tp_serv, modal, mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim, emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name, destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name, tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf, autorizados_cnpj, nfe_chaves, masked_keys, total_value, receivable_value, icms_value, tot_trib_value, carga_value, produto_predominante, situacao, layout_version, raw_hash, parse_warnings, created_at, updated_at FROM cte_documents WHERE chave_acesso = ? LIMIT 1
 `
 
 func (q *Queries) GetCTeDocumentByChave(ctx context.Context, chaveAcesso string) (CteDocument, error) {
@@ -59,6 +59,7 @@ func (q *Queries) GetCTeDocumentByChave(ctx context.Context, chaveAcesso string)
 		&i.TomadorUf,
 		&i.AutorizadosCnpj,
 		&i.NfeChaves,
+		&i.MaskedKeys,
 		&i.TotalValue,
 		&i.ReceivableValue,
 		&i.IcmsValue,
@@ -229,7 +230,7 @@ INSERT INTO cte_documents (
     remetente_cnpj, remetente_name, destinatario_cnpj, destinatario_name,
     expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
     tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
-    autorizados_cnpj, nfe_chaves,
+    autorizados_cnpj, nfe_chaves, masked_keys,
     total_value, receivable_value, icms_value, tot_trib_value, carga_value, produto_predominante,
     situacao, layout_version, raw_hash, parse_warnings, created_at, updated_at
 ) VALUES (
@@ -240,7 +241,7 @@ INSERT INTO cte_documents (
     ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?, ?,
-    ?, ?,
+    ?, ?, ?,
     ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?
 )
@@ -284,6 +285,7 @@ ON CONFLICT(chave_acesso) DO UPDATE SET
     tomador_uf = excluded.tomador_uf,
     autorizados_cnpj = excluded.autorizados_cnpj,
     nfe_chaves = excluded.nfe_chaves,
+    masked_keys = excluded.masked_keys,
     total_value = excluded.total_value,
     receivable_value = excluded.receivable_value,
     icms_value = excluded.icms_value,
@@ -340,6 +342,7 @@ type UpsertCTeDocumentParams struct {
 	TomadorUf           string
 	AutorizadosCnpj     string
 	NfeChaves           string
+	MaskedKeys          int64
 	TotalValue          int64
 	ReceivableValue     int64
 	IcmsValue           int64
@@ -397,6 +400,7 @@ func (q *Queries) UpsertCTeDocument(ctx context.Context, arg UpsertCTeDocumentPa
 		arg.TomadorUf,
 		arg.AutorizadosCnpj,
 		arg.NfeChaves,
+		arg.MaskedKeys,
 		arg.TotalValue,
 		arg.ReceivableValue,
 		arg.IcmsValue,

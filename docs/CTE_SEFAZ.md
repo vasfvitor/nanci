@@ -119,7 +119,9 @@ O evento 610110 é a forma de o **tomador** declarar que o serviço de transport
 
 ## Ligação com a NF-e
 
-As chaves das NF-e transportadas ficam em `nfe_chaves`: `infCTeNorm/infDoc/infNFe/chave` nos layouts 3.00 e 4.00, `rem/infNFe/chave` no 2.00 e `det/infNFe/chNFe` no CT-e Simplificado. Só entram chaves que passam na validação da chave de acesso (44 dígitos e dígito verificador), sem repetição. As chaves `9999…` que o AN envia aos terceiros do `autXML` são descartadas, com um único aviso de leitura com a contagem; para esses documentos a ligação com a NF-e não existe.
+As chaves das NF-e transportadas ficam em `nfe_chaves`: `infCTeNorm/infDoc/infNFe/chave` nos layouts 3.00 e 4.00, `rem/infNFe/chave` no 2.00 e `det/infNFe/chNFe` no CT-e Simplificado. Só entram chaves que passam na validação da chave de acesso (44 dígitos e dígito verificador), sem repetição. As chaves `9999…` que o AN envia aos terceiros do `autXML` são descartadas, com um único aviso de leitura com a contagem, e o documento fica marcado como cópia mascarada (`masked_keys`); para esses documentos a ligação com a NF-e não existe.
+
+O CT-e é guardado uma vez por chave, para todas as empresas que o recebem. Quando uma empresa recebe o documento completo e outra, terceira do `autXML`, recebe a cópia mascarada, o Nanci fica com o completo: a cópia mascarada nunca substitui o completo (só a situação pode mudar, para a mais grave), e o completo substitui a cópia mascarada quando chega depois. A ligação com a NF-e e a exportação usam sempre o XML completo quando alguma empresa o recebeu.
 
 `nanci cte list --nfe <CHAVE_NFE>` (e o filtro de chave de NF-e no aplicativo) encontra os CT-e que transportaram uma NF-e. As telas ainda não mostram a ligação entre um CT-e e as notas dele.
 

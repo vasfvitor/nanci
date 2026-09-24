@@ -730,11 +730,14 @@ func TestMigration015AddsCTeTables(t *testing.T) {
 		VALUES ('rel-1', 'comp-1', 'doc-1', 'tomador', 'tomador,destinatario', 'exact_tomador', ?, ?)
 	`, now, now)
 	var autorizados, nfeChaves string
-	if err := db.QueryRowContext(ctx, `SELECT autorizados_cnpj, nfe_chaves FROM cte_documents WHERE id = 'doc-1'`).Scan(&autorizados, &nfeChaves); err != nil {
+	var maskedKeys int
+	err = db.QueryRowContext(ctx, `SELECT autorizados_cnpj, nfe_chaves, masked_keys FROM cte_documents WHERE id = 'doc-1'`).
+		Scan(&autorizados, &nfeChaves, &maskedKeys)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if autorizados != "" || nfeChaves != "" {
-		t.Errorf("default (autorizados_cnpj, nfe_chaves) = (%q, %q), want empty", autorizados, nfeChaves)
+	if autorizados != "" || nfeChaves != "" || maskedKeys != 0 {
+		t.Errorf("default (autorizados_cnpj, nfe_chaves, masked_keys) = (%q, %q, %d), want empty", autorizados, nfeChaves, maskedKeys)
 	}
 
 	if _, err := provider.DownTo(ctx, 14); err != nil {
