@@ -8,7 +8,8 @@
 * `internal/app`: casos de uso e montagem das dependências.
 * `internal/cli`: comandos do CLI.
 * `internal/desktop`: app desktop com Vue 3 e Wails.
-* `internal/nfse`, `internal/adn`, `internal/service/sync`: domínio fiscal, integração com ADN e processamento de XML.
+* `internal/nfse`, `internal/adn`, `internal/sync`: domínio fiscal, integração com ADN e processamento de XML.
+* `internal/nfe`, `internal/sefaz`: domínio da NF-e e cliente SOAP da SEFAZ (distribuição e eventos).
 * `internal/store`: SQLite, repositórios e migrações.
 * `internal/testutil/fixtures`: helpers de teste.
 

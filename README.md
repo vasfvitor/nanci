@@ -71,7 +71,7 @@ nanci.exe export xlsx --cnpj 12345678000199 --out relatorio.xlsx
 
 #### NF-e (modelo 55)
 
-A distribuição de NF-e exige a UF da empresa. Os comandos ficam em `nanci nfe` e recebem a empresa por `--cnpj`:
+A distribuição de NF-e exige a UF da empresa (`--uf` em `company add` ou `company update`). Os comandos ficam em `nanci nfe` e recebem a empresa por `--cnpj`:
 
 ```bash
 # Cadastrar a UF da empresa
@@ -82,22 +82,28 @@ nanci.exe nfe testar-conexao --cnpj 12345678000199
 
 # Baixar e listar
 nanci.exe nfe pull --cnpj 12345678000199
-nanci.exe nfe list --cnpj 12345678000199
+nanci.exe nfe list --cnpj 12345678000199 --completude resumo
 
-# Ciência da Operação: sem --confirmar, só mostra o que seria enviado
+# Ciência da Operação, passo 1: simulação. Mostra o que seria enviado e não envia nada.
+nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos
+
+# Passo 2: envio de verdade. Confira a simulação antes.
 nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
 ```
+
+> **Atenção:** com `--confirmar`, `nfe ciencia` e `nfe manifestar` enviam eventos assinados à SEFAZ. Um evento registrado não pode ser desfeito pelo Nanci. Rode sempre a simulação primeiro. Se algum evento for rejeitado ou não for enviado, o comando mostra a tabela de resultados e termina com erro.
 
 | Comando | O que faz |
 |---|---|
 | `nfe testar-conexao` | Carrega o certificado e testa o TLS com a SEFAZ, sem consumir consultas. |
 | `nfe pull` | Baixa resumos, NF-e completas e eventos (até 20 consultas por hora). |
 | `nfe status` | Mostra cursor, bloqueios, consultas da última hora e totais. |
-| `nfe list` | Lista as NF-e, com filtros por competência, situação, tipo, papel e manifestação. |
-| `nfe ciencia` | Registra a Ciência da Operação em lote. |
-| `nfe manifestar` | Registra confirmação, desconhecimento ou operação não realizada de uma nota. |
-| `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. |
-| `nfe export zip` / `nfe export xml` | Exporta os XMLs em ZIP ou uma nota avulsa. |
+| `nfe list` | Lista as NF-e. Filtros: `--competencia`/`-m`, `--situacao`, `--completude` (resumo, completa), `--papel`/`-p`, `--manifestacao`, `--emitente` e `--chave` (pode repetir). |
+| `nfe ciencia` | Registra a Ciência da Operação em lote, por `--chave` (pode repetir) ou `--todos-resumos`. Simulação sem `--confirmar`. |
+| `nfe manifestar` | Registra uma manifestação conclusiva de uma nota: `--chave`, `--tipo` (confirmacao, desconhecimento ou nao_realizada) e `--justificativa` (15 a 255 caracteres, obrigatória para nao_realizada). Simulação sem `--confirmar`. |
+| `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. `--vencendo-em N` mostra só as que vencem em até N dias. |
+| `nfe export zip` | Exporta os XMLs em ZIP (`--out`/`-o`, padrão `nfe.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incluir-resumos` inclui os resumos e `--incremental` exporta só o que ainda não foi exportado. |
+| `nfe export xml` | Exporta o XML de uma nota (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
 | `nfe reset` | Remove as NF-e da empresa e reinicia a sincronização NF-e; necessário antes de trocar o ambiente. Simulação sem `--confirmar`. |
 
 Detalhes de limites, prazos e TLS em [docs/NFE_SEFAZ.md](docs/NFE_SEFAZ.md).
