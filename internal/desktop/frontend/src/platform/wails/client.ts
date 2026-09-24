@@ -92,47 +92,43 @@ import type {
 type RawRecord = Record<string, unknown>
 
 // WailsErrorCode names the backend errors the UI branches on. The desktop
-// layer tags them with an ERR_<CODE>: message prefix.
+// ErrorFormatter rejects bound-method promises with {code, message}.
 export type WailsErrorCode = 'canceled' | 'sefaz_blocked' | 'sync_running' | ''
 
-const errorCodes: Record<string, WailsErrorCode> = {
-  CANCELED: 'canceled',
-  SEFAZ_BLOCKED: 'sefaz_blocked',
-  SYNC_RUNNING: 'sync_running',
-}
-
-function parseErrorCode(message: string): WailsErrorCode {
-  const match = /^\s*ERR_([A-Z_]+):/.exec(message)
-  return (match && errorCodes[match[1] ?? '']) || ''
+function asErrorCode(value: unknown): WailsErrorCode {
+  return value === 'canceled' || value === 'sefaz_blocked' || value === 'sync_running' ? value : ''
 }
 
 export class WailsClientError extends Error {
-  readonly code: WailsErrorCode
-
-  constructor(message: string, readonly cause?: unknown) {
+  constructor(
+    message: string,
+    readonly code: WailsErrorCode = '',
+    readonly cause?: unknown
+  ) {
     super(message)
     this.name = 'WailsClientError'
-    this.code = parseErrorCode(message)
   }
 }
 
 // wailsErrorCode reads the error code from any thrown value, so callers do not
 // depend on the error having gone through the client.
 export function wailsErrorCode(error: unknown): WailsErrorCode {
-  if (error instanceof WailsClientError) return error.code
-  if (error instanceof Error) return parseErrorCode(error.message)
-  return parseErrorCode(String(error))
+  return normalizeError(error).code
 }
 
 // errorMessage is the text to show for any thrown value.
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return normalizeError(error).message
 }
 
 function normalizeError(error: unknown): WailsClientError {
   if (error instanceof WailsClientError) return error
-  if (error instanceof Error) return new WailsClientError(error.message, error)
-  return new WailsClientError(String(error), error)
+  if (error instanceof Error) return new WailsClientError(error.message, '', error)
+  if (error && typeof error === 'object' && 'message' in error) {
+    const payload = asRawRecord(error)
+    return new WailsClientError(asString(payload['message']), asErrorCode(payload['code']), error)
+  }
+  return new WailsClientError(String(error), '', error)
 }
 
 async function callWails<T>(operation: () => Promise<T>): Promise<T> {

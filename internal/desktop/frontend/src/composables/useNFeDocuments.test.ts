@@ -163,12 +163,12 @@ describe('useNFeDocuments', () => {
   })
 
   it('clears the sync marker and refreshes the status when the pull fails', async () => {
-    vi.mocked(desktopClient.pullNFe).mockRejectedValue(new Error('ERR_SEFAZ_BLOCKED: bloqueado'))
+    vi.mocked(desktopClient.pullNFe).mockRejectedValue(new Error('consultas bloqueadas'))
 
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
 
-    await expect(nfe.syncNFe()).rejects.toThrow('ERR_SEFAZ_BLOCKED')
+    await expect(nfe.syncNFe()).rejects.toThrow('consultas bloqueadas')
     expect(nfe.isSyncing.value).toBe(false)
     expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
   })

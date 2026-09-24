@@ -363,7 +363,7 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 		Source: nfse.SyncSourceNFSe,
 	})
 	if err != nil {
-		return desktopapi.PullResult{}, desktopError(err)
+		return desktopapi.PullResult{}, err
 	}
 	return desktopapi.PullResult{
 		CompanyName:              res.CompanyName,
@@ -711,7 +711,7 @@ func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResul
 func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
 	res, err := a.core.NFe.Pull(a.ctx, input.CNPJ)
 	if err != nil {
-		return desktopapi.PullNFeResult{}, desktopError(err)
+		return desktopapi.PullNFeResult{}, err
 	}
 	return desktopapi.PullNFeResult{
 		CompanyName:      res.CompanyName,
@@ -734,7 +734,7 @@ func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, 
 func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 	res, err := a.core.NFe.Status(a.ctx, cnpj)
 	if err != nil {
-		return desktopapi.NFeStatusResult{}, desktopError(err)
+		return desktopapi.NFeStatusResult{}, err
 	}
 	return desktopapi.NFeStatusResult{
 		CompanyName:       res.CompanyName,
@@ -774,7 +774,7 @@ func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error
 		ChavesAcesso: input.ChavesAcesso,
 	})
 	if err != nil {
-		return nil, desktopError(err)
+		return nil, err
 	}
 	return desktopapi.NFeRows(documents), nil
 }
@@ -782,7 +782,7 @@ func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error
 func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {
 	events, err := a.core.NFe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
 	if err != nil {
-		return nil, desktopError(err)
+		return nil, err
 	}
 	return desktopapi.NFeEvents(events), nil
 }
@@ -793,7 +793,7 @@ func (a *App) ListNFePendingManifestacoes(input desktopapi.NFePendingInput) ([]d
 		DueWithinDays: input.DueWithinDays,
 	})
 	if err != nil {
-		return nil, desktopError(err)
+		return nil, err
 	}
 	return desktopapi.NFePendingRows(pending), nil
 }
@@ -806,7 +806,7 @@ func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopa
 		ChavesAcesso: input.ChavesAcesso,
 	})
 	if err != nil {
-		return desktopapi.NFeCienciaPlan{}, desktopError(err)
+		return desktopapi.NFeCienciaPlan{}, err
 	}
 	return desktopapi.NFeCienciaPlanFrom(plan), nil
 }
@@ -819,7 +819,7 @@ func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desk
 		ChavesAcesso: input.ChavesAcesso,
 	})
 	if err != nil {
-		return desktopapi.NFeEventBatchResult{}, desktopError(err)
+		return desktopapi.NFeEventBatchResult{}, err
 	}
 	return desktopapi.NFeEventResults(summary), nil
 }
@@ -832,7 +832,7 @@ func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoIn
 		Justificativa: input.Justificativa,
 	})
 	if err != nil {
-		return desktopapi.NFeEventResult{}, desktopError(err)
+		return desktopapi.NFeEventResult{}, err
 	}
 	return desktopapi.NFeEventResultFrom(outcome), nil
 }
@@ -848,7 +848,7 @@ func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.Expor
 		OutPath:     input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, desktopError(err)
+		return desktopapi.ExportResult{}, err
 	}
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
 }
@@ -868,7 +868,7 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 		OutPath:        input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.NFeExportResult{}, desktopError(err)
+		return desktopapi.NFeExportResult{}, err
 	}
 	return desktopapi.NFeExportResult{
 		ExportResult:   desktopapi.ExportResult(res.ExportResult),
@@ -881,7 +881,7 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
 	res, err := a.core.NFe.Reset(a.ctx, cnpj)
 	if err != nil {
-		return desktopapi.NFeResetResult{}, desktopError(err)
+		return desktopapi.NFeResetResult{}, err
 	}
 	return desktopapi.NFeResetResult{
 		CompanyName:       res.CompanyName,
