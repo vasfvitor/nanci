@@ -11,11 +11,6 @@ import { formatTime, normalizeText, parseDate } from '@/utils/formatters'
 import { blockedMessage, nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
 import { nfeRowActions } from '@/utils/nfeManifestacao'
 
-export type NFeExportZIPOptions = {
-  includeResumos?: boolean
-  incremental?: boolean
-}
-
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
   const syncStore = useCompanySyncStore()
@@ -173,10 +168,7 @@ export function useNFeDocuments() {
   // exportZIP exports exactly the given chaves, by default exportChaves.
   // Competence and Role are left empty: the grid may hold the result of an
   // earlier search, and an empty list would export everything.
-  async function exportZIP(
-    chavesAcesso: string[] = exportChaves.value,
-    options: NFeExportZIPOptions = {}
-  ) {
+  async function exportZIP(chavesAcesso: string[] = exportChaves.value) {
     const cnpj = store.listInput.CNPJ
     if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
     exporting.value = true
@@ -186,8 +178,8 @@ export function useNFeDocuments() {
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
-        IncludeResumos: options.includeResumos ?? false,
-        Incremental: options.incremental ?? false,
+        IncludeResumos: false,
+        Incremental: false,
       })
     } finally {
       exporting.value = false

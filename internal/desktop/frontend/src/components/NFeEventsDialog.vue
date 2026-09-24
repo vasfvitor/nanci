@@ -53,6 +53,7 @@
 import { watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { useNFeEvents } from '@/composables/useNFeEvents'
+import { useNotify } from '@/composables/useNotify'
 import type { NFeEvent } from '@/types/desktop'
 import { formatChaveNFe, formatDateTime } from '@/utils/formatters'
 import { badgeProps, nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
@@ -66,6 +67,7 @@ const props = defineProps<{
 
 const $q = useQuasar()
 const { events, loading, load } = useNFeEvents()
+const { notifyError } = useNotify()
 
 const columns: QTableColumn<NFeEvent>[] = [
   {
@@ -102,8 +104,8 @@ watch(open, (isOpen) => {
 async function loadEvents() {
   try {
     await load(props.cnpj, props.chaveAcesso)
-  } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar eventos: ' + String(err) })
+  } catch (error) {
+    notifyError('Erro ao carregar eventos', error)
   }
 }
 </script>

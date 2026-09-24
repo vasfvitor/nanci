@@ -26,15 +26,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { desktopClient } from '@/platform/wails/client'
 import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
-
-interface CertPasswordRequest {
-  RequestID: string
-  CompanyName: string
-  TargetCNPJ: string
-  CredentialLabel: string
-  CertPath: string
-  Purpose?: string
-}
+import type { CertPasswordRequest } from '@/types/desktop'
 
 const requests = ref<CertPasswordRequest[]>([])
 const password = ref('')

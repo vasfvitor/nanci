@@ -10,7 +10,8 @@ vi.mock('quasar', () => ({
   useQuasar: () => ({ dark: { isActive: false }, notify }),
 }))
 
-vi.mock('@/platform/wails/client', () => ({
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: { listNFeEvents: vi.fn() },
 }))
 
@@ -52,7 +53,7 @@ describe('NFeEventsDialog', () => {
 
     expect(notify).toHaveBeenCalledWith({
       type: 'negative',
-      message: 'Erro ao carregar eventos: Error: boom',
+      message: 'Erro ao carregar eventos: boom',
     })
   })
 })

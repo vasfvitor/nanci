@@ -221,6 +221,18 @@ export type ConnectionTestResult = {
   statusExplanation: string
 }
 
+// CertPasswordRequest is the payload of the request-cert-password event: a
+// sync or an NF-e event needs a certificate password.
+export type CertPasswordRequest = {
+  RequestID: string
+  CompanyName: string
+  TargetCNPJ: string
+  CredentialLabel: string
+  CertPath: string
+  // Purpose tells the user what the password is for, e.g. "Sincronização NFS-e".
+  Purpose?: string
+}
+
 // NF-e (modelo 55). Enum fields allow '' so an unknown backend value never
 // reads as a real fiscal state.
 

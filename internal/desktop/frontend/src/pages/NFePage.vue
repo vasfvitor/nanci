@@ -651,7 +651,6 @@ function notifyCienciaResult(result: NFeEventBatchResult) {
     actions: [
       {
         label: 'Sincronizar agora',
-        color: 'white',
         handler: () => {
           void syncNFe()
         },
