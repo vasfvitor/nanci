@@ -3,9 +3,17 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFePage from './NFePage.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
+import NFeEventResultsDialog from '@/components/NFeEventResultsDialog.vue'
+import NFeManifestacaoDialog from '@/components/NFeManifestacaoDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { NFeCienciaPlan, NFeRow, NFeStatusResult } from '@/types/desktop'
+import type {
+  NFeCienciaPlan,
+  NFeEventBatchResult,
+  NFeEventResult,
+  NFeRow,
+  NFeStatusResult,
+} from '@/types/desktop'
 
 type OkHandler = (payload: unknown) => void
 
@@ -37,6 +45,7 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     listNFePendingManifestacoes: vi.fn(),
     planNFeCiencia: vi.fn(),
     registerNFeCiencia: vi.fn(),
+    registerNFeManifestacao: vi.fn(),
     pullNFe: vi.fn(),
     resetNFe: vi.fn(),
     exportNFeZIP: vi.fn(),
@@ -147,7 +156,7 @@ function mountPage() {
           emits: ['update:modelValue'],
           template: '<div><slot /></div>',
         },
-        NFePendingPanel: { template: '<div />' },
+        NFePendingPanel: { name: 'NFePendingPanel', template: '<div />' },
         NFeEventsDialog: { template: '<div />' },
       },
       directives: {
@@ -383,5 +392,93 @@ describe('NFePage', () => {
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'positive', message: expect.stringContaining('3 notas e 4 eventos') })
     )
+  })
+
+  it('shows the per-note results when a ciência has problems', async () => {
+    vi.mocked(desktopClient.planNFeCiencia).mockResolvedValue({ Eligible: [destinatario], Skipped: [] })
+    const result: NFeEventBatchResult = {
+      Results: [
+        {
+          ChaveAcesso: 'a',
+          TpEvento: '210210',
+          Status: 'rejeitada',
+          CStat: '573',
+          XMotivo: 'Duplicidade',
+          Protocolo: '',
+        },
+      ],
+      Skipped: [],
+      Interrupted: '',
+    }
+    vi.mocked(desktopClient.registerNFeCiencia).mockResolvedValue(result)
+
+    const wrapper = mountPage()
+    await flushPromises()
+    await selectRows(wrapper, [destinatario])
+    await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
+    await flushPromises()
+    okHandlers[0]?.(['a'])
+    await flushPromises()
+
+    const notice = notify.mock.calls.map(([options]) => options).find((options) => options.actions)
+    expect(notice).toMatchObject({ type: 'warning', message: expect.stringContaining('1 rejeitadas') })
+    expect(notice.actions[0]).not.toHaveProperty('color')
+    expect(dialog).toHaveBeenLastCalledWith({
+      component: NFeEventResultsDialog,
+      componentProps: { result },
+    })
+  })
+
+  it.each([
+    {
+      Status: 'registrada',
+      CStat: '135',
+      XMotivo: '',
+      Protocolo: '135',
+      expected: { type: 'positive', message: 'Manifestação registrada. Protocolo 135.' },
+    },
+    {
+      Status: 'ja_registrada',
+      CStat: '',
+      XMotivo: '',
+      Protocolo: '',
+      expected: { type: 'info', message: 'A manifestação já estava registrada na SEFAZ.' },
+    },
+    {
+      Status: 'rejeitada',
+      CStat: '596',
+      XMotivo: 'Prazo vencido',
+      Protocolo: '',
+      expected: { type: 'negative', message: 'Manifestação rejeitada pela SEFAZ: 596 - Prazo vencido' },
+    },
+    {
+      Status: 'nao_enviada',
+      CStat: '',
+      XMotivo: 'Sem resposta',
+      Protocolo: '',
+      expected: { type: 'warning', message: 'Manifestação não enviada. Sem resposta' },
+    },
+  ] as const)('notifies a $Status manifestação', async ({ expected, ...fields }) => {
+    const outcome: NFeEventResult = { ChaveAcesso: 'a', TpEvento: '210200', ...fields }
+    vi.mocked(desktopClient.registerNFeManifestacao).mockResolvedValue(outcome)
+
+    const wrapper = mountPage()
+    await flushPromises()
+    wrapper.getComponent({ name: 'NFePendingPanel' }).vm.$emit('manifest', destinatario)
+    expect(dialog).toHaveBeenCalledWith({
+      component: NFeManifestacaoDialog,
+      componentProps: { note: destinatario, tpAmb: '1' },
+    })
+
+    okHandlers[0]?.({ tipo: '210200', justificativa: '' })
+    await flushPromises()
+
+    expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledWith({
+      CNPJ: company.CNPJ,
+      ChaveAcesso: 'a',
+      Tipo: '210200',
+      Justificativa: '',
+    })
+    expect(notify).toHaveBeenCalledWith(expected)
   })
 })
