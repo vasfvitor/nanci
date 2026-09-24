@@ -17,14 +17,13 @@ import (
 	"github.com/vasfvitor/nanci/internal/sefaz"
 )
 
-// Outcomes of one manifestação, per chave. The first three are also the
-// statuses stored for answered events.
-const (
-	NFeOutcomeRegistrada   = nfe.ManifestacaoStatusRegistrada   // SEFAZ registered the event (135/136)
-	NFeOutcomeJaRegistrada = nfe.ManifestacaoStatusJaRegistrada // the same event was registered before (573)
-	NFeOutcomeRejeitada    = nfe.ManifestacaoStatusRejeitada    // SEFAZ refused the event; see CStat and XMotivo
-	NFeOutcomeNaoEnviada   = "nao_enviada"                      // the lote got no SEFAZ answer, or was never sent
-)
+// NFeOutcomeNaoEnviada is the outcome of an event whose lote got no SEFAZ
+// answer, or was never sent because an earlier lote failed. The other
+// outcomes are the stored nfe.ManifestacaoStatus* values. The two sets
+// differ here on purpose: a lote without answer is stored as
+// nfe.ManifestacaoStatusErro, a lote never sent is not stored at all, and
+// both are reported to the user as nao_enviada.
+const NFeOutcomeNaoEnviada = "nao_enviada"
 
 // NFeCienciaInput selects the NF-e for Ciência da Operação: either the
 // listed chaves or, with AllResumos, every resumo still waiting for it.
@@ -52,7 +51,7 @@ type NFeCienciaPlan struct {
 type NFeEventOutcome struct {
 	ChaveAcesso  string
 	TpEvento     string
-	Status       string // registrada | ja_registrada | rejeitada | nao_enviada
+	Status       string // nfe.ManifestacaoStatusRegistrada, JaRegistrada, Rejeitada, or NFeOutcomeNaoEnviada
 	CStat        string // empty when SEFAZ did not answer
 	XMotivo      string
 	Protocolo    string

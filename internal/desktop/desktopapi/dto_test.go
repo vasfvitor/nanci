@@ -143,9 +143,9 @@ func TestNFeEventResults(t *testing.T) {
 	registeredAt := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
 	got := NFeEventResults(app.NFeManifestacaoSummary{
 		Outcomes: []app.NFeEventOutcome{
-			{ChaveAcesso: "a", TpEvento: "210210", Status: app.NFeOutcomeRegistrada, CStat: "135", Protocolo: "p1", RegisteredAt: &registeredAt},
-			{ChaveAcesso: "b", TpEvento: "210210", Status: app.NFeOutcomeJaRegistrada, CStat: "573"},
-			{ChaveAcesso: "c", TpEvento: "210210", Status: app.NFeOutcomeRejeitada, CStat: "650", XMotivo: "Rejeição"},
+			{ChaveAcesso: "a", TpEvento: "210210", Status: nfe.ManifestacaoStatusRegistrada, CStat: "135", Protocolo: "p1", RegisteredAt: &registeredAt},
+			{ChaveAcesso: "b", TpEvento: "210210", Status: nfe.ManifestacaoStatusJaRegistrada, CStat: "573"},
+			{ChaveAcesso: "c", TpEvento: "210210", Status: nfe.ManifestacaoStatusRejeitada, CStat: "650", XMotivo: "Rejeição"},
 			{ChaveAcesso: "d", TpEvento: "210210", Status: app.NFeOutcomeNaoEnviada},
 		},
 		Skipped:     []app.NFeSkipped{{ChaveAcesso: "e", Reason: "a empresa não é a destinatária"}},

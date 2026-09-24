@@ -14,23 +14,9 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
+	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
 )
-
-// NFeRepository is the NF-e storage the app uses. *store.NFeRepository
-// satisfies it.
-type NFeRepository interface {
-	ListCompanyDocuments(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter) ([]nfe.CompanyDocument, error)
-	ListPendingExport(ctx context.Context, companyID nfse.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error)
-	ListEventsByChave(ctx context.Context, chave string) ([]nfe.Event, error)
-	ListEventsByChaves(ctx context.Context, chaves []string) ([]nfe.Event, error)
-	CompanyDocumentByChave(ctx context.Context, companyID nfse.CompanyID, chave string) (*nfe.CompanyDocument, error)
-	CountSummary(ctx context.Context, companyID nfse.CompanyID) (nfe.Counts, error)
-	MarkExported(ctx context.Context, companyID nfse.CompanyID, kind string, docs []nfe.CompanyDocument) error
-	RecordManifestacoes(ctx context.Context, items []nfe.ManifestacaoRecord) error
-	ResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
-	PreviewResetCompany(ctx context.Context, companyID nfse.CompanyID) (nfe.ResetCounts, error)
-}
 
 // sefazClient is the part of *sefaz.Client the NF-e use cases call.
 type sefazClient interface {
@@ -54,7 +40,7 @@ const (
 type NFeService struct {
 	Log          *slog.Logger
 	CompanyStore *company.Store
-	NFeRepo      NFeRepository
+	NFeRepo      *store.NFeRepository
 	SyncRepo     *sync.Store
 	SyncManager  *sync.Manager
 	XMLStore     files.XMLStore

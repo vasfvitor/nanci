@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/nfe"
 )
 
 // newNFeCommand builds the `nfe` subcommand tree. Every leaf acts on the
@@ -79,11 +80,11 @@ func dashIfEmpty(s string) string {
 // nfeOutcomeLabel is the text shown for a manifestação outcome.
 func nfeOutcomeLabel(status string) string {
 	switch status {
-	case app.NFeOutcomeRegistrada:
+	case nfe.ManifestacaoStatusRegistrada:
 		return "registrada"
-	case app.NFeOutcomeJaRegistrada:
+	case nfe.ManifestacaoStatusJaRegistrada:
 		return "já registrada"
-	case app.NFeOutcomeRejeitada:
+	case nfe.ManifestacaoStatusRejeitada:
 		return "rejeitada"
 	default:
 		return "não enviada"

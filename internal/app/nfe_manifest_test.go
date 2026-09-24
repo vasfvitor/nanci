@@ -191,7 +191,7 @@ func TestNFeRegisterCienciaSendsLotesOfTwenty(t *testing.T) {
 		t.Errorf("lote sizes = %v, want [20 20 5]", got)
 	}
 	counts := outcomeCounts(summary.Outcomes)
-	if counts[NFeOutcomeRegistrada] != 45 || summary.Interrupted != "" || len(summary.Outcomes) != 45 {
+	if counts[nfe.ManifestacaoStatusRegistrada] != 45 || summary.Interrupted != "" || len(summary.Outcomes) != 45 {
 		t.Errorf("summary = counts %v, interrupted %q, outcomes %d", counts, summary.Interrupted, len(summary.Outcomes))
 	}
 	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Assinatura: Ciência da Operação (45 notas)" {
@@ -238,14 +238,14 @@ func TestNFeRegisterCienciaReportsMixedAnswers(t *testing.T) {
 		t.Fatal(err)
 	}
 	counts := outcomeCounts(summary.Outcomes)
-	if counts[NFeOutcomeRegistrada] != 1 || counts[NFeOutcomeJaRegistrada] != 1 || counts[NFeOutcomeRejeitada] != 2 || counts[NFeOutcomeNaoEnviada] != 0 {
+	if counts[nfe.ManifestacaoStatusRegistrada] != 1 || counts[nfe.ManifestacaoStatusJaRegistrada] != 1 || counts[nfe.ManifestacaoStatusRejeitada] != 2 || counts[NFeOutcomeNaoEnviada] != 0 {
 		t.Errorf("counts = %v, summary = %+v", counts, summary)
 	}
 	want := []struct{ status, cStat string }{
-		{NFeOutcomeRegistrada, "135"},
-		{NFeOutcomeJaRegistrada, "573"},
-		{NFeOutcomeRejeitada, "650"},
-		{NFeOutcomeRejeitada, "655"},
+		{nfe.ManifestacaoStatusRegistrada, "135"},
+		{nfe.ManifestacaoStatusJaRegistrada, "573"},
+		{nfe.ManifestacaoStatusRejeitada, "650"},
+		{nfe.ManifestacaoStatusRejeitada, "655"},
 	}
 	for i, o := range summary.Outcomes {
 		if o.ChaveAcesso != chaves[i] || o.Status != want[i].status || o.CStat != want[i].cStat || o.TpEvento != nfe.TpEventoCiencia {
@@ -309,7 +309,7 @@ func TestNFeRegisterCienciaTransportFailureInterruptsWithoutError(t *testing.T) 
 		t.Errorf("lotes sent = %d, want 2 (the third is never sent)", len(fake.lotes))
 	}
 	counts := outcomeCounts(summary.Outcomes)
-	if counts[NFeOutcomeRegistrada] != 20 || counts[NFeOutcomeNaoEnviada] != 25 || !strings.Contains(summary.Interrupted, "connection reset by peer") {
+	if counts[nfe.ManifestacaoStatusRegistrada] != 20 || counts[NFeOutcomeNaoEnviada] != 25 || !strings.Contains(summary.Interrupted, "connection reset by peer") {
 		t.Errorf("summary = counts %v, interrupted %q", counts, summary.Interrupted)
 	}
 	for _, o := range summary.Outcomes[20:] {
@@ -373,7 +373,7 @@ func TestNFeRegisterManifestacaoValidatesBeforePassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if outcome.Status != NFeOutcomeRegistrada || outcome.TpEvento != nfe.TpEventoNaoRealizada {
+	if outcome.Status != nfe.ManifestacaoStatusRegistrada || outcome.TpEvento != nfe.TpEventoNaoRealizada {
 		t.Errorf("outcome = %+v", outcome)
 	}
 	if len(fake.lotes) != 1 || len(fake.lotes[0]) != 1 || fake.lotes[0][0].XJust != justificativa {

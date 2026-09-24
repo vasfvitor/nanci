@@ -88,8 +88,8 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				counts[o.Status]++
 			}
 			_, _ = fmt.Fprintf(out, "\nSolicitadas: %d | Registradas: %d | Já registradas: %d | Rejeitadas: %d | Não enviadas: %d\n",
-				len(summary.Outcomes), counts[app.NFeOutcomeRegistrada], counts[app.NFeOutcomeJaRegistrada],
-				counts[app.NFeOutcomeRejeitada], counts[app.NFeOutcomeNaoEnviada])
+				len(summary.Outcomes), counts[nfe.ManifestacaoStatusRegistrada], counts[nfe.ManifestacaoStatusJaRegistrada],
+				counts[nfe.ManifestacaoStatusRejeitada], counts[app.NFeOutcomeNaoEnviada])
 			if summary.Interrupted != "" {
 				_, _ = fmt.Fprintf(out, "Aviso: o envio foi interrompido (%s). As NF-e não enviadas podem ser enviadas de novo.\n", summary.Interrupted)
 			}
