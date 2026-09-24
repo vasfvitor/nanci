@@ -199,8 +199,8 @@ func TestNFeSourceStoresMixedBatchesAndStopsWhenCaughtUp(t *testing.T) {
 	if got := len(h.events(nfeChaveCancelada)); got != 1 {
 		t.Errorf("events of the cancelada = %d, want 1", got)
 	}
-	if progress.FullDocumentsSaved != 2 || progress.PartialDocumentsSaved != 1 || progress.EventsSaved != 1 {
-		t.Errorf("progress completas/resumos/events = %d/%d/%d, want 2/1/1", progress.FullDocumentsSaved, progress.PartialDocumentsSaved, progress.EventsSaved)
+	if progress.CompletasSaved != 2 || progress.ResumosSaved != 1 || progress.EventsSaved != 1 {
+		t.Errorf("progress completas/resumos/events = %d/%d/%d, want 2/1/1", progress.CompletasSaved, progress.ResumosSaved, progress.EventsSaved)
 	}
 	if len(h.xml.stored) != 4 {
 		t.Errorf("stored blobs = %d, want 4", len(h.xml.stored))
@@ -256,8 +256,8 @@ func TestNFeSourceUpgradesResumoToCompleta(t *testing.T) {
 	if got.ResumoRawHash == "" || got.ResumoRawHash == got.RawHash {
 		t.Errorf("resumo hash = %q, raw hash = %q: want the resumo blob kept apart", got.ResumoRawHash, got.RawHash)
 	}
-	if progress.PartialDocumentsSaved != 1 || progress.FullDocumentsSaved != 1 {
-		t.Errorf("progress resumos/completas = %d/%d, want 1/1", progress.PartialDocumentsSaved, progress.FullDocumentsSaved)
+	if progress.ResumosSaved != 1 || progress.CompletasSaved != 1 {
+		t.Errorf("progress resumos/completas = %d/%d, want 1/1", progress.ResumosSaved, progress.CompletasSaved)
 	}
 }
 
@@ -473,8 +473,8 @@ func TestPullNFeReportsLimitsAndBlocksAfterConsumoIndevido(t *testing.T) {
 	if result.LastProcessedNSU != 1 || result.MaxNSU == nil || *result.MaxNSU != 3 {
 		t.Errorf("cursor/max = %d/%v, want 1/3", result.LastProcessedNSU, result.MaxNSU)
 	}
-	if result.PartialDocumentsSaved != 1 || result.FullDocumentsSaved != 0 {
-		t.Errorf("resumos/completas = %d/%d, want 1/0", result.PartialDocumentsSaved, result.FullDocumentsSaved)
+	if result.ResumosSaved != 1 || result.CompletasSaved != 0 {
+		t.Errorf("resumos/completas = %d/%d, want 1/0", result.ResumosSaved, result.CompletasSaved)
 	}
 	if result.RequestsLastHour != 2 || result.RequestBudget != 20 {
 		t.Errorf("requests = %d of %d, want 2 of 20", result.RequestsLastHour, result.RequestBudget)

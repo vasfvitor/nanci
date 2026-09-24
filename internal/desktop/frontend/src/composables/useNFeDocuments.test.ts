@@ -25,7 +25,7 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     CNPJ: '123',
     UF: 'SP',
     TpAmb: '2',
-    LastCheckedNSU: 0,
+    LastNSU: 0,
     MaxNSU: null,
     LastRunStatus: '',
     LastRunStopReason: '',

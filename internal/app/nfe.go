@@ -82,7 +82,7 @@ type NFePullResult struct {
 	CNPJ             string
 	Status           string // completed | failed | interrupted
 	StopReason       string // caught_up | consumo_indevido | rate_budget | ...
-	UltNSU           int64  // cursor after the pull
+	LastNSU          int64  // cursor after the pull (the last ultNSU)
 	MaxNSU           *int64 // highest NSU SEFAZ reported; nil when unknown
 	CompletasSaved   int
 	ResumosSaved     int
@@ -106,10 +106,10 @@ func (s *NFeService) Pull(ctx context.Context, cnpj string) (NFePullResult, erro
 		CNPJ:             res.CNPJ,
 		Status:           res.Status,
 		StopReason:       res.StopReason,
-		UltNSU:           res.LastProcessedNSU,
+		LastNSU:          res.LastProcessedNSU,
 		MaxNSU:           res.MaxNSU,
-		CompletasSaved:   res.FullDocumentsSaved,
-		ResumosSaved:     res.PartialDocumentsSaved,
+		CompletasSaved:   res.CompletasSaved,
+		ResumosSaved:     res.ResumosSaved,
 		EventsSaved:      res.EventsSaved,
 		Errors:           res.Errors,
 		NextAllowedAt:    res.NextAllowedAt,

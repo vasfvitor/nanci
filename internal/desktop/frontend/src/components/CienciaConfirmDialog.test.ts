@@ -26,7 +26,7 @@ function note(chave: string, numero: string, totalValue: number): NFeRow {
     Serie: '1',
     Numero: numero,
     Protocolo: '',
-    TipoOperacao: '1',
+    TpNF: '1',
     EmitenteCNPJ: '12345678000199',
     EmitenteName: 'Fornecedor A',
     EmitenteIE: '',

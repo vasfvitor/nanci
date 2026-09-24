@@ -185,8 +185,8 @@ type syncRuntimeState struct {
 	documentsSkippedPolicy int
 	eventsSkippedPolicy    int
 	unsupported            int
-	documentsFull          int // documents stored whole, inserted or not
-	documentsPartial       int // documents stored as a summary, inserted or not
+	completasSaved         int // documents stored whole, inserted or not
+	resumosSaved           int // documents stored as a summary, inserted or not
 	emptyCount             int
 	consecutiveEmpty       int
 	errorsCount            int
@@ -434,9 +434,9 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 	}
 	if !outcome.IsEvent && !outcome.SkippedByPolicy && !outcome.Unsupported {
 		if outcome.Partial {
-			runState.documentsPartial++
+			runState.resumosSaved++
 		} else {
-			runState.documentsFull++
+			runState.completasSaved++
 		}
 	}
 	runState.lastProcessedNSU = item.NSU
@@ -499,8 +499,8 @@ func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncR
 		EventsSaved:              runState.eventsInserted,
 		DocumentsSkippedByPolicy: runState.documentsSkippedPolicy,
 		EventsSkippedByPolicy:    runState.eventsSkippedPolicy,
-		FullDocumentsSaved:       runState.documentsFull,
-		PartialDocumentsSaved:    runState.documentsPartial,
+		CompletasSaved:           runState.completasSaved,
+		ResumosSaved:             runState.resumosSaved,
 		DocsInBatch:              docsInBatch,
 		Errors:                   runState.errorsCount,
 		Message:                  fmt.Sprintf("cursor=%d fetched=%d ultNSU=%d maxNSU=%d inserted=%d events=%d stale=%d duplicate=%d skipped_policy=%d/%d", cursor, docsInBatch, batch.UltNSU, batch.MaxNSU, runState.documentsInserted, runState.eventsInserted, runState.documentsSkippedStale, runState.documentsSkippedDup, runState.documentsSkippedPolicy, runState.eventsSkippedPolicy),

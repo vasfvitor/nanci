@@ -24,7 +24,7 @@ function nfeRow(chave: string): NFeRow {
     Serie: '1',
     Numero: '1',
     Protocolo: '',
-    TipoOperacao: '1',
+    TpNF: '1',
     EmitenteCNPJ: '12345678000199',
     EmitenteName: 'Fornecedor',
     EmitenteIE: '',

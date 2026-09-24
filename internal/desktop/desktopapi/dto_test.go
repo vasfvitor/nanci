@@ -67,8 +67,8 @@ func TestNFeRows(t *testing.T) {
 	if row.TotalValue != 123456 {
 		t.Errorf("TotalValue = %d, want 123456 cents", row.TotalValue)
 	}
-	if row.TipoOperacao != "1" || row.Protocolo != "135260000000001" {
-		t.Errorf("TipoOperacao = %q, Protocolo = %q", row.TipoOperacao, row.Protocolo)
+	if row.TpNF != "1" || row.Protocolo != "135260000000001" {
+		t.Errorf("TpNF = %q, Protocolo = %q", row.TpNF, row.Protocolo)
 	}
 	if row.Situacao != "autorizada" || row.Completeness != "completa" || row.Manifestacao != "ciencia" || row.CompanyRole != "destinatario" {
 		t.Errorf("enums = %q %q %q %q", row.Situacao, row.Completeness, row.Manifestacao, row.CompanyRole)

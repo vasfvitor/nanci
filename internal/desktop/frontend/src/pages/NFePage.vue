@@ -503,7 +503,7 @@ const statusLine = computed(() => {
   const maxNSU = status.value.MaxNSU ?? '—'
   return [
     `Última sincronização: ${formatDateTime(status.value.LastSyncAt, 'nunca')}`,
-    `NSU ${status.value.LastCheckedNSU}/${maxNSU}`,
+    `NSU ${status.value.LastNSU}/${maxNSU}`,
     `Pendências: ${pendingCount.value}`,
   ].join(' · ')
 })
@@ -582,7 +582,7 @@ async function syncNFe() {
     if (!result) return
     $q.notify({
       type: 'positive',
-      message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.UltNSU}/${result.MaxNSU ?? '—'}).`,
+      message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`,
     })
   } catch (error) {
     const code = wailsErrorCode(error)

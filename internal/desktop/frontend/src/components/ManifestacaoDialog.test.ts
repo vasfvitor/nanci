@@ -26,7 +26,7 @@ function note(overrides: Partial<NFeRow> = {}): NFeRow {
     Serie: '1',
     Numero: '12345',
     Protocolo: '',
-    TipoOperacao: '1',
+    TpNF: '1',
     EmitenteCNPJ: '12345678000199',
     EmitenteName: 'Fornecedor',
     EmitenteIE: '',

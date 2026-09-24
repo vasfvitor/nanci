@@ -408,7 +408,7 @@ describe('NF-e mappers', () => {
 
     const status = mapNFeStatus({
       TpAmb: '2',
-      LastCheckedNSU: 10,
+      LastNSU: 10,
       MaxNSU: null,
       NextAllowedAt: '2026-09-23T15:00:00Z',
       BlockedReason: 'caught_up',
@@ -417,7 +417,7 @@ describe('NF-e mappers', () => {
     })
     expect(status).toMatchObject({
       TpAmb: '2',
-      LastCheckedNSU: 10,
+      LastNSU: 10,
       MaxNSU: null,
       NextAllowedAt: '2026-09-23T15:00:00Z',
       BlockedReason: 'caught_up',
@@ -427,8 +427,8 @@ describe('NF-e mappers', () => {
     expect(mapNFeStatus({ MaxNSU: 99 }).MaxNSU).toBe(99)
 
     expect(
-      mapPullNFeResult({ UltNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
-    ).toMatchObject({ UltNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
+      mapPullNFeResult({ LastNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
+    ).toMatchObject({ LastNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
     expect(mapPullNFeResult({ MaxNSU: null }).MaxNSU).toBeNull()
   })
 })

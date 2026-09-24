@@ -256,7 +256,7 @@ export type NFeRow = {
   IssueDate?: ISODateValue
   AuthorizedAt?: ISODateValue
   Protocolo: string
-  TipoOperacao: string
+  TpNF: string
   EmitenteCNPJ: string
   EmitenteName: string
   EmitenteIE: string
@@ -377,7 +377,7 @@ export type PullNFeResult = {
   CNPJ: string
   Status: string
   StopReason: string
-  UltNSU: number
+  LastNSU: number
   MaxNSU: number | null
   CompletasSaved: number
   ResumosSaved: number
@@ -394,7 +394,7 @@ export type NFeStatusResult = {
   CNPJ: string
   UF: string
   TpAmb: string
-  LastCheckedNSU: number
+  LastNSU: number
   MaxNSU: number | null
   LastSyncAt?: ISODateValue
   LastRunStatus: string

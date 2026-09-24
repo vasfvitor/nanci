@@ -367,7 +367,7 @@ type NFeRow struct {
 	IssueDate        time.Time
 	AuthorizedAt     *time.Time
 	Protocolo        string
-	TipoOperacao     string // tpNF: "0" entrada, "1" saída
+	TpNF             string // "0" entrada, "1" saída
 	EmitenteCNPJ     string
 	EmitenteName     string
 	EmitenteIE       string
@@ -494,7 +494,7 @@ type PullNFeResult struct {
 	CNPJ             string
 	Status           string // completed | failed | interrupted
 	StopReason       string // caught_up | consumo_indevido | rate_budget | ...
-	UltNSU           int64
+	LastNSU          int64
 	MaxNSU           *int64 // nil when unknown
 	CompletasSaved   int
 	ResumosSaved     int
@@ -511,7 +511,7 @@ type NFeStatusResult struct {
 	CNPJ              string
 	UF                string
 	TpAmb             string // "1" produção, "2" homologação
-	LastCheckedNSU    int64
+	LastNSU           int64
 	MaxNSU            *int64 // nil when unknown
 	LastSyncAt        *time.Time
 	LastRunStatus     string
@@ -584,7 +584,7 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		IssueDate:             document.IssueDate,
 		AuthorizedAt:          document.AuthorizedAt,
 		Protocolo:             document.Protocolo,
-		TipoOperacao:          document.TpNF,
+		TpNF:                  document.TpNF,
 		EmitenteCNPJ:          document.EmitenteCNPJ,
 		EmitenteName:          document.EmitenteName,
 		EmitenteIE:            document.EmitenteIE,

@@ -556,7 +556,7 @@ export namespace desktopapi {
 	    // Go type: time
 	    AuthorizedAt?: any;
 	    Protocolo: string;
-	    TipoOperacao: string;
+	    TpNF: string;
 	    EmitenteCNPJ: string;
 	    EmitenteName: string;
 	    EmitenteIE: string;
@@ -597,7 +597,7 @@ export namespace desktopapi {
 	        this.IssueDate = this.convertValues(source["IssueDate"], null);
 	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
 	        this.Protocolo = source["Protocolo"];
-	        this.TipoOperacao = source["TipoOperacao"];
+	        this.TpNF = source["TpNF"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.EmitenteName = source["EmitenteName"];
 	        this.EmitenteIE = source["EmitenteIE"];
@@ -867,7 +867,7 @@ export namespace desktopapi {
 	    // Go type: time
 	    AuthorizedAt?: any;
 	    Protocolo: string;
-	    TipoOperacao: string;
+	    TpNF: string;
 	    EmitenteCNPJ: string;
 	    EmitenteName: string;
 	    EmitenteIE: string;
@@ -910,7 +910,7 @@ export namespace desktopapi {
 	        this.IssueDate = this.convertValues(source["IssueDate"], null);
 	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
 	        this.Protocolo = source["Protocolo"];
-	        this.TipoOperacao = source["TipoOperacao"];
+	        this.TpNF = source["TpNF"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.EmitenteName = source["EmitenteName"];
 	        this.EmitenteIE = source["EmitenteIE"];
@@ -984,7 +984,7 @@ export namespace desktopapi {
 	    CNPJ: string;
 	    UF: string;
 	    TpAmb: string;
-	    LastCheckedNSU: number;
+	    LastNSU: number;
 	    MaxNSU?: number;
 	    // Go type: time
 	    LastSyncAt?: any;
@@ -1016,7 +1016,7 @@ export namespace desktopapi {
 	        this.CNPJ = source["CNPJ"];
 	        this.UF = source["UF"];
 	        this.TpAmb = source["TpAmb"];
-	        this.LastCheckedNSU = source["LastCheckedNSU"];
+	        this.LastNSU = source["LastNSU"];
 	        this.MaxNSU = source["MaxNSU"];
 	        this.LastSyncAt = this.convertValues(source["LastSyncAt"], null);
 	        this.LastRunStatus = source["LastRunStatus"];
@@ -1085,7 +1085,7 @@ export namespace desktopapi {
 	    CNPJ: string;
 	    Status: string;
 	    StopReason: string;
-	    UltNSU: number;
+	    LastNSU: number;
 	    MaxNSU?: number;
 	    CompletasSaved: number;
 	    ResumosSaved: number;
@@ -1107,7 +1107,7 @@ export namespace desktopapi {
 	        this.CNPJ = source["CNPJ"];
 	        this.Status = source["Status"];
 	        this.StopReason = source["StopReason"];
-	        this.UltNSU = source["UltNSU"];
+	        this.LastNSU = source["LastNSU"];
 	        this.MaxNSU = source["MaxNSU"];
 	        this.CompletasSaved = source["CompletasSaved"];
 	        this.ResumosSaved = source["ResumosSaved"];
