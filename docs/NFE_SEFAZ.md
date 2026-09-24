@@ -191,7 +191,7 @@ O estado da manifestação em `company_nfe_documents` é derivado dos eventos re
 
 - CT-e pela mesma interface `Source` (`CTeDistribuicaoDFe`), com tabelas e tela próprias.
 - Importação de XML avulso.
-- Mascarar nos logs a chave de 50 caracteres da NFS-e, que também contém a inscrição do emitente (a chave de 44 caracteres da NF-e já é mascarada).
+
 ## Atribuição
 
 Partes de `internal/sefaz` (montagem e leitura do `distDFeInt`, envelope SOAP, estruturas de resposta e o formato do assinador) foram adaptadas de [gonfe](https://github.com/mschunke/gonfe), sob licença MIT. Os arquivos adaptados trazem um cabeçalho de atribuição, e a licença está em [`third_party/gonfe/LICENSE`](../third_party/gonfe/LICENSE).
