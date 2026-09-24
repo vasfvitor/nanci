@@ -79,7 +79,7 @@ func main() {
 }
 
 func seedXML(ctx context.Context, db *sql.DB, xmlPath, companyID string) error {
-	data, err := os.ReadFile(xmlPath) //nolint:gosec // intentional: test file reading
+	data, err := os.ReadFile(xmlPath) // #nosec G304 -- dev seeder reads its own fixture files.
 	if err != nil {
 		return err
 	}
@@ -122,13 +122,13 @@ func fileExists(path string) bool {
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src) //nolint:gosec // intentional: test file reading
+	in, err := os.Open(src) // #nosec G304 -- dev seeder reads its own fixture files.
 	if err != nil {
 		return err
 	}
 	defer func() { _ = in.Close() }()
 
-	out, err := os.Create(dst) //nolint:gosec // intentional: test file writing
+	out, err := os.Create(dst) // #nosec G304 -- dev seeder writes into its own data dir.
 	if err != nil {
 		return err
 	}

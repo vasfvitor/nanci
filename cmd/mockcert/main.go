@@ -183,7 +183,7 @@ func findOpenSSL() (string, error) {
 }
 
 func runCommand(name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(context.Background(), name, args...) //nolint:gosec // intentional: this tool wraps openssl
+	cmd := exec.CommandContext(context.Background(), name, args...) // #nosec G204 -- this dev tool wraps openssl.
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

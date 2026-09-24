@@ -92,7 +92,7 @@ func (s *ExportService) ExportZIP(ctx context.Context, input ExportInput) (Expor
 // ExportDANFSeZIP writes one DANFSe PDF per matching document into a ZIP archive.
 func (s *ExportService) ExportDANFSeZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "danfse", func(docs []nfse.CompanyDocument, tempPath string) error {
-		zipFile, err := os.Create(tempPath) //nolint:gosec // intentional: creating temp export file in user directory
+		zipFile, err := os.Create(tempPath) // #nosec G304 -- temp file next to the export path the user chose.
 		if err != nil {
 			return fmt.Errorf("criar arquivo ZIP temporário: %w", err)
 		}

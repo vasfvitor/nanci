@@ -24,7 +24,7 @@ type RetryConfig struct {
 
 func newBackoff(cfg RetryConfig) retry.Backoff {
 	b := retry.NewExponential(cfg.Initial)
-	b = retry.WithMaxRetries(uint64(cfg.MaxRetries), b) //nolint:gosec // intentional: max retries is known to be non-negative
+	b = retry.WithMaxRetries(uint64(cfg.MaxRetries), b) // #nosec G115 -- max retries is a small non-negative config value.
 	b = retry.WithCappedDuration(cfg.MaxDelay, b)
 	b = retry.WithJitterPercent(20, b)
 	return b

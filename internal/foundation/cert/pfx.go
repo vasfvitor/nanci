@@ -53,7 +53,7 @@ func ZeroBytes(b []byte) {
 // use; LoadPKCS12 does not modify or retain it, so zeroing stays the caller's
 // responsibility.
 func LoadPKCS12(path string, password []byte) (LoadedCertificate, error) {
-	pfxData, err := os.ReadFile(path) //nolint:gosec // intentional: path is explicitly selected by the local user
+	pfxData, err := os.ReadFile(path) // #nosec G304 G703 -- the local user selects the certificate path.
 	if err != nil {
 		if os.IsNotExist(err) {
 			return LoadedCertificate{}, ErrCertFileNotFound
