@@ -191,7 +191,7 @@
       <template #body="rowProps">
         <q-tr :props="rowProps">
           <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-            <div v-if="col.name === 'acoes'" class="row no-wrap items-center q-gutter-x-xs">
+            <div v-if="col.name === 'acoes'" class="row no-wrap items-center">
               <q-btn
                 dense
                 flat
@@ -252,15 +252,13 @@
               <div class="text-mono">{{ col.value }}</div>
             </template>
 
-            <template v-else-if="col.name === 'emitente' || col.name === 'tomador'">
-              <div class="text-weight-medium text-mono">{{ formatCpfCnpj(col.value) || '-' }}</div>
-              <div
-                class="text-caption text-app-muted ellipsis partner-name"
-                :title="partyName(rowProps.row, col.name)"
-              >
-                {{ partyName(rowProps.row, col.name) || '-' }}
-              </div>
-            </template>
+            <div
+              v-else-if="col.name === 'emitente' || col.name === 'tomador'"
+              :title="partyTitle(rowProps.row, col.name)"
+            >
+              <div class="text-weight-medium ellipsis partner-name">{{ partyName(rowProps.row, col.name) || '-' }}</div>
+              <div class="text-caption text-app-muted partner-cnpj">{{ formatCpfCnpj(col.value) || '-' }}</div>
+            </div>
 
             <div v-else-if="col.name === 'papel'" class="column items-start">
               <q-badge
@@ -455,11 +453,12 @@ const previewingReset = ref(false)
 
 const columns: QTableColumn<CTeRow>[] = [
   { name: 'acoes', label: 'Ações', field: () => '', align: 'left' },
-  { name: 'chave', label: 'Chave de Acesso', field: 'ChaveAcesso', align: 'left' },
+  { name: 'chave', label: 'Chave', field: 'ChaveAcesso', align: 'left' },
   {
     name: 'documento',
-    label: 'Documento / Número',
-    field: (row) => formatNFeNumber(row.Numero, row.Serie),
+    label: 'Nº / Série',
+    // "000.021.502 / 1": the header already says the second part is the série.
+    field: (row) => [formatNFeNumber(row.Numero), row.Serie].filter(Boolean).join(' / '),
     align: 'left',
   },
   {
@@ -476,7 +475,7 @@ const columns: QTableColumn<CTeRow>[] = [
   { name: 'papel', label: 'Papel', field: 'CompanyRole', align: 'left' },
   {
     name: 'valor',
-    label: 'Prestação (R$)',
+    label: 'Prestação',
     field: 'TotalValue',
     sortable: true,
     align: 'right',
@@ -488,6 +487,11 @@ const columns: QTableColumn<CTeRow>[] = [
 
 function partyName(row: CTeRow, column: string) {
   return column === 'emitente' ? row.EmitenteName : row.TomadorName
+}
+
+function partyTitle(row: CTeRow, column: string) {
+  const cnpj = formatCpfCnpj(column === 'emitente' ? row.EmitenteCNPJ : row.TomadorCNPJ)
+  return [partyName(row, column), cnpj].filter(Boolean).join('\n')
 }
 
 onMounted(() => {
@@ -630,13 +634,30 @@ async function exportZIP() {
 </script>
 
 <style scoped>
-/* Values stay on one line and the table scrolls sideways; party names are
-   cut with an ellipsis and only the expanded details wrap. */
+/* Values stay on one line and party names are cut with an ellipsis, so the
+   table fits the default 1280px window; only the expanded details wrap. The
+   cell padding is tighter than Quasar's dense table for the same reason. */
 .cte-table :deep(td) {
   white-space: nowrap;
 }
 
-.cte-table :deep(td.cte-detail-cell) {
+.cte-table :deep(.q-table th),
+.cte-table :deep(.q-table td) {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.cte-table :deep(.q-table th:first-child),
+.cte-table :deep(.q-table td:first-child) {
+  padding-left: 12px;
+}
+
+.cte-table :deep(.q-table th:last-child),
+.cte-table :deep(.q-table td:last-child) {
+  padding-right: 12px;
+}
+
+.cte-table :deep(.q-table td.cte-detail-cell) {
   padding: 0;
   white-space: normal;
 }
@@ -688,10 +709,15 @@ async function exportZIP() {
   max-width: 100%;
 }
 
-/* About the width of the formatted CNPJ above it, so the name does not widen
-   the column. The full name is in the title tooltip. */
+/* The formatted CNPJ sets the width of the party columns: the caption's
+   letter spacing is dropped to keep it narrow, and the name above it is cut
+   to about the same width. The full name is in the title tooltip. */
+.partner-cnpj {
+  letter-spacing: normal;
+}
+
 .partner-name {
-  max-width: 130px;
+  max-width: 115px;
 }
 
 .cte-secondary-papel {
