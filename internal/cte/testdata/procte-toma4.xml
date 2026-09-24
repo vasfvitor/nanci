@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cteProc xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+  <CTe xmlns="http://www.portalfiscal.inf.br/cte">
+    <infCte Id="CTe35260912345678000195570010000001021234567891" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <cCT>23456789</cCT>
+        <CFOP>5353</CFOP>
+        <natOp>PRESTACAO DE SERVICO DE TRANSPORTE</natOp>
+        <mod>57</mod>
+        <serie>1</serie>
+        <nCT>102</nCT>
+        <dhEmi>2026-09-03T14:00:00-03:00</dhEmi>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>1</cDV>
+        <tpAmb>1</tpAmb>
+        <tpCTe>0</tpCTe>
+        <procEmi>0</procEmi>
+        <verProc>FICTICIO 1.0</verProc>
+        <cMunEnv>3550308</cMunEnv>
+        <xMunEnv>SAO PAULO</xMunEnv>
+        <UFEnv>SP</UFEnv>
+        <modal>01</modal>
+        <tpServ>0</tpServ>
+        <cMunIni>3550308</cMunIni>
+        <xMunIni>SAO PAULO</xMunIni>
+        <UFIni>SP</UFIni>
+        <cMunFim>3509502</cMunFim>
+        <xMunFim>CAMPINAS</xMunFim>
+        <UFFim>SP</UFFim>
+        <retira>1</retira>
+        <indIEToma>1</indIEToma>
+        <toma4>
+          <toma>4</toma>
+          <CNPJ>11223344000186</CNPJ>
+          <IE>112233440000</IE>
+          <xNome>OPERADOR LOGISTICO FICTICIO LTDA</xNome>
+          <enderToma>
+            <xLgr>RUA DO OPERADOR</xLgr>
+            <nro>40</nro>
+            <xBairro>CENTRO</xBairro>
+            <cMun>4106902</cMun>
+            <xMun>CURITIBA</xMun>
+            <UF>PR</UF>
+          </enderToma>
+        </toma4>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <IE>123456789012</IE>
+        <xNome>TRANSPORTADORA FICTICIA LTDA</xNome>
+        <enderEmit>
+          <xLgr>RODOVIA FICTICIA</xLgr>
+          <nro>1000</nro>
+          <xBairro>DISTRITO INDUSTRIAL</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+        <CRT>3</CRT>
+      </emit>
+      <rem>
+        <CNPJ>11222333000181</CNPJ>
+        <IE>111222333444</IE>
+        <xNome>DISTRIBUIDORA FICTICIA DE PECAS LTDA</xNome>
+        <enderReme>
+          <xLgr>RUA FICTICIA</xLgr>
+          <nro>100</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderReme>
+      </rem>
+      <dest>
+        <CNPJ>98765432000198</CNPJ>
+        <IE>987654320000</IE>
+        <xNome>COMERCIO FICTICIO DE CAMPINAS LTDA</xNome>
+        <enderDest>
+          <xLgr>RUA DO COMERCIO</xLgr>
+          <nro>3</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3509502</cMun>
+          <xMun>CAMPINAS</xMun>
+          <UF>SP</UF>
+        </enderDest>
+      </dest>
+      <vPrest>
+        <vTPrest>380.00</vTPrest>
+        <vRec>380.00</vRec>
+      </vPrest>
+      <imp>
+        <ICMS>
+          <ICMS90>
+            <CST>90</CST>
+            <pRedBC>0.00</pRedBC>
+            <vBC>380.00</vBC>
+            <pICMS>12.00</pICMS>
+            <vICMS>45.60</vICMS>
+          </ICMS90>
+        </ICMS>
+      </imp>
+      <infCTeNorm>
+        <infCarga>
+          <vCarga>4200.50</vCarga>
+          <proPred>ROLAMENTOS</proPred>
+        </infCarga>
+        <infDoc>
+          <infNFe>
+            <chave>99999999999999999999999999999999999999999999</chave>
+          </infNFe>
+          <infNFe>
+            <chave>35260911222333000181550010000012361345678900</chave>
+          </infNFe>
+          <infNFe>
+            <chave>99999999999999999999999999999999999999999999</chave>
+          </infNFe>
+        </infDoc>
+        <infModal versaoModal="4.00">
+          <rodo>
+            <RNTRC>12345678</RNTRC>
+          </rodo>
+        </infModal>
+      </infCTeNorm>
+      <autXML>
+        <CNPJ>70860312000150</CNPJ>
+      </autXML>
+      <autXML>
+        <CNPJ>45678901000175</CNPJ>
+      </autXML>
+    </infCte>
+  </CTe>
+  <protCTe versao="4.00">
+    <infProt>
+      <tpAmb>1</tpAmb>
+      <verAplic>SP-CTe-FICTICIO</verAplic>
+      <chCTe>35260912345678000195570010000001021234567891</chCTe>
+      <dhRecbto>2026-09-03T14:00:12-03:00</dhRecbto>
+      <nProt>135260000000102</nProt>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso do CT-e</xMotivo>
+    </infProt>
+  </protCTe>
+</cteProc>

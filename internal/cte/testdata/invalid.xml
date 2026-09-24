@@ -1,0 +1,3 @@
+This is not an XML file.
+It should be rejected by the parser.
+And it has no recognizable tags.

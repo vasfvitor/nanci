@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cteProc xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+  <CTe xmlns="http://www.portalfiscal.inf.br/cte">
+    <infCte Id="CTe35260912345678000195570010000001011123456784" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <cCT>12345678</cCT>
+        <CFOP>6353</CFOP>
+        <natOp>PRESTACAO DE SERVICO DE TRANSPORTE</natOp>
+        <mod>57</mod>
+        <serie>1</serie>
+        <nCT>101</nCT>
+        <dhEmi>2026-09-02T08:30:00-03:00</dhEmi>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>4</cDV>
+        <tpAmb>1</tpAmb>
+        <tpCTe>0</tpCTe>
+        <procEmi>0</procEmi>
+        <verProc>FICTICIO 1.0</verProc>
+        <cMunEnv>3550308</cMunEnv>
+        <xMunEnv>SAO PAULO</xMunEnv>
+        <UFEnv>SP</UFEnv>
+        <modal>01</modal>
+        <tpServ>0</tpServ>
+        <cMunIni>3550308</cMunIni>
+        <xMunIni>SAO PAULO</xMunIni>
+        <UFIni>SP</UFIni>
+        <cMunFim>3304557</cMunFim>
+        <xMunFim>RIO DE JANEIRO</xMunFim>
+        <UFFim>RJ</UFFim>
+        <retira>1</retira>
+        <indIEToma>1</indIEToma>
+        <toma3>
+          <toma>3</toma>
+        </toma3>
+      </ide>
+      <compl>
+        <xObs>DOCUMENTO FICTICIO PARA TESTES</xObs>
+      </compl>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <IE>123456789012</IE>
+        <xNome>TRANSPORTADORA FICTICIA LTDA</xNome>
+        <enderEmit>
+          <xLgr>RODOVIA FICTICIA</xLgr>
+          <nro>1000</nro>
+          <xBairro>DISTRITO INDUSTRIAL</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <CEP>01000000</CEP>
+          <UF>SP</UF>
+        </enderEmit>
+        <CRT>3</CRT>
+      </emit>
+      <rem>
+        <CNPJ>11222333000181</CNPJ>
+        <IE>111222333444</IE>
+        <xNome>DISTRIBUIDORA FICTICIA DE PECAS LTDA</xNome>
+        <enderReme>
+          <xLgr>RUA FICTICIA</xLgr>
+          <nro>100</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderReme>
+      </rem>
+      <exped>
+        <CNPJ>13579246000101</CNPJ>
+        <IE>135792468000</IE>
+        <xNome>ARMAZEM FICTICIO LTDA</xNome>
+        <enderExped>
+          <xLgr>AVENIDA DO ARMAZEM</xLgr>
+          <nro>50</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3509502</cMun>
+          <xMun>CAMPINAS</xMun>
+          <UF>SP</UF>
+        </enderExped>
+      </exped>
+      <receb>
+        <CNPJ>24681357000140</CNPJ>
+        <IE>24681357</IE>
+        <xNome>CENTRO DE DISTRIBUICAO FICTICIO LTDA</xNome>
+        <enderReceb>
+          <xLgr>RUA DO CENTRO</xLgr>
+          <nro>7</nro>
+          <xBairro>PORTO</xBairro>
+          <cMun>3304557</cMun>
+          <xMun>RIO DE JANEIRO</xMun>
+          <UF>RJ</UF>
+        </enderReceb>
+      </receb>
+      <dest>
+        <CNPJ>70860312000150</CNPJ>
+        <IE>555666777888</IE>
+        <xNome>EMPRESA MOCK LTDA</xNome>
+        <enderDest>
+          <xLgr>AVENIDA DE TESTE</xLgr>
+          <nro>200</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3304557</cMun>
+          <xMun>RIO DE JANEIRO</xMun>
+          <UF>RJ</UF>
+        </enderDest>
+      </dest>
+      <vPrest>
+        <vTPrest>1500.00</vTPrest>
+        <vRec>1450.00</vRec>
+        <Comp>
+          <xNome>FRETE PESO</xNome>
+          <vComp>1200.00</vComp>
+        </Comp>
+        <Comp>
+          <xNome>PEDAGIO</xNome>
+          <vComp>300.00</vComp>
+        </Comp>
+      </vPrest>
+      <imp>
+        <ICMS>
+          <ICMS00>
+            <CST>00</CST>
+            <vBC>1500.00</vBC>
+            <pICMS>12.00</pICMS>
+            <vICMS>180.00</vICMS>
+          </ICMS00>
+        </ICMS>
+        <vTotTrib>250.35</vTotTrib>
+      </imp>
+      <infCTeNorm>
+        <infCarga>
+          <vCarga>25000.00</vCarga>
+          <proPred>PECAS AUTOMOTIVAS</proPred>
+          <infQ>
+            <cUnid>01</cUnid>
+            <tpMed>PESO BRUTO</tpMed>
+            <qCarga>850.0000</qCarga>
+          </infQ>
+        </infCarga>
+        <infDoc>
+          <infNFe>
+            <chave>35260911222333000181550010000012341123456787</chave>
+          </infNFe>
+          <infNFe>
+            <chave>35260911222333000181550010000012351234567894</chave>
+          </infNFe>
+        </infDoc>
+        <infModal versaoModal="4.00">
+          <rodo>
+            <RNTRC>12345678</RNTRC>
+          </rodo>
+        </infModal>
+      </infCTeNorm>
+      <autXML>
+        <CNPJ>45678901000175</CNPJ>
+      </autXML>
+    </infCte>
+    <infCTeSupl>
+      <qrCodCTe>https://nfe.fazenda.sp.gov.br/CTeConsulta/qrCode?chCTe=35260912345678000195570010000001011123456784&amp;tpAmb=1</qrCodCTe>
+    </infCTeSupl>
+  </CTe>
+  <protCTe versao="4.00">
+    <infProt>
+      <tpAmb>1</tpAmb>
+      <verAplic>SP-CTe-FICTICIO</verAplic>
+      <chCTe>35260912345678000195570010000001011123456784</chCTe>
+      <dhRecbto>2026-09-02T08:30:41-03:00</dhRecbto>
+      <nProt>135260000000101</nProt>
+      <digVal>ZmljdGljaW8tZGlnZXN0LXZhbHVl</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso do CT-e</xMotivo>
+    </infProt>
+  </protCTe>
+</cteProc>

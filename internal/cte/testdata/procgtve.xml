@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GTVeProc xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+  <GTVe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+    <infCte Id="CTe35260912345678000195640010000001051567890127" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <cCT>56789012</cCT>
+        <CFOP>5359</CFOP>
+        <natOp>TRANSPORTE DE VALORES</natOp>
+        <mod>64</mod>
+        <serie>1</serie>
+        <nCT>105</nCT>
+        <dhEmi>2026-09-06T09:00:00-03:00</dhEmi>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>7</cDV>
+        <tpAmb>1</tpAmb>
+        <tpCTe>4</tpCTe>
+        <verProc>FICTICIO 1.0</verProc>
+        <cMunEnv>3550308</cMunEnv>
+        <xMunEnv>SAO PAULO</xMunEnv>
+        <UFEnv>SP</UFEnv>
+        <modal>01</modal>
+        <tpServ>9</tpServ>
+        <indIEToma>1</indIEToma>
+        <dhSaidaOrig>2026-09-06T09:30:00-03:00</dhSaidaOrig>
+        <dhChegadaDest>2026-09-06T11:00:00-03:00</dhChegadaDest>
+        <toma>
+          <toma>1</toma>
+        </toma>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <IE>123456789012</IE>
+        <xNome>TRANSPORTADORA FICTICIA LTDA</xNome>
+        <enderEmit>
+          <xLgr>RODOVIA FICTICIA</xLgr>
+          <nro>1000</nro>
+          <xBairro>DISTRITO INDUSTRIAL</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <rem>
+        <CNPJ>11222333000181</CNPJ>
+        <IE>111222333444</IE>
+        <xNome>DISTRIBUIDORA FICTICIA DE PECAS LTDA</xNome>
+        <enderReme>
+          <xLgr>RUA FICTICIA</xLgr>
+          <nro>100</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderReme>
+      </rem>
+      <dest>
+        <CNPJ>70860312000150</CNPJ>
+        <IE>555666777888</IE>
+        <xNome>EMPRESA MOCK LTDA</xNome>
+        <enderDest>
+          <xLgr>AVENIDA DE TESTE</xLgr>
+          <nro>200</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3509502</cMun>
+          <xMun>CAMPINAS</xMun>
+          <UF>SP</UF>
+        </enderDest>
+      </dest>
+      <origem>
+        <xLgr>RUA FICTICIA</xLgr>
+        <nro>100</nro>
+        <xBairro>CENTRO</xBairro>
+        <cMun>3550308</cMun>
+        <xMun>SAO PAULO</xMun>
+        <UF>SP</UF>
+      </origem>
+      <destino>
+        <xLgr>AVENIDA DE TESTE</xLgr>
+        <nro>200</nro>
+        <xBairro>CENTRO</xBairro>
+        <cMun>3509502</cMun>
+        <xMun>CAMPINAS</xMun>
+        <UF>SP</UF>
+      </destino>
+      <detGTV>
+        <infEspecie>
+          <tpEspecie>1</tpEspecie>
+          <vEspecie>50000.00</vEspecie>
+          <tpNumerario>1</tpNumerario>
+        </infEspecie>
+        <infEspecie>
+          <tpEspecie>2</tpEspecie>
+          <vEspecie>1250.75</vEspecie>
+          <tpNumerario>1</tpNumerario>
+        </infEspecie>
+        <qCarga>12.0000</qCarga>
+        <infVeiculo>
+          <placa>ABC1D23</placa>
+          <UF>SP</UF>
+        </infVeiculo>
+      </detGTV>
+    </infCte>
+  </GTVe>
+  <protGTVe versao="4.00">
+    <infProt>
+      <tpAmb>1</tpAmb>
+      <verAplic>SP-CTe-FICTICIO</verAplic>
+      <chCTe>35260912345678000195640010000001051567890127</chCTe>
+      <dhRecbto>2026-09-06T09:00:07-03:00</dhRecbto>
+      <nProt>135260000000105</nProt>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso do CT-e</xMotivo>
+    </infProt>
+  </protGTVe>
+</GTVeProc>

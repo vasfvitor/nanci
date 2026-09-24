@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cteSimpProc xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+  <CTeSimp xmlns="http://www.portalfiscal.inf.br/cte">
+    <infCte Id="CTe35260912345678000195570020000001061678901234" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <cCT>67890123</cCT>
+        <CFOP>6353</CFOP>
+        <natOp>PRESTACAO DE SERVICO DE TRANSPORTE</natOp>
+        <mod>57</mod>
+        <serie>2</serie>
+        <nCT>106</nCT>
+        <dhEmi>2026-09-07T10:00:00-03:00</dhEmi>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>4</cDV>
+        <tpAmb>1</tpAmb>
+        <tpCTe>5</tpCTe>
+        <procEmi>0</procEmi>
+        <verProc>FICTICIO 1.0</verProc>
+        <cMunEnv>3550308</cMunEnv>
+        <xMunEnv>SAO PAULO</xMunEnv>
+        <UFEnv>SP</UFEnv>
+        <modal>01</modal>
+        <tpServ>0</tpServ>
+        <UFIni>SP</UFIni>
+        <UFFim>RJ</UFFim>
+        <retira>1</retira>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <IE>123456789012</IE>
+        <xNome>TRANSPORTADORA FICTICIA LTDA</xNome>
+        <enderEmit>
+          <xLgr>RODOVIA FICTICIA</xLgr>
+          <nro>1000</nro>
+          <xBairro>DISTRITO INDUSTRIAL</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>SAO PAULO</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+        <CRT>3</CRT>
+      </emit>
+      <toma>
+        <toma>3</toma>
+        <indIEToma>1</indIEToma>
+        <CNPJ>70860312000150</CNPJ>
+        <IE>555666777888</IE>
+        <xNome>EMPRESA MOCK LTDA</xNome>
+        <enderToma>
+          <xLgr>AVENIDA DE TESTE</xLgr>
+          <nro>200</nro>
+          <xBairro>CENTRO</xBairro>
+          <cMun>3304557</cMun>
+          <xMun>RIO DE JANEIRO</xMun>
+          <UF>RJ</UF>
+        </enderToma>
+      </toma>
+      <infCarga>
+        <vCarga>7800.00</vCarga>
+        <proPred>CAIXAS</proPred>
+        <infQ>
+          <cUnid>01</cUnid>
+          <tpMed>02</tpMed>
+          <qCarga>120.0000</qCarga>
+        </infQ>
+      </infCarga>
+      <det nItem="1">
+        <cMunIni>3550308</cMunIni>
+        <xMunIni>SAO PAULO</xMunIni>
+        <cMunFim>3304557</cMunFim>
+        <xMunFim>RIO DE JANEIRO</xMunFim>
+        <vPrest>600.00</vPrest>
+        <vRec>600.00</vRec>
+        <infNFe>
+          <chNFe>35260911222333000181550010000012401240000019</chNFe>
+        </infNFe>
+      </det>
+      <det nItem="2">
+        <cMunIni>3509502</cMunIni>
+        <xMunIni>CAMPINAS</xMunIni>
+        <cMunFim>3303302</cMunFim>
+        <xMunFim>NITEROI</xMunFim>
+        <vPrest>400.00</vPrest>
+        <vRec>400.00</vRec>
+        <infNFe>
+          <chNFe>35260911222333000181550010000012401240000019</chNFe>
+        </infNFe>
+      </det>
+      <infModal versaoModal="4.00">
+        <rodo>
+          <RNTRC>12345678</RNTRC>
+        </rodo>
+      </infModal>
+      <imp>
+        <ICMS>
+          <ICMSOutraUF>
+            <CST>90</CST>
+            <vBCOutraUF>1000.00</vBCOutraUF>
+            <pICMSOutraUF>12.00</pICMSOutraUF>
+            <vICMSOutraUF>120.00</vICMSOutraUF>
+          </ICMSOutraUF>
+        </ICMS>
+      </imp>
+      <total>
+        <vTPrest>1000.00</vTPrest>
+        <vTRec>1000.00</vTRec>
+      </total>
+    </infCte>
+  </CTeSimp>
+  <protCTe versao="4.00">
+    <infProt>
+      <tpAmb>1</tpAmb>
+      <verAplic>SP-CTe-FICTICIO</verAplic>
+      <chCTe>35260912345678000195570020000001061678901234</chCTe>
+      <dhRecbto>2026-09-07T10:00:30-03:00</dhRecbto>
+      <nProt>135260000000106</nProt>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso do CT-e</xMotivo>
+    </infProt>
+  </protCTe>
+</cteSimpProc>
