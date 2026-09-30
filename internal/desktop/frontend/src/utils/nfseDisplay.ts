@@ -65,14 +65,3 @@ export function nfseStatusLine(company: Pick<CompanySummary, 'LastSyncAt' | 'Las
     `NSU ${company.LastFoundNSU ?? '—'}`,
   ].join(' · ')
 }
-
-// The names below predate the display tables; formatters.test.ts still
-// checks them.
-export const statusColor = nfseStatus.color
-export const roleLabel = nfseRole.label
-export const roleColor = nfseRole.color
-export const visibilityColor = nfseVisibility.color
-
-export function visibilityLabel(reason: string) {
-  return reason ? nfseVisibility.label(reason) : 'Desconhecida'
-}

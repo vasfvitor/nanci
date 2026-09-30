@@ -2,6 +2,7 @@ import {
   formatCents,
   formatChaveAcesso,
   formatChaveDFe,
+  formatCompetence,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
@@ -12,13 +13,6 @@ import {
   parseDate,
   withViewed,
 } from './formatters'
-import {
-  roleColor,
-  roleLabel,
-  statusColor,
-  visibilityColor,
-  visibilityLabel,
-} from './nfseDisplay'
 
 describe('formatters', () => {
   it('formats CNPJ and CPF values', () => {
@@ -108,26 +102,17 @@ describe('formatters', () => {
     expect(formatParty(null, null)).toBe('')
   })
 
+  it('formats a competência as MM/YYYY', () => {
+    expect(formatCompetence('2026-09')).toBe('09/2026')
+    expect(formatCompetence('')).toBe('')
+    expect(formatCompetence(null)).toBe('')
+    expect(formatCompetence('2026')).toBe('2026')
+  })
+
   it('formats local HH:MM times', () => {
     expect(formatTime(new Date(2026, 8, 23, 14, 5))).toBe('14:05')
     expect(formatTime(null, '-')).toBe('-')
     expect(formatTime('not-a-date')).toBe('')
-  })
-})
-
-describe('nfse display helpers', () => {
-  it('maps known role, status, and visibility values', () => {
-    expect(statusColor('normal')).toBe('positive')
-    expect(roleLabel('intermediario')).toBe('Intermediário')
-    expect(roleColor('tomada')).toBe('secondary')
-    expect(visibilityLabel('same_root_only')).toBe('Mesmo raiz apenas')
-    expect(visibilityColor('exact_tomador')).toBe('positive')
-  })
-
-  it('falls back for unknown values', () => {
-    expect(statusColor('other')).toBe('grey')
-    expect(roleLabel('other')).toBe('other')
-    expect(visibilityLabel('')).toBe('Desconhecida')
   })
 })
 

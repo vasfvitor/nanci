@@ -8,11 +8,6 @@ import {
   nfseStatus,
   nfseStatusLine,
   nfseVisibility,
-  statusColor,
-  roleLabel,
-  roleColor,
-  visibilityLabel,
-  visibilityColor,
 } from './nfseDisplay'
 
 // expectShortUniqueAbbrs checks that every value of table has an
@@ -26,61 +21,52 @@ function expectShortUniqueAbbrs(table: DisplayTable) {
 }
 
 describe('nfseDisplay utility functions', () => {
-  describe('statusColor', () => {
-    it('returns positive for normal status', () => {
-      expect(statusColor('normal')).toBe('positive')
+  describe('nfseStatus', () => {
+    it('colors the status: normal positive, cancelada and substituida negative', () => {
+      expect(nfseStatus.color('normal')).toBe('positive')
+      expect(nfseStatus.color('cancelada')).toBe('negative')
+      expect(nfseStatus.color('substituida')).toBe('negative')
     })
-    it('returns negative for cancelada or substituida', () => {
-      expect(statusColor('cancelada')).toBe('negative')
-      expect(statusColor('substituida')).toBe('negative')
-    })
-    it('returns grey for unknown status', () => {
-      expect(statusColor('unknown')).toBe('grey')
-    })
-  })
-
-  describe('roleLabel', () => {
-    it('returns translated label for known roles', () => {
-      expect(roleLabel('prestada')).toBe('Prestada')
-      expect(roleLabel('tomada')).toBe('Tomada')
-      expect(roleLabel('intermediario')).toBe('Intermediário')
-    })
-    it('returns the input role or Desconhecido if unknown', () => {
-      expect(roleLabel('foobar')).toBe('foobar')
-      expect(roleLabel('')).toBe('Desconhecido')
+    it('colors an unknown status grey', () => {
+      expect(nfseStatus.color('unknown')).toBe('grey')
+      expect(nfseStatus.color('other')).toBe('grey')
     })
   })
 
-  describe('roleColor', () => {
-    it('returns correct color for roles', () => {
-      expect(roleColor('prestada')).toBe('primary')
-      expect(roleColor('tomada')).toBe('secondary')
-      expect(roleColor('intermediario')).toBe('accent')
-      expect(roleColor('none')).toBe('grey')
+  describe('nfseRole', () => {
+    it('labels the known roles', () => {
+      expect(nfseRole.label('prestada')).toBe('Prestada')
+      expect(nfseRole.label('tomada')).toBe('Tomada')
+      expect(nfseRole.label('intermediario')).toBe('Intermediário')
     })
-    it('defaults to grey', () => {
-      expect(roleColor('other')).toBe('grey')
+    it('labels an unknown role as it is, and an empty one Desconhecido', () => {
+      expect(nfseRole.label('foobar')).toBe('foobar')
+      expect(nfseRole.label('')).toBe('Desconhecido')
     })
-  })
-
-  describe('visibilityLabel', () => {
-    it('returns translated label for known reasons', () => {
-      expect(visibilityLabel('exact_prestador')).toBe('Prestador exato')
-      expect(visibilityLabel('same_root_only')).toBe('Mesmo raiz apenas')
-    })
-    it('returns original or Desconhecida if unknown', () => {
-      expect(visibilityLabel('other')).toBe('other')
-      expect(visibilityLabel('')).toBe('Desconhecida')
+    it('colors the roles, grey by default', () => {
+      expect(nfseRole.color('prestada')).toBe('primary')
+      expect(nfseRole.color('tomada')).toBe('secondary')
+      expect(nfseRole.color('intermediario')).toBe('accent')
+      expect(nfseRole.color('none')).toBe('grey')
+      expect(nfseRole.color('other')).toBe('grey')
     })
   })
 
-  describe('visibilityColor', () => {
-    it('returns correct color for known reasons', () => {
-      expect(visibilityColor('exact_prestador')).toBe('positive')
-      expect(visibilityColor('same_root_only')).toBe('warning')
+  describe('nfseVisibility', () => {
+    it('labels the known reasons', () => {
+      expect(nfseVisibility.label('exact_prestador')).toBe('Prestador exato')
+      expect(nfseVisibility.label('same_root_only')).toBe('Mesmo raiz apenas')
+      expect(nfseVisibility.label('unknown')).toBe('Desconhecida')
     })
-    it('defaults to grey', () => {
-      expect(visibilityColor('other')).toBe('grey')
+    it('labels an unknown reason as it is, and an empty one Desconhecido', () => {
+      expect(nfseVisibility.label('other')).toBe('other')
+      expect(nfseVisibility.label('')).toBe('Desconhecido')
+    })
+    it('colors the reasons, grey by default', () => {
+      expect(nfseVisibility.color('exact_prestador')).toBe('positive')
+      expect(nfseVisibility.color('exact_tomador')).toBe('positive')
+      expect(nfseVisibility.color('same_root_only')).toBe('warning')
+      expect(nfseVisibility.color('other')).toBe('grey')
     })
   })
 

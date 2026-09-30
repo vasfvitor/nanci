@@ -97,6 +97,13 @@ export function formatNFeNumber(numero: string | null | undefined, serie?: strin
   return formatted ? `${formatted} / série ${serieLabel}` : `série ${serieLabel}`
 }
 
+// formatCompetence prints a YYYY-MM competência as MM/YYYY. An empty value
+// prints as '', and any other value as it is.
+export function formatCompetence(value: string | null | undefined): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? '')
+  return match ? `${match[2]}/${match[1]}` : (value ?? '')
+}
+
 // formatTime prints a local HH:MM time, or fallback for empty/invalid values.
 export function formatTime(value: string | Date | null | undefined, fallback = '') {
   return parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? fallback

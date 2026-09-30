@@ -182,7 +182,7 @@ import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
 import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
-import { formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
+import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
 import { nfseStateBadges } from '@/utils/nfseDisplay'
 import { badgeProps } from '@/utils/sefazDisplay'
 import { nfseLegend } from '@/utils/stateLegends'
@@ -260,7 +260,7 @@ const columns = documentColumns<DocumentRow>({
 function servicoItems(row: DocumentRow): DetailItem[] {
   const items: DetailItem[] = [
     { label: 'Número', value: row.NFSeNumber, mono: true },
-    { label: 'Competência', value: row.Competence, mono: true },
+    { label: 'Competência', value: formatCompetence(row.Competence), mono: true },
     { label: 'Versão do layout', value: row.LayoutVersion },
   ]
   if (row.IntermediarioCNPJ || row.IntermediarioName) {
