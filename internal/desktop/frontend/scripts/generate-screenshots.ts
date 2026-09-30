@@ -14,6 +14,9 @@ type ScreenshotSpec = {
   ready?: string
   setup?: (page: Page) => Promise<void>
   nfeStatus?: Record<string, unknown>
+  // fitsWidth asserts that the document table fits the 1280px window without
+  // a horizontal scroll bar.
+  fitsWidth?: boolean
 }
 
 declare global {
@@ -646,6 +649,7 @@ function mockCTeRow<T extends MockCTeFields>(fields: T) {
     LastSyncedAt: daysFromNow(-1),
     LayoutVersion: '4.00',
     ParseWarnings: [] as string[],
+    ViewedAt: daysFromNow(-1) as string | null,
     ...fields,
   }
 }
@@ -689,6 +693,7 @@ const mockCTeRows = [
     ProdutoPredominante: 'Equipamentos de informática',
     NFeChaves: ['35260912345678000100550010000003181157930460'],
     Papeis: ['tomador', 'remetente'],
+    ViewedAt: null,
   }),
   mockCTeRow({
     ID: 'cte-3',
@@ -751,6 +756,7 @@ const mockCTeRows = [
     ProdutoPredominante: 'Material de escritório',
     NFeChaves: ['41260950361928000170550020000009271361025847'],
     ParseWarnings: ['tomador sem inscrição estadual no XML'],
+    ViewedAt: null,
   }),
 ]
 
@@ -1029,8 +1035,8 @@ const screenshots: ScreenshotSpec[] = [
     nfeStatus: mockNFeBlockedStatus,
   },
 
-  { route: '/cte', name: 'cte', theme: 'light', ready: 'text=Expresso Litoral Cargas Ltda' },
-  { route: '/cte', name: 'cte', theme: 'dark', ready: 'text=Expresso Litoral Cargas Ltda' },
+  { route: '/cte', name: 'cte', theme: 'light', ready: 'text=Expresso Litoral Cargas Ltda', fitsWidth: true },
+  { route: '/cte', name: 'cte', theme: 'dark', ready: 'text=Expresso Litoral Cargas Ltda', fitsWidth: true },
 
   {
     route: '/cte',
@@ -1272,6 +1278,29 @@ async function waitForApp(page: Page, spec: ScreenshotSpec) {
   await page.waitForTimeout(150)
 }
 
+// widthFailures collects the screenshots whose document table scrolls
+// sideways; main fails the run when there is any.
+const widthFailures: string[] = []
+
+// checkTableWidth fails the spec when the document table is wider than its
+// scroll area at the 1280px window.
+async function checkTableWidth(page: Page, spec: ScreenshotSpec) {
+  const size = await page.evaluate(() => {
+    const middle = document.querySelector('.document-table .q-table__middle')
+    return middle ? { scrollWidth: middle.scrollWidth, clientWidth: middle.clientWidth } : null
+  })
+  const label = `${spec.name}-${spec.theme}`
+  if (!size) {
+    widthFailures.push(`${label}: .document-table .q-table__middle not found`)
+  } else if (size.scrollWidth > size.clientWidth) {
+    widthFailures.push(
+      `${label}: the table is ${size.scrollWidth}px wide in a ${size.clientWidth}px scroll area`
+    )
+  } else {
+    console.log(`fits ${label}: ${size.scrollWidth}px <= ${size.clientWidth}px`)
+  }
+}
+
 async function capture(browser: Browser, spec: ScreenshotSpec) {
   const { context, page } = await createPage(browser, spec)
 
@@ -1297,6 +1326,10 @@ async function capture(browser: Browser, spec: ScreenshotSpec) {
     if (spec.setup) {
       await spec.setup(page)
       await page.waitForTimeout(150)
+    }
+
+    if (spec.fitsWidth) {
+      await checkTableWidth(page, spec)
     }
 
     const outPath = path.join(screenshotsDir, `${spec.name}-${spec.theme}.png`)
@@ -1331,12 +1364,24 @@ async function main() {
 
     browser = await chromium.launch({ headless: true })
 
-    for (const spec of screenshots) {
+    // Routes given on the command line ("pnpm run screenshots cte nfe") limit
+    // the run to their screenshots; the leading slash is optional.
+    const routes = process.argv.slice(2).map((route) => `/${route.replace(/^\/+/, '')}`)
+    const specs =
+      routes.length > 0 ? screenshots.filter((spec) => routes.includes(spec.route)) : screenshots
+    if (specs.length === 0) {
+      throw new Error(`no screenshot for the routes ${routes.join(', ')}`)
+    }
+    for (const spec of specs) {
       await capture(browser, spec)
     }
   } finally {
     await browser?.close()
     await server?.close()
+  }
+
+  if (widthFailures.length > 0) {
+    throw new Error(`document tables wider than the 1280px window:\n${widthFailures.join('\n')}`)
   }
 }
 

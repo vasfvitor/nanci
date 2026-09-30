@@ -30,7 +30,14 @@ describe('cteDocuments store', () => {
       EmitenteCNPJ: '',
       TomadorCNPJ: '',
       NFeChave: '',
+      OnlyUnread: false,
     })
+  })
+
+  it('sends "Somente não vistos" in the list request', () => {
+    const store = useCTeDocumentsStore()
+    store.filter.OnlyUnread = true
+    expect(store.listInput.OnlyUnread).toBe(true)
   })
 
   it('keeps only the letters and digits of the typed CNPJ and NF-e key', () => {

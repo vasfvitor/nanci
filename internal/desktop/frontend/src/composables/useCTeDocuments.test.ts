@@ -24,6 +24,7 @@ vi.mock('@/platform/wails/client', () => ({
     resetCTe: vi.fn(),
     exportCTeXML: vi.fn(),
     exportCTeZIP: vi.fn(),
+    markCTeViewed: vi.fn(),
   },
 }))
 
@@ -127,7 +128,7 @@ describe('useCTeDocuments', () => {
     const firstPage = useCTeDocuments()
     firstPage.filter.value.CNPJ = '123'
     const syncing = firstPage.syncCTe()
-    const exporting = firstPage.exportZIP(['chave-1'])
+    const exporting = firstPage.exportZIP(['chave-1'], { incremental: false })
 
     const remountedPage = useCTeDocuments()
     expect(remountedPage.isSyncing.value).toBe(true)
@@ -136,7 +137,7 @@ describe('useCTeDocuments', () => {
     expect(useCompanySyncStore().isSyncing('123', 'nfe')).toBe(false)
 
     await expect(remountedPage.syncCTe()).resolves.toBeNull()
-    await expect(remountedPage.exportZIP(['chave-1'])).resolves.toBeNull()
+    await expect(remountedPage.exportZIP(['chave-1'], { incremental: false })).resolves.toBeNull()
     await expect(remountedPage.exportXML('chave-1')).resolves.toBeNull()
     await expect(remountedPage.resetCTe()).resolves.toBeNull()
     expect(desktopClient.pullCTe).toHaveBeenCalledTimes(1)
@@ -228,9 +229,8 @@ describe('useCTeDocuments', () => {
     cte.filter.value.Role = 'tomador'
 
     await cte.exportXML('chave-1')
-    await cte.exportZIP(['chave-1'])
-    cte.incremental.value = true
-    await cte.exportZIP(['chave-2'])
+    await cte.exportZIP(['chave-1'], { incremental: false })
+    await cte.exportZIP(['chave-2'], { incremental: true })
 
     expect(desktopClient.exportCTeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-1' })
     expect(desktopClient.exportCTeZIP).toHaveBeenNthCalledWith(1, {
@@ -246,20 +246,81 @@ describe('useCTeDocuments', () => {
     )
   })
 
-  it('exports the rows the grid shows and nothing when it is empty', async () => {
-    vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue(null)
+  it('does not export an empty list of chaves', async () => {
     const cte = useCTeDocuments()
     cte.filter.value.CNPJ = '123'
 
-    await expect(cte.exportZIP()).resolves.toBeNull()
+    await expect(cte.exportZIP([], { incremental: false })).resolves.toBeNull()
     expect(desktopClient.exportCTeZIP).not.toHaveBeenCalled()
+  })
 
-    useCTeDocumentsStore().rows = [cteRow('a'), cteRow('b', { EmitenteName: 'Outra' })]
+  it('scopes the actions to the selection, or else to the filtered rows', () => {
+    const viewed = new Date('2026-09-01T00:00:00Z')
+    const a = cteRow('a', { EmitenteName: 'Outra' })
+    const b = cteRow('b', { EmitenteName: 'Outra', ViewedAt: viewed })
+    const c = cteRow('c')
+    const cte = useCTeDocuments()
+    useCTeDocumentsStore().rows = [a, b, c]
     cte.filterText.value = 'outra'
-    await cte.exportZIP()
-    expect(desktopClient.exportCTeZIP).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ChavesAcesso: ['b'] })
+
+    expect(cte.scopeRows.value).toEqual([a, b])
+    expect(cte.unviewedChaves.value).toEqual(['a'])
+
+    cte.selected.value = [c]
+    expect(cte.scopeRows.value).toEqual([c])
+    expect(cte.unviewedChaves.value).toEqual(['c'])
+  })
+
+  it('marks CT-e viewed by chave and drops their "Novo" badge in place', async () => {
+    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(1)
+    const store = useCTeDocumentsStore()
+    const cte = useCTeDocuments()
+    cte.filter.value.CNPJ = '123'
+    store.rows = [cteRow('a'), cteRow('b')]
+    cte.selected.value = [store.rows[0] as CTeRow]
+
+    await expect(cte.markViewed(['a'])).resolves.toBe(1)
+
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith({
+      ...store.listInput,
+      ChavesAcesso: ['a'],
+    })
+    expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
+    expect(store.rows[1]?.ViewedAt).toBeUndefined()
+    expect(cte.selected.value).toEqual([])
+    expect(desktopClient.listCTe).not.toHaveBeenCalled()
+  })
+
+  it('searches again after marking when only unviewed CT-e are listed', async () => {
+    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(2)
+    const cte = useCTeDocuments()
+    cte.filter.value.CNPJ = '123'
+    cte.filter.value.OnlyUnread = true
+
+    await cte.markViewed(['a', 'b'])
+
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(
+      expect.objectContaining({ OnlyUnread: true, ChavesAcesso: ['a', 'b'] })
     )
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+  })
+
+  it('keeps "Marcar vistos" visible to a second instance while it is pending', async () => {
+    const mark = deferred<number>()
+    vi.mocked(desktopClient.markCTeViewed).mockReturnValue(mark.promise)
+
+    const firstPage = useCTeDocuments()
+    firstPage.filter.value.CNPJ = '123'
+    const marking = firstPage.markViewed(['a'])
+
+    const remountedPage = useCTeDocuments()
+    expect(remountedPage.markingViewed.value).toBe(true)
+    await expect(remountedPage.markViewed(['a'])).resolves.toBeNull()
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledTimes(1)
+
+    mark.resolve(1)
+    await marking
+    expect(remountedPage.markingViewed.value).toBe(false)
   })
 
   it('clears the export marker when the export fails', async () => {

@@ -1,6 +1,6 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { companyOption } from '@/composables/useCompanies'
+import { useCompanyFilter } from '@/composables/useCompanyFilter'
 import { isNFeChaveFilter, useCTeLoaders } from '@/composables/useCTeLoaders'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
@@ -8,16 +8,31 @@ import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
-import type { CompanySummary } from '@/types/desktop'
 import { cteDocumentCount, cteStatusLine } from '@/utils/cteDisplay'
+import { withViewed } from '@/utils/formatters'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useCTeLoaders()
-  const { filter, rows, filterText, loading, exporting, incremental, status, resettingCNPJ } =
-    storeToRefs(store)
-  const companyOptions = ref<{ label: string; value: string }[]>([])
+  const {
+    filter,
+    rows,
+    selected,
+    filterText,
+    loading,
+    exporting,
+    markingViewed,
+    status,
+    resettingCNPJ,
+  } = storeToRefs(store)
+  const cnpj = computed({
+    get: () => filter.value.CNPJ,
+    set: (value: string) => {
+      filter.value.CNPJ = value
+    },
+  })
+  const { companyOptions, loadCompanies } = useCompanyFilter(cnpj)
   const pagination = useTablePagination('cte')
 
   // filteredRows is what the grid shows: the search result narrowed by the
@@ -37,6 +52,13 @@ export function useCTeDocuments() {
       pagination.value.page = 1
     },
   })
+
+  // scopeRows are the CT-e "Marcar vistos" and "Exportar" act on: the
+  // selection, or else every row the grid shows.
+  const scopeRows = computed(() => (selected.value.length > 0 ? selected.value : filteredRows.value))
+  const unviewedChaves = computed(() =>
+    scopeRows.value.filter((row) => !row.ViewedAt).map((row) => row.ChaveAcesso)
+  )
 
   const companyName = computed(() => {
     if (status.value?.CompanyName) return status.value.CompanyName
@@ -59,17 +81,6 @@ export function useCTeDocuments() {
   )
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
-
-  // loadCompanies lists the companies and keeps a known one selected,
-  // falling back to the first.
-  async function loadCompanies(): Promise<CompanySummary[]> {
-    const companies = await desktopClient.listCompanies()
-    companyOptions.value = companies.map(companyOption)
-    if (!companyOptions.value.some((option) => option.value === filter.value.CNPJ)) {
-      filter.value.CNPJ = companyOptions.value[0]?.value ?? ''
-    }
-    return companies
-  }
 
   // syncCTe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
@@ -122,11 +133,11 @@ export function useCTeDocuments() {
     }
   }
 
-  // exportZIP exports exactly the given chaves, by default every row the
-  // grid shows; incremental leaves out the ones exported before. Competence
-  // and Role are left empty: the grid may hold the result of an earlier
-  // search, and an empty list would export everything.
-  async function exportZIP(chavesAcesso: string[] = filteredRows.value.map((row) => row.ChaveAcesso)) {
+  // exportZIP exports exactly the given chaves; incremental leaves out the
+  // ones exported before. Competence and Role are left empty: the grid may
+  // hold the result of an earlier search, and an empty list would export
+  // everything.
+  async function exportZIP(chavesAcesso: string[], choice: { incremental: boolean }) {
     const cnpj = store.listInput.CNPJ
     if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
     exporting.value = true
@@ -136,23 +147,48 @@ export function useCTeDocuments() {
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
-        Incremental: incremental.value,
+        Incremental: choice.incremental,
       })
     } finally {
       exporting.value = false
     }
   }
 
+  // markViewed marks the given CT-e as viewed and returns how many were new.
+  // With "Somente não vistos" on the list is searched again, so they leave
+  // it; otherwise they lose the "Novo" badge in place. The selection is
+  // cleared either way.
+  async function markViewed(chavesAcesso: string[]) {
+    const input = store.listInput
+    if (!input.CNPJ || markingViewed.value || chavesAcesso.length === 0) return null
+    markingViewed.value = true
+    try {
+      const count = await desktopClient.markCTeViewed({ ...input, ChavesAcesso: chavesAcesso })
+      selected.value = []
+      if (input.OnlyUnread) {
+        await search()
+      } else {
+        store.setRows(withViewed(rows.value, chavesAcesso))
+      }
+      return count
+    } finally {
+      markingViewed.value = false
+    }
+  }
+
   return {
     filter,
     rows,
+    selected,
     loading,
     exporting,
-    incremental,
+    markingViewed,
     status,
     pagination,
     filterText,
     filteredRows,
+    scopeRows,
+    unviewedChaves,
     companyOptions,
     companyName,
     documentCount,
@@ -170,5 +206,6 @@ export function useCTeDocuments() {
     resetCTe,
     exportXML,
     exportZIP,
+    markViewed,
   }
 }

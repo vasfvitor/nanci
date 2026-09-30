@@ -21,6 +21,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     EmitenteCNPJ: '',
     TomadorCNPJ: '',
     NFeChave: '',
+    OnlyUnread: false,
   })
 
   // listInput is the only place the ListCTe request is built from the filter.
@@ -34,6 +35,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     EmitenteCNPJ: compactCode(filter.value.EmitenteCNPJ),
     TomadorCNPJ: compactCode(filter.value.TomadorCNPJ),
     NFeChave: compactCode(filter.value.NFeChave),
+    OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
   const rows = ref<CTeRow[]>([])
@@ -42,8 +44,8 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
-  // incremental makes the ZIP export skip the CT-e already exported.
-  const incremental = shallowRef(false)
+  // markingViewed is true while a "Marcar vistos" request is in flight.
+  const markingViewed = shallowRef(false)
   const status = shallowRef<CTeStatusResult | null>(null)
   // resettingCNPJ is the company whose CT-e reset is in flight, or ''.
   const resettingCNPJ = shallowRef('')
@@ -69,7 +71,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     filterText,
     loading,
     exporting,
-    incremental,
+    markingViewed,
     status,
     resettingCNPJ,
     setRows,

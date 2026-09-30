@@ -10,6 +10,7 @@ import {
   formatTime,
   normalizeText,
   parseDate,
+  withViewed,
 } from './formatters'
 import {
   roleColor,
@@ -127,5 +128,24 @@ describe('nfse display helpers', () => {
     expect(statusColor('other')).toBe('grey')
     expect(roleLabel('other')).toBe('other')
     expect(visibilityLabel('')).toBe('Desconhecida')
+  })
+})
+
+describe('withViewed', () => {
+  it('marks the new rows among chaves and leaves the others as they are', () => {
+    const now = new Date('2026-09-30T12:00:00Z')
+    const before = new Date('2026-09-01T12:00:00Z')
+    const rows = [
+      { ChaveAcesso: 'a', ViewedAt: null },
+      { ChaveAcesso: 'b', ViewedAt: before },
+      { ChaveAcesso: 'c', ViewedAt: null },
+    ]
+
+    const result = withViewed(rows, ['a', 'b'], now)
+
+    expect(result.map((row) => row.ViewedAt)).toEqual([now, before, null])
+    expect(result[1]).toBe(rows[1])
+    expect(result[2]).toBe(rows[2])
+    expect(rows[0]?.ViewedAt).toBeNull()
   })
 })

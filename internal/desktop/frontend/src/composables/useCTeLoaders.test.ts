@@ -79,6 +79,14 @@ describe('useCTeLoaders', () => {
     )
   })
 
+  it('lists only the unviewed CT-e when "Somente não vistos" is on', async () => {
+    useCTeDocumentsStore().filter.OnlyUnread = true
+
+    await useCTeLoaders().search()
+
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+  })
+
   it('does not fail when a reload fails', async () => {
     vi.mocked(desktopClient.listCTe).mockRejectedValue(new Error('boom'))
 

@@ -258,20 +258,26 @@ export function nfePendingLegend(): LegendSection[] {
   ]
 }
 
+// cteLegend follows the order of cteStateBadges: documento, situação,
+// papel.
 export function cteLegend(): LegendSection[] {
   return [
     viewedSection(),
     {
       title: 'Documento',
       items: [
-        labeled(cteTipoDocumento, 'cte', 'Conhecimento de Transporte Eletrônico (modelo 57).'),
-        labeled(
+        abbreviated(cteTipoDocumento, 'cte', 'Conhecimento de Transporte Eletrônico (modelo 57).'),
+        abbreviated(
           cteTipoDocumento,
           'cte_os',
           'CT-e de Outros Serviços (modelo 67): transporte de pessoas, de valores ou excesso de bagagem.'
         ),
-        labeled(cteTipoDocumento, 'gtve', 'Guia de Transporte de Valores Eletrônica (modelo 64).'),
-        labeled(
+        abbreviated(
+          cteTipoDocumento,
+          'gtve',
+          'Guia de Transporte de Valores Eletrônica (modelo 64).'
+        ),
+        abbreviated(
           cteTipoDocumento,
           'cte_simplificado',
           'CT-e Simplificado (modelo 57), com menos campos.'
@@ -279,51 +285,46 @@ export function cteLegend(): LegendSection[] {
       ],
     },
     {
-      title: 'Papel',
-      note: 'A empresa pode ter mais de um papel no mesmo CT-e. O principal vem em cima; os outros, menores, embaixo.',
+      title: 'Situação',
       items: [
-        labeled(ctePapel, 'tomador', 'A empresa toma o serviço de transporte e escritura o frete.'),
-        labeled(ctePapel, 'destinatario', 'A empresa é a destinatária da carga.'),
-        labeled(ctePapel, 'remetente', 'A empresa é a remetente da carga.'),
-        labeled(
+        abbreviated(cteSituacao, 'autorizada', 'CT-e autorizado pela SEFAZ.'),
+        abbreviated(
+          cteSituacao,
+          'denegada',
+          'A SEFAZ negou a autorização por irregularidade fiscal de uma das partes. O documento não tem validade.'
+        ),
+        abbreviated(cteSituacao, 'cancelada', 'CT-e cancelado pelo emitente.'),
+      ],
+    },
+    {
+      title: 'Papel',
+      note: 'A empresa pode ter mais de um papel no mesmo CT-e. O principal vem na primeira linha; os outros, menores, na segunda.',
+      items: [
+        abbreviated(ctePapel, 'tomador', 'A empresa toma o serviço de transporte e escritura o frete.'),
+        abbreviated(ctePapel, 'destinatario', 'A empresa é a destinatária da carga.'),
+        abbreviated(ctePapel, 'remetente', 'A empresa é a remetente da carga.'),
+        abbreviated(
           ctePapel,
           'expedidor',
           'A empresa entrega a carga ao transportador no lugar do remetente.'
         ),
-        labeled(ctePapel, 'recebedor', 'A empresa recebe a carga no lugar do destinatário.'),
-        labeled(
+        abbreviated(ctePapel, 'recebedor', 'A empresa recebe a carga no lugar do destinatário.'),
+        abbreviated(
           ctePapel,
           'emitente',
           'A empresa emitiu o CT-e. A SEFAZ não distribui os próprios documentos; ele só aparece quando chega por outro motivo.'
         ),
-        labeled(
+        abbreviated(
           ctePapel,
           'autorizado',
           'O CNPJ ou CPF da empresa foi informado no grupo autXML, como autorizado a obter o XML.'
         ),
-        labeled(
+        abbreviated(
           ctePapel,
           'none',
           'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
         ),
       ],
-    },
-    {
-      title: 'Situação',
-      items: [
-        labeled(cteSituacao, 'autorizada', 'CT-e autorizado pela SEFAZ.'),
-        labeled(
-          cteSituacao,
-          'denegada',
-          'A SEFAZ negou a autorização por irregularidade fiscal de uma das partes. O documento não tem validade.'
-        ),
-        labeled(cteSituacao, 'cancelada', 'CT-e cancelado pelo emitente.'),
-      ],
-    },
-    {
-      title: 'Somente novos',
-      note: 'Opção da exportação, não da lista: o ZIP leva só os CT-e ainda não exportados ou cujo XML mudou desde a última exportação. Um CT-e volta a contar como novo quando recebe um evento.',
-      items: [],
     },
   ]
 }

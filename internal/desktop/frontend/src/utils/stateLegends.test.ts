@@ -13,7 +13,7 @@ import {
   nfeRoleFilterOptions,
   situacaoFilterOptions,
 } from './nfeDisplay'
-import { ctePapelFilterOptions, cteSituacaoFilterOptions } from './cteDisplay'
+import { ctePapelFilterOptions, cteSituacaoFilterOptions, cteStateBadges } from './cteDisplay'
 import { nfseStateBadges } from './nfseDisplay'
 
 function section(sections: LegendSection[], title: string) {
@@ -24,6 +24,10 @@ function section(sections: LegendSection[], title: string) {
 
 function badges(sections: LegendSection[], title: string) {
   return section(sections, title).items.map((entry) => entry.badge)
+}
+
+function names(sections: LegendSection[], title: string) {
+  return section(sections, title).items.map((entry) => entry.name)
 }
 
 // Every value a filter offers must be explained by the legend, in the same
@@ -83,12 +87,27 @@ describe('stateLegends', () => {
     expect(badges(legend, 'Sem manifestação conclusiva')).toContain('Confirmada tacitamente')
   })
 
-  it('cteLegend covers every CT-e filter value and explains the export toggle', () => {
+  it('cteLegend explains every CT-e abbreviation, named by its label', () => {
     const legend = cteLegend()
-    expect(badges(legend, 'Papel')).toEqual(filterLabels(ctePapelFilterOptions))
-    expect(badges(legend, 'Situação')).toEqual(filterLabels(cteSituacaoFilterOptions))
-    expect(badges(legend, 'Documento')).toEqual(['CT-e', 'CT-e OS', 'GTV-e', 'CT-e Simplificado'])
-    expect(section(legend, 'Somente novos').note).toContain('exportação')
+    expect(badges(legend, 'Documento')).toEqual(['CT', 'OS', 'GV', 'CS'])
+    expect(badges(legend, 'Situação')).toEqual(['A', 'D', 'C'])
+    expect(badges(legend, 'Papel')).toEqual(['TO', 'DE', 'RE', 'EX', 'RC', 'EM', 'AU', 'SP'])
+    expect(names(legend, 'Papel')).toEqual(filterLabels(ctePapelFilterOptions))
+    expect(names(legend, 'Situação')).toEqual(filterLabels(cteSituacaoFilterOptions))
+    expect(names(legend, 'Documento')).toEqual(['CT-e', 'CT-e OS', 'GTV-e', 'CT-e Simplificado'])
+  })
+
+  it('cteLegend lists the groups in the order of the badges, without an export section', () => {
+    const titles = cteLegend().map((entry) => entry.title)
+    const kinds = cteStateBadges({
+      Modelo: '57',
+      TipoDocumento: 'cte',
+      Situacao: 'autorizada',
+      CompanyRole: 'tomador',
+      Papeis: ['tomador'],
+    }).map((badge) => badge.kind)
+    expect(titles).toEqual(['Novo', ...kinds])
+    expect(titles).not.toContain('Somente novos')
   })
 
   it('never repeats a badge inside a section', () => {
