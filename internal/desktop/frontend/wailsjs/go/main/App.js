@@ -102,8 +102,16 @@ export function ListNFePendingManifestacoes(arg1) {
   return window['go']['main']['App']['ListNFePendingManifestacoes'](arg1);
 }
 
+export function MarkCTeViewed(arg1) {
+  return window['go']['main']['App']['MarkCTeViewed'](arg1);
+}
+
 export function MarkDocumentsViewed(arg1) {
   return window['go']['main']['App']['MarkDocumentsViewed'](arg1);
+}
+
+export function MarkNFeViewed(arg1) {
+  return window['go']['main']['App']['MarkNFeViewed'](arg1);
 }
 
 export function OpenDataDirectory() {

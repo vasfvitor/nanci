@@ -38,6 +38,9 @@ import {
   ListNFe,
   ListNFeEvents,
   ListNFePendingManifestacoes,
+  MarkCTeViewed,
+  MarkDocumentsViewed,
+  MarkNFeViewed,
   PlanNFeCiencia,
   PreviewResetCTe,
   PullCTe,
@@ -74,6 +77,9 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ListNFe: vi.fn(),
   ListNFeEvents: vi.fn(),
   ListNFePendingManifestacoes: vi.fn(),
+  MarkCTeViewed: vi.fn(),
+  MarkDocumentsViewed: vi.fn(),
+  MarkNFeViewed: vi.fn(),
   PlanNFeCiencia: vi.fn(),
   PreviewResetCTe: vi.fn(),
   Pull: vi.fn(),
@@ -197,6 +203,24 @@ describe('desktop client calls', () => {
     await expect(desktopClient.listEventsForDocument('doc-1')).resolves.toMatchObject([
       { ID: 'evt-1' },
     ])
+    expect(ListDocuments).toHaveBeenCalledWith({
+      CNPJ: '123',
+      Competence: '',
+      Direction: '',
+      OnlyUnread: false,
+      ChavesAcesso: [],
+    })
+  })
+
+  it('marks NFS-e viewed by filter or by chaves', async () => {
+    vi.mocked(MarkDocumentsViewed).mockResolvedValue(2 as never)
+    const input = { CNPJ: '123', Competence: '2024-09', Direction: '', OnlyUnread: true }
+
+    await expect(desktopClient.markDocumentsViewed(input)).resolves.toBe(2)
+    await desktopClient.markDocumentsViewed({ ...input, ChavesAcesso: ['chave-1'] })
+
+    expect(MarkDocumentsViewed).toHaveBeenNthCalledWith(1, { ...input, ChavesAcesso: [] })
+    expect(MarkDocumentsViewed).toHaveBeenNthCalledWith(2, { ...input, ChavesAcesso: ['chave-1'] })
   })
 
   it('normalizes cancelled dialogs to null', async () => {
@@ -309,7 +333,15 @@ describe('NF-e mappers', () => {
       CompanyRole: 'destinatario',
       AuthorizedAt: '2024-09-01T10:00:00Z',
       ManifestacaoAt: null,
+      ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 2,
+      TpAmb: '1',
+      NatOp: 'Venda de mercadoria',
+      EmitenteUF: 'SP',
+      ICMSValue: 20400,
+      IPIValue: 5050,
+      LayoutVersion: '4.00',
+      ParseWarnings: ['aviso'],
     })
 
     expect(row).toMatchObject({
@@ -323,10 +355,24 @@ describe('NF-e mappers', () => {
       Manifestacao: 'ciencia',
       CompanyRole: 'destinatario',
       AuthorizedAt: '2024-09-01T10:00:00Z',
+      ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 2,
+      TpAmb: '1',
+      NatOp: 'Venda de mercadoria',
+      EmitenteUF: 'SP',
+      ICMSValue: 20400,
+      IPIValue: 5050,
+      LayoutVersion: '4.00',
+      ParseWarnings: ['aviso'],
     })
     expect(row.ManifestacaoAt).toBeNull()
     expect(row.CienciaDue).toBeNull()
+    expect(mapNFeRow({ ViewedAt: null, ParseWarnings: null })).toMatchObject({
+      ViewedAt: null,
+      ParseWarnings: [],
+      ICMSValue: 0,
+      IPIValue: 0,
+    })
   })
 
   it('maps unknown enum values to an empty string', () => {
@@ -474,6 +520,7 @@ describe('NF-e client calls', () => {
     vi.mocked(PlanNFeCiencia).mockResolvedValue({ Eligible: [], Skipped: [] } as never)
     vi.mocked(RegisterNFeCiencia).mockResolvedValue({ Interrupted: 'timeout' } as never)
     vi.mocked(RegisterNFeManifestacao).mockResolvedValue({ Status: 'registrada' } as never)
+    vi.mocked(MarkNFeViewed).mockResolvedValue(1 as never)
 
     const listInput = {
       CNPJ: '123',
@@ -500,6 +547,8 @@ describe('NF-e client calls', () => {
     await expect(desktopClient.listNFe(listInput)).resolves.toMatchObject([
       { ID: 'rel-1', Situacao: 'autorizada' },
     ])
+    await desktopClient.listNFe({ ...listInput, OnlyUnread: true })
+    await expect(desktopClient.markNFeViewed({ ...listInput, ChavesAcesso: [chave] })).resolves.toBe(1)
     await expect(desktopClient.listNFeEvents('123', chave)).resolves.toEqual([])
     await expect(desktopClient.listNFePendingManifestacoes('123')).resolves.toMatchObject([
       { ChaveAcesso: chave },
@@ -520,7 +569,9 @@ describe('NF-e client calls', () => {
 
     expect(PullNFe).toHaveBeenCalledWith({ CNPJ: '123' })
     expect(StatusNFe).toHaveBeenCalledWith('123')
-    expect(ListNFe).toHaveBeenCalledWith({ ...listInput, ChavesAcesso: [] })
+    expect(ListNFe).toHaveBeenNthCalledWith(1, { ...listInput, ChavesAcesso: [], OnlyUnread: false })
+    expect(ListNFe).toHaveBeenNthCalledWith(2, { ...listInput, ChavesAcesso: [], OnlyUnread: true })
+    expect(MarkNFeViewed).toHaveBeenCalledWith({ ...listInput, ChavesAcesso: [chave], OnlyUnread: false })
     expect(ListNFeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave })
     expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(1, { CNPJ: '123', DueWithinDays: 0 })
     expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(2, { CNPJ: '123', DueWithinDays: 10 })
@@ -631,6 +682,7 @@ describe('CT-e mappers', () => {
       Papeis: ['tomador', 'remetente'],
       AuthorizedAt: '2024-09-01T10:00:00Z',
       FirstSeenNSU: 42,
+      ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 3,
     })
 
@@ -659,12 +711,14 @@ describe('CT-e mappers', () => {
       AuthorizedAt: '2024-09-01T10:00:00Z',
       FirstSeenNSU: 42,
       LastSeenNSU: null,
+      ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 3,
     })
-    expect(mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null })).toMatchObject({
+    expect(mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null, ViewedAt: null })).toMatchObject({
       NFeChaves: [],
       Papeis: [],
       ParseWarnings: [],
+      ViewedAt: null,
     })
   })
 
@@ -777,6 +831,7 @@ describe('CT-e client calls', () => {
     vi.mocked(TestCTeConnection).mockResolvedValue({ certLoaded: true, endpointReached: true } as never)
     vi.mocked(PreviewResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
     vi.mocked(ResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
+    vi.mocked(MarkCTeViewed).mockResolvedValue(2 as never)
 
     const listInput = {
       CNPJ: '123',
@@ -794,7 +849,8 @@ describe('CT-e client calls', () => {
     await expect(desktopClient.listCTe(listInput)).resolves.toMatchObject([
       { ID: 'rel-1', Situacao: 'autorizada', Papeis: [], NFeChaves: [] },
     ])
-    await desktopClient.listCTe({ ...listInput, ChavesAcesso: [cteChave], Limit: 1 })
+    await desktopClient.listCTe({ ...listInput, ChavesAcesso: [cteChave], Limit: 1, OnlyUnread: true })
+    await expect(desktopClient.markCTeViewed({ ...listInput, ChavesAcesso: [cteChave] })).resolves.toBe(2)
     await expect(desktopClient.listCTeEvents('123', cteChave)).resolves.toEqual([])
     await expect(desktopClient.testCTeConnection('123')).resolves.toMatchObject({
       certLoaded: true,
@@ -806,8 +862,19 @@ describe('CT-e client calls', () => {
 
     expect(PullCTe).toHaveBeenCalledWith({ CNPJ: '123' })
     expect(StatusCTe).toHaveBeenCalledWith('123')
-    expect(ListCTe).toHaveBeenNthCalledWith(1, { ...listInput, ChavesAcesso: [], Limit: 0 })
-    expect(ListCTe).toHaveBeenNthCalledWith(2, { ...listInput, ChavesAcesso: [cteChave], Limit: 1 })
+    expect(ListCTe).toHaveBeenNthCalledWith(1, { ...listInput, ChavesAcesso: [], OnlyUnread: false, Limit: 0 })
+    expect(ListCTe).toHaveBeenNthCalledWith(2, {
+      ...listInput,
+      ChavesAcesso: [cteChave],
+      OnlyUnread: true,
+      Limit: 1,
+    })
+    expect(MarkCTeViewed).toHaveBeenCalledWith({
+      ...listInput,
+      ChavesAcesso: [cteChave],
+      OnlyUnread: false,
+      Limit: 0,
+    })
     expect(ListCTeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave })
     expect(TestCTeConnection).toHaveBeenCalledWith('123')
     expect(PreviewResetCTe).toHaveBeenCalledWith('123')

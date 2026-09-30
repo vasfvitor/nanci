@@ -24,7 +24,9 @@ import {
   ListNFe,
   ListNFeEvents,
   ListNFePendingManifestacoes,
+  MarkCTeViewed,
   MarkDocumentsViewed,
+  MarkNFeViewed,
   OpenDataDirectory,
   OpenLogsDirectory,
   PlanNFeCiencia,
@@ -260,6 +262,20 @@ function fileTimestamp(now = new Date()) {
   return `${y}_${m}_${d}_${h}${min}${s}`
 }
 
+// The Go inputs have no optional fields; fill the ones the frontend may omit.
+function nfeListRequest(input: ListNFeInput) {
+  return { ...input, ChavesAcesso: input.ChavesAcesso ?? [], OnlyUnread: input.OnlyUnread ?? false }
+}
+
+function cteListRequest(input: ListCTeInput) {
+  return {
+    ...input,
+    ChavesAcesso: input.ChavesAcesso ?? [],
+    OnlyUnread: input.OnlyUnread ?? false,
+    Limit: input.Limit ?? 0,
+  }
+}
+
 export function mapCompanySummary(raw: unknown): CompanySummary {
   const item = asRawRecord(raw)
   return {
@@ -369,14 +385,21 @@ export function mapNFeRow(raw: unknown): NFeRow {
     AuthorizedAt: asDate(item['AuthorizedAt']),
     Protocolo: asString(item['Protocolo']),
     TpNF: asString(item['TpNF']),
+    TpAmb: asString(item['TpAmb']),
+    NatOp: asString(item['NatOp']),
     EmitenteCNPJ: asString(item['EmitenteCNPJ']),
     EmitenteName: asString(item['EmitenteName']),
     EmitenteIE: asString(item['EmitenteIE']),
+    EmitenteUF: asString(item['EmitenteUF']),
     DestinatarioCNPJ: asString(item['DestinatarioCNPJ']),
     DestinatarioName: asString(item['DestinatarioName']),
     TotalValue: asNumber(item['TotalValue']),
+    ICMSValue: asNumber(item['ICMSValue']),
+    IPIValue: asNumber(item['IPIValue']),
     Situacao: asEnum(item['Situacao'], nfeSituacoes),
     Completeness: asEnum(item['Completeness'], nfeCompletenesses),
+    LayoutVersion: asString(item['LayoutVersion']),
+    ParseWarnings: asStringArray(item['ParseWarnings']),
     Manifestacao: asEnum(item['Manifestacao'], nfeManifestacoes),
     ManifestacaoAt: asDate(item['ManifestacaoAt']),
     CienciaDue: asDate(item['CienciaDue']),
@@ -385,6 +408,7 @@ export function mapNFeRow(raw: unknown): NFeRow {
     EventCount: asNumber(item['EventCount']),
     FirstSyncedAt: asDate(item['FirstSyncedAt']),
     LastSyncedAt: asDate(item['LastSyncedAt']),
+    ViewedAt: asDate(item['ViewedAt']),
     DaysLeft: asNullableNumber(item['DaysLeft']),
     CienciaDaysLeft: asNullableNumber(item['CienciaDaysLeft']),
     TacitlyConfirmed: asBoolean(item['TacitlyConfirmed']),
@@ -608,6 +632,7 @@ export function mapCTeRow(raw: unknown): CTeRow {
     LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
     FirstSyncedAt: asDate(item['FirstSyncedAt']),
     LastSyncedAt: asDate(item['LastSyncedAt']),
+    ViewedAt: asDate(item['ViewedAt']),
     LayoutVersion: asString(item['LayoutVersion']),
     ParseWarnings: asStringArray(item['ParseWarnings']),
   }
@@ -777,11 +802,15 @@ export const desktopClient = {
     return (result || []).map(mapCredentialSummary)
   },
   async listDocuments(input: ListDocumentsInput): Promise<DocumentRow[]> {
-    const result = await callWails(() => ListDocuments(input))
+    const result = await callWails(() =>
+      ListDocuments({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] })
+    )
     return (result || []).map(mapDocumentRow)
   },
+  // markDocumentsViewed marks the NFS-e of the filter, or only the given
+  // ChavesAcesso, and returns how many were new.
   async markDocumentsViewed(input: ListDocumentsInput): Promise<number> {
-    return callWails(() => MarkDocumentsViewed(input))
+    return callWails(() => MarkDocumentsViewed({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] }))
   },
   async countPendingExports(input: ExportDocumentsInput): Promise<number> {
     return callWails(() => CountPendingExports(input))
@@ -865,8 +894,13 @@ export const desktopClient = {
     return mapNFeStatus(res)
   },
   async listNFe(input: ListNFeInput): Promise<NFeRow[]> {
-    const res = await callWails(() => ListNFe({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] }))
+    const res = await callWails(() => ListNFe(nfeListRequest(input)))
     return (res || []).map(mapNFeRow)
+  },
+  // markNFeViewed marks the NF-e of the filter, or only the given
+  // ChavesAcesso, and returns how many were new.
+  async markNFeViewed(input: ListNFeInput): Promise<number> {
+    return callWails(() => MarkNFeViewed(nfeListRequest(input)))
   },
   async listNFeEvents(cnpj: string, chaveAcesso: string): Promise<NFeEvent[]> {
     const res = await callWails(() => ListNFeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
@@ -937,10 +971,13 @@ export const desktopClient = {
     return mapCTeStatus(res)
   },
   async listCTe(input: ListCTeInput): Promise<CTeRow[]> {
-    const res = await callWails(() =>
-      ListCTe({ ...input, ChavesAcesso: input.ChavesAcesso ?? [], Limit: input.Limit ?? 0 })
-    )
+    const res = await callWails(() => ListCTe(cteListRequest(input)))
     return (res || []).map(mapCTeRow)
+  },
+  // markCTeViewed marks the CT-e of the filter, or only the given
+  // ChavesAcesso, and returns how many were new.
+  async markCTeViewed(input: ListCTeInput): Promise<number> {
+    return callWails(() => MarkCTeViewed(cteListRequest(input)))
   },
   async listCTeEvents(cnpj: string, chaveAcesso: string): Promise<CTeEvent[]> {
     const res = await callWails(() => ListCTeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))

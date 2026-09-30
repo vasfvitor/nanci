@@ -52,7 +52,11 @@ export function ListNFeEvents(arg1:desktopapi.NFeKeyInput):Promise<Array<desktop
 
 export function ListNFePendingManifestacoes(arg1:desktopapi.NFePendingInput):Promise<Array<desktopapi.NFePendingRow>>;
 
+export function MarkCTeViewed(arg1:desktopapi.ListCTeInput):Promise<number>;
+
 export function MarkDocumentsViewed(arg1:desktopapi.ListInput):Promise<number>;
+
+export function MarkNFeViewed(arg1:desktopapi.ListNFeInput):Promise<number>;
 
 export function OpenDataDirectory():Promise<void>;
 

@@ -239,6 +239,8 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
+	    // Go type: time
+	    ViewedAt?: any;
 	    LayoutVersion: string;
 	    ParseWarnings: string[];
 	
@@ -298,6 +300,7 @@ export namespace desktopapi {
 	        this.LastSeenNSU = source["LastSeenNSU"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
 	        this.LayoutVersion = source["LayoutVersion"];
 	        this.ParseWarnings = source["ParseWarnings"];
 	    }
@@ -850,6 +853,7 @@ export namespace desktopapi {
 	    TomadorCNPJ: string;
 	    NFeChave: string;
 	    ChavesAcesso: string[];
+	    OnlyUnread: boolean;
 	    Limit: number;
 	
 	    static createFrom(source: any = {}) {
@@ -867,6 +871,7 @@ export namespace desktopapi {
 	        this.TomadorCNPJ = source["TomadorCNPJ"];
 	        this.NFeChave = source["NFeChave"];
 	        this.ChavesAcesso = source["ChavesAcesso"];
+	        this.OnlyUnread = source["OnlyUnread"];
 	        this.Limit = source["Limit"];
 	    }
 	}
@@ -875,6 +880,7 @@ export namespace desktopapi {
 	    Competence: string;
 	    Direction: string;
 	    OnlyUnread: boolean;
+	    ChavesAcesso: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ListInput(source);
@@ -886,6 +892,7 @@ export namespace desktopapi {
 	        this.Competence = source["Competence"];
 	        this.Direction = source["Direction"];
 	        this.OnlyUnread = source["OnlyUnread"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
 	export class ListNFeInput {
@@ -897,6 +904,7 @@ export namespace desktopapi {
 	    Role: string;
 	    EmitenteCNPJ: string;
 	    ChavesAcesso: string[];
+	    OnlyUnread: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListNFeInput(source);
@@ -912,6 +920,7 @@ export namespace desktopapi {
 	        this.Role = source["Role"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.ChavesAcesso = source["ChavesAcesso"];
+	        this.OnlyUnread = source["OnlyUnread"];
 	    }
 	}
 	export class NFeSkipped {
@@ -940,14 +949,21 @@ export namespace desktopapi {
 	    AuthorizedAt?: any;
 	    Protocolo: string;
 	    TpNF: string;
+	    TpAmb: string;
+	    NatOp: string;
 	    EmitenteCNPJ: string;
 	    EmitenteName: string;
 	    EmitenteIE: string;
+	    EmitenteUF: string;
 	    DestinatarioCNPJ: string;
 	    DestinatarioName: string;
 	    TotalValue: number;
+	    ICMSValue: number;
+	    IPIValue: number;
 	    Situacao: string;
 	    Completeness: string;
+	    LayoutVersion: string;
+	    ParseWarnings: string[];
 	    Manifestacao: string;
 	    // Go type: time
 	    ManifestacaoAt?: any;
@@ -961,6 +977,8 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
+	    // Go type: time
+	    ViewedAt?: any;
 	    DaysLeft?: number;
 	    CienciaDaysLeft?: number;
 	    TacitlyConfirmed: boolean;
@@ -982,14 +1000,21 @@ export namespace desktopapi {
 	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
 	        this.Protocolo = source["Protocolo"];
 	        this.TpNF = source["TpNF"];
+	        this.TpAmb = source["TpAmb"];
+	        this.NatOp = source["NatOp"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.EmitenteName = source["EmitenteName"];
 	        this.EmitenteIE = source["EmitenteIE"];
+	        this.EmitenteUF = source["EmitenteUF"];
 	        this.DestinatarioCNPJ = source["DestinatarioCNPJ"];
 	        this.DestinatarioName = source["DestinatarioName"];
 	        this.TotalValue = source["TotalValue"];
+	        this.ICMSValue = source["ICMSValue"];
+	        this.IPIValue = source["IPIValue"];
 	        this.Situacao = source["Situacao"];
 	        this.Completeness = source["Completeness"];
+	        this.LayoutVersion = source["LayoutVersion"];
+	        this.ParseWarnings = source["ParseWarnings"];
 	        this.Manifestacao = source["Manifestacao"];
 	        this.ManifestacaoAt = this.convertValues(source["ManifestacaoAt"], null);
 	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
@@ -998,6 +1023,7 @@ export namespace desktopapi {
 	        this.EventCount = source["EventCount"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
 	        this.DaysLeft = source["DaysLeft"];
 	        this.CienciaDaysLeft = source["CienciaDaysLeft"];
 	        this.TacitlyConfirmed = source["TacitlyConfirmed"];
@@ -1253,14 +1279,21 @@ export namespace desktopapi {
 	    AuthorizedAt?: any;
 	    Protocolo: string;
 	    TpNF: string;
+	    TpAmb: string;
+	    NatOp: string;
 	    EmitenteCNPJ: string;
 	    EmitenteName: string;
 	    EmitenteIE: string;
+	    EmitenteUF: string;
 	    DestinatarioCNPJ: string;
 	    DestinatarioName: string;
 	    TotalValue: number;
+	    ICMSValue: number;
+	    IPIValue: number;
 	    Situacao: string;
 	    Completeness: string;
+	    LayoutVersion: string;
+	    ParseWarnings: string[];
 	    Manifestacao: string;
 	    // Go type: time
 	    ManifestacaoAt?: any;
@@ -1274,6 +1307,8 @@ export namespace desktopapi {
 	    FirstSyncedAt: any;
 	    // Go type: time
 	    LastSyncedAt: any;
+	    // Go type: time
+	    ViewedAt?: any;
 	    DaysLeft?: number;
 	    CienciaDaysLeft?: number;
 	    TacitlyConfirmed: boolean;
@@ -1297,14 +1332,21 @@ export namespace desktopapi {
 	        this.AuthorizedAt = this.convertValues(source["AuthorizedAt"], null);
 	        this.Protocolo = source["Protocolo"];
 	        this.TpNF = source["TpNF"];
+	        this.TpAmb = source["TpAmb"];
+	        this.NatOp = source["NatOp"];
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.EmitenteName = source["EmitenteName"];
 	        this.EmitenteIE = source["EmitenteIE"];
+	        this.EmitenteUF = source["EmitenteUF"];
 	        this.DestinatarioCNPJ = source["DestinatarioCNPJ"];
 	        this.DestinatarioName = source["DestinatarioName"];
 	        this.TotalValue = source["TotalValue"];
+	        this.ICMSValue = source["ICMSValue"];
+	        this.IPIValue = source["IPIValue"];
 	        this.Situacao = source["Situacao"];
 	        this.Completeness = source["Completeness"];
+	        this.LayoutVersion = source["LayoutVersion"];
+	        this.ParseWarnings = source["ParseWarnings"];
 	        this.Manifestacao = source["Manifestacao"];
 	        this.ManifestacaoAt = this.convertValues(source["ManifestacaoAt"], null);
 	        this.CienciaDue = this.convertValues(source["CienciaDue"], null);
@@ -1313,6 +1355,7 @@ export namespace desktopapi {
 	        this.EventCount = source["EventCount"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
+	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
 	        this.DaysLeft = source["DaysLeft"];
 	        this.CienciaDaysLeft = source["CienciaDaysLeft"];
 	        this.TacitlyConfirmed = source["TacitlyConfirmed"];

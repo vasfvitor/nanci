@@ -92,6 +92,9 @@ export type ListDocumentsInput = {
   Competence: string
   Direction: string
   OnlyUnread: boolean
+  // ChavesAcesso limits the list, or the marking, to these NFS-e; empty or
+  // absent means every NFS-e of the filter.
+  ChavesAcesso?: string[]
 }
 
 export type ExportFormat = 'csv' | 'xlsx' | 'zip'
@@ -257,6 +260,8 @@ export type ListNFeInput = {
   EmitenteCNPJ: string
   // ChavesAcesso limits the list to these notes; empty or absent lists all.
   ChavesAcesso?: string[]
+  // OnlyUnread keeps the notes not yet marked as viewed.
+  OnlyUnread?: boolean
 }
 
 export type NFeRow = {
@@ -269,14 +274,24 @@ export type NFeRow = {
   AuthorizedAt?: ISODateValue
   Protocolo: string
   TpNF: string
+  // "1" produção, "2" homologação.
+  TpAmb?: string
+  // NatOp, ICMSValue and IPIValue are empty on a resumo.
+  NatOp?: string
   EmitenteCNPJ: string
   EmitenteName: string
   EmitenteIE: string
+  EmitenteUF?: string
   DestinatarioCNPJ: string
   DestinatarioName: string
+  // Money fields are in cents.
   TotalValue: number
+  ICMSValue?: number
+  IPIValue?: number
   Situacao: NFeSituacao | ''
   Completeness: NFeCompleteness | ''
+  LayoutVersion?: string
+  ParseWarnings?: string[]
   Manifestacao: NFeManifestacao | ''
   ManifestacaoAt?: ISODateValue
   CienciaDue?: ISODateValue
@@ -285,6 +300,8 @@ export type NFeRow = {
   EventCount: number
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
+  // ViewedAt is empty while the note is new.
+  ViewedAt?: ISODateValue
   // DaysLeft counts calendar days until ConclusiveDue: 0 on the due day,
   // negative once it passed, null without a deadline.
   DaysLeft: number | null
@@ -496,6 +513,8 @@ export type ListCTeInput = {
   NFeChave: string
   // ChavesAcesso limits the list to these CT-e; empty or absent lists all.
   ChavesAcesso?: string[]
+  // OnlyUnread keeps the CT-e not yet marked as viewed.
+  OnlyUnread?: boolean
   // Limit 0 or absent lists every row.
   Limit?: number
 }
@@ -560,6 +579,8 @@ export type CTeRow = {
   LastSeenNSU: number | null
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
+  // ViewedAt is empty while the CT-e is new.
+  ViewedAt?: ISODateValue
   LayoutVersion: string
   ParseWarnings: string[]
 }
