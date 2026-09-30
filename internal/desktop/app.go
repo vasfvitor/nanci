@@ -976,12 +976,30 @@ func (a *App) ListCTe(input desktopapi.ListCTeInput) ([]desktopapi.CTeRow, error
 		TomadorCNPJ:  input.TomadorCNPJ,
 		NFeChave:     input.NFeChave,
 		ChavesAcesso: input.ChavesAcesso,
+		OnlyUnread:   input.OnlyUnread,
 		Limit:        input.Limit,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return desktopapi.CTeRows(documents), nil
+}
+
+// MarkCTeViewed marks the company's CT-e matching the filters as viewed and
+// returns how many were new.
+func (a *App) MarkCTeViewed(input desktopapi.ListCTeInput) (int, error) {
+	return a.core.CTe.MarkViewed(a.ctx, app.ListCTeInput{
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Situacao:     input.Situacao,
+		Role:         input.Role,
+		Modelo:       input.Modelo,
+		EmitenteCNPJ: input.EmitenteCNPJ,
+		TomadorCNPJ:  input.TomadorCNPJ,
+		NFeChave:     input.NFeChave,
+		ChavesAcesso: input.ChavesAcesso,
+		OnlyUnread:   input.OnlyUnread,
+	})
 }
 
 func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent, error) {

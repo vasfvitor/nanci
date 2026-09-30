@@ -173,6 +173,7 @@ Migrações `007` a `016` em `internal/store/migrations_v2/`:
 - `014`: remove `companies.initial_sync_completed_at`. A carga inicial da NFS-e, mostrada na lista de empresas e usada pela trava da política inicial no desktop, passa a vir só de `company_sync_sources`.
 - `015`: cria as tabelas de CT-e, descritas em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 - `016`: adiciona `tp_amb` (`1`, `2` ou vazio) a `nfe_documents` e `nfe_events`. As notas existentes recebem o ambiente da empresa que as vê, que até então não podia mudar depois da primeira sincronização de NF-e; os eventos recebem o da nota de mesma chave. Notas que nenhuma empresa vê e eventos sem nota ficam vazios.
+- `017`: adiciona `viewed_at` a `company_cte_documents`, descrita em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 
 Tabelas de NF-e:
 

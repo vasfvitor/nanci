@@ -363,6 +363,66 @@ func TestCTeListDocumentsFilters(t *testing.T) {
 	}
 }
 
+func TestCTeMarkViewed(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seedCTeFixtures()
+	ctx := context.Background()
+	unread := ListCTeInput{CNPJ: nfeTestCNPJ, OnlyUnread: true}
+	listUnread := func() []string {
+		t.Helper()
+		docs, err := env.app.CTe.ListDocuments(ctx, unread)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cteChavesOf(docs)
+	}
+
+	if got := listUnread(); !slices.Equal(got, []string{cteChaveSimp, cteChaveGTVe, cteChaveOS, cteChaveToma4, cteChaveProc}) {
+		t.Fatalf("unread before marking = %v", got)
+	}
+
+	// The homologação chave is outside the company's environment and is not marked.
+	count, err := env.app.CTe.MarkViewed(ctx, ListCTeInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{cteChaveOS, " " + cteChaveGTVe + " ", cteChaveV200}})
+	if err != nil {
+		t.Fatalf("MarkViewed by chaves: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("marked by chaves = %d, want 2", count)
+	}
+	if got := listUnread(); !slices.Equal(got, []string{cteChaveSimp, cteChaveToma4, cteChaveProc}) {
+		t.Errorf("unread after marking by chaves = %v", got)
+	}
+	docs, err := env.app.CTe.ListDocuments(ctx, ListCTeInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{cteChaveOS}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 1 || docs[0].ViewedAt == nil {
+		t.Errorf("listed CT-e after marking = %+v, want ViewedAt set", docs)
+	}
+
+	if _, err := env.app.CTe.MarkViewed(ctx, ListCTeInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{"123"}}); !errors.Is(err, dfe.ErrInvalidAccessKey) {
+		t.Errorf("MarkViewed with an invalid chave: err = %v, want dfe.ErrInvalidAccessKey", err)
+	}
+
+	count, err = env.app.CTe.MarkViewed(ctx, ListCTeInput{CNPJ: nfeTestCNPJ})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 3 {
+		t.Errorf("marked without chaves = %d, want 3", count)
+	}
+	if got := listUnread(); len(got) != 0 {
+		t.Errorf("unread after marking all = %v, want none", got)
+	}
+	homologacao, err := cteRepo(env).ListCompanyDocuments(ctx, env.company.ID, cte.DocumentFilter{TpAmb: "2", OnlyUnread: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cteChavesOf(homologacao); !slices.Equal(got, []string{cteChaveV200}) {
+		t.Errorf("homologação unread = %v, want the v2.00 CT-e untouched", got)
+	}
+}
+
 func TestCTeTestConnectionOnlyChecksCTeTLS(t *testing.T) {
 	env := newNFeTestEnv(t)
 	stub := useFakeSEFAZ(t)

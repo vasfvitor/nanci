@@ -35,6 +35,7 @@ type CompanyCteDocument struct {
 	LastSeenNsu      sql.NullInt64
 	FirstSyncedAt    string
 	LastSyncedAt     string
+	ViewedAt         sql.NullString
 }
 
 type CompanyCteExportMark struct {

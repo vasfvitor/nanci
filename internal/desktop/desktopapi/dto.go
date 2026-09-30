@@ -724,6 +724,7 @@ type ListCTeInput struct {
 	// NFeChave keeps the CT-e that transported this NF-e.
 	NFeChave     string
 	ChavesAcesso []string
+	OnlyUnread   bool
 	Limit        int // 0 means no limit
 }
 
@@ -790,6 +791,7 @@ type CTeRow struct {
 	LastSeenNSU      *int64
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
+	ViewedAt         *time.Time // nil while the CT-e is new
 	LayoutVersion    string
 	ParseWarnings    []string
 }
@@ -948,6 +950,7 @@ func cteRow(document cte.CompanyDocument) CTeRow {
 		LastSeenNSU:      document.LastSeenNSU,
 		FirstSyncedAt:    document.FirstSyncedAt,
 		LastSyncedAt:     document.LastSyncedAt,
+		ViewedAt:         document.ViewedAt,
 		LayoutVersion:    document.LayoutVersion,
 		ParseWarnings:    append([]string{}, document.ParseWarnings...),
 	}

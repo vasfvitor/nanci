@@ -396,6 +396,7 @@ func TestCTeListFilters(t *testing.T) {
 		{"tpAmb homologação", cte.DocumentFilter{TpAmb: "2"}, []string{cteKeyV200}},
 		{"competence and situação", cte.DocumentFilter{Competence: "2026-09", Situacao: cte.SituacaoAutorizada, Limit: 2}, []string{cteKeyGTVe, cteKeyOS}},
 		{"chaves", cte.DocumentFilter{ChavesAcesso: []string{cteKeyOS, cteKeyProc}}, []string{cteKeyOS, cteKeyProc}},
+		{"only unread before any mark", cte.DocumentFilter{OnlyUnread: true}, []string{cteKeyGTVe, cteKeyOS, cteKeyV200, cteKeyToma4, cteKeyProc}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -411,6 +412,66 @@ func TestCTeListFilters(t *testing.T) {
 	}
 	if counts.ByRole[cte.CompanyRoleTomador] != 3 || counts.ByRole[cte.CompanyRoleAutorizado] != 1 {
 		t.Errorf("tpAmb 1 counts = %v, want 3 tomador and 1 autorizado", counts.ByRole)
+	}
+}
+
+func TestCTeMarkViewed(t *testing.T) {
+	ctx := context.Background()
+	f := newCTeFixture(t)
+	for i, name := range []string{"procte.xml", "procte-toma4.xml", "procte-v200-toma03.xml", "procteos.xml", "procgtve.xml"} {
+		f.applyDocument("mock", cnpjMock, f.document(name, "hash-"+name), int64(i+1))
+	}
+	f.applyDocument("remetente", cteCNPJRemetente, f.document("procte.xml", "hash-procte.xml"), 1)
+	unread := cte.DocumentFilter{OnlyUnread: true}
+	mark := func(filter cte.DocumentFilter) int {
+		t.Helper()
+		n, err := f.repo.MarkViewed(ctx, "mock", filter)
+		if err != nil {
+			t.Fatalf("MarkViewed: %v", err)
+		}
+		return n
+	}
+
+	if doc := f.companyDocument("mock", cteKeyOS); doc.ViewedAt != nil {
+		t.Errorf("ViewedAt before marking = %v, want nil", doc.ViewedAt)
+	}
+
+	// By chaves: only the given CT-e.
+	if n := mark(cte.DocumentFilter{ChavesAcesso: []string{cteKeyOS}}); n != 1 {
+		t.Errorf("marked by chave = %d, want 1", n)
+	}
+	if got := f.list("mock", unread); !slices.Equal(got, []string{cteKeyGTVe, cteKeyV200, cteKeyToma4, cteKeyProc}) {
+		t.Errorf("unread after marking by chave = %v", got)
+	}
+	if doc := f.companyDocument("mock", cteKeyOS); doc.ViewedAt == nil {
+		t.Error("ViewedAt after marking = nil")
+	}
+
+	// tpAmb 1 leaves the homologação CT-e alone, and the CT-e OS already
+	// viewed is not counted again.
+	if n := mark(cte.DocumentFilter{TpAmb: "1"}); n != 3 {
+		t.Errorf("marked in tpAmb 1 = %d, want 3", n)
+	}
+	if got := f.list("mock", unread); !slices.Equal(got, []string{cteKeyV200}) {
+		t.Errorf("unread after marking tpAmb 1 = %v, want the homologação CT-e", got)
+	}
+
+	// The mark belongs to the company: the remetente still sees it as new.
+	if got := f.list("remetente", unread); !slices.Equal(got, []string{cteKeyProc}) {
+		t.Errorf("remetente unread = %v", got)
+	}
+
+	// A new copy from the distribution keeps the mark.
+	f.applyDocument("mock", cnpjMock, f.document("procte.xml", "hash-procte.xml"), 9)
+	if got := f.list("mock", unread); !slices.Equal(got, []string{cteKeyV200}) {
+		t.Errorf("unread after a new copy = %v", got)
+	}
+
+	if n := mark(cte.DocumentFilter{}); n != 1 {
+		t.Errorf("marked without filter = %d, want 1", n)
+	}
+	if n := mark(cte.DocumentFilter{}); n != 0 {
+		t.Errorf("marked again = %d, want 0", n)
 	}
 }
 
