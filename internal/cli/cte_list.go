@@ -20,6 +20,7 @@ func newCTeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 		tomadorFlag    string
 		nfeFlag        string
 		chaveFlags     []string
+		naoVistosFlag  bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -41,6 +42,7 @@ func newCTeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				TomadorCNPJ:  cnpj.Clean(tomadorFlag),
 				NFeChave:     nfeFlag,
 				ChavesAcesso: chaveFlags,
+				OnlyUnread:   naoVistosFlag,
 			})
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
@@ -82,6 +84,7 @@ func newCTeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 	cmd.Flags().StringVar(&tomadorFlag, "tomador", "", "Filtrar pelo CNPJ ou CPF do tomador")
 	cmd.Flags().StringVar(&nfeFlag, "nfe", "", "Filtrar pela chave de acesso de uma NF-e transportada")
 	cmd.Flags().StringSliceVar(&chaveFlags, "chave", nil, "Filtrar pela chave de acesso (pode repetir)")
+	cmd.Flags().BoolVar(&naoVistosFlag, "nao-vistos", false, "Listar apenas documentos ainda não vistos")
 
 	return cmd
 }

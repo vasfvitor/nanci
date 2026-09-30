@@ -15,6 +15,7 @@ func newListCommand(env CommandEnv) *cobra.Command {
 		cnpjFlag       string
 		competenceFlag string
 		directionFlag  string
+		naoVistosFlag  bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -30,6 +31,7 @@ func newListCommand(env CommandEnv) *cobra.Command {
 				CNPJ:       cnpjFlag,
 				Competence: competenceFlag,
 				Direction:  directionFlag,
+				OnlyUnread: naoVistosFlag,
 			})
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
@@ -71,6 +73,7 @@ func newListCommand(env CommandEnv) *cobra.Command {
 	cmd.Flags().StringVarP(&cnpjFlag, "cnpj", "c", "", "CNPJ da empresa")
 	cmd.Flags().StringVarP(&competenceFlag, "competencia", "m", "", "Filtrar por competência (ex: 2026-06)")
 	cmd.Flags().StringVarP(&directionFlag, "direcao", "d", "", "Filtrar por direção (tomada, prestada, intermediario)")
+	cmd.Flags().BoolVar(&naoVistosFlag, "nao-vistos", false, "Listar apenas documentos ainda não vistos")
 	_ = cmd.MarkFlagRequired("cnpj")
 	return cmd
 }

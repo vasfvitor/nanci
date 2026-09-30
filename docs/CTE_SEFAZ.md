@@ -140,7 +140,7 @@ nanci.exe cte testar-conexao --cnpj 12345678000199
 nanci.exe cte pull --cnpj 12345678000199
 nanci.exe cte status --cnpj 12345678000199
 
-# 4. Listar (filtros: --competencia/-m, --situacao, --papel/-p, --modelo, --emitente, --tomador, --nfe, --chave)
+# 4. Listar (filtros: --competencia/-m, --situacao, --papel/-p, --modelo, --emitente, --tomador, --nfe, --chave, --nao-vistos)
 nanci.exe cte list --cnpj 12345678000199 -m 2026-09 -p tomador
 nanci.exe cte list --cnpj 12345678000199 --modelo 67
 
@@ -172,7 +172,7 @@ O menu lateral ganha a entrada "CT-e", logo abaixo de "NF-e". A página tem uma 
 A migração `015` em `internal/store/migrations_v2/` cria as tabelas de CT-e, e a `017` acrescenta `viewed_at` a `company_cte_documents`. A origem `cte` já era aceita pelos `CHECK` de `sync_state`, `sync_runs`, `company_sync_sources` (migração `007`) e `sync_requests` (migração `013`).
 
 - `cte_documents`: uma linha por chave de acesso, com `tp_amb`, `modelo` (`57`, `64`, `67`), `tipo_documento` (`cte`, `cte_os`, `gtve`, `cte_simplificado`), série, número, CFOP, natureza da operação, emissão, competência, autorização e protocolo; `tp_cte`, `tp_serv` e `modal` como texto bruto, sem `CHECK`, porque os domínios mudaram entre os layouts 3.00 e 4.00; municípios e UF de início e fim da prestação; CNPJ/CPF e nome do emitente, remetente, destinatário, expedidor, recebedor e tomador (IE e UF só do emitente e do tomador); `tomador_indicador`; `autorizados_cnpj` e `nfe_chaves` (listas separadas por vírgula); valores em centavos (`total_value` do `vTPrest`, `receivable_value` do `vRec`, `icms_value`, `tot_trib_value`, `carga_value`); produto predominante; situação; versão do layout; hash do XML bruto e avisos de leitura.
-- `company_cte_documents`: a relação empresa ↔ documento, com o papel principal (`company_role`), todos os papéis (`papeis`, separados por vírgula na ordem de classificação), o motivo da visibilidade (`exact_<papel>`, `same_root_only`, `unknown`), os NSUs em que foi visto e `viewed_at`, preenchida quando a empresa marca o documento como visto. Documento sem `viewed_at` é novo, e a listagem pode mostrar só os novos. A sincronização não mexe na coluna, e a redefinição de CT-e apaga a relação junto com ela.
+- `company_cte_documents`: a relação empresa ↔ documento, com o papel principal (`company_role`), todos os papéis (`papeis`, separados por vírgula na ordem de classificação), o motivo da visibilidade (`exact_<papel>`, `same_root_only`, `unknown`), os NSUs em que foi visto e `viewed_at`, preenchida quando a empresa marca o documento como visto. Documento sem `viewed_at` é novo, e `cte list --nao-vistos` mostra só os novos. A sincronização não mexe na coluna, e a redefinição de CT-e apaga a relação junto com ela.
 - `cte_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`), com `tp_amb`, órgão, tipo, datas do evento e do registro, `registered`, `cStat`, `xMotivo`, protocolo, autor e os textos do evento. Um evento pode chegar antes do documento e é ligado a ele quando o documento chega.
 - `company_cte_export_marks`: o que já foi exportado e com qual hash, para a exportação incremental.
 

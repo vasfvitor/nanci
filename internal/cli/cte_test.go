@@ -187,6 +187,22 @@ func TestCTeList_Filters(t *testing.T) {
 	}
 }
 
+func TestCTeList_NaoVistos(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	marked, err := env.cteRepo.MarkViewed(context.Background(), env.company.ID, cte.DocumentFilter{ChavesAcesso: []string{cteChaveProc}})
+	if err != nil || marked != 1 {
+		t.Fatalf("MarkViewed = %d, %v; want 1", marked, err)
+	}
+
+	if err := env.run("cte", "list", "-c", nfeTestCNPJ, "--nao-vistos"); err != nil {
+		t.Fatalf("list --nao-vistos: %v", err)
+	}
+	if got := env.out.String(); strings.Contains(got, cteChaveProc) || !strings.Contains(got, cteChaveOS) || !strings.Contains(got, "Total de 1 CT-e listado(s).") {
+		t.Errorf("list --nao-vistos:\n%s", got)
+	}
+}
+
 func TestCTeList_PapelMatchesAnyRole(t *testing.T) {
 	env := newCTeTestRoot(t)
 	env.seedCTe("procte-v200-toma03.xml", 1)
