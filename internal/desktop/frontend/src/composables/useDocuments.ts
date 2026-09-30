@@ -22,13 +22,8 @@ export function useDocuments() {
     if (!filter.value.CNPJ) return []
     loading.value = true
     try {
-      const rows = await desktopClient.listDocuments({
-        CNPJ: filter.value.CNPJ,
-        Competence: filter.value.Competence || '',
-        Direction: filter.value.Direction || '',
-        OnlyUnread: filter.value.OnlyUnread || false,
-      })
-      documentsStore.setDocuments(rows)
+      const rows = await desktopClient.listDocuments(documentsStore.listInput)
+      documentsStore.setRows(rows)
       return rows
     } finally {
       loading.value = false

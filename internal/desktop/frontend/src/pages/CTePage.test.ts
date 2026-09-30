@@ -188,6 +188,20 @@ describe('CTePage', () => {
     expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([tomada])
   })
 
+  it('keeps the text filter after leaving the page and coming back', async () => {
+    const placeholder = 'Filtrar por chave, número, emitente ou tomador...'
+    const first = mountPage()
+    await flushPromises()
+    field(first, 'QInput', placeholder).vm.$emit('update:modelValue', 'FICTICIA')
+    await flushPromises()
+    first.unmount()
+
+    const second = mountPage()
+    await flushPromises()
+    expect(field(second, 'QInput', placeholder).props('modelValue')).toBe('FICTICIA')
+    expect(second.getComponent({ name: 'QTable' }).props('rows')).toEqual([tomada])
+  })
+
   it('searches with the filters the user picked', async () => {
     const wrapper = mountPage()
     await flushPromises()

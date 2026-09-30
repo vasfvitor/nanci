@@ -1,7 +1,8 @@
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { DocumentRow, ListDocumentsInput } from '@/types/desktop'
 
+// The store holds NFS-e page state that outlives the page.
 export const useDocumentsStore = defineStore('documents', () => {
   const filter = ref<ListDocumentsInput>({
     CNPJ: '',
@@ -9,24 +10,50 @@ export const useDocumentsStore = defineStore('documents', () => {
     Direction: '',
     OnlyUnread: false,
   })
+
+  // listInput is the only place the ListDocuments request is built from the
+  // filter. Clearable inputs set null, so every field is normalized here.
+  const listInput = computed<ListDocumentsInput>(() => ({
+    CNPJ: filter.value.CNPJ || '',
+    Competence: filter.value.Competence || '',
+    Direction: filter.value.Direction || '',
+    OnlyUnread: filter.value.OnlyUnread || false,
+  }))
+
   const documents = ref<DocumentRow[]>([])
+  const selected = ref<DocumentRow[]>([])
+  // filterText narrows the listed rows on the page, without a new search.
+  const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
 
-  function setDocuments(rows: DocumentRow[]) {
-    documents.value = rows
+  // setRows replaces the result set and keeps only the selected documents
+  // that are still present, swapped for their fresh rows.
+  function setRows(next: DocumentRow[]) {
+    documents.value = next
+    if (selected.value.length === 0) return
+
+    const byChave = new Map(next.map((row) => [row.ChaveAcesso, row]))
+    selected.value = selected.value.flatMap((row) => {
+      const fresh = byChave.get(row.ChaveAcesso)
+      return fresh ? [fresh] : []
+    })
   }
 
   function resetDocuments() {
     documents.value = []
+    selected.value = []
   }
 
   return {
     filter,
+    listInput,
     documents,
+    selected,
+    filterText,
     loading,
     exporting,
-    setDocuments,
+    setRows,
     resetDocuments,
   }
 })

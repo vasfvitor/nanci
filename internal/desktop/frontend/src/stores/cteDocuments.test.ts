@@ -1,6 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useCTeDocumentsStore } from './cteDocuments'
+import type { CTeRow } from '@/types/desktop'
+
+function cteRow(chave: string, overrides: Partial<CTeRow> = {}) {
+  return { ChaveAcesso: chave, Numero: '1', ...overrides } as CTeRow
+}
 
 describe('cteDocuments store', () => {
   beforeEach(() => {
@@ -35,5 +40,23 @@ describe('cteDocuments store', () => {
 
     expect(store.listInput.TomadorCNPJ).toBe('12ABC678000100')
     expect(store.listInput.NFeChave).toBe('35260911222333000181550010000045121418273651')
+  })
+
+  it('keeps only the selected CT-e still present, as their fresh rows', () => {
+    const store = useCTeDocumentsStore()
+    store.setRows([cteRow('a'), cteRow('b')])
+    store.selected = [cteRow('a'), cteRow('b')]
+
+    const freshB = cteRow('b', { Numero: '2' })
+    store.setRows([freshB, cteRow('c')])
+
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['b', 'c'])
+    expect(store.selected).toEqual([freshB])
+  })
+
+  it('starts with an empty text filter and selection', () => {
+    const store = useCTeDocumentsStore()
+    expect(store.filterText).toBe('')
+    expect(store.selected).toEqual([])
   })
 })

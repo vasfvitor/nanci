@@ -31,6 +31,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
 
   const rows = ref<NFeRow[]>([])
   const selected = ref<NFeRow[]>([])
+  // filterText narrows the listed rows on the page, without a new search.
+  const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
   const status = shallowRef<NFeStatusResult | null>(null)
@@ -82,6 +84,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     listInput,
     rows,
     selected,
+    filterText,
     loading,
     exporting,
     status,

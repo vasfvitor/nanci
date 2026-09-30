@@ -1,14 +1,14 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { companyOption } from '@/composables/useCompanies'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
+import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { CompanySummary, NFeRow } from '@/types/desktop'
-import { normalizeText } from '@/utils/formatters'
 import { nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
 import { nfeRowActions } from '@/utils/nfeManifestacao'
 
@@ -16,33 +16,29 @@ export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useNFeLoaders()
-  const { filter, rows, selected, loading, exporting, status, activeTab, resettingCNPJ } =
-    storeToRefs(store)
+  const {
+    filter,
+    rows,
+    selected,
+    filterText,
+    loading,
+    exporting,
+    status,
+    activeTab,
+    resettingCNPJ,
+  } = storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
   const pagination = useTablePagination('nfe')
-  const filterText = ref('')
-
-  // searchIndex normalizes the searchable fields once per result set, not on
-  // every keystroke.
-  const searchIndex = computed(() =>
-    rows.value.map((row) => ({
-      row,
-      fields: [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName].map(normalizeText),
-    }))
-  )
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
-  const filteredRows = computed(() => {
-    const query = normalizeText(filterText.value)
-    if (!query) return rows.value
-    return searchIndex.value
-      .filter(({ fields }) => fields.some((field) => field.includes(query)))
-      .map(({ row }) => row)
-  })
-
-  watch(filterText, () => {
-    pagination.value.page = 1
+  const { filteredRows } = useRowTextFilter({
+    rows,
+    filterText,
+    fields: (row) => [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName],
+    onChange: () => {
+      pagination.value.page = 1
+    },
   })
 
   // actionsByChave holds the row menu state of every row the grid shows,

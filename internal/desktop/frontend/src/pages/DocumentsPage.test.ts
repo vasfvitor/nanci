@@ -109,7 +109,7 @@ describe('DocumentsPage selection', () => {
 
   it('drops selected rows that are absent from a new result set', async () => {
     const store = useDocumentsStore()
-    store.setDocuments([documentRow('rel-a', '1'.repeat(50))])
+    store.setRows([documentRow('rel-a', '1'.repeat(50))])
 
     const wrapper = mountPage()
     await flushPromises()
@@ -121,7 +121,7 @@ describe('DocumentsPage selection', () => {
     expect(selectedProp(wrapper)).toHaveLength(1)
 
     // A different company/competence returns an entirely different result set.
-    store.setDocuments([documentRow('rel-b', '2'.repeat(50))])
+    store.setRows([documentRow('rel-b', '2'.repeat(50))])
     await flushPromises()
 
     expect(selectedProp(wrapper)).toEqual([])
@@ -129,7 +129,7 @@ describe('DocumentsPage selection', () => {
 
   it('keeps selected rows that are still present after a refresh', async () => {
     const store = useDocumentsStore()
-    store.setDocuments([documentRow('rel-a', '1'.repeat(50))])
+    store.setRows([documentRow('rel-a', '1'.repeat(50))])
 
     const wrapper = mountPage()
     await flushPromises()
@@ -140,7 +140,7 @@ describe('DocumentsPage selection', () => {
     await flushPromises()
 
     // Re-running the same search replaces the array with equivalent rows.
-    store.setDocuments([
+    store.setRows([
       documentRow('rel-a', '1'.repeat(50)),
       documentRow('rel-b', '2'.repeat(50)),
     ])

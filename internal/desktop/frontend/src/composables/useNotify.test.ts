@@ -57,4 +57,35 @@ describe('useNotify', () => {
       message: 'Erro ao copiar chave: negado',
     })
   })
+
+  it('notifies success, info and warning with extra options', () => {
+    const { notifySuccess, notifyInfo, notifyWarning } = useNotify()
+
+    notifySuccess('Feito.')
+    notifyInfo('Nada mudou.', { timeout: 1000 })
+    notifyWarning('Cuidado.', { caption: 'detalhe' })
+
+    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'positive', message: 'Feito.' },
+      { type: 'info', message: 'Nada mudou.', timeout: 1000 },
+      { type: 'warning', message: 'Cuidado.', caption: 'detalhe' },
+    ])
+  })
+
+  it('reports exports with one wording for every source', () => {
+    const { notifyExported } = useNotify()
+
+    notifyExported({ ExportedCount: 3, OutPath: 'C:/saida/notas.zip' })
+    notifyExported({ ExportedCount: 1, OutPath: 'C:/saida/nota.zip' })
+    notifyExported({ ExportedCount: 2, OutPath: 'C:/saida/danfse.zip' }, 'DANFSe')
+    notifyExported({ ExportedCount: 0, OutPath: '' })
+    notifyExported(null)
+
+    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'positive', message: '3 XMLs exportados para C:/saida/notas.zip.' },
+      { type: 'positive', message: '1 XML exportado para C:/saida/nota.zip.' },
+      { type: 'positive', message: '2 DANFSes exportados para C:/saida/danfse.zip.' },
+      { type: 'info', message: 'Nenhum documento para exportar.' },
+    ])
+  })
 })

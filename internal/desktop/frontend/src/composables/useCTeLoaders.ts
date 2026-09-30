@@ -1,4 +1,5 @@
 import { storeToRefs } from 'pinia'
+import { useDocumentLoaders } from '@/composables/useDocumentLoaders'
 import { desktopClient } from '@/platform/wails/client'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 
@@ -11,45 +12,21 @@ export function isNFeChaveFilter(chave: string) {
 
 // useCTeLoaders loads the CT-e list and status into the cteDocuments store.
 // A result that arrives after the user picked another company is dropped.
+// An NF-e key that is not 44 characters is never sent; the page shows the
+// error on the field.
 export function useCTeLoaders() {
   const store = useCTeDocumentsStore()
   const { loading, status } = storeToRefs(store)
 
-  const isSelected = (cnpj: string) => store.filter.CNPJ === cnpj
-
-  // search lists the CT-e of the filter. An NF-e key that is not 44
-  // characters is never sent; the page shows the error on the field.
-  async function search() {
-    const input = store.listInput
-    if (!input.CNPJ || !isNFeChaveFilter(input.NFeChave)) return []
-    loading.value = true
-    try {
-      const result = await desktopClient.listCTe(input)
-      if (isSelected(input.CNPJ)) store.rows = result
-      return result
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function loadStatus(cnpj: string = store.filter.CNPJ) {
-    if (!cnpj) {
-      status.value = null
-      return null
-    }
-    const result = await desktopClient.statusCTe(cnpj)
-    if (isSelected(cnpj)) status.value = result
-    return result
-  }
-
-  // refresh reloads the list and status after work that already happened: a
-  // sync or a reset. It also runs after a failed pull, because the status
-  // then carries the block reason. Its own failures must not hide the result
-  // of that work.
-  async function refresh(cnpj: string) {
-    if (!isSelected(cnpj)) return
-    await Promise.allSettled([search(), loadStatus(cnpj)])
-  }
+  const { search, loadStatus, refresh } = useDocumentLoaders({
+    selectedCNPJ: () => store.filter.CNPJ,
+    listInput: () => store.listInput,
+    canList: (input) => isNFeChaveFilter(input.NFeChave),
+    list: (input) => desktopClient.listCTe(input),
+    setRows: (rows) => store.setRows(rows),
+    loading,
+    status: { state: status, fetch: (cnpj) => desktopClient.statusCTe(cnpj) },
+  })
 
   return { search, loadStatus, refresh }
 }

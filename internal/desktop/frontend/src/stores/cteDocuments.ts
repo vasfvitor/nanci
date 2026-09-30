@@ -37,6 +37,9 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   }))
 
   const rows = ref<CTeRow[]>([])
+  const selected = ref<CTeRow[]>([])
+  // filterText narrows the listed rows on the page, without a new search.
+  const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
   // incremental makes the ZIP export skip the CT-e already exported.
@@ -45,14 +48,30 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   // resettingCNPJ is the company whose CT-e reset is in flight, or ''.
   const resettingCNPJ = shallowRef('')
 
+  // setRows replaces the result set and keeps only the selected CT-e that are
+  // still present, swapped for their fresh rows.
+  function setRows(next: CTeRow[]) {
+    rows.value = next
+    if (selected.value.length === 0) return
+
+    const byChave = new Map(next.map((row) => [row.ChaveAcesso, row]))
+    selected.value = selected.value.flatMap((row) => {
+      const fresh = byChave.get(row.ChaveAcesso)
+      return fresh ? [fresh] : []
+    })
+  }
+
   return {
     filter,
     listInput,
     rows,
+    selected,
+    filterText,
     loading,
     exporting,
     incremental,
     status,
     resettingCNPJ,
+    setRows,
   }
 })

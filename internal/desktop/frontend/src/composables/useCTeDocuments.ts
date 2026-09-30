@@ -1,54 +1,41 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { companyOption } from '@/composables/useCompanies'
 import { isNFeChaveFilter, useCTeLoaders } from '@/composables/useCTeLoaders'
+import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import type { CompanySummary } from '@/types/desktop'
-import { normalizeText } from '@/utils/formatters'
 import { cteDocumentCount, cteStatusLine } from '@/utils/cteDisplay'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useCTeLoaders()
-  const { filter, rows, loading, exporting, incremental, status, resettingCNPJ } =
+  const { filter, rows, filterText, loading, exporting, incremental, status, resettingCNPJ } =
     storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
   const pagination = useTablePagination('cte')
-  const filterText = ref('')
-
-  // searchIndex normalizes the searchable fields once per result set, not on
-  // every keystroke.
-  const searchIndex = computed(() =>
-    rows.value.map((row) => ({
-      row,
-      fields: [
-        row.ChaveAcesso,
-        row.Numero,
-        row.EmitenteCNPJ,
-        row.EmitenteName,
-        row.TomadorCNPJ,
-        row.TomadorName,
-      ].map(normalizeText),
-    }))
-  )
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
-  const filteredRows = computed(() => {
-    const query = normalizeText(filterText.value)
-    if (!query) return rows.value
-    return searchIndex.value
-      .filter(({ fields }) => fields.some((field) => field.includes(query)))
-      .map(({ row }) => row)
-  })
-
-  watch(filterText, () => {
-    pagination.value.page = 1
+  const { filteredRows } = useRowTextFilter({
+    rows,
+    filterText,
+    fields: (row) => [
+      row.ChaveAcesso,
+      row.Numero,
+      row.EmitenteCNPJ,
+      row.EmitenteName,
+      row.TomadorCNPJ,
+      row.TomadorName,
+    ],
+    onChange: () => {
+      pagination.value.page = 1
+    },
   })
 
   const companyName = computed(() => {

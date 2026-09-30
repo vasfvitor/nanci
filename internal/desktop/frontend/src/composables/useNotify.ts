@@ -1,5 +1,8 @@
-import { copyToClipboard, useQuasar } from 'quasar'
+import { copyToClipboard, useQuasar, type QNotifyCreateOptions } from 'quasar'
 import { errorMessage, wailsErrorCode } from '@/platform/wails/client'
+import type { ExportResult } from '@/types/desktop'
+
+type NotifyOptions = Omit<QNotifyCreateOptions, 'type' | 'message'>
 
 // useNotify holds the notifications the document pages share.
 export function useNotify() {
@@ -7,6 +10,36 @@ export function useNotify() {
 
   function notifyError(message: string, error: unknown) {
     $q.notify({ type: 'negative', message: `${message}: ${errorMessage(error)}` })
+  }
+
+  function notifySuccess(message: string, options: NotifyOptions = {}) {
+    $q.notify({ ...options, type: 'positive', message })
+  }
+
+  function notifyInfo(message: string, options: NotifyOptions = {}) {
+    $q.notify({ ...options, type: 'info', message })
+  }
+
+  function notifyWarning(message: string, options: NotifyOptions = {}) {
+    $q.notify({ ...options, type: 'warning', message })
+  }
+
+  // notifyExported reports an export: "N XMLs exportados para <caminho>.",
+  // or that nothing was exported. noun is the singular name of the exported
+  // files ("XML", "DANFSe", "documento"). A missing result means the export
+  // did not run, and says nothing.
+  function notifyExported(
+    result: Pick<ExportResult, 'ExportedCount' | 'OutPath'> | null | undefined,
+    noun = 'XML'
+  ) {
+    if (!result) return
+    const count = result.ExportedCount
+    if (count === 0) {
+      notifyInfo('Nenhum documento para exportar.')
+      return
+    }
+    const what = count === 1 ? `1 ${noun} exportado` : `${count} ${noun}s exportados`
+    notifySuccess(`${what} para ${result.OutPath}.`)
   }
 
   // notifySyncError reports a failed sync. A canceled, already running or
@@ -42,5 +75,13 @@ export function useNotify() {
     }
   }
 
-  return { notifyError, notifySyncError, copyChave }
+  return {
+    notifyError,
+    notifySuccess,
+    notifyInfo,
+    notifyWarning,
+    notifyExported,
+    notifySyncError,
+    copyChave,
+  }
 }

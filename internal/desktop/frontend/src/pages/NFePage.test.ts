@@ -222,6 +222,26 @@ describe('NFePage', () => {
     expect(table().props('rows')).toEqual([emitida])
   })
 
+  it('keeps the text filter after leaving the page and coming back', async () => {
+    const acentuada = nfeRow('c', { EmitenteName: 'São João Ltda' })
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida, acentuada])
+    const searchInput = (page: ReturnType<typeof mountPage>) =>
+      page
+        .findAllComponents({ name: 'QInput' })
+        .find((input) => String(input.props('placeholder') ?? '').startsWith('Filtrar'))
+
+    const first = mountPage()
+    await flushPromises()
+    searchInput(first)?.vm.$emit('update:modelValue', 'sao joao')
+    await flushPromises()
+    first.unmount()
+
+    const second = mountPage()
+    await flushPromises()
+    expect(searchInput(second)?.props('modelValue')).toBe('sao joao')
+    expect(second.getComponent({ name: 'QTable' }).props('rows')).toEqual([acentuada])
+  })
+
   it('keeps the ciência button disabled without an eligible selection', async () => {
     const wrapper = mountPage()
     await flushPromises()

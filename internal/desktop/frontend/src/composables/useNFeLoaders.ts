@@ -1,4 +1,5 @@
 import { storeToRefs } from 'pinia'
+import { useDocumentLoaders } from '@/composables/useDocumentLoaders'
 import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 
@@ -9,30 +10,14 @@ export function useNFeLoaders() {
   const store = useNFeDocumentsStore()
   const { loading, status, pending, pendingLoading } = storeToRefs(store)
 
-  const isSelected = (cnpj: string) => store.filter.CNPJ === cnpj
-
-  async function search() {
-    const input = store.listInput
-    if (!input.CNPJ) return []
-    loading.value = true
-    try {
-      const result = await desktopClient.listNFe(input)
-      if (isSelected(input.CNPJ)) store.setRows(result)
-      return result
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function loadStatus(cnpj: string = store.filter.CNPJ) {
-    if (!cnpj) {
-      status.value = null
-      return null
-    }
-    const result = await desktopClient.statusNFe(cnpj)
-    if (isSelected(cnpj)) status.value = result
-    return result
-  }
+  const { isSelected, search, loadStatus } = useDocumentLoaders({
+    selectedCNPJ: () => store.filter.CNPJ,
+    listInput: () => store.listInput,
+    list: (input) => desktopClient.listNFe(input),
+    setRows: (rows) => store.setRows(rows),
+    loading,
+    status: { state: status, fetch: (cnpj) => desktopClient.statusNFe(cnpj) },
+  })
 
   async function loadPending(cnpj: string = store.filter.CNPJ) {
     if (!cnpj) {
