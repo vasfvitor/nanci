@@ -27,6 +27,38 @@ describe('sefazDisplay', () => {
     ])
   })
 
+  it('abbreviates values, with ? for unknown and — for empty', () => {
+    const table = displayTable({
+      a: { label: 'Alfa', color: 'positive', abbr: 'A' },
+      b: { label: 'Beta', color: 'negative' },
+    })
+    expect(table.abbr('a')).toBe('A')
+    expect(table.abbr('b')).toBe('?')
+    expect(table.abbr('z')).toBe('?')
+    expect(table.abbr('constructor')).toBe('?')
+    expect(table.abbr('')).toBe('—')
+    expect(table.values()).toEqual(['a', 'b'])
+  })
+
+  it('builds state badges from the table', () => {
+    const table = displayTable({ a: { label: 'Alfa', color: 'positive', abbr: 'A' } })
+    expect(table.badge('a', 'Grupo')).toEqual({
+      key: 'Grupo:a',
+      abbr: 'A',
+      label: 'Alfa',
+      color: 'positive',
+      kind: 'Grupo',
+    })
+    expect(table.badge('a', 'Grupo', true)).toMatchObject({ secondary: true })
+    expect(table.badge('', 'Grupo')).toEqual({
+      key: 'Grupo:',
+      abbr: '—',
+      label: 'Desconhecido',
+      color: 'grey',
+      kind: 'Grupo',
+    })
+  })
+
   it('darkens info badges in light mode only', () => {
     expect(badgeColor('info', false)).toBe('light-blue-9')
     expect(badgeColor('info', true)).toBe('info')

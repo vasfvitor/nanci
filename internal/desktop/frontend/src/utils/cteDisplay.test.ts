@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cteDocumentAbbr,
   cteDocumentColor,
   cteDocumentCount,
   cteDocumentLabel,
@@ -10,21 +11,37 @@ import {
   cteModeloColor,
   cteModeloFilterOptions,
   cteModeloLabel,
+  cteModelo,
   cteMunicipioLabel,
   cteOtherPapeis,
+  ctePapel,
   ctePapelColor,
   ctePapelFilterOptions,
   ctePapelLabel,
   cteParticipantes,
   ctePercurso,
+  cteSituacao,
   cteSituacaoColor,
   cteSituacaoFilterOptions,
   cteSituacaoLabel,
+  cteStateBadges,
   cteStatusLine,
+  cteTipoDocumento,
   cteTipoDocumentoLabel,
   cteTpServLabel,
 } from './cteDisplay'
 import type { CTeEventType, CTeRow, CTeStatusResult } from '@/types/desktop'
+import type { DisplayTable } from './sefazDisplay'
+
+// expectShortUniqueAbbrs checks that every value of table has an
+// abbreviation of one or two characters, unique within the table.
+function expectShortUniqueAbbrs(table: DisplayTable) {
+  const abbrs = table.values().map((value) => table.abbr(value))
+  for (const abbr of abbrs) {
+    expect(abbr).toMatch(/^.{1,2}$/u)
+  }
+  expect(new Set(abbrs).size).toBe(abbrs.length)
+}
 
 describe('cteDisplay', () => {
   it('maps situação values', () => {
@@ -196,5 +213,56 @@ describe('cteDisplay', () => {
 
     expect(cteParticipantes(row).map((party) => party.label)).toEqual(['Remetente', 'Recebedor', 'Tomador'])
     expect(cteOtherPapeis(row)).toEqual(['remetente'])
+  })
+
+  it('abbreviates every value with one or two unique characters', () => {
+    for (const table of [cteSituacao, ctePapel, cteModelo, cteTipoDocumento]) {
+      expectShortUniqueAbbrs(table)
+    }
+    expect(cteTipoDocumento.values().map(cteTipoDocumento.abbr)).toEqual(['CT', 'OS', 'GV', 'CS'])
+    expect(ctePapel.values().map(ctePapel.abbr)).toEqual(['TO', 'DE', 'RE', 'EX', 'RC', 'EM', 'AU', 'SP'])
+    expect(cteSituacao.values().map(cteSituacao.abbr)).toEqual(['A', 'D', 'C'])
+  })
+
+  it('abbreviates the document by its tipo, falling back to the modelo', () => {
+    expect(cteDocumentAbbr({ TipoDocumento: 'cte_simplificado', Modelo: '57' })).toBe('CS')
+    expect(cteDocumentAbbr({ TipoDocumento: '', Modelo: '67' })).toBe('OS')
+    expect(cteDocumentAbbr({ TipoDocumento: '', Modelo: '64' })).toBe('GV')
+    expect(cteDocumentAbbr({ TipoDocumento: '', Modelo: '' })).toBe('—')
+  })
+
+  it('lists the state badges with the other papéis as secondary', () => {
+    const badges = cteStateBadges({
+      TipoDocumento: 'cte',
+      Modelo: '57',
+      Situacao: 'autorizada',
+      CompanyRole: 'tomador',
+      Papeis: ['tomador', 'remetente', 'expedidor'],
+    })
+    expect(badges.map((badge) => [badge.kind, badge.abbr, badge.secondary ?? false])).toEqual([
+      ['Documento', 'CT', false],
+      ['Situação', 'A', false],
+      ['Papel', 'TO', false],
+      ['Papel', 'RE', true],
+      ['Papel', 'EX', true],
+    ])
+    expect(new Set(badges.map((badge) => badge.key)).size).toBe(badges.length)
+  })
+
+  it('takes the document badge from the modelo when the tipo is missing', () => {
+    const [documento] = cteStateBadges({
+      TipoDocumento: '',
+      Modelo: '67',
+      Situacao: 'cancelada',
+      CompanyRole: 'destinatario',
+      Papeis: ['destinatario'],
+    })
+    expect(documento).toEqual({
+      key: 'Documento:67',
+      abbr: 'OS',
+      label: 'CT-e OS',
+      color: 'secondary',
+      kind: 'Documento',
+    })
   })
 })

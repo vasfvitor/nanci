@@ -1,6 +1,6 @@
 import type { NFeRow, NFeStatusResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
-import { displayTable } from '@/utils/sefazDisplay'
+import { displayTable, type StateBadge } from '@/utils/sefazDisplay'
 
 export type DeadlineKind = 'ciencia' | 'conclusiva'
 
@@ -11,31 +11,31 @@ export const DEADLINE_THRESHOLDS: Record<DeadlineKind, { warning: number; urgent
   conclusiva: { warning: 30, urgent: 10 },
 }
 
-const situacao = displayTable({
-  autorizada: { label: 'Autorizada', color: 'positive' },
-  denegada: { label: 'Denegada', color: 'negative' },
-  cancelada: { label: 'Cancelada', color: 'negative' },
+export const nfeSituacao = displayTable({
+  autorizada: { label: 'Autorizada', color: 'positive', abbr: 'A' },
+  denegada: { label: 'Denegada', color: 'negative', abbr: 'D' },
+  cancelada: { label: 'Cancelada', color: 'negative', abbr: 'C' },
 })
 
-const completeness = displayTable({
-  resumo: { label: 'Resumo', color: 'warning' },
-  completa: { label: 'Completa', color: 'positive' },
+export const nfeCompleteness = displayTable({
+  resumo: { label: 'Resumo', color: 'warning', abbr: 'R' },
+  completa: { label: 'Completa', color: 'positive', abbr: 'X' },
 })
 
-const manifestacao = displayTable({
-  nenhuma: { label: 'Sem manifestação', color: 'grey' },
-  ciencia: { label: 'Ciência', color: 'info' },
-  confirmada: { label: 'Confirmada', color: 'positive' },
-  desconhecida: { label: 'Desconhecida', color: 'negative' },
-  nao_realizada: { label: 'Operação não realizada', color: 'warning' },
+export const nfeManifestacao = displayTable({
+  nenhuma: { label: 'Sem manifestação', color: 'grey', abbr: 'SM' },
+  ciencia: { label: 'Ciência', color: 'info', abbr: 'CI' },
+  confirmada: { label: 'Confirmada', color: 'positive', abbr: 'CO' },
+  desconhecida: { label: 'Desconhecida', color: 'negative', abbr: 'DE' },
+  nao_realizada: { label: 'Operação não realizada', color: 'warning', abbr: 'NR' },
 })
 
-const nfeRole = displayTable({
-  destinatario: { label: 'Destinatário', color: 'secondary' },
-  emitente: { label: 'Emitente', color: 'primary' },
-  transportador: { label: 'Transportador', color: 'accent' },
-  autorizado: { label: 'Autorizado', color: 'info' },
-  none: { label: 'Sem papel fiscal', color: 'grey' },
+export const nfeRole = displayTable({
+  destinatario: { label: 'Destinatário', color: 'secondary', abbr: 'D' },
+  emitente: { label: 'Emitente', color: 'primary', abbr: 'E' },
+  transportador: { label: 'Transportador', color: 'accent', abbr: 'T' },
+  autorizado: { label: 'Autorizado', color: 'info', abbr: 'A' },
+  none: { label: 'Sem papel fiscal', color: 'grey', abbr: 'SP' },
 })
 
 const nfeEvent = displayTable(
@@ -57,12 +57,12 @@ const outcome = displayTable({
   nao_enviada: { label: 'Não enviada', color: 'warning' },
 })
 
-export const situacaoLabel = situacao.label
-export const situacaoColor = situacao.color
-export const completenessLabel = completeness.label
-export const completenessColor = completeness.color
-export const manifestacaoLabel = manifestacao.label
-export const manifestacaoColor = manifestacao.color
+export const situacaoLabel = nfeSituacao.label
+export const situacaoColor = nfeSituacao.color
+export const completenessLabel = nfeCompleteness.label
+export const completenessColor = nfeCompleteness.color
+export const manifestacaoLabel = nfeManifestacao.label
+export const manifestacaoColor = nfeManifestacao.color
 export const nfeRoleLabel = nfeRole.label
 export const nfeRoleColor = nfeRole.color
 export const nfeEventLabel = nfeEvent.label
@@ -70,10 +70,23 @@ export const nfeEventColor = nfeEvent.color
 export const outcomeLabel = outcome.label
 export const outcomeColor = outcome.color
 
-export const situacaoFilterOptions = situacao.options('Todas')
-export const completenessFilterOptions = completeness.options('Todas')
-export const manifestacaoFilterOptions = manifestacao.options('Todas')
+export const situacaoFilterOptions = nfeSituacao.options('Todas')
+export const completenessFilterOptions = nfeCompleteness.options('Todas')
+export const manifestacaoFilterOptions = nfeManifestacao.options('Todas')
 export const nfeRoleFilterOptions = nfeRole.options('Todos')
+
+// nfeStateBadges are the state badges of an NF-e row, in the order of the
+// table and the legend: situação, completude, manifestação, papel.
+export function nfeStateBadges(
+  row: Pick<NFeRow, 'Situacao' | 'Completeness' | 'Manifestacao' | 'CompanyRole'>
+): StateBadge[] {
+  return [
+    nfeSituacao.badge(row.Situacao, 'Situação'),
+    nfeCompleteness.badge(row.Completeness, 'Completude'),
+    nfeManifestacao.badge(row.Manifestacao, 'Manifestação'),
+    nfeRole.badge(row.CompanyRole, 'Papel'),
+  ]
+}
 
 // deadlineColor colors a days-left chip; days is a row's DaysLeft or
 // CienciaDaysLeft.

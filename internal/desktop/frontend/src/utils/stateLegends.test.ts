@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { cteLegend, nfeLegend, nfePendingLegend, nfseLegend, type LegendSection } from './stateLegends'
+import {
+  cteLegend,
+  nfeLegend,
+  nfePendingLegend,
+  nfseLegend,
+  viewedSection,
+  type LegendSection,
+} from './stateLegends'
 import {
   completenessFilterOptions,
   manifestacaoFilterOptions,
@@ -7,6 +14,7 @@ import {
   situacaoFilterOptions,
 } from './nfeDisplay'
 import { ctePapelFilterOptions, cteSituacaoFilterOptions } from './cteDisplay'
+import { nfseStateBadges } from './nfseDisplay'
 
 function section(sections: LegendSection[], title: string) {
   const found = sections.find((entry) => entry.title === title)
@@ -31,7 +39,30 @@ describe('stateLegends', () => {
     expect(badges(legend, 'Direção')).toEqual(['P', 'T', 'I'])
     expect(badges(legend, 'Visibilidade')).toEqual(['PE', 'TE', 'IE', 'MR'])
     expect(badges(legend, 'Status')).toEqual(['N', 'C', 'S'])
-    expect(section(legend, 'Novo').items[0]?.description).toContain('Marcar Vistos')
+    expect(section(legend, 'Status').items[1]).toMatchObject({
+      badge: 'C',
+      name: 'Cancelada',
+      color: 'negative',
+    })
+  })
+
+  it('nfseLegend lists the groups in the order of the badges', () => {
+    const titles = nfseLegend().map((entry) => entry.title)
+    const kinds = nfseStateBadges({ Status: '', VisibilityReason: '', CompanyRole: '' }).map(
+      (badge) => badge.kind
+    )
+    // The papel group keeps the page's "Direção" title until the NFS-e page
+    // adopts the standard vocabulary.
+    expect(titles).toEqual(['Novo', ...kinds.map((kind) => (kind === 'Papel' ? 'Direção' : kind))])
+  })
+
+  it('every legend explains the new badge the same way', () => {
+    const novo = viewedSection()
+    expect(novo.items[0]?.description).toContain('"Marcar vistos"')
+    expect(novo.items[0]?.description).toContain('"Somente não vistos"')
+    for (const legend of [nfseLegend(), nfeLegend(), cteLegend()]) {
+      expect(section(legend, 'Novo')).toEqual(novo)
+    }
   })
 
   it('nfeLegend covers every NF-e filter value', () => {

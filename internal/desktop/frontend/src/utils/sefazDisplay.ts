@@ -1,24 +1,57 @@
-// Display helpers shared by the SEFAZ document screens (NF-e and CT-e).
+// Display helpers shared by the document screens (NFS-e, NF-e and CT-e):
+// display tables for the state values, badge colors and the SEFAZ ambiente.
 
-type Display = { label: string; color: string }
+// Display is how a state value is shown: its full label, its color and the
+// short abbreviation the table badges carry.
+type Display = { label: string; color: string; abbr?: string }
 
 export type FilterOption = { label: string; value: string }
 
+// StateBadge is one abbreviated badge of a document row. kind names its group
+// ("Situação", "Papel"...), for the "Kind: Label" tooltip; key is unique
+// within a row; secondary badges go on a second, smaller line.
+export type StateBadge = {
+  key: string
+  abbr: string
+  label: string
+  color: string
+  kind: string
+  secondary?: boolean
+}
+
+export type DisplayTable = ReturnType<typeof displayTable>
+
 // displayTable looks values up in table. An unknown value is shown as
-// unknownLabel(value) in grey, and an empty one as "Desconhecido".
+// unknownLabel(value) in grey with the abbreviation "?", and an empty one as
+// "Desconhecido" with "—".
 export function displayTable(
   table: Record<string, Display>,
   unknownLabel: (value: string) => string = (value) => value
 ) {
   const find = (value: string) => (Object.hasOwn(table, value) ? table[value] : undefined)
+  const label = (value: string) => find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido')
+  const color = (value: string) => find(value)?.color ?? 'grey'
+  const abbr = (value: string) => (value ? (find(value)?.abbr ?? '?') : '—')
   return {
-    label: (value: string) => find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido'),
-    color: (value: string) => find(value)?.color ?? 'grey',
+    label,
+    color,
+    abbr,
+    // badge is the StateBadge of value in the group kind.
+    badge: (value: string, kind: string, secondary = false): StateBadge => ({
+      key: `${kind}:${value}`,
+      abbr: abbr(value),
+      label: label(value),
+      color: color(value),
+      kind,
+      ...(secondary ? { secondary: true } : {}),
+    }),
     // options lists every known value for a filter, after an empty "all" entry.
     options: (allLabel: string): FilterOption[] => [
       { label: allLabel, value: '' },
       ...Object.entries(table).map(([value, display]) => ({ label: display.label, value })),
     ],
+    // values lists every known value, in table order.
+    values: () => Object.keys(table),
   }
 }
 

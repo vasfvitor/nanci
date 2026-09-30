@@ -1,39 +1,39 @@
 import type { CTeEvent, CTeMunicipio, CTeRow, CTeStatusResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
-import { displayTable } from '@/utils/sefazDisplay'
+import { displayTable, type StateBadge } from '@/utils/sefazDisplay'
 
-const cteSituacao = displayTable({
-  autorizada: { label: 'Autorizada', color: 'positive' },
-  denegada: { label: 'Denegada', color: 'negative' },
-  cancelada: { label: 'Cancelada', color: 'negative' },
+export const cteSituacao = displayTable({
+  autorizada: { label: 'Autorizada', color: 'positive', abbr: 'A' },
+  denegada: { label: 'Denegada', color: 'negative', abbr: 'D' },
+  cancelada: { label: 'Cancelada', color: 'negative', abbr: 'C' },
 })
 
 // The roles are listed in priority order, as the backend picks the primary one.
-const ctePapel = displayTable({
-  tomador: { label: 'Tomador', color: 'accent' },
-  destinatario: { label: 'Destinatário', color: 'secondary' },
-  remetente: { label: 'Remetente', color: 'info' },
-  expedidor: { label: 'Expedidor', color: 'info' },
-  recebedor: { label: 'Recebedor', color: 'info' },
-  emitente: { label: 'Emitente', color: 'primary' },
-  autorizado: { label: 'Autorizado', color: 'info' },
-  none: { label: 'Sem papel fiscal', color: 'grey' },
+export const ctePapel = displayTable({
+  tomador: { label: 'Tomador', color: 'accent', abbr: 'TO' },
+  destinatario: { label: 'Destinatário', color: 'secondary', abbr: 'DE' },
+  remetente: { label: 'Remetente', color: 'info', abbr: 'RE' },
+  expedidor: { label: 'Expedidor', color: 'info', abbr: 'EX' },
+  recebedor: { label: 'Recebedor', color: 'info', abbr: 'RC' },
+  emitente: { label: 'Emitente', color: 'primary', abbr: 'EM' },
+  autorizado: { label: 'Autorizado', color: 'info', abbr: 'AU' },
+  none: { label: 'Sem papel fiscal', color: 'grey', abbr: 'SP' },
 })
 
-const cteModelo = displayTable(
+export const cteModelo = displayTable(
   {
-    '57': { label: 'CT-e', color: 'primary' },
-    '64': { label: 'GTV-e', color: 'accent' },
-    '67': { label: 'CT-e OS', color: 'secondary' },
+    '57': { label: 'CT-e', color: 'primary', abbr: 'CT' },
+    '64': { label: 'GTV-e', color: 'accent', abbr: 'GV' },
+    '67': { label: 'CT-e OS', color: 'secondary', abbr: 'OS' },
   },
   (modelo) => `Modelo ${modelo}`
 )
 
-const cteTipoDocumento = displayTable({
-  cte: { label: 'CT-e', color: 'primary' },
-  cte_os: { label: 'CT-e OS', color: 'secondary' },
-  gtve: { label: 'GTV-e', color: 'accent' },
-  cte_simplificado: { label: 'CT-e Simplificado', color: 'info' },
+export const cteTipoDocumento = displayTable({
+  cte: { label: 'CT-e', color: 'primary', abbr: 'CT' },
+  cte_os: { label: 'CT-e OS', color: 'secondary', abbr: 'OS' },
+  gtve: { label: 'GTV-e', color: 'accent', abbr: 'GV' },
+  cte_simplificado: { label: 'CT-e Simplificado', color: 'info', abbr: 'CS' },
 })
 
 // tpServ codes of the CT-e (0 to 4) and of the CT-e OS (6 to 8).
@@ -108,6 +108,27 @@ export function cteDocumentLabel(row: CTeKind) {
 
 export function cteDocumentColor(row: CTeKind) {
   return row.TipoDocumento ? cteTipoDocumentoColor(row.TipoDocumento) : cteModeloColor(row.Modelo)
+}
+
+export function cteDocumentAbbr(row: CTeKind) {
+  return row.TipoDocumento ? cteTipoDocumento.abbr(row.TipoDocumento) : cteModelo.abbr(row.Modelo)
+}
+
+// cteStateBadges are the state badges of a CT-e row, in the order of the
+// table and the legend: documento, situação, papel principal, then the
+// other papéis as secondary badges.
+export function cteStateBadges(
+  row: CTeKind & Pick<CTeRow, 'Situacao' | 'CompanyRole' | 'Papeis'>
+): StateBadge[] {
+  const documento = row.TipoDocumento
+    ? cteTipoDocumento.badge(row.TipoDocumento, 'Documento')
+    : cteModelo.badge(row.Modelo, 'Documento')
+  return [
+    documento,
+    cteSituacao.badge(row.Situacao, 'Situação'),
+    ctePapel.badge(row.CompanyRole, 'Papel'),
+    ...cteOtherPapeis(row).map((papel) => ctePapel.badge(papel, 'Papel', true)),
+  ]
 }
 
 // cteEventTitle names an event; one nanci does not recognize falls back to

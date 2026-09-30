@@ -7,6 +7,11 @@ import {
   deadlineLabel,
   manifestacaoColor,
   manifestacaoLabel,
+  nfeCompleteness,
+  nfeManifestacao,
+  nfeRole,
+  nfeSituacao,
+  nfeStateBadges,
   nfeEventColor,
   nfeEventLabel,
   nfeNoteCount,
@@ -23,6 +28,17 @@ import {
   situacaoLabel,
 } from './nfeDisplay'
 import type { NFeStatusResult } from '@/types/desktop'
+import type { DisplayTable } from './sefazDisplay'
+
+// expectShortUniqueAbbrs checks that every value of table has an
+// abbreviation of one or two characters, unique within the table.
+function expectShortUniqueAbbrs(table: DisplayTable) {
+  const abbrs = table.values().map((value) => table.abbr(value))
+  for (const abbr of abbrs) {
+    expect(abbr).toMatch(/^.{1,2}$/u)
+  }
+  expect(new Set(abbrs).size).toBe(abbrs.length)
+}
 
 describe('nfeDisplay', () => {
   it('maps situação values', () => {
@@ -191,5 +207,38 @@ describe('nfeDisplay', () => {
     expect(showsConclusiveDeadline({ Manifestacao: 'ciencia', ConclusiveDue: null })).toBe(false)
     expect(showsConclusiveDeadline({ Manifestacao: 'nenhuma', ConclusiveDue: due })).toBe(false)
     expect(showsConclusiveDeadline({ Manifestacao: 'confirmada', ConclusiveDue: due })).toBe(false)
+  })
+
+  it('abbreviates every value with one or two unique characters', () => {
+    for (const table of [nfeSituacao, nfeCompleteness, nfeManifestacao, nfeRole]) {
+      expectShortUniqueAbbrs(table)
+    }
+    expect(nfeSituacao.values().map(nfeSituacao.abbr)).toEqual(['A', 'D', 'C'])
+    expect(nfeCompleteness.values().map(nfeCompleteness.abbr)).toEqual(['R', 'X'])
+    expect(nfeManifestacao.values().map(nfeManifestacao.abbr)).toEqual(['SM', 'CI', 'CO', 'DE', 'NR'])
+    expect(nfeRole.values().map(nfeRole.abbr)).toEqual(['D', 'E', 'T', 'A', 'SP'])
+  })
+
+  it('lists the state badges as situação, completude, manifestação, papel', () => {
+    const badges = nfeStateBadges({
+      Situacao: 'autorizada',
+      Completeness: 'resumo',
+      Manifestacao: 'ciencia',
+      CompanyRole: 'destinatario',
+    })
+    expect(badges.map((badge) => badge.kind)).toEqual(['Situação', 'Completude', 'Manifestação', 'Papel'])
+    expect(badges.map((badge) => badge.abbr)).toEqual(['A', 'R', 'CI', 'D'])
+    expect(badges[2]).toEqual({
+      key: 'Manifestação:ciencia',
+      abbr: 'CI',
+      label: 'Ciência',
+      color: 'info',
+      kind: 'Manifestação',
+    })
+  })
+
+  it('shows empty states as — in the badges', () => {
+    const badges = nfeStateBadges({ Situacao: '', Completeness: '', Manifestacao: '', CompanyRole: '' })
+    expect(badges.map((badge) => badge.abbr)).toEqual(['—', '—', '—', '—'])
   })
 })

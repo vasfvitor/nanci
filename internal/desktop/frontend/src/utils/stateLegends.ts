@@ -1,37 +1,17 @@
 // Legends for the state badges of the document screens. Each page shows one
-// StateLegend above its table; the labels and colors come from the display
-// tables so the legend never drifts from the badges.
+// StateLegend above its table; the abbreviations, labels and colors come from
+// the display tables so the legend never drifts from the badges.
 
+import { nfseRole, nfseStatus, nfseVisibility } from './nfseDisplay'
 import {
-  getRoleAbbreviation,
-  getStatusAbbreviation,
-  getStatusLabel,
-  getVisibilityAbbreviation,
-  roleColor,
-  roleLabel,
-  statusColor,
-  visibilityColor,
-  visibilityLabel,
-} from './nfseDisplay'
-import {
-  completenessColor,
-  completenessLabel,
-  manifestacaoColor,
-  manifestacaoLabel,
-  nfeRoleColor,
-  nfeRoleLabel,
-  situacaoColor,
-  situacaoLabel,
+  nfeCompleteness,
+  nfeManifestacao,
+  nfeRole,
+  nfeSituacao,
   TACIT_CONFIRMATION_LABEL,
 } from './nfeDisplay'
-import {
-  ctePapelColor,
-  ctePapelLabel,
-  cteSituacaoColor,
-  cteSituacaoLabel,
-  cteTipoDocumentoColor,
-  cteTipoDocumentoLabel,
-} from './cteDisplay'
+import { ctePapel, cteSituacao, cteTipoDocumento } from './cteDisplay'
+import type { DisplayTable } from './sefazDisplay'
 
 export type LegendItem = {
   // Text inside the badge, as the table shows it.
@@ -51,47 +31,51 @@ export type LegendSection = {
   items: LegendItem[]
 }
 
-function abbreviated(badge: string, color: string, name: string, description: string): LegendItem {
-  return { badge, color, name, description }
+// abbreviated explains value of table as an abbreviated badge, named by its
+// full label.
+function abbreviated(table: DisplayTable, value: string, description: string): LegendItem {
+  return {
+    badge: table.abbr(value),
+    color: table.color(value),
+    name: table.label(value),
+    description,
+  }
+}
+
+// labeled explains value of table as a badge that shows its full label.
+function labeled(table: DisplayTable, value: string, description: string): LegendItem {
+  return { badge: table.label(value), color: table.color(value), description }
 }
 
 function item(badge: string, color: string, description: string): LegendItem {
   return { badge, color, description }
 }
 
+// viewedSection explains the "Novo" badge every document table shows.
+export function viewedSection(): LegendSection {
+  return {
+    title: 'Novo',
+    items: [
+      item(
+        'Novo',
+        'warning',
+        'Documento ainda não visto. Sai de "Somente não vistos" quando você usa "Marcar vistos" na seleção ou na lista exibida.'
+      ),
+    ],
+  }
+}
+
+// nfseLegend follows the order of nfseStateBadges: status, visibilidade,
+// papel.
 export function nfseLegend(): LegendSection[] {
   return [
+    viewedSection(),
     {
-      title: 'Novo',
+      title: 'Status',
       items: [
-        item(
-          'Novo',
-          'warning',
-          'Documento ainda não marcado como visto. Ele só sai de "Somente novos" quando você clica em "Marcar Vistos", que marca os documentos da competência, direção e status filtrados. Exportar ou abrir os detalhes não marca.'
-        ),
-      ],
-    },
-    {
-      title: 'Direção',
-      items: [
-        abbreviated(
-          getRoleAbbreviation('prestada'),
-          roleColor('prestada'),
-          roleLabel('prestada'),
-          'A empresa prestou o serviço e emitiu a nota.'
-        ),
-        abbreviated(
-          getRoleAbbreviation('tomada'),
-          roleColor('tomada'),
-          roleLabel('tomada'),
-          'A empresa tomou o serviço; a nota foi emitida por outro prestador.'
-        ),
-        abbreviated(
-          getRoleAbbreviation('intermediario'),
-          roleColor('intermediario'),
-          roleLabel('intermediario'),
-          'A empresa consta como intermediária do serviço.'
-        ),
+        abbreviated(nfseStatus, 'normal', 'Nota válida.'),
+        abbreviated(nfseStatus, 'cancelada', 'Nota cancelada por evento registrado no ADN.'),
+        abbreviated(nfseStatus, 'substituida', 'Nota substituída por outra NFS-e.'),
       ],
     },
     {
@@ -99,52 +83,37 @@ export function nfseLegend(): LegendSection[] {
       note: 'Por que a nota chegou para a empresa.',
       items: [
         abbreviated(
-          getVisibilityAbbreviation('exact_prestador'),
-          visibilityColor('exact_prestador'),
-          visibilityLabel('exact_prestador'),
+          nfseVisibility,
+          'exact_prestador',
           'O CNPJ da empresa é exatamente o prestador da nota.'
         ),
         abbreviated(
-          getVisibilityAbbreviation('exact_tomador'),
-          visibilityColor('exact_tomador'),
-          visibilityLabel('exact_tomador'),
+          nfseVisibility,
+          'exact_tomador',
           'O CNPJ da empresa é exatamente o tomador da nota.'
         ),
         abbreviated(
-          getVisibilityAbbreviation('exact_intermediario'),
-          visibilityColor('exact_intermediario'),
-          visibilityLabel('exact_intermediario'),
+          nfseVisibility,
+          'exact_intermediario',
           'O CNPJ da empresa é exatamente o intermediário da nota.'
         ),
         abbreviated(
-          getVisibilityAbbreviation('same_root_only'),
-          visibilityColor('same_root_only'),
-          visibilityLabel('same_root_only'),
+          nfseVisibility,
+          'same_root_only',
           'A nota é de outro estabelecimento com a mesma raiz de CNPJ (matriz ou filial). A empresa não tem papel fiscal nela.'
         ),
       ],
     },
     {
-      title: 'Status',
+      title: 'Direção',
       items: [
+        abbreviated(nfseRole, 'prestada', 'A empresa prestou o serviço e emitiu a nota.'),
         abbreviated(
-          getStatusAbbreviation('normal'),
-          statusColor('normal'),
-          getStatusLabel('normal'),
-          'Nota válida.'
+          nfseRole,
+          'tomada',
+          'A empresa tomou o serviço; a nota foi emitida por outro prestador.'
         ),
-        abbreviated(
-          getStatusAbbreviation('cancelada'),
-          statusColor('cancelada'),
-          getStatusLabel('cancelada'),
-          'Nota cancelada por evento registrado no ADN.'
-        ),
-        abbreviated(
-          getStatusAbbreviation('substituida'),
-          statusColor('substituida'),
-          getStatusLabel('substituida'),
-          'Nota substituída por outra NFS-e.'
-        ),
+        abbreviated(nfseRole, 'intermediario', 'A empresa consta como intermediária do serviço.'),
       ],
     },
   ]
@@ -154,62 +123,59 @@ function nfeSituacaoSection(): LegendSection {
   return {
     title: 'Situação',
     items: [
-      item(situacaoLabel('autorizada'), situacaoColor('autorizada'), 'Nota autorizada pela SEFAZ.'),
-      item(
-        situacaoLabel('denegada'),
-        situacaoColor('denegada'),
+      labeled(nfeSituacao, 'autorizada', 'Nota autorizada pela SEFAZ.'),
+      labeled(
+        nfeSituacao,
+        'denegada',
         'A SEFAZ negou a autorização por irregularidade fiscal do emitente ou do destinatário. A nota não tem validade.'
       ),
-      item(situacaoLabel('cancelada'), situacaoColor('cancelada'), 'Nota cancelada pelo emitente.'),
+      labeled(nfeSituacao, 'cancelada', 'Nota cancelada pelo emitente.'),
     ],
   }
 }
 
 export function nfeLegend(): LegendSection[] {
   return [
+    viewedSection(),
     nfeSituacaoSection(),
     {
       title: 'Completude',
       items: [
-        item(
-          completenessLabel('resumo'),
-          completenessColor('resumo'),
+        labeled(
+          nfeCompleteness,
+          'resumo',
           'Só os dados básicos chegaram. O XML completo é distribuído depois da Ciência da Operação ou de uma manifestação conclusiva.'
         ),
-        item(
-          completenessLabel('completa'),
-          completenessColor('completa'),
-          'O XML completo está guardado e pode ser exportado.'
-        ),
+        labeled(nfeCompleteness, 'completa', 'O XML completo está guardado e pode ser exportado.'),
       ],
     },
     {
       title: 'Manifestação',
       note: 'Estado derivado dos eventos que a própria empresa registrou. As conclusivas são definitivas na SEFAZ.',
       items: [
-        item(
-          manifestacaoLabel('nenhuma'),
-          manifestacaoColor('nenhuma'),
+        labeled(
+          nfeManifestacao,
+          'nenhuma',
           'Nenhum evento de manifestação registrado pela empresa.'
         ),
-        item(
-          manifestacaoLabel('ciencia'),
-          manifestacaoColor('ciencia'),
+        labeled(
+          nfeManifestacao,
+          'ciencia',
           'Ciência da Operação registrada. Não é conclusiva: libera o XML completo e a nota ainda aguarda uma manifestação conclusiva.'
         ),
-        item(
-          manifestacaoLabel('confirmada'),
-          manifestacaoColor('confirmada'),
+        labeled(
+          nfeManifestacao,
+          'confirmada',
           'Confirmação da Operação: a empresa confirma que a operação ocorreu.'
         ),
-        item(
-          manifestacaoLabel('desconhecida'),
-          manifestacaoColor('desconhecida'),
+        labeled(
+          nfeManifestacao,
+          'desconhecida',
           'Desconhecimento da Operação: a empresa declara não reconhecer a operação.'
         ),
-        item(
-          manifestacaoLabel('nao_realizada'),
-          manifestacaoColor('nao_realizada'),
+        labeled(
+          nfeManifestacao,
+          'nao_realizada',
           'Operação não Realizada: a operação foi solicitada mas não aconteceu, com justificativa.'
         ),
       ],
@@ -230,25 +196,25 @@ export function nfeLegend(): LegendSection[] {
     {
       title: 'Papel',
       items: [
-        item(
-          nfeRoleLabel('destinatario'),
-          nfeRoleColor('destinatario'),
+        labeled(
+          nfeRole,
+          'destinatario',
           'A nota foi emitida contra o CNPJ da empresa. Só esse papel permite manifestar.'
         ),
-        item(
-          nfeRoleLabel('emitente'),
-          nfeRoleColor('emitente'),
+        labeled(
+          nfeRole,
+          'emitente',
           'A empresa emitiu a nota. A SEFAZ não distribui as próprias notas; ela só aparece quando chega por outro motivo.'
         ),
-        item(nfeRoleLabel('transportador'), nfeRoleColor('transportador'), 'A empresa é a transportadora da nota.'),
-        item(
-          nfeRoleLabel('autorizado'),
-          nfeRoleColor('autorizado'),
+        labeled(nfeRole, 'transportador', 'A empresa é a transportadora da nota.'),
+        labeled(
+          nfeRole,
+          'autorizado',
           'O CNPJ da empresa foi informado no grupo autXML, como autorizado a obter o XML.'
         ),
-        item(
-          nfeRoleLabel('none'),
-          nfeRoleColor('none'),
+        labeled(
+          nfeRole,
+          'none',
           'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
         ),
       ],
@@ -294,19 +260,20 @@ export function nfePendingLegend(): LegendSection[] {
 
 export function cteLegend(): LegendSection[] {
   return [
+    viewedSection(),
     {
       title: 'Documento',
       items: [
-        item(cteTipoDocumentoLabel('cte'), cteTipoDocumentoColor('cte'), 'Conhecimento de Transporte Eletrônico (modelo 57).'),
-        item(
-          cteTipoDocumentoLabel('cte_os'),
-          cteTipoDocumentoColor('cte_os'),
+        labeled(cteTipoDocumento, 'cte', 'Conhecimento de Transporte Eletrônico (modelo 57).'),
+        labeled(
+          cteTipoDocumento,
+          'cte_os',
           'CT-e de Outros Serviços (modelo 67): transporte de pessoas, de valores ou excesso de bagagem.'
         ),
-        item(cteTipoDocumentoLabel('gtve'), cteTipoDocumentoColor('gtve'), 'Guia de Transporte de Valores Eletrônica (modelo 64).'),
-        item(
-          cteTipoDocumentoLabel('cte_simplificado'),
-          cteTipoDocumentoColor('cte_simplificado'),
+        labeled(cteTipoDocumento, 'gtve', 'Guia de Transporte de Valores Eletrônica (modelo 64).'),
+        labeled(
+          cteTipoDocumento,
+          'cte_simplificado',
           'CT-e Simplificado (modelo 57), com menos campos.'
         ),
       ],
@@ -315,32 +282,28 @@ export function cteLegend(): LegendSection[] {
       title: 'Papel',
       note: 'A empresa pode ter mais de um papel no mesmo CT-e. O principal vem em cima; os outros, menores, embaixo.',
       items: [
-        item(
-          ctePapelLabel('tomador'),
-          ctePapelColor('tomador'),
-          'A empresa toma o serviço de transporte e escritura o frete.'
-        ),
-        item(ctePapelLabel('destinatario'), ctePapelColor('destinatario'), 'A empresa é a destinatária da carga.'),
-        item(ctePapelLabel('remetente'), ctePapelColor('remetente'), 'A empresa é a remetente da carga.'),
-        item(
-          ctePapelLabel('expedidor'),
-          ctePapelColor('expedidor'),
+        labeled(ctePapel, 'tomador', 'A empresa toma o serviço de transporte e escritura o frete.'),
+        labeled(ctePapel, 'destinatario', 'A empresa é a destinatária da carga.'),
+        labeled(ctePapel, 'remetente', 'A empresa é a remetente da carga.'),
+        labeled(
+          ctePapel,
+          'expedidor',
           'A empresa entrega a carga ao transportador no lugar do remetente.'
         ),
-        item(ctePapelLabel('recebedor'), ctePapelColor('recebedor'), 'A empresa recebe a carga no lugar do destinatário.'),
-        item(
-          ctePapelLabel('emitente'),
-          ctePapelColor('emitente'),
+        labeled(ctePapel, 'recebedor', 'A empresa recebe a carga no lugar do destinatário.'),
+        labeled(
+          ctePapel,
+          'emitente',
           'A empresa emitiu o CT-e. A SEFAZ não distribui os próprios documentos; ele só aparece quando chega por outro motivo.'
         ),
-        item(
-          ctePapelLabel('autorizado'),
-          ctePapelColor('autorizado'),
+        labeled(
+          ctePapel,
+          'autorizado',
           'O CNPJ ou CPF da empresa foi informado no grupo autXML, como autorizado a obter o XML.'
         ),
-        item(
-          ctePapelLabel('none'),
-          ctePapelColor('none'),
+        labeled(
+          ctePapel,
+          'none',
           'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
         ),
       ],
@@ -348,13 +311,13 @@ export function cteLegend(): LegendSection[] {
     {
       title: 'Situação',
       items: [
-        item(cteSituacaoLabel('autorizada'), cteSituacaoColor('autorizada'), 'CT-e autorizado pela SEFAZ.'),
-        item(
-          cteSituacaoLabel('denegada'),
-          cteSituacaoColor('denegada'),
+        labeled(cteSituacao, 'autorizada', 'CT-e autorizado pela SEFAZ.'),
+        labeled(
+          cteSituacao,
+          'denegada',
           'A SEFAZ negou a autorização por irregularidade fiscal de uma das partes. O documento não tem validade.'
         ),
-        item(cteSituacaoLabel('cancelada'), cteSituacaoColor('cancelada'), 'CT-e cancelado pelo emitente.'),
+        labeled(cteSituacao, 'cancelada', 'CT-e cancelado pelo emitente.'),
       ],
     },
     {
