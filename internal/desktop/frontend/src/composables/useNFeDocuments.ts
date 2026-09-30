@@ -19,7 +19,7 @@ export function useNFeDocuments() {
   const { filter, rows, selected, loading, exporting, status, activeTab, resettingCNPJ } =
     storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-  const pagination = useTablePagination()
+  const pagination = useTablePagination('nfe')
   const filterText = ref('')
 
   // searchIndex normalizes the searchable fields once per result set, not on

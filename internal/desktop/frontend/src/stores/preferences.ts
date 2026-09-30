@@ -1,16 +1,33 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
+export type DocumentTable = 'nfse' | 'nfe' | 'cte'
+
+const documentTables: DocumentTable[] = ['nfse', 'nfe', 'cte']
 const defaultRowsPerPage = 25
 
-function readRowsPerPage() {
-  const stored = localStorage.getItem('nanci:documents:rowsPerPage')
-  if (stored === null) return defaultRowsPerPage
+// legacyRowsPerPageKey held one choice for every document table. It is read
+// as the fallback of a table without its own key, and never removed.
+const legacyRowsPerPageKey = 'nanci:documents:rowsPerPage'
 
+export function rowsPerPageKey(table: DocumentTable) {
+  return `nanci:${table}:rowsPerPage`
+}
+
+// parseRowsPerPage accepts a non-negative integer; 0 is Quasar's "Todos".
+function parseRowsPerPage(stored: string | null) {
+  if (stored === null) return null
   const parsed = Number(stored)
-  if (!Number.isInteger(parsed) || parsed < 0) return defaultRowsPerPage
-
+  if (!Number.isInteger(parsed) || parsed < 0) return null
   return parsed
+}
+
+function readRowsPerPage(table: DocumentTable) {
+  return (
+    parseRowsPerPage(localStorage.getItem(rowsPerPageKey(table))) ??
+    parseRowsPerPage(localStorage.getItem(legacyRowsPerPageKey)) ??
+    defaultRowsPerPage
+  )
 }
 
 export const usePreferencesStore = defineStore('preferences', () => {
@@ -23,18 +40,29 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   const darkMode = ref<boolean | 'auto'>(initialDark)
-  const rowsPerPage = ref<number>(readRowsPerPage())
+
+  // rowsPerPage is the rows-per-page choice of each document table.
+  const rowsPerPage = ref<Record<DocumentTable, number>>({
+    nfse: readRowsPerPage('nfse'),
+    nfe: readRowsPerPage('nfe'),
+    cte: readRowsPerPage('cte'),
+  })
 
   watch(darkMode, (val) => {
     localStorage.setItem('darkMode', String(val))
   })
 
-  watch(rowsPerPage, (val) => {
-    localStorage.setItem('nanci:documents:rowsPerPage', String(val))
-  })
+  for (const table of documentTables) {
+    watch(
+      () => rowsPerPage.value[table],
+      (val) => {
+        localStorage.setItem(rowsPerPageKey(table), String(val))
+      }
+    )
+  }
 
   return {
     darkMode,
-    rowsPerPage
+    rowsPerPage,
   }
 })

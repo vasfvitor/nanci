@@ -55,6 +55,17 @@ export function formatCurrencyCents(value: number | null | undefined) {
   })
 }
 
+// formatCents prints integer cents as a pt-BR amount without the currency
+// symbol, for columns whose header already says "(R$)": 123456 is
+// "1.234,56".
+export function formatCents(value: number | null | undefined) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '0,00'
+  return (value / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 export function formatChaveAcesso(chave: string) {
   if (!chave) return ''
   const clean = chave.replace(/^NFS/i, '')

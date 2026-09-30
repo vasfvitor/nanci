@@ -10,22 +10,24 @@ describe('useTablePagination', () => {
     setActivePinia(createPinia())
   })
 
-  it('starts from the saved rows-per-page preference', () => {
-    usePreferencesStore().rowsPerPage = 50
-    expect(useTablePagination().value).toEqual({
+  it('starts from the saved rows-per-page preference of its table', () => {
+    usePreferencesStore().rowsPerPage.nfe = 50
+    expect(useTablePagination('nfe').value).toEqual({
       sortBy: 'issueDate',
       descending: true,
       page: 1,
       rowsPerPage: 50,
     })
+    expect(useTablePagination('cte').value.rowsPerPage).toBe(25)
   })
 
-  it('saves a rows-per-page change for every table', async () => {
-    const pagination = useTablePagination()
+  it('saves a rows-per-page change for its own table only', async () => {
+    const pagination = useTablePagination('cte')
     pagination.value.rowsPerPage = 100
     await nextTick()
 
-    expect(usePreferencesStore().rowsPerPage).toBe(100)
-    expect(useTablePagination().value.rowsPerPage).toBe(100)
+    expect(usePreferencesStore().rowsPerPage).toEqual({ nfse: 25, nfe: 25, cte: 100 })
+    expect(useTablePagination('cte').value.rowsPerPage).toBe(100)
+    expect(useTablePagination('nfse').value.rowsPerPage).toBe(25)
   })
 })

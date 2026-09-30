@@ -183,7 +183,7 @@ const columns: QTableColumn<NFePendingRow>[] = [
     align: 'left',
   },
   {
-    name: 'emissao',
+    name: 'issueDate',
     label: 'Emissão',
     field: 'IssueDate',
     align: 'left',

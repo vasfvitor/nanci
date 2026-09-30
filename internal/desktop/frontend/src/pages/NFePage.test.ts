@@ -146,7 +146,7 @@ function mountPage() {
         },
         'q-table': {
           name: 'QTable',
-          props: ['rows', 'selected', 'pagination'],
+          props: ['rows', 'selected', 'pagination', 'columns'],
           emits: ['update:selected', 'update:pagination'],
           template: '<div><slot name="top" /></div>',
         },
@@ -189,6 +189,16 @@ describe('NFePage', () => {
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
+  })
+
+  it('sorts by the issue date column by default', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const table = wrapper.getComponent({ name: 'QTable' })
+    const columns = table.props('columns') as { name: string; sortable?: boolean }[]
+    expect(table.props('pagination')).toMatchObject({ sortBy: 'issueDate', descending: true })
+    expect(columns.find((column) => column.name === 'issueDate')?.sortable).toBe(true)
   })
 
   it('filters the notes by accent- and case-insensitive text', async () => {

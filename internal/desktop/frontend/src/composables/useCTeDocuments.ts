@@ -18,7 +18,7 @@ export function useCTeDocuments() {
   const { filter, rows, loading, exporting, incremental, status, resettingCNPJ } =
     storeToRefs(store)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-  const pagination = useTablePagination()
+  const pagination = useTablePagination('cte')
   const filterText = ref('')
 
   // searchIndex normalizes the searchable fields once per result set, not on

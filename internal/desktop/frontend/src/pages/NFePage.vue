@@ -460,7 +460,7 @@ const eventsChave = ref('')
 const columns: QTableColumn<NFeRow>[] = [
   { name: 'acoes', label: 'Ações', field: () => '', align: 'center' },
   {
-    name: 'emissao',
+    name: 'issueDate',
     label: 'Emissão',
     field: 'IssueDate',
     sortable: true,

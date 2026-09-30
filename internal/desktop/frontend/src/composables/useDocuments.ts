@@ -10,7 +10,7 @@ export function useDocuments() {
   const documentsStore = useDocumentsStore()
   const { filter, documents, loading, exporting } = storeToRefs(documentsStore)
   const companyOptions = ref<{ label: string; value: string }[]>([])
-  const pagination = useTablePagination()
+  const pagination = useTablePagination('nfse')
 
   async function loadCompanies() {
     const companies = await desktopClient.listCompanies()

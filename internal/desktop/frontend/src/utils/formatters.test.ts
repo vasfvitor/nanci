@@ -1,4 +1,5 @@
 import {
+  formatCents,
   formatChaveAcesso,
   formatChaveDFe,
   formatCpfCnpj,
@@ -53,6 +54,16 @@ describe('formatters', () => {
   it('formats integer cents as BRL', () => {
     expect(formatCurrencyCents(123456).replace(/\s/u, ' ')).toBe('R$ 1.234,56')
     expect(formatCurrencyCents(undefined)).toBe('R$ 0,00')
+  })
+
+  it('formats integer cents without the currency symbol', () => {
+    expect(formatCents(123456)).toBe('1.234,56')
+    expect(formatCents(5)).toBe('0,05')
+    expect(formatCents(-1990)).toBe('-19,90')
+    expect(formatCents(0)).toBe('0,00')
+    expect(formatCents(null)).toBe('0,00')
+    expect(formatCents(undefined)).toBe('0,00')
+    expect(formatCents(Number.NaN)).toBe('0,00')
   })
 
   it('formats access keys for display', () => {
