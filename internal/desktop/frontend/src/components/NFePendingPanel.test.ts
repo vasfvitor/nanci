@@ -1,6 +1,8 @@
 import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import ChaveCell from './ChaveCell.vue'
 import NFePendingPanel from './NFePendingPanel.vue'
+import PartyCell from './PartyCell.vue'
 import type { NFePendingRow } from '@/types/desktop'
 
 vi.mock('quasar', () => ({ useQuasar: () => ({ dark: { isActive: false } }) }))
@@ -90,5 +92,44 @@ describe('NFePendingPanel', () => {
     ])
 
     expect(wrapper.find('[data-chave="ciencia-soon"] .chip').text()).toBe('2 d restantes')
+  })
+
+  it('shows the chave and the emitente with the document cells and the value without the currency', () => {
+    const wrapper = shallowMount(NFePendingPanel, {
+      props: {
+        rows: [row('a', { EmitenteName: 'Metalúrgica Horizonte', EmitenteCNPJ: '27184593000140' })],
+        loading: false,
+        busy: () => false,
+      },
+      global: {
+        stubs: {
+          QTable: {
+            name: 'QTable',
+            props: ['rows', 'columns'],
+            template:
+              '<div><div v-for="r in rows" :key="r.ChaveAcesso"><slot name="body-cell-chave" :row="r" /><slot name="body-cell-emitente" :row="r" /></div></div>',
+          },
+          QTd: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    const table = wrapper.findAllComponents({ name: 'QTable' })[0]
+    const columns = table?.props('columns') as { name: string; format?: (value: number) => string }[]
+    expect(columns.map((column) => column.name)).toEqual([
+      'numero',
+      'chave',
+      'emitente',
+      'issueDate',
+      'valor',
+      'prazo',
+      'acoes',
+    ])
+    expect(columns.find((column) => column.name === 'valor')?.format?.(123456)).toBe('1.234,56')
+    expect(wrapper.findComponent(ChaveCell).props('chave')).toBe('a')
+    expect(wrapper.findComponent(PartyCell).props()).toEqual({
+      name: 'Metalúrgica Horizonte',
+      cnpj: '27184593000140',
+    })
   })
 })

@@ -25,6 +25,7 @@ vi.mock('@/platform/wails/client', () => ({
     resetNFe: vi.fn(),
     exportNFeXML: vi.fn(),
     exportNFeZIP: vi.fn(),
+    markNFeViewed: vi.fn(),
   },
 }))
 
@@ -63,6 +64,16 @@ function nfeRow(chave: string, fields: Partial<NFeRow> = {}): NFeRow {
     ...fields,
   } as NFeRow
 }
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
+const plainExport = { incremental: false, includeResumos: false }
 
 describe('useNFeDocuments', () => {
   beforeEach(() => {
@@ -201,18 +212,18 @@ describe('useNFeDocuments', () => {
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
 
-    await expect(nfe.exportZIP([])).resolves.toBeNull()
+    await expect(nfe.exportZIP([], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
   })
 
-  it('exports XML and ZIP for the given chaves', async () => {
+  it('exports XML and ZIP for the given chaves with the choice of the dialog', async () => {
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
     nfe.filter.value.Competence = '2024-09'
     nfe.filter.value.Role = 'destinatario'
 
     await nfe.exportXML('chave-1')
-    await nfe.exportZIP(['chave-1'])
+    await nfe.exportZIP(['chave-1'], { incremental: true, includeResumos: true })
 
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-1' })
     expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith({
@@ -220,8 +231,8 @@ describe('useNFeDocuments', () => {
       Competence: '',
       Role: '',
       ChavesAcesso: ['chave-1'],
-      IncludeResumos: false,
-      Incremental: false,
+      IncludeResumos: true,
+      Incremental: true,
     })
   })
 
@@ -231,13 +242,13 @@ describe('useNFeDocuments', () => {
     nfe.filter.value.CNPJ = null as unknown as string
 
     await expect(nfe.exportXML('chave-1')).resolves.toBeNull()
-    await expect(nfe.exportZIP(['chave-1'])).resolves.toBeNull()
+    await expect(nfe.exportZIP(['chave-1'], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
     expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
 
     nfe.filter.value.CNPJ = '123'
     await nfe.exportXML('chave-1')
-    await nfe.exportZIP(['chave-1'])
+    await nfe.exportZIP(['chave-1'], plainExport)
 
     const cnpj = useNFeDocumentsStore().listInput.CNPJ
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
@@ -254,12 +265,12 @@ describe('useNFeDocuments', () => {
 
     const firstPage = useNFeDocuments()
     firstPage.filter.value.CNPJ = '123'
-    const exporting = firstPage.exportZIP(['chave-1'])
+    const exporting = firstPage.exportZIP(['chave-1'], plainExport)
 
     const remountedPage = useNFeDocuments()
     expect(remountedPage.exporting.value).toBe(true)
     await expect(remountedPage.exportXML('chave-1')).resolves.toBeNull()
-    await expect(remountedPage.exportZIP(['chave-1'])).resolves.toBeNull()
+    await expect(remountedPage.exportZIP(['chave-1'], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
     expect(desktopClient.exportNFeZIP).toHaveBeenCalledTimes(1)
 
@@ -298,23 +309,91 @@ describe('useNFeDocuments', () => {
     expect(nfe.filteredRows.value).toEqual([other])
   })
 
-  it('exports the selected rows, or else the rows the grid shows', async () => {
-    vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue(null)
+  it('searches the destinatário too', async () => {
+    const nfe = useNFeDocuments()
+    const vendida = nfeRow('a', { DestinatarioName: 'Agropecuária Campo Verde', DestinatarioCNPJ: '45091726000115' })
+    useNFeDocumentsStore().setRows([vendida, nfeRow('b')])
+
+    nfe.filterText.value = 'agropecuaria'
+    expect(nfe.filteredRows.value).toEqual([vendida])
+    nfe.filterText.value = '450917'
+    expect(nfe.filteredRows.value).toEqual([vendida])
+  })
+
+  it('scopes "Marcar vistos" and "Exportar" to the selection, or else the rows the grid shows', () => {
+    const nfe = useNFeDocuments()
+    const a = nfeRow('a', { EmitenteName: 'Outra' })
+    const b = nfeRow('b', { EmitenteName: 'Outra', ViewedAt: new Date() })
+    const c = nfeRow('c')
+    useNFeDocumentsStore().setRows([a, b, c])
+    nfe.filterText.value = 'outra'
+
+    expect(nfe.scopeRows.value).toEqual([a, b])
+    expect(nfe.unviewedChaves.value).toEqual(['a'])
+
+    nfe.selected.value = [c]
+    expect(nfe.scopeRows.value).toEqual([c])
+    expect(nfe.unviewedChaves.value).toEqual(['c'])
+  })
+
+  it('marks NF-e viewed by chave and drops their "Novo" badge in place', async () => {
+    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(1)
+    const store = useNFeDocumentsStore()
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
-    useNFeDocumentsStore().setRows([nfeRow('a'), nfeRow('b', { EmitenteName: 'Outro' })])
-    nfe.filterText.value = 'outro'
+    store.setRows([nfeRow('a'), nfeRow('b')])
+    nfe.selected.value = [store.rows[0] as NFeRow]
 
-    await nfe.exportZIP()
-    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ChavesAcesso: ['b'] })
-    )
+    await expect(nfe.markViewed(['a'])).resolves.toBe(1)
 
-    nfe.selected.value = [nfeRow('a')]
-    await nfe.exportZIP()
-    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ChavesAcesso: ['a'] })
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith({
+      ...store.listInput,
+      ChavesAcesso: ['a'],
+    })
+    expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
+    expect(store.rows[1]?.ViewedAt).toBeUndefined()
+    expect(nfe.selected.value).toEqual([])
+    expect(desktopClient.listNFe).not.toHaveBeenCalled()
+  })
+
+  it('searches again after marking with "Somente não vistos" on', async () => {
+    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(2)
+    const nfe = useNFeDocuments()
+    nfe.filter.value.CNPJ = '123'
+    nfe.filter.value.OnlyUnread = true
+
+    await nfe.markViewed(['a', 'b'])
+
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(
+      expect.objectContaining({ OnlyUnread: true, ChavesAcesso: ['a', 'b'] })
     )
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+  })
+
+  it('does not mark without a company or chaves', async () => {
+    const nfe = useNFeDocuments()
+    await expect(nfe.markViewed(['a'])).resolves.toBeNull()
+    nfe.filter.value.CNPJ = '123'
+    await expect(nfe.markViewed([])).resolves.toBeNull()
+    expect(desktopClient.markNFeViewed).not.toHaveBeenCalled()
+  })
+
+  it('keeps "Marcar vistos" visible to a second instance while it is pending', async () => {
+    const mark = deferred<number>()
+    vi.mocked(desktopClient.markNFeViewed).mockReturnValue(mark.promise)
+
+    const firstPage = useNFeDocuments()
+    firstPage.filter.value.CNPJ = '123'
+    const marking = firstPage.markViewed(['a'])
+
+    const remountedPage = useNFeDocuments()
+    expect(remountedPage.markingViewed.value).toBe(true)
+    await expect(remountedPage.markViewed(['a'])).resolves.toBeNull()
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledTimes(1)
+
+    mark.resolve(1)
+    await marking
+    expect(remountedPage.markingViewed.value).toBe(false)
   })
 
   it('keeps a known company selected and falls back to the first', async () => {

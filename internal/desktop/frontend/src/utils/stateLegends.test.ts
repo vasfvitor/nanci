@@ -11,6 +11,7 @@ import {
   completenessFilterOptions,
   manifestacaoFilterOptions,
   nfeRoleFilterOptions,
+  nfeStateBadges,
   situacaoFilterOptions,
 } from './nfeDisplay'
 import { ctePapelFilterOptions, cteSituacaoFilterOptions, cteStateBadges } from './cteDisplay'
@@ -69,13 +70,28 @@ describe('stateLegends', () => {
     }
   })
 
-  it('nfeLegend covers every NF-e filter value', () => {
+  it('nfeLegend explains every NF-e abbreviation, named like the filters', () => {
     const legend = nfeLegend()
-    expect(badges(legend, 'Situação')).toEqual(filterLabels(situacaoFilterOptions))
-    expect(badges(legend, 'Completude')).toEqual(filterLabels(completenessFilterOptions))
-    expect(badges(legend, 'Manifestação')).toEqual(filterLabels(manifestacaoFilterOptions))
-    expect(badges(legend, 'Papel')).toEqual(filterLabels(nfeRoleFilterOptions))
+    expect(badges(legend, 'Situação')).toEqual(['A', 'D', 'C'])
+    expect(badges(legend, 'Completude')).toEqual(['R', 'X'])
+    expect(badges(legend, 'Manifestação')).toEqual(['SM', 'CI', 'CO', 'DE', 'NR'])
+    expect(badges(legend, 'Papel')).toEqual(['D', 'E', 'T', 'A', 'SP'])
+    expect(names(legend, 'Situação')).toEqual(filterLabels(situacaoFilterOptions))
+    expect(names(legend, 'Completude')).toEqual(filterLabels(completenessFilterOptions))
+    expect(names(legend, 'Manifestação')).toEqual(filterLabels(manifestacaoFilterOptions))
+    expect(names(legend, 'Papel')).toEqual(filterLabels(nfeRoleFilterOptions))
     expect(badges(legend, 'Prazo')).toEqual(['Confirmada tacitamente'])
+  })
+
+  it('nfeLegend lists the groups in the order of the badges, then the deadline chip', () => {
+    const titles = nfeLegend().map((entry) => entry.title)
+    const kinds = nfeStateBadges({
+      Situacao: 'autorizada',
+      Completeness: 'resumo',
+      Manifestacao: 'nenhuma',
+      CompanyRole: 'destinatario',
+    }).map((badge) => badge.kind)
+    expect(titles).toEqual(['Novo', ...kinds, 'Prazo'])
   })
 
   it('nfePendingLegend describes both pending groups with outlined chips', () => {

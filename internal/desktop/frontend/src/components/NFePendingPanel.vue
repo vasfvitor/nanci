@@ -35,6 +35,18 @@
         hide-pagination
         no-data-label="Nenhuma nota aguardando ciência."
       >
+        <template #body-cell-chave="cellProps">
+          <q-td :props="cellProps">
+            <ChaveCell :chave="cellProps.row.ChaveAcesso" />
+          </q-td>
+        </template>
+
+        <template #body-cell-emitente="cellProps">
+          <q-td :props="cellProps">
+            <PartyCell :name="cellProps.row.EmitenteName" :cnpj="cellProps.row.EmitenteCNPJ" />
+          </q-td>
+        </template>
+
         <template #body-cell-prazo="cellProps">
           <q-td :props="cellProps">
             <q-chip
@@ -97,6 +109,18 @@
         hide-pagination
         no-data-label="Nenhuma nota aguardando manifestação conclusiva."
       >
+        <template #body-cell-chave="cellProps">
+          <q-td :props="cellProps">
+            <ChaveCell :chave="cellProps.row.ChaveAcesso" />
+          </q-td>
+        </template>
+
+        <template #body-cell-emitente="cellProps">
+          <q-td :props="cellProps">
+            <PartyCell :name="cellProps.row.EmitenteName" :cnpj="cellProps.row.EmitenteCNPJ" />
+          </q-td>
+        </template>
+
         <template #body-cell-prazo="cellProps">
           <q-td :props="cellProps">
             <q-chip
@@ -137,8 +161,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
+import ChaveCell from './ChaveCell.vue'
+import PartyCell from './PartyCell.vue'
 import type { ISODateValue, NFePendingRow } from '@/types/desktop'
-import { formatCurrencyCents, formatDate, formatNFeNumber, formatParty } from '@/utils/formatters'
+import { formatCents, formatDate, formatNFeNumber } from '@/utils/formatters'
 import {
   conclusiveDeadlineLabel,
   deadlineColor,
@@ -168,18 +194,21 @@ const allSemCienciaBusy = computed(() => semCiencia.value.every((row) => props.b
 // The backend lists pending rows nearest conclusive deadline first.
 const semConclusiva = computed(() => props.rows.filter((row) => row.Kind === 'sem_conclusiva'))
 
+// The work-queue columns: which note, from whom, how much and how long is
+// left. The chave and the emitente use the cells of the document tables.
 const columns: QTableColumn<NFePendingRow>[] = [
   {
     name: 'numero',
-    label: 'Número / Série',
+    label: 'Nº / Série',
     field: (row) => formatNFeNumber(row.Numero, row.Serie),
     align: 'left',
     classes: 'text-mono',
   },
+  { name: 'chave', label: 'Chave de acesso', field: 'ChaveAcesso', align: 'left' },
   {
     name: 'emitente',
     label: 'Emitente',
-    field: (row) => formatParty(row.EmitenteName, row.EmitenteCNPJ),
+    field: (row) => row.EmitenteName || row.EmitenteCNPJ,
     align: 'left',
   },
   {
@@ -192,11 +221,11 @@ const columns: QTableColumn<NFePendingRow>[] = [
   },
   {
     name: 'valor',
-    label: 'Valor',
+    label: 'Valor (R$)',
     field: 'TotalValue',
     align: 'right',
     classes: 'text-mono',
-    format: (value: number) => formatCurrencyCents(value),
+    format: (value: number) => formatCents(value),
   },
   { name: 'prazo', label: 'Prazo', field: 'ConclusiveDue', align: 'left' },
   { name: 'acoes', label: 'Ações', field: () => '', align: 'right' },

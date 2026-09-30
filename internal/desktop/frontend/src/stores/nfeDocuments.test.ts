@@ -52,7 +52,18 @@ describe('nfeDocuments store', () => {
       Manifestacao: '',
       Role: 'destinatario',
       EmitenteCNPJ: '',
+      OnlyUnread: false,
     })
+  })
+
+  it('sends "Somente não vistos" in the list request', () => {
+    const store = useNFeDocumentsStore()
+    store.filter.OnlyUnread = true
+    expect(store.listInput.OnlyUnread).toBe(true)
+
+    // A missing field reads as false.
+    store.filter.OnlyUnread = null as unknown as boolean
+    expect(store.listInput.OnlyUnread).toBe(false)
   })
 
   it('patches one row and the selection, or drops it when it no longer matches', () => {

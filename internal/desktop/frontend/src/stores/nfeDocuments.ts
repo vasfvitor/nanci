@@ -15,6 +15,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     Manifestacao: '',
     Role: '',
     EmitenteCNPJ: '',
+    OnlyUnread: false,
   })
 
   // listInput is the only place the ListNFe request is built from the filter.
@@ -27,6 +28,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     Manifestacao: filter.value.Manifestacao || '',
     Role: filter.value.Role || '',
     EmitenteCNPJ: filter.value.EmitenteCNPJ || '',
+    OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
   const rows = ref<NFeRow[]>([])
@@ -35,6 +37,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
+  // markingViewed is true while a "Marcar vistos" request is in flight.
+  const markingViewed = shallowRef(false)
   const status = shallowRef<NFeStatusResult | null>(null)
   const activeTab = shallowRef<NFeTab>('notas')
   const pending = ref<NFePendingRow[]>([])
@@ -87,6 +91,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     filterText,
     loading,
     exporting,
+    markingViewed,
     status,
     activeTab,
     pending,

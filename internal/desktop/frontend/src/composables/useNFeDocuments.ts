@@ -1,6 +1,6 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { companyOption } from '@/composables/useCompanies'
+import { useCompanyFilter } from '@/composables/useCompanyFilter'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
@@ -8,7 +8,8 @@ import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { CompanySummary, NFeRow } from '@/types/desktop'
+import type { NFeRow } from '@/types/desktop'
+import { withViewed } from '@/utils/formatters'
 import { nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
 import { nfeRowActions } from '@/utils/nfeManifestacao'
 
@@ -23,11 +24,18 @@ export function useNFeDocuments() {
     filterText,
     loading,
     exporting,
+    markingViewed,
     status,
     activeTab,
     resettingCNPJ,
   } = storeToRefs(store)
-  const companyOptions = ref<{ label: string; value: string }[]>([])
+  const cnpj = computed({
+    get: () => filter.value.CNPJ,
+    set: (value: string) => {
+      filter.value.CNPJ = value
+    },
+  })
+  const { companyOptions, loadCompanies } = useCompanyFilter(cnpj)
   const pagination = useTablePagination('nfe')
 
   // filteredRows is what the grid shows: the search result narrowed by the
@@ -35,11 +43,25 @@ export function useNFeDocuments() {
   const { filteredRows } = useRowTextFilter({
     rows,
     filterText,
-    fields: (row) => [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName],
+    fields: (row) => [
+      row.ChaveAcesso,
+      row.Numero,
+      row.EmitenteCNPJ,
+      row.EmitenteName,
+      row.DestinatarioCNPJ,
+      row.DestinatarioName,
+    ],
     onChange: () => {
       pagination.value.page = 1
     },
   })
+
+  // scopeRows are the NF-e "Marcar vistos" and "Exportar" act on: the
+  // selection, or else every row the grid shows.
+  const scopeRows = computed(() => (selected.value.length > 0 ? selected.value : filteredRows.value))
+  const unviewedChaves = computed(() =>
+    scopeRows.value.filter((row) => !row.ViewedAt).map((row) => row.ChaveAcesso)
+  )
 
   // actionsByChave holds the row menu state of every row the grid shows,
   // computed once per result set rather than on each render of a row.
@@ -68,17 +90,6 @@ export function useNFeDocuments() {
   )
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
-
-  // loadCompanies lists the companies and keeps a known one selected,
-  // falling back to the first.
-  async function loadCompanies(): Promise<CompanySummary[]> {
-    const companies = await desktopClient.listCompanies()
-    companyOptions.value = companies.map(companyOption)
-    if (!companyOptions.value.some((option) => option.value === filter.value.CNPJ)) {
-      filter.value.CNPJ = companyOptions.value[0]?.value ?? ''
-    }
-    return companies
-  }
 
   // syncNFe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
@@ -124,16 +135,14 @@ export function useNFeDocuments() {
     }
   }
 
-  // exportChaves are the chaves a ZIP export takes by default: the selected
-  // rows, or else every row the grid shows.
-  const exportChaves = computed(() =>
-    (selected.value.length > 0 ? selected.value : filteredRows.value).map((row) => row.ChaveAcesso)
-  )
-
-  // exportZIP exports exactly the given chaves, by default exportChaves.
-  // Competence and Role are left empty: the grid may hold the result of an
-  // earlier search, and an empty list would export everything.
-  async function exportZIP(chavesAcesso: string[] = exportChaves.value) {
+  // exportZIP exports exactly the given chaves; incremental leaves out the
+  // ones exported before and includeResumos adds the resumos, which have no
+  // complete XML. Competence and Role are left empty: the grid may hold the
+  // result of an earlier search, and an empty list would export everything.
+  async function exportZIP(
+    chavesAcesso: string[],
+    choice: { incremental: boolean; includeResumos: boolean }
+  ) {
     const cnpj = store.listInput.CNPJ
     if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
     exporting.value = true
@@ -143,11 +152,33 @@ export function useNFeDocuments() {
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
-        IncludeResumos: false,
-        Incremental: false,
+        IncludeResumos: choice.includeResumos,
+        Incremental: choice.incremental,
       })
     } finally {
       exporting.value = false
+    }
+  }
+
+  // markViewed marks the given NF-e as viewed and returns how many were new.
+  // With "Somente não vistos" on the list is searched again, so they leave
+  // it; otherwise they lose the "Novo" badge in place. The selection is
+  // cleared either way.
+  async function markViewed(chavesAcesso: string[]) {
+    const input = store.listInput
+    if (!input.CNPJ || markingViewed.value || chavesAcesso.length === 0) return null
+    markingViewed.value = true
+    try {
+      const count = await desktopClient.markNFeViewed({ ...input, ChavesAcesso: chavesAcesso })
+      selected.value = []
+      if (input.OnlyUnread) {
+        await search()
+      } else {
+        store.setRows(withViewed(rows.value, chavesAcesso))
+      }
+      return count
+    } finally {
+      markingViewed.value = false
     }
   }
 
@@ -157,11 +188,14 @@ export function useNFeDocuments() {
     selected,
     loading,
     exporting,
+    markingViewed,
     status,
     activeTab,
     pagination,
     filterText,
     filteredRows,
+    scopeRows,
+    unviewedChaves,
     companyOptions,
     companyName,
     pendingCount,
@@ -179,5 +213,6 @@ export function useNFeDocuments() {
     resetNFe,
     exportXML,
     exportZIP,
+    markViewed,
   }
 }

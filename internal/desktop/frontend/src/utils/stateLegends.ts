@@ -42,11 +42,6 @@ function abbreviated(table: DisplayTable, value: string, description: string): L
   }
 }
 
-// labeled explains value of table as a badge that shows its full label.
-function labeled(table: DisplayTable, value: string, description: string): LegendItem {
-  return { badge: table.label(value), color: table.color(value), description }
-}
-
 function item(badge: string, color: string, description: string): LegendItem {
   return { badge, color, description }
 }
@@ -119,61 +114,63 @@ export function nfseLegend(): LegendSection[] {
   ]
 }
 
-function nfeSituacaoSection(): LegendSection {
-  return {
-    title: 'Situação',
-    items: [
-      labeled(nfeSituacao, 'autorizada', 'Nota autorizada pela SEFAZ.'),
-      labeled(
-        nfeSituacao,
-        'denegada',
-        'A SEFAZ negou a autorização por irregularidade fiscal do emitente ou do destinatário. A nota não tem validade.'
-      ),
-      labeled(nfeSituacao, 'cancelada', 'Nota cancelada pelo emitente.'),
-    ],
-  }
-}
-
+// nfeLegend follows the order of nfeStateBadges: situação, completude,
+// manifestação, papel; the deadline chip under the badges comes last.
 export function nfeLegend(): LegendSection[] {
   return [
     viewedSection(),
-    nfeSituacaoSection(),
+    {
+      title: 'Situação',
+      items: [
+        abbreviated(nfeSituacao, 'autorizada', 'Nota autorizada pela SEFAZ.'),
+        abbreviated(
+          nfeSituacao,
+          'denegada',
+          'A SEFAZ negou a autorização por irregularidade fiscal do emitente ou do destinatário. A nota não tem validade.'
+        ),
+        abbreviated(nfeSituacao, 'cancelada', 'Nota cancelada pelo emitente.'),
+      ],
+    },
     {
       title: 'Completude',
       items: [
-        labeled(
+        abbreviated(
           nfeCompleteness,
           'resumo',
           'Só os dados básicos chegaram. O XML completo é distribuído depois da Ciência da Operação ou de uma manifestação conclusiva.'
         ),
-        labeled(nfeCompleteness, 'completa', 'O XML completo está guardado e pode ser exportado.'),
+        abbreviated(
+          nfeCompleteness,
+          'completa',
+          'O XML completo está guardado e pode ser exportado.'
+        ),
       ],
     },
     {
       title: 'Manifestação',
       note: 'Estado derivado dos eventos que a própria empresa registrou. As conclusivas são definitivas na SEFAZ.',
       items: [
-        labeled(
+        abbreviated(
           nfeManifestacao,
           'nenhuma',
           'Nenhum evento de manifestação registrado pela empresa.'
         ),
-        labeled(
+        abbreviated(
           nfeManifestacao,
           'ciencia',
           'Ciência da Operação registrada. Não é conclusiva: libera o XML completo e a nota ainda aguarda uma manifestação conclusiva.'
         ),
-        labeled(
+        abbreviated(
           nfeManifestacao,
           'confirmada',
           'Confirmação da Operação: a empresa confirma que a operação ocorreu.'
         ),
-        labeled(
+        abbreviated(
           nfeManifestacao,
           'desconhecida',
           'Desconhecimento da Operação: a empresa declara não reconhecer a operação.'
         ),
-        labeled(
+        abbreviated(
           nfeManifestacao,
           'nao_realizada',
           'Operação não Realizada: a operação foi solicitada mas não aconteceu, com justificativa.'
@@ -181,8 +178,34 @@ export function nfeLegend(): LegendSection[] {
       ],
     },
     {
+      title: 'Papel',
+      items: [
+        abbreviated(
+          nfeRole,
+          'destinatario',
+          'A nota foi emitida contra o CNPJ da empresa. Só esse papel permite manifestar.'
+        ),
+        abbreviated(
+          nfeRole,
+          'emitente',
+          'A empresa emitiu a nota. A SEFAZ não distribui as próprias notas; ela só aparece quando chega por outro motivo.'
+        ),
+        abbreviated(nfeRole, 'transportador', 'A empresa é a transportadora da nota.'),
+        abbreviated(
+          nfeRole,
+          'autorizado',
+          'O CNPJ da empresa foi informado no grupo autXML, como autorizado a obter o XML.'
+        ),
+        abbreviated(
+          nfeRole,
+          'none',
+          'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
+        ),
+      ],
+    },
+    {
       title: 'Prazo',
-      note: 'Chip ao lado da ciência: dias até o fim dos 90 dias para a manifestação conclusiva, contados da autorização. Amarelo a 30 dias do fim, vermelho a 10.',
+      note: 'Chip sob as siglas das notas com ciência: dias até o fim dos 90 dias para a manifestação conclusiva, contados da autorização. Amarelo a 30 dias do fim, vermelho a 10.',
       items: [
         {
           badge: TACIT_CONFIRMATION_LABEL,
@@ -191,32 +214,6 @@ export function nfeLegend(): LegendSection[] {
           description:
             'Os 90 dias passaram sem manifestação conclusiva. A operação é considerada ocorrida, com os mesmos efeitos da confirmação.',
         },
-      ],
-    },
-    {
-      title: 'Papel',
-      items: [
-        labeled(
-          nfeRole,
-          'destinatario',
-          'A nota foi emitida contra o CNPJ da empresa. Só esse papel permite manifestar.'
-        ),
-        labeled(
-          nfeRole,
-          'emitente',
-          'A empresa emitiu a nota. A SEFAZ não distribui as próprias notas; ela só aparece quando chega por outro motivo.'
-        ),
-        labeled(nfeRole, 'transportador', 'A empresa é a transportadora da nota.'),
-        labeled(
-          nfeRole,
-          'autorizado',
-          'O CNPJ da empresa foi informado no grupo autXML, como autorizado a obter o XML.'
-        ),
-        labeled(
-          nfeRole,
-          'none',
-          'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
-        ),
       ],
     },
   ]
