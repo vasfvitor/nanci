@@ -38,38 +38,46 @@ func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (
 	return comp, nil
 }
 
-// parseAccessKeys validates and normalizes the chaves a user typed. An
-// invalid one fails the whole call with an error matching
-// dfe.ErrInvalidAccessKey.
-func parseAccessKeys(raw []string) ([]string, error) {
+// parseKeys validates and normalizes the chaves a user typed with parse. An
+// invalid one fails the whole call.
+func parseKeys(raw []string, parse func(string) (string, error)) ([]string, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
 	chaves := make([]string, 0, len(raw))
 	for _, r := range raw {
-		key, err := dfe.ParseAccessKey(r)
+		key, err := parse(r)
 		if err != nil {
 			return nil, fmt.Errorf("chave de acesso inválida %q: %w", strings.TrimSpace(r), err)
 		}
-		chaves = append(chaves, string(key))
+		chaves = append(chaves, key)
 	}
 	return chaves, nil
 }
 
-// parseNFSeAccessKeys is parseAccessKeys for the 50-digit NFS-e chave.
+// parseAccessKeys parses 44-digit NF-e/CT-e chaves. An invalid one fails
+// with an error matching dfe.ErrInvalidAccessKey.
+func parseAccessKeys(raw []string) ([]string, error) {
+	return parseKeys(raw, func(r string) (string, error) {
+		key, err := dfe.ParseAccessKey(r)
+		return string(key), err
+	})
+}
+
+// nfseIDPrefix starts the infNFSe Id that the parser stores as the chave when
+// a document has no chNFSe.
+const nfseIDPrefix = "NFS"
+
+// parseNFSeAccessKeys parses 50-digit NFS-e chaves. The "NFS" + 50-digit
+// fallback form is kept verbatim so it matches the stored chave.
 func parseNFSeAccessKeys(raw []string) ([]string, error) {
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	chaves := make([]string, 0, len(raw))
-	for _, r := range raw {
-		key, err := nfse.ParseAccessKey(r)
-		if err != nil {
-			return nil, fmt.Errorf("chave de acesso inválida %q: %w", strings.TrimSpace(r), err)
+	return parseKeys(raw, func(r string) (string, error) {
+		trimmed := strings.TrimSpace(r)
+		if _, err := nfse.ParseAccessKey(strings.TrimPrefix(trimmed, nfseIDPrefix)); err != nil {
+			return "", err
 		}
-		chaves = append(chaves, string(key))
-	}
-	return chaves, nil
+		return trimmed, nil
+	})
 }
 
 func lookupCredentialByID(ctx context.Context, repo *credential.Store, id nfse.CredentialID) (*nfse.Credential, error) {

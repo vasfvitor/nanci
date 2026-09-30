@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -146,8 +147,10 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		"doc-1": "35503082245852546000109000000000000126060000000011",
 		"doc-2": "35503082245852546000109000000000000226060000000022",
 		"doc-3": "35503082245852546000109000000000000326060000000033",
+		// A document without chNFSe keeps its infNFSe Id as the chave.
+		"doc-4": "NFS35503082245852546000109000000000000426060000000044",
 	}
-	for _, id := range []string{"doc-1", "doc-2", "doc-3"} {
+	for _, id := range []string{"doc-1", "doc-2", "doc-3", "doc-4"} {
 		if _, err := db.ExecContext(ctx, insertDoc, id, chaves[id], now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash-"+id); err != nil {
 			t.Fatalf("insert %s err: %v", id, err)
 		}
@@ -180,8 +183,20 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 	for _, d := range docs {
 		ids = append(ids, string(d.ID))
 	}
-	if len(ids) != 2 || ids[0] == "doc-2" || ids[1] == "doc-2" {
-		t.Errorf("esperava doc-1 e doc-3 não lidos, obteve %v", ids)
+	if len(ids) != 3 || slices.Contains(ids, "doc-2") {
+		t.Errorf("esperava doc-1, doc-3 e doc-4 não lidos, obteve %v", ids)
+	}
+
+	// The "NFS" fallback chave is accepted as stored.
+	count, err = application.Documents.MarkDocumentsViewed(ctx, app.ListInput{
+		CNPJ:         "45852546000109",
+		ChavesAcesso: []string{chaves["doc-4"]},
+	})
+	if err != nil {
+		t.Fatalf("MarkDocumentsViewed com chave NFS falhou: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("esperava marcar o documento da chave NFS, marcou %d", count)
 	}
 
 	// Filtering the list by chaves works the same way.
