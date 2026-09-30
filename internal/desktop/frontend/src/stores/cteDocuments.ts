@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
+import { pruneSelection } from '@/utils/selection'
 
 // compactCode keeps the letters and digits of a typed CNPJ or access key,
 // uppercased, so a pasted "12.345.678/0001-00" or a key in groups of 4 match
@@ -54,13 +55,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   // still present, swapped for their fresh rows.
   function setRows(next: CTeRow[]) {
     rows.value = next
-    if (selected.value.length === 0) return
-
-    const byChave = new Map(next.map((row) => [row.ChaveAcesso, row]))
-    selected.value = selected.value.flatMap((row) => {
-      const fresh = byChave.get(row.ChaveAcesso)
-      return fresh ? [fresh] : []
-    })
+    selected.value = pruneSelection(next, selected.value)
   }
 
   return {

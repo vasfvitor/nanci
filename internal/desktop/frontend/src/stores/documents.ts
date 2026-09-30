@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { DocumentRow, ListDocumentsInput } from '@/types/desktop'
+import { pruneSelection } from '@/utils/selection'
 
 // The store holds NFS-e page state that outlives the page.
 export const useDocumentsStore = defineStore('documents', () => {
@@ -35,13 +36,7 @@ export const useDocumentsStore = defineStore('documents', () => {
   // that are still present, swapped for their fresh rows.
   function setRows(next: DocumentRow[]) {
     documents.value = next
-    if (selected.value.length === 0) return
-
-    const byChave = new Map(next.map((row) => [row.ChaveAcesso, row]))
-    selected.value = selected.value.flatMap((row) => {
-      const fresh = byChave.get(row.ChaveAcesso)
-      return fresh ? [fresh] : []
-    })
+    selected.value = pruneSelection(next, selected.value)
   }
 
   function resetDocuments() {

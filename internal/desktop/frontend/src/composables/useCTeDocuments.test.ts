@@ -271,18 +271,29 @@ describe('useCTeDocuments', () => {
     expect(cte.unviewedChaves.value).toEqual(['c'])
   })
 
-  it('marks CT-e viewed by chave and drops their "Novo" badge in place', async () => {
+  it('marks CT-e viewed by company and chave only and drops their "Novo" badge in place', async () => {
     vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(1)
     const store = useCTeDocumentsStore()
     const cte = useCTeDocuments()
     cte.filter.value.CNPJ = '123'
     store.rows = [cteRow('a'), cteRow('b')]
     cte.selected.value = [store.rows[0] as CTeRow]
+    // A filter edited after the search that filled the grid must not narrow the marking.
+    cte.filter.value.Competence = '2026-06'
+    cte.filter.value.Modelo = '67'
+    cte.filter.value.TomadorCNPJ = '98.765.432/0001-99'
 
-    await expect(cte.markViewed(['a'])).resolves.toBe(1)
+    await expect(cte.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
 
     expect(desktopClient.markCTeViewed).toHaveBeenCalledWith({
-      ...store.listInput,
+      CNPJ: '123',
+      Competence: '',
+      Situacao: '',
+      Role: '',
+      Modelo: '',
+      EmitenteCNPJ: '',
+      TomadorCNPJ: '',
+      NFeChave: '',
       ChavesAcesso: ['a'],
     })
     expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
@@ -295,14 +306,27 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(2)
     const cte = useCTeDocuments()
     cte.filter.value.CNPJ = '123'
-    cte.filter.value.OnlyUnread = true
+    cte.onlyUnviewed.value = true
 
     await cte.markViewed(['a', 'b'])
 
     expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ OnlyUnread: true, ChavesAcesso: ['a', 'b'] })
+      expect.objectContaining({ CNPJ: '123', ChavesAcesso: ['a', 'b'] })
     )
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(expect.not.objectContaining({ OnlyUnread: true }))
     expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+  })
+
+  it('keeps the count when the search after marking fails', async () => {
+    const failure = new Error('lista indisponível')
+    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(2)
+    vi.mocked(desktopClient.listCTe).mockRejectedValue(failure)
+    const cte = useCTeDocuments()
+    cte.filter.value.CNPJ = '123'
+    cte.filter.value.OnlyUnread = true
+
+    await expect(cte.markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: failure })
+    expect(cte.markingViewed.value).toBe(false)
   })
 
   it('keeps "Marcar vistos" visible to a second instance while it is pending', async () => {

@@ -238,13 +238,14 @@ import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
-import ExportDialog, { type ExportChoice } from '../components/ExportDialog.vue'
+import type { ExportChoice } from '../components/ExportDialog.vue'
 import PartyCell from '../components/PartyCell.vue'
 import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
+import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type { CTeResetResult, CTeRow } from '@/types/desktop'
@@ -285,6 +286,7 @@ const {
   filteredRows,
   scopeRows,
   unviewedChaves,
+  onlyUnviewed,
   companyName,
   companyOptions,
   statusLine,
@@ -300,20 +302,21 @@ const eventsChave = ref('')
 // previewingReset is true while the reset counts load for the confirmation.
 const previewingReset = ref(false)
 
+const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
+  noun: 'CT-e',
+  selected,
+  scopeRows,
+  unviewedChaves,
+  markViewed: cte.markViewed,
+  exportFormats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
+  exportList: exportZIP,
+})
+
 const ambiente = computed(() =>
   status.value
     ? { label: ambienteLabel(status.value.TpAmb), color: ambienteColor(status.value.TpAmb) }
     : null
 )
-
-// onlyUnviewed is the "Somente não vistos" toggle; the filter keeps it as an
-// optional field of the list request.
-const onlyUnviewed = computed({
-  get: () => Boolean(filter.value.OnlyUnread),
-  set: (value: boolean) => {
-    filter.value.OnlyUnread = value
-  },
-})
 
 const columns = documentColumns<CTeRow>({
   emitenteLabel: 'Emitente',
@@ -465,64 +468,11 @@ async function exportXML(chaveAcesso: string) {
   }
 }
 
-// openExportDialog exports the selected CT-e, or else every row the grid
-// shows, as a ZIP of XMLs.
-function openExportDialog() {
-  const chaves = scopeRows.value.map((row) => row.ChaveAcesso)
-  if (chaves.length === 0) return
-  $q.dialog({
-    component: ExportDialog,
-    componentProps: {
-      noun: 'CT-e',
-      count: chaves.length,
-      scope: selected.value.length > 0 ? 'selected' : 'listed',
-      formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
-    },
-  }).onOk((choice: ExportChoice) => {
-    void exportZIP(chaves, choice)
-  })
-}
-
 async function exportZIP(chaves: string[], choice: ExportChoice) {
   try {
     notifyExported(await cte.exportZIP(chaves, choice), 'XML')
   } catch (error) {
     notifyError('Erro ao exportar XMLs', error)
-  }
-}
-
-// confirmMarkViewed marks the new CT-e of the selection right away; for the
-// whole list it asks first.
-function confirmMarkViewed() {
-  const chaves = unviewedChaves.value
-  if (chaves.length === 0) return
-  if (selected.value.length > 0) {
-    void markViewed(chaves)
-    return
-  }
-  $q.dialog({
-    title: 'Marcar vistos',
-    message:
-      chaves.length === 1
-        ? 'Marcar como visto o CT-e novo da lista?'
-        : `Marcar como vistos os ${chaves.length} CT-e novos da lista?`,
-    cancel: true,
-    persistent: true,
-    ok: { label: 'Marcar vistos', color: 'primary' },
-  }).onOk(() => {
-    void markViewed(chaves)
-  })
-}
-
-async function markViewed(chaves: string[]) {
-  try {
-    const count = await cte.markViewed(chaves)
-    if (count === null) return
-    notifySuccess(
-      count === 1 ? '1 documento marcado como visto.' : `${count} documentos marcados como vistos.`
-    )
-  } catch (error) {
-    notifyError('Erro ao marcar CT-e como vistos', error)
   }
 }
 </script>

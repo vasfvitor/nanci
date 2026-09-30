@@ -336,18 +336,28 @@ describe('useNFeDocuments', () => {
     expect(nfe.unviewedChaves.value).toEqual(['c'])
   })
 
-  it('marks NF-e viewed by chave and drops their "Novo" badge in place', async () => {
+  it('marks NF-e viewed by company and chave only and drops their "Novo" badge in place', async () => {
     vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(1)
     const store = useNFeDocumentsStore()
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
     store.setRows([nfeRow('a'), nfeRow('b')])
     nfe.selected.value = [store.rows[0] as NFeRow]
+    // A filter edited after the search that filled the grid must not narrow the marking.
+    nfe.filter.value.Competence = '2026-06'
+    nfe.filter.value.Situacao = 'cancelada'
+    nfe.filter.value.Role = 'emitente'
 
-    await expect(nfe.markViewed(['a'])).resolves.toBe(1)
+    await expect(nfe.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
 
     expect(desktopClient.markNFeViewed).toHaveBeenCalledWith({
-      ...store.listInput,
+      CNPJ: '123',
+      Competence: '',
+      Situacao: '',
+      Completeness: '',
+      Manifestacao: '',
+      Role: '',
+      EmitenteCNPJ: '',
       ChavesAcesso: ['a'],
     })
     expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
@@ -360,14 +370,27 @@ describe('useNFeDocuments', () => {
     vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(2)
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
-    nfe.filter.value.OnlyUnread = true
+    nfe.onlyUnviewed.value = true
 
     await nfe.markViewed(['a', 'b'])
 
     expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ OnlyUnread: true, ChavesAcesso: ['a', 'b'] })
+      expect.objectContaining({ CNPJ: '123', ChavesAcesso: ['a', 'b'] })
     )
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(expect.not.objectContaining({ OnlyUnread: true }))
     expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+  })
+
+  it('keeps the count when the search after marking fails', async () => {
+    const failure = new Error('lista indisponível')
+    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(2)
+    vi.mocked(desktopClient.listNFe).mockRejectedValue(failure)
+    const nfe = useNFeDocuments()
+    nfe.filter.value.CNPJ = '123'
+    nfe.filter.value.OnlyUnread = true
+
+    await expect(nfe.markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: failure })
+    expect(nfe.markingViewed.value).toBe(false)
   })
 
   it('does not mark without a company or chaves', async () => {

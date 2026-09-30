@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
+import { pruneSelection } from '@/utils/selection'
 
 export type NFeTab = 'notas' | 'pendencias'
 
@@ -57,13 +58,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // still present, swapped for their fresh rows so eligibility is current.
   function setRows(next: NFeRow[]) {
     rows.value = next
-    if (selected.value.length === 0) return
-
-    const byChave = new Map(next.map((row) => [row.ChaveAcesso, row]))
-    selected.value = selected.value.flatMap((row) => {
-      const fresh = byChave.get(row.ChaveAcesso)
-      return fresh ? [fresh] : []
-    })
+    selected.value = pruneSelection(next, selected.value)
   }
 
   // patchRow swaps the note with chave for its fresh row, or drops it when

@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
@@ -9,7 +10,6 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeRow } from '@/types/desktop'
-import { withViewed } from '@/utils/formatters'
 import { nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
 import { nfeRowActions } from '@/utils/nfeManifestacao'
 
@@ -37,6 +37,25 @@ export function useNFeDocuments() {
   })
   const { companyOptions, loadCompanies } = useCompanyFilter(cnpj)
   const pagination = useTablePagination('nfe')
+  const { onlyUnviewed, markViewed } = useMarkViewed({
+    filter,
+    mark: (cnpj, chavesAcesso) =>
+      desktopClient.markNFeViewed({
+        CNPJ: cnpj,
+        Competence: '',
+        Situacao: '',
+        Completeness: '',
+        Manifestacao: '',
+        Role: '',
+        EmitenteCNPJ: '',
+        ChavesAcesso: chavesAcesso,
+      }),
+    rows,
+    selected,
+    setRows: (next) => store.setRows(next),
+    search,
+    markingViewed,
+  })
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
@@ -160,28 +179,6 @@ export function useNFeDocuments() {
     }
   }
 
-  // markViewed marks the given NF-e as viewed and returns how many were new.
-  // With "Somente não vistos" on the list is searched again, so they leave
-  // it; otherwise they lose the "Novo" badge in place. The selection is
-  // cleared either way.
-  async function markViewed(chavesAcesso: string[]) {
-    const input = store.listInput
-    if (!input.CNPJ || markingViewed.value || chavesAcesso.length === 0) return null
-    markingViewed.value = true
-    try {
-      const count = await desktopClient.markNFeViewed({ ...input, ChavesAcesso: chavesAcesso })
-      selected.value = []
-      if (input.OnlyUnread) {
-        await search()
-      } else {
-        store.setRows(withViewed(rows.value, chavesAcesso))
-      }
-      return count
-    } finally {
-      markingViewed.value = false
-    }
-  }
-
   return {
     filter,
     rows,
@@ -189,6 +186,7 @@ export function useNFeDocuments() {
     loading,
     exporting,
     markingViewed,
+    onlyUnviewed,
     status,
     activeTab,
     pagination,

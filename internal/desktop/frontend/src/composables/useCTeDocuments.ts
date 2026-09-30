@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useMarkViewed } from '@/composables/useMarkViewed'
 import { isNFeChaveFilter, useCTeLoaders } from '@/composables/useCTeLoaders'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
@@ -9,7 +10,6 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { cteDocumentCount, cteStatusLine } from '@/utils/cteDisplay'
-import { withViewed } from '@/utils/formatters'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
@@ -34,6 +34,26 @@ export function useCTeDocuments() {
   })
   const { companyOptions, loadCompanies } = useCompanyFilter(cnpj)
   const pagination = useTablePagination('cte')
+  const { onlyUnviewed, markViewed } = useMarkViewed({
+    filter,
+    mark: (cnpj, chavesAcesso) =>
+      desktopClient.markCTeViewed({
+        CNPJ: cnpj,
+        Competence: '',
+        Situacao: '',
+        Role: '',
+        Modelo: '',
+        EmitenteCNPJ: '',
+        TomadorCNPJ: '',
+        NFeChave: '',
+        ChavesAcesso: chavesAcesso,
+      }),
+    rows,
+    selected,
+    setRows: (next) => store.setRows(next),
+    search,
+    markingViewed,
+  })
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
@@ -154,28 +174,6 @@ export function useCTeDocuments() {
     }
   }
 
-  // markViewed marks the given CT-e as viewed and returns how many were new.
-  // With "Somente não vistos" on the list is searched again, so they leave
-  // it; otherwise they lose the "Novo" badge in place. The selection is
-  // cleared either way.
-  async function markViewed(chavesAcesso: string[]) {
-    const input = store.listInput
-    if (!input.CNPJ || markingViewed.value || chavesAcesso.length === 0) return null
-    markingViewed.value = true
-    try {
-      const count = await desktopClient.markCTeViewed({ ...input, ChavesAcesso: chavesAcesso })
-      selected.value = []
-      if (input.OnlyUnread) {
-        await search()
-      } else {
-        store.setRows(withViewed(rows.value, chavesAcesso))
-      }
-      return count
-    } finally {
-      markingViewed.value = false
-    }
-  }
-
   return {
     filter,
     rows,
@@ -183,6 +181,7 @@ export function useCTeDocuments() {
     loading,
     exporting,
     markingViewed,
+    onlyUnviewed,
     status,
     pagination,
     filterText,

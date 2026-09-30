@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCompanies } from '@/composables/useCompanies'
 import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useNFSeLoaders } from '@/composables/useNFSeLoaders'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useTablePagination } from '@/composables/useTablePagination'
@@ -9,7 +10,6 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import type { ExportFormat } from '@/types/desktop'
-import { withViewed } from '@/utils/formatters'
 import { nfseAmbiente, nfseStatusLine } from '@/utils/nfseDisplay'
 
 // useDocuments holds the NFS-e page: the list, its filters and the actions
@@ -31,6 +31,22 @@ export function useDocuments() {
   })
   const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(cnpj)
   const pagination = useTablePagination('nfse')
+  const { onlyUnviewed, markViewed } = useMarkViewed({
+    filter,
+    mark: (companyCNPJ, chavesAcesso) =>
+      desktopClient.markDocumentsViewed({
+        CNPJ: companyCNPJ,
+        Competence: '',
+        Direction: '',
+        OnlyUnread: false,
+        ChavesAcesso: chavesAcesso,
+      }),
+    rows: documents,
+    selected,
+    setRows: (rows) => store.setRows(rows),
+    search,
+    markingViewed,
+  })
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
@@ -182,28 +198,6 @@ export function useDocuments() {
     }
   }
 
-  // markViewed marks the given NFS-e as viewed and returns how many were new.
-  // With "Somente não vistos" on the list is searched again, so they leave
-  // it; otherwise they lose the "Novo" badge in place. The selection is
-  // cleared either way.
-  async function markViewed(chavesAcesso: string[]) {
-    const input = store.listInput
-    if (!input.CNPJ || markingViewed.value || chavesAcesso.length === 0) return null
-    markingViewed.value = true
-    try {
-      const count = await desktopClient.markDocumentsViewed({ ...input, ChavesAcesso: chavesAcesso })
-      selected.value = []
-      if (input.OnlyUnread) {
-        await search()
-      } else {
-        store.setRows(withViewed(documents.value, chavesAcesso))
-      }
-      return count
-    } finally {
-      markingViewed.value = false
-    }
-  }
-
   return {
     filter,
     documents,
@@ -211,6 +205,7 @@ export function useDocuments() {
     loading,
     exporting,
     markingViewed,
+    onlyUnviewed,
     pagination,
     filterText,
     filteredRows,

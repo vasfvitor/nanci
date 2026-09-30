@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
@@ -171,12 +171,13 @@ import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
-import ExportDialog, { type ExportChoice } from '../components/ExportDialog.vue'
+import type { ExportChoice } from '../components/ExportDialog.vue'
 import PartyCell from '../components/PartyCell.vue'
 import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
+import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
 import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
@@ -201,6 +202,7 @@ const {
   filteredRows,
   scopeRows,
   unviewedChaves,
+  onlyUnviewed,
   companyOptions,
   selectedCompany,
   ambiente,
@@ -232,13 +234,14 @@ const exportFormats = [
   { label: 'DANFSes (ZIP)', value: 'danfse-zip' },
 ]
 
-// onlyUnviewed is the "Somente não vistos" toggle; the filter keeps it as
-// the OnlyUnread field of the list request.
-const onlyUnviewed = computed({
-  get: () => Boolean(filter.value.OnlyUnread),
-  set: (value: boolean) => {
-    filter.value.OnlyUnread = value
-  },
+const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
+  noun: 'NFS-e',
+  selected,
+  scopeRows,
+  unviewedChaves,
+  markViewed: nfse.markViewed,
+  exportFormats,
+  exportList,
 })
 
 // The NFS-e has no série, so the number column says only "Número".
@@ -379,24 +382,6 @@ async function exportDANFSe(chaveAcesso: string) {
   }
 }
 
-// openExportDialog exports the selected NFS-e, or else every row the grid
-// shows, in the format the user picks.
-function openExportDialog() {
-  const chaves = scopeRows.value.map((row) => row.ChaveAcesso)
-  if (chaves.length === 0) return
-  $q.dialog({
-    component: ExportDialog,
-    componentProps: {
-      noun: 'NFS-e',
-      count: chaves.length,
-      scope: selected.value.length > 0 ? 'selected' : 'listed',
-      formats: exportFormats,
-    },
-  }).onOk((choice: ExportChoice) => {
-    void exportList(chaves, choice)
-  })
-}
-
 async function exportList(chaves: string[], choice: ExportChoice) {
   try {
     let result: ExportResult | null
@@ -411,41 +396,6 @@ async function exportList(chaves: string[], choice: ExportChoice) {
     notifyExported(result, noun)
   } catch (error) {
     notifyError('Erro ao exportar NFS-e', error)
-  }
-}
-
-// confirmMarkViewed marks the new NFS-e of the selection right away; for the
-// whole list it asks first.
-function confirmMarkViewed() {
-  const chaves = unviewedChaves.value
-  if (chaves.length === 0) return
-  if (selected.value.length > 0) {
-    void markViewed(chaves)
-    return
-  }
-  $q.dialog({
-    title: 'Marcar vistos',
-    message:
-      chaves.length === 1
-        ? 'Marcar como vista a NFS-e nova da lista?'
-        : `Marcar como vistas as ${chaves.length} NFS-e novas da lista?`,
-    cancel: true,
-    persistent: true,
-    ok: { label: 'Marcar vistos', color: 'primary' },
-  }).onOk(() => {
-    void markViewed(chaves)
-  })
-}
-
-async function markViewed(chaves: string[]) {
-  try {
-    const count = await nfse.markViewed(chaves)
-    if (count === null) return
-    notifySuccess(
-      count === 1 ? '1 documento marcado como visto.' : `${count} documentos marcados como vistos.`
-    )
-  } catch (error) {
-    notifyError('Erro ao marcar NFS-e como vistas', error)
   }
 }
 </script>

@@ -275,18 +275,24 @@ describe('useDocuments', () => {
     expect(nfse.filteredRows.value).toEqual([other])
   })
 
-  it('marks NFS-e viewed by chave and drops their "Novo" badge in place', async () => {
+  it('marks NFS-e viewed by company and chave only and drops their "Novo" badge in place', async () => {
     vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(1)
     const store = useDocumentsStore()
     const nfse = useDocuments()
     nfse.filter.value.CNPJ = '123'
     store.documents = [documentRow('a'), documentRow('b')]
     nfse.selected.value = [store.documents[0] as DocumentRow]
+    // A filter edited after the search that filled the grid must not narrow the marking.
+    nfse.filter.value.Competence = '2026-06'
+    nfse.filter.value.Direction = 'tomada'
 
-    await expect(nfse.markViewed(['a'])).resolves.toBe(1)
+    await expect(nfse.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
 
     expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith({
-      ...store.listInput,
+      CNPJ: '123',
+      Competence: '',
+      Direction: '',
+      OnlyUnread: false,
       ChavesAcesso: ['a'],
     })
     expect(store.documents[0]?.ViewedAt).toBeInstanceOf(Date)
@@ -299,14 +305,26 @@ describe('useDocuments', () => {
     vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(2)
     const nfse = useDocuments()
     nfse.filter.value.CNPJ = '123'
-    nfse.filter.value.OnlyUnread = true
+    nfse.onlyUnviewed.value = true
 
     await nfse.markViewed(['a', 'b'])
 
     expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ OnlyUnread: true, ChavesAcesso: ['a', 'b'] })
+      expect.objectContaining({ OnlyUnread: false, ChavesAcesso: ['a', 'b'] })
     )
     expect(desktopClient.listDocuments).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+  })
+
+  it('keeps the count when the search after marking fails', async () => {
+    const failure = new Error('lista indisponível')
+    vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(2)
+    vi.mocked(desktopClient.listDocuments).mockRejectedValue(failure)
+    const nfse = useDocuments()
+    nfse.filter.value.CNPJ = '123'
+    nfse.filter.value.OnlyUnread = true
+
+    await expect(nfse.markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: failure })
+    expect(nfse.markingViewed.value).toBe(false)
   })
 
   it('keeps "Marcar vistos" visible to a second instance while it is pending', async () => {
