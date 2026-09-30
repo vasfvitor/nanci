@@ -14,6 +14,7 @@ func TestNFeRows(t *testing.T) {
 	authorized := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 	cienciaDue := authorized.AddDate(0, 0, nfe.CienciaWarningDays)
 	conclusiveDue := authorized.AddDate(0, 0, nfe.ConclusiveDeadlineDays)
+	viewed := authorized.Add(2 * time.Hour)
 	docs := []app.NFeDocument{
 		{
 			CompanyDocument: nfe.CompanyDocument{
@@ -33,6 +34,7 @@ func TestNFeRows(t *testing.T) {
 				RelationID:   "rel-1",
 				CompanyRole:  nfe.CompanyRoleDestinatario,
 				Manifestacao: nfe.ManifestacaoCiencia,
+				ViewedAt:     &viewed,
 				EventCount:   2,
 			},
 			Deadlines:          nfe.Deadlines{CienciaDue: cienciaDue, ConclusiveDue: conclusiveDue},
@@ -90,10 +92,13 @@ func TestNFeRows(t *testing.T) {
 	if row.EventCount != 2 {
 		t.Errorf("EventCount = %d, want 2", row.EventCount)
 	}
+	if row.ViewedAt == nil || !row.ViewedAt.Equal(viewed) {
+		t.Errorf("ViewedAt = %v, want %v", row.ViewedAt, viewed)
+	}
 
 	empty := rows[1]
-	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil || empty.CienciaDaysLeft != nil {
-		t.Errorf("dates = %v %v %v %v, days left = %v %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.DaysLeft, empty.CienciaDaysLeft)
+	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil || empty.CienciaDaysLeft != nil || empty.ViewedAt != nil {
+		t.Errorf("dates = %v %v %v %v %v, days left = %v %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.ViewedAt, empty.DaysLeft, empty.CienciaDaysLeft)
 	}
 	if empty.Situacao != "cancelada" || empty.Completeness != "resumo" || empty.Manifestacao != "nao_realizada" || empty.CompanyRole != "none" {
 		t.Errorf("enums = %q %q %q %q", empty.Situacao, empty.Completeness, empty.Manifestacao, empty.CompanyRole)

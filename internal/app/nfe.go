@@ -229,7 +229,8 @@ type NFeListInput struct {
 	Manifestacao string // nenhuma | ciencia | confirmada | desconhecida | nao_realizada
 	EmitenteCNPJ string
 	ChavesAcesso []string
-	Limit        int // 0 means no limit
+	OnlyUnread   bool // keeps only NF-e the company has not marked as viewed
+	Limit        int  // 0 means no limit
 }
 
 // NFeDocument is one of the company's NF-e with its manifestação state
@@ -290,6 +291,20 @@ func (s *NFeService) ListDocuments(ctx context.Context, in NFeListInput) ([]NFeD
 		out[i] = newNFeDocument(doc, now)
 	}
 	return out, nil
+}
+
+// MarkViewed marks the company's NF-e matching the filters as viewed and
+// returns how many were new. Limit is ignored.
+func (s *NFeService) MarkViewed(ctx context.Context, in NFeListInput) (int, error) {
+	comp, filter, err := s.buildFilter(ctx, in)
+	if err != nil {
+		return 0, err
+	}
+	count, err := s.NFeRepo.MarkViewed(ctx, comp.ID, filter)
+	if err != nil {
+		return 0, fmt.Errorf("marcar NF-e como vistas: %w", err)
+	}
+	return count, nil
 }
 
 // ListEvents returns the events nanci holds for one of the company's NF-e,
@@ -436,6 +451,7 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 		EmitenteCNPJ: in.EmitenteCNPJ,
 		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
+		OnlyUnread:   in.OnlyUnread,
 		Limit:        in.Limit,
 	}
 	if in.Situacao != "" {

@@ -177,7 +177,7 @@ Migrações `007` a `016` em `internal/store/migrations_v2/`:
 Tabelas de NF-e:
 
 - `nfe_documents`: uma linha por chave de acesso, com os campos extraídos, a situação (`autorizada`, `denegada`, `cancelada`), a completude (`resumo` ou `completa`), o `tpAmb` (`tp_amb`) e o hash do XML bruto. Uma completa nunca é substituída por um resumo, e a situação só piora (cancelada > denegada > autorizada).
-- `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação e NSUs em que foi vista. A coluna `viewed_at` continua no esquema, mas nenhum fluxo a preenche.
+- `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação, NSUs em que foi vista e `viewed_at`, preenchida quando a empresa marca a nota como vista. Nota sem `viewed_at` é nova, e a listagem pode mostrar só as novas. A sincronização não mexe na coluna, e a redefinição de NF-e apaga a relação junto com ela.
 - `nfe_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`), com o `tpAmb` (`tp_amb`) do evento. Um `resEvento` é trocado pelo `procEventoNFe` quando este chega, e um evento enviado pelo Nanci se junta à cópia que volta pela distribuição.
 - `nfe_manifestacoes`: registro de cada envio de manifestação (lote, `tpAmb`, resultado, `cStat`, `xMotivo`, protocolo), inclusive falhas, para auditoria.
 - `company_nfe_export_marks`: o que já foi exportado e com qual hash, para a exportação incremental.

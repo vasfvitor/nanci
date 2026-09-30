@@ -161,6 +161,30 @@ func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID dfe.Com
 	return r.listCompanyDocuments(ctx, companyID, f, kind)
 }
 
+// MarkViewed marks the company's NF-e matching f as viewed and returns how
+// many were not viewed before. f.Limit is ignored.
+func (r *NFeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter) (int, error) {
+	where, args := buildNFeFilterSQL(companyID, f)
+	query := `
+		UPDATE company_nfe_documents
+		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		WHERE viewed_at IS NULL AND relation_id IN (
+			SELECT cd.relation_id
+			FROM company_nfe_documents cd
+			INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
+			WHERE ` + where + `
+		)` // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
+	res, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("mark nfe documents viewed: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("mark nfe documents viewed: %w", err)
+	}
+	return int(n), nil
+}
+
 // CompanyDocumentByChave returns nfe.ErrDocumentNotFound when the company
 // does not see the chave in the tpAmb environment.
 func (r *NFeRepository) CompanyDocumentByChave(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (*nfe.CompanyDocument, error) {
@@ -501,7 +525,7 @@ const nfeCompanyDocumentColumns = `
 	d.tp_nf, d.fin_nfe, d.nat_op, d.total_value, d.icms_value, d.ipi_value,
 	d.situacao, d.completeness, d.layout_version, d.raw_hash, d.resumo_raw_hash, d.parse_warnings, d.tp_amb,
 	cd.relation_id, cd.company_id, cd.company_role, cd.visibility_reason, cd.manifestacao, cd.manifestacao_at,
-	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at,
+	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at, cd.viewed_at,
 	(SELECT COUNT(*) FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso)`
 
 // listCompanyDocuments runs the single company NF-e query. A non-empty
@@ -598,6 +622,9 @@ func buildNFeFilterSQL(companyID dfe.CompanyID, f nfe.DocumentFilter) (string, [
 	if f.PendingManifestacao {
 		where += " AND cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao IN ('nenhuma', 'ciencia')"
 	}
+	if f.OnlyUnread {
+		where += " AND cd.viewed_at IS NULL"
+	}
 	return where, args
 }
 
@@ -605,7 +632,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 	var d sqlgen.NfeDocument
 	var cd nfe.CompanyDocument
 	var companyID, role, visibility, manifestacao string
-	var manifestacaoAt sql.NullString
+	var manifestacaoAt, viewedAt sql.NullString
 	var firstSeen, lastSeen sql.NullInt64
 	var firstSyncedAt, lastSyncedAt string
 
@@ -616,7 +643,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 		&d.TpNf, &d.FinNfe, &d.NatOp, &d.TotalValue, &d.IcmsValue, &d.IpiValue,
 		&d.Situacao, &d.Completeness, &d.LayoutVersion, &d.RawHash, &d.ResumoRawHash, &d.ParseWarnings, &d.TpAmb,
 		&cd.RelationID, &companyID, &role, &visibility, &manifestacao, &manifestacaoAt,
-		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt,
+		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt, &viewedAt,
 		&cd.EventCount,
 	)
 	if err != nil {
@@ -635,6 +662,9 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 	cd.LastSeenNSU = PtrFromNullInt64(lastSeen)
 
 	if cd.ManifestacaoAt, err = parseOptionalTime("company nfe manifestacao_at", manifestacaoAt); err != nil {
+		return nfe.CompanyDocument{}, err
+	}
+	if cd.ViewedAt, err = parseOptionalTime("company nfe viewed_at", viewedAt); err != nil {
 		return nfe.CompanyDocument{}, err
 	}
 

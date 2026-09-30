@@ -284,6 +284,69 @@ func TestNFeListDocumentsFilters(t *testing.T) {
 	}
 }
 
+func TestNFeMarkViewed(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seed("resnfe-cancelada.xml", 1)
+	env.seed("procnfe.xml", 2)
+	// A homologação NF-e the production company does not list.
+	env.seed("procnfe-denegada.xml", 4, "<tpAmb>1</tpAmb>", "<tpAmb>2</tpAmb>")
+	ctx := context.Background()
+	unread := NFeListInput{CNPJ: nfeTestCNPJ, OnlyUnread: true}
+	listUnread := func() []string {
+		t.Helper()
+		docs, err := env.app.NFe.ListDocuments(ctx, unread)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return chavesOf(docs)
+	}
+
+	if got := listUnread(); !slices.Equal(got, []string{nfeChaveProc, nfeChaveCancelada}) {
+		t.Fatalf("unread before marking = %v", got)
+	}
+
+	count, err := env.app.NFe.MarkViewed(ctx, NFeListInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{" " + nfeChaveProc + " "}})
+	if err != nil {
+		t.Fatalf("MarkViewed by chave: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("marked by chave = %d, want 1", count)
+	}
+	if got := listUnread(); !slices.Equal(got, []string{nfeChaveCancelada}) {
+		t.Errorf("unread after marking by chave = %v", got)
+	}
+	docs, err := env.app.NFe.ListDocuments(ctx, NFeListInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{nfeChaveProc}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 1 || docs[0].ViewedAt == nil {
+		t.Errorf("listed NF-e after marking = %+v, want ViewedAt set", docs)
+	}
+
+	if _, err := env.app.NFe.MarkViewed(ctx, NFeListInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{"123"}}); err == nil {
+		t.Error("MarkViewed with an invalid chave: err = nil")
+	}
+
+	// Without chaves the whole filter is marked, in the company's environment only.
+	count, err = env.app.NFe.MarkViewed(ctx, NFeListInput{CNPJ: nfeTestCNPJ})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("marked without chaves = %d, want 1 (the resumo)", count)
+	}
+	if got := listUnread(); len(got) != 0 {
+		t.Errorf("unread after marking all = %v, want none", got)
+	}
+	homologacao, err := env.repo.ListCompanyDocuments(ctx, env.company.ID, nfe.DocumentFilter{TpAmb: sefaz.TpAmbHomologacao, OnlyUnread: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(homologacao) != 1 || string(homologacao[0].ChaveAcesso) != nfeChaveDenegada {
+		t.Errorf("homologação unread = %+v, want the denegada untouched", homologacao)
+	}
+}
+
 func TestNFeStatusCounts(t *testing.T) {
 	env := newNFeTestEnv(t)
 	env.seedFixtures()

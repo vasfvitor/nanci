@@ -775,11 +775,28 @@ func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error
 		Manifestacao: input.Manifestacao,
 		EmitenteCNPJ: input.EmitenteCNPJ,
 		ChavesAcesso: input.ChavesAcesso,
+		OnlyUnread:   input.OnlyUnread,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return desktopapi.NFeRows(documents), nil
+}
+
+// MarkNFeViewed marks the company's NF-e matching the filters as viewed and
+// returns how many were new.
+func (a *App) MarkNFeViewed(input desktopapi.ListNFeInput) (int, error) {
+	return a.core.NFe.MarkViewed(a.ctx, app.NFeListInput{
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Situacao:     input.Situacao,
+		Completeness: input.Completeness,
+		Role:         input.Role,
+		Manifestacao: input.Manifestacao,
+		EmitenteCNPJ: input.EmitenteCNPJ,
+		ChavesAcesso: input.ChavesAcesso,
+		OnlyUnread:   input.OnlyUnread,
+	})
 }
 
 func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {

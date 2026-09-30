@@ -366,6 +366,7 @@ type ListNFeInput struct {
 	Role         string // destinatario | emitente | transportador | autorizado | none
 	EmitenteCNPJ string
 	ChavesAcesso []string
+	OnlyUnread   bool
 }
 
 type NFeRow struct {
@@ -394,6 +395,7 @@ type NFeRow struct {
 	EventCount       int
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
+	ViewedAt         *time.Time // nil while the NF-e is new
 	// DaysLeft is how many calendar days are left until ConclusiveDue: 0 on
 	// the due day, negative once it passed, nil without a deadline.
 	DaysLeft *int
@@ -613,6 +615,7 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		EventCount:            document.EventCount,
 		FirstSyncedAt:         document.FirstSyncedAt,
 		LastSyncedAt:          document.LastSyncedAt,
+		ViewedAt:              document.ViewedAt,
 		TacitlyConfirmed:      document.TacitlyConfirmed,
 		CienciaBlockReason:    document.CienciaBlockReason,
 		ConclusiveBlockReason: document.ConclusiveBlockReason,

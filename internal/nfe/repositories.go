@@ -29,7 +29,9 @@ type DocumentFilter struct {
 	// PendingManifestacao keeps authorized documents where the company is
 	// the destinatário and has no conclusive manifestação yet.
 	PendingManifestacao bool
-	Limit               int
+	// OnlyUnread keeps rows the company has not marked as viewed.
+	OnlyUnread bool
+	Limit      int
 }
 
 // Counts summarizes one company's NF-e.
