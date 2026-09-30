@@ -114,7 +114,7 @@
           </template>
         </DocumentFilterBar>
 
-        <StateLegend :sections="nfeLegend()" class="q-mb-md" />
+        <StateLegend :sections="legend" class="q-mb-md" />
 
         <q-table
           v-model:pagination="pagination"
@@ -256,7 +256,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="pendencias" class="q-pa-none">
-        <StateLegend :sections="nfePendingLegend()" class="q-mb-md" />
+        <StateLegend :sections="pendingLegend" class="q-mb-md" />
         <NFePendingPanel
           :rows="pending"
           :loading="pendingLoading"
@@ -361,6 +361,9 @@ const {
 
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
+
+const legend = nfeLegend()
+const pendingLegend = nfePendingLegend()
 
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   noun: 'NF-e',

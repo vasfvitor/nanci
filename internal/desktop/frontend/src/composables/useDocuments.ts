@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCompanies } from '@/composables/useCompanies'
 import { useCompanyFilter } from '@/composables/useCompanyFilter'
 import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useNFSeLoaders } from '@/composables/useNFSeLoaders'
@@ -15,11 +14,11 @@ import { nfseAmbiente, nfseStatusLine } from '@/utils/nfseDisplay'
 // useDocuments holds the NFS-e page: the list, its filters and the actions
 // on the listed NFS-e. The state that outlives the page is in the documents
 // store; the NFS-e sync is the one the Empresas page runs, so both screens
-// share its busy state through the companySync store.
+// share its busy state through the companySync store. A sync or a reset
+// reloads the company list once, in refresh.
 export function useDocuments() {
   const store = useDocumentsStore()
   const syncStore = useCompanySyncStore()
-  const companiesApi = useCompanies()
   const { isSelected, search } = useNFSeLoaders()
   const { filter, documents, selected, filterText, loading, exporting, markingViewed, resettingCNPJ } =
     storeToRefs(store)
@@ -107,9 +106,11 @@ export function useDocuments() {
     ) {
       return null
     }
+    syncStore.startSync(companyCNPJ, 'nfse')
     try {
-      return await companiesApi.syncCompany(companyCNPJ)
+      return await desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' })
     } finally {
+      syncStore.finishSync(companyCNPJ, 'nfse')
       await refresh(companyCNPJ)
     }
   }
@@ -121,7 +122,7 @@ export function useDocuments() {
     if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'nfse')) return false
     resettingCNPJ.value = companyCNPJ
     try {
-      await companiesApi.resetSyncState(companyCNPJ)
+      await desktopClient.resetSyncState({ CompanyCNPJ: companyCNPJ })
       return true
     } finally {
       resettingCNPJ.value = ''

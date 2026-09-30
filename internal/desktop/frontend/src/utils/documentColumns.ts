@@ -21,10 +21,12 @@ type DocumentRowBase = { ChaveAcesso: string; IssueDate?: ISODateValue }
 
 // DocumentColumnSpec is what differs between the sources: the labels of the
 // two party columns and where a row keeps its number, parties and value.
-// emitente and destinatario return the text the column sorts by.
+// emitente and destinatario return the text the column sorts by. numeroLabel
+// defaults to "Nº / Série"; a source without série says only "Número".
 export type DocumentColumnSpec<Row extends DocumentRowBase> = {
   emitenteLabel: string
   destinatarioLabel: string
+  numeroLabel?: string
   numero: (row: Row) => string
   emitente: (row: Row) => string
   destinatario: (row: Row) => string
@@ -47,7 +49,7 @@ export function documentColumns<Row extends DocumentRowBase>(
       classes: 'text-mono',
       format: (value: ISODateValue) => formatDate(value),
     },
-    { name: 'numero', label: 'Nº / Série', field: spec.numero, align: 'left' },
+    { name: 'numero', label: spec.numeroLabel ?? 'Nº / Série', field: spec.numero, align: 'left' },
     { name: 'chave', label: 'Chave de acesso', field: (row) => row.ChaveAcesso, align: 'left' },
     {
       name: 'emitente',

@@ -133,7 +133,8 @@ describe('useDocuments', () => {
     expect(desktopClient.pull).toHaveBeenCalledWith({ CNPJ: '123', Mode: '' })
     expect(remountedPage.isSyncing.value).toBe(false)
     expect(desktopClient.listDocuments).toHaveBeenCalled()
-    expect(desktopClient.listCompanies).toHaveBeenCalled()
+    // One reload of the companies, for the status line.
+    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
   })
 
   it('clears the sync marker and still refreshes when the pull fails', async () => {
@@ -159,8 +160,10 @@ describe('useDocuments', () => {
     await expect(remountedPage.syncNFSe()).resolves.toBeNull()
     expect(desktopClient.pull).not.toHaveBeenCalled()
 
+    vi.mocked(desktopClient.listCompanies).mockClear()
     reset.resolve(undefined)
     await expect(resetting).resolves.toBe(true)
+    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
     expect(desktopClient.resetSyncState).toHaveBeenCalledTimes(1)
     expect(desktopClient.resetSyncState).toHaveBeenCalledWith({ CompanyCNPJ: '123' })
     expect(remountedPage.isResetting.value).toBe(false)

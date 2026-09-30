@@ -42,7 +42,7 @@
       />
     </DocumentFilterBar>
 
-    <StateLegend :sections="nfseLegend()" class="q-mb-md" />
+    <StateLegend :sections="legend" class="q-mb-md" />
 
     <q-table
       v-model:pagination="pagination"
@@ -214,6 +214,8 @@ const {
 const showEventsDialog = ref(false)
 const eventsDocument = ref({ id: '', chave: '' })
 
+const legend = nfseLegend()
+
 // The filter also searches the status and the service description; the
 // placeholder names only what fits in the 350px field.
 const searchPlaceholder ='Filtrar por chave, número, nome ou CNPJ...'
@@ -248,11 +250,12 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
 const columns = documentColumns<DocumentRow>({
   emitenteLabel: 'Prestador',
   destinatarioLabel: 'Tomador',
+  numeroLabel: 'Número',
   numero: (row) => row.NFSeNumber,
   emitente: (row) => row.PrestadorName || row.PrestadorCNPJ,
   destinatario: (row) => row.TomadorName || row.TomadorCNPJ,
   valor: (row) => row.ServiceValue,
-}).map((column) => (column.name === 'numero' ? { ...column, label: 'Número' } : column))
+})
 
 function servicoItems(row: DocumentRow): DetailItem[] {
   const items: DetailItem[] = [

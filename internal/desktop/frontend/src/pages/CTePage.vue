@@ -89,7 +89,7 @@
       />
     </DocumentFilterBar>
 
-    <StateLegend :sections="cteLegend()" class="q-mb-md" />
+    <StateLegend :sections="legend" class="q-mb-md" />
 
     <q-table
       v-model:pagination="pagination"
@@ -299,6 +299,8 @@ const {
 
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
+
+const legend = cteLegend()
 // previewingReset is true while the reset counts load for the confirmation.
 const previewingReset = ref(false)
 

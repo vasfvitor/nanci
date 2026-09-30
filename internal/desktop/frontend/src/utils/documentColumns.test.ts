@@ -67,6 +67,19 @@ describe('documentColumns', () => {
     ])
   })
 
+  it('labels the number column as the source asks', () => {
+    const numero = documentColumns<Row>({
+      emitenteLabel: 'Prestador',
+      destinatarioLabel: 'Tomador',
+      numeroLabel: 'Número',
+      numero: (item) => item.Numero,
+      emitente: (item) => item.EmitenteName,
+      destinatario: (item) => item.TomadorName,
+      valor: (item) => item.TotalValue,
+    }).find((item) => item.name === 'numero')
+    expect(numero?.label).toBe('Número')
+  })
+
   it('aligns and sorts the columns', () => {
     expect(Object.fromEntries(columns.map((item) => [item.name, item.align]))).toEqual({
       acoes: 'center',
