@@ -16,10 +16,6 @@ Itens anotados durante as entregas de NF-e (v0.4.0) e CT-e (v0.5.0), em 24/09/20
 - **Parse de CT-e real ainda não exercitado.** A empresa usada nos testes não tinha CT-e na fila; os parsers foram validados com fixtures fictícias e o XSD 4.00. Ao aparecer o primeiro CT-e real, conferir a linha na tela e os avisos de leitura (`parse_warnings`). Os códigos de denegação (110, 205, 301, 302, 303) foram assumidos iguais aos da NF-e; conferir no MOC CT-e 4.00.
 - **Ciência da Operação real ainda não enviada.** O fluxo de manifestação da NF-e foi testado só com o servidor de teste; um envio real exige um CNPJ que receba NF-e. A assinatura foi conferida byte a byte contra um evento real aceito pela SEFAZ.
 
-## Interface
-
-- **Captura de tela de Configurações** mostra um erro porque o mock do script de screenshots não implementa `GetBuildInfo`.
-
 ## Código
 
 - **Vocabulário compartilhado ainda em `internal/nfse`.** `Company`, `Credential`, `Environment`, `SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy` e os parâmetros de estado de sync (cerca de 790 referências em 73 arquivos) são usados por `sync`, `store`, `app` e `sefaz`, que não são específicos de NFS-e. A parte mínima (`Money`, `CompanyID`, `ErrInvalidEnum`, chave de acesso, helpers de parse) já foi para `internal/dfe`. O resto pede um PR próprio, só de movimento, com um nome de pacote decidido antes.
