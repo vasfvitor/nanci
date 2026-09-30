@@ -168,6 +168,8 @@
           />
         </div>
 
+        <StateLegend :sections="nfeLegend()" class="q-mb-md" />
+
         <q-table
           v-model:pagination="pagination"
           v-model:selected="selected"
@@ -347,6 +349,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="pendencias" class="q-pa-none">
+        <StateLegend :sections="nfePendingLegend()" class="q-mb-md" />
         <NFePendingPanel
           :rows="pending"
           :loading="pendingLoading"
@@ -371,6 +374,7 @@ import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
+import StateLegend from '../components/StateLegend.vue'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNotify } from '@/composables/useNotify'
@@ -391,6 +395,7 @@ import {
   formatNFeNumber,
 } from '@/utils/formatters'
 import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { nfeLegend, nfePendingLegend } from '@/utils/stateLegends'
 import {
   completenessColor,
   completenessLabel,

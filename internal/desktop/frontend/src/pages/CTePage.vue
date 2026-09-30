@@ -156,6 +156,8 @@
       </div>
     </div>
 
+    <StateLegend :sections="cteLegend()" class="q-mb-md" />
+
     <q-table
       v-model:pagination="pagination"
       :rows="filteredRows"
@@ -392,6 +394,7 @@ import { onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import CompetencePicker from '../components/CompetencePicker.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
+import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
 import { useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
@@ -422,6 +425,7 @@ import {
   formatNFeNumber,
 } from '@/utils/formatters'
 import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { cteLegend } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const cte = useCTeDocuments()

@@ -42,6 +42,8 @@ color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" 
         :loading="exporting" dense flat @click="openExportDialog" />
     </div>
 
+    <StateLegend :sections="nfseLegend()" class="q-mb-md" />
+
     <q-table
 v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocuments" :columns="columns"
       row-key="RelationID" selection="multiple"
@@ -330,6 +332,7 @@ import { useQuasar, type QTableColumn } from 'quasar'
 import CompetencePicker from '../components/CompetencePicker.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
+import StateLegend from '../components/StateLegend.vue'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
 import {
@@ -355,6 +358,7 @@ type Direction = '' | 'tomada' | 'prestada' | 'intermediario' | 'none'
 type ExportFormat = 'csv' | 'xlsx' | 'zip'
 
 import type { ExportResult } from '@/types/desktop'
+import { nfseLegend } from '@/utils/stateLegends'
 
 type SelectOption<T = string> = {
   label: string
