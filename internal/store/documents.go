@@ -533,6 +533,14 @@ func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID 
 		query += " AND d.issue_date >= ?"
 		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
 	}
+	if len(filter.ChavesAcesso) > 0 {
+		placeholders := make([]string, len(filter.ChavesAcesso))
+		for i, chave := range filter.ChavesAcesso {
+			placeholders[i] = "?"
+			args = append(args, chave)
+		}
+		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ",")) // #nosec G202 -- joins only "?" placeholders; values go through args.
+	}
 	query += ")"
 
 	res, err := s.db.ExecContext(ctx, query, args...)

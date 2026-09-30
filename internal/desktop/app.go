@@ -404,10 +404,11 @@ func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
 
 func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRow, error) {
 	documents, err := a.core.Documents.ListDocuments(a.ctx, app.ListInput{
-		CNPJ:       input.CNPJ,
-		Competence: input.Competence,
-		Direction:  input.Direction,
-		OnlyUnread: input.OnlyUnread,
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Direction:    input.Direction,
+		OnlyUnread:   input.OnlyUnread,
+		ChavesAcesso: input.ChavesAcesso,
 	})
 	if err != nil {
 		return nil, err
@@ -552,10 +553,11 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 
 func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
 	return a.core.Documents.MarkDocumentsViewed(a.ctx, app.ListInput{
-		CNPJ:       input.CNPJ,
-		Competence: input.Competence,
-		Direction:  input.Direction,
-		OnlyUnread: input.OnlyUnread,
+		CNPJ:         input.CNPJ,
+		Competence:   input.Competence,
+		Direction:    input.Direction,
+		OnlyUnread:   input.OnlyUnread,
+		ChavesAcesso: input.ChavesAcesso,
 	})
 }
 

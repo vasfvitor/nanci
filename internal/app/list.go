@@ -12,10 +12,11 @@ import (
 
 // ListInput defines the filters for listing documents.
 type ListInput struct {
-	CNPJ       string
-	Competence string // "YYYY-MM", optional
-	Direction  string // "tomada" | "prestada" | "intermediario", optional
-	OnlyUnread bool   // If true, returns only documents with viewed_at IS NULL
+	CNPJ         string
+	Competence   string // "YYYY-MM", optional
+	Direction    string // "tomada" | "prestada" | "intermediario", optional
+	OnlyUnread   bool   // If true, returns only documents with viewed_at IS NULL
+	ChavesAcesso []string
 }
 
 // DocumentService owns the document list/view use cases.
@@ -35,14 +36,19 @@ func NewDocumentService(d Dependencies) *DocumentService {
 // buildFilter resolves a ListInput into an nfse.DocumentFilter, applying
 // the company's sync-start policy as a date floor.
 func (s *DocumentService) buildFilter(ctx context.Context, input ListInput) (dfe.CompanyID, nfse.DocumentFilter, error) {
+	chaves, err := parseNFSeAccessKeys(input.ChavesAcesso)
+	if err != nil {
+		return "", nfse.DocumentFilter{}, err
+	}
 	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return "", nfse.DocumentFilter{}, err
 	}
 	filter := nfse.DocumentFilter{
-		Competence: input.Competence,
-		Direction:  input.Direction,
-		OnlyUnread: input.OnlyUnread,
+		Competence:   input.Competence,
+		Direction:    input.Direction,
+		OnlyUnread:   input.OnlyUnread,
+		ChavesAcesso: chaves,
 	}
 	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
 		filter.IssueDateGTE = company.SyncStartDate

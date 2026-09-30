@@ -56,6 +56,22 @@ func parseAccessKeys(raw []string) ([]string, error) {
 	return chaves, nil
 }
 
+// parseNFSeAccessKeys is parseAccessKeys for the 50-digit NFS-e chave.
+func parseNFSeAccessKeys(raw []string) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	chaves := make([]string, 0, len(raw))
+	for _, r := range raw {
+		key, err := nfse.ParseAccessKey(r)
+		if err != nil {
+			return nil, fmt.Errorf("chave de acesso inválida %q: %w", strings.TrimSpace(r), err)
+		}
+		chaves = append(chaves, string(key))
+	}
+	return chaves, nil
+}
+
 func lookupCredentialByID(ctx context.Context, repo *credential.Store, id nfse.CredentialID) (*nfse.Credential, error) {
 	cred, err := repo.CredentialByID(ctx, id)
 	if err != nil {

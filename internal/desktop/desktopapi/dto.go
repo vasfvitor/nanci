@@ -160,10 +160,11 @@ type UpdateCredentialDataInput struct {
 }
 
 type ListInput struct {
-	CNPJ       string
-	Competence string
-	Direction  string
-	OnlyUnread bool
+	CNPJ         string
+	Competence   string
+	Direction    string
+	OnlyUnread   bool
+	ChavesAcesso []string
 }
 
 type PullInput struct {
