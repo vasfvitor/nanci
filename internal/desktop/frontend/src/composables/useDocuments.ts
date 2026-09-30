@@ -204,12 +204,7 @@ export function useDocuments() {
     }
   }
 
-  async function loadEvents(documentID: string) {
-    return desktopClient.listEventsForDocument(documentID)
-  }
-
   return {
-    loadEvents,
     filter,
     documents,
     selected,

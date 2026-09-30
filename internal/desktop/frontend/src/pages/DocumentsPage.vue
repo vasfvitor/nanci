@@ -153,7 +153,11 @@
       </template>
     </q-table>
 
-    <DocumentEventsDialog v-model="showEventsDialog" :document-id="eventsDocument.id" />
+    <DocumentEventsDialog
+      v-model="showEventsDialog"
+      :document-id="eventsDocument.id"
+      :chave-acesso="eventsDocument.chave"
+    />
   </q-page>
 </template>
 

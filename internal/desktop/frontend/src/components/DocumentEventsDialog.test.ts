@@ -1,17 +1,19 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentEventsDialog from './DocumentEventsDialog.vue'
+import { desktopClient } from '@/platform/wails/client'
 import type { DocumentEvent } from '@/types/desktop'
 
-const loadEvents = vi.fn()
+const notify = vi.fn()
 
 vi.mock('quasar', () => ({
-  useQuasar: () => ({ notify: vi.fn() }),
+  useQuasar: () => ({ dark: { isActive: false }, notify }),
+  copyToClipboard: vi.fn(),
 }))
 
-vi.mock('@/composables/useDocuments', () => ({
-  useDocuments: () => ({ loadEvents }),
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
+  desktopClient: { listEventsForDocument: vi.fn() },
 }))
 
 function documentEvent(id: string): DocumentEvent {
@@ -25,78 +27,101 @@ function documentEvent(id: string): DocumentEvent {
   }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 function mountDialog() {
   return shallowMount(DocumentEventsDialog, {
-    props: { modelValue: false, documentId: '' },
+    props: { modelValue: false, documentId: '', chaveAcesso: '' },
     global: {
       stubs: {
-        'q-dialog': { template: '<div><slot /></div>' },
-        'q-card': { template: '<div><slot /></div>' },
-        'q-card-section': { template: '<div><slot /></div>' },
-        'q-card-actions': { template: '<div><slot /></div>' },
-        'q-space': { template: '<div />' },
-        'q-btn': { template: '<button />' },
-        'q-badge': { template: '<div />' },
-        'q-td': { template: '<td />' },
-        'q-table': {
+        EventsDialogFrame: {
+          name: 'EventsDialogFrame',
+          props: ['modelValue', 'title', 'chaveAcesso'],
+          template: '<div><slot /></div>',
+        },
+        QTable: {
           name: 'QTable',
-          props: ['rows', 'loading'],
+          props: { rows: Array, loading: Boolean, hidePagination: Boolean },
           template: '<div />',
         },
-      },
-      directives: {
-        ClosePopup: {},
       },
     },
   })
 }
 
-function rows(wrapper: ReturnType<typeof mountDialog>) {
+type Dialog = ReturnType<typeof mountDialog>
+
+function rows(wrapper: Dialog) {
   return wrapper.getComponent({ name: 'QTable' }).props('rows') as DocumentEvent[]
+}
+
+async function openFor(wrapper: Dialog, documentId: string) {
+  await wrapper.setProps({ documentId, chaveAcesso: `chave-${documentId}`, modelValue: true })
+  await flushPromises()
 }
 
 describe('DocumentEventsDialog', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
-  it('does not keep the previous document events when the next load fails', async () => {
-    loadEvents.mockResolvedValueOnce([documentEvent('evt-a')])
-
+  it('frames the events table with the NFS-e title and key', async () => {
     const wrapper = mountDialog()
-    await wrapper.setProps({ documentId: 'doc-a', modelValue: true })
-    await flushPromises()
+    await wrapper.setProps({ chaveAcesso: 'chave-1' })
+
+    const frame = wrapper.getComponent({ name: 'EventsDialogFrame' })
+    expect(frame.props('title')).toBe('Eventos da NFS-e')
+    expect(frame.props('chaveAcesso')).toBe('chave-1')
+    expect(wrapper.getComponent({ name: 'QTable' }).props('hidePagination')).toBe(true)
+  })
+
+  it('loads the events of the document each time it opens', async () => {
+    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValue([documentEvent('evt-a')])
+    const wrapper = mountDialog()
+    expect(desktopClient.listEventsForDocument).not.toHaveBeenCalled()
+
+    await openFor(wrapper, 'doc-a')
+
+    expect(desktopClient.listEventsForDocument).toHaveBeenCalledWith('doc-a')
+    expect(rows(wrapper).map((event) => event.ID)).toEqual(['evt-a'])
+  })
+
+  it('does not keep the previous document events when the next load fails', async () => {
+    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValueOnce([documentEvent('evt-a')])
+    const wrapper = mountDialog()
+    await openFor(wrapper, 'doc-a')
     expect(rows(wrapper)).toHaveLength(1)
 
     await wrapper.setProps({ modelValue: false })
-    loadEvents.mockRejectedValueOnce(new Error('boom'))
-
-    await wrapper.setProps({ documentId: 'doc-b', modelValue: true })
-    await flushPromises()
+    vi.mocked(desktopClient.listEventsForDocument).mockRejectedValueOnce(new Error('boom'))
+    await openFor(wrapper, 'doc-b')
 
     expect(rows(wrapper)).toEqual([])
+    expect(notify).toHaveBeenCalledWith({
+      type: 'negative',
+      message: 'Erro ao carregar eventos: boom',
+    })
   })
 
   it('does not show the previous document events while the next load is pending', async () => {
-    loadEvents.mockResolvedValueOnce([documentEvent('evt-a')])
-
+    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValueOnce([documentEvent('evt-a')])
     const wrapper = mountDialog()
-    await wrapper.setProps({ documentId: 'doc-a', modelValue: true })
-    await flushPromises()
+    await openFor(wrapper, 'doc-a')
 
     await wrapper.setProps({ modelValue: false })
-    let resolvePending: (value: DocumentEvent[]) => void = () => {}
-    loadEvents.mockReturnValueOnce(
-      new Promise<DocumentEvent[]>((resolve) => {
-        resolvePending = resolve
-      })
-    )
+    const pending = deferred<DocumentEvent[]>()
+    vi.mocked(desktopClient.listEventsForDocument).mockReturnValueOnce(pending.promise)
 
     await wrapper.setProps({ documentId: 'doc-b', modelValue: true })
     expect(rows(wrapper)).toEqual([])
 
-    resolvePending([documentEvent('evt-b')])
+    pending.resolve([documentEvent('evt-b')])
     await flushPromises()
     expect(rows(wrapper).map((event) => event.ID)).toEqual(['evt-b'])
   })
