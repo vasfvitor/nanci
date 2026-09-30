@@ -41,7 +41,7 @@ describe('stateLegends', () => {
   it('nfseLegend explains the new badge and every abbreviation', () => {
     const legend = nfseLegend()
     expect(badges(legend, 'Novo')).toEqual(['Novo'])
-    expect(badges(legend, 'Direção')).toEqual(['P', 'T', 'I'])
+    expect(badges(legend, 'Papel')).toEqual(['P', 'T', 'I', 'SP'])
     expect(badges(legend, 'Visibilidade')).toEqual(['PE', 'TE', 'IE', 'MR'])
     expect(badges(legend, 'Status')).toEqual(['N', 'C', 'S'])
     expect(section(legend, 'Status').items[1]).toMatchObject({
@@ -56,9 +56,7 @@ describe('stateLegends', () => {
     const kinds = nfseStateBadges({ Status: '', VisibilityReason: '', CompanyRole: '' }).map(
       (badge) => badge.kind
     )
-    // The papel group keeps the page's "Direção" title until the NFS-e page
-    // adopts the standard vocabulary.
-    expect(titles).toEqual(['Novo', ...kinds.map((kind) => (kind === 'Papel' ? 'Direção' : kind))])
+    expect(titles).toEqual(['Novo', ...kinds])
   })
 
   it('every legend explains the new badge the same way', () => {
@@ -133,5 +131,18 @@ describe('stateLegends', () => {
         expect(new Set(seen).size).toBe(seen.length)
       }
     }
+  })
+})
+
+describe('nfseLegend', () => {
+  it('explains every papel the Papel filter offers, with the table labels', () => {
+    const papel = section(nfseLegend(), 'Papel')
+    expect(papel.items.map((entry) => entry.name)).toEqual([
+      'Prestada',
+      'Tomada',
+      'Intermediário',
+      'Sem papel fiscal',
+    ])
+    expect(papel.items[3]).toMatchObject({ badge: 'SP', color: 'grey' })
   })
 })

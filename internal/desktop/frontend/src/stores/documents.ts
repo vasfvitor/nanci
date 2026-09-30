@@ -26,6 +26,10 @@ export const useDocumentsStore = defineStore('documents', () => {
   const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
+  // markingViewed is true while a "Marcar vistos" request is in flight.
+  const markingViewed = shallowRef(false)
+  // resettingCNPJ is the company whose NFS-e sync reset is in flight, or ''.
+  const resettingCNPJ = shallowRef('')
 
   // setRows replaces the result set and keeps only the selected documents
   // that are still present, swapped for their fresh rows.
@@ -53,6 +57,8 @@ export const useDocumentsStore = defineStore('documents', () => {
     filterText,
     loading,
     exporting,
+    markingViewed,
+    resettingCNPJ,
     setRows,
     resetDocuments,
   }

@@ -137,7 +137,10 @@ describe('documents store', () => {
     expect(store.selected).toEqual([])
   })
 
-  it('starts with an empty text filter', () => {
-    expect(useDocumentsStore().filterText).toBe('')
+  it('starts with an empty text filter and no action in flight', () => {
+    const store = useDocumentsStore()
+    expect(store.filterText).toBe('')
+    expect(store.markingViewed).toBe(false)
+    expect(store.resettingCNPJ).toBe('')
   })
 })

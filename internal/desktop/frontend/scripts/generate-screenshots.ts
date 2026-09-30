@@ -202,6 +202,7 @@ const mockDocuments = [
     LastSeenNSU: 10,
     FirstSyncedAt: '2026-06-18T10:05:00Z',
     LastSyncedAt: '2026-06-18T10:05:00Z',
+    ViewedAt: '2026-06-18T11:00:00Z',
   },
   {
     ID: 'doc-2',
@@ -278,6 +279,7 @@ const mockDocuments = [
     LastSeenNSU: 45,
     FirstSyncedAt: '2026-06-15T09:10:00Z',
     LastSyncedAt: '2026-06-15T09:10:00Z',
+    ViewedAt: '2026-06-16T08:30:00Z',
   },
   {
     ID: 'doc-4',
@@ -334,27 +336,19 @@ const syncLogs = [
 const mockEvents = [
   {
     ID: 'ev-1',
-    Type: 'NFSE',
-    EventAt: '2026-06-14T14:20:00Z',
-    ReplacementChaveAcesso: '',
-    Description: 'Emissão Normal',
-    RawXMLPath: 'C:\\nanci\\xmls\\doc-4.xml',
+    Type: 'substituicao',
+    EventAt: '2026-06-14T16:30:00Z',
+    ReplacementChaveAcesso: '35260611222333000144560010000088891002003008',
+    Description: 'Nota fiscal substituída pela de número 8889.',
+    RawXMLPath: 'C:\\nanci\\xmls\\doc-4-subst.xml',
   },
   {
     ID: 'ev-2',
-    Type: 'CANC',
+    Type: 'cancelamento',
     EventAt: '2026-06-14T15:00:00Z',
     ReplacementChaveAcesso: '',
     Description: 'Cancelamento por erro de valores na prestação do serviço.',
     RawXMLPath: 'C:\\nanci\\xmls\\doc-4-canc.xml',
-  },
-  {
-    ID: 'ev-3',
-    Type: 'SUBST',
-    EventAt: '2026-06-14T16:30:00Z',
-    ReplacementChaveAcesso: '35260611222333000144560010000088891002003008',
-    Description: 'Nota fiscal substituída pela de final 8889.',
-    RawXMLPath: 'C:\\nanci\\xmls\\doc-4-subst.xml',
   },
 ]
 
@@ -922,29 +916,29 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Notas fiscais de serviço' },
-  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Notas fiscais de serviço' },
+  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Agência de Publicidade Marketing S/A', fitsWidth: true },
+  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Agência de Publicidade Marketing S/A', fitsWidth: true },
 
   {
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'light',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Abre a expansão da primeira nota fiscal
-      await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
-      await page.waitForTimeout(500) // espera a animação de expansão
+      await page.locator('button[aria-label="Ver detalhes da NFS-e"]').first().click()
+      await page.waitForSelector('text=Retenções e tributos', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
     },
   },
   {
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'dark',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Abre a expansão da primeira nota fiscal
-      await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
-      await page.waitForTimeout(500) // espera a animação de expansão
+      await page.locator('button[aria-label="Ver detalhes da NFS-e"]').first().click()
+      await page.waitForSelector('text=Retenções e tributos', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
     },
   },
 
@@ -952,32 +946,24 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'light',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
-      // Pode ser o primeiro botão de histórico que encontrar
-      const btn = page.locator('button[aria-label="Ver Eventos"]').first()
-      if (await btn.isVisible()) {
-        await btn.click()
-        await page.waitForSelector('.q-dialog', { timeout: 3000 })
-        await page.waitForSelector('text="Emissão Normal"', { timeout: 3000 })
-      }
+      // A NFS-e 8888, substituída, tem os eventos da mock
+      await page.locator('tbody tr', { hasText: '8888' }).locator('button[aria-label="Ações da NFS-e"]').click()
+      await page.click('.q-menu >> text=Eventos')
+      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', { timeout: 3000 })
     },
   },
   {
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'dark',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
-      // Pode ser o primeiro botão de histórico que encontrar
-      const btn = page.locator('button[aria-label="Ver Eventos"]').first()
-      if (await btn.isVisible()) {
-        await btn.click()
-        await page.waitForSelector('.q-dialog', { timeout: 3000 })
-        await page.waitForSelector('text="Emissão Normal"', { timeout: 3000 })
-      }
+      // A NFS-e 8888, substituída, tem os eventos da mock
+      await page.locator('tbody tr', { hasText: '8888' }).locator('button[aria-label="Ações da NFS-e"]').click()
+      await page.click('.q-menu >> text=Eventos')
+      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', { timeout: 3000 })
     },
   },
 

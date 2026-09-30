@@ -13,10 +13,6 @@ import {
   roleColor,
   visibilityLabel,
   visibilityColor,
-  getRoleAbbreviation,
-  getVisibilityAbbreviation,
-  getStatusAbbreviation,
-  getStatusLabel,
 } from './nfseDisplay'
 
 // expectShortUniqueAbbrs checks that every value of table has an
@@ -88,47 +84,6 @@ describe('nfseDisplay utility functions', () => {
     })
   })
 
-  describe('getRoleAbbreviation', () => {
-    it('returns correct abbreviation', () => {
-      expect(getRoleAbbreviation('prestada')).toBe('P')
-      expect(getRoleAbbreviation('tomada')).toBe('T')
-      expect(getRoleAbbreviation('intermediario')).toBe('I')
-      expect(getRoleAbbreviation('other')).toBe('-')
-      expect(getRoleAbbreviation()).toBe('-')
-    })
-  })
-
-  describe('getVisibilityAbbreviation', () => {
-    it('returns correct abbreviation', () => {
-      expect(getVisibilityAbbreviation('exact_prestador')).toBe('PE')
-      expect(getVisibilityAbbreviation('exact_tomador')).toBe('TE')
-      expect(getVisibilityAbbreviation('exact_intermediario')).toBe('IE')
-      expect(getVisibilityAbbreviation('same_root_only')).toBe('MR')
-      expect(getVisibilityAbbreviation('other')).toBe('?')
-      expect(getVisibilityAbbreviation()).toBe('?')
-    })
-  })
-
-  describe('getStatusAbbreviation', () => {
-    it('returns correct abbreviation', () => {
-      expect(getStatusAbbreviation('normal')).toBe('N')
-      expect(getStatusAbbreviation('cancelada')).toBe('C')
-      expect(getStatusAbbreviation('substituida')).toBe('S')
-      expect(getStatusAbbreviation('other')).toBe('?')
-      expect(getStatusAbbreviation()).toBe('?')
-    })
-  })
-
-  describe('getStatusLabel', () => {
-    it('returns correct label', () => {
-      expect(getStatusLabel('normal')).toBe('Normal')
-      expect(getStatusLabel('cancelada')).toBe('Cancelada')
-      expect(getStatusLabel('substituida')).toBe('Substituída')
-      expect(getStatusLabel('other')).toBe('other')
-      expect(getStatusLabel()).toBe('Desconhecido')
-    })
-  })
-
   describe('display tables', () => {
     it('abbreviate every value with one or two unique characters', () => {
       for (const table of [nfseStatus, nfseVisibility, nfseRole]) {
@@ -142,8 +97,7 @@ describe('nfseDisplay utility functions', () => {
       expect(nfseRole.values().map(nfseRole.abbr)).toEqual(['P', 'T', 'I', 'SP'])
     })
 
-    it('keeps the old role abbreviation fallback for none', () => {
-      expect(getRoleAbbreviation('none')).toBe('-')
+    it('abbreviates the company without a fiscal role as SP', () => {
       expect(nfseRole.abbr('none')).toBe('SP')
     })
 

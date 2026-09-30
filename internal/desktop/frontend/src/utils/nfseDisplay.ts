@@ -66,19 +66,8 @@ export function nfseStatusLine(company: Pick<CompanySummary, 'LastSyncAt' | 'Las
   ].join(' · ')
 }
 
-// The names below predate the display tables and are kept, with their old
-// fallbacks, until the NFS-e page uses the tables directly.
-
-function pluck(entries: Record<string, { label: string; color: string }>, field: 'label' | 'color') {
-  return Object.fromEntries(Object.entries(entries).map(([value, display]) => [value, display[field]]))
-}
-
-export const documentStatusColor: Record<string, string> = pluck(nfseStatusEntries, 'color')
-export const roleLabels: Record<string, string> = pluck(nfseRoleEntries, 'label')
-export const roleColors: Record<string, string> = pluck(nfseRoleEntries, 'color')
-export const visibilityLabels: Record<string, string> = pluck(nfseVisibilityEntries, 'label')
-export const visibilityColors: Record<string, string> = pluck(nfseVisibilityEntries, 'color')
-
+// The names below predate the display tables; formatters.test.ts still
+// checks them.
 export const statusColor = nfseStatus.color
 export const roleLabel = nfseRole.label
 export const roleColor = nfseRole.color
@@ -86,21 +75,4 @@ export const visibilityColor = nfseVisibility.color
 
 export function visibilityLabel(reason: string) {
   return reason ? nfseVisibility.label(reason) : 'Desconhecida'
-}
-
-export function getRoleAbbreviation(role = '') {
-  if (role === 'none' || !nfseRole.values().includes(role)) return '-'
-  return nfseRole.abbr(role)
-}
-
-export function getVisibilityAbbreviation(reason = '') {
-  return reason ? nfseVisibility.abbr(reason) : '?'
-}
-
-export function getStatusAbbreviation(status = '') {
-  return status ? nfseStatus.abbr(status) : '?'
-}
-
-export function getStatusLabel(status = '') {
-  return nfseStatus.label(status)
 }

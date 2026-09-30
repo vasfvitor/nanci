@@ -100,7 +100,7 @@ export function nfseLegend(): LegendSection[] {
       ],
     },
     {
-      title: 'Direção',
+      title: 'Papel',
       items: [
         abbreviated(nfseRole, 'prestada', 'A empresa prestou o serviço e emitiu a nota.'),
         abbreviated(
@@ -109,6 +109,11 @@ export function nfseLegend(): LegendSection[] {
           'A empresa tomou o serviço; a nota foi emitida por outro prestador.'
         ),
         abbreviated(nfseRole, 'intermediario', 'A empresa consta como intermediária do serviço.'),
+        abbreviated(
+          nfseRole,
+          'none',
+          'A nota chegou pela raiz do CNPJ; a empresa não é prestadora, tomadora nem intermediária.'
+        ),
       ],
     },
   ]
