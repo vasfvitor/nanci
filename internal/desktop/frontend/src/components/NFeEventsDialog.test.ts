@@ -20,7 +20,16 @@ function mountDialog() {
     props: { modelValue: false, cnpj: '123', chaveAcesso: 'chave-1' },
     global: {
       stubs: {
-        QTable: { name: 'QTable', props: ['rows', 'loading'], template: '<div />' },
+        EventsDialogFrame: {
+          name: 'EventsDialogFrame',
+          props: ['modelValue', 'title', 'chaveAcesso'],
+          template: '<div><slot /></div>',
+        },
+        QTable: {
+          name: 'QTable',
+          props: { rows: Array, loading: Boolean, hidePagination: Boolean },
+          template: '<div />',
+        },
       },
     },
   })
@@ -42,6 +51,14 @@ describe('NFeEventsDialog', () => {
 
     expect(desktopClient.listNFeEvents).toHaveBeenCalledWith('123', 'chave-1')
     expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([event])
+  })
+
+  it('frames the events table with the NF-e title and key, without pagination', () => {
+    const wrapper = mountDialog()
+    const frame = wrapper.getComponent({ name: 'EventsDialogFrame' })
+    expect(frame.props('title')).toBe('Eventos da NF-e')
+    expect(frame.props('chaveAcesso')).toBe('chave-1')
+    expect(wrapper.getComponent({ name: 'QTable' }).props('hidePagination')).toBe(true)
   })
 
   it('reports a failed load', async () => {
