@@ -379,14 +379,21 @@ type NFeRow struct {
 	AuthorizedAt     *time.Time
 	Protocolo        string
 	TpNF             string // "0" entrada, "1" saída
+	TpAmb            string // "1" produção, "2" homologação
+	NatOp            string // empty on resumo
 	EmitenteCNPJ     string
 	EmitenteName     string
 	EmitenteIE       string
+	EmitenteUF       string
 	DestinatarioCNPJ string
 	DestinatarioName string
 	TotalValue       int64
+	ICMSValue        int64 // zero on resumo
+	IPIValue         int64 // zero on resumo
 	Situacao         string
 	Completeness     string
+	LayoutVersion    string
+	ParseWarnings    []string
 	Manifestacao     string
 	ManifestacaoAt   *time.Time
 	CienciaDue       *time.Time
@@ -599,14 +606,20 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		AuthorizedAt:          document.AuthorizedAt,
 		Protocolo:             document.Protocolo,
 		TpNF:                  document.TpNF,
+		TpAmb:                 document.TpAmb,
+		NatOp:                 document.NatOp,
 		EmitenteCNPJ:          document.EmitenteCNPJ,
 		EmitenteName:          document.EmitenteName,
 		EmitenteIE:            document.EmitenteIE,
+		EmitenteUF:            document.EmitenteUF,
 		DestinatarioCNPJ:      document.DestinatarioCNPJ,
 		DestinatarioName:      document.DestinatarioName,
 		TotalValue:            document.TotalValue.Cents(),
+		ICMSValue:             document.ICMSValue.Cents(),
+		IPIValue:              document.IPIValue.Cents(),
 		Situacao:              string(document.Situacao),
 		Completeness:          string(document.Completeness),
+		LayoutVersion:         document.LayoutVersion,
 		Manifestacao:          string(document.Manifestacao),
 		ManifestacaoAt:        document.ManifestacaoAt,
 		CienciaDue:            optionalTime(document.CienciaDue),
@@ -619,6 +632,8 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		TacitlyConfirmed:      document.TacitlyConfirmed,
 		CienciaBlockReason:    document.CienciaBlockReason,
 		ConclusiveBlockReason: document.ConclusiveBlockReason,
+		// Empty lists reach the frontend as [] instead of null.
+		ParseWarnings: append([]string{}, document.ParseWarnings...),
 	}
 	if !document.ConclusiveDue.IsZero() {
 		row.DaysLeft = &document.DaysLeft

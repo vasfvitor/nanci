@@ -19,17 +19,24 @@ func TestNFeRows(t *testing.T) {
 		{
 			CompanyDocument: nfe.CompanyDocument{
 				Document: nfe.Document{
-					ID:           "doc-1",
-					ChaveAcesso:  "35260912345678000195550010000123451000123456",
-					Serie:        "1",
-					Numero:       "12345",
-					IssueDate:    authorized.Add(-time.Hour),
-					AuthorizedAt: &authorized,
-					Protocolo:    "135260000000001",
-					TpNF:         "1",
-					TotalValue:   dfe.NewMoneyFromCents(123456),
-					Situacao:     nfe.SituacaoAutorizada,
-					Completeness: nfe.CompletenessCompleta,
+					ID:            "doc-1",
+					ChaveAcesso:   "35260912345678000195550010000123451000123456",
+					Serie:         "1",
+					Numero:        "12345",
+					IssueDate:     authorized.Add(-time.Hour),
+					AuthorizedAt:  &authorized,
+					Protocolo:     "135260000000001",
+					TpNF:          "1",
+					TpAmb:         "1",
+					NatOp:         "Venda de mercadoria",
+					EmitenteUF:    "SP",
+					TotalValue:    dfe.NewMoneyFromCents(123456),
+					ICMSValue:     dfe.NewMoneyFromCents(20400),
+					IPIValue:      dfe.NewMoneyFromCents(5050),
+					Situacao:      nfe.SituacaoAutorizada,
+					Completeness:  nfe.CompletenessCompleta,
+					LayoutVersion: "4.00",
+					ParseWarnings: []string{"aviso"},
 				},
 				RelationID:   "rel-1",
 				CompanyRole:  nfe.CompanyRoleDestinatario,
@@ -95,8 +102,20 @@ func TestNFeRows(t *testing.T) {
 	if row.ViewedAt == nil || !row.ViewedAt.Equal(viewed) {
 		t.Errorf("ViewedAt = %v, want %v", row.ViewedAt, viewed)
 	}
+	if row.TpAmb != "1" || row.NatOp != "Venda de mercadoria" || row.EmitenteUF != "SP" || row.LayoutVersion != "4.00" {
+		t.Errorf("TpAmb = %q, NatOp = %q, EmitenteUF = %q, LayoutVersion = %q", row.TpAmb, row.NatOp, row.EmitenteUF, row.LayoutVersion)
+	}
+	if row.ICMSValue != 20400 || row.IPIValue != 5050 {
+		t.Errorf("ICMSValue = %d, IPIValue = %d, want cents", row.ICMSValue, row.IPIValue)
+	}
+	if len(row.ParseWarnings) != 1 || row.ParseWarnings[0] != "aviso" {
+		t.Errorf("ParseWarnings = %v", row.ParseWarnings)
+	}
 
 	empty := rows[1]
+	if empty.ParseWarnings == nil {
+		t.Error("ParseWarnings = nil, want an empty slice so the frontend gets []")
+	}
 	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil || empty.CienciaDaysLeft != nil || empty.ViewedAt != nil {
 		t.Errorf("dates = %v %v %v %v %v, days left = %v %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.ViewedAt, empty.DaysLeft, empty.CienciaDaysLeft)
 	}
