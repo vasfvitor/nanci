@@ -112,7 +112,7 @@
           <q-input
             v-model="filterText"
             class="document-search-input"
-            placeholder="Filtrar por chave, número, emitente ou tomador..."
+            placeholder="Filtrar por chave, número, nome ou CNPJ..."
             outlined
             dense
             clearable

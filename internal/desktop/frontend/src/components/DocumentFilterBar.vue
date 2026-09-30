@@ -130,8 +130,10 @@ function onEnter(event: KeyboardEvent) {
 </script>
 
 <style>
-/* Not scoped: the source's selects come through the default slot. */
-.document-filter-select {
+/* Not scoped: the source's selects come through the default slot. The
+   selector matches the specificity of Quasar's `.row > .col-md-auto`, which
+   sets min-width: 0 and would otherwise win. */
+.row > .document-filter-select {
   min-width: 130px;
 }
 </style>

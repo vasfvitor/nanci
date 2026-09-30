@@ -60,7 +60,7 @@ const company = {
 }
 
 const nfeChave = '35260911222333000181550010000045121418273651'
-const placeholder = 'Filtrar por chave, número, emitente ou tomador...'
+const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
 
 const tomada = mapCTeRow({
   ChaveAcesso: '35260811222333000181570010000012341000012345',
