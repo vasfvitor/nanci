@@ -331,7 +331,7 @@ import { useRoute } from 'vue-router'
 import { useQuasar, type QTableColumn } from 'quasar'
 import CompetencePicker from '../components/CompetencePicker.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
-import ExportDialog from '../components/ExportDialog.vue'
+import ExportDialog, { type ExportChoice } from '../components/ExportDialog.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
@@ -629,28 +629,39 @@ async function search() {
   }
 }
 
+const exportFormats = [
+  { label: 'Planilha CSV', value: 'csv' },
+  { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
+  { label: 'XMLs originais (ZIP)', value: 'zip' },
+  { label: 'DANFSes (ZIP)', value: 'danfse-zip' },
+]
+
 function openExportDialog() {
+  const hasSelection = selected.value.length > 0
   $q.dialog({
     component: ExportDialog,
     componentProps: {
-      selectedCount: selected.value.length
-    }
-  }).onOk(async (data: { format: string; incremental: boolean }) => {
-    const { format, incremental } = data
+      noun: 'NFS-e',
+      count: hasSelection ? selected.value.length : documents.value.length,
+      scope: hasSelection ? 'selected' : 'listed',
+      formats: exportFormats,
+    },
+  }).onOk(async (choice: ExportChoice) => {
+    const { format, incremental } = choice
 
     // Scenario 1: Items were selected manually
     if (selected.value.length > 0) {
       const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
-      if (chaves.length === 0) { 
+      if (chaves.length === 0) {
         notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida')
-        return 
+        return
       }
       try {
         let result: ExportResult | undefined | null
         if (format === 'danfse-zip') {
-          result = await documentsApi.exportDANFSeZIP(false, '', chaves)
+          result = await documentsApi.exportDANFSeZIP(incremental, '', chaves)
         } else {
-          result = await documentsApi.exportDocuments(format as ExportFormat, false, '', chaves)
+          result = await documentsApi.exportDocuments(format as ExportFormat, incremental, '', chaves)
         }
         notifyExportSuccess(`Arquivo gerado`, result)
         selected.value = [] // clear selection
