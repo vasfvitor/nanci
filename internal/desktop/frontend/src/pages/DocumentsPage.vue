@@ -309,6 +309,7 @@ async function loadCompanies() {
 }
 
 async function handleCompanyChange() {
+  selected.value = []
   if (!filter.value.CNPJ) return
   await search()
 }

@@ -378,6 +378,7 @@ async function refreshAll() {
 }
 
 async function handleCompanyChange() {
+  selected.value = []
   if (!filter.value.CNPJ) return
   await refreshAll()
 }

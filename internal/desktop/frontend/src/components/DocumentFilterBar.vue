@@ -60,7 +60,7 @@
         color="secondary"
         icon="folder_zip"
         label="Exportar"
-        :disable="exporting || exportDisabled"
+        :disable="loading || exporting || exportDisabled"
         :loading="exporting"
         dense
         flat
@@ -78,8 +78,8 @@ import CompetencePicker from './CompetencePicker.vue'
 // order: company, competência, the source's own filters (default slot, with
 // the document-filter-select class on selects), "Somente não vistos", then
 // Buscar, the source's actions (#actions), "Marcar vistos (n)" and Exportar.
-// Enter in a text field searches; changing the company or the toggle too, via
-// companyChange and search. Leaving onlyUnviewed undefined hides the toggle
+// Enter in a text field searches, but not on a select; changing the company
+// or the toggle searches too, via companyChange and search. Leaving onlyUnviewed undefined hides the toggle
 // and "Marcar vistos", for sources without viewed marks.
 const props = withDefaults(
   defineProps<{
@@ -121,10 +121,13 @@ function onOnlyUnviewedChange(value: boolean) {
   emit('search')
 }
 
-// onEnter searches when Enter is released in a text field of the bar; Enter
-// on a select opens its menu instead.
+// onEnter searches when Enter is released in a text field of the bar. A
+// q-select takes focus through a readonly input of its own, and Enter there
+// belongs to the select, so it does not search.
 function onEnter(event: KeyboardEvent) {
-  if (!(event.target instanceof HTMLInputElement)) return
+  const target = event.target
+  if (!(target instanceof HTMLInputElement)) return
+  if (target.readOnly || target.closest('.q-select')) return
   if (canSearch.value) emit('search')
 }
 </script>

@@ -211,6 +211,20 @@ describe('CTePage', () => {
     expect(table(wrapper).props('noDataLabel')).toBe('Selecione uma empresa.')
   })
 
+  it('clears the selection when the company changes', async () => {
+    const outra = { ...company, CNPJ: '98765432000199', Name: 'Outra' }
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
+    const wrapper = mountPage()
+    await flushPromises()
+    await select(wrapper, [tomada])
+
+    field(wrapper, 'QSelect', 'Empresa').vm.$emit('update:modelValue', outra.CNPJ)
+    await flushPromises()
+
+    expect(desktopClient.listCTe).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: outra.CNPJ }))
+    expect(table(wrapper).props('selected')).toEqual([])
+  })
+
   it('shows the standard document columns in order', async () => {
     const wrapper = mountPage()
     await flushPromises()

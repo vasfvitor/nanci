@@ -7,7 +7,8 @@ const stubs = {
     name: 'QSelect',
     props: ['modelValue', 'options', 'disable'],
     emits: ['update:modelValue'],
-    template: '<div class="select" tabindex="0" />',
+    // Like Quasar's, the stub takes focus through a readonly input.
+    template: '<div class="select q-select"><input class="q-select__focus-target" readonly /></div>',
   },
   CompetencePicker: {
     name: 'CompetencePicker',
@@ -53,7 +54,7 @@ function mountBar(props: Partial<BarProps> = {}, calls: string[] = []) {
       ...props,
     },
     slots: {
-      default: '<input class="source-filter" />',
+      default: '<input class="source-filter" /><div class="q-select"><input class="source-select" /></div>',
       actions: '<button class="source-action">Registrar ciência (2)</button>',
     },
     global: { stubs },
@@ -127,8 +128,11 @@ describe('DocumentFilterBar', () => {
 
     await wrapper.find('.source-filter').trigger('keyup', { key: 'Enter' })
     await wrapper.find('.competence').trigger('keyup', { key: 'Enter' })
-    await wrapper.find('.select').trigger('keyup', { key: 'Enter' })
+    expect(calls).toEqual(['search', 'search'])
 
+    // The focus target of a select, and any input inside one, belong to it.
+    await wrapper.find('.q-select__focus-target').trigger('keyup', { key: 'Enter' })
+    await wrapper.find('.source-select').trigger('keyup', { key: 'Enter' })
     expect(calls).toEqual(['search', 'search'])
   })
 
@@ -154,9 +158,11 @@ describe('DocumentFilterBar', () => {
     expect(wrapper.emitted('export')).toHaveLength(1)
   })
 
-  it('disables Exportar when there is nothing to export or an export runs', () => {
+  it('disables Exportar when there is nothing to export, an export runs or the list loads', () => {
+    expect(button(mountBar(), 'Exportar').attributes('disabled')).toBeUndefined()
     expect(button(mountBar({ exportDisabled: true }), 'Exportar').attributes('disabled')).toBeDefined()
     expect(button(mountBar({ exporting: true }), 'Exportar').attributes('disabled')).toBeDefined()
+    expect(button(mountBar({ loading: true }), 'Exportar').attributes('disabled')).toBeDefined()
   })
 
   it('titles the competência with the default explanation', () => {

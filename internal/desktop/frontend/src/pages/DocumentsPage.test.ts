@@ -278,6 +278,20 @@ describe('DocumentsPage', () => {
     expect(table(wrapper).props('rows')).toEqual([treinamento])
   })
 
+  it('clears the selection when the company changes', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    await select(wrapper, [consultoria])
+
+    field(wrapper, 'QSelect', 'Empresa').vm.$emit('update:modelValue', outra.CNPJ)
+    await flushPromises()
+
+    expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ CNPJ: outra.CNPJ })
+    )
+    expect(table(wrapper).props('selected')).toEqual([])
+  })
+
   it('shows the standard document columns, with "Número" for the NFS-e number', async () => {
     const wrapper = mountPage()
     await flushPromises()
