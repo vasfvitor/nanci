@@ -18,9 +18,7 @@ Itens anotados durante as entregas de NF-e (v0.4.0) e CT-e (v0.5.0), em 24/09/20
 
 ## Interface
 
-- **Tabelas largas a 1280px.** As páginas Empresas, NFS-e e NF-e ainda precisam de rolagem lateral na largura padrão da janela; a última coluna fica cortada. A página CT-e já cabe (colunas mais estreitas, nome em cima e CNPJ embaixo); aplicar o mesmo desenho nas outras.
 - **Captura de tela de Configurações** mostra um erro porque o mock do script de screenshots não implementa `GetBuildInfo`.
-- **Busca da página NF-e** não sobrevive à navegação (o texto de filtro é local à página). Baixa prioridade.
 
 ## Código
 
