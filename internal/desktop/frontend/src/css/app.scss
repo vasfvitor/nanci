@@ -174,8 +174,9 @@ body {
   max-width: 100px;
 }
 
-/* A text column of an events table that wraps instead of widening it. */
-.event-wrap {
+/* A text column of an events table that wraps instead of widening it. The
+   selector outranks Quasar's nowrap table cells. */
+.q-table td.event-wrap {
   min-width: 180px;
   max-width: 260px;
   white-space: normal;
