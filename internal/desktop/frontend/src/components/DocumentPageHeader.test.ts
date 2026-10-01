@@ -26,7 +26,16 @@ type HeaderProps = InstanceType<typeof DocumentPageHeader>['$props']
 
 function mountHeader(props: Partial<HeaderProps> = {}) {
   return mount(DocumentPageHeader, {
-    props: { title: 'NF-e', syncing: false, syncDisabled: false, ...props },
+    props: {
+      title: 'NF-e',
+      ambiente: null,
+      syncing: false,
+      syncDisabled: false,
+      resetTitle: 'Remove as NF-e da empresa',
+      resetting: false,
+      resetDisabled: false,
+      ...props,
+    },
     global: { stubs },
   })
 }
@@ -42,25 +51,20 @@ describe('DocumentPageHeader', () => {
     quasar.dark.isActive = false
   })
 
-  it('shows the title and a sync button named after it', async () => {
+  it('shows the title and the reset and sync buttons named after it', async () => {
     const wrapper = mountHeader()
 
     expect(wrapper.find('h5').text()).toBe('NF-e')
     expect(wrapper.find('.badge').exists()).toBe(false)
     expect(wrapper.find('.banner').exists()).toBe(false)
-    expect(wrapper.findAll('button').map((item) => item.text())).toEqual(['Sincronizar NF-e'])
+    expect(wrapper.findAll('button').map((item) => item.text())).toEqual(['Redefinir NF-e', 'Sincronizar NF-e'])
 
     await button(wrapper, 'Sincronizar NF-e').trigger('click')
     expect(wrapper.emitted('sync')).toHaveLength(1)
   })
 
-  it('shows the reset button only with a label', async () => {
-    const wrapper = mountHeader({
-      resetLabel: 'Redefinir NF-e',
-      resetTitle: 'Remove as NF-e da empresa',
-      resetting: true,
-      resetDisabled: false,
-    })
+  it('shows the reset in flight and asks for it on click', async () => {
+    const wrapper = mountHeader({ resetting: true })
 
     const reset = button(wrapper, 'Redefinir NF-e')
     expect(reset.attributes('data-loading')).toBe('true')
@@ -69,7 +73,7 @@ describe('DocumentPageHeader', () => {
   })
 
   it('disables the buttons as told', () => {
-    const wrapper = mountHeader({ syncDisabled: true, resetLabel: 'Redefinir NF-e', resetDisabled: true })
+    const wrapper = mountHeader({ syncDisabled: true, resetDisabled: true })
 
     expect(button(wrapper, 'Sincronizar NF-e').attributes('disabled')).toBeDefined()
     expect(button(wrapper, 'Redefinir NF-e').attributes('disabled')).toBeDefined()

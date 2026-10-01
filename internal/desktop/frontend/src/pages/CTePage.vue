@@ -7,7 +7,6 @@
       :blocked-text="blockedText"
       :syncing="isSyncing"
       :sync-disabled="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
-      reset-label="Redefinir CT-e"
       reset-title="Remove os CT-e da empresa e reinicia a sincronização CT-e"
       :resetting="isResetting || previewingReset"
       :reset-disabled="!filter.CNPJ || isSyncing"
@@ -30,63 +29,34 @@
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
-      <q-select
-        v-model="filter.Role"
-        class="col-6 col-sm-3 col-md-auto document-filter-select"
-        :options="ctePapelFilterOptions"
-        label="Papel"
-        emit-value
-        map-options
-        outlined
-        dense
-        options-dense
-        :disable="loading"
-      />
-      <q-select
-        v-model="filter.Modelo"
-        class="col-6 col-sm-3 col-md-auto document-filter-select"
-        :options="cteModeloFilterOptions"
-        label="Modelo"
-        emit-value
-        map-options
-        outlined
-        dense
-        options-dense
-        :disable="loading"
-      />
-      <q-select
-        v-model="filter.Situacao"
-        class="col-6 col-sm-3 col-md-auto document-filter-select"
-        :options="cteSituacaoFilterOptions"
-        label="Situação"
-        emit-value
-        map-options
-        outlined
-        dense
-        options-dense
-        :disable="loading"
-      />
-      <q-input
-        v-model="filter.TomadorCNPJ"
-        class="cte-filter-cnpj"
-        label="CNPJ do tomador"
-        outlined
-        dense
-        clearable
-        :disable="loading"
-      />
-      <q-input
-        v-model="filter.NFeChave"
-        class="cte-filter-chave"
-        label="Chave de NF-e transportada"
-        outlined
-        dense
-        clearable
-        hide-bottom-space
-        :error="Boolean(nfeChaveError)"
-        :error-message="nfeChaveError"
-        :disable="loading"
-      />
+      <template #default="{ search: searchOnEnter }">
+        <DocumentFilterSelect v-model="filter.Role" :options="ctePapelFilterOptions" label="Papel" :disable="loading" />
+        <DocumentFilterSelect v-model="filter.Modelo" :options="cteModeloFilterOptions" label="Modelo" :disable="loading" />
+        <DocumentFilterSelect v-model="filter.Situacao" :options="cteSituacaoFilterOptions" label="Situação" :disable="loading" />
+        <q-input
+          v-model="filter.TomadorCNPJ"
+          class="cte-filter-cnpj"
+          label="CNPJ do tomador"
+          outlined
+          dense
+          clearable
+          :disable="loading"
+          @keyup.enter="searchOnEnter"
+        />
+        <q-input
+          v-model="filter.NFeChave"
+          class="cte-filter-chave"
+          label="Chave de NF-e transportada"
+          outlined
+          dense
+          clearable
+          hide-bottom-space
+          :error="Boolean(nfeChaveError)"
+          :error-message="nfeChaveError"
+          :disable="loading"
+          @keyup.enter="searchOnEnter"
+        />
+      </template>
     </DocumentFilterBar>
 
     <StateLegend :sections="legend" class="q-mb-md" />
@@ -210,6 +180,7 @@ import CTeEventsDialog from '../components/CTeEventsDialog.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
+import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'

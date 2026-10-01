@@ -7,7 +7,6 @@
       :blocked-text="blockedText"
       :syncing="isSyncing"
       :sync-disabled="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
-      reset-label="Redefinir NF-e"
       reset-title="Remove as NF-e da empresa e reinicia a sincronização NF-e"
       :resetting="isResetting"
       :reset-disabled="!filter.CNPJ || isSyncing"
@@ -51,54 +50,10 @@
           @mark-viewed="confirmMarkViewed"
           @export="openExportDialog"
         >
-          <q-select
-            v-model="filter.Situacao"
-            class="col-6 col-sm-3 col-md-auto document-filter-select"
-            :options="situacaoFilterOptions"
-            label="Situação"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-          <q-select
-            v-model="filter.Completeness"
-            class="col-6 col-sm-3 col-md-auto document-filter-select"
-            :options="completenessFilterOptions"
-            label="Completude"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-          <q-select
-            v-model="filter.Manifestacao"
-            class="col-6 col-sm-3 col-md-auto document-filter-select"
-            :options="manifestacaoFilterOptions"
-            label="Manifestação"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-          <q-select
-            v-model="filter.Role"
-            class="col-6 col-sm-3 col-md-auto document-filter-select"
-            :options="nfeRoleFilterOptions"
-            label="Papel"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
+          <DocumentFilterSelect v-model="filter.Situacao" :options="situacaoFilterOptions" label="Situação" :disable="loading" />
+          <DocumentFilterSelect v-model="filter.Completeness" :options="completenessFilterOptions" label="Completude" :disable="loading" />
+          <DocumentFilterSelect v-model="filter.Manifestacao" :options="manifestacaoFilterOptions" label="Manifestação" :disable="loading" />
+          <DocumentFilterSelect v-model="filter.Role" :options="nfeRoleFilterOptions" label="Papel" :disable="loading" />
 
           <template #actions>
             <q-btn
@@ -252,6 +207,7 @@ import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
+import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'

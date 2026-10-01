@@ -146,6 +146,7 @@ function mountPage(pinia?: Pinia) {
         DocumentFilterBar: false,
         DocumentPageHeader: false,
         DocumentTableTop: false,
+        DocumentFilterSelect: false,
         'q-page': { template: '<div><slot /></div>' },
         'q-tabs': {
           name: 'QTabs',

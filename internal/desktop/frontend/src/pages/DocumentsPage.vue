@@ -6,7 +6,6 @@
       :status-line="statusLine"
       :syncing="isSyncing"
       :sync-disabled="!filter.CNPJ || isResetting"
-      reset-label="Redefinir NFS-e"
       reset-title="Reinicia a sincronização da NFS-e a partir do NSU 0; os documentos ficam"
       :resetting="isResetting"
       :reset-disabled="!filter.CNPJ || isSyncing"
@@ -28,18 +27,7 @@
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
-      <q-select
-        v-model="filter.Direction"
-        class="col-6 col-sm-3 col-md-auto document-filter-select"
-        :options="papelOptions"
-        label="Papel"
-        emit-value
-        map-options
-        outlined
-        dense
-        options-dense
-        :disable="loading"
-      />
+      <DocumentFilterSelect v-model="filter.Direction" :options="papelOptions" label="Papel" :disable="loading" />
     </DocumentFilterBar>
 
     <StateLegend :sections="legend" class="q-mb-md" />
@@ -143,6 +131,7 @@ import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
+import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'

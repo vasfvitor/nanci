@@ -115,6 +115,7 @@ function mountPage(pinia?: Pinia) {
         DocumentFilterBar: false,
         DocumentPageHeader: false,
         DocumentTableTop: false,
+        DocumentFilterSelect: false,
         'q-page': { template: '<div><slot /></div>' },
         'q-banner': { template: '<div class="q-banner-stub"><slot /></div>' },
         'q-btn': {
@@ -310,7 +311,21 @@ describe('CTePage', () => {
     expect(chave.props('error')).toBe(true)
     expect(chave.props('errorMessage')).toBe('A chave de NF-e tem 44 caracteres')
     expect(button(wrapper, 'Buscar').props('disable')).toBe(true)
+    await chave.trigger('keyup', { key: 'Enter' })
     expect(desktopClient.listCTe).not.toHaveBeenCalled()
+  })
+
+  it('searches on Enter in the CNPJ do tomador', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCTe).mockClear()
+
+    const tomador = field(wrapper, 'QInput', 'CNPJ do tomador')
+    tomador.vm.$emit('update:modelValue', '12345678000199')
+    await tomador.trigger('keyup', { key: 'Enter' })
+    await flushPromises()
+
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ TomadorCNPJ: '12345678000199' }))
   })
 
   it('disables sync and explains the block while SEFAZ blocks the company', async () => {

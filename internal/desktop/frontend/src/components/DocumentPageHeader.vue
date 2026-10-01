@@ -10,11 +10,10 @@
       />
       <q-space />
       <q-btn
-        v-if="resetLabel"
         flat
         color="negative"
         icon="restart_alt"
-        :label="resetLabel"
+        :label="`Redefinir ${title}`"
         :title="resetTitle"
         :loading="resetting"
         :disable="resetDisabled"
@@ -53,28 +52,23 @@ import { badgeProps } from '@/utils/sefazDisplay'
 
 // DocumentPageHeader is the top of a document page: the title with the
 // ambiente badge, the sync and reset buttons, the status line and the banner
-// that explains a blocked sync. Without resetLabel there is no reset button.
+// that explains a blocked sync. ambiente is null until the company is known;
+// resetTitle explains what the reset does.
 withDefaults(
   defineProps<{
     title: string
-    ambiente?: { label: string; color: string } | null
+    ambiente: { label: string; color: string } | null
     statusLine?: string
     blockedText?: string
     syncing: boolean
     syncDisabled: boolean
-    resetLabel?: string
-    resetTitle?: string
-    resetting?: boolean
-    resetDisabled?: boolean
+    resetTitle: string
+    resetting: boolean
+    resetDisabled: boolean
   }>(),
   {
-    ambiente: null,
     statusLine: '',
     blockedText: '',
-    resetLabel: '',
-    resetTitle: '',
-    resetting: false,
-    resetDisabled: false,
   }
 )
 

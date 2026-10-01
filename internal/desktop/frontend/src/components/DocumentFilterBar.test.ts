@@ -7,8 +7,7 @@ const stubs = {
     name: 'QSelect',
     props: ['modelValue', 'options', 'disable'],
     emits: ['update:modelValue'],
-    // Like Quasar's, the stub takes focus through a readonly input.
-    template: '<div class="select q-select"><input class="q-select__focus-target" readonly /></div>',
+    template: '<div class="select" />',
   },
   CompetencePicker: {
     name: 'CompetencePicker',
@@ -47,14 +46,19 @@ function mountBar(props: Partial<BarProps> = {}, calls: string[] = []) {
       loading: false,
       exporting: false,
       exportDisabled: false,
+      onlyUnviewed: false,
+      markViewedCount: 0,
       'onUpdate:cnpj': (value: string) => calls.push(`update:cnpj ${value}`),
-      'onUpdate:onlyUnviewed': (value: boolean | undefined) => calls.push(`update:onlyUnviewed ${value}`),
+      'onUpdate:onlyUnviewed': (value: boolean) => calls.push(`update:onlyUnviewed ${value}`),
       onCompanyChange: () => calls.push('companyChange'),
       onSearch: () => calls.push('search'),
       ...props,
     },
     slots: {
-      default: '<input class="source-filter" /><div class="q-select"><input class="source-select" /></div>',
+      // The source binds Enter on its own text fields through the search slot prop.
+      default: `<template #default="{ search }">
+        <input class="source-filter" @keyup.enter="search" />
+      </template>`,
       actions: '<button class="source-action">Registrar ciência (2)</button>',
     },
     global: { stubs },
@@ -105,15 +109,8 @@ describe('DocumentFilterBar', () => {
     expect(calls).toEqual(['update:onlyUnviewed true', 'search'])
   })
 
-  it('hides the toggle and "Marcar vistos" without onlyUnviewed', () => {
-    const wrapper = mountBar()
-
-    expect(wrapper.find('.toggle').exists()).toBe(false)
-    expect(wrapper.findAll('button').some((item) => item.text().startsWith('Marcar vistos'))).toBe(false)
-  })
-
   it('enables "Marcar vistos" only with documents to mark', async () => {
-    expect(button(mountBar({ onlyUnviewed: false }), 'Marcar vistos (0)').attributes('disabled')).toBeDefined()
+    expect(button(mountBar(), 'Marcar vistos (0)').attributes('disabled')).toBeDefined()
 
     const wrapper = mountBar({ onlyUnviewed: true, markViewedCount: 2 })
     const markViewed = button(wrapper, 'Marcar vistos (2)')
@@ -122,17 +119,17 @@ describe('DocumentFilterBar', () => {
     expect(wrapper.emitted('markViewed')).toHaveLength(1)
   })
 
-  it('searches on Enter in a text field only', async () => {
+  it('searches on Enter in the competência and in the fields that bind search', async () => {
     const calls: string[] = []
     const wrapper = mountBar({}, calls)
 
-    await wrapper.find('.source-filter').trigger('keyup', { key: 'Enter' })
     await wrapper.find('.competence').trigger('keyup', { key: 'Enter' })
+    await wrapper.find('.source-filter').trigger('keyup', { key: 'Enter' })
     expect(calls).toEqual(['search', 'search'])
 
-    // The focus target of a select, and any input inside one, belong to it.
-    await wrapper.find('.q-select__focus-target').trigger('keyup', { key: 'Enter' })
-    await wrapper.find('.source-select').trigger('keyup', { key: 'Enter' })
+    // Another key does not search, and neither does Enter on the company select.
+    await wrapper.find('.source-filter').trigger('keyup', { key: 'a' })
+    await wrapper.find('.select').trigger('keyup', { key: 'Enter' })
     expect(calls).toEqual(['search', 'search'])
   })
 
@@ -165,7 +162,7 @@ describe('DocumentFilterBar', () => {
     expect(button(mountBar({ loading: true }), 'Exportar').attributes('disabled')).toBeDefined()
   })
 
-  it('titles the competência with the default explanation', () => {
+  it('titles the competência with its explanation', () => {
     const picker = mountBar().getComponent({ name: 'CompetencePicker' })
     expect(picker.element.parentElement?.getAttribute('title')).toBe('Competência pelo mês de emissão')
   })
