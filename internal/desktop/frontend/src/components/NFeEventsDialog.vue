@@ -1,45 +1,38 @@
 <template>
-  <EventsDialogFrame v-model="open" title="Eventos da NF-e" :chave-acesso="chaveAcesso">
-    <q-table
-      :rows="events"
-      :columns="columns"
-      row-key="ID"
-      :loading="loading"
-      flat
-      bordered
-      dense
-      :pagination="{ rowsPerPage: 0 }"
-      hide-pagination
-      no-data-label="Nenhum evento encontrado."
-    >
-      <template #body-cell-tipo="cellProps">
-        <q-td :props="cellProps">
-          <q-badge
-            v-bind="badgeProps(nfeEventColor(cellProps.row.TpEvento), $q.dark.isActive)"
-            :label="nfeEventLabel(cellProps.row.TpEvento)"
-          />
-          <div class="text-caption text-app-muted text-mono">{{ cellProps.row.TpEvento }}</div>
-        </q-td>
-      </template>
+  <EventsDialogFrame
+    v-model="open"
+    title="Eventos da NF-e"
+    :chave-acesso="chaveAcesso"
+    :rows="rows"
+    :columns="columns"
+    :loading="loading"
+    :load="load"
+  >
+    <template #body-cell-tipo="cellProps">
+      <q-td :props="cellProps">
+        <q-badge
+          v-bind="badgeProps(nfeEventColor(cellProps.row.TpEvento), $q.dark.isActive)"
+          :label="nfeEventLabel(cellProps.row.TpEvento)"
+        />
+        <div class="text-caption text-app-muted text-mono">{{ cellProps.row.TpEvento }}</div>
+      </q-td>
+    </template>
 
-      <template #body-cell-status="cellProps">
-        <q-td :props="cellProps">
-          <span class="text-mono">{{ cellProps.row.CStat || '—' }}</span>
-          <div class="text-caption">{{ cellProps.row.XMotivo }}</div>
-        </q-td>
-      </template>
-    </q-table>
+    <template #body-cell-status="cellProps">
+      <q-td :props="cellProps">
+        <span class="text-mono">{{ cellProps.row.CStat || '—' }}</span>
+        <div class="text-caption">{{ cellProps.row.XMotivo }}</div>
+      </q-td>
+    </template>
   </EventsDialogFrame>
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import EventsDialogFrame from './EventsDialogFrame.vue'
-import { useNFeEvents } from '@/composables/useNFeEvents'
-import { useNotify } from '@/composables/useNotify'
+import EventsDialogFrame, { eventDateColumn } from './EventsDialogFrame.vue'
+import { useEventList } from '@/composables/useEventList'
+import { desktopClient } from '@/platform/wails/client'
 import type { NFeEvent } from '@/types/desktop'
-import { formatDateTime } from '@/utils/formatters'
 import { nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
 import { badgeProps } from '@/utils/sefazDisplay'
 
@@ -51,18 +44,12 @@ const props = defineProps<{
 }>()
 
 const $q = useQuasar()
-const { events, loading, load } = useNFeEvents()
-const { notifyError } = useNotify()
+const { rows, loading, load } = useEventList(() =>
+  desktopClient.listNFeEvents(props.cnpj, props.chaveAcesso)
+)
 
 const columns: QTableColumn<NFeEvent>[] = [
-  {
-    name: 'eventAt',
-    label: 'Data',
-    field: 'EventAt',
-    align: 'left',
-    sortable: true,
-    format: (value: NFeEvent['EventAt']) => formatDateTime(value ?? null, '—'),
-  },
+  eventDateColumn,
   { name: 'tipo', label: 'Tipo', field: 'TpEvento', align: 'left' },
   { name: 'seq', label: 'Seq.', field: 'NSeqEvento', align: 'right' },
   {
@@ -85,19 +72,4 @@ const columns: QTableColumn<NFeEvent>[] = [
 function eventDetail(row: NFeEvent) {
   return row.Justificativa || row.Correcao || row.Description || '—'
 }
-
-watch(open, (isOpen) => {
-  if (isOpen && props.chaveAcesso) {
-    void loadEvents()
-  }
-})
-
-async function loadEvents() {
-  try {
-    await load(props.cnpj, props.chaveAcesso)
-  } catch (error) {
-    notifyError('Erro ao carregar eventos', error)
-  }
-}
 </script>
-

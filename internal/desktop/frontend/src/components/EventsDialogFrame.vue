@@ -11,7 +11,22 @@
       </q-card-section>
 
       <q-card-section>
-        <slot />
+        <q-table
+          :rows="rows"
+          :columns="columns"
+          row-key="ID"
+          :loading="loading"
+          flat
+          bordered
+          dense
+          :pagination="{ rowsPerPage: 0 }"
+          hide-pagination
+          no-data-label="Nenhum evento encontrado."
+        >
+          <template v-for="name in cellSlots" #[name]="cellProps">
+            <slot :name="name" v-bind="cellProps" />
+          </template>
+        </q-table>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -21,18 +36,53 @@
   </q-dialog>
 </template>
 
-<script setup lang="ts">
-import { formatChaveDFe } from '@/utils/formatters'
+<script lang="ts">
+import type { ISODateValue } from '@/types/desktop'
+import { formatChaveDFe, formatDateTime } from '@/utils/formatters'
 
-// EventsDialogFrame is the shell of the events dialogs of the document pages:
-// the title, the access key grouped as a subtitle, the events table in the
-// default slot and a "Fechar" button.
-defineProps<{
+// eventDateColumn is the "Data" column every events table starts with.
+export const eventDateColumn = {
+  name: 'eventAt',
+  label: 'Data',
+  field: (row: { EventAt?: ISODateValue }) => row.EventAt,
+  align: 'left' as const,
+  sortable: true,
+  format: (value: ISODateValue) => formatDateTime(value ?? null, '—'),
+}
+</script>
+
+<script setup lang="ts" generic="Row extends { ID: string }">
+import { useSlots, watch } from 'vue'
+import type { QTableColumn } from 'quasar'
+import { useNotify } from '@/composables/useNotify'
+
+// EventsDialogFrame is the events dialog of the document pages: the title,
+// the access key grouped as a subtitle, the events table and a "Fechar"
+// button. Each opening calls load; the dialog passes its columns and its
+// custom cells as body-cell-<column> slots.
+const props = defineProps<{
   title: string
   chaveAcesso: string
+  rows: Row[]
+  columns: QTableColumn<Row>[]
+  loading: boolean
+  load: () => Promise<void>
 }>()
 
 const open = defineModel<boolean>({ required: true })
+
+const cellSlots = Object.keys(useSlots()).filter((name) => name.startsWith('body-cell-'))
+
+const { notifyError } = useNotify()
+
+watch(open, async (isOpen) => {
+  if (!isOpen || !props.chaveAcesso) return
+  try {
+    await props.load()
+  } catch (error) {
+    notifyError('Erro ao carregar eventos', error)
+  }
+})
 </script>
 
 <style scoped>

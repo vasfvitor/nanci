@@ -39,12 +39,11 @@ function mountDialog() {
   return shallowMount(DocumentEventsDialog, {
     props: { modelValue: false, documentId: '', chaveAcesso: '' },
     global: {
+      renderStubDefaultSlot: true,
+      directives: { closePopup: {} },
       stubs: {
-        EventsDialogFrame: {
-          name: 'EventsDialogFrame',
-          props: ['modelValue', 'title', 'chaveAcesso'],
-          template: '<div><slot /></div>',
-        },
+        EventsDialogFrame: false,
+        QDialog: { template: '<div><slot /></div>' },
         QTable: {
           name: 'QTable',
           props: { rows: Array, loading: Boolean, hidePagination: Boolean },

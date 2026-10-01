@@ -19,12 +19,11 @@ function mountDialog() {
   return shallowMount(CTeEventsDialog, {
     props: { modelValue: false, cnpj: '123', chaveAcesso: 'chave-1' },
     global: {
+      renderStubDefaultSlot: true,
+      directives: { closePopup: {} },
       stubs: {
-        EventsDialogFrame: {
-          name: 'EventsDialogFrame',
-          props: ['modelValue', 'title', 'chaveAcesso'],
-          template: '<div><slot /></div>',
-        },
+        EventsDialogFrame: false,
+        QDialog: { template: '<div><slot /></div>' },
         QTable: {
           name: 'QTable',
           props: { rows: Array, loading: Boolean, hidePagination: Boolean },

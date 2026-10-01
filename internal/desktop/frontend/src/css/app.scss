@@ -173,3 +173,11 @@ body {
 .numero-cell {
   max-width: 100px;
 }
+
+/* A text column of an events table that wraps instead of widening it. */
+.event-wrap {
+  min-width: 180px;
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: break-word;
+}

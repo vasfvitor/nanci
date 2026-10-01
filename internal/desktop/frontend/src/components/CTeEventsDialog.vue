@@ -1,63 +1,57 @@
 <template>
-  <EventsDialogFrame v-model="open" title="Eventos do CT-e" :chave-acesso="chaveAcesso">
-    <q-table
-      :rows="events"
-      :columns="columns"
-      row-key="ID"
-      :loading="loading"
-      flat
-      bordered
-      dense
-      :pagination="{ rowsPerPage: 0 }"
-      hide-pagination
-      no-data-label="Nenhum evento encontrado."
-    >
-      <template #body-cell-eventAt="cellProps">
-        <q-td :props="cellProps">
-          {{ cellProps.value }}
-          <div v-if="cellProps.row.RegisteredAt" class="text-caption text-app-muted">
-            Registro: {{ formatDateTime(cellProps.row.RegisteredAt) }}
-          </div>
-        </q-td>
-      </template>
+  <EventsDialogFrame
+    v-model="open"
+    title="Eventos do CT-e"
+    :chave-acesso="chaveAcesso"
+    :rows="rows"
+    :columns="columns"
+    :loading="loading"
+    :load="load"
+  >
+    <template #body-cell-eventAt="cellProps">
+      <q-td :props="cellProps">
+        {{ cellProps.value }}
+        <div v-if="cellProps.row.RegisteredAt" class="text-caption text-app-muted">
+          Registro: {{ formatDateTime(cellProps.row.RegisteredAt) }}
+        </div>
+      </q-td>
+    </template>
 
-      <template #body-cell-tipo="cellProps">
-        <q-td :props="cellProps">
-          <q-badge
-            v-bind="badgeProps(cteEventColor(cellProps.row.Type), $q.dark.isActive)"
-            :label="cteEventTitle(cellProps.row)"
-          />
-          <div class="text-caption text-app-muted text-mono">
-            {{ cellProps.row.TpEvento }} · seq. {{ cellProps.row.NSeqEvento }}
-          </div>
-        </q-td>
-      </template>
+    <template #body-cell-tipo="cellProps">
+      <q-td :props="cellProps">
+        <q-badge
+          v-bind="badgeProps(cteEventColor(cellProps.row.Type), $q.dark.isActive)"
+          :label="cteEventTitle(cellProps.row)"
+        />
+        <div class="text-caption text-app-muted text-mono">
+          {{ cellProps.row.TpEvento }} · seq. {{ cellProps.row.NSeqEvento }}
+        </div>
+      </q-td>
+    </template>
 
-      <template #body-cell-status="cellProps">
-        <q-td :props="cellProps" class="cte-event-wrap">
-          <span class="text-mono">{{ cellProps.row.CStat || '—' }}</span>
-          <div class="text-caption">{{ cellProps.row.XMotivo }}</div>
-        </q-td>
-      </template>
+    <template #body-cell-status="cellProps">
+      <q-td :props="cellProps" class="event-wrap">
+        <span class="text-mono">{{ cellProps.row.CStat || '—' }}</span>
+        <div class="text-caption">{{ cellProps.row.XMotivo }}</div>
+      </q-td>
+    </template>
 
-      <template #body-cell-detalhe="cellProps">
-        <q-td :props="cellProps" class="cte-event-wrap">
-          <div v-for="line in eventDetails(cellProps.row)" :key="line.label">
-            <span class="text-weight-medium">{{ line.label }}:</span> {{ line.text }}
-          </div>
-          <span v-if="eventDetails(cellProps.row).length === 0">—</span>
-        </q-td>
-      </template>
-    </q-table>
+    <template #body-cell-detalhe="cellProps">
+      <q-td :props="cellProps" class="event-wrap">
+        <div v-for="line in eventDetails(cellProps.row)" :key="line.label">
+          <span class="text-weight-medium">{{ line.label }}:</span> {{ line.text }}
+        </div>
+        <span v-if="eventDetails(cellProps.row).length === 0">—</span>
+      </q-td>
+    </template>
   </EventsDialogFrame>
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import EventsDialogFrame from './EventsDialogFrame.vue'
-import { useCTeEvents } from '@/composables/useCTeEvents'
-import { useNotify } from '@/composables/useNotify'
+import EventsDialogFrame, { eventDateColumn } from './EventsDialogFrame.vue'
+import { useEventList } from '@/composables/useEventList'
+import { desktopClient } from '@/platform/wails/client'
 import type { CTeEvent } from '@/types/desktop'
 import { cteEventColor, cteEventTitle } from '@/utils/cteDisplay'
 import { formatCpfCnpj, formatDateTime } from '@/utils/formatters'
@@ -71,18 +65,12 @@ const props = defineProps<{
 }>()
 
 const $q = useQuasar()
-const { events, loading, load } = useCTeEvents()
-const { notifyError } = useNotify()
+const { rows, loading, load } = useEventList(() =>
+  desktopClient.listCTeEvents(props.cnpj, props.chaveAcesso)
+)
 
 const columns: QTableColumn<CTeEvent>[] = [
-  {
-    name: 'eventAt',
-    label: 'Data',
-    field: 'EventAt',
-    align: 'left',
-    sortable: true,
-    format: (value: CTeEvent['EventAt']) => formatDateTime(value ?? null, '—'),
-  },
+  eventDateColumn,
   { name: 'tipo', label: 'Tipo', field: 'TpEvento', align: 'left' },
   {
     name: 'protocolo',
@@ -110,27 +98,4 @@ function eventDetails(row: CTeEvent) {
     { label: 'Observação', text: row.Observacao },
   ].filter((line) => line.text)
 }
-
-watch(open, (isOpen) => {
-  if (isOpen && props.chaveAcesso) {
-    void loadEvents()
-  }
-})
-
-async function loadEvents() {
-  try {
-    await load(props.cnpj, props.chaveAcesso)
-  } catch (error) {
-    notifyError('Erro ao carregar eventos', error)
-  }
-}
 </script>
-
-<style scoped>
-.cte-event-wrap {
-  min-width: 180px;
-  max-width: 260px;
-  white-space: normal;
-  overflow-wrap: break-word;
-}
-</style>
