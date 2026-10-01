@@ -160,10 +160,15 @@ type UpdateCredentialDataInput struct {
 }
 
 type ListInput struct {
+	CNPJ       string
+	Competence string
+	Direction  string
+	OnlyUnread bool
+}
+
+// MarkViewedInput names the documents of one company to mark as viewed.
+type MarkViewedInput struct {
 	CNPJ         string
-	Competence   string
-	Direction    string
-	OnlyUnread   bool
 	ChavesAcesso []string
 }
 

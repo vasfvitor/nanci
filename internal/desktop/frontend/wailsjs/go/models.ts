@@ -880,7 +880,6 @@ export namespace desktopapi {
 	    Competence: string;
 	    Direction: string;
 	    OnlyUnread: boolean;
-	    ChavesAcesso: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ListInput(source);
@@ -892,7 +891,6 @@ export namespace desktopapi {
 	        this.Competence = source["Competence"];
 	        this.Direction = source["Direction"];
 	        this.OnlyUnread = source["OnlyUnread"];
-	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
 	export class ListNFeInput {
@@ -921,6 +919,20 @@ export namespace desktopapi {
 	        this.EmitenteCNPJ = source["EmitenteCNPJ"];
 	        this.ChavesAcesso = source["ChavesAcesso"];
 	        this.OnlyUnread = source["OnlyUnread"];
+	    }
+	}
+	export class MarkViewedInput {
+	    CNPJ: string;
+	    ChavesAcesso: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MarkViewedInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
 	export class NFeSkipped {

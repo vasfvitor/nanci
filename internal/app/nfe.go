@@ -293,14 +293,18 @@ func (s *NFeService) ListDocuments(ctx context.Context, in NFeListInput) ([]NFeD
 	return out, nil
 }
 
-// MarkViewed marks the company's NF-e matching the filters as viewed and
-// returns how many were new. Limit is ignored.
-func (s *NFeService) MarkViewed(ctx context.Context, in NFeListInput) (int, error) {
-	comp, filter, err := s.buildFilter(ctx, in)
+// MarkViewed marks the company's NF-e with the given chaves as viewed and
+// returns how many were new.
+func (s *NFeService) MarkViewed(ctx context.Context, cnpj string, chaves []string) (int, error) {
+	parsed, err := parseAccessKeys(chaves)
 	if err != nil {
 		return 0, err
 	}
-	count, err := s.NFeRepo.MarkViewed(ctx, comp.ID, filter)
+	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	if err != nil {
+		return 0, err
+	}
+	count, err := s.NFeRepo.MarkViewed(ctx, comp.ID, parsed)
 	if err != nil {
 		return 0, fmt.Errorf("marcar NF-e como vistas: %w", err)
 	}

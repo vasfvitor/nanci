@@ -165,28 +165,20 @@ func (r *CTeRepository) ListPendingExport(ctx context.Context, companyID dfe.Com
 	return r.listCompanyDocuments(ctx, companyID, f, kind)
 }
 
-// MarkViewed marks the company's CT-e matching f as viewed and returns how
-// many were not viewed before. f.Limit is ignored.
-func (r *CTeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, f cte.DocumentFilter) (int, error) {
-	where, args := buildCTeFilterSQL(companyID, f)
-	query := `
+// MarkViewed marks the company's CT-e with the given chaves as viewed and
+// returns how many were not viewed before.
+func (r *CTeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, chaves []string) (int, error) {
+	if len(chaves) == 0 {
+		return 0, nil
+	}
+	const query = `
 		UPDATE company_cte_documents
 		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		WHERE viewed_at IS NULL AND relation_id IN (
-			SELECT cd.relation_id
-			FROM company_cte_documents cd
-			INNER JOIN cte_documents d ON d.id = cd.cte_document_id
-			WHERE ` + where + `
-		)` // #nosec G202 -- constant conditions with ? placeholders from buildCTeFilterSQL.
-	res, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return 0, fmt.Errorf("mark cte documents viewed: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("mark cte documents viewed: %w", err)
-	}
-	return int(n), nil
+		WHERE company_id = ? AND viewed_at IS NULL AND cte_document_id IN (
+			SELECT id FROM cte_documents WHERE chave_acesso IN (SELECT value FROM json_each(?))
+		)
+	`
+	return execMarkViewed(ctx, r.db, query, companyID, chaves)
 }
 
 // CompanyDocumentByChave returns cte.ErrDocumentNotFound when the company

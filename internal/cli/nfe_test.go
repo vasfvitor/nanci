@@ -348,7 +348,7 @@ func TestNFeList_NaoVistos(t *testing.T) {
 	env.seed("resnfe-cancelada.xml", 1)
 	env.seed("procnfe.xml", 2)
 	env.seed("procnfe-denegada.xml", 3)
-	marked, err := env.repo.MarkViewed(context.Background(), env.company.ID, nfe.DocumentFilter{ChavesAcesso: []string{nfeChaveProc}})
+	marked, err := env.repo.MarkViewed(context.Background(), env.company.ID, []string{nfeChaveProc})
 	if err != nil || marked != 1 {
 		t.Fatalf("MarkViewed = %d, %v; want 1", marked, err)
 	}

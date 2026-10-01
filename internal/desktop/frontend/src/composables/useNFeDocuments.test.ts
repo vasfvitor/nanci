@@ -350,16 +350,7 @@ describe('useNFeDocuments', () => {
 
     await expect(nfe.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
 
-    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith({
-      CNPJ: '123',
-      Competence: '',
-      Situacao: '',
-      Completeness: '',
-      Manifestacao: '',
-      Role: '',
-      EmitenteCNPJ: '',
-      ChavesAcesso: ['a'],
-    })
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith('123', ['a'])
     expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
     expect(store.rows[1]?.ViewedAt).toBeUndefined()
     expect(nfe.selected.value).toEqual([])
@@ -374,10 +365,7 @@ describe('useNFeDocuments', () => {
 
     await nfe.markViewed(['a', 'b'])
 
-    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ CNPJ: '123', ChavesAcesso: ['a', 'b'] })
-    )
-    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(expect.not.objectContaining({ OnlyUnread: true }))
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith('123', ['a', 'b'])
     expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
   })
 

@@ -381,8 +381,7 @@ func TestCTeMarkViewed(t *testing.T) {
 		t.Fatalf("unread before marking = %v", got)
 	}
 
-	// The homologação chave is outside the company's environment and is not marked.
-	count, err := env.app.CTe.MarkViewed(ctx, ListCTeInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{cteChaveOS, " " + cteChaveGTVe + " ", cteChaveV200}})
+	count, err := env.app.CTe.MarkViewed(ctx, nfeTestCNPJ, []string{cteChaveOS, " " + cteChaveGTVe + " "})
 	if err != nil {
 		t.Fatalf("MarkViewed by chaves: %v", err)
 	}
@@ -400,26 +399,16 @@ func TestCTeMarkViewed(t *testing.T) {
 		t.Errorf("listed CT-e after marking = %+v, want ViewedAt set", docs)
 	}
 
-	if _, err := env.app.CTe.MarkViewed(ctx, ListCTeInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{"123"}}); !errors.Is(err, dfe.ErrInvalidAccessKey) {
+	if _, err := env.app.CTe.MarkViewed(ctx, nfeTestCNPJ, []string{"123"}); !errors.Is(err, dfe.ErrInvalidAccessKey) {
 		t.Errorf("MarkViewed with an invalid chave: err = %v, want dfe.ErrInvalidAccessKey", err)
 	}
 
-	count, err = env.app.CTe.MarkViewed(ctx, ListCTeInput{CNPJ: nfeTestCNPJ})
-	if err != nil {
-		t.Fatal(err)
+	count, err = env.app.CTe.MarkViewed(ctx, nfeTestCNPJ, nil)
+	if err != nil || count != 0 {
+		t.Errorf("MarkViewed without chaves = %d, %v; want 0, nil", count, err)
 	}
-	if count != 3 {
-		t.Errorf("marked without chaves = %d, want 3", count)
-	}
-	if got := listUnread(); len(got) != 0 {
-		t.Errorf("unread after marking all = %v, want none", got)
-	}
-	homologacao, err := cteRepo(env).ListCompanyDocuments(ctx, env.company.ID, cte.DocumentFilter{TpAmb: "2", OnlyUnread: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := cteChavesOf(homologacao); !slices.Equal(got, []string{cteChaveV200}) {
-		t.Errorf("homologação unread = %v, want the v2.00 CT-e untouched", got)
+	if got := listUnread(); !slices.Equal(got, []string{cteChaveSimp, cteChaveToma4, cteChaveProc}) {
+		t.Errorf("unread after marking no chave = %v", got)
 	}
 }
 

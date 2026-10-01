@@ -39,17 +39,7 @@ export function useNFeDocuments() {
   const pagination = useTablePagination('nfe')
   const { onlyUnviewed, markViewed } = useMarkViewed({
     filter,
-    mark: (cnpj, chavesAcesso) =>
-      desktopClient.markNFeViewed({
-        CNPJ: cnpj,
-        Competence: '',
-        Situacao: '',
-        Completeness: '',
-        Manifestacao: '',
-        Role: '',
-        EmitenteCNPJ: '',
-        ChavesAcesso: chavesAcesso,
-      }),
+    mark: (cnpj, chavesAcesso) => desktopClient.markNFeViewed(cnpj, chavesAcesso),
     rows,
     selected,
     setRows: (next) => store.setRows(next),

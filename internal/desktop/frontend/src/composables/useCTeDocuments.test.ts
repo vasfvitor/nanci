@@ -285,17 +285,7 @@ describe('useCTeDocuments', () => {
 
     await expect(cte.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
 
-    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith({
-      CNPJ: '123',
-      Competence: '',
-      Situacao: '',
-      Role: '',
-      Modelo: '',
-      EmitenteCNPJ: '',
-      TomadorCNPJ: '',
-      NFeChave: '',
-      ChavesAcesso: ['a'],
-    })
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith('123', ['a'])
     expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
     expect(store.rows[1]?.ViewedAt).toBeUndefined()
     expect(cte.selected.value).toEqual([])
@@ -310,10 +300,7 @@ describe('useCTeDocuments', () => {
 
     await cte.markViewed(['a', 'b'])
 
-    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ CNPJ: '123', ChavesAcesso: ['a', 'b'] })
-    )
-    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(expect.not.objectContaining({ OnlyUnread: true }))
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith('123', ['a', 'b'])
     expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
   })
 

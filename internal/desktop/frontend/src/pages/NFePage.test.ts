@@ -510,9 +510,7 @@ describe('NFePage', () => {
     await flushPromises()
 
     expect(dialog).not.toHaveBeenCalled()
-    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ CNPJ: company.CNPJ, ChavesAcesso: [emitida.ChaveAcesso] })
-    )
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(company.CNPJ, [emitida.ChaveAcesso])
     expect(table(wrapper).props('selected')).toEqual([])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
@@ -532,9 +530,10 @@ describe('NFePage', () => {
     okHandlers[0]?.(undefined)
     await flushPromises()
 
-    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ ChavesAcesso: [destinatario.ChaveAcesso, emitida.ChaveAcesso] })
-    )
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(company.CNPJ, [
+      destinatario.ChaveAcesso,
+      emitida.ChaveAcesso,
+    ])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
   })

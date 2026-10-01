@@ -802,15 +802,13 @@ export const desktopClient = {
     return (result || []).map(mapCredentialSummary)
   },
   async listDocuments(input: ListDocumentsInput): Promise<DocumentRow[]> {
-    const result = await callWails(() =>
-      ListDocuments({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] })
-    )
+    const result = await callWails(() => ListDocuments(input))
     return (result || []).map(mapDocumentRow)
   },
-  // markDocumentsViewed marks the NFS-e of the filter, or only the given
-  // ChavesAcesso, and returns how many were new.
-  async markDocumentsViewed(input: ListDocumentsInput): Promise<number> {
-    return callWails(() => MarkDocumentsViewed({ ...input, ChavesAcesso: input.ChavesAcesso ?? [] }))
+  // markDocumentsViewed marks the company's NFS-e with these chaves and
+  // returns how many were new.
+  async markDocumentsViewed(cnpj: string, chavesAcesso: string[]): Promise<number> {
+    return callWails(() => MarkDocumentsViewed({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
   },
   async countPendingExports(input: ExportDocumentsInput): Promise<number> {
     return callWails(() => CountPendingExports(input))
@@ -897,10 +895,10 @@ export const desktopClient = {
     const res = await callWails(() => ListNFe(nfeListRequest(input)))
     return (res || []).map(mapNFeRow)
   },
-  // markNFeViewed marks the NF-e of the filter, or only the given
-  // ChavesAcesso, and returns how many were new.
-  async markNFeViewed(input: ListNFeInput): Promise<number> {
-    return callWails(() => MarkNFeViewed(nfeListRequest(input)))
+  // markNFeViewed marks the company's NF-e with these chaves and returns how
+  // many were new.
+  async markNFeViewed(cnpj: string, chavesAcesso: string[]): Promise<number> {
+    return callWails(() => MarkNFeViewed({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
   },
   async listNFeEvents(cnpj: string, chaveAcesso: string): Promise<NFeEvent[]> {
     const res = await callWails(() => ListNFeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
@@ -974,10 +972,10 @@ export const desktopClient = {
     const res = await callWails(() => ListCTe(cteListRequest(input)))
     return (res || []).map(mapCTeRow)
   },
-  // markCTeViewed marks the CT-e of the filter, or only the given
-  // ChavesAcesso, and returns how many were new.
-  async markCTeViewed(input: ListCTeInput): Promise<number> {
-    return callWails(() => MarkCTeViewed(cteListRequest(input)))
+  // markCTeViewed marks the company's CT-e with these chaves and returns how
+  // many were new.
+  async markCTeViewed(cnpj: string, chavesAcesso: string[]): Promise<number> {
+    return callWails(() => MarkCTeViewed({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
   },
   async listCTeEvents(cnpj: string, chaveAcesso: string): Promise<CTeEvent[]> {
     const res = await callWails(() => ListCTeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))

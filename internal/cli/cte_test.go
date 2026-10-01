@@ -190,7 +190,7 @@ func TestCTeList_Filters(t *testing.T) {
 func TestCTeList_NaoVistos(t *testing.T) {
 	env := newCTeTestRoot(t)
 	env.seedListFixtures()
-	marked, err := env.cteRepo.MarkViewed(context.Background(), env.company.ID, cte.DocumentFilter{ChavesAcesso: []string{cteChaveProc}})
+	marked, err := env.cteRepo.MarkViewed(context.Background(), env.company.ID, []string{cteChaveProc})
 	if err != nil || marked != 1 {
 		t.Fatalf("MarkViewed = %d, %v; want 1", marked, err)
 	}

@@ -542,9 +542,9 @@ func TestNFeMarkViewed(t *testing.T) {
 	f := newNFeFixture(t)
 	seedFilterDocuments(f)
 	unread := nfe.DocumentFilter{OnlyUnread: true}
-	mark := func(filter nfe.DocumentFilter) int {
+	mark := func(chaves ...string) int {
 		t.Helper()
-		n, err := f.repo.MarkViewed(ctx, "mock", filter)
+		n, err := f.repo.MarkViewed(ctx, "mock", chaves)
 		if err != nil {
 			t.Fatalf("MarkViewed: %v", err)
 		}
@@ -555,8 +555,8 @@ func TestNFeMarkViewed(t *testing.T) {
 		t.Errorf("ViewedAt before marking = %v, want nil", doc.ViewedAt)
 	}
 
-	// By chaves: only the given NF-e.
-	if n := mark(nfe.DocumentFilter{ChavesAcesso: []string{nfeKeyDenegada}}); n != 1 {
+	// Only the given NF-e.
+	if n := mark(nfeKeyDenegada); n != 1 {
 		t.Errorf("marked by chave = %d, want 1", n)
 	}
 	if got := f.list("mock", unread); !slices.Equal(got, []string{nfeKeyProc, nfeKeyCancelada}) {
@@ -566,13 +566,12 @@ func TestNFeMarkViewed(t *testing.T) {
 		t.Error("ViewedAt after marking = nil")
 	}
 
-	// tpAmb 1 leaves the resumo (no tpAmb) alone, and the denegada already
-	// viewed is not counted again.
-	if n := mark(nfe.DocumentFilter{TpAmb: "1"}); n != 1 {
-		t.Errorf("marked in tpAmb 1 = %d, want 1 (the autorizada)", n)
+	// The denegada already viewed is not counted again.
+	if n := mark(nfeKeyDenegada, nfeKeyProc); n != 1 {
+		t.Errorf("marked = %d, want 1 (the autorizada)", n)
 	}
 	if got := f.list("mock", unread); !slices.Equal(got, []string{nfeKeyCancelada}) {
-		t.Errorf("unread after marking tpAmb 1 = %v, want the resumo", got)
+		t.Errorf("unread after marking = %v, want the resumo", got)
 	}
 
 	// The mark belongs to the company: the emitente still sees it as new.
@@ -586,11 +585,11 @@ func TestNFeMarkViewed(t *testing.T) {
 		t.Errorf("unread after a new copy = %v", got)
 	}
 
-	if n := mark(nfe.DocumentFilter{}); n != 1 {
-		t.Errorf("marked without filter = %d, want 1", n)
+	if n := mark(); n != 0 {
+		t.Errorf("marked without chaves = %d, want 0", n)
 	}
-	if n := mark(nfe.DocumentFilter{}); n != 0 {
-		t.Errorf("marked again = %d, want 0", n)
+	if n := mark(nfeKeyCancelada); n != 1 {
+		t.Errorf("marked the resumo = %d, want 1", n)
 	}
 }
 

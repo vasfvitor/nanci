@@ -486,13 +486,7 @@ describe('DocumentsPage', () => {
     await flushPromises()
 
     expect(dialog).not.toHaveBeenCalled()
-    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith({
-      CNPJ: acme.CNPJ,
-      Competence: '',
-      Direction: '',
-      OnlyUnread: false,
-      ChavesAcesso: [treinamento.ChaveAcesso],
-    })
+    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith(acme.CNPJ, [treinamento.ChaveAcesso])
     expect(table(wrapper).props('selected')).toEqual([])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
@@ -512,9 +506,10 @@ describe('DocumentsPage', () => {
     okHandlers[0]?.(undefined)
     await flushPromises()
 
-    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ ChavesAcesso: [consultoria.ChaveAcesso, treinamento.ChaveAcesso] })
-    )
+    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith(acme.CNPJ, [
+      consultoria.ChaveAcesso,
+      treinamento.ChaveAcesso,
+    ])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
   })

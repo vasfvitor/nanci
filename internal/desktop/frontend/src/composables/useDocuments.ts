@@ -32,14 +32,7 @@ export function useDocuments() {
   const pagination = useTablePagination('nfse')
   const { onlyUnviewed, markViewed } = useMarkViewed({
     filter,
-    mark: (companyCNPJ, chavesAcesso) =>
-      desktopClient.markDocumentsViewed({
-        CNPJ: companyCNPJ,
-        Competence: '',
-        Direction: '',
-        OnlyUnread: false,
-        ChavesAcesso: chavesAcesso,
-      }),
+    mark: (cnpj, chavesAcesso) => desktopClient.markDocumentsViewed(cnpj, chavesAcesso),
     rows: documents,
     selected,
     setRows: (rows) => store.setRows(rows),

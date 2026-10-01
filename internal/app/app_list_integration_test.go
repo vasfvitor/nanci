@@ -164,34 +164,34 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		OnlyUnread: true,
 	}
 
-	// Marking by chaves touches only the given documents.
-	count, err := application.Documents.MarkDocumentsViewed(ctx, app.ListInput{
-		CNPJ:         "45852546000109",
-		ChavesAcesso: []string{" " + chaves["doc-2"] + " "},
-	})
+	const cnpj = "45852546000109"
+	unreadIDs := func() []string {
+		t.Helper()
+		docs, err := application.Documents.ListDocuments(ctx, unread)
+		if err != nil {
+			t.Fatalf("ListDocuments falhou: %v", err)
+		}
+		var ids []string
+		for _, d := range docs {
+			ids = append(ids, string(d.ID))
+		}
+		return ids
+	}
+
+	// Marking touches only the given documents.
+	count, err := application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{" " + chaves["doc-2"] + " "})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed por chaves falhou: %v", err)
 	}
 	if count != 1 {
 		t.Errorf("esperava marcar 1 documento, marcou %d", count)
 	}
-	docs, err := application.Documents.ListDocuments(ctx, unread)
-	if err != nil {
-		t.Fatalf("ListDocuments falhou: %v", err)
-	}
-	var ids []string
-	for _, d := range docs {
-		ids = append(ids, string(d.ID))
-	}
-	if len(ids) != 3 || slices.Contains(ids, "doc-2") {
+	if ids := unreadIDs(); len(ids) != 3 || slices.Contains(ids, "doc-2") {
 		t.Errorf("esperava doc-1, doc-3 e doc-4 não lidos, obteve %v", ids)
 	}
 
 	// The "NFS" fallback chave is accepted as stored.
-	count, err = application.Documents.MarkDocumentsViewed(ctx, app.ListInput{
-		CNPJ:         "45852546000109",
-		ChavesAcesso: []string{chaves["doc-4"]},
-	})
+	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{chaves["doc-4"]})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed com chave NFS falhou: %v", err)
 	}
@@ -199,31 +199,20 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		t.Errorf("esperava marcar o documento da chave NFS, marcou %d", count)
 	}
 
-	// Filtering the list by chaves works the same way.
-	docs, err = application.Documents.ListDocuments(ctx, app.ListInput{CNPJ: "45852546000109", ChavesAcesso: []string{chaves["doc-3"]}})
-	if err != nil {
-		t.Fatalf("ListDocuments por chaves falhou: %v", err)
-	}
-	if len(docs) != 1 || docs[0].ID != "doc-3" {
-		t.Errorf("esperava só doc-3, obteve %+v", docs)
-	}
-
-	if _, err := application.Documents.MarkDocumentsViewed(ctx, app.ListInput{CNPJ: "45852546000109", ChavesAcesso: []string{"111"}}); err == nil {
+	if _, err := application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{"111"}); err == nil {
 		t.Error("esperava erro para chave de acesso inválida")
 	}
 
-	// Without chaves the whole filter is marked; already-viewed rows are not counted again.
-	count, err = application.Documents.MarkDocumentsViewed(ctx, unread)
+	// Already-viewed documents are not counted again.
+	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{chaves["doc-1"], chaves["doc-2"]})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed falhou: %v", err)
 	}
-	if count != 2 {
-		t.Errorf("esperava marcar 2 documentos, marcou %d", count)
+	if count != 1 {
+		t.Errorf("esperava marcar 1 documento, marcou %d", count)
 	}
-
-	docs, _ = application.Documents.ListDocuments(ctx, unread)
-	if len(docs) != 0 {
-		t.Errorf("esperava 0 documentos não lidos, obteve %d", len(docs))
+	if ids := unreadIDs(); !slices.Equal(ids, []string{"doc-3"}) {
+		t.Errorf("esperava só doc-3 não lido, obteve %v", ids)
 	}
 }
 

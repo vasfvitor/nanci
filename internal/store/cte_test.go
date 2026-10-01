@@ -423,9 +423,9 @@ func TestCTeMarkViewed(t *testing.T) {
 	}
 	f.applyDocument("remetente", cteCNPJRemetente, f.document("procte.xml", "hash-procte.xml"), 1)
 	unread := cte.DocumentFilter{OnlyUnread: true}
-	mark := func(filter cte.DocumentFilter) int {
+	mark := func(chaves ...string) int {
 		t.Helper()
-		n, err := f.repo.MarkViewed(ctx, "mock", filter)
+		n, err := f.repo.MarkViewed(ctx, "mock", chaves)
 		if err != nil {
 			t.Fatalf("MarkViewed: %v", err)
 		}
@@ -436,8 +436,8 @@ func TestCTeMarkViewed(t *testing.T) {
 		t.Errorf("ViewedAt before marking = %v, want nil", doc.ViewedAt)
 	}
 
-	// By chaves: only the given CT-e.
-	if n := mark(cte.DocumentFilter{ChavesAcesso: []string{cteKeyOS}}); n != 1 {
+	// Only the given CT-e.
+	if n := mark(cteKeyOS); n != 1 {
 		t.Errorf("marked by chave = %d, want 1", n)
 	}
 	if got := f.list("mock", unread); !slices.Equal(got, []string{cteKeyGTVe, cteKeyV200, cteKeyToma4, cteKeyProc}) {
@@ -447,13 +447,12 @@ func TestCTeMarkViewed(t *testing.T) {
 		t.Error("ViewedAt after marking = nil")
 	}
 
-	// tpAmb 1 leaves the homologação CT-e alone, and the CT-e OS already
-	// viewed is not counted again.
-	if n := mark(cte.DocumentFilter{TpAmb: "1"}); n != 3 {
-		t.Errorf("marked in tpAmb 1 = %d, want 3", n)
+	// The CT-e OS already viewed is not counted again.
+	if n := mark(cteKeyOS, cteKeyGTVe, cteKeyToma4, cteKeyProc); n != 3 {
+		t.Errorf("marked = %d, want 3", n)
 	}
 	if got := f.list("mock", unread); !slices.Equal(got, []string{cteKeyV200}) {
-		t.Errorf("unread after marking tpAmb 1 = %v, want the homologação CT-e", got)
+		t.Errorf("unread after marking = %v, want the v2.00 CT-e", got)
 	}
 
 	// The mark belongs to the company: the remetente still sees it as new.
@@ -467,11 +466,11 @@ func TestCTeMarkViewed(t *testing.T) {
 		t.Errorf("unread after a new copy = %v", got)
 	}
 
-	if n := mark(cte.DocumentFilter{}); n != 1 {
-		t.Errorf("marked without filter = %d, want 1", n)
+	if n := mark(); n != 0 {
+		t.Errorf("marked without chaves = %d, want 0", n)
 	}
-	if n := mark(cte.DocumentFilter{}); n != 0 {
-		t.Errorf("marked again = %d, want 0", n)
+	if n := mark(cteKeyV200); n != 1 {
+		t.Errorf("marked the v2.00 CT-e = %d, want 1", n)
 	}
 }
 

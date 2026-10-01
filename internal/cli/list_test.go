@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -44,9 +43,9 @@ func TestList_NaoVistos(t *testing.T) {
 	}
 	env.seedNFSe("doc-vista", chaveVista)
 	env.seedNFSe("doc-nova", chaveNova)
-	marked, err := store.NewDocumentRepository(env.db).MarkDocumentsViewed(context.Background(), env.company.ID, nfse.DocumentFilter{ChavesAcesso: []string{chaveVista}})
+	marked, err := store.NewDocumentRepository(env.db).MarkViewed(context.Background(), env.company.ID, []string{chaveVista})
 	if err != nil || marked != 1 {
-		t.Fatalf("MarkDocumentsViewed = %d, %v; want 1", marked, err)
+		t.Fatalf("MarkViewed = %d, %v; want 1", marked, err)
 	}
 
 	if err := env.run("list", "-c", nfeTestCNPJ); err != nil {

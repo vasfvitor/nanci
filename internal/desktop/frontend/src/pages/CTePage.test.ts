@@ -422,9 +422,7 @@ describe('CTePage', () => {
     await flushPromises()
 
     expect(dialog).not.toHaveBeenCalled()
-    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ CNPJ: company.CNPJ, ChavesAcesso: [servico.ChaveAcesso] })
-    )
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(company.CNPJ, [servico.ChaveAcesso])
     expect(table(wrapper).props('selected')).toEqual([])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
@@ -444,9 +442,10 @@ describe('CTePage', () => {
     okHandlers[0]?.(undefined)
     await flushPromises()
 
-    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(
-      expect.objectContaining({ ChavesAcesso: [tomada.ChaveAcesso, servico.ChaveAcesso] })
-    )
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(company.CNPJ, [
+      tomada.ChaveAcesso,
+      servico.ChaveAcesso,
+    ])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
   })

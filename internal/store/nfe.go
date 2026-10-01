@@ -161,28 +161,20 @@ func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID dfe.Com
 	return r.listCompanyDocuments(ctx, companyID, f, kind)
 }
 
-// MarkViewed marks the company's NF-e matching f as viewed and returns how
-// many were not viewed before. f.Limit is ignored.
-func (r *NFeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter) (int, error) {
-	where, args := buildNFeFilterSQL(companyID, f)
-	query := `
+// MarkViewed marks the company's NF-e with the given chaves as viewed and
+// returns how many were not viewed before.
+func (r *NFeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, chaves []string) (int, error) {
+	if len(chaves) == 0 {
+		return 0, nil
+	}
+	const query = `
 		UPDATE company_nfe_documents
 		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		WHERE viewed_at IS NULL AND relation_id IN (
-			SELECT cd.relation_id
-			FROM company_nfe_documents cd
-			INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
-			WHERE ` + where + `
-		)` // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
-	res, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return 0, fmt.Errorf("mark nfe documents viewed: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("mark nfe documents viewed: %w", err)
-	}
-	return int(n), nil
+		WHERE company_id = ? AND viewed_at IS NULL AND nfe_document_id IN (
+			SELECT id FROM nfe_documents WHERE chave_acesso IN (SELECT value FROM json_each(?))
+		)
+	`
+	return execMarkViewed(ctx, r.db, query, companyID, chaves)
 }
 
 // CompanyDocumentByChave returns nfe.ErrDocumentNotFound when the company

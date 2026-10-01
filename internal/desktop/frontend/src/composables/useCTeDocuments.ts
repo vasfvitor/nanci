@@ -36,18 +36,7 @@ export function useCTeDocuments() {
   const pagination = useTablePagination('cte')
   const { onlyUnviewed, markViewed } = useMarkViewed({
     filter,
-    mark: (cnpj, chavesAcesso) =>
-      desktopClient.markCTeViewed({
-        CNPJ: cnpj,
-        Competence: '',
-        Situacao: '',
-        Role: '',
-        Modelo: '',
-        EmitenteCNPJ: '',
-        TomadorCNPJ: '',
-        NFeChave: '',
-        ChavesAcesso: chavesAcesso,
-      }),
+    mark: (cnpj, chavesAcesso) => desktopClient.markCTeViewed(cnpj, chavesAcesso),
     rows,
     selected,
     setRows: (next) => store.setRows(next),

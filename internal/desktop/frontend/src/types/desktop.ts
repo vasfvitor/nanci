@@ -92,9 +92,6 @@ export type ListDocumentsInput = {
   Competence: string
   Direction: string
   OnlyUnread: boolean
-  // ChavesAcesso limits the list, or the marking, to these NFS-e; empty or
-  // absent means every NFS-e of the filter.
-  ChavesAcesso?: string[]
 }
 
 export type ExportFormat = 'csv' | 'xlsx' | 'zip'

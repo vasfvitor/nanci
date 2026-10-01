@@ -213,18 +213,18 @@ func (s *CTeService) ListDocuments(ctx context.Context, in ListCTeInput) ([]cte.
 	return docs, nil
 }
 
-// MarkViewed marks the company's CT-e matching the filters, in its current
-// environment, as viewed and returns how many were new. Limit is ignored.
-func (s *CTeService) MarkViewed(ctx context.Context, in ListCTeInput) (int, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+// MarkViewed marks the company's CT-e with the given chaves as viewed and
+// returns how many were new.
+func (s *CTeService) MarkViewed(ctx context.Context, cnpj string, chaves []string) (int, error) {
+	parsed, err := parseAccessKeys(chaves)
 	if err != nil {
 		return 0, err
 	}
-	filter, err := cteFilter(comp, in)
+	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return 0, err
 	}
-	count, err := s.CTeRepo.MarkViewed(ctx, comp.ID, filter)
+	count, err := s.CTeRepo.MarkViewed(ctx, comp.ID, parsed)
 	if err != nil {
 		return 0, fmt.Errorf("marcar CT-e como vistos: %w", err)
 	}
