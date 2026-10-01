@@ -55,6 +55,10 @@ export function displayTable(
   }
 }
 
+// VIEWED_BADGE is the badge of a document not viewed yet, in every table and
+// in the legends.
+export const VIEWED_BADGE = { label: 'Novo', color: 'warning' } as const
+
 // badgeColor is the fill of a badge of color. In light mode the info blue
 // is too light for white text, so it uses a darker shade.
 export function badgeColor(color: string, dark: boolean) {

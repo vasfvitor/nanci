@@ -114,6 +114,7 @@ function mountPage(pinia?: Pinia) {
       stubs: {
         DocumentFilterBar: false,
         DocumentPageHeader: false,
+        DocumentTableTop: false,
         'q-page': { template: '<div><slot /></div>' },
         'q-banner': { template: '<div class="q-banner-stub"><slot /></div>' },
         'q-btn': {

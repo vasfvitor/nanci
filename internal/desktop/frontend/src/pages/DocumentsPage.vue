@@ -60,22 +60,7 @@
       dense
     >
       <template #top>
-        <div class="row items-center justify-between full-width">
-          <div class="text-subtitle1 text-weight-bold">Notas fiscais de serviço</div>
-          <q-input
-            v-model="filterText"
-            class="document-search-input"
-            :placeholder="searchPlaceholder"
-            outlined
-            dense
-            clearable
-            debounce="300"
-          >
-            <template #append>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-        </div>
+        <DocumentTableTop v-model="filterText" title="Notas fiscais de serviço" />
       </template>
 
       <template #body="rowProps">
@@ -98,14 +83,7 @@
               />
             </RowActionsMenu>
 
-            <div v-else-if="col.name === 'numero'" :title="col.value">
-              <div class="text-mono ellipsis numero-cell">{{ col.value || '—' }}</div>
-              <q-badge
-                v-if="!rowProps.row.ViewedAt"
-                v-bind="badgeProps('warning', $q.dark.isActive)"
-                label="Novo"
-              />
-            </div>
+            <NumeroCell v-else-if="col.name === 'numero'" :numero="col.value" :viewed-at="rowProps.row.ViewedAt" />
 
             <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
 
@@ -142,12 +120,7 @@
               :items="retencoesItems(rowProps.row)"
             />
 
-            <div v-if="rowProps.row.ParseWarnings.length > 0" class="col-12">
-              <div class="text-subtitle2 text-primary q-mb-xs">Avisos da leitura do XML</div>
-              <ul class="q-my-none q-pl-md text-body2">
-                <li v-for="warning in rowProps.row.ParseWarnings" :key="warning">{{ warning }}</li>
-              </ul>
-            </div>
+            <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings" />
           </div>
         </DocumentDetailRow>
       </template>
@@ -171,7 +144,10 @@ import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
+import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
+import NumeroCell from '../components/NumeroCell.vue'
+import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
 import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
@@ -184,7 +160,6 @@ import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
 import { nfseStateBadges } from '@/utils/nfseDisplay'
-import { badgeProps } from '@/utils/sefazDisplay'
 import { nfseLegend } from '@/utils/stateLegends'
 
 const $q = useQuasar()
@@ -215,10 +190,6 @@ const showEventsDialog = ref(false)
 const eventsDocument = ref({ id: '', chave: '' })
 
 const legend = nfseLegend()
-
-// The filter also searches the status and the service description; the
-// placeholder names only what fits in the 350px field.
-const searchPlaceholder ='Filtrar por chave, número, nome ou CNPJ...'
 
 // papelOptions send the Direction values the backend filters by.
 const papelOptions = [
@@ -405,15 +376,6 @@ async function exportList(chaves: string[], choice: ExportChoice) {
 </script>
 
 <style scoped>
-.document-search-input {
-  width: 350px;
-  max-width: 100%;
-}
-
-.numero-cell {
-  max-width: 100px;
-}
-
 .service-description {
   white-space: pre-wrap;
 }

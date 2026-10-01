@@ -107,22 +107,7 @@
       dense
     >
       <template #top>
-        <div class="row items-center justify-between full-width">
-          <div class="text-subtitle1 text-weight-bold">Conhecimentos de transporte eletrônicos</div>
-          <q-input
-            v-model="filterText"
-            class="document-search-input"
-            placeholder="Filtrar por chave, número, nome ou CNPJ..."
-            outlined
-            dense
-            clearable
-            debounce="300"
-          >
-            <template #append>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-        </div>
+        <DocumentTableTop v-model="filterText" title="Conhecimentos de transporte eletrônicos" />
       </template>
 
       <template #body="rowProps">
@@ -144,19 +129,12 @@
               />
             </RowActionsMenu>
 
-            <div v-else-if="col.name === 'numero'" :title="col.value">
-              <div class="text-mono ellipsis numero-cell">{{ formatNFeNumber(rowProps.row.Numero) || '—' }}</div>
-              <div class="row no-wrap items-center q-gutter-x-xs">
-                <span v-if="rowProps.row.Serie" class="text-caption text-app-muted">
-                  série {{ rowProps.row.Serie }}
-                </span>
-                <q-badge
-                  v-if="!rowProps.row.ViewedAt"
-                  v-bind="badgeProps('warning', $q.dark.isActive)"
-                  label="Novo"
-                />
-              </div>
-            </div>
+            <NumeroCell
+              v-else-if="col.name === 'numero'"
+              :numero="col.value"
+              :serie="rowProps.row.Serie"
+              :viewed-at="rowProps.row.ViewedAt"
+            />
 
             <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
 
@@ -214,12 +192,7 @@
               </div>
             </div>
 
-            <div v-if="rowProps.row.ParseWarnings.length > 0" class="col-12">
-              <div class="text-subtitle2 text-primary q-mb-xs">Avisos da leitura do XML</div>
-              <ul class="q-my-none q-pl-md text-body2">
-                <li v-for="warning in rowProps.row.ParseWarnings" :key="warning">{{ warning }}</li>
-              </ul>
-            </div>
+            <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings" />
           </div>
         </DocumentDetailRow>
       </template>
@@ -238,7 +211,10 @@ import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
+import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
+import NumeroCell from '../components/NumeroCell.vue'
+import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
 import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
@@ -267,7 +243,7 @@ import {
   formatDateTime,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { ambienteColor, ambienteLabel } from '@/utils/sefazDisplay'
 import { cteLegend } from '@/utils/stateLegends'
 
 const $q = useQuasar()
@@ -323,8 +299,7 @@ const ambiente = computed(() =>
 const columns = documentColumns<CTeRow>({
   emitenteLabel: 'Emitente',
   destinatarioLabel: 'Tomador',
-  // "000.021.502 / 1": the header already says the second part is the série.
-  numero: (row) => [formatNFeNumber(row.Numero), row.Serie].filter(Boolean).join(' / '),
+  numero: (row) => formatNFeNumber(row.Numero),
   emitente: (row) => row.EmitenteName || row.EmitenteCNPJ,
   destinatario: (row) => row.TomadorName || row.TomadorCNPJ,
   valor: (row) => row.TotalValue,
@@ -487,14 +462,5 @@ async function exportZIP(chaves: string[], choice: ExportChoice) {
 
 .cte-filter-chave {
   width: 240px;
-}
-
-.document-search-input {
-  width: 350px;
-  max-width: 100%;
-}
-
-.numero-cell {
-  max-width: 100px;
 }
 </style>

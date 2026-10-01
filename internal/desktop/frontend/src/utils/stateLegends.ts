@@ -11,7 +11,7 @@ import {
   TACIT_CONFIRMATION_LABEL,
 } from './nfeDisplay'
 import { ctePapel, cteSituacao, cteTipoDocumento } from './cteDisplay'
-import type { DisplayTable } from './sefazDisplay'
+import { type DisplayTable, VIEWED_BADGE } from './sefazDisplay'
 
 export type LegendItem = {
   // Text inside the badge, as the table shows it.
@@ -49,11 +49,11 @@ function item(badge: string, color: string, description: string): LegendItem {
 // viewedSection explains the "Novo" badge every document table shows.
 export function viewedSection(): LegendSection {
   return {
-    title: 'Novo',
+    title: VIEWED_BADGE.label,
     items: [
       item(
-        'Novo',
-        'warning',
+        VIEWED_BADGE.label,
+        VIEWED_BADGE.color,
         'Documento ainda não visto. Sai de "Somente não vistos" quando você usa "Marcar vistos" na seleção ou na lista exibida.'
       ),
     ],

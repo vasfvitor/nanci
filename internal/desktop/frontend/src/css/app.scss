@@ -163,3 +163,13 @@ body {
   padding: 0;
   white-space: normal;
 }
+
+/* The box over a document table that narrows the listed rows. */
+.document-search-input {
+  width: 350px;
+  max-width: 100%;
+}
+
+.numero-cell {
+  max-width: 100px;
+}

@@ -132,22 +132,7 @@
           dense
         >
           <template #top>
-            <div class="row items-center justify-between full-width">
-              <div class="text-subtitle1 text-weight-bold">Notas fiscais eletrônicas</div>
-              <q-input
-                v-model="filterText"
-                class="document-search-input"
-                :placeholder="searchPlaceholder"
-                outlined
-                dense
-                clearable
-                debounce="300"
-              >
-                <template #append>
-                  <q-icon name="search" />
-                </template>
-              </q-input>
-            </div>
+            <DocumentTableTop v-model="filterText" title="Notas fiscais eletrônicas" />
           </template>
 
           <template #body="rowProps">
@@ -182,19 +167,12 @@
                   />
                 </RowActionsMenu>
 
-                <div v-else-if="col.name === 'numero'" :title="col.value">
-                  <div class="text-mono ellipsis numero-cell">{{ formatNFeNumber(rowProps.row.Numero) || '—' }}</div>
-                  <div class="row no-wrap items-center q-gutter-x-xs">
-                    <span v-if="rowProps.row.Serie" class="text-caption text-app-muted">
-                      série {{ rowProps.row.Serie }}
-                    </span>
-                    <q-badge
-                      v-if="!rowProps.row.ViewedAt"
-                      v-bind="badgeProps('warning', $q.dark.isActive)"
-                      label="Novo"
-                    />
-                  </div>
-                </div>
+                <NumeroCell
+                  v-else-if="col.name === 'numero'"
+                  :numero="col.value"
+                  :serie="rowProps.row.Serie"
+                  :viewed-at="rowProps.row.ViewedAt"
+                />
 
                 <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
 
@@ -243,12 +221,7 @@
                   <DetailList title="Valores" :items="valoresItems(rowProps.row)" />
                 </div>
 
-                <div v-if="rowProps.row.ParseWarnings?.length" class="col-12">
-                  <div class="text-subtitle2 text-primary q-mb-xs">Avisos da leitura do XML</div>
-                  <ul class="q-my-none q-pl-md text-body2">
-                    <li v-for="warning in rowProps.row.ParseWarnings" :key="warning">{{ warning }}</li>
-                  </ul>
-                </div>
+                <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings ?? []" />
               </div>
             </DocumentDetailRow>
           </template>
@@ -280,12 +253,15 @@ import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
+import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
 import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
+import NumeroCell from '../components/NumeroCell.vue'
+import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
 import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
@@ -376,10 +352,6 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   exportList: exportZIP,
 })
 
-// The search box names the fields useNFeDocuments searches: the chave, the
-// número, and the name and CNPJ of the emitente and the destinatário.
-const searchPlaceholder = 'Filtrar por chave, número, nome ou CNPJ...'
-
 const ambiente = computed(() =>
   status.value
     ? { label: ambienteLabel(status.value.TpAmb), color: ambienteColor(status.value.TpAmb) }
@@ -389,8 +361,7 @@ const ambiente = computed(() =>
 const columns = documentColumns<NFeRow>({
   emitenteLabel: 'Emitente',
   destinatarioLabel: 'Destinatário',
-  // "000.018.736 / 1": the header already says the second part is the série.
-  numero: (row) => [formatNFeNumber(row.Numero), row.Serie].filter(Boolean).join(' / '),
+  numero: (row) => formatNFeNumber(row.Numero),
   emitente: (row) => row.EmitenteName || row.EmitenteCNPJ,
   destinatario: (row) => row.DestinatarioName || row.DestinatarioCNPJ,
   valor: (row) => row.TotalValue,
@@ -711,14 +682,3 @@ async function exportZIP(chaves: string[], choice: ExportChoice) {
   }
 }
 </script>
-
-<style scoped>
-.document-search-input {
-  width: 350px;
-  max-width: 100%;
-}
-
-.numero-cell {
-  max-width: 100px;
-}
-</style>
