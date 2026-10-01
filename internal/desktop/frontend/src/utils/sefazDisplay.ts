@@ -93,6 +93,11 @@ export function ambienteColor(tpAmb: string) {
   return 'grey'
 }
 
+// sefazAmbiente is the ambiente badge of a page header for tpAmb.
+export function sefazAmbiente(tpAmb: string) {
+  return { label: ambienteLabel(tpAmb), color: ambienteColor(tpAmb) }
+}
+
 export type SefazBlockInfo = {
   BlockedReason: string
   RequestsLastHour: number

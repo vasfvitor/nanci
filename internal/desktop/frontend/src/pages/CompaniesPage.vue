@@ -133,6 +133,7 @@ import { useConsoleStore } from '@/stores/console'
 import { useCompanies } from '@/composables/useCompanies'
 import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
+import { nfseSyncSummary } from '@/utils/nfseDisplay'
 import type { CompanySummary } from '@/types/desktop'
 
 const $q = useQuasar()
@@ -222,12 +223,7 @@ async function assignCredential(cnpj: string) {
 async function syncCompany(cnpj: string) {
   try {
     const result = await companiesApi.syncCompany(cnpj)
-    const credentialCNPJ = result.CredentialCNPJ || 'pendente'
-    const lastFound = result.LastFoundNSU ?? '—'
-    $q.notify({
-      type: 'positive',
-      message: `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastProcessedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`,
-    })
+    $q.notify({ type: 'positive', message: nfseSyncSummary(result) })
     await loadCompanies()
   } catch (err) {
     notifySyncError('Erro na sincronização', err)

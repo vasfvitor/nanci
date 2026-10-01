@@ -11,6 +11,13 @@ function compactCode(value: string | null) {
   return (value ?? '').replace(/[^0-9A-Za-z]/g, '').toUpperCase()
 }
 
+// isNFeChaveFilter accepts an empty NF-e filter or a 44-character key. The
+// emitente CNPJ inside the key may carry letters, so they are allowed; the
+// backend checks the rest.
+function isNFeChaveFilter(chave: string) {
+  return chave === '' || /^[0-9A-Z]{44}$/.test(chave)
+}
+
 // The store holds CT-e page state that outlives the page.
 export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   const filter = ref<ListCTeInput>({
@@ -39,6 +46,12 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
+  // listError explains why listInput cannot be sent, or is ''. The page
+  // shows it on the NF-e key field.
+  const listError = computed(() =>
+    isNFeChaveFilter(listInput.value.NFeChave) ? '' : 'A chave de NF-e tem 44 caracteres'
+  )
+
   const rows = ref<CTeRow[]>([])
   const selected = ref<CTeRow[]>([])
   // filterText narrows the listed rows on the page, without a new search.
@@ -61,6 +74,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   return {
     filter,
     listInput,
+    listError,
     rows,
     selected,
     filterText,

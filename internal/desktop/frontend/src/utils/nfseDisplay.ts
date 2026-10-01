@@ -1,4 +1,4 @@
-import type { CompanySummary, DocumentRow } from '@/types/desktop'
+import type { CompanySummary, DocumentRow, PullResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
 import { ambienteColor, displayTable, type StateBadge } from '@/utils/sefazDisplay'
 
@@ -18,8 +18,8 @@ const nfseVisibilityEntries = {
 }
 
 const nfseRoleEntries = {
-  prestada: { label: 'Prestada', color: 'primary', abbr: 'P' },
   tomada: { label: 'Tomada', color: 'secondary', abbr: 'T' },
+  prestada: { label: 'Prestada', color: 'primary', abbr: 'P' },
   intermediario: { label: 'Intermediário', color: 'accent', abbr: 'I' },
   none: { label: 'Sem papel fiscal', color: 'grey', abbr: 'SP' },
 }
@@ -27,6 +27,9 @@ const nfseRoleEntries = {
 export const nfseStatus = displayTable(nfseStatusEntries)
 export const nfseVisibility = displayTable(nfseVisibilityEntries)
 export const nfseRole = displayTable(nfseRoleEntries)
+
+// nfseRoleFilterOptions send the Direction values the backend filters by.
+export const nfseRoleFilterOptions = nfseRole.options('Todos')
 
 // Keyed by DocumentEvent.Type.
 export const nfseEvent = displayTable({
@@ -55,6 +58,14 @@ export function nfseAmbiente(environment: string) {
     return { label: 'Produção restrita', color: ambienteColor('2') }
   }
   return { label: 'Ambiente desconhecido', color: 'grey' }
+}
+
+// nfseSyncSummary reports one ADN pull: how it ended, the last NSU read
+// and the last that brought a document, and the credential used.
+export function nfseSyncSummary(result: PullResult) {
+  const credentialCNPJ = result.CredentialCNPJ || 'pendente'
+  const lastFound = result.LastFoundNSU ?? '—'
+  return `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastProcessedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`
 }
 
 // nfseStatusLine sums up the company's last NFS-e sync and the last NSU that

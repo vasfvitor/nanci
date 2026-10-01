@@ -17,60 +17,63 @@ function deferred<T>() {
 function setup() {
   const filter = ref({ CNPJ: '123', Competence: '2026-06', OnlyUnread: false })
   const rows = ref<Row[]>([{ ChaveAcesso: 'a' }, { ChaveAcesso: 'b' }])
+  const filteredRows = ref<Row[]>(rows.value)
   const selected = ref<Row[]>([])
   const markingViewed = shallowRef(false)
   const mark = vi.fn(async (_cnpj: string, chaves: string[]) => chaves.length)
-  const search = vi.fn(async () => [])
   const options = {
     filter,
     mark,
     rows,
+    filteredRows,
     selected,
     setRows: (next: Row[]) => {
       rows.value = next
     },
-    search,
     markingViewed,
   }
-  return { filter, rows, selected, markingViewed, mark, search, options }
+  return { filter, rows, filteredRows, selected, markingViewed, mark, options }
 }
 
 describe('useMarkViewed', () => {
   it('marks by company and chaves and drops the "Novo" badge in place', async () => {
-    const { rows, selected, mark, search, options } = setup()
+    const { rows, selected, mark, options } = setup()
     selected.value = [rows.value[0] as Row]
     const { markViewed } = useMarkViewed(options)
 
-    await expect(markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
+    await expect(markViewed(['a'])).resolves.toBe(1)
 
     expect(mark).toHaveBeenCalledWith('123', ['a'])
+    expect(rows.value.map((row) => row.ChaveAcesso)).toEqual(['a', 'b'])
     expect(rows.value[0]?.ViewedAt).toBeInstanceOf(Date)
     expect(rows.value[1]?.ViewedAt).toBeUndefined()
     expect(selected.value).toEqual([])
-    expect(search).not.toHaveBeenCalled()
   })
 
-  it('searches again with "Somente não vistos" on', async () => {
-    const { rows, search, options } = setup()
+  it('takes the marked documents out of the list with "Somente não vistos" on', async () => {
+    const { rows, mark, options } = setup()
     const { onlyUnviewed, markViewed } = useMarkViewed(options)
     onlyUnviewed.value = true
 
-    await expect(markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: null })
+    await expect(markViewed(['a'])).resolves.toBe(1)
 
     expect(options.filter.value.OnlyUnread).toBe(true)
-    expect(search).toHaveBeenCalledTimes(1)
-    expect(rows.value[0]?.ViewedAt).toBeUndefined()
+    expect(mark).toHaveBeenCalledTimes(1)
+    expect(rows.value).toEqual([{ ChaveAcesso: 'b' }])
   })
 
-  it('keeps the count when the search after marking fails', async () => {
-    const { filter, search, markingViewed, options } = setup()
-    filter.value.OnlyUnread = true
-    const failure = new Error('lista indisponível')
-    search.mockRejectedValue(failure)
-    const { markViewed } = useMarkViewed(options)
+  it('acts on the selection, or else on the rows the grid shows', () => {
+    const { filteredRows, selected, options } = setup()
+    const viewed = { ChaveAcesso: 'c', ViewedAt: new Date() }
+    filteredRows.value = [{ ChaveAcesso: 'a' }, viewed]
+    const { scopeRows, unviewedChaves } = useMarkViewed(options)
 
-    await expect(markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: failure })
-    expect(markingViewed.value).toBe(false)
+    expect(scopeRows.value).toEqual(filteredRows.value)
+    expect(unviewedChaves.value).toEqual(['a'])
+
+    selected.value = [viewed]
+    expect(scopeRows.value).toEqual([viewed])
+    expect(unviewedChaves.value).toEqual([])
   })
 
   it('does not mark without a company or chaves', async () => {

@@ -47,14 +47,11 @@ export function useCompanies() {
   }
 
   async function syncCompany(cnpj: string) {
-    syncStore.startSync(cnpj, 'nfse')
-    try {
+    return syncStore.runSync(cnpj, 'nfse', async () => {
       const result = await desktopClient.pull({ CNPJ: cnpj, Mode: '' })
       await loadCompanies()
       return result
-    } finally {
-      syncStore.finishSync(cnpj, 'nfse')
-    }
+    })
   }
 
   async function resetSyncState(cnpj: string) {

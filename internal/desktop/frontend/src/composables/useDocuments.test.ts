@@ -289,7 +289,7 @@ describe('useDocuments', () => {
     nfse.filter.value.Competence = '2026-06'
     nfse.filter.value.Direction = 'tomada'
 
-    await expect(nfse.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
+    await expect(nfse.markViewed(['a'])).resolves.toBe(1)
 
     expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith('123', ['a'])
     expect(store.documents[0]?.ViewedAt).toBeInstanceOf(Date)
@@ -298,28 +298,19 @@ describe('useDocuments', () => {
     expect(desktopClient.listDocuments).not.toHaveBeenCalled()
   })
 
-  it('searches again after marking when only unviewed NFS-e are listed', async () => {
-    vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(2)
+  it('takes the marked NFS-e out of the list when only unviewed ones are listed', async () => {
+    vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(1)
+    const store = useDocumentsStore()
     const nfse = useDocuments()
     nfse.filter.value.CNPJ = '123'
     nfse.onlyUnviewed.value = true
+    store.setRows([documentRow('a'), documentRow('b')])
 
-    await nfse.markViewed(['a', 'b'])
+    await expect(nfse.markViewed(['a'])).resolves.toBe(1)
 
-    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith('123', ['a', 'b'])
-    expect(desktopClient.listDocuments).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
-  })
-
-  it('keeps the count when the search after marking fails', async () => {
-    const failure = new Error('lista indisponível')
-    vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(2)
-    vi.mocked(desktopClient.listDocuments).mockRejectedValue(failure)
-    const nfse = useDocuments()
-    nfse.filter.value.CNPJ = '123'
-    nfse.filter.value.OnlyUnread = true
-
-    await expect(nfse.markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: failure })
-    expect(nfse.markingViewed.value).toBe(false)
+    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith('123', ['a'])
+    expect(store.documents.map((row) => row.ChaveAcesso)).toEqual(['b'])
+    expect(desktopClient.listDocuments).not.toHaveBeenCalled()
   })
 
   it('keeps "Marcar vistos" visible to a second instance while it is pending', async () => {

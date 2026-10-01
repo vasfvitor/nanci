@@ -15,14 +15,14 @@ const stubs = {
 
 function mountMenu(expanded: boolean) {
   return mount(RowActionsMenu, {
-    props: { noun: 'do CT-e', expanded },
+    props: { source: 'cte', expanded },
     slots: { default: '<div class="entry">Exportar XML</div>' },
     global: { stubs },
   })
 }
 
 describe('RowActionsMenu', () => {
-  it('labels both buttons with the noun', () => {
+  it('labels both buttons with the source', () => {
     const [toggle, menu] = mountMenu(false).findAll('button')
     expect(toggle?.attributes('aria-label')).toBe('Ver detalhes do CT-e')
     expect(toggle?.attributes('aria-expanded')).toBe('false')

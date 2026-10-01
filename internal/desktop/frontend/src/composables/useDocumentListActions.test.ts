@@ -2,7 +2,6 @@ import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentListActions, type DocumentListActionsOptions } from './useDocumentListActions'
-import type { MarkViewedResult } from './useMarkViewed'
 
 type OkHandler = (payload: unknown) => void
 
@@ -24,12 +23,10 @@ function setup(overrides: Partial<DocumentListActionsOptions> = {}) {
   const selected = ref<unknown[]>([])
   const scopeRows = ref([{ ChaveAcesso: 'a' }, { ChaveAcesso: 'b' }])
   const unviewedChaves = ref(['a', 'b'])
-  const markViewed = vi.fn(
-    async (chaves: string[]): Promise<MarkViewedResult | null> => ({ count: chaves.length, reloadError: null })
-  )
+  const markViewed = vi.fn(async (chaves: string[]): Promise<number | null> => chaves.length)
   const exportList = vi.fn(async () => {})
   const actions = useDocumentListActions({
-    noun: 'NFS-e',
+    source: 'nfse',
     selected,
     scopeRows,
     unviewedChaves,
@@ -59,8 +56,8 @@ describe('useDocumentListActions', () => {
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
   })
 
-  it('asks before marking the whole list, in the gender of the noun', async () => {
-    const { unviewedChaves, markViewed, actions } = setup({ noun: 'CT-e' })
+  it('asks before marking the whole list, in the gender of the source', async () => {
+    const { unviewedChaves, markViewed, actions } = setup({ source: 'cte' })
     unviewedChaves.value = ['a']
 
     actions.confirmMarkViewed()
@@ -85,22 +82,17 @@ describe('useDocumentListActions', () => {
     expect(markViewed).not.toHaveBeenCalled()
   })
 
-  it('reports the marking, then a list that failed to reload', async () => {
-    const { selected, actions } = setup({
-      markViewed: async () => ({ count: 2, reloadError: new Error('offline') }),
-    })
-    selected.value = [{}]
+  it('asks in the plural for several new documents', () => {
+    const { actions } = setup({ source: 'nfe' })
 
     actions.confirmMarkViewed()
-    await flushPromises()
 
-    expect(notify.mock.calls.map(([options]) => options)).toEqual([
-      { type: 'positive', message: '2 documentos marcados como vistos.' },
-      { type: 'negative', message: 'Erro ao recarregar a lista: offline' },
-    ])
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Marcar como vistas as 2 NF-e novas da lista?' })
+    )
   })
 
-  it('reports a failed marking under the noun', async () => {
+  it('reports a failed marking under the source noun', async () => {
     const { selected, actions } = setup({
       markViewed: async () => {
         throw new Error('boom')
@@ -115,13 +107,13 @@ describe('useDocumentListActions', () => {
   })
 
   it('opens the export dialog for the scope rows and exports the choice', async () => {
-    const { exportList, actions } = setup({ noun: 'NF-e', showIncludeResumos: true })
+    const { exportList, actions } = setup({ source: 'nfe', showIncludeResumos: true })
 
     actions.openExportDialog()
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
         componentProps: {
-          noun: 'NF-e',
+          source: 'nfe',
           count: 2,
           scope: 'listed',
           formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],

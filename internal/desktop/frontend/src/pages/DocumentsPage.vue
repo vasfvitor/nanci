@@ -27,7 +27,7 @@
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
-      <DocumentFilterSelect v-model="filter.Direction" :options="papelOptions" label="Papel" :disable="loading" />
+      <DocumentFilterSelect v-model="filter.Direction" :options="nfseRoleFilterOptions" label="Papel" :disable="loading" />
     </DocumentFilterBar>
 
     <StateLegend :sections="legend" class="q-mb-md" />
@@ -57,7 +57,7 @@
             <q-checkbox v-model="rowProps.selected" dense />
           </q-td>
           <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" noun="da NFS-e">
+            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="nfse">
               <RowMenuItem label="Eventos" @click="openEvents(rowProps.row)" />
               <RowMenuItem
                 label="Exportar XML"
@@ -87,7 +87,7 @@
               :cnpj="rowProps.row.TomadorCNPJ"
             />
 
-            <StateBadges v-else-if="col.name === 'estados'" :badges="nfseStateBadges(rowProps.row)" />
+            <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []" />
 
             <template v-else>{{ col.value }}</template>
           </q-td>
@@ -148,7 +148,7 @@ import { useNotify } from '@/composables/useNotify'
 import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
-import { nfseStateBadges } from '@/utils/nfseDisplay'
+import { nfseRoleFilterOptions, nfseSyncSummary } from '@/utils/nfseDisplay'
 import { nfseLegend } from '@/utils/stateLegends'
 
 const $q = useQuasar()
@@ -166,6 +166,7 @@ const {
   filteredRows,
   scopeRows,
   unviewedChaves,
+  badgesByChave,
   onlyUnviewed,
   companyOptions,
   selectedCompany,
@@ -180,15 +181,6 @@ const eventsDocument = ref({ id: '', chave: '' })
 
 const legend = nfseLegend()
 
-// papelOptions send the Direction values the backend filters by.
-const papelOptions = [
-  { label: 'Todos', value: '' },
-  { label: 'Tomada', value: 'tomada' },
-  { label: 'Prestada', value: 'prestada' },
-  { label: 'Intermediário', value: 'intermediario' },
-  { label: 'Sem papel fiscal', value: 'none' },
-]
-
 const exportFormats = [
   { label: 'Planilha CSV', value: 'csv' },
   { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
@@ -197,7 +189,7 @@ const exportFormats = [
 ]
 
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
-  noun: 'NFS-e',
+  source: 'nfse',
   selected,
   scopeRows,
   unviewedChaves,
@@ -288,12 +280,7 @@ async function search() {
 async function syncNFSe() {
   try {
     const result = await nfse.syncNFSe()
-    if (!result) return
-    const credentialCNPJ = result.CredentialCNPJ || 'pendente'
-    const lastFound = result.LastFoundNSU ?? '—'
-    notifySuccess(
-      `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastProcessedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`
-    )
+    if (result) notifySuccess(nfseSyncSummary(result))
   } catch (error) {
     notifySyncError('Erro na sincronização da NFS-e', error)
   }

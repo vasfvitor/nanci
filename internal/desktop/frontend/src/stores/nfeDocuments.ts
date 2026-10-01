@@ -74,8 +74,13 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     selected.value = patch(selected.value)
   }
 
+  // busyChaves are the notes with an event being sent.
+  const busyChaves = computed(
+    () => new Set([...(cienciaInFlight.value ?? []), ...manifestacaoInFlight.value])
+  )
+
   function isChaveBusy(chave: string) {
-    return Boolean(cienciaInFlight.value?.includes(chave)) || manifestacaoInFlight.value.has(chave)
+    return busyChaves.value.has(chave)
   }
 
   return {

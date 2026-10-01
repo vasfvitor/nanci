@@ -2,6 +2,7 @@ import { shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import ExportDialog, { exportScopeText } from './ExportDialog.vue'
+import type { DocumentSource } from '@/utils/documentSources'
 
 const { onDialogOK } = vi.hoisted(() => ({ onDialogOK: vi.fn() }))
 
@@ -25,7 +26,7 @@ const nfseFormats = [
 ]
 
 type Props = {
-  noun: 'NFS-e' | 'NF-e' | 'CT-e'
+  source: DocumentSource
   count: number
   scope: 'selected' | 'listed'
   formats: { label: string; value: string }[]
@@ -35,7 +36,7 @@ type Props = {
 
 function mountDialog(props: Partial<Props> = {}) {
   return shallowMount(ExportDialog, {
-    props: { noun: 'CT-e', count: 3, scope: 'listed', formats: xmlZip, ...props },
+    props: { source: 'cte', count: 3, scope: 'listed', formats: xmlZip, ...props },
     global: {
       renderStubDefaultSlot: true,
       stubs: {
@@ -77,15 +78,15 @@ async function clickExport(wrapper: Wrapper) {
 }
 
 describe('exportScopeText', () => {
-  it('agrees with the noun and the count', () => {
-    expect(exportScopeText('NFS-e', 12, 'listed')).toBe('Serão exportadas as 12 NFS-e da lista.')
-    expect(exportScopeText('NF-e', 12, 'listed')).toBe('Serão exportadas as 12 NF-e da lista.')
-    expect(exportScopeText('CT-e', 12, 'listed')).toBe('Serão exportados os 12 CT-e da lista.')
-    expect(exportScopeText('NF-e', 3, 'selected')).toBe('Serão exportadas 3 NF-e selecionadas.')
-    expect(exportScopeText('CT-e', 3, 'selected')).toBe('Serão exportados 3 CT-e selecionados.')
-    expect(exportScopeText('CT-e', 1, 'selected')).toBe('Será exportado 1 CT-e selecionado.')
-    expect(exportScopeText('NFS-e', 1, 'listed')).toBe('Será exportada a NFS-e da lista.')
-    expect(exportScopeText('CT-e', 1, 'listed')).toBe('Será exportado o CT-e da lista.')
+  it('agrees with the source and the count', () => {
+    expect(exportScopeText('nfse', 12, 'listed')).toBe('Serão exportadas as 12 NFS-e da lista.')
+    expect(exportScopeText('nfe', 12, 'listed')).toBe('Serão exportadas as 12 NF-e da lista.')
+    expect(exportScopeText('cte', 12, 'listed')).toBe('Serão exportados os 12 CT-e da lista.')
+    expect(exportScopeText('nfe', 3, 'selected')).toBe('Serão exportadas 3 NF-e selecionadas.')
+    expect(exportScopeText('cte', 3, 'selected')).toBe('Serão exportados 3 CT-e selecionados.')
+    expect(exportScopeText('cte', 1, 'selected')).toBe('Será exportado 1 CT-e selecionado.')
+    expect(exportScopeText('nfse', 1, 'listed')).toBe('Será exportada a NFS-e da lista.')
+    expect(exportScopeText('cte', 1, 'listed')).toBe('Será exportado o CT-e da lista.')
   })
 })
 
@@ -94,8 +95,8 @@ describe('ExportDialog', () => {
     vi.clearAllMocks()
   })
 
-  it('titles the dialog with the noun and says what it exports', () => {
-    const wrapper = mountDialog({ noun: 'NF-e', count: 7, scope: 'listed' })
+  it('titles the dialog with the source noun and says what it exports', () => {
+    const wrapper = mountDialog({ source: 'nfe', count: 7, scope: 'listed' })
     expect(wrapper.text()).toContain('Exportar NF-e')
     expect(wrapper.text()).toContain('Serão exportadas as 7 NF-e da lista.')
   })
@@ -110,7 +111,7 @@ describe('ExportDialog', () => {
   })
 
   it('offers several formats and returns the one picked', async () => {
-    const wrapper = mountDialog({ noun: 'NFS-e', formats: nfseFormats })
+    const wrapper = mountDialog({ source: 'nfse', formats: nfseFormats })
     const group = wrapper.getComponent({ name: 'QOptionGroup' })
     expect(group.props('options')).toEqual(nfseFormats)
     expect(group.props('modelValue')).toBe('csv')
@@ -134,7 +135,7 @@ describe('ExportDialog', () => {
   it('offers "Incluir resumos" only when asked', async () => {
     expect(checkbox(mountDialog(), 'Incluir resumos')).toBeUndefined()
 
-    const wrapper = mountDialog({ noun: 'NF-e', showIncludeResumos: true })
+    const wrapper = mountDialog({ source: 'nfe', showIncludeResumos: true })
     checkbox(wrapper, 'Incluir resumos')?.vm.$emit('update:modelValue', true)
     await clickExport(wrapper)
     expect(onDialogOK).toHaveBeenCalledWith({ format: 'zip', incremental: false, includeResumos: true })

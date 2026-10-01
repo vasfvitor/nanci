@@ -1,44 +1,32 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useDocumentLoaders } from '@/composables/useDocumentLoaders'
+import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
-import { useNFSeLoaders } from '@/composables/useNFSeLoaders'
+import { useRowMap } from '@/composables/useRowMap'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import type { ExportFormat } from '@/types/desktop'
-import { nfseAmbiente, nfseStatusLine } from '@/utils/nfseDisplay'
+import { nfseAmbiente, nfseStateBadges, nfseStatusLine } from '@/utils/nfseDisplay'
 
 // useDocuments holds the NFS-e page: the list, its filters and the actions
 // on the listed NFS-e. The state that outlives the page is in the documents
 // store; the NFS-e sync is the one the Empresas page runs, so both screens
-// share its busy state through the companySync store. A sync or a reset
-// reloads the company list once, in refresh.
+// share its busy state through the companySync store. The NFS-e has no
+// status call: its sync state comes with the company list, which a sync or
+// a reset reloads once, in refresh.
 export function useDocuments() {
   const store = useDocumentsStore()
   const syncStore = useCompanySyncStore()
-  const { isSelected, search } = useNFSeLoaders()
+  const { isSelected, search } = useDocumentLoaders(store, (input) => desktopClient.listDocuments(input))
   const { filter, documents, selected, filterText, loading, exporting, markingViewed, resettingCNPJ } =
     storeToRefs(store)
-  const cnpj = computed({
-    get: () => filter.value.CNPJ,
-    set: (value: string) => {
-      filter.value.CNPJ = value
-    },
-  })
-  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(cnpj)
+  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
   const pagination = useTablePagination('nfse')
-  const { onlyUnviewed, markViewed } = useMarkViewed({
-    filter,
-    mark: (cnpj, chavesAcesso) => desktopClient.markDocumentsViewed(cnpj, chavesAcesso),
-    rows: documents,
-    selected,
-    setRows: (rows) => store.setRows(rows),
-    search,
-    markingViewed,
-  })
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
@@ -55,17 +43,20 @@ export function useDocuments() {
       row.Status,
       row.ServiceDescription,
     ],
-    onChange: () => {
-      pagination.value.page = 1
-    },
+    pagination,
   })
 
-  // scopeRows are the NFS-e "Marcar vistos" and "Exportar" act on: the
-  // selection, or else every row the grid shows.
-  const scopeRows = computed(() => (selected.value.length > 0 ? selected.value : filteredRows.value))
-  const unviewedChaves = computed(() =>
-    scopeRows.value.filter((row) => !row.ViewedAt).map((row) => row.ChaveAcesso)
-  )
+  const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    filter,
+    mark: (cnpj, chavesAcesso) => desktopClient.markDocumentsViewed(cnpj, chavesAcesso),
+    rows: documents,
+    filteredRows,
+    selected,
+    setRows: (rows) => store.setRows(rows),
+    markingViewed,
+  })
+
+  const badgesByChave = useRowMap(documents, (row) => row.ChaveAcesso, nfseStateBadges)
 
   const ambiente = computed(() =>
     selectedCompany.value ? nfseAmbiente(selectedCompany.value.Environment) : null
@@ -99,11 +90,11 @@ export function useDocuments() {
     ) {
       return null
     }
-    syncStore.startSync(companyCNPJ, 'nfse')
     try {
-      return await desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' })
+      return await syncStore.runSync(companyCNPJ, 'nfse', () =>
+        desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' })
+      )
     } finally {
-      syncStore.finishSync(companyCNPJ, 'nfse')
       await refresh(companyCNPJ)
     }
   }
@@ -125,26 +116,14 @@ export function useDocuments() {
 
   // The exports read the company from listInput, like the search that
   // filled the grid.
-  async function exportXML(chaveAcesso: string) {
-    const companyCNPJ = store.listInput.CNPJ
-    if (!companyCNPJ || exporting.value) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportXML({ CNPJ: companyCNPJ, ChaveAcesso: chaveAcesso })
-    } finally {
-      exporting.value = false
-    }
+  const { runExport } = useExportGuard(exporting, () => store.listInput.CNPJ)
+
+  function exportXML(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
-  async function exportDANFSe(chaveAcesso: string) {
-    const companyCNPJ = store.listInput.CNPJ
-    if (!companyCNPJ || exporting.value) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportDANFSe({ CNPJ: companyCNPJ, ChaveAcesso: chaveAcesso })
-    } finally {
-      exporting.value = false
-    }
+  function exportDANFSe(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportDANFSe({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
   // exportDocuments exports exactly the given NFS-e as a spreadsheet or a ZIP
@@ -157,39 +136,31 @@ export function useDocuments() {
     chavesAcesso: string[],
     choice: { incremental: boolean }
   ) {
-    const companyCNPJ = store.listInput.CNPJ
-    if (!companyCNPJ || exporting.value || chavesAcesso.length === 0) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportDocuments({
-        CNPJ: companyCNPJ,
+    if (chavesAcesso.length === 0) return null
+    return runExport((cnpj) =>
+      desktopClient.exportDocuments({
+        CNPJ: cnpj,
         Competence: '',
         Direction: '',
         Format: format,
         Incremental: choice.incremental,
         ChavesAcesso: chavesAcesso,
       })
-    } finally {
-      exporting.value = false
-    }
+    )
   }
 
   async function exportDANFSeZIP(chavesAcesso: string[], choice: { incremental: boolean }) {
-    const companyCNPJ = store.listInput.CNPJ
-    if (!companyCNPJ || exporting.value || chavesAcesso.length === 0) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportDANFSeZIP({
-        CNPJ: companyCNPJ,
+    if (chavesAcesso.length === 0) return null
+    return runExport((cnpj) =>
+      desktopClient.exportDANFSeZIP({
+        CNPJ: cnpj,
         Competence: '',
         Direction: '',
         Format: 'zip',
         Incremental: choice.incremental,
         ChavesAcesso: chavesAcesso,
       })
-    } finally {
-      exporting.value = false
-    }
+    )
   }
 
   return {
@@ -205,6 +176,7 @@ export function useDocuments() {
     filteredRows,
     scopeRows,
     unviewedChaves,
+    badgesByChave,
     companyOptions,
     selectedCompany,
     ambiente,

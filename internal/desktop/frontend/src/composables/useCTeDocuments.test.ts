@@ -106,17 +106,17 @@ describe('useCTeDocuments', () => {
 
   it('explains an NF-e key filter that is not 44 characters', () => {
     const cte = useCTeDocuments()
-    expect(cte.nfeChaveError.value).toBe('')
+    expect(cte.listError.value).toBe('')
 
     cte.filter.value.NFeChave = '3526 0911'
-    expect(cte.nfeChaveError.value).toBe('A chave de NF-e tem 44 caracteres')
+    expect(cte.listError.value).toBe('A chave de NF-e tem 44 caracteres')
 
     cte.filter.value.NFeChave = '3526 '.repeat(11)
-    expect(cte.nfeChaveError.value).toBe('')
+    expect(cte.listError.value).toBe('')
 
     // An alphanumeric CNPJ puts letters in the key.
     cte.filter.value.NFeChave = `3526 09AB ${'1234 '.repeat(9)}`
-    expect(cte.nfeChaveError.value).toBe('')
+    expect(cte.listError.value).toBe('')
   })
 
   it('keeps pull and export visible to a second instance while they are pending', async () => {
@@ -283,7 +283,7 @@ describe('useCTeDocuments', () => {
     cte.filter.value.Modelo = '67'
     cte.filter.value.TomadorCNPJ = '98.765.432/0001-99'
 
-    await expect(cte.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
+    await expect(cte.markViewed(['a'])).resolves.toBe(1)
 
     expect(desktopClient.markCTeViewed).toHaveBeenCalledWith('123', ['a'])
     expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
@@ -292,28 +292,19 @@ describe('useCTeDocuments', () => {
     expect(desktopClient.listCTe).not.toHaveBeenCalled()
   })
 
-  it('searches again after marking when only unviewed CT-e are listed', async () => {
-    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(2)
+  it('takes the marked CT-e out of the list when only unviewed ones are listed', async () => {
+    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(1)
+    const store = useCTeDocumentsStore()
     const cte = useCTeDocuments()
     cte.filter.value.CNPJ = '123'
     cte.onlyUnviewed.value = true
+    store.setRows([cteRow('a'), cteRow('b')])
 
-    await cte.markViewed(['a', 'b'])
+    await expect(cte.markViewed(['a'])).resolves.toBe(1)
 
-    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith('123', ['a', 'b'])
-    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
-  })
-
-  it('keeps the count when the search after marking fails', async () => {
-    const failure = new Error('lista indisponível')
-    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(2)
-    vi.mocked(desktopClient.listCTe).mockRejectedValue(failure)
-    const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
-    cte.filter.value.OnlyUnread = true
-
-    await expect(cte.markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: failure })
-    expect(cte.markingViewed.value).toBe(false)
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith('123', ['a'])
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['b'])
+    expect(desktopClient.listCTe).not.toHaveBeenCalled()
   })
 
   it('keeps "Marcar vistos" visible to a second instance while it is pending', async () => {

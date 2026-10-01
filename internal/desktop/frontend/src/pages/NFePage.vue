@@ -96,7 +96,7 @@
                 <q-checkbox v-model="rowProps.selected" dense />
               </q-td>
               <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-                <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" noun="da NF-e">
+                <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="nfe">
                   <RowMenuItem
                     label="Manifestar…"
                     :caption="manifestarCaption(rowProps.row)"
@@ -116,8 +116,8 @@
                   />
                   <RowMenuItem
                     label="Exportar XML"
-                    :caption="rowActions(rowProps.row).canExportXML ? '' : 'XML completo ainda não baixado'"
-                    :disable="exporting || !rowActions(rowProps.row).canExportXML"
+                    :caption="nfeRowActions(rowProps.row).canExportXML ? '' : 'XML completo ainda não baixado'"
+                    :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
                     @click="exportXML(rowProps.row.ChaveAcesso)"
                   />
                 </RowActionsMenu>
@@ -143,7 +143,7 @@
                   :cnpj="rowProps.row.DestinatarioCNPJ"
                 />
 
-                <StateBadges v-else-if="col.name === 'estados'" :badges="nfeStateBadges(rowProps.row)">
+                <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []">
                   <template
                     v-if="isChaveBusy(rowProps.row.ChaveAcesso) || showsConclusiveDeadline(rowProps.row)"
                     #default
@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
@@ -237,7 +237,7 @@ import {
   formatDateTime,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
 import { nfeLegend, nfePendingLegend } from '@/utils/stateLegends'
 import {
   completenessFilterOptions,
@@ -245,12 +245,16 @@ import {
   deadlineColor,
   manifestacaoFilterOptions,
   nfeRoleFilterOptions,
-  nfeStateBadges,
   situacaoFilterOptions,
   situacaoLabel,
   showsConclusiveDeadline,
 } from '@/utils/nfeDisplay'
-import { countOutcomes, isProblemOutcome, noEligibleCienciaMessage } from '@/utils/nfeManifestacao'
+import {
+  countOutcomes,
+  isProblemOutcome,
+  nfeRowActions,
+  noEligibleCienciaMessage,
+} from '@/utils/nfeManifestacao'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
@@ -270,9 +274,11 @@ const {
   filteredRows,
   scopeRows,
   unviewedChaves,
+  badgesByChave,
   onlyUnviewed,
   companyOptions,
   companyName,
+  ambiente,
   pendingCount,
   noteCount,
   statusLine,
@@ -280,7 +286,6 @@ const {
   isResetting,
   syncBlockedUntil,
   blockedText,
-  rowActions,
 } = nfe
 const {
   pending,
@@ -298,7 +303,7 @@ const legend = nfeLegend()
 const pendingLegend = nfePendingLegend()
 
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
-  noun: 'NF-e',
+  source: 'nfe',
   selected,
   scopeRows,
   unviewedChaves,
@@ -307,12 +312,6 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   showIncludeResumos: true,
   exportList: exportZIP,
 })
-
-const ambiente = computed(() =>
-  status.value
-    ? { label: ambienteLabel(status.value.TpAmb), color: ambienteColor(status.value.TpAmb) }
-    : null
-)
 
 const columns = documentColumns<NFeRow>({
   emitenteLabel: 'Emitente',
@@ -327,17 +326,17 @@ const columns = documentColumns<NFeRow>({
 const SENDING_CAPTION = 'Envio em andamento'
 
 function canManifest(row: NFeRow) {
-  return rowActions(row).conclusiveBlockReason === null && !isChaveBusy(row.ChaveAcesso)
+  return nfeRowActions(row).conclusiveBlockReason === null && !isChaveBusy(row.ChaveAcesso)
 }
 
 function manifestarCaption(row: NFeRow) {
   if (isChaveBusy(row.ChaveAcesso)) return SENDING_CAPTION
-  return rowActions(row).conclusiveBlockReason ?? ''
+  return nfeRowActions(row).conclusiveBlockReason ?? ''
 }
 
 function canRegisterCiencia(row: NFeRow) {
   return (
-    rowActions(row).cienciaBlockReason === null &&
+    nfeRowActions(row).cienciaBlockReason === null &&
     !cienciaInFlight.value &&
     !isChaveBusy(row.ChaveAcesso)
   )
@@ -345,7 +344,7 @@ function canRegisterCiencia(row: NFeRow) {
 
 function cienciaCaption(row: NFeRow) {
   if (isChaveBusy(row.ChaveAcesso)) return SENDING_CAPTION
-  return rowActions(row).cienciaBlockReason ?? ''
+  return nfeRowActions(row).cienciaBlockReason ?? ''
 }
 
 function notaItems(row: NFeRow): DetailItem[] {

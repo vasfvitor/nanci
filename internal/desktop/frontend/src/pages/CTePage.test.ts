@@ -380,7 +380,7 @@ describe('CTePage', () => {
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
         componentProps: {
-          noun: 'CT-e',
+          source: 'cte',
           count: 1,
           scope: 'listed',
           formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],

@@ -1,53 +1,48 @@
-import type { Ref } from 'vue'
-
-export type DocumentLoadersOptions<Input extends { CNPJ: string }, Row, Status> = {
-  // selectedCNPJ is the company the page shows now.
-  selectedCNPJ: () => string
+// LoaderStore is the part of a page store the loaders read and fill.
+export type LoaderStore<Input extends { CNPJ: string }, Row> = {
+  // filter.CNPJ is the company the page shows now.
+  filter: { CNPJ: string }
   // listInput is the list request built from the current filter.
-  listInput: () => Input
-  // canList rejects a request that must not be sent, such as one with a
-  // malformed field the page already flags.
-  canList?: (input: Input) => boolean
-  list: (input: Input) => Promise<Row[]>
+  readonly listInput: Input
+  // listError explains why listInput must not be sent, such as a malformed
+  // field the page already flags, or is ''.
+  readonly listError?: string
+  loading: boolean
   setRows: (rows: Row[]) => void
-  loading: Ref<boolean>
-  // status is the company's sync status, for sources that have one.
-  status?: {
-    state: Ref<Status | null>
-    fetch: (cnpj: string) => Promise<Status>
-  }
 }
 
-// useDocumentLoaders loads a document list, and the sync status when there
-// is one, into a page store. A result that arrives after the user picked
-// another company is dropped.
+// useDocumentLoaders loads a document list into a page store and, for the
+// sources with a sync status, the status through fetchStatus into
+// store.status. A result that arrives after the user picked another company
+// is dropped.
 export function useDocumentLoaders<Input extends { CNPJ: string }, Row, Status = never>(
-  options: DocumentLoadersOptions<Input, Row, Status>
+  store: LoaderStore<Input, Row> & { status?: Status | null },
+  list: (input: Input) => Promise<Row[]>,
+  fetchStatus?: (cnpj: string) => Promise<Status>
 ) {
-  const isSelected = (cnpj: string) => options.selectedCNPJ() === cnpj
+  const isSelected = (cnpj: string) => store.filter.CNPJ === cnpj
 
   async function search(): Promise<Row[]> {
-    const input = options.listInput()
-    if (!input.CNPJ || options.canList?.(input) === false) return []
-    options.loading.value = true
+    const input = store.listInput
+    if (!input.CNPJ || store.listError) return []
+    store.loading = true
     try {
-      const result = await options.list(input)
-      if (isSelected(input.CNPJ)) options.setRows(result)
+      const result = await list(input)
+      if (isSelected(input.CNPJ)) store.setRows(result)
       return result
     } finally {
-      options.loading.value = false
+      store.loading = false
     }
   }
 
-  async function loadStatus(cnpj: string = options.selectedCNPJ()): Promise<Status | null> {
-    const status = options.status
-    if (!status) return null
+  async function loadStatus(cnpj: string = store.filter.CNPJ): Promise<Status | null> {
+    if (!fetchStatus) return null
     if (!cnpj) {
-      status.state.value = null
+      store.status = null
       return null
     }
-    const result = await status.fetch(cnpj)
-    if (isSelected(cnpj)) status.state.value = result
+    const result = await fetchStatus(cnpj)
+    if (isSelected(cnpj)) store.status = result
     return result
   }
 

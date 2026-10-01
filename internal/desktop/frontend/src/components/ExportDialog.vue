@@ -2,7 +2,7 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin export-dialog">
       <q-card-section>
-        <div class="text-h6">Exportar {{ noun }}</div>
+        <div class="text-h6">Exportar {{ DOCUMENT_SOURCES[source].noun }}</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
@@ -36,6 +36,8 @@
 </template>
 
 <script lang="ts">
+import { agree, DOCUMENT_SOURCES, type DocumentSource } from '@/utils/documentSources'
+
 // ExportChoice is what the user picked in the ExportDialog. The page passes it
 // to its export composable; the dialog never calls the backend.
 export type ExportChoice = {
@@ -44,20 +46,16 @@ export type ExportChoice = {
   includeResumos: boolean
 }
 
-export type ExportNoun = 'NFS-e' | 'NF-e' | 'CT-e'
-
 export type ExportScope = 'selected' | 'listed'
 
 // exportScopeText says what an export takes: "Serão exportados 3 CT-e
-// selecionados.", "Serão exportadas as 12 NF-e da lista.". NFS-e and NF-e
-// are notas (feminine), CT-e is a conhecimento (masculine).
-export function exportScopeText(noun: ExportNoun, count: number, scope: ExportScope) {
-  const feminine = noun !== 'CT-e'
-  const ending = (feminine ? 'a' : 'o') + (count === 1 ? '' : 's')
-  const verb = `${count === 1 ? 'Será' : 'Serão'} exportad${ending}`
-  if (scope === 'selected') return `${verb} ${count} ${noun} selecionad${ending}.`
-  if (count === 1) return `${verb} ${feminine ? 'a' : 'o'} ${noun} da lista.`
-  return `${verb} ${feminine ? 'as' : 'os'} ${count} ${noun} da lista.`
+// selecionados.", "Serão exportadas as 12 NF-e da lista.".
+export function exportScopeText(source: DocumentSource, count: number, scope: ExportScope) {
+  const { noun } = DOCUMENT_SOURCES[source]
+  const verb = `${count === 1 ? 'Será' : 'Serão'} ${agree(source, 'exportad', count)}`
+  if (scope === 'selected') return `${verb} ${count} ${noun} ${agree(source, 'selecionad', count)}.`
+  const amount = count === 1 ? '' : ` ${count}`
+  return `${verb} ${agree(source, '', count)}${amount} ${noun} da lista.`
 }
 </script>
 
@@ -71,7 +69,7 @@ import { useDialogPluginComponent } from 'quasar'
 // ExportChoice in onOk.
 const props = withDefaults(
   defineProps<{
-    noun: ExportNoun
+    source: DocumentSource
     count: number
     scope: ExportScope
     formats: { label: string; value: string }[]
@@ -95,7 +93,7 @@ const format = ref(props.formats[0]?.value ?? '')
 const incremental = ref(props.defaultIncremental)
 const includeResumos = ref(false)
 
-const scopeText = computed(() => exportScopeText(props.noun, props.count, props.scope))
+const scopeText = computed(() => exportScopeText(props.source, props.count, props.scope))
 
 function onOKClick() {
   const choice: ExportChoice = {

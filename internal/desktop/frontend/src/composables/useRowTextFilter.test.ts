@@ -16,6 +16,7 @@ describe('useRowTextFilter', () => {
       rows,
       filterText,
       fields: (row) => [row.chave, row.name, row.value],
+      pagination: ref({ page: 1 }),
     })
 
     expect(filteredRows.value).toHaveLength(2)
@@ -35,20 +36,37 @@ describe('useRowTextFilter', () => {
       rows: local,
       filterText: ref('outra'),
       fields: (row) => [row.name],
+      pagination: ref({ page: 1 }),
     })
 
     local.value = rows.value
     expect(filteredRows.value.map((row) => row.chave)).toEqual(['b2'])
   })
 
-  it('calls onChange when the text changes', async () => {
+  it('normalizes a row once while the list keeps it', () => {
+    const local = ref<Row[]>([...rows.value])
+    const filterText = ref('sao')
+    const fields = vi.fn((row: Row) => [row.name])
+    const { filteredRows } = useRowTextFilter({ rows: local, filterText, fields, pagination: ref({ page: 1 }) })
+
+    expect(filteredRows.value.map((row) => row.chave)).toEqual(['a1'])
+    expect(fields).toHaveBeenCalledTimes(2)
+
+    // A list that keeps one row object and replaces the other.
+    local.value = [local.value[0] as Row, { chave: 'c3', name: 'São Paulo', value: 1 }]
+    filterText.value = 'sa'
+    expect(filteredRows.value.map((row) => row.chave)).toEqual(['a1', 'c3'])
+    expect(fields).toHaveBeenCalledTimes(3)
+  })
+
+  it('goes back to the first page when the text changes', async () => {
     const filterText = ref('')
-    const onChange = vi.fn()
-    useRowTextFilter({ rows, filterText, fields: (row) => [row.name], onChange })
+    const pagination = ref({ page: 3 })
+    useRowTextFilter({ rows, filterText, fields: (row) => [row.name], pagination })
 
     filterText.value = 'x'
     await nextTick()
 
-    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(pagination.value.page).toBe(1)
   })
 })

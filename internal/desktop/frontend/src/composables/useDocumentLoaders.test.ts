@@ -1,4 +1,4 @@
-import { ref, shallowRef } from 'vue'
+import { reactive } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { useDocumentLoaders } from './useDocumentLoaders'
 
@@ -14,89 +14,96 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+// setup stands for a page store: the selected company in filter, the list
+// request in listInput and the rows, loading flag and status the loaders fill.
 function setup(withStatus = true) {
-  const selected = ref('123')
-  const input = ref<Input>({ CNPJ: '123', Code: '' })
-  const rows = ref<Row[]>([])
-  const loading = shallowRef(false)
-  const status = shallowRef<Status | null>(null)
+  const store = reactive({
+    filter: { CNPJ: '123' },
+    listInput: { CNPJ: '123', Code: '' } as Input,
+    listError: '',
+    loading: false,
+    status: null as Status | null,
+    rows: [] as Row[],
+    setRows(next: Row[]) {
+      store.rows = next
+    },
+  })
   const list = vi.fn(async (_input: Input) => [{ ChaveAcesso: 'a' }])
   const fetch = vi.fn(async (_cnpj: string) => ({ LastNSU: 7 }))
 
-  const loaders = useDocumentLoaders<Input, Row, Status>({
-    selectedCNPJ: () => selected.value,
-    listInput: () => input.value,
-    canList: (value) => value.Code !== 'bad',
-    list,
-    setRows: (next) => {
-      rows.value = next
-    },
-    loading,
-    ...(withStatus ? { status: { state: status, fetch } } : {}),
-  })
+  const loaders = withStatus ? useDocumentLoaders(store, list, fetch) : useDocumentLoaders(store, list)
 
-  return { selected, input, rows, loading, status, list, fetch, loaders }
+  return { store, list, fetch, loaders }
 }
 
 describe('useDocumentLoaders', () => {
   it('searches the selected company and stores the rows', async () => {
-    const { rows, loading, list, loaders } = setup()
+    const { store, list, loaders } = setup()
 
     await expect(loaders.search()).resolves.toEqual([{ ChaveAcesso: 'a' }])
     expect(list).toHaveBeenCalledWith({ CNPJ: '123', Code: '' })
-    expect(rows.value).toEqual([{ ChaveAcesso: 'a' }])
-    expect(loading.value).toBe(false)
+    expect(store.rows).toEqual([{ ChaveAcesso: 'a' }])
+    expect(store.loading).toBe(false)
   })
 
-  it('never sends a request without a company or that canList rejects', async () => {
-    const { input, list, loaders } = setup()
+  it('never sends a request without a company or with a list error', async () => {
+    const { store, list, loaders } = setup()
 
-    input.value = { CNPJ: '123', Code: 'bad' }
+    store.listError = 'código inválido'
     await expect(loaders.search()).resolves.toEqual([])
-    input.value = { CNPJ: '', Code: '' }
+    store.listError = ''
+    store.listInput = { CNPJ: '', Code: '' }
     await expect(loaders.search()).resolves.toEqual([])
 
     expect(list).not.toHaveBeenCalled()
   })
 
   it('drops a list that arrives after the company changed', async () => {
-    const { selected, rows, loading, list, loaders } = setup()
+    const { store, list, loaders } = setup()
     const call = deferred<Row[]>()
     list.mockReturnValue(call.promise)
 
     const searching = loaders.search()
-    expect(loading.value).toBe(true)
-    selected.value = '456'
+    expect(store.loading).toBe(true)
+    store.filter.CNPJ = '456'
     call.resolve([{ ChaveAcesso: 'late' }])
 
     await expect(searching).resolves.toEqual([{ ChaveAcesso: 'late' }])
-    expect(rows.value).toEqual([])
-    expect(loading.value).toBe(false)
+    expect(store.rows).toEqual([])
+    expect(store.loading).toBe(false)
+  })
+
+  it('clears the loading flag when the list fails', async () => {
+    const { store, list, loaders } = setup()
+    list.mockRejectedValue(new Error('boom'))
+
+    await expect(loaders.search()).rejects.toThrow('boom')
+    expect(store.loading).toBe(false)
   })
 
   it('loads the status of the selected company and drops a late one', async () => {
-    const { selected, status, fetch, loaders } = setup()
+    const { store, fetch, loaders } = setup()
 
     await loaders.loadStatus()
     expect(fetch).toHaveBeenCalledWith('123')
-    expect(status.value).toEqual({ LastNSU: 7 })
+    expect(store.status).toEqual({ LastNSU: 7 })
 
     const call = deferred<Status>()
     fetch.mockReturnValue(call.promise)
     const loading = loaders.loadStatus()
-    selected.value = '456'
+    store.filter.CNPJ = '456'
     call.resolve({ LastNSU: 9 })
     await loading
-    expect(status.value).toEqual({ LastNSU: 7 })
+    expect(store.status).toEqual({ LastNSU: 7 })
   })
 
   it('clears the status without a company', async () => {
-    const { selected, status, fetch, loaders } = setup()
-    status.value = { LastNSU: 1 }
-    selected.value = ''
+    const { store, fetch, loaders } = setup()
+    store.status = { LastNSU: 1 }
+    store.filter.CNPJ = ''
 
     await expect(loaders.loadStatus()).resolves.toBeNull()
-    expect(status.value).toBeNull()
+    expect(store.status).toBeNull()
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -108,7 +115,7 @@ describe('useDocumentLoaders', () => {
   })
 
   it('refreshes only the selected company and survives failures', async () => {
-    const { rows, status, list, fetch, loaders } = setup()
+    const { store, list, fetch, loaders } = setup()
 
     await loaders.refresh('456')
     expect(list).not.toHaveBeenCalled()
@@ -116,8 +123,8 @@ describe('useDocumentLoaders', () => {
 
     list.mockRejectedValue(new Error('boom'))
     await expect(loaders.refresh('123')).resolves.toBeUndefined()
-    expect(rows.value).toEqual([])
-    expect(status.value).toEqual({ LastNSU: 7 })
+    expect(store.rows).toEqual([])
+    expect(store.status).toEqual({ LastNSU: 7 })
     expect(loaders.isSelected('123')).toBe(true)
   })
 })

@@ -22,7 +22,7 @@
       :loading="loading"
       :exporting="exporting"
       :export-disabled="scopeRows.length === 0"
-      :search-disabled="Boolean(nfeChaveError)"
+      :search-disabled="Boolean(listError)"
       :mark-viewed-count="unviewedChaves.length"
       @search="search"
       @company-change="handleCompanyChange"
@@ -51,8 +51,8 @@
           dense
           clearable
           hide-bottom-space
-          :error="Boolean(nfeChaveError)"
-          :error-message="nfeChaveError"
+          :error="Boolean(listError)"
+          :error-message="listError"
           :disable="loading"
           @keyup.enter="searchOnEnter"
         />
@@ -86,7 +86,7 @@
             <q-checkbox v-model="rowProps.selected" dense />
           </q-td>
           <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" noun="do CT-e">
+            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="cte">
               <RowMenuItem
                 :label="`Eventos (${rowProps.row.EventCount})`"
                 :disable="rowProps.row.EventCount === 0"
@@ -120,7 +120,7 @@
               :cnpj="rowProps.row.TomadorCNPJ"
             />
 
-            <StateBadges v-else-if="col.name === 'estados'" :badges="cteStateBadges(rowProps.row)" />
+            <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []" />
 
             <template v-else>{{ col.value }}</template>
           </q-td>
@@ -173,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
@@ -204,7 +204,6 @@ import {
   cteParticipantes,
   ctePercurso,
   cteSituacaoFilterOptions,
-  cteStateBadges,
   cteTpServLabel,
 } from '@/utils/cteDisplay'
 import {
@@ -214,7 +213,6 @@ import {
   formatDateTime,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, ambienteLabel } from '@/utils/sefazDisplay'
 import { cteLegend } from '@/utils/stateLegends'
 
 const $q = useQuasar()
@@ -227,17 +225,18 @@ const {
   selected,
   loading,
   exporting,
-  status,
   pagination,
   filterText,
   filteredRows,
   scopeRows,
   unviewedChaves,
+  badgesByChave,
   onlyUnviewed,
   companyName,
+  ambiente,
   companyOptions,
   statusLine,
-  nfeChaveError,
+  listError,
   isSyncing,
   isResetting,
   syncBlockedUntil,
@@ -252,7 +251,7 @@ const legend = cteLegend()
 const previewingReset = ref(false)
 
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
-  noun: 'CT-e',
+  source: 'cte',
   selected,
   scopeRows,
   unviewedChaves,
@@ -260,12 +259,6 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   exportFormats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
   exportList: exportZIP,
 })
-
-const ambiente = computed(() =>
-  status.value
-    ? { label: ambienteLabel(status.value.TpAmb), color: ambienteColor(status.value.TpAmb) }
-    : null
-)
 
 const columns = documentColumns<CTeRow>({
   emitenteLabel: 'Emitente',
@@ -332,7 +325,6 @@ async function handleCompanyChange() {
 }
 
 async function search() {
-  if (nfeChaveError.value) return
   try {
     await cte.search()
   } catch (error) {

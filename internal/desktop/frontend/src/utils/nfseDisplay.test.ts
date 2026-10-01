@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { DisplayTable } from './sefazDisplay'
+import type { PullResult } from '@/types/desktop'
 import {
   nfseAmbiente,
+  nfseRoleFilterOptions,
+  nfseSyncSummary,
   nfseEvent,
   nfseRole,
   nfseStateBadges,
@@ -80,7 +83,7 @@ describe('nfseDisplay utility functions', () => {
     it('keep the abbreviations the NFS-e page already shows', () => {
       expect(nfseStatus.values().map(nfseStatus.abbr)).toEqual(['N', 'C', 'S'])
       expect(nfseVisibility.values().map(nfseVisibility.abbr)).toEqual(['PE', 'TE', 'IE', 'MR', '?'])
-      expect(nfseRole.values().map(nfseRole.abbr)).toEqual(['P', 'T', 'I', 'SP'])
+      expect(nfseRole.values().map(nfseRole.abbr)).toEqual(['T', 'P', 'I', 'SP'])
     })
 
     it('abbreviates the company without a fiscal role as SP', () => {
@@ -136,6 +139,36 @@ describe('nfseDisplay utility functions', () => {
 
     it('says when the company never synced', () => {
       expect(nfseStatusLine({ LastFoundNSU: null })).toBe('Última sincronização: nunca · NSU —')
+    })
+  })
+
+  describe('nfseRoleFilterOptions', () => {
+    it('lists every role after "Todos", in the page order', () => {
+      expect(nfseRoleFilterOptions).toEqual([
+        { label: 'Todos', value: '' },
+        { label: 'Tomada', value: 'tomada' },
+        { label: 'Prestada', value: 'prestada' },
+        { label: 'Intermediário', value: 'intermediario' },
+        { label: 'Sem papel fiscal', value: 'none' },
+      ])
+    })
+  })
+
+  describe('nfseSyncSummary', () => {
+    it('reports how the pull ended, the NSUs and the credential', () => {
+      const result = {
+        Status: 'success',
+        StopReason: 'no-more-nsu',
+        LastProcessedNSU: 42,
+        LastFoundNSU: 40,
+        CredentialCNPJ: '12345678000199',
+      } as PullResult
+      expect(nfseSyncSummary(result)).toBe(
+        'Sincronização success (no-more-nsu). Último NSU: 42, último com documento: 40, credencial: 12345678000199'
+      )
+      expect(nfseSyncSummary({ ...result, Status: '', StopReason: '', LastFoundNSU: null, CredentialCNPJ: '' })).toBe(
+        'Sincronização completed (sem motivo). Último NSU: 42, último com documento: —, credencial: pendente'
+      )
     })
   })
 })

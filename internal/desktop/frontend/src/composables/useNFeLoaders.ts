@@ -8,16 +8,13 @@ import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 // company is dropped.
 export function useNFeLoaders() {
   const store = useNFeDocumentsStore()
-  const { loading, status, pending, pendingLoading } = storeToRefs(store)
+  const { pending, pendingLoading } = storeToRefs(store)
 
-  const { isSelected, search, loadStatus } = useDocumentLoaders({
-    selectedCNPJ: () => store.filter.CNPJ,
-    listInput: () => store.listInput,
-    list: (input) => desktopClient.listNFe(input),
-    setRows: (rows) => store.setRows(rows),
-    loading,
-    status: { state: status, fetch: (cnpj) => desktopClient.statusNFe(cnpj) },
-  })
+  const { isSelected, search, loadStatus } = useDocumentLoaders(
+    store,
+    (input) => desktopClient.listNFe(input),
+    (cnpj) => desktopClient.statusNFe(cnpj)
+  )
 
   async function loadPending(cnpj: string = store.filter.CNPJ) {
     if (!cnpj) {

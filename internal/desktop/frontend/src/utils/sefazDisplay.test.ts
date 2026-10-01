@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ambienteColor,
   ambienteLabel,
+  sefazAmbiente,
   badgeColor,
   badgeProps,
   badgeTextColor,
@@ -89,6 +90,7 @@ describe('sefazDisplay', () => {
     expect(ambienteLabel('1')).toBe('Produção')
     expect(ambienteLabel('2')).toBe('Homologação')
     expect(ambienteLabel('')).toBe('Ambiente desconhecido')
+    expect(sefazAmbiente('1')).toEqual({ label: 'Produção', color: 'negative' })
   })
 
   it('explains each block reason', () => {

@@ -66,4 +66,25 @@ describe('company sync store', () => {
     expect(store.isSyncing('123', 'nfse')).toBe(true)
     expect(store.activeSyncs).toEqual({ 'nfse:123': 1 })
   })
+
+  it('marks the sync while runSync runs, also when it fails', async () => {
+    const store = useCompanySyncStore()
+    let seen = false
+
+    await expect(
+      store.runSync('123', 'cte', async () => {
+        seen = store.isSyncing('123', 'cte')
+        return 'ok'
+      })
+    ).resolves.toBe('ok')
+    expect(seen).toBe(true)
+    expect(store.isSyncing('123', 'cte')).toBe(false)
+
+    await expect(
+      store.runSync('123', 'cte', async () => {
+        throw new Error('offline')
+      })
+    ).rejects.toThrow('offline')
+    expect(store.isSyncing('123', 'cte')).toBe(false)
+  })
 })

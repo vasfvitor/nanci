@@ -35,10 +35,22 @@ export const useCompanySyncStore = defineStore('companySync', () => {
     activeSyncs.value = { ...activeSyncs.value, [key]: count - 1 }
   }
 
+  // runSync marks the sync of the company's source as in flight while fn
+  // runs, so every screen that shows it sees it busy.
+  async function runSync<T>(cnpj: string, source: SyncSource, fn: () => Promise<T>): Promise<T> {
+    startSync(cnpj, source)
+    try {
+      return await fn()
+    } finally {
+      finishSync(cnpj, source)
+    }
+  }
+
   return {
     activeSyncs,
     isSyncing,
     startSync,
     finishSync,
+    runSync,
   }
 })

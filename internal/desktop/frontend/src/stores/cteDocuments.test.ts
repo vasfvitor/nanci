@@ -66,4 +66,16 @@ describe('cteDocuments store', () => {
     expect(store.filterText).toBe('')
     expect(store.selected).toEqual([])
   })
+
+  it('flags an NF-e key filter that is not 44 characters', () => {
+    const store = useCTeDocumentsStore()
+    expect(store.listError).toBe('')
+
+    store.filter.NFeChave = '3526 0911'
+    expect(store.listError).toBe('A chave de NF-e tem 44 caracteres')
+
+    // An alphanumeric CNPJ puts letters in the key.
+    store.filter.NFeChave = `3526 09AB ${'1234 '.repeat(9)}`
+    expect(store.listError).toBe('')
+  })
 })

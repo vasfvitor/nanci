@@ -395,7 +395,7 @@ describe('DocumentsPage', () => {
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
         componentProps: {
-          noun: 'NFS-e',
+          source: 'nfse',
           count: 1,
           scope: 'listed',
           formats: [

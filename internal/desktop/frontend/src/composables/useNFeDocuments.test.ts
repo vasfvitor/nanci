@@ -4,6 +4,7 @@ import { useNFeDocuments } from './useNFeDocuments'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
+import { nfeStateBadges } from '@/utils/nfeDisplay'
 import { nextTick } from 'vue'
 import type {
   CompanySummary,
@@ -348,7 +349,7 @@ describe('useNFeDocuments', () => {
     nfe.filter.value.Situacao = 'cancelada'
     nfe.filter.value.Role = 'emitente'
 
-    await expect(nfe.markViewed(['a'])).resolves.toEqual({ count: 1, reloadError: null })
+    await expect(nfe.markViewed(['a'])).resolves.toBe(1)
 
     expect(desktopClient.markNFeViewed).toHaveBeenCalledWith('123', ['a'])
     expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
@@ -357,28 +358,19 @@ describe('useNFeDocuments', () => {
     expect(desktopClient.listNFe).not.toHaveBeenCalled()
   })
 
-  it('searches again after marking with "Somente não vistos" on', async () => {
-    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(2)
+  it('takes the marked NF-e out of the list when only unviewed ones are listed', async () => {
+    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(1)
+    const store = useNFeDocumentsStore()
     const nfe = useNFeDocuments()
     nfe.filter.value.CNPJ = '123'
     nfe.onlyUnviewed.value = true
+    store.setRows([nfeRow('a'), nfeRow('b')])
 
-    await nfe.markViewed(['a', 'b'])
+    await expect(nfe.markViewed(['a'])).resolves.toBe(1)
 
-    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith('123', ['a', 'b'])
-    expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
-  })
-
-  it('keeps the count when the search after marking fails', async () => {
-    const failure = new Error('lista indisponível')
-    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(2)
-    vi.mocked(desktopClient.listNFe).mockRejectedValue(failure)
-    const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
-    nfe.filter.value.OnlyUnread = true
-
-    await expect(nfe.markViewed(['a', 'b'])).resolves.toEqual({ count: 2, reloadError: failure })
-    expect(nfe.markingViewed.value).toBe(false)
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith('123', ['a'])
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['b'])
+    expect(desktopClient.listNFe).not.toHaveBeenCalled()
   })
 
   it('does not mark without a company or chaves', async () => {
@@ -443,17 +435,16 @@ describe('useNFeDocuments', () => {
     expect(nfe.statusLine.value).toContain('NSU 5/9 · Pendências: 3')
   })
 
-  it('computes the row menu state once per result set', () => {
+  it('builds the state badges once per result set', () => {
     const nfe = useNFeDocuments()
-    const completa = nfeRow('a', { Completeness: 'completa', CienciaBlockReason: 'já manifestada (ciencia)' })
+    const completa = nfeRow('a', { Completeness: 'completa' })
     useNFeDocumentsStore().setRows([completa])
 
-    const actions = nfe.rowActions(completa)
-    expect(actions).toEqual({
-      cienciaBlockReason: 'Já manifestada (ciencia)',
-      conclusiveBlockReason: null,
-      canExportXML: true,
-    })
-    expect(nfe.rowActions(completa)).toBe(actions)
+    const badges = nfe.badgesByChave.value.get('a')
+    expect(badges).toEqual(nfeStateBadges(completa))
+    expect(nfe.badgesByChave.value.get('a')).toBe(badges)
+
+    useNFeDocumentsStore().setRows([nfeRow('b')])
+    expect([...nfe.badgesByChave.value.keys()]).toEqual(['b'])
   })
 })

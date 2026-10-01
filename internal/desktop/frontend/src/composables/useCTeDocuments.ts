@@ -1,15 +1,18 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useCTeLoaders } from '@/composables/useCTeLoaders'
+import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
-import { isNFeChaveFilter, useCTeLoaders } from '@/composables/useCTeLoaders'
+import { useRowMap } from '@/composables/useRowMap'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
-import { cteDocumentCount, cteStatusLine } from '@/utils/cteDisplay'
+import { cteDocumentCount, cteStateBadges, cteStatusLine } from '@/utils/cteDisplay'
+import { sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
@@ -17,6 +20,7 @@ export function useCTeDocuments() {
   const { search, loadStatus, refresh } = useCTeLoaders()
   const {
     filter,
+    listError,
     rows,
     selected,
     filterText,
@@ -26,23 +30,8 @@ export function useCTeDocuments() {
     status,
     resettingCNPJ,
   } = storeToRefs(store)
-  const cnpj = computed({
-    get: () => filter.value.CNPJ,
-    set: (value: string) => {
-      filter.value.CNPJ = value
-    },
-  })
-  const { companyOptions, loadCompanies } = useCompanyFilter(cnpj)
+  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
   const pagination = useTablePagination('cte')
-  const { onlyUnviewed, markViewed } = useMarkViewed({
-    filter,
-    mark: (cnpj, chavesAcesso) => desktopClient.markCTeViewed(cnpj, chavesAcesso),
-    rows,
-    selected,
-    setRows: (next) => store.setRows(next),
-    search,
-    markingViewed,
-  })
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
@@ -57,30 +46,25 @@ export function useCTeDocuments() {
       row.TomadorCNPJ,
       row.TomadorName,
     ],
-    onChange: () => {
-      pagination.value.page = 1
-    },
+    pagination,
   })
 
-  // scopeRows are the CT-e "Marcar vistos" and "Exportar" act on: the
-  // selection, or else every row the grid shows.
-  const scopeRows = computed(() => (selected.value.length > 0 ? selected.value : filteredRows.value))
-  const unviewedChaves = computed(() =>
-    scopeRows.value.filter((row) => !row.ViewedAt).map((row) => row.ChaveAcesso)
-  )
-
-  const companyName = computed(() => {
-    if (status.value?.CompanyName) return status.value.CompanyName
-    const option = companyOptions.value.find((item) => item.value === filter.value.CNPJ)
-    return option?.label ?? ''
+  const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    filter,
+    mark: (cnpj, chavesAcesso) => desktopClient.markCTeViewed(cnpj, chavesAcesso),
+    rows,
+    filteredRows,
+    selected,
+    setRows: (next) => store.setRows(next),
+    markingViewed,
   })
+
+  const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, cteStateBadges)
+
+  const companyName = computed(() => status.value?.CompanyName || selectedCompany.value?.Name || '')
+  const ambiente = computed(() => (status.value ? sefazAmbiente(status.value.TpAmb) : null))
   const documentCount = computed(() => cteDocumentCount(status.value))
   const statusLine = computed(() => (status.value ? cteStatusLine(status.value) : ''))
-
-  // nfeChaveError explains why the NF-e key filter cannot be sent, or is ''.
-  const nfeChaveError = computed(() =>
-    isNFeChaveFilter(store.listInput.NFeChave) ? '' : 'A chave de NF-e tem 44 caracteres'
-  )
 
   const isSyncing = computed(
     () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'cte')
@@ -97,11 +81,9 @@ export function useCTeDocuments() {
     const cnpj = filter.value.CNPJ
     if (!cnpj || syncStore.isSyncing(cnpj, 'cte') || resettingCNPJ.value === cnpj) return null
 
-    syncStore.startSync(cnpj, 'cte')
     try {
-      return await desktopClient.pullCTe(cnpj)
+      return await syncStore.runSync(cnpj, 'cte', () => desktopClient.pullCTe(cnpj))
     } finally {
-      syncStore.finishSync(cnpj, 'cte')
       await refresh(cnpj)
     }
   }
@@ -131,15 +113,10 @@ export function useCTeDocuments() {
 
   // The exports read the company from listInput, like the search that
   // filled the grid.
-  async function exportXML(chaveAcesso: string) {
-    const cnpj = store.listInput.CNPJ
-    if (!cnpj || exporting.value) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportCTeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso })
-    } finally {
-      exporting.value = false
-    }
+  const { runExport } = useExportGuard(exporting, () => store.listInput.CNPJ)
+
+  function exportXML(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportCTeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
   // exportZIP exports exactly the given chaves; incremental leaves out the
@@ -147,24 +124,21 @@ export function useCTeDocuments() {
   // hold the result of an earlier search, and an empty list would export
   // everything.
   async function exportZIP(chavesAcesso: string[], choice: { incremental: boolean }) {
-    const cnpj = store.listInput.CNPJ
-    if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportCTeZIP({
+    if (chavesAcesso.length === 0) return null
+    return runExport((cnpj) =>
+      desktopClient.exportCTeZIP({
         CNPJ: cnpj,
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
         Incremental: choice.incremental,
       })
-    } finally {
-      exporting.value = false
-    }
+    )
   }
 
   return {
     filter,
+    listError,
     rows,
     selected,
     loading,
@@ -177,11 +151,12 @@ export function useCTeDocuments() {
     filteredRows,
     scopeRows,
     unviewedChaves,
+    badgesByChave,
     companyOptions,
     companyName,
+    ambiente,
     documentCount,
     statusLine,
-    nfeChaveError,
     isSyncing,
     isResetting,
     syncBlockedUntil,

@@ -445,7 +445,7 @@ describe('NFePage', () => {
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
         componentProps: {
-          noun: 'NF-e',
+          source: 'nfe',
           count: 1,
           scope: 'listed',
           formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
