@@ -1,10 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useCTeDocumentsStore } from './cteDocuments'
+import { mapCTeRow } from '@/platform/wails/client'
 import type { CTeRow } from '@/types/desktop'
 
-function cteRow(chave: string, overrides: Partial<CTeRow> = {}) {
-  return { ChaveAcesso: chave, Numero: '1', ...overrides } as CTeRow
+function cteRow(chave: string, overrides: Partial<CTeRow> = {}): CTeRow {
+  return mapCTeRow({ ChaveAcesso: chave, Numero: '1', ...overrides })
 }
 
 describe('cteDocuments store', () => {

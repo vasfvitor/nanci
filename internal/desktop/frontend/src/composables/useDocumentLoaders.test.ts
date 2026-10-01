@@ -31,7 +31,9 @@ function setup(withStatus = true) {
   const list = vi.fn(async (_input: Input) => [{ ChaveAcesso: 'a' }])
   const fetch = vi.fn(async (_cnpj: string) => ({ LastNSU: 7 }))
 
-  const loaders = withStatus ? useDocumentLoaders(store, list, fetch) : useDocumentLoaders(store, list)
+  const loaders = withStatus
+    ? useDocumentLoaders(store, list, fetch)
+    : useDocumentLoaders(store, list)
 
   return { store, list, fetch, loaders }
 }

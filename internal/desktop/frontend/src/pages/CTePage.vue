@@ -59,7 +59,7 @@
       </template>
     </DocumentFilterBar>
 
-    <StateLegend :sections="legend" class="q-mb-md" />
+    <StateLegend :sections="CTE_LEGEND" class="q-mb-md" />
 
     <q-table
       v-model:pagination="pagination"
@@ -193,7 +193,7 @@ import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
-import { useNotify } from '@/composables/useNotify'
+import { copyChave, useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type { CTeResetResult, CTeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
@@ -213,12 +213,11 @@ import {
   formatDateTime,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { cteLegend } from '@/utils/stateLegends'
+import { CTE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const cte = useCTeDocuments()
-const { notifyError, notifySuccess, notifyWarning, notifyExported, notifySyncError, copyChave } =
-  useNotify()
+const { notifyError, notifySuccess, notifyWarning, notifyExported, notifySyncError } = useNotify()
 
 const {
   filter,
@@ -246,7 +245,6 @@ const {
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
 
-const legend = cteLegend()
 // previewingReset is true while the reset counts load for the confirmation.
 const previewingReset = ref(false)
 

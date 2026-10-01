@@ -31,7 +31,6 @@ type Props = {
   scope: 'selected' | 'listed'
   formats: { label: string; value: string }[]
   showIncludeResumos?: boolean
-  defaultIncremental?: boolean
 }
 
 function mountDialog(props: Partial<Props> = {}) {
@@ -121,15 +120,15 @@ describe('ExportDialog', () => {
     expect(onDialogOK).toHaveBeenCalledWith(expect.objectContaining({ format: 'xlsx' }))
   })
 
-  it('always offers "Somente não exportados", starting from defaultIncremental', async () => {
+  it('always offers "Somente não exportados", unchecked', async () => {
     for (const scope of ['selected', 'listed'] as const) {
       expect(checkbox(mountDialog({ scope }), 'Somente não exportados')).toBeDefined()
     }
 
-    const wrapper = mountDialog({ defaultIncremental: true })
-    expect(checkbox(wrapper, 'Somente não exportados')?.props('modelValue')).toBe(true)
+    const wrapper = mountDialog()
+    expect(checkbox(wrapper, 'Somente não exportados')?.props('modelValue')).toBe(false)
     await clickExport(wrapper)
-    expect(onDialogOK).toHaveBeenCalledWith(expect.objectContaining({ incremental: true }))
+    expect(onDialogOK).toHaveBeenCalledWith(expect.objectContaining({ incremental: false }))
   })
 
   it('offers "Incluir resumos" only when asked', async () => {

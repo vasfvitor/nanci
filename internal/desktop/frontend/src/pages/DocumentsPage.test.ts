@@ -2,7 +2,7 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentsPage from './DocumentsPage.vue'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, mapDocumentRow } from '@/platform/wails/client'
 import { useDocumentsStore } from '@/stores/documents'
 import type { CompanySummary, DocumentRow, PullResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
@@ -72,7 +72,7 @@ const acme = company('12345678000100', 'ACME')
 const outra = company('98765432000199', 'Outra')
 
 function documentRow(chave: string, fields: Partial<DocumentRow> = {}): DocumentRow {
-  return {
+  return mapDocumentRow({
     ID: `doc-${chave}`,
     ChaveAcesso: chave,
     Competence: '2026-07',
@@ -80,23 +80,10 @@ function documentRow(chave: string, fields: Partial<DocumentRow> = {}): Document
     PrestadorName: 'Prestador',
     TomadorCNPJ: acme.CNPJ,
     TomadorName: 'ACME',
-    IntermediarioCNPJ: '',
-    IntermediarioName: '',
     ServiceValue: 1000,
-    ISSValue: 0,
-    IRRFValue: 0,
-    INSSValue: 0,
-    PISValue: 0,
-    COFINSValue: 0,
-    CSLLValue: 0,
-    TotalRetentions: 0,
     Status: 'normal',
     LayoutVersion: '1.00',
-    XMLPath: '',
-    RawHash: '',
-    ParseWarnings: [],
     NFSeNumber: '1',
-    ServiceDescription: '',
     RelationID: `rel-${chave}`,
     CompanyID: acme.ID,
     DocumentID: `document-${chave}`,
@@ -105,7 +92,7 @@ function documentRow(chave: string, fields: Partial<DocumentRow> = {}): Document
     FirstSeenNSU: 1,
     LastSeenNSU: 1,
     ...fields,
-  }
+  })
 }
 
 const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'

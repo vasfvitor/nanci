@@ -2,12 +2,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useDocuments } from './useDocuments'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, mapDocumentRow } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import type { CompanySummary, DocumentRow, ExportResult, PullResult } from '@/types/desktop'
 
-vi.mock('@/platform/wails/client', () => ({
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: {
     exportDANFSe: vi.fn(),
     exportDANFSeZIP: vi.fn(),
@@ -22,7 +23,7 @@ vi.mock('@/platform/wails/client', () => ({
 }))
 
 function documentRow(chave: string, fields: Partial<DocumentRow> = {}): DocumentRow {
-  return {
+  return mapDocumentRow({
     ChaveAcesso: chave,
     NFSeNumber: '1',
     PrestadorCNPJ: '11222333000181',
@@ -30,9 +31,8 @@ function documentRow(chave: string, fields: Partial<DocumentRow> = {}): Document
     TomadorCNPJ: '12345678000100',
     TomadorName: 'Tomador',
     Status: 'normal',
-    ServiceDescription: '',
     ...fields,
-  } as DocumentRow
+  })
 }
 
 function company(fields: Partial<CompanySummary> = {}): CompanySummary {
@@ -293,7 +293,7 @@ describe('useDocuments', () => {
 
     expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith('123', ['a'])
     expect(store.documents[0]?.ViewedAt).toBeInstanceOf(Date)
-    expect(store.documents[1]?.ViewedAt).toBeUndefined()
+    expect(store.documents[1]?.ViewedAt).toBeNull()
     expect(nfse.selected.value).toEqual([])
     expect(desktopClient.listDocuments).not.toHaveBeenCalled()
   })

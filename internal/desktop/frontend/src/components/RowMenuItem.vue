@@ -1,5 +1,5 @@
 <template>
-  <q-item clickable :disable="disable" @click="onClick">
+  <q-item clickable :disable="disable" @click="emit('click')">
     <q-item-section>
       <q-item-label>{{ label }}</q-item-label>
       <q-item-label v-if="caption" caption>{{ caption }}</q-item-label>
@@ -9,8 +9,8 @@
 
 <script setup lang="ts">
 // RowMenuItem is one entry of a RowActionsMenu. A disabled entry can say why
-// in its caption.
-const props = defineProps<{
+// in its caption; q-item does not emit click while disabled.
+defineProps<{
   label: string
   caption?: string
   disable?: boolean
@@ -19,8 +19,4 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: []
 }>()
-
-function onClick() {
-  if (!props.disable) emit('click')
-}
 </script>

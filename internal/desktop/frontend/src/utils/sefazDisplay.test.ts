@@ -3,9 +3,7 @@ import {
   ambienteColor,
   ambienteLabel,
   sefazAmbiente,
-  badgeColor,
   badgeProps,
-  badgeTextColor,
   blockedMessage,
   displayTable,
 } from './sefazDisplay'
@@ -61,23 +59,18 @@ describe('sefazDisplay', () => {
   })
 
   it('darkens info badges in light mode only', () => {
-    expect(badgeColor('info', false)).toBe('light-blue-9')
-    expect(badgeColor('info', true)).toBe('info')
-    expect(badgeColor('warning', false)).toBe('warning')
+    expect(badgeProps('info', false).color).toBe('light-blue-9')
+    expect(badgeProps('info', true).color).toBe('info')
+    expect(badgeProps('warning', false).color).toBe('warning')
   })
 
   it('picks a readable badge text color', () => {
-    expect(badgeTextColor('warning', false)).toBe('dark')
-    expect(badgeTextColor('grey', false)).toBe('dark')
-    expect(badgeTextColor('info', false)).toBe('white')
-    expect(badgeTextColor('positive', false)).toBe('white')
-    expect(badgeTextColor('info', true)).toBe('dark')
-    expect(badgeTextColor('positive', true)).toBe('dark')
-  })
-
-  it('binds badge fill and text colors together', () => {
-    expect(badgeProps('info', false)).toEqual({ color: 'light-blue-9', textColor: 'white' })
-    expect(badgeProps('warning', true)).toEqual({ color: 'warning', textColor: 'dark' })
+    expect(badgeProps('warning', false).textColor).toBe('dark')
+    expect(badgeProps('grey', false).textColor).toBe('dark')
+    expect(badgeProps('info', false).textColor).toBe('white')
+    expect(badgeProps('positive', false).textColor).toBe('white')
+    expect(badgeProps('info', true).textColor).toBe('dark')
+    expect(badgeProps('positive', true).textColor).toBe('dark')
   })
 
   it('colors the ambiente by tpAmb', () => {

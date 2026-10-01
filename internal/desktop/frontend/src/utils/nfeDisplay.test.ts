@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  completenessColor,
-  completenessLabel,
   conclusiveDeadlineLabel,
   deadlineColor,
   deadlineLabel,
-  manifestacaoColor,
-  manifestacaoLabel,
   nfeCompleteness,
   nfeManifestacao,
   nfeRole,
@@ -16,14 +12,11 @@ import {
   nfeEventLabel,
   nfeNoteCount,
   nfePendingCount,
-  nfeRoleColor,
-  nfeRoleLabel,
   outcomeColor,
   outcomeLabel,
   nfeRoleFilterOptions,
   showsConclusiveDeadline,
   nfeStatusLine,
-  situacaoColor,
   situacaoFilterOptions,
   situacaoLabel,
 } from './nfeDisplay'
@@ -45,42 +38,42 @@ describe('nfeDisplay', () => {
     expect(situacaoLabel('autorizada')).toBe('Autorizada')
     expect(situacaoLabel('denegada')).toBe('Denegada')
     expect(situacaoLabel('cancelada')).toBe('Cancelada')
-    expect(situacaoColor('autorizada')).toBe('positive')
-    expect(situacaoColor('denegada')).toBe('negative')
-    expect(situacaoColor('cancelada')).toBe('negative')
+    expect(nfeSituacao.color('autorizada')).toBe('positive')
+    expect(nfeSituacao.color('denegada')).toBe('negative')
+    expect(nfeSituacao.color('cancelada')).toBe('negative')
   })
 
   it('maps completeness values', () => {
-    expect(completenessLabel('resumo')).toBe('Resumo')
-    expect(completenessLabel('completa')).toBe('Completa')
-    expect(completenessColor('resumo')).toBe('warning')
-    expect(completenessColor('completa')).toBe('positive')
+    expect(nfeCompleteness.label('resumo')).toBe('Resumo')
+    expect(nfeCompleteness.label('completa')).toBe('Completa')
+    expect(nfeCompleteness.color('resumo')).toBe('warning')
+    expect(nfeCompleteness.color('completa')).toBe('positive')
   })
 
   it('maps manifestação values', () => {
-    expect(manifestacaoLabel('nenhuma')).toBe('Sem manifestação')
-    expect(manifestacaoLabel('ciencia')).toBe('Ciência')
-    expect(manifestacaoLabel('confirmada')).toBe('Confirmada')
-    expect(manifestacaoLabel('desconhecida')).toBe('Desconhecida')
-    expect(manifestacaoLabel('nao_realizada')).toBe('Operação não realizada')
-    expect(manifestacaoColor('nenhuma')).toBe('grey')
-    expect(manifestacaoColor('ciencia')).toBe('info')
-    expect(manifestacaoColor('confirmada')).toBe('positive')
-    expect(manifestacaoColor('desconhecida')).toBe('negative')
-    expect(manifestacaoColor('nao_realizada')).toBe('warning')
+    expect(nfeManifestacao.label('nenhuma')).toBe('Sem manifestação')
+    expect(nfeManifestacao.label('ciencia')).toBe('Ciência')
+    expect(nfeManifestacao.label('confirmada')).toBe('Confirmada')
+    expect(nfeManifestacao.label('desconhecida')).toBe('Desconhecida')
+    expect(nfeManifestacao.label('nao_realizada')).toBe('Operação não realizada')
+    expect(nfeManifestacao.color('nenhuma')).toBe('grey')
+    expect(nfeManifestacao.color('ciencia')).toBe('info')
+    expect(nfeManifestacao.color('confirmada')).toBe('positive')
+    expect(nfeManifestacao.color('desconhecida')).toBe('negative')
+    expect(nfeManifestacao.color('nao_realizada')).toBe('warning')
   })
 
   it('maps company role values', () => {
-    expect(nfeRoleLabel('destinatario')).toBe('Destinatário')
-    expect(nfeRoleLabel('emitente')).toBe('Emitente')
-    expect(nfeRoleLabel('transportador')).toBe('Transportador')
-    expect(nfeRoleLabel('autorizado')).toBe('Autorizado')
-    expect(nfeRoleLabel('none')).toBe('Sem papel fiscal')
-    expect(nfeRoleColor('destinatario')).toBe('secondary')
-    expect(nfeRoleColor('emitente')).toBe('primary')
-    expect(nfeRoleColor('transportador')).toBe('accent')
-    expect(nfeRoleColor('autorizado')).toBe('info')
-    expect(nfeRoleColor('none')).toBe('grey')
+    expect(nfeRole.label('destinatario')).toBe('Destinatário')
+    expect(nfeRole.label('emitente')).toBe('Emitente')
+    expect(nfeRole.label('transportador')).toBe('Transportador')
+    expect(nfeRole.label('autorizado')).toBe('Autorizado')
+    expect(nfeRole.label('none')).toBe('Sem papel fiscal')
+    expect(nfeRole.color('destinatario')).toBe('secondary')
+    expect(nfeRole.color('emitente')).toBe('primary')
+    expect(nfeRole.color('transportador')).toBe('accent')
+    expect(nfeRole.color('autorizado')).toBe('info')
+    expect(nfeRole.color('none')).toBe('grey')
   })
 
   it('maps event codes', () => {
@@ -122,19 +115,19 @@ describe('nfeDisplay', () => {
 
   it('ignores inherited object keys', () => {
     expect(situacaoLabel('constructor')).toBe('constructor')
-    expect(situacaoColor('toString')).toBe('grey')
+    expect(nfeSituacao.color('toString')).toBe('grey')
   })
 
   it('falls back for unknown and empty values', () => {
     expect(situacaoLabel('')).toBe('Desconhecido')
     expect(situacaoLabel('other')).toBe('other')
-    expect(situacaoColor('')).toBe('grey')
-    expect(completenessLabel('')).toBe('Desconhecido')
-    expect(completenessColor('other')).toBe('grey')
-    expect(manifestacaoLabel('')).toBe('Desconhecido')
-    expect(manifestacaoColor('other')).toBe('grey')
-    expect(nfeRoleLabel('')).toBe('Desconhecido')
-    expect(nfeRoleColor('other')).toBe('grey')
+    expect(nfeSituacao.color('')).toBe('grey')
+    expect(nfeCompleteness.label('')).toBe('Desconhecido')
+    expect(nfeCompleteness.color('other')).toBe('grey')
+    expect(nfeManifestacao.label('')).toBe('Desconhecido')
+    expect(nfeManifestacao.color('other')).toBe('grey')
+    expect(nfeRole.label('')).toBe('Desconhecido')
+    expect(nfeRole.color('other')).toBe('grey')
     expect(nfeEventLabel('999999')).toBe('Evento 999999')
     expect(nfeEventLabel('')).toBe('Desconhecido')
     expect(nfeEventColor('999999')).toBe('grey')

@@ -12,8 +12,19 @@ const columns = [{ name: 'tipo', label: 'Tipo', field: 'ID' as const }]
 
 function mountFrame(load = vi.fn(async () => {}), modelValue = false) {
   return shallowMount(EventsDialogFrame, {
-    props: { modelValue, title: 'Eventos do CT-e', chaveAcesso: chave, rows, columns, loading: true, load },
-    slots: { 'body-cell-tipo': '<template #body-cell-tipo="cell"><b class="tipo">{{ cell.row.Type }}</b></template>' },
+    props: {
+      modelValue,
+      title: 'Eventos do CT-e',
+      chaveAcesso: chave,
+      rows,
+      columns,
+      loading: true,
+      load,
+    },
+    slots: {
+      'body-cell-tipo':
+        '<template #body-cell-tipo="cell"><b class="tipo">{{ cell.row.Type }}</b></template>',
+    },
     global: {
       renderStubDefaultSlot: true,
       stubs: {
@@ -72,7 +83,10 @@ describe('EventsDialogFrame', () => {
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
 
-    expect(notify).toHaveBeenCalledWith({ type: 'negative', message: 'Erro ao carregar eventos: boom' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'negative',
+      message: 'Erro ao carregar eventos: boom',
+    })
   })
 
   it('binds the dialog to v-model and offers a "Fechar" button', () => {

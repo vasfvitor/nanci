@@ -11,9 +11,9 @@ const stubs = {
   QTd: { props: ['colspan'], template: '<div class="td" :data-colspan="colspan"><slot /></div>' },
 }
 
-function mountRow(props: { colspan?: number } = {}) {
+function mountRow() {
   return mount(DocumentDetailRow, {
-    props: { rowProps: { cols: [{}, {}, {}], expand: true }, ...props },
+    props: { rowProps: { cols: [{}, {}, {}], expand: true } },
     slots: { default: '<p class="content">Detalhes</p>' },
     global: { stubs },
   })
@@ -24,15 +24,11 @@ describe('DocumentDetailRow', () => {
     quasar.dark.isActive = false
   })
 
-  it('spans every column plus the selection one by default', () => {
+  it('spans every column plus the selection one', () => {
     const td = mountRow().find('.td')
     expect(td.attributes('data-colspan')).toBe('4')
     expect(td.classes()).toContain('document-detail-cell')
     expect(td.find('.document-detail .content').text()).toBe('Detalhes')
-  })
-
-  it('accepts an explicit colspan', () => {
-    expect(mountRow({ colspan: 3 }).find('.td').attributes('data-colspan')).toBe('3')
   })
 
   it('follows the theme background', () => {

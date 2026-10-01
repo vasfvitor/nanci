@@ -39,11 +39,6 @@ export const useDocumentsStore = defineStore('documents', () => {
     selected.value = pruneSelection(next, selected.value)
   }
 
-  function resetDocuments() {
-    documents.value = []
-    selected.value = []
-  }
-
   return {
     filter,
     listInput,
@@ -55,6 +50,5 @@ export const useDocumentsStore = defineStore('documents', () => {
     markingViewed,
     resettingCNPJ,
     setRows,
-    resetDocuments,
   }
 })

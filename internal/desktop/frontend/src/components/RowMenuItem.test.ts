@@ -6,7 +6,8 @@ const stubs = {
   QItem: {
     props: ['disable'],
     emits: ['click'],
-    template: '<div class="item" :data-disable="disable" @click="$emit(\'click\')"><slot /></div>',
+    // Like Quasar's, a disabled item does not emit click.
+    template: '<div class="item" :data-disable="disable" @click="disable || $emit(\'click\')"><slot /></div>',
   },
   QItemSection: { template: '<div><slot /></div>' },
   QItemLabel: {

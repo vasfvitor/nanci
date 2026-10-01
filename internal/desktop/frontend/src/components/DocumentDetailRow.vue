@@ -1,6 +1,6 @@
 <template>
   <q-tr :props="rowProps" :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1'">
-    <q-td :colspan="colspan ?? rowProps.cols.length + 1" class="document-detail-cell">
+    <q-td :colspan="rowProps.cols.length + 1" class="document-detail-cell">
       <div class="document-detail q-pa-md">
         <slot />
       </div>
@@ -13,10 +13,9 @@ import { useQuasar } from 'quasar'
 
 // DocumentDetailRow is the expanded details of a document row; the page
 // renders it under v-if="rowProps.expand". rowProps is the q-table #body
-// slot scope. The default colspan covers every column plus the selection one.
+// slot scope. It spans every column plus the selection one.
 defineProps<{
   rowProps: { cols: readonly unknown[] }
-  colspan?: number
 }>()
 
 const $q = useQuasar()

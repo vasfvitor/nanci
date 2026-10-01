@@ -81,17 +81,8 @@ const cteEvent = displayTable({
   unknown: { label: 'Evento não reconhecido', color: 'grey' },
 })
 
-export const cteSituacaoLabel = cteSituacao.label
-export const cteSituacaoColor = cteSituacao.color
-export const ctePapelLabel = ctePapel.label
-export const ctePapelColor = ctePapel.color
-export const cteModeloLabel = cteModelo.label
-export const cteModeloColor = cteModelo.color
-export const cteTipoDocumentoLabel = cteTipoDocumento.label
-export const cteTipoDocumentoColor = cteTipoDocumento.color
 export const cteTpServLabel = cteTpServ.label
 export const cteModalLabel = cteModal.label
-export const cteEventLabel = cteEvent.label
 export const cteEventColor = cteEvent.color
 
 export const cteSituacaoFilterOptions = cteSituacao.options('Todas')
@@ -100,18 +91,12 @@ export const cteModeloFilterOptions = cteModelo.options('Todos')
 
 type CTeKind = Pick<CTeRow, 'Modelo' | 'TipoDocumento'>
 
-// cteDocumentLabel names the kind of document: the tipo when known, so a
+// cteDocumentBadge names the kind of document: the tipo when known, so a
 // CT-e Simplificado is not shown as a plain CT-e, else the modelo.
-export function cteDocumentLabel(row: CTeKind) {
-  return row.TipoDocumento ? cteTipoDocumentoLabel(row.TipoDocumento) : cteModeloLabel(row.Modelo)
-}
-
-export function cteDocumentColor(row: CTeKind) {
-  return row.TipoDocumento ? cteTipoDocumentoColor(row.TipoDocumento) : cteModeloColor(row.Modelo)
-}
-
-export function cteDocumentAbbr(row: CTeKind) {
-  return row.TipoDocumento ? cteTipoDocumento.abbr(row.TipoDocumento) : cteModelo.abbr(row.Modelo)
+function cteDocumentBadge(row: CTeKind) {
+  return row.TipoDocumento
+    ? cteTipoDocumento.badge(row.TipoDocumento, 'Documento')
+    : cteModelo.badge(row.Modelo, 'Documento')
 }
 
 // cteStateBadges are the state badges of a CT-e row, in the order of the
@@ -120,11 +105,8 @@ export function cteDocumentAbbr(row: CTeKind) {
 export function cteStateBadges(
   row: CTeKind & Pick<CTeRow, 'Situacao' | 'CompanyRole' | 'Papeis'>
 ): StateBadge[] {
-  const documento = row.TipoDocumento
-    ? cteTipoDocumento.badge(row.TipoDocumento, 'Documento')
-    : cteModelo.badge(row.Modelo, 'Documento')
   return [
-    documento,
+    cteDocumentBadge(row),
     cteSituacao.badge(row.Situacao, 'Situação'),
     ctePapel.badge(row.CompanyRole, 'Papel'),
     ...cteOtherPapeis(row).map((papel) => ctePapel.badge(papel, 'Papel', true)),
@@ -134,9 +116,9 @@ export function cteStateBadges(
 // cteEventTitle names an event; one nanci does not recognize falls back to
 // the description SEFAZ sent, then to its tpEvento code.
 export function cteEventTitle(event: Pick<CTeEvent, 'Type' | 'TpEvento' | 'Description'>) {
-  if (event.Type && event.Type !== 'unknown') return cteEventLabel(event.Type)
+  if (event.Type && event.Type !== 'unknown') return cteEvent.label(event.Type)
   if (event.Description) return event.Description
-  return event.TpEvento ? `Evento ${event.TpEvento}` : cteEventLabel('unknown')
+  return event.TpEvento ? `Evento ${event.TpEvento}` : cteEvent.label('unknown')
 }
 
 type CTeStatusCounts = Pick<

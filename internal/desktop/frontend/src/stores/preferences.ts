@@ -10,7 +10,7 @@ const defaultRowsPerPage = 25
 // as the fallback of a table without its own key, and never removed.
 const legacyRowsPerPageKey = 'nanci:documents:rowsPerPage'
 
-export function rowsPerPageKey(table: DocumentTable) {
+function rowsPerPageKey(table: DocumentTable) {
   return `nanci:${table}:rowsPerPage`
 }
 
@@ -42,24 +42,30 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const darkMode = ref<boolean | 'auto'>(initialDark)
 
   // rowsPerPage is the rows-per-page choice of each document table.
-  const rowsPerPage = ref<Record<DocumentTable, number>>({
-    nfse: readRowsPerPage('nfse'),
-    nfe: readRowsPerPage('nfe'),
-    cte: readRowsPerPage('cte'),
-  })
+  const rowsPerPage = ref(
+    Object.fromEntries(documentTables.map((table) => [table, readRowsPerPage(table)])) as Record<
+      DocumentTable,
+      number
+    >
+  )
 
   watch(darkMode, (val) => {
     localStorage.setItem('darkMode', String(val))
   })
 
-  for (const table of documentTables) {
-    watch(
-      () => rowsPerPage.value[table],
-      (val) => {
-        localStorage.setItem(rowsPerPageKey(table), String(val))
+  // A choice is saved under its table's key once it differs from what
+  // storage gives, so a table keeps following the legacy key until then.
+  watch(
+    rowsPerPage,
+    (choices) => {
+      for (const table of documentTables) {
+        if (choices[table] !== readRowsPerPage(table)) {
+          localStorage.setItem(rowsPerPageKey(table), String(choices[table]))
+        }
       }
-    )
-  }
+    },
+    { deep: true }
+  )
 
   return {
     darkMode,

@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useNotify } from '@/composables/useNotify'
+import { copyChave } from '@/composables/useNotify'
 import { formatChaveAcesso, formatChaveDFe } from '@/utils/formatters'
 
 // ChaveCell shows the end of an access key; the title has the whole key,
@@ -32,8 +32,6 @@ import { formatChaveAcesso, formatChaveDFe } from '@/utils/formatters'
 const props = defineProps<{
   chave: string
 }>()
-
-const { copyChave } = useNotify()
 
 const title = computed(() => formatChaveDFe(props.chave) || props.chave)
 </script>

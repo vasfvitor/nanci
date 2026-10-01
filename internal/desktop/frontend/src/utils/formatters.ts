@@ -39,31 +39,35 @@ export function parseDate(value: string | Date | null | undefined): Date | null 
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
+const dateFormat = new Intl.DateTimeFormat('pt-BR')
+
 export function formatDate(value: string | Date | null | undefined) {
-  return parseDate(value)?.toLocaleDateString('pt-BR') ?? ''
+  const date = parseDate(value)
+  return date ? dateFormat.format(date) : ''
 }
 
 export function formatDateTime(value: string | Date | null | undefined, fallback = '-') {
   return parseDate(value)?.toLocaleString('pt-BR') ?? fallback
 }
 
-export function formatCurrencyCents(value: number | null | undefined) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return 'R$ 0,00'
-  return (value / 100).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
-}
+const centsFormat = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
 
 // formatCents prints integer cents as a pt-BR amount without the currency
 // symbol, for columns whose header already says "(R$)": 123456 is
 // "1.234,56".
 export function formatCents(value: number | null | undefined) {
   if (typeof value !== 'number' || Number.isNaN(value)) return '0,00'
-  return (value / 100).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
+  return centsFormat.format(value / 100)
+}
+
+// formatCurrencyCents is formatCents with the currency symbol, as pt-BR
+// writes it: "R$ 1.234,56", "-R$ 19,90".
+export function formatCurrencyCents(value: number | null | undefined) {
+  const amount = formatCents(value)
+  return amount.startsWith('-') ? `-R$\u00a0${amount.slice(1)}` : `R$\u00a0${amount}`
 }
 
 export function formatChaveAcesso(chave: string) {

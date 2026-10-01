@@ -1,13 +1,14 @@
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { copyToClipboard } from 'quasar'
-import { useNotify } from './useNotify'
+import { copyChave, useNotify } from './useNotify'
 import { WailsClientError } from '@/platform/wails/client'
 
-const notify = vi.fn()
+const notify = vi.hoisted(() => vi.fn())
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({ notify }),
+  Notify: { create: notify },
   copyToClipboard: vi.fn(),
 }))
 
@@ -39,13 +40,12 @@ describe('useNotify', () => {
 
   it('copies access keys without the NFS prefix', async () => {
     vi.mocked(copyToClipboard).mockResolvedValue(undefined)
-    await useNotify().copyChave('NFS123')
+    await copyChave('NFS123')
     expect(copyToClipboard).toHaveBeenCalledWith('123')
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'positive' }))
   })
 
   it('ignores empty keys and reports clipboard failures', async () => {
-    const { copyChave } = useNotify()
     await copyChave('')
     expect(copyToClipboard).not.toHaveBeenCalled()
 

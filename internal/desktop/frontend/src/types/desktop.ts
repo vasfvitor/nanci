@@ -272,23 +272,23 @@ export type NFeRow = {
   Protocolo: string
   TpNF: string
   // "1" produção, "2" homologação.
-  TpAmb?: string
+  TpAmb: string
   // NatOp, ICMSValue and IPIValue are empty on a resumo.
-  NatOp?: string
+  NatOp: string
   EmitenteCNPJ: string
   EmitenteName: string
   EmitenteIE: string
-  EmitenteUF?: string
+  EmitenteUF: string
   DestinatarioCNPJ: string
   DestinatarioName: string
   // Money fields are in cents.
   TotalValue: number
-  ICMSValue?: number
-  IPIValue?: number
+  ICMSValue: number
+  IPIValue: number
   Situacao: NFeSituacao | ''
   Completeness: NFeCompleteness | ''
-  LayoutVersion?: string
-  ParseWarnings?: string[]
+  LayoutVersion: string
+  ParseWarnings: string[]
   Manifestacao: NFeManifestacao | ''
   ManifestacaoAt?: ISODateValue
   CienciaDue?: ISODateValue

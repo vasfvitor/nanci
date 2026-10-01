@@ -47,7 +47,12 @@ describe('useRowTextFilter', () => {
     const local = ref<Row[]>([...rows.value])
     const filterText = ref('sao')
     const fields = vi.fn((row: Row) => [row.name])
-    const { filteredRows } = useRowTextFilter({ rows: local, filterText, fields, pagination: ref({ page: 1 }) })
+    const { filteredRows } = useRowTextFilter({
+      rows: local,
+      filterText,
+      fields,
+      pagination: ref({ page: 1 }),
+    })
 
     expect(filteredRows.value.map((row) => row.chave)).toEqual(['a1'])
     expect(fields).toHaveBeenCalledTimes(2)

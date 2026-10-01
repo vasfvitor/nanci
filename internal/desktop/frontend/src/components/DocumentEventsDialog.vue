@@ -70,7 +70,9 @@ const props = defineProps<{
 }>()
 
 const $q = useQuasar()
-const { rows, loading, load } = useEventList(() => desktopClient.listEventsForDocument(props.documentId))
+const { rows, loading, load } = useEventList(() =>
+  desktopClient.listEventsForDocument(props.documentId)
+)
 const { notifyError, notifyInfo } = useNotify()
 
 const columns: QTableColumn<DocumentEvent>[] = [

@@ -5,7 +5,7 @@ import NFePage from './NFePage.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '@/components/NFeEventResultsDialog.vue'
 import NFeManifestacaoDialog from '@/components/NFeManifestacaoDialog.vue'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, mapNFeRow } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type {
   NFeCienciaPlan,
@@ -75,7 +75,7 @@ const company = {
 const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
 
 function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
-  return {
+  return mapNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,
@@ -100,7 +100,7 @@ function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
     ...overrides,
-  }
+  })
 }
 
 function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {

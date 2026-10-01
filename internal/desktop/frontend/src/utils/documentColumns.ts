@@ -38,9 +38,9 @@ export type DocumentColumnSpec<Row extends DocumentRowBase> = {
 export function documentColumns<Row extends DocumentRowBase>(
   spec: DocumentColumnSpec<Row>
 ): QTableColumn<Row>[] {
-  return [
-    { name: 'acoes', label: 'Ações', field: () => '', align: 'center' },
-    {
+  const columns: Record<DocumentColumnName, QTableColumn<Row>> = {
+    acoes: { name: 'acoes', label: 'Ações', field: () => '', align: 'center' },
+    issueDate: {
       name: 'issueDate',
       label: 'Emissão',
       field: (row) => row.IssueDate,
@@ -49,24 +49,24 @@ export function documentColumns<Row extends DocumentRowBase>(
       classes: 'text-mono',
       format: (value: ISODateValue) => formatDate(value),
     },
-    { name: 'numero', label: spec.numeroLabel ?? 'Nº / Série', field: spec.numero, align: 'left' },
-    { name: 'chave', label: 'Chave de acesso', field: (row) => row.ChaveAcesso, align: 'left' },
-    {
+    numero: { name: 'numero', label: spec.numeroLabel ?? 'Nº / Série', field: spec.numero, align: 'left' },
+    chave: { name: 'chave', label: 'Chave de acesso', field: (row) => row.ChaveAcesso, align: 'left' },
+    emitente: {
       name: 'emitente',
       label: spec.emitenteLabel,
       field: spec.emitente,
       sortable: true,
       align: 'left',
     },
-    {
+    destinatario: {
       name: 'destinatario',
       label: spec.destinatarioLabel,
       field: spec.destinatario,
       sortable: true,
       align: 'left',
     },
-    { name: 'estados', label: 'Estados', field: () => '', align: 'center' },
-    {
+    estados: { name: 'estados', label: 'Estados', field: () => '', align: 'center' },
+    valor: {
       name: 'valor',
       label: 'Valor (R$)',
       field: spec.valor,
@@ -75,5 +75,6 @@ export function documentColumns<Row extends DocumentRowBase>(
       classes: 'text-mono',
       format: (value: number) => formatCents(value),
     },
-  ]
+  }
+  return DOCUMENT_COLUMN_NAMES.map((name) => columns[name])
 }

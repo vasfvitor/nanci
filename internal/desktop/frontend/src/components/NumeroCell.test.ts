@@ -5,7 +5,10 @@ import NumeroCell from './NumeroCell.vue'
 vi.mock('quasar', () => ({ useQuasar: () => ({ dark: { isActive: false } }) }))
 
 const stubs = {
-  QBadge: { props: ['label', 'color'], template: '<span class="badge" :data-color="color">{{ label }}</span>' },
+  QBadge: {
+    props: ['label', 'color'],
+    template: '<span class="badge" :data-color="color">{{ label }}</span>',
+  },
 }
 
 describe('NumeroCell', () => {
@@ -35,7 +38,10 @@ describe('NumeroCell', () => {
   })
 
   it('falls back to a dash without a number', () => {
-    const wrapper = mount(NumeroCell, { props: { numero: '', viewedAt: new Date() }, global: { stubs } })
+    const wrapper = mount(NumeroCell, {
+      props: { numero: '', viewedAt: new Date() },
+      global: { stubs },
+    })
 
     expect(wrapper.find('.numero-cell').text()).toBe('—')
   })

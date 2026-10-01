@@ -1,37 +1,36 @@
 import { describe, expect, it } from 'vitest'
 import {
-  cteDocumentAbbr,
-  cteDocumentColor,
   cteDocumentCount,
-  cteDocumentLabel,
   cteEventColor,
-  cteEventLabel,
   cteEventTitle,
   cteModalLabel,
-  cteModeloColor,
   cteModeloFilterOptions,
-  cteModeloLabel,
   cteModelo,
   cteMunicipioLabel,
   cteOtherPapeis,
   ctePapel,
-  ctePapelColor,
   ctePapelFilterOptions,
-  ctePapelLabel,
   cteParticipantes,
   ctePercurso,
   cteSituacao,
-  cteSituacaoColor,
   cteSituacaoFilterOptions,
-  cteSituacaoLabel,
   cteStateBadges,
   cteStatusLine,
   cteTipoDocumento,
-  cteTipoDocumentoLabel,
   cteTpServLabel,
 } from './cteDisplay'
 import type { CTeEventType, CTeRow, CTeStatusResult } from '@/types/desktop'
 import type { DisplayTable } from './sefazDisplay'
+
+// documentBadge is the first state badge of a CT-e, which names its kind.
+function documentBadge(row: Pick<CTeRow, 'Modelo' | 'TipoDocumento'>) {
+  return cteStateBadges({ ...row, Situacao: 'autorizada', CompanyRole: 'tomador', Papeis: [] })[0]
+}
+
+// eventLabel names an event type as the events dialog shows it.
+function eventLabel(type: CTeEventType | '') {
+  return cteEventTitle({ Type: type, TpEvento: '', Description: '' })
+}
 
 // expectShortUniqueAbbrs checks that every value of table has an
 // abbreviation of one or two characters, unique within the table.
@@ -45,43 +44,44 @@ function expectShortUniqueAbbrs(table: DisplayTable) {
 
 describe('cteDisplay', () => {
   it('maps situação values', () => {
-    expect(cteSituacaoLabel('autorizada')).toBe('Autorizada')
-    expect(cteSituacaoLabel('denegada')).toBe('Denegada')
-    expect(cteSituacaoLabel('cancelada')).toBe('Cancelada')
-    expect(cteSituacaoColor('autorizada')).toBe('positive')
-    expect(cteSituacaoColor('cancelada')).toBe('negative')
+    expect(cteSituacao.label('autorizada')).toBe('Autorizada')
+    expect(cteSituacao.label('denegada')).toBe('Denegada')
+    expect(cteSituacao.label('cancelada')).toBe('Cancelada')
+    expect(cteSituacao.color('autorizada')).toBe('positive')
+    expect(cteSituacao.color('cancelada')).toBe('negative')
   })
 
   it('maps papel values', () => {
-    expect(ctePapelLabel('tomador')).toBe('Tomador')
-    expect(ctePapelLabel('destinatario')).toBe('Destinatário')
-    expect(ctePapelLabel('remetente')).toBe('Remetente')
-    expect(ctePapelLabel('expedidor')).toBe('Expedidor')
-    expect(ctePapelLabel('recebedor')).toBe('Recebedor')
-    expect(ctePapelLabel('emitente')).toBe('Emitente')
-    expect(ctePapelLabel('autorizado')).toBe('Autorizado')
-    expect(ctePapelLabel('none')).toBe('Sem papel fiscal')
-    expect(ctePapelColor('tomador')).toBe('accent')
-    expect(ctePapelColor('none')).toBe('grey')
+    expect(ctePapel.label('tomador')).toBe('Tomador')
+    expect(ctePapel.label('destinatario')).toBe('Destinatário')
+    expect(ctePapel.label('remetente')).toBe('Remetente')
+    expect(ctePapel.label('expedidor')).toBe('Expedidor')
+    expect(ctePapel.label('recebedor')).toBe('Recebedor')
+    expect(ctePapel.label('emitente')).toBe('Emitente')
+    expect(ctePapel.label('autorizado')).toBe('Autorizado')
+    expect(ctePapel.label('none')).toBe('Sem papel fiscal')
+    expect(ctePapel.color('tomador')).toBe('accent')
+    expect(ctePapel.color('none')).toBe('grey')
   })
 
   it('names modelos and tipos de documento', () => {
-    expect(cteModeloLabel('57')).toBe('CT-e')
-    expect(cteModeloLabel('64')).toBe('GTV-e')
-    expect(cteModeloLabel('67')).toBe('CT-e OS')
-    expect(cteModeloColor('57')).toBe('primary')
-    expect(cteTipoDocumentoLabel('cte')).toBe('CT-e')
-    expect(cteTipoDocumentoLabel('cte_os')).toBe('CT-e OS')
-    expect(cteTipoDocumentoLabel('gtve')).toBe('GTV-e')
-    expect(cteTipoDocumentoLabel('cte_simplificado')).toBe('CT-e Simplificado')
+    expect(cteModelo.label('57')).toBe('CT-e')
+    expect(cteModelo.label('64')).toBe('GTV-e')
+    expect(cteModelo.label('67')).toBe('CT-e OS')
+    expect(cteModelo.color('57')).toBe('primary')
+    expect(cteTipoDocumento.label('cte')).toBe('CT-e')
+    expect(cteTipoDocumento.label('cte_os')).toBe('CT-e OS')
+    expect(cteTipoDocumento.label('gtve')).toBe('GTV-e')
+    expect(cteTipoDocumento.label('cte_simplificado')).toBe('CT-e Simplificado')
   })
 
   it('prefers the tipo de documento over the modelo', () => {
-    expect(cteDocumentLabel({ Modelo: '57', TipoDocumento: 'cte_simplificado' })).toBe('CT-e Simplificado')
-    expect(cteDocumentColor({ Modelo: '57', TipoDocumento: 'cte_simplificado' })).toBe('info')
-    expect(cteDocumentLabel({ Modelo: '67', TipoDocumento: '' })).toBe('CT-e OS')
-    expect(cteDocumentColor({ Modelo: '67', TipoDocumento: '' })).toBe('secondary')
-    expect(cteDocumentLabel({ Modelo: '', TipoDocumento: '' })).toBe('Desconhecido')
+    expect(documentBadge({ Modelo: '57', TipoDocumento: 'cte_simplificado' })).toMatchObject({
+      label: 'CT-e Simplificado',
+      color: 'info',
+    })
+    expect(documentBadge({ Modelo: '67', TipoDocumento: '' })).toMatchObject({ label: 'CT-e OS', color: 'secondary' })
+    expect(documentBadge({ Modelo: '', TipoDocumento: '' })?.label).toBe('Desconhecido')
   })
 
   it('maps tpServ and modal codes', () => {
@@ -118,12 +118,12 @@ describe('cteDisplay', () => {
       'mdfe_cancelado',
       'unknown',
     ]
-    const labels = types.map(cteEventLabel)
+    const labels = types.map(eventLabel)
     expect(new Set(labels).size).toBe(types.length)
     for (const label of labels) expect(label).not.toMatch(/_/)
-    expect(cteEventLabel('cancelamento')).toBe('Cancelamento')
-    expect(cteEventLabel('comprovante_entrega')).toBe('Comprovante de entrega')
-    expect(cteEventLabel('prestacao_desacordo')).toBe('Prestação de serviço em desacordo')
+    expect(eventLabel('cancelamento')).toBe('Cancelamento')
+    expect(eventLabel('comprovante_entrega')).toBe('Comprovante de entrega')
+    expect(eventLabel('prestacao_desacordo')).toBe('Prestação de serviço em desacordo')
     expect(cteEventColor('cancelamento')).toBe('negative')
     expect(cteEventColor('comprovante_entrega')).toBe('positive')
   })
@@ -136,13 +136,12 @@ describe('cteDisplay', () => {
   })
 
   it('shows unknown values as unknown in grey', () => {
-    expect(cteSituacaoLabel('')).toBe('Desconhecido')
-    expect(cteSituacaoColor('suspensa')).toBe('grey')
-    expect(ctePapelLabel('')).toBe('Desconhecido')
-    expect(ctePapelColor('transportador')).toBe('grey')
-    expect(cteModeloLabel('55')).toBe('Modelo 55')
-    expect(cteModeloColor('55')).toBe('grey')
-    expect(cteEventLabel('')).toBe('Desconhecido')
+    expect(cteSituacao.label('')).toBe('Desconhecido')
+    expect(cteSituacao.color('suspensa')).toBe('grey')
+    expect(ctePapel.label('')).toBe('Desconhecido')
+    expect(ctePapel.color('transportador')).toBe('grey')
+    expect(cteModelo.label('55')).toBe('Modelo 55')
+    expect(cteModelo.color('55')).toBe('grey')
     expect(cteEventColor('other')).toBe('grey')
   })
 
@@ -225,10 +224,10 @@ describe('cteDisplay', () => {
   })
 
   it('abbreviates the document by its tipo, falling back to the modelo', () => {
-    expect(cteDocumentAbbr({ TipoDocumento: 'cte_simplificado', Modelo: '57' })).toBe('CS')
-    expect(cteDocumentAbbr({ TipoDocumento: '', Modelo: '67' })).toBe('OS')
-    expect(cteDocumentAbbr({ TipoDocumento: '', Modelo: '64' })).toBe('GV')
-    expect(cteDocumentAbbr({ TipoDocumento: '', Modelo: '' })).toBe('—')
+    expect(documentBadge({ TipoDocumento: 'cte_simplificado', Modelo: '57' })?.abbr).toBe('CS')
+    expect(documentBadge({ TipoDocumento: '', Modelo: '67' })?.abbr).toBe('OS')
+    expect(documentBadge({ TipoDocumento: '', Modelo: '64' })?.abbr).toBe('GV')
+    expect(documentBadge({ TipoDocumento: '', Modelo: '' })?.abbr).toBe('—')
   })
 
   it('lists the state badges with the other papéis as secondary', () => {

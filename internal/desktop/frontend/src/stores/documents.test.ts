@@ -1,43 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect } from 'vitest'
 import { useDocumentsStore } from './documents'
+import { mapDocumentRow } from '@/platform/wails/client'
 import type { DocumentRow } from '@/types/desktop'
 
 function documentRow(chave: string, overrides: Partial<DocumentRow> = {}): DocumentRow {
-  return {
-    ID: `doc-${chave}`,
-    ChaveAcesso: chave,
-    Competence: '',
-    PrestadorCNPJ: '',
-    PrestadorName: '',
-    TomadorCNPJ: '',
-    TomadorName: '',
-    IntermediarioCNPJ: '',
-    IntermediarioName: '',
-    ServiceValue: 100,
-    ISSValue: 0,
-    IRRFValue: 0,
-    INSSValue: 0,
-    PISValue: 0,
-    COFINSValue: 0,
-    CSLLValue: 0,
-    TotalRetentions: 0,
-    Status: 'normal',
-    LayoutVersion: '',
-    XMLPath: '',
-    RawHash: '',
-    ParseWarnings: [],
-    NFSeNumber: '',
-    ServiceDescription: '',
-    RelationID: `rel-${chave}`,
-    CompanyID: 'company',
-    DocumentID: `document-${chave}`,
-    CompanyRole: 'tomada',
-    VisibilityReason: 'exact_tomador',
-    FirstSeenNSU: 1,
-    LastSeenNSU: 1,
-    ...overrides,
-  }
+  return mapDocumentRow({ ID: `doc-${chave}`, ChaveAcesso: chave, Status: 'normal', ...overrides })
 }
 
 describe('documents store', () => {
@@ -52,48 +20,12 @@ describe('documents store', () => {
     expect(store.documents).toEqual([])
   })
 
-  it('sets and resets document rows', () => {
+  it('sets the document rows', () => {
     const store = useDocumentsStore()
 
-    store.setRows([
-      {
-        ID: 'doc',
-        ChaveAcesso: '',
-        Competence: '',
-        PrestadorCNPJ: '',
-        PrestadorName: '',
-        TomadorCNPJ: '',
-        TomadorName: '',
-        IntermediarioCNPJ: '',
-        IntermediarioName: '',
-        ServiceValue: 100,
-        ISSValue: 0,
-        IRRFValue: 0,
-        INSSValue: 0,
-        PISValue: 0,
-        COFINSValue: 0,
-        CSLLValue: 0,
-        TotalRetentions: 0,
-        Status: 'normal',
-        LayoutVersion: '',
-        XMLPath: '',
-        RawHash: '',
-        ParseWarnings: [],
-        NFSeNumber: '',
-        ServiceDescription: '',
-        RelationID: 'rel',
-        CompanyID: 'company',
-        DocumentID: 'document',
-        CompanyRole: 'tomada',
-        VisibilityReason: 'exact_tomador',
-        FirstSeenNSU: 1,
-        LastSeenNSU: 1,
-      },
-    ])
+    store.setRows([documentRow('a')])
 
-    expect(store.documents).toHaveLength(1)
-    store.resetDocuments()
-    expect(store.documents).toEqual([])
+    expect(store.documents.map((row) => row.ChaveAcesso)).toEqual(['a'])
   })
 
   it('keeps filter requests mutable by feature composables', () => {
@@ -133,8 +65,6 @@ describe('documents store', () => {
     store.setRows([freshA, documentRow('c')])
 
     expect(store.selected).toEqual([freshA])
-    store.resetDocuments()
-    expect(store.selected).toEqual([])
   })
 
   it('starts with an empty text filter and no action in flight', () => {

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import NFeManifestacaoDialog from './NFeManifestacaoDialog.vue'
 import type { NFeRow } from '@/types/desktop'
+import { mapNFeRow } from '@/platform/wails/client'
 
 const onDialogOK = vi.fn()
 
@@ -19,7 +20,7 @@ vi.mock('quasar', () => {
 })
 
 function note(overrides: Partial<NFeRow> = {}): NFeRow {
-  return {
+  return mapNFeRow({
     ID: 'rel-1',
     DocumentID: 'doc-1',
     ChaveAcesso: '35240912345678000199550010000123451123456789',
@@ -44,7 +45,7 @@ function note(overrides: Partial<NFeRow> = {}): NFeRow {
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
     ...overrides,
-  }
+  })
 }
 
 type Option = { value: string; disable: boolean }

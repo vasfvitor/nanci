@@ -48,7 +48,8 @@ describe('formatters', () => {
 
   it('formats integer cents as BRL', () => {
     expect(formatCurrencyCents(123456).replace(/\s/u, ' ')).toBe('R$ 1.234,56')
-    expect(formatCurrencyCents(undefined)).toBe('R$ 0,00')
+    expect(formatCurrencyCents(undefined)).toBe('R$ 0,00')
+    expect(formatCurrencyCents(-1990)).toBe('-R$ 19,90')
   })
 
   it('formats integer cents without the currency symbol', () => {

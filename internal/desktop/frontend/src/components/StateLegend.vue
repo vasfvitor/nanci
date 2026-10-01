@@ -1,15 +1,16 @@
 <template>
   <q-expansion-item
+    v-model="open"
     dense
     dense-toggle
     expand-separator
     icon="help_outline"
-    :label="title"
+    label="Legenda dos estados"
     header-class="text-weight-medium"
     class="state-legend rounded-borders"
     :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1'"
   >
-    <div class="q-px-md q-pb-md row q-col-gutter-md">
+    <div v-if="open" class="q-px-md q-pb-md row q-col-gutter-md">
       <section
         v-for="section in sections"
         :key="section.title"
@@ -57,13 +58,13 @@ import { useQuasar } from 'quasar'
 import { badgeProps } from '@/utils/sefazDisplay'
 import type { LegendSection } from '@/utils/stateLegends'
 
-withDefaults(
-  defineProps<{
-    sections: LegendSection[]
-    title?: string
-  }>(),
-  { title: 'Legenda dos estados' }
-)
+// StateLegend explains the state badges of a document table. It starts
+// collapsed and renders the sections only while open.
+defineProps<{
+  sections: LegendSection[]
+}>()
+
+const open = defineModel<boolean>({ default: false })
 
 const $q = useQuasar()
 </script>

@@ -1,11 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeManifestacao } from './useNFeManifestacao'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, mapNFeRow } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeCienciaPlan, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
 
-vi.mock('@/platform/wails/client', () => ({
+vi.mock('@/platform/wails/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: {
     listNFe: vi.fn(),
     statusNFe: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock('@/platform/wails/client', () => ({
 }))
 
 function nfeRow(chave: string): NFeRow {
-  return {
+  return mapNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,
@@ -41,7 +42,7 @@ function nfeRow(chave: string): NFeRow {
     TacitlyConfirmed: false,
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
-  }
+  })
 }
 
 const batch: NFeEventBatchResult = {

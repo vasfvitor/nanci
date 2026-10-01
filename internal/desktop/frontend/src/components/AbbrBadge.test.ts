@@ -13,10 +13,8 @@ function mountBadge(props: InstanceType<typeof AbbrBadge>['$props']) {
       stubs: {
         QBadge: {
           props: ['label', 'color', 'textColor'],
-          template:
-            '<span class="badge" :data-color="color" :data-text-color="textColor">{{ label }}<slot /></span>',
+          template: '<span class="badge" :data-color="color" :data-text-color="textColor">{{ label }}</span>',
         },
-        QTooltip: { template: '<span class="tooltip"><slot /></span>' },
       },
     },
   })
@@ -31,8 +29,8 @@ describe('AbbrBadge', () => {
     const wrapper = mountBadge({ abbr: 'A', label: 'Autorizada', color: 'positive', kind: 'Situação' })
 
     const badge = wrapper.find('.badge')
-    expect(badge.text()).toContain('A')
-    expect(wrapper.find('.tooltip').text()).toBe('Situação: Autorizada')
+    expect(badge.text()).toBe('A')
+    expect(badge.attributes('title')).toBe('Situação: Autorizada')
     expect(badge.attributes('aria-label')).toBe('Situação: Autorizada')
     expect(badge.classes()).toContain('text-mono')
     expect(badge.classes()).not.toContain('abbr-badge--secondary')
@@ -40,7 +38,7 @@ describe('AbbrBadge', () => {
 
   it('explains the badge by its label alone without a kind', () => {
     const wrapper = mountBadge({ abbr: 'N', label: 'Normal', color: 'positive' })
-    expect(wrapper.find('.tooltip').text()).toBe('Normal')
+    expect(wrapper.find('.badge').attributes('title')).toBe('Normal')
   })
 
   it('marks secondary badges', () => {

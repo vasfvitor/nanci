@@ -2,9 +2,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useNFeDocumentsStore } from './nfeDocuments'
 import type { NFeRow } from '@/types/desktop'
+import { mapNFeRow } from '@/platform/wails/client'
 
 function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
-  return {
+  return mapNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,
@@ -29,7 +30,7 @@ function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
     ...overrides,
-  }
+  })
 }
 
 describe('nfeDocuments store', () => {

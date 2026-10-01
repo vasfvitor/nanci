@@ -22,9 +22,19 @@ import { nfseAmbiente, nfseStateBadges, nfseStatusLine } from '@/utils/nfseDispl
 export function useDocuments() {
   const store = useDocumentsStore()
   const syncStore = useCompanySyncStore()
-  const { isSelected, search } = useDocumentLoaders(store, (input) => desktopClient.listDocuments(input))
-  const { filter, documents, selected, filterText, loading, exporting, markingViewed, resettingCNPJ } =
-    storeToRefs(store)
+  const { isSelected, search } = useDocumentLoaders(store, (input) =>
+    desktopClient.listDocuments(input)
+  )
+  const {
+    filter,
+    documents,
+    selected,
+    filterText,
+    loading,
+    exporting,
+    markingViewed,
+    resettingCNPJ,
+  } = storeToRefs(store)
   const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
   const pagination = useTablePagination('nfse')
 
@@ -103,7 +113,8 @@ export function useDocuments() {
   // the cursor: the documents stay.
   async function resetSync() {
     const companyCNPJ = filter.value.CNPJ
-    if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'nfse')) return false
+    if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'nfse'))
+      return false
     resettingCNPJ.value = companyCNPJ
     try {
       await desktopClient.resetSyncState({ CompanyCNPJ: companyCNPJ })

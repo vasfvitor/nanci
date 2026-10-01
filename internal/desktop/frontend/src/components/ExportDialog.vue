@@ -74,11 +74,9 @@ const props = withDefaults(
     scope: ExportScope
     formats: { label: string; value: string }[]
     showIncludeResumos?: boolean
-    defaultIncremental?: boolean
   }>(),
   {
     showIncludeResumos: false,
-    defaultIncremental: false,
   }
 )
 
@@ -90,7 +88,7 @@ defineEmits<{
 const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
 
 const format = ref(props.formats[0]?.value ?? '')
-const incremental = ref(props.defaultIncremental)
+const incremental = ref(false)
 const includeResumos = ref(false)
 
 const scopeText = computed(() => exportScopeText(props.source, props.count, props.scope))

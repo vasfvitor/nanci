@@ -30,7 +30,9 @@ export function useRowTextFilter<Row extends object>(options: RowTextFilterOptio
   const filteredRows = computed(() => {
     const query = normalizeText(options.filterText.value)
     if (!query) return options.rows.value
-    return options.rows.value.filter((row) => searchFields(row).some((field) => field.includes(query)))
+    return options.rows.value.filter((row) =>
+      searchFields(row).some((field) => field.includes(query))
+    )
   })
 
   watch(

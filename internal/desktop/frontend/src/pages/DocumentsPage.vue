@@ -30,7 +30,7 @@
       <DocumentFilterSelect v-model="filter.Direction" :options="nfseRoleFilterOptions" label="Papel" :disable="loading" />
     </DocumentFilterBar>
 
-    <StateLegend :sections="legend" class="q-mb-md" />
+    <StateLegend :sections="NFSE_LEGEND" class="q-mb-md" />
 
     <q-table
       v-model:pagination="pagination"
@@ -149,7 +149,7 @@ import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
 import { nfseRoleFilterOptions, nfseSyncSummary } from '@/utils/nfseDisplay'
-import { nfseLegend } from '@/utils/stateLegends'
+import { NFSE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -179,7 +179,6 @@ const {
 const showEventsDialog = ref(false)
 const eventsDocument = ref({ id: '', chave: '' })
 
-const legend = nfseLegend()
 
 const exportFormats = [
   { label: 'Planilha CSV', value: 'csv' },

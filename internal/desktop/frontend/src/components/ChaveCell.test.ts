@@ -4,7 +4,7 @@ import ChaveCell from './ChaveCell.vue'
 
 const copyChave = vi.hoisted(() => vi.fn())
 
-vi.mock('@/composables/useNotify', () => ({ useNotify: () => ({ copyChave }) }))
+vi.mock('@/composables/useNotify', () => ({ copyChave }))
 
 const nfeChave = '35240912345678000199550010000123451123456789'
 

@@ -69,7 +69,7 @@
           </template>
         </DocumentFilterBar>
 
-        <StateLegend :sections="legend" class="q-mb-md" />
+        <StateLegend :sections="NFE_LEGEND" class="q-mb-md" />
 
         <q-table
           v-model:pagination="pagination"
@@ -176,7 +176,7 @@
                   <DetailList title="Valores" :items="valoresItems(rowProps.row)" />
                 </div>
 
-                <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings ?? []" />
+                <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings" />
               </div>
             </DocumentDetailRow>
           </template>
@@ -184,7 +184,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="pendencias" class="q-pa-none">
-        <StateLegend :sections="pendingLegend" class="q-mb-md" />
+        <StateLegend :sections="NFE_PENDING_LEGEND" class="q-mb-md" />
         <NFePendingPanel
           :rows="pending"
           :loading="pendingLoading"
@@ -238,7 +238,7 @@ import {
   formatNFeNumber,
 } from '@/utils/formatters'
 import { ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
-import { nfeLegend, nfePendingLegend } from '@/utils/stateLegends'
+import { NFE_LEGEND, NFE_PENDING_LEGEND } from '@/utils/stateLegends'
 import {
   completenessFilterOptions,
   conclusiveDeadlineLabel,
@@ -299,8 +299,6 @@ const {
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
 
-const legend = nfeLegend()
-const pendingLegend = nfePendingLegend()
 
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   source: 'nfe',

@@ -58,13 +58,6 @@ const outcome = displayTable({
 })
 
 export const situacaoLabel = nfeSituacao.label
-export const situacaoColor = nfeSituacao.color
-export const completenessLabel = nfeCompleteness.label
-export const completenessColor = nfeCompleteness.color
-export const manifestacaoLabel = nfeManifestacao.label
-export const manifestacaoColor = nfeManifestacao.color
-export const nfeRoleLabel = nfeRole.label
-export const nfeRoleColor = nfeRole.color
 export const nfeEventLabel = nfeEvent.label
 export const nfeEventColor = nfeEvent.color
 export const outcomeLabel = outcome.label
