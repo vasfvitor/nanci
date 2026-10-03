@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { effectScope, nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { useQuery } from './useQuery'
 import { desktopClient } from '@/platform/wails/client'
@@ -53,6 +53,44 @@ describe('useQuery', () => {
     expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: '222' }))
     expect(query.documentOptions.value).toEqual([])
     expect(query.form.value.chave).toBe('3'.repeat(50))
+  })
+
+  it('lists the suggestions once per company across page visits', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
+      { ID: '1', CNPJ: '111', Name: 'Alpha' },
+      { ID: '2', CNPJ: '222', Name: 'Beta' },
+    ] as never)
+    vi.mocked(desktopClient.listDocuments).mockResolvedValue([
+      { ChaveAcesso: '3'.repeat(50), ServiceValue: 12345, CompanyRole: 'tomada', PrestadorName: 'Prestador' },
+    ] as never)
+    const workspace = useWorkspaceStore()
+    await workspace.loadCompanies()
+
+    // Each visit runs in its own scope; leaving the page stops it.
+    const firstVisit = effectScope()
+    firstVisit.run(() => useQuery())
+    await flushPromises()
+    expect(desktopClient.listDocuments).toHaveBeenCalledTimes(1)
+    firstVisit.stop()
+
+    // A second visit to the page, for the same company.
+    const second = useQuery()
+    await flushPromises()
+    expect(desktopClient.listDocuments).toHaveBeenCalledTimes(1)
+    expect(second.documentOptions.value).toEqual([
+      {
+        label: '3'.repeat(50),
+        value: '3'.repeat(50),
+        description: '...333333 | Prestador | R$ 123,45',
+      },
+    ])
+
+    workspace.cnpj = '222'
+    await flushPromises()
+    expect(desktopClient.listDocuments).toHaveBeenCalledTimes(2)
+    expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ CNPJ: '222' })
+    )
   })
 
   it('calls the typed NFSe events query path', async () => {
