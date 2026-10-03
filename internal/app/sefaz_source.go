@@ -88,12 +88,13 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 type sefazConnection struct {
 	purpose string // shown in the password prompt
 	target  string // "SEFAZ" or "SEFAZ (CT-e)" in the result texts
-	check   func(ctx context.Context, client sefazClient) error
+	// check is the method expression sefazClient.CheckTLS or CheckTLSCTe.
+	check func(client sefazClient, ctx context.Context) error
 }
 
 // testSefazConnection loads the certificate and opens a TLS connection with
-// conn.check. It sends no request, so it does not use the hourly budget;
-// SEFAZ only checks the client certificate on a real query.
+// conn.check. It sends no request and spends no hourly budget; SEFAZ only
+// checks the client certificate on a real query.
 func testSefazConnection(ctx context.Context, log *slog.Logger, companies *company.Store, certs *sync.CertificateLoader, cnpj string, conn sefazConnection) (ConnectionTestResult, error) {
 	var result ConnectionTestResult
 	comp, err := lookupCompanyByCNPJ(ctx, companies, cnpj)
@@ -124,7 +125,7 @@ func testSefazConnection(ctx context.Context, log *slog.Logger, companies *compa
 		result.StatusExplanation = fmt.Sprintf("Erro ao configurar cliente SEFAZ: %v", err)
 		return result, nil
 	}
-	if err := conn.check(ctx, client); err != nil {
+	if err := conn.check(client, ctx); err != nil {
 		result.StatusExplanation = fmt.Sprintf("Falha na conexão TLS com a %s: %v", conn.target, err)
 		return result, nil
 	}

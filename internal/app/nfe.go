@@ -342,14 +342,12 @@ func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.Com
 	return pending, nil
 }
 
-// TestConnection loads the certificate and opens a TLS connection to the
-// SEFAZ distribution host. It sends no request, so it does not use the
-// hourly budget; SEFAZ only checks the client certificate on a real query.
+// TestConnection checks the TLS connection to the NF-e distribution host.
 func (s *NFeService) TestConnection(ctx context.Context, cnpj string) (ConnectionTestResult, error) {
 	return testSefazConnection(ctx, s.Log, s.CompanyStore, s.Certificates, cnpj, sefazConnection{
 		purpose: "Teste de conexão NF-e",
 		target:  "SEFAZ",
-		check:   func(ctx context.Context, client sefazClient) error { return client.CheckTLS(ctx) },
+		check:   sefazClient.CheckTLS,
 	})
 }
 
