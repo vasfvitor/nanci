@@ -3,7 +3,8 @@ import { beforeEach, expect, vi } from 'vitest'
 import { useCompanies } from './useCompanies'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
-import type { PullResult } from '@/types/desktop'
+import { useWorkspaceStore } from '@/stores/workspace'
+import type { CompanySummary, PullResult } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -38,6 +39,19 @@ describe('useCompanies', () => {
     resolveList([])
     await pending
     expect(companies.loading.value).toBe(false)
+  })
+
+  it('loadCompanies fills the workspace list', async () => {
+    const company = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+
+    const companies = useCompanies()
+    await expect(companies.loadCompanies()).resolves.toEqual([company])
+
+    const workspace = useWorkspaceStore()
+    expect(workspace.companies).toEqual([company])
+    expect(workspace.cnpj).toBe(company.CNPJ)
+    expect(companies.companies.value).toEqual([company])
   })
 
   it('stays loading until the outer reload finishes, not the first inner load', async () => {

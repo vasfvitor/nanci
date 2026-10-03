@@ -3,7 +3,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsPage from './SettingsPage.vue'
 import { useConsoleStore } from '@/stores/console'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { desktopClient } from '@/platform/wails/client'
+import type { CompanySummary } from '@/types/desktop'
 
 const notify = vi.fn()
 
@@ -86,5 +88,58 @@ describe('SettingsPage', () => {
         message: expect.stringContaining('Erro ao atualizar modo debug: boom'),
       })
     )
+  })
+
+  it('starts the connection test at the workspace company and leaves the workspace alone', async () => {
+    const um = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
+    const dois = { CNPJ: '22222222000122', Name: 'Empresa Dois' } as CompanySummary
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([um, dois])
+    const workspace = useWorkspaceStore()
+    await workspace.loadCompanies()
+    workspace.cnpj = dois.CNPJ
+
+    const wrapper = shallowMount(SettingsPage, {
+      global: {
+        stubs: {
+          'q-page': { template: '<div><slot /></div>' },
+          'q-card': { template: '<div><slot /></div>' },
+          'q-list': { template: '<div><slot /></div>' },
+          'q-item': { template: '<div><slot /></div>' },
+          'q-item-section': { template: '<div><slot /></div>' },
+          'q-item-label': { template: '<div><slot /></div>' },
+          'q-select': {
+            name: 'QSelect',
+            props: ['modelValue', 'options', 'label'],
+            emits: ['update:modelValue'],
+            template: '<div />',
+          },
+          'q-separator': { template: '<div />' },
+          'q-space': { template: '<div />' },
+          'q-btn': { template: '<button><slot /></button>' },
+          'q-icon': { template: '<i />' },
+          'q-toggle': { template: '<div />' },
+        },
+        directives: {
+          ripple: {},
+        },
+      },
+    })
+    await flushPromises()
+
+    const select = wrapper
+      .findAllComponents({ name: 'QSelect' })
+      .find((item) => item.props('label') === 'Empresa')
+    if (!select) throw new Error('no Empresa select')
+    expect(select.props('modelValue')).toBe(dois.CNPJ)
+    expect(select.props('options')).toEqual([
+      { label: 'Empresa Um (11111111000111)', value: um.CNPJ },
+      { label: 'Empresa Dois (22222222000122)', value: dois.CNPJ },
+    ])
+    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
+
+    select.vm.$emit('update:modelValue', um.CNPJ)
+    await flushPromises()
+    expect(select.props('modelValue')).toBe(um.CNPJ)
+    expect(workspace.cnpj).toBe(dois.CNPJ)
   })
 })

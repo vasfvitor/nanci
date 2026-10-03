@@ -1,11 +1,15 @@
 import { computed, ref, shallowRef } from 'vue'
+import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, CredentialSummary } from '@/types/desktop'
 
 export function useCompanies() {
   const syncStore = useCompanySyncStore()
-  const companies = shallowRef<CompanySummary[]>([])
+  const workspace = useWorkspaceStore()
+  // companies is the workspace list, so the drawer sees every change.
+  const { companies } = storeToRefs(workspace)
   const credentials = shallowRef<CredentialSummary[]>([])
 
   const pendingLoads = ref(0)
@@ -28,10 +32,7 @@ export function useCompanies() {
   }
 
   async function loadCompanies() {
-    return trackLoad(async () => {
-      companies.value = await desktopClient.listCompanies()
-      return companies.value
-    })
+    return trackLoad(() => workspace.loadCompanies())
   }
 
   async function reloadData() {

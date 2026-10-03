@@ -22,18 +22,25 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
+import { useNotify } from '@/composables/useNotify'
 import { useConsoleStore } from '@/stores/console'
+import { useWorkspaceStore } from '@/stores/workspace'
 import AppTitleBar from '../components/AppTitleBar.vue'
 import AppLeftDrawer from '../components/AppLeftDrawer.vue'
 import AppConsoleDrawer from '../components/AppConsoleDrawer.vue'
 
 const $q = useQuasar()
 const consoleStore = useConsoleStore()
+const workspace = useWorkspaceStore()
+const { notifyError } = useNotify()
 const leftDrawerOpen = ref(false)
 const { consoleOpen } = storeToRefs(consoleStore)
 const unsubscribers: Unsubscribe[] = []
 
 onMounted(() => {
+  // The layout loads the company list once for every page; a page that
+  // mounted first may have started the load already.
+  workspace.ensureCompanies().catch((e: unknown) => notifyError('Erro ao carregar empresas', e))
   unsubscribers.push(
     onWailsEvent<string>('notify-success', (msg) => {
       $q.notify({ type: 'positive', message: msg })

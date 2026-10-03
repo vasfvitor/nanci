@@ -177,9 +177,11 @@ import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
+import { companyOption } from '@/composables/useCompanies'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
 import { useConsoleStore } from '@/stores/console'
 import { usePreferencesStore } from '@/stores/preferences'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { BuildInfo } from '@/types/desktop'
 
 const $q = useQuasar()
@@ -188,6 +190,7 @@ const { testing, testResult } = storeToRefs(diagnosticsStore)
 
 const consoleStore = useConsoleStore()
 const preferencesStore = usePreferencesStore()
+const workspace = useWorkspaceStore()
 const updatingDebug = ref(false)
 
 const debugToggle = computed(() => consoleStore.debugEnabled)
@@ -201,8 +204,10 @@ const darkMode = computed({
 
 const buildInfo = ref<BuildInfo>({ version: '...', commit: '...', date: '...' })
 const dataDir = ref('')
-const selectedCompany = ref('')
-const companyOptions = ref<{ label: string; value: string }[]>([])
+// selectedCompany starts at the workspace company and then stays apart from
+// it, so any company can be tested without switching the document pages.
+const selectedCompany = ref(workspace.cnpj)
+const companyOptions = computed(() => workspace.companies.map(companyOption))
 
 const darkModeOptions = [
   { label: 'Automático (Sistema)', value: 'auto' },
@@ -212,11 +217,8 @@ const darkModeOptions = [
 
 async function loadCompanies() {
   try {
-    const companies = await desktopClient.listCompanies()
-    companyOptions.value = companies.map((company) => ({
-      label: `${company.Name} (${company.CNPJ})`,
-      value: company.CNPJ,
-    }))
+    await workspace.ensureCompanies()
+    if (!selectedCompany.value) selectedCompany.value = workspace.cnpj
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + errorMessage(err) })
   }
