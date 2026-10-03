@@ -116,13 +116,13 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-bins-wails-2.12.0
+          key: ${{ runner.os }}-go-bins-wails-2.16.0
 
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
       - name: Build Desktop App
         working-directory: ./internal/desktop

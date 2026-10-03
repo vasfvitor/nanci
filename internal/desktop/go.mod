@@ -4,7 +4,7 @@ go 1.26.6
 
 require (
 	github.com/vasfvitor/nanci v0.0.0-00010101000000-000000000000
-	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/wailsapp/wails/v2 v2.16.0
 )
 
 require (
