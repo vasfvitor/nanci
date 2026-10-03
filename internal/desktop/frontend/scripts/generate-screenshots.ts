@@ -11,9 +11,14 @@ type ScreenshotSpec = {
   route: string
   name: string
   theme: Theme
+  // ready is a selector of the page content, never of the drawer: the
+  // workspace company shows there before the page lists anything.
   ready?: string
   setup?: (page: Page) => Promise<void>
   nfeStatus?: Record<string, unknown>
+  // workspace is the competência saved before the app starts, so the drawer
+  // shows a month. The mocks list the same rows for any competência.
+  workspace?: { competence?: string }
   // fitsWidth asserts that the document table fits the 1280px window without
   // a horizontal scroll bar.
   fitsWidth?: boolean
@@ -854,15 +859,18 @@ async function selectNFeRows(page: Page, numeros: string[]) {
   }
 }
 
+// nfseWorkspace is the competência of every NFS-e mock.
+const nfseWorkspace = { competence: '2026-06' }
+
 const screenshots: ScreenshotSpec[] = [
-  { route: '/', name: 'empresas', theme: 'light', ready: 'text=Empresas' },
-  { route: '/', name: 'empresas', theme: 'dark', ready: 'text=Empresas' },
+  { route: '/', name: 'empresas', theme: 'light', ready: 'text=Wayne Empreendimentos S.A.' },
+  { route: '/', name: 'empresas', theme: 'dark', ready: 'text=Wayne Empreendimentos S.A.' },
 
   {
     route: '/',
     name: 'dialogo-adicionar-empresa',
     theme: 'light',
-    ready: 'text=Empresas',
+    ready: 'text=Wayne Empreendimentos S.A.',
     setup: async (page) => {
       await page.click('button:has-text("Adicionar")')
       await page.waitForSelector('.q-dialog', { timeout: 3000 })
@@ -872,7 +880,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/',
     name: 'dialogo-adicionar-empresa',
     theme: 'dark',
-    ready: 'text=Empresas',
+    ready: 'text=Wayne Empreendimentos S.A.',
     setup: async (page) => {
       await page.click('button:has-text("Adicionar")')
       await page.waitForSelector('.q-dialog', { timeout: 3000 })
@@ -883,7 +891,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/',
     name: 'dialogo-senha-certificado',
     theme: 'light',
-    ready: 'text=Empresas',
+    ready: 'text=Wayne Empreendimentos S.A.',
     setup: async (page) => {
       await page.evaluate(() => {
         window.triggerWailsEvent?.('request-cert-password', {
@@ -901,7 +909,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/',
     name: 'dialogo-senha-certificado',
     theme: 'dark',
-    ready: 'text=Empresas',
+    ready: 'text=Wayne Empreendimentos S.A.',
     setup: async (page) => {
       await page.evaluate(() => {
         window.triggerWailsEvent?.('request-cert-password', {
@@ -916,11 +924,12 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Agência de Publicidade Marketing S/A', fitsWidth: true },
-  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Agência de Publicidade Marketing S/A', fitsWidth: true },
+  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Agência de Publicidade Marketing S/A', workspace: nfseWorkspace, fitsWidth: true },
+  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Agência de Publicidade Marketing S/A', workspace: nfseWorkspace, fitsWidth: true },
 
   {
     route: '/documents',
+    workspace: nfseWorkspace,
     name: 'detalhes-documento',
     theme: 'light',
     ready: 'text=Agência de Publicidade Marketing S/A',
@@ -932,6 +941,7 @@ const screenshots: ScreenshotSpec[] = [
   },
   {
     route: '/documents',
+    workspace: nfseWorkspace,
     name: 'detalhes-documento',
     theme: 'dark',
     ready: 'text=Agência de Publicidade Marketing S/A',
@@ -944,6 +954,7 @@ const screenshots: ScreenshotSpec[] = [
 
   {
     route: '/documents',
+    workspace: nfseWorkspace,
     name: 'dialogo-eventos-documento',
     theme: 'light',
     ready: 'text=Agência de Publicidade Marketing S/A',
@@ -956,6 +967,7 @@ const screenshots: ScreenshotSpec[] = [
   },
   {
     route: '/documents',
+    workspace: nfseWorkspace,
     name: 'dialogo-eventos-documento',
     theme: 'dark',
     ready: 'text=Agência de Publicidade Marketing S/A',
@@ -967,20 +979,20 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/credentials', name: 'credenciais', theme: 'light', ready: 'text=Credenciais' },
-  { route: '/credentials', name: 'credenciais', theme: 'dark', ready: 'text=Credenciais' },
+  { route: '/credentials', name: 'credenciais', theme: 'light', ready: 'text=Certificado TechCorp (Vencido)' },
+  { route: '/credentials', name: 'credenciais', theme: 'dark', ready: 'text=Certificado TechCorp (Vencido)' },
 
-  { route: '/query', name: 'consulta-direta', theme: 'light', ready: 'text=Consulta' },
-  { route: '/query', name: 'consulta-direta', theme: 'dark', ready: 'text=Consulta' },
+  { route: '/query', name: 'consulta-direta', theme: 'light', ready: 'text=Consulta Direta (API ADN)' },
+  { route: '/query', name: 'consulta-direta', theme: 'dark', ready: 'text=Consulta Direta (API ADN)' },
 
-  { route: '/settings', name: 'configuracoes', theme: 'light', ready: 'text=Configurações' },
-  { route: '/settings', name: 'configuracoes', theme: 'dark', ready: 'text=Configurações' },
+  { route: '/settings', name: 'configuracoes', theme: 'light', ready: 'text=Configurações e Suporte' },
+  { route: '/settings', name: 'configuracoes', theme: 'dark', ready: 'text=Configurações e Suporte' },
 
   {
     route: '/',
     name: 'console-logs',
     theme: 'light',
-    ready: 'text=Empresas',
+    ready: 'text=Wayne Empreendimentos S.A.',
     setup: async (page) => {
       await page.click('button[aria-label="Abrir console"]')
       await page.waitForSelector('.app-console', { timeout: 3000 })
@@ -994,7 +1006,7 @@ const screenshots: ScreenshotSpec[] = [
     route: '/',
     name: 'console-logs',
     theme: 'dark',
-    ready: 'text=Empresas',
+    ready: 'text=Wayne Empreendimentos S.A.',
     setup: async (page) => {
       await page.click('button[aria-label="Abrir console"]')
       await page.waitForSelector('.app-console', { timeout: 3000 })
@@ -1307,6 +1319,13 @@ async function createPage(browser: Browser, spec: ScreenshotSpec) {
     localStorage.setItem('darkMode', String(selectedTheme === 'dark'))
   }, theme)
 
+  const competence = spec.workspace?.competence
+  if (competence) {
+    await context.addInitScript((value) => {
+      localStorage.setItem('nanci:workspace:competence', value)
+    }, competence)
+  }
+
   const page = await context.newPage()
 
   return { context, page }
@@ -1314,6 +1333,10 @@ async function createPage(browser: Browser, spec: ScreenshotSpec) {
 
 async function waitForApp(page: Page, spec: ScreenshotSpec) {
   await page.waitForSelector('.q-page', { timeout: 5000 })
+  // The drawer shows the CNPJ of the workspace company once the list loaded.
+  await page.waitForSelector('.q-drawer .q-field__messages >> text=/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/', {
+    timeout: 5000,
+  })
 
   if (spec.ready) {
     await page.waitForSelector(spec.ready, { timeout: 5000 })

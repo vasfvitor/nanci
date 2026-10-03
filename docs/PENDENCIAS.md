@@ -15,6 +15,7 @@ Itens anotados durante as entregas de NF-e (v0.4.0) e CT-e (v0.5.0), em 24/09/20
 - **Bloqueio da SEFAZ compartilhado entre ambientes.** `company_sync_sources.blocked_until` e o orçamento por hora valem por empresa e origem, em qualquer ambiente. Como o ambiente agora pode ser trocado a qualquer momento, um bloqueio recebido em produção adia o próximo pull em homologação. Resolver chaveando `company_sync_sources` e `sync_requests` também por ambiente.
 - **Parse de CT-e real ainda não exercitado.** A empresa usada nos testes não tinha CT-e na fila; os parsers foram validados com fixtures fictícias e o XSD 4.00. Ao aparecer o primeiro CT-e real, conferir a linha na tela e os avisos de leitura (`parse_warnings`). Os códigos de denegação (110, 205, 301, 302, 303) foram assumidos iguais aos da NF-e; conferir no MOC CT-e 4.00.
 - **Ciência da Operação real ainda não enviada.** O fluxo de manifestação da NF-e foi testado só com o servidor de teste; um envio real exige um CNPJ que receba NF-e. A assinatura foi conferida byte a byte contra um evento real aceito pela SEFAZ.
+- **Empresa e competência ativas somem abaixo de 1024px.** O menu lateral, onde ficam a empresa e a competência do espaço de trabalho, se esconde em janelas estreitas (`show-if-above` do Quasar), e as páginas de documentos não mostram qual empresa e qual mês estão listando; só abrindo o menu dá para ver. Mostrar o nome da empresa (e a competência) no `DocumentPageHeader` resolve; fica para outro PR.
 
 ## Código
 

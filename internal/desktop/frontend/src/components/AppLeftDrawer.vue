@@ -4,7 +4,7 @@
     <section
       aria-label="Empresa e competência"
       :title="competenceHelp"
-      class="q-px-md q-pt-md q-pb-sm column q-gutter-sm"
+      class="q-px-md q-pt-md q-pb-sm column no-wrap q-gutter-sm"
     >
       <div v-if="loadError" class="column items-start">
         <div class="text-body2">Não foi possível carregar as empresas.</div>

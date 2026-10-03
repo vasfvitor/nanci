@@ -26,6 +26,6 @@ Ao abrir o Nanci pela primeira vez:
 2. Adicione uma credencial informando o arquivo do seu certificado `.pfx` (A1).
 3. Vá na aba **Empresas**.
 4. Clique em **Adicionar Empresa**, insira o CNPJ e vincule a credencial que você acabou de adicionar.
-5. Pronto! Agora você pode clicar no botão de **Sincronizar** (ícone de nuvem) ao lado do nome da empresa para começar a baixar as notas.
+5. Pronto! Escolha a empresa no menu lateral, abra **NFS-e** e clique em **Sincronizar NFS-e** para começar a baixar as notas.
 
 Dependendo do volume de notas da sua empresa, a primeira sincronização pode demorar um pouco. As próximas serão incrementais (apenas o que for novo).
