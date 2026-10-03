@@ -29,7 +29,7 @@ export function useDocuments() {
   const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
-    documents,
+    rows,
     selected,
     rowsFor,
     filterText,
@@ -43,7 +43,7 @@ export function useDocuments() {
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
   const { filteredRows } = useRowTextFilter({
-    rows: documents,
+    rows,
     filterText,
     fields: (row) => [
       row.ChaveAcesso,
@@ -62,14 +62,14 @@ export function useDocuments() {
     cnpj: () => store.listInput.CNPJ,
     filter,
     mark: (cnpj, chavesAcesso) => desktopClient.markDocumentsViewed(cnpj, chavesAcesso),
-    rows: documents,
+    rows,
     filteredRows,
     selected,
     setRows: (rows) => store.setRows(rows),
     markingViewed,
   })
 
-  const badgesByChave = useRowMap(documents, (row) => row.ChaveAcesso, nfseStateBadges)
+  const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, nfseStateBadges)
 
   const ambiente = computed(() =>
     selectedCompany.value ? nfseAmbiente(selectedCompany.value.Environment) : null
@@ -179,7 +179,7 @@ export function useDocuments() {
 
   return {
     filter,
-    documents,
+    rows,
     selected,
     rowsFor,
     clearRows: () => store.clearRows(),

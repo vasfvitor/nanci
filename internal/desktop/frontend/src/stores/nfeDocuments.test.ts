@@ -43,7 +43,6 @@ describe('nfeDocuments store', () => {
   it('builds the list request from the filter, normalizing cleared fields', () => {
     const workspace = useWorkspaceStore()
     workspace.cnpj = '123'
-    workspace.competence = null as unknown as string
     const store = useNFeDocumentsStore()
     store.filter.Situacao = 'autorizada'
     store.filter.Role = 'destinatario'

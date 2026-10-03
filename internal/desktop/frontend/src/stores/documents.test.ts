@@ -19,7 +19,7 @@ describe('documents store', () => {
     const store = useDocumentsStore()
 
     expect(store.filter).toEqual({ Direction: '', OnlyUnread: false })
-    expect(store.documents).toEqual([])
+    expect(store.rows).toEqual([])
   })
 
   it('sets the document rows', () => {
@@ -27,7 +27,7 @@ describe('documents store', () => {
 
     store.setRows([documentRow('a')])
 
-    expect(store.documents.map((row) => row.ChaveAcesso)).toEqual(['a'])
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['a'])
   })
 
   it('keeps filter requests mutable by feature composables', () => {
@@ -55,7 +55,6 @@ describe('documents store', () => {
   it('builds the list request from the filter, normalizing cleared fields', () => {
     const workspace = useWorkspaceStore()
     workspace.cnpj = '123'
-    workspace.competence = null as unknown as string
     const store = useDocumentsStore()
     store.filter.Direction = null as unknown as string
 
@@ -86,7 +85,7 @@ describe('documents store', () => {
 
     store.clearRows()
 
-    expect(store.documents).toEqual([])
+    expect(store.rows).toEqual([])
     expect(store.selected).toEqual([])
     expect(store.rowsFor).toBeNull()
   })

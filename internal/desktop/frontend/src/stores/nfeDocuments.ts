@@ -1,9 +1,9 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
+import { documentListState } from '@/stores/documentListState'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
-import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
 import { latestOnly } from '@/utils/latestOnly'
-import { pruneSelection } from '@/utils/selection'
 
 export type NFeTab = 'notas' | 'pendencias'
 
@@ -28,7 +28,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // normalized here.
   const listInput = computed<ListNFeInput>(() => ({
     CNPJ: workspace.cnpj,
-    Competence: workspace.competence || '',
+    Competence: workspace.competence,
     Situacao: filter.value.Situacao || '',
     Completeness: filter.value.Completeness || '',
     Manifestacao: filter.value.Manifestacao || '',
@@ -37,20 +37,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
-  const rows = ref<NFeRow[]>([])
-  const selected = ref<NFeRow[]>([])
-  // rowsFor is the company and competência of the search that filled the
-  // rows, or null when no search did.
-  const rowsFor = shallowRef<WorkspaceKey | null>(null)
-  // searchGate lets only the latest list search fill the rows; it lives
-  // here so a remounted page still drops the reply of an earlier search.
-  const searchGate = latestOnly()
-  // filterText narrows the listed rows on the page, without a new search.
-  const filterText = ref('')
-  const loading = shallowRef(false)
-  const exporting = shallowRef(false)
-  // markingViewed is true while a "Marcar vistos" request is in flight.
-  const markingViewed = shallowRef(false)
+  const list = documentListState<NFeRow>()
+  const { rows, selected } = list
   const status = shallowRef<NFeStatusResult | null>(null)
   // statusGate lets only the latest status load fill status.
   const statusGate = latestOnly()
@@ -66,30 +54,13 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // manifestacaoInFlight holds the chaves whose conclusive manifestação is
   // being sent.
   const manifestacaoInFlight = ref(new Set<string>())
-  // resettingCNPJ is the company whose NF-e reset is in flight, or ''.
-  const resettingCNPJ = shallowRef('')
-
-  // setRows replaces the result set and keeps only the selected notes that are
-  // still present, swapped for their fresh rows so eligibility is current.
-  function setRows(next: NFeRow[]) {
-    rows.value = next
-    selected.value = pruneSelection(next, selected.value)
-  }
-
-  // clearRows empties the result set and the selection, for a page that
-  // must not show rows of another company or competência.
-  function clearRows() {
-    rows.value = []
-    selected.value = []
-    rowsFor.value = null
-  }
 
   // patchRow swaps the note with chave for its fresh row, or drops it when
   // fresh is null because the note no longer matches the filters. The
   // selection follows the same way.
   function patchRow(chave: string, fresh: NFeRow | null) {
-    const patch = (list: NFeRow[]) =>
-      list.flatMap((row) => {
+    const patch = (items: NFeRow[]) =>
+      items.flatMap((row) => {
         if (row.ChaveAcesso !== chave) return [row]
         return fresh ? [fresh] : []
       })
@@ -109,14 +80,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   return {
     filter,
     listInput,
-    rows,
-    selected,
-    rowsFor,
-    searchGate,
-    filterText,
-    loading,
-    exporting,
-    markingViewed,
+    ...list,
     status,
     statusGate,
     activeTab,
@@ -126,9 +90,6 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     planningCiencia,
     cienciaInFlight,
     manifestacaoInFlight,
-    resettingCNPJ,
-    setRows,
-    clearRows,
     patchRow,
     isChaveBusy,
   }

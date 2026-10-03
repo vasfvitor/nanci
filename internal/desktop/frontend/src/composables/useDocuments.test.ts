@@ -233,7 +233,7 @@ describe('useDocuments', () => {
     const b = documentRow('b', { PrestadorName: 'Outra', ViewedAt: viewed })
     const c = documentRow('c')
     const nfse = useDocuments()
-    useDocumentsStore().documents = [a, b, c]
+    useDocumentsStore().rows = [a, b, c]
     nfse.filterText.value = 'outra'
 
     expect(nfse.scopeRows.value).toEqual([a, b])
@@ -248,7 +248,7 @@ describe('useDocuments', () => {
     const sao = documentRow('a', { TomadorName: 'São João Ltda' })
     const other = documentRow('b', { ServiceDescription: 'Consultoria contábil' })
     const nfse = useDocuments()
-    useDocumentsStore().documents = [sao, other]
+    useDocumentsStore().rows = [sao, other]
     nfse.pagination.value.page = 3
 
     nfse.filterText.value = 'SAO JOAO'
@@ -265,8 +265,8 @@ describe('useDocuments', () => {
     const store = useDocumentsStore()
     const nfse = useDocuments()
     nfse.cnpj.value = '123'
-    store.documents = [documentRow('a'), documentRow('b')]
-    nfse.selected.value = [store.documents[0] as DocumentRow]
+    store.rows = [documentRow('a'), documentRow('b')]
+    nfse.selected.value = [store.rows[0] as DocumentRow]
     // A filter edited after the search that filled the grid must not narrow the marking.
     nfse.competence.value = '2026-06'
     nfse.filter.value.Direction = 'tomada'
@@ -274,8 +274,8 @@ describe('useDocuments', () => {
     await expect(nfse.markViewed(['a'])).resolves.toBe(1)
 
     expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith('123', ['a'])
-    expect(store.documents[0]?.ViewedAt).toBeInstanceOf(Date)
-    expect(store.documents[1]?.ViewedAt).toBeNull()
+    expect(store.rows[0]?.ViewedAt).toBeInstanceOf(Date)
+    expect(store.rows[1]?.ViewedAt).toBeNull()
     expect(nfse.selected.value).toEqual([])
     expect(desktopClient.listDocuments).not.toHaveBeenCalled()
   })
@@ -291,7 +291,7 @@ describe('useDocuments', () => {
     await expect(nfse.markViewed(['a'])).resolves.toBe(1)
 
     expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith('123', ['a'])
-    expect(store.documents.map((row) => row.ChaveAcesso)).toEqual(['b'])
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['b'])
     expect(desktopClient.listDocuments).not.toHaveBeenCalled()
   })
 

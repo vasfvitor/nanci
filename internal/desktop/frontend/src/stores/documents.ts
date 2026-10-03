@@ -1,9 +1,8 @@
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { documentListState } from '@/stores/documentListState'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { DocumentRow, ListDocumentsInput } from '@/types/desktop'
-import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
-import { latestOnly } from '@/utils/latestOnly'
-import { pruneSelection } from '@/utils/selection'
 
 // The store holds NFS-e page state that outlives the page.
 export const useDocumentsStore = defineStore('documents', () => {
@@ -21,56 +20,14 @@ export const useDocumentsStore = defineStore('documents', () => {
   // normalized here.
   const listInput = computed<ListDocumentsInput>(() => ({
     CNPJ: workspace.cnpj,
-    Competence: workspace.competence || '',
+    Competence: workspace.competence,
     Direction: filter.value.Direction || '',
     OnlyUnread: filter.value.OnlyUnread || false,
   }))
 
-  const documents = ref<DocumentRow[]>([])
-  const selected = ref<DocumentRow[]>([])
-  // rowsFor is the company and competência of the search that filled the
-  // rows, or null when no search did.
-  const rowsFor = shallowRef<WorkspaceKey | null>(null)
-  // searchGate lets only the latest list search fill the rows; it lives
-  // here so a remounted page still drops the reply of an earlier search.
-  const searchGate = latestOnly()
-  // filterText narrows the listed rows on the page, without a new search.
-  const filterText = ref('')
-  const loading = shallowRef(false)
-  const exporting = shallowRef(false)
-  // markingViewed is true while a "Marcar vistos" request is in flight.
-  const markingViewed = shallowRef(false)
-  // resettingCNPJ is the company whose NFS-e sync reset is in flight, or ''.
-  const resettingCNPJ = shallowRef('')
-
-  // setRows replaces the result set and keeps only the selected documents
-  // that are still present, swapped for their fresh rows.
-  function setRows(next: DocumentRow[]) {
-    documents.value = next
-    selected.value = pruneSelection(next, selected.value)
-  }
-
-  // clearRows empties the result set and the selection, for a page that
-  // must not show rows of another company or competência.
-  function clearRows() {
-    documents.value = []
-    selected.value = []
-    rowsFor.value = null
-  }
-
   return {
     filter,
     listInput,
-    documents,
-    selected,
-    rowsFor,
-    searchGate,
-    filterText,
-    loading,
-    exporting,
-    markingViewed,
-    resettingCNPJ,
-    setRows,
-    clearRows,
+    ...documentListState<DocumentRow>(),
   }
 })

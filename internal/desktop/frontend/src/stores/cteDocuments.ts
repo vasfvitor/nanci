@@ -1,9 +1,9 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
+import { documentListState } from '@/stores/documentListState'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
-import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
 import { latestOnly } from '@/utils/latestOnly'
-import { pruneSelection } from '@/utils/selection'
 
 // compactCode keeps the letters and digits of a typed CNPJ or access key,
 // uppercased, so a pasted "12.345.678/0001-00" or a key in groups of 4 match
@@ -41,7 +41,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   // normalized here.
   const listInput = computed<ListCTeInput>(() => ({
     CNPJ: workspace.cnpj,
-    Competence: workspace.competence || '',
+    Competence: workspace.competence,
     Situacao: filter.value.Situacao || '',
     Role: filter.value.Role || '',
     Modelo: filter.value.Modelo || '',
@@ -57,57 +57,16 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     isNFeChaveFilter(listInput.value.NFeChave) ? '' : 'A chave de NF-e tem 44 caracteres'
   )
 
-  const rows = ref<CTeRow[]>([])
-  const selected = ref<CTeRow[]>([])
-  // rowsFor is the company and competência of the search that filled the
-  // rows, or null when no search did.
-  const rowsFor = shallowRef<WorkspaceKey | null>(null)
-  // searchGate lets only the latest list search fill the rows; it lives
-  // here so a remounted page still drops the reply of an earlier search.
-  const searchGate = latestOnly()
-  // filterText narrows the listed rows on the page, without a new search.
-  const filterText = ref('')
-  const loading = shallowRef(false)
-  const exporting = shallowRef(false)
-  // markingViewed is true while a "Marcar vistos" request is in flight.
-  const markingViewed = shallowRef(false)
   const status = shallowRef<CTeStatusResult | null>(null)
   // statusGate lets only the latest status load fill status.
   const statusGate = latestOnly()
-  // resettingCNPJ is the company whose CT-e reset is in flight, or ''.
-  const resettingCNPJ = shallowRef('')
-
-  // setRows replaces the result set and keeps only the selected CT-e that are
-  // still present, swapped for their fresh rows.
-  function setRows(next: CTeRow[]) {
-    rows.value = next
-    selected.value = pruneSelection(next, selected.value)
-  }
-
-  // clearRows empties the result set and the selection, for a page that
-  // must not show rows of another company or competência.
-  function clearRows() {
-    rows.value = []
-    selected.value = []
-    rowsFor.value = null
-  }
 
   return {
     filter,
     listInput,
     listError,
-    rows,
-    selected,
-    rowsFor,
-    searchGate,
-    filterText,
-    loading,
-    exporting,
-    markingViewed,
+    ...documentListState<CTeRow>(),
     status,
     statusGate,
-    resettingCNPJ,
-    setRows,
-    clearRows,
   }
 })
