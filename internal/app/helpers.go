@@ -65,15 +65,16 @@ func parseAccessKeys(raw []string) ([]string, error) {
 }
 
 // parseNFSeAccessKeys parses 50-digit NFS-e chaves. The "NFS" + 50-digit
-// form of the infNFSe Id is accepted and returned as the 50 digits, the
-// form the chave is stored in.
+// form of the infNFSe Id is accepted too and returned as given, because
+// migration 020 leaves a prefixed row whose digits another document already
+// has, and a chave must match the row as stored.
 func parseNFSeAccessKeys(raw []string) ([]string, error) {
 	return parseKeys(raw, func(r string) (string, error) {
-		key, err := nfse.ParseAccessKey(strings.TrimPrefix(strings.TrimSpace(r), nfse.InfNFSeIDPrefix))
-		if err != nil {
+		trimmed := strings.TrimSpace(r)
+		if _, err := nfse.ParseAccessKey(strings.TrimPrefix(trimmed, nfse.InfNFSeIDPrefix)); err != nil {
 			return "", err
 		}
-		return string(key), nil
+		return trimmed, nil
 	})
 }
 

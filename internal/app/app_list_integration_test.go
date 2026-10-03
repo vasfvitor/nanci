@@ -147,7 +147,9 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		"doc-1": "35503082245852546000109000000000000126060000000011",
 		"doc-2": "35503082245852546000109000000000000226060000000022",
 		"doc-3": "35503082245852546000109000000000000326060000000033",
-		"doc-4": "35503082245852546000109000000000000426060000000044",
+		// Migration 020 leaves a row with the "NFS" prefix when another
+		// document already has its 50 digits.
+		"doc-4": "NFS35503082245852546000109000000000000426060000000044",
 	}
 	for _, id := range []string{"doc-1", "doc-2", "doc-3", "doc-4"} {
 		if _, err := db.ExecContext(ctx, insertDoc, id, chaves[id], now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash-"+id); err != nil {
@@ -177,7 +179,8 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		return ids
 	}
 
-	// Marking touches only the given documents.
+	// Marking touches only the given documents, and 50 digits mark the row
+	// stored with those digits.
 	count, err := application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{" " + chaves["doc-2"] + " "})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed por chaves falhou: %v", err)
@@ -189,9 +192,9 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		t.Errorf("esperava doc-1, doc-3 e doc-4 não lidos, obteve %v", ids)
 	}
 
-	// The "NFS" prefix of the infNFSe Id is accepted and normalized to the
-	// stored 50 digits.
-	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{"NFS" + chaves["doc-4"]})
+	// The "NFS" prefix of the infNFSe Id is accepted as stored, so a
+	// prefixed chave marks the prefixed row.
+	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{chaves["doc-4"]})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed com chave NFS falhou: %v", err)
 	}
