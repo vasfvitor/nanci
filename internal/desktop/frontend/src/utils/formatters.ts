@@ -72,8 +72,7 @@ export function formatCurrencyCents(value: number | null | undefined) {
 
 export function formatChaveAcesso(chave: string) {
   if (!chave) return ''
-  const clean = chave.replace(/^NFS/i, '')
-  return clean.length > 10 ? `...${clean.slice(-10)}` : clean
+  return chave.length > 10 ? `...${chave.slice(-10)}` : chave
 }
 
 // formatChaveDFe prints a 44-character NF-e or CT-e access key as the DANFE

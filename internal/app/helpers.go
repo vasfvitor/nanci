@@ -64,19 +64,16 @@ func parseAccessKeys(raw []string) ([]string, error) {
 	})
 }
 
-// nfseIDPrefix starts the infNFSe Id that the parser stores as the chave when
-// a document has no chNFSe.
-const nfseIDPrefix = "NFS"
-
 // parseNFSeAccessKeys parses 50-digit NFS-e chaves. The "NFS" + 50-digit
-// fallback form is kept verbatim so it matches the stored chave.
+// form of the infNFSe Id is accepted and returned as the 50 digits, the
+// form the chave is stored in.
 func parseNFSeAccessKeys(raw []string) ([]string, error) {
 	return parseKeys(raw, func(r string) (string, error) {
-		trimmed := strings.TrimSpace(r)
-		if _, err := nfse.ParseAccessKey(strings.TrimPrefix(trimmed, nfseIDPrefix)); err != nil {
+		key, err := nfse.ParseAccessKey(strings.TrimPrefix(strings.TrimSpace(r), nfse.InfNFSeIDPrefix))
+		if err != nil {
 			return "", err
 		}
-		return trimmed, nil
+		return string(key), nil
 	})
 }
 

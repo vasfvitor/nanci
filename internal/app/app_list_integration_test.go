@@ -147,8 +147,7 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		"doc-1": "35503082245852546000109000000000000126060000000011",
 		"doc-2": "35503082245852546000109000000000000226060000000022",
 		"doc-3": "35503082245852546000109000000000000326060000000033",
-		// A document without chNFSe keeps its infNFSe Id as the chave.
-		"doc-4": "NFS35503082245852546000109000000000000426060000000044",
+		"doc-4": "35503082245852546000109000000000000426060000000044",
 	}
 	for _, id := range []string{"doc-1", "doc-2", "doc-3", "doc-4"} {
 		if _, err := db.ExecContext(ctx, insertDoc, id, chaves[id], now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash-"+id); err != nil {
@@ -190,8 +189,9 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		t.Errorf("esperava doc-1, doc-3 e doc-4 não lidos, obteve %v", ids)
 	}
 
-	// The "NFS" fallback chave is accepted as stored.
-	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{chaves["doc-4"]})
+	// The "NFS" prefix of the infNFSe Id is accepted and normalized to the
+	// stored 50 digits.
+	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{"NFS" + chaves["doc-4"]})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed com chave NFS falhou: %v", err)
 	}

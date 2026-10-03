@@ -64,7 +64,7 @@ describe('formatters', () => {
   })
 
   it('formats access keys for display', () => {
-    expect(formatChaveAcesso('NFS1234567890123')).toBe('...4567890123')
+    expect(formatChaveAcesso('1234567890123')).toBe('...4567890123')
     expect(formatChaveAcesso('123')).toBe('123')
   })
 

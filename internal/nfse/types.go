@@ -11,6 +11,10 @@ import (
 
 type AccessKey string
 
+// InfNFSeIDPrefix starts the Id attribute of infNFSe, followed by the 50
+// digits of the chave.
+const InfNFSeIDPrefix = "NFS"
+
 func ParseAccessKey(key string) (AccessKey, error) {
 	key = strings.TrimSpace(key)
 	if len(key) != 50 {

@@ -38,10 +38,10 @@ describe('useNotify', () => {
     ])
   })
 
-  it('copies access keys without the NFS prefix', async () => {
+  it('copies the chave as stored', async () => {
     vi.mocked(copyToClipboard).mockResolvedValue(undefined)
-    await copyChave('NFS123')
-    expect(copyToClipboard).toHaveBeenCalledWith('123')
+    await copyChave('35503082245852546000109000000000000126060000000011')
+    expect(copyToClipboard).toHaveBeenCalledWith('35503082245852546000109000000000000126060000000011')
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'positive' }))
   })
 

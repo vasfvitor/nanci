@@ -9,13 +9,13 @@ function errorNotice(message: string, error: unknown): QNotifyCreateOptions {
   return { type: 'negative', message: `${message}: ${errorMessage(error)}` }
 }
 
-// copyChave copies an access key. NFS-e keys lose their NFS prefix, so the
-// copied value is the key the portal accepts. It needs no component, so a
-// table cell can call it without holding the notify API.
+// copyChave copies an access key as stored. The NFS-e chave is stored as its
+// 50 digits, the key the portal accepts. It needs no component, so a table
+// cell can call it without holding the notify API.
 export async function copyChave(chave: string | null | undefined) {
   if (!chave) return
   try {
-    await copyToClipboard(chave.replace(/^NFS/i, ''))
+    await copyToClipboard(chave)
     Notify.create({ type: 'positive', message: 'Chave copiada!', timeout: 1000 })
   } catch (error) {
     Notify.create(errorNotice('Erro ao copiar chave', error))

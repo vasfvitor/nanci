@@ -161,7 +161,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `019` em `internal/store/migrations_v2/`:
+Migrações `007` a `020` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -176,6 +176,7 @@ Migrações `007` a `019` em `internal/store/migrations_v2/`:
 - `017`: adiciona `viewed_at` a `company_cte_documents`, descrita em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 - `018`: adiciona `exported_events` a `company_nfe_export_marks` e `company_cte_export_marks`, a quantidade de eventos do documento na última exportação. As marcas existentes contam os eventos gravados antes delas.
 - `019`: recria `company_sync_sources` e `sync_requests` com a coluna `environment`, que entra na chave de `company_sync_sources` e no índice `idx_sync_requests_window`. As linhas existentes recebem o ambiente atual da empresa.
+- `020`: tira o prefixo `NFS` da chave das NFS-e guardadas com o `Id` do `infNFSe`, liga os seus eventos e recalcula o status, descrita em [NFSE_ADN.md](NFSE_ADN.md#chave-de-acesso).
 
 Tabelas de NF-e:
 

@@ -170,7 +170,13 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 	// Validate essential fields
 	if doc.ChaveAcesso == "" {
 		if infNFSeID != "" {
-			doc.ChaveAcesso = AccessKey(infNFSeID)
+			// The Id is "NFS" + the 50 digits of the chave. An Id that does
+			// not follow that form is kept as it came.
+			if key, err := ParseAccessKey(strings.TrimPrefix(infNFSeID, InfNFSeIDPrefix)); err == nil {
+				doc.ChaveAcesso = key
+			} else {
+				doc.ChaveAcesso = AccessKey(infNFSeID)
+			}
 			warnings = append(warnings, "document missing chNFSe; using infNFSe Id as fallback identifier")
 		}
 	}

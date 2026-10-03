@@ -129,7 +129,35 @@ func TestParseDocumentXML_FallsBackToInfNFSeID(t *testing.T) {
 		t.Fatalf("ParseDocumentXML failed: %v", err)
 	}
 
-	if doc.ChaveAcesso != "NFS26079012298765432000199000000000000224049328439565" {
+	if doc.ChaveAcesso != "26079012298765432000199000000000000224049328439565" {
+		t.Fatalf("fallback chave = %q", doc.ChaveAcesso)
+	}
+
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "using infNFSe Id") {
+		t.Fatalf("warnings = %v", warnings)
+	}
+}
+
+func TestParseDocumentXML_KeepsAnInvalidInfNFSeIDAsItCame(t *testing.T) {
+	xmlData := `<?xml version="1.0" encoding="utf-8"?>
+<NFSe versao="1.00" xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFS2607901229876543200019900000000000022404932843956X">
+    <nNFSe>2</nNFSe>
+    <dhEmi>2026-06-07T10:00:00-03:00</dhEmi>
+    <compNFSe>2026-06</compNFSe>
+    <prest>
+      <CNPJ>98765432000199</CNPJ>
+      <xNome>Prestador Teste</xNome>
+    </prest>
+  </infNFSe>
+</NFSe>`
+
+	doc, warnings, err := ParseDocumentXML([]byte(xmlData))
+	if err != nil {
+		t.Fatalf("ParseDocumentXML failed: %v", err)
+	}
+
+	if doc.ChaveAcesso != "NFS2607901229876543200019900000000000022404932843956X" {
 		t.Fatalf("fallback chave = %q", doc.ChaveAcesso)
 	}
 
