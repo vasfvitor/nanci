@@ -4,8 +4,8 @@ import { defineStore } from 'pinia'
 export type QueryType = 'nfse' | 'events'
 
 export const useQueryStore = defineStore('query', () => {
+  // The company of a query is the workspace one; the form keeps the chave.
   const form = ref({
-    cnpj: '',
     chave: '',
   })
   const result = shallowRef('')

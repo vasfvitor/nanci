@@ -5,23 +5,33 @@
       <q-space />
     </div>
 
+    <q-banner
+      v-if="workspace.loaded && !cnpj"
+      dense
+      rounded
+      class="q-mb-md"
+      :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1'"
+    >
+      <template #avatar>
+        <q-icon name="info" color="primary" />
+      </template>
+      Nenhuma empresa cadastrada. A consulta autentica com a empresa escolhida no menu lateral.
+      <template #action>
+        <q-btn flat dense color="primary" label="Cadastrar empresa" to="/" />
+      </template>
+    </q-banner>
+
     <q-card flat bordered class="q-pa-md q-mb-md">
       <q-form class="q-gutter-md" @submit="runQuery">
         <div class="row q-col-gutter-md">
           <div class="col-12 col-md-6">
-            <q-select
-              v-model="form.cnpj"
-              :options="companyOptions"
-              use-input
-              input-debounce="0"
-              emit-value
-              map-options
-              label="Empresa / CNPJ (Para autenticação)"
+            <q-input
+              :model-value="companyLabel"
+              label="Empresa (autenticação)"
+              hint="Troque no menu lateral"
+              readonly
               outlined
               dense
-              :rules="[val => !!val || 'CNPJ é obrigatório']"
-              @new-value="createValue"
-              @filter="filterFn"
             />
           </div>
           <div class="col-12 col-md-6">
@@ -66,7 +76,14 @@
           </div>
         </div>
         <div class="row q-gutter-sm">
-          <q-btn type="submit" color="primary" icon="search" label="Consultar no ADN" :loading="loading" />
+          <q-btn
+            type="submit"
+            color="primary"
+            icon="search"
+            label="Consultar no ADN"
+            :loading="loading"
+            :disable="!cnpj"
+          />
         </div>
       </q-form>
     </q-card>
@@ -86,33 +103,28 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { errorMessage } from '@/platform/wails/client'
 import { useQuery } from '@/composables/useQuery'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { formatCpfCnpj } from '@/utils/formatters'
 
 const $q = useQuasar()
 const query = useQuery()
-const { form, result, loading, companyOptions, documentOptions } = query
+const workspace = useWorkspaceStore()
+const { form, result, loading, cnpj, selectedCompany, documentOptions } = query
 
-onMounted(async () => {
-  try {
-    await query.loadCompanies()
-  } catch (e) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas para consulta: ' + errorMessage(e) })
-  }
+// companyLabel names the workspace company the query authenticates as.
+const companyLabel = computed(() => {
+  const company = selectedCompany.value
+  return company ? `${company.Name} (${formatCpfCnpj(company.CNPJ)})` : ''
 })
 
 function createValue(val: string, done: (item: unknown, mode: 'add' | 'add-unique' | 'toggle') => void) {
   if (val.length > 0) {
     done(val, 'add-unique')
   }
-}
-
-function filterFn(val: string, update: (callback: () => void) => void) {
-  update(() => {
-    query.filterCompanies(val)
-  })
 }
 
 function filterDocumentsFn(val: string, update: (callback: () => void) => void) {

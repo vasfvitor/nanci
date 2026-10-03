@@ -2,20 +2,24 @@ import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useQueryStore } from '@/stores/query'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 export function useQuery() {
   const queryStore = useQueryStore()
   const { form, result, type, loading } = storeToRefs(queryStore)
-  const allOptions = ref<{ label: string; value: string }[]>([])
-  const companyOptions = ref<{ label: string; value: string }[]>([])
+  // The query authenticates as the workspace company.
+  const workspace = useWorkspaceStore()
+  const { cnpj, selectedCompany } = storeToRefs(workspace)
 
   const allDocumentOptions = ref<{ label: string; value: string; description?: string }[]>([])
   const documentOptions = ref<{ label: string; value: string; description?: string }[]>([])
 
   let latestDocumentRequest = 0
 
+  // The chave suggestions are the NFS-e of the workspace company. A fetch
+  // that ends after the company changed again is dropped.
   watch(
-    () => form.value.cnpj,
+    cnpj,
     async (newCnpj) => {
       const requestID = ++latestDocumentRequest
 
@@ -48,25 +52,6 @@ export function useQuery() {
     { immediate: true }
   )
 
-  async function loadCompanies() {
-    const companies = await desktopClient.listCompanies()
-    const options = companies.map((company) => ({
-      label: `${company.Name} (${company.CNPJ})`,
-      value: company.CNPJ,
-    }))
-    allOptions.value = options
-    companyOptions.value = options
-  }
-
-  function filterCompanies(value: string) {
-    const needle = value.toLowerCase()
-    companyOptions.value = allOptions.value.filter(
-      (option) =>
-        option.label.toLowerCase().includes(needle) ||
-        option.value.toLowerCase().includes(needle)
-    )
-  }
-
   function filterDocuments(val: string) {
     if (val === '') {
       documentOptions.value = allDocumentOptions.value
@@ -85,13 +70,14 @@ export function useQuery() {
       ? (form.value.chave as { value: string }).value 
       : form.value.chave
 
-    if (!form.value.cnpj || !/^\d{50}$/.test(chaveVal)) return ''
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ || !/^\d{50}$/.test(chaveVal)) return ''
 
     loading.value = true
     queryStore.clearResult()
     try {
       const input = {
-        CompanyCNPJ: form.value.cnpj,
+        CompanyCNPJ: companyCNPJ,
         ChaveAcesso: chaveVal,
       }
       result.value = await desktopClient.queryNFSeEvents(input)
@@ -106,11 +92,9 @@ export function useQuery() {
     result,
     type,
     loading,
-    allOptions,
-    companyOptions,
+    cnpj,
+    selectedCompany,
     documentOptions,
-    loadCompanies,
-    filterCompanies,
     filterDocuments,
     runQuery,
   }

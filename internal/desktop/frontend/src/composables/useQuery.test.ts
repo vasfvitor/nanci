@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { useQuery } from './useQuery'
 import { desktopClient } from '@/platform/wails/client'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -15,28 +16,52 @@ vi.mock('@/platform/wails/client', () => ({
 
 describe('useQuery', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
-  it('loads and filters company options', async () => {
+  it('loads the document options of the workspace company', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([
       { ID: '1', CNPJ: '111', Name: 'Alpha' },
       { ID: '2', CNPJ: '222', Name: 'Beta' },
     ] as never)
+    vi.mocked(desktopClient.listDocuments).mockResolvedValue([
+      { ChaveAcesso: '3'.repeat(50), ServiceValue: 100, CompanyRole: 'prestada', TomadorName: 'Tomador' },
+    ] as never)
 
     const query = useQuery()
-    await query.loadCompanies()
-    query.filterCompanies('alp')
+    const workspace = useWorkspaceStore()
+    await workspace.loadCompanies()
+    await flushPromises()
 
-    expect(query.companyOptions.value).toEqual([{ label: 'Alpha (111)', value: '111' }])
+    expect(query.cnpj.value).toBe('111')
+    expect(query.selectedCompany.value?.Name).toBe('Alpha')
+    expect(desktopClient.listDocuments).toHaveBeenCalledWith({
+      CNPJ: '111',
+      Competence: '',
+      Direction: '',
+      OnlyUnread: false,
+    })
+    expect(query.documentOptions.value.map((option) => option.value)).toEqual(['3'.repeat(50)])
+
+    // Another workspace company reloads the options and keeps the chave.
+    query.form.value.chave = '3'.repeat(50)
+    vi.mocked(desktopClient.listDocuments).mockResolvedValue([])
+    workspace.cnpj = '222'
+    await flushPromises()
+
+    expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: '222' }))
+    expect(query.documentOptions.value).toEqual([])
+    expect(query.form.value.chave).toBe('3'.repeat(50))
   })
 
   it('calls the typed NFSe events query path', async () => {
     vi.mocked(desktopClient.queryNFSeEvents).mockResolvedValue('{"events":[]}')
 
     const query = useQuery()
-    query.form.value = { cnpj: '123', chave: '2'.repeat(50) }
+    useWorkspaceStore().cnpj = '123'
+    query.form.value = { chave: '2'.repeat(50) }
 
     await expect(query.runQuery()).resolves.toBe('{"events":[]}')
     expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({
@@ -47,7 +72,17 @@ describe('useQuery', () => {
 
   it('rejects non-digit access keys before calling Wails', async () => {
     const query = useQuery()
-    query.form.value = { cnpj: '123', chave: `${'1'.repeat(49)}/` }
+    useWorkspaceStore().cnpj = '123'
+    query.form.value = { chave: `${'1'.repeat(49)}/` }
+
+    await expect(query.runQuery()).resolves.toBe('')
+
+    expect(desktopClient.queryNFSeEvents).not.toHaveBeenCalled()
+  })
+
+  it('does not query without a workspace company', async () => {
+    const query = useQuery()
+    query.form.value = { chave: '2'.repeat(50) }
 
     await expect(query.runQuery()).resolves.toBe('')
 
@@ -73,10 +108,11 @@ describe('useQuery', () => {
       .mockResolvedValueOnce([documentFor('2'.repeat(50))] as never)
 
     const query = useQuery()
+    const workspace = useWorkspaceStore()
 
-    query.form.value.cnpj = '111'
+    workspace.cnpj = '111'
     await nextTick()
-    query.form.value.cnpj = '222'
+    workspace.cnpj = '222'
     await nextTick()
     await flushPromises()
 
@@ -98,7 +134,8 @@ describe('useQuery', () => {
     )
 
     const first = useQuery()
-    first.form.value = { cnpj: '123', chave: '1'.repeat(50) }
+    useWorkspaceStore().cnpj = '123'
+    first.form.value = { chave: '1'.repeat(50) }
 
     const pending = first.runQuery()
     expect(first.loading.value).toBe(true)
