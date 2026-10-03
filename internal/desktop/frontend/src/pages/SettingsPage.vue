@@ -30,7 +30,7 @@
         <q-item v-ripple tag="label" class="q-px-none">
           <q-item-section>
             <q-item-label class="text-weight-medium">Modo Debug</q-item-label>
-            <q-item-label caption>Habilita logs detalhados e ações avaçandas (ex: Resetar NSU)</q-item-label>
+            <q-item-label caption>Habilita logs detalhados e ações avançadas de diagnóstico</q-item-label>
           </q-item-section>
           <q-item-section side>
             <q-toggle
