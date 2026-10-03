@@ -1,47 +1,48 @@
 import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { sameWorkspaceKey, useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
+import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
 import { workspaceContextLine } from '@/utils/formatters'
-
-export type WorkspaceChange = {
-  // company is true when the company changed since the rows were loaded, or
-  // when the page has just mounted.
-  company: boolean
-}
 
 export type WorkspaceListOptions = {
   // rowsFor returns the company and competência of the listed rows, or null.
   rowsFor: () => WorkspaceKey | null
-  // clear drops the rows and the selection of another company or competência.
-  clear: (change: WorkspaceChange) => void
-  // reload searches the page list, and its status when the company changed.
-  reload: (change: WorkspaceChange) => Promise<void>
+  // clearRows drops the rows and the selection of another key.
+  clearRows: () => void
+  // loadRows searches the page list.
+  loadRows: () => Promise<void>
+  // clearCompany drops company state, such as a sync status, that is not of
+  // cnpj. A page without such state leaves it and loadCompany out.
+  clearCompany?: (cnpj: string) => void
+  // loadCompany loads the company state of the workspace company.
+  loadCompany?: () => Promise<void>
 }
 
 // useWorkspaceList keeps a document page on the company and competência of
-// the workspace. On mount and on every change it clears rows loaded for
-// another key, so a page never shows them under the new header, then
-// reloads when a company is selected. Remounting on the same key keeps the
-// rows and the selection and refreshes them.
+// the workspace. On mount and on every change it clears what was loaded for
+// another company or key, so a page never shows it under the new header,
+// then reloads while a company is selected: the company state when the
+// company changes, the rows when the company or the competência does.
+// Remounting on the same key keeps the rows and the selection and
+// refreshes them.
 export function useWorkspaceList(options: WorkspaceListOptions) {
   const workspace = useWorkspaceStore()
   const { cnpj, loaded, loadError } = storeToRefs(workspace)
 
-  // lastKey is the key this page last reloaded for, or null before its first
-  // run. It stands in for rowsFor while a cleared list is still loading, so
-  // stepping the competência twice does not count as a company change.
-  let lastKey: WorkspaceKey | null = null
+  watch(
+    cnpj,
+    (companyCNPJ) => {
+      options.clearCompany?.(companyCNPJ)
+      if (companyCNPJ) void options.loadCompany?.()
+    },
+    { immediate: true }
+  )
+
   watch(
     [cnpj, () => workspace.competence],
     ([companyCNPJ, competence]) => {
-      const key = { cnpj: companyCNPJ, competence: competence || '' }
       const rowsFor = options.rowsFor()
-      const company = (rowsFor ?? lastKey)?.cnpj !== companyCNPJ
-      const mounting = lastKey === null
-      lastKey = key
-      if (!sameWorkspaceKey(rowsFor, key)) options.clear({ company })
-      if (!companyCNPJ) return
-      void options.reload({ company: company || mounting })
+      if (rowsFor?.cnpj !== companyCNPJ || rowsFor.competence !== competence) options.clearRows()
+      if (companyCNPJ) void options.loadRows()
     },
     { immediate: true }
   )
@@ -58,5 +59,5 @@ export function useWorkspaceList(options: WorkspaceListOptions) {
     workspaceContextLine(workspace.selectedCompany, workspace.competence)
   )
 
-  return { cnpj, loaded, noCompanyLabel, contextLine }
+  return { cnpj, noCompanyLabel, contextLine }
 }

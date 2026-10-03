@@ -299,14 +299,12 @@ function valoresItems(row: CTeRow): DetailItem[] {
 // reloads the status; a new competência only the list.
 const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   rowsFor: () => cte.rowsFor.value,
-  clear: ({ company }) => {
-    cte.clearRows()
-    if (!company) return
-    status.value = null
+  clearRows: () => cte.clearRows(),
+  loadRows: search,
+  clearCompany: (companyCNPJ) => {
+    if (status.value?.CNPJ !== companyCNPJ) status.value = null
   },
-  reload: async ({ company }) => {
-    await (company ? Promise.all([search(), loadStatus()]) : search())
-  },
+  loadCompany: loadStatus,
 })
 
 async function search() {

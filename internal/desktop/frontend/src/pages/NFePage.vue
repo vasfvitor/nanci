@@ -383,17 +383,19 @@ function valoresItems(row: NFeRow): DetailItem[] {
 }
 
 // The page lists the workspace company and competência. A new company also
-// reloads the status; a new competência only the list.
+// reloads the status and the pendências; a new competência only the list.
+// The pendências are loaded with the status, so they go with it.
 const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   rowsFor: () => nfe.rowsFor.value,
-  clear: ({ company }) => {
-    nfe.clearRows()
-    if (!company) return
+  clearRows: () => nfe.clearRows(),
+  loadRows: search,
+  clearCompany: (companyCNPJ) => {
+    if (status.value?.CNPJ === companyCNPJ) return
     status.value = null
     pending.value = []
   },
-  reload: async ({ company }) => {
-    await (company ? Promise.all([search(), loadStatus(), loadPending()]) : search())
+  loadCompany: async () => {
+    await Promise.all([loadStatus(), loadPending()])
   },
 })
 

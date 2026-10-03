@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { sameWorkspaceKey, useWorkspaceStore } from './workspace'
+import { useWorkspaceStore } from './workspace'
 import { desktopClient } from '@/platform/wails/client'
 import type { CompanySummary } from '@/types/desktop'
 
@@ -181,16 +181,5 @@ describe('workspace store', () => {
 
     store.cnpj = dois.CNPJ
     expect(store.selectedCompany).toEqual(dois)
-  })
-})
-
-describe('sameWorkspaceKey', () => {
-  it('compares company and competência', () => {
-    const key = { cnpj: um.CNPJ, competence: '2026-05' }
-
-    expect(sameWorkspaceKey({ ...key }, key)).toBe(true)
-    expect(sameWorkspaceKey(null, key)).toBe(false)
-    expect(sameWorkspaceKey({ ...key, cnpj: dois.CNPJ }, key)).toBe(false)
-    expect(sameWorkspaceKey({ ...key, competence: '' }, key)).toBe(false)
   })
 })

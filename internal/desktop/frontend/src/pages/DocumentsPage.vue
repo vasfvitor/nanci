@@ -236,8 +236,8 @@ function retencoesItems(row: DocumentRow): DetailItem[] {
 // when either changes.
 const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   rowsFor: () => nfse.rowsFor.value,
-  clear: () => nfse.clearRows(),
-  reload: () => search(),
+  clearRows: () => nfse.clearRows(),
+  loadRows: search,
 })
 
 async function search() {

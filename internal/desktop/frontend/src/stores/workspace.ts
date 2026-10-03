@@ -8,11 +8,6 @@ import { latestOnly } from '@/utils/latestOnly'
 // WorkspaceKey is the company and competência a document list was loaded for.
 export type WorkspaceKey = { cnpj: string; competence: string }
 
-// sameWorkspaceKey reports whether a, which may be missing, is the key b.
-export function sameWorkspaceKey(a: WorkspaceKey | null, b: WorkspaceKey): boolean {
-  return a !== null && a.cnpj === b.cnpj && a.competence === b.competence
-}
-
 const cnpjKey = 'nanci:workspace:cnpj'
 const competenceKey = 'nanci:workspace:competence'
 

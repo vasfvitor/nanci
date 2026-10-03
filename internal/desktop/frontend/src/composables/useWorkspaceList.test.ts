@@ -14,27 +14,35 @@ vi.mock('@/platform/wails/client', () => ({
 const um = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
 const dois = { CNPJ: '22222222000122', Name: 'Empresa Dois' } as CompanySummary
 
-// rowsFor stands for the page store; it outlives each mount.
+// rowsFor and statusFor stand for the page store; they outlive each mount.
+// statusFor is the company of the loaded status, as NFeStatusResult.CNPJ.
 const rowsFor = shallowRef<WorkspaceKey | null>(null)
-const clear = vi.fn(() => {
+const statusFor = shallowRef('')
+const clearRows = vi.fn(() => {
   rowsFor.value = null
 })
-const reload = vi.fn(async () => {})
+const loadRows = vi.fn(async () => {})
+const clearCompany = vi.fn((cnpj: string) => {
+  if (statusFor.value !== cnpj) statusFor.value = ''
+})
+const loadCompany = vi.fn(async () => {})
 
 // mount runs the composable in its own scope, as a mounted page would;
 // unmount is scope.stop.
 function mount() {
   const scope = effectScope()
   const list = scope.run(() =>
-    useWorkspaceList({ rowsFor: () => rowsFor.value, clear, reload })
+    useWorkspaceList({ rowsFor: () => rowsFor.value, clearRows, loadRows, clearCompany, loadCompany })
   ) as ReturnType<typeof useWorkspaceList>
   return { list, unmount: () => scope.stop() }
 }
 
-// loaded stands for a search that filled the rows for the current key.
+// loaded stands for a search and a status load that filled the page for
+// the current key.
 function loaded() {
   const workspace = useWorkspaceStore()
   rowsFor.value = { cnpj: workspace.cnpj, competence: workspace.competence }
+  statusFor.value = workspace.cnpj
 }
 
 describe('useWorkspaceList', () => {
@@ -43,18 +51,19 @@ describe('useWorkspaceList', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     rowsFor.value = null
+    statusFor.value = ''
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([um, dois])
     await useWorkspaceStore().loadCompanies()
   })
 
-  it('loads the list and the status on mount', () => {
+  it('loads the list and the company state on mount', () => {
     mount()
 
-    expect(reload).toHaveBeenCalledTimes(1)
-    expect(reload).toHaveBeenCalledWith({ company: true })
+    expect(loadRows).toHaveBeenCalledTimes(1)
+    expect(loadCompany).toHaveBeenCalledTimes(1)
   })
 
-  it('clears and reloads when the company changes', async () => {
+  it('clears and reloads both when the company changes', async () => {
     mount()
     loaded()
     vi.clearAllMocks()
@@ -62,8 +71,11 @@ describe('useWorkspaceList', () => {
     useWorkspaceStore().cnpj = dois.CNPJ
     await nextTick()
 
-    expect(clear).toHaveBeenCalledWith({ company: true })
-    expect(reload).toHaveBeenCalledWith({ company: true })
+    expect(clearRows).toHaveBeenCalledTimes(1)
+    expect(clearCompany).toHaveBeenCalledWith(dois.CNPJ)
+    expect(statusFor.value).toBe('')
+    expect(loadRows).toHaveBeenCalledTimes(1)
+    expect(loadCompany).toHaveBeenCalledTimes(1)
   })
 
   it('reloads only the list when only the competência changes', async () => {
@@ -73,27 +85,31 @@ describe('useWorkspaceList', () => {
 
     useWorkspaceStore().competence = '2026-05'
     await nextTick()
-    expect(clear).toHaveBeenCalledWith({ company: false })
-    expect(reload).toHaveBeenCalledWith({ company: false })
+    expect(clearRows).toHaveBeenCalledTimes(1)
+    expect(loadRows).toHaveBeenCalledTimes(1)
 
     // A second step before the list arrives is still the same company.
     useWorkspaceStore().competence = '2026-06'
     await nextTick()
-    expect(reload).toHaveBeenLastCalledWith({ company: false })
+    expect(loadRows).toHaveBeenCalledTimes(2)
+    expect(clearCompany).not.toHaveBeenCalled()
+    expect(loadCompany).not.toHaveBeenCalled()
   })
 
-  it('keeps the rows when remounted on the same key', () => {
+  it('keeps the rows and the status when remounted on the same key', () => {
     mount().unmount()
     loaded()
     vi.clearAllMocks()
 
     mount()
 
-    expect(clear).not.toHaveBeenCalled()
-    expect(reload).toHaveBeenCalledWith({ company: true })
+    expect(clearRows).not.toHaveBeenCalled()
+    expect(statusFor.value).toBe(um.CNPJ)
+    expect(loadRows).toHaveBeenCalledTimes(1)
+    expect(loadCompany).toHaveBeenCalledTimes(1)
   })
 
-  it('clears the rows when remounted after the company changed', () => {
+  it('clears the rows and the status when remounted after the company changed', () => {
     mount().unmount()
     loaded()
     vi.clearAllMocks()
@@ -101,8 +117,22 @@ describe('useWorkspaceList', () => {
     useWorkspaceStore().cnpj = dois.CNPJ
     mount()
 
-    expect(clear).toHaveBeenCalledWith({ company: true })
-    expect(reload).toHaveBeenCalledWith({ company: true })
+    expect(clearRows).toHaveBeenCalledTimes(1)
+    expect(statusFor.value).toBe('')
+    expect(loadRows).toHaveBeenCalledTimes(1)
+    expect(loadCompany).toHaveBeenCalledTimes(1)
+  })
+
+  it('works without company state', async () => {
+    const scope = effectScope()
+    scope.run(() => useWorkspaceList({ rowsFor: () => rowsFor.value, clearRows, loadRows }))
+    loaded()
+
+    useWorkspaceStore().cnpj = dois.CNPJ
+    await nextTick()
+
+    expect(loadRows).toHaveBeenCalledTimes(2)
+    scope.stop()
   })
 
   it('names the workspace company and competência', async () => {
@@ -115,13 +145,14 @@ describe('useWorkspaceList', () => {
     expect(list.contextLine.value).toBe('Empresa Dois · 22.222.222/0001-22 · Competência 05/2026')
   })
 
-  it('does not reload without a company', async () => {
+  it('does not load without a company', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
     await useWorkspaceStore().loadCompanies()
 
     const { list } = mount()
 
-    expect(reload).not.toHaveBeenCalled()
+    expect(loadRows).not.toHaveBeenCalled()
+    expect(loadCompany).not.toHaveBeenCalled()
     expect(list.noCompanyLabel.value).toBe('Nenhuma empresa cadastrada. Cadastre uma em Empresas.')
     expect(list.contextLine.value).toBe('')
   })
