@@ -9,9 +9,10 @@ import {
   noEligibleCienciaMessage,
   validateJustificativa,
 } from './nfeManifestacao'
+import { mapNFeRow } from '@/platform/wails/client'
 
 function row(overrides: Partial<NFeRow> = {}): NFeRow {
-  return {
+  return mapNFeRow({
     ID: 'rel-1',
     DocumentID: 'doc-1',
     ChaveAcesso: '35240912345678000199550010000123451123456789',
@@ -36,7 +37,7 @@ function row(overrides: Partial<NFeRow> = {}): NFeRow {
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
     ...overrides,
-  }
+  })
 }
 
 describe('block reasons', () => {

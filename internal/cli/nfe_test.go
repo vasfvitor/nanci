@@ -343,6 +343,25 @@ func TestNFeList_PrintsColumns(t *testing.T) {
 	}
 }
 
+func TestNFeList_NaoVistos(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("resnfe-cancelada.xml", 1)
+	env.seed("procnfe.xml", 2)
+	env.seed("procnfe-denegada.xml", 3)
+	marked, err := env.repo.MarkViewed(context.Background(), env.company.ID, []string{nfeChaveProc})
+	if err != nil || marked != 1 {
+		t.Fatalf("MarkViewed = %d, %v; want 1", marked, err)
+	}
+
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--nao-vistos"); err != nil {
+		t.Fatalf("list --nao-vistos: %v", err)
+	}
+	got := env.out.String()
+	if strings.Contains(got, nfeChaveProc) || !strings.Contains(got, nfeChaveDenegada) || !strings.Contains(got, nfeChaveCancelada) || !strings.Contains(got, "Total de 2 nota(s) listada(s).") {
+		t.Errorf("list --nao-vistos:\n%s", got)
+	}
+}
+
 func TestNFeList_ValidatesChave(t *testing.T) {
 	env := newNFeTestRoot(t)
 	env.seed("procnfe.xml", 1)

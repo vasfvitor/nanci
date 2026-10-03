@@ -165,6 +165,22 @@ func (r *CTeRepository) ListPendingExport(ctx context.Context, companyID dfe.Com
 	return r.listCompanyDocuments(ctx, companyID, f, kind)
 }
 
+// MarkViewed marks the company's CT-e with the given chaves as viewed and
+// returns how many were not viewed before.
+func (r *CTeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, chaves []string) (int, error) {
+	if len(chaves) == 0 {
+		return 0, nil
+	}
+	const query = `
+		UPDATE company_cte_documents
+		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		WHERE company_id = ? AND viewed_at IS NULL AND cte_document_id IN (
+			SELECT id FROM cte_documents WHERE chave_acesso IN (SELECT value FROM json_each(?))
+		)
+	`
+	return execMarkViewed(ctx, r.db, query, companyID, chaves)
+}
+
 // CompanyDocumentByChave returns cte.ErrDocumentNotFound when the company
 // does not see the chave in the tpAmb environment. An empty tpAmb matches
 // either environment.
@@ -504,7 +520,7 @@ const cteCompanyDocumentColumns = `
 	d.total_value, d.receivable_value, d.icms_value, d.tot_trib_value, d.carga_value, d.produto_predominante,
 	d.situacao, d.layout_version, d.raw_hash, d.parse_warnings, d.created_at, d.updated_at,
 	cd.relation_id, cd.company_id, cd.company_role, cd.papeis, cd.visibility_reason,
-	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at,
+	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at, cd.viewed_at,
 	(SELECT COUNT(*) FROM cte_events e WHERE e.chave_acesso = d.chave_acesso)`
 
 // listCompanyDocuments runs the single company CT-e query. A non-empty
@@ -602,6 +618,9 @@ func buildCTeFilterSQL(companyID dfe.CompanyID, f cte.DocumentFilter) (string, [
 		where += " AND d.tp_amb = ?"
 		args = append(args, f.TpAmb)
 	}
+	if f.OnlyUnread {
+		where += " AND cd.viewed_at IS NULL"
+	}
 	return where, args
 }
 
@@ -611,6 +630,7 @@ func scanCompanyCTeDocument(rows *sql.Rows) (cte.CompanyDocument, error) {
 	var companyID, role, papeis, visibility string
 	var firstSeen, lastSeen sql.NullInt64
 	var firstSyncedAt, lastSyncedAt string
+	var viewedAt sql.NullString
 
 	err := rows.Scan(
 		&d.ID, &d.ChaveAcesso, &d.TpAmb, &d.Modelo, &d.TipoDocumento, &d.Serie, &d.Numero, &d.Cfop, &d.NatOp,
@@ -624,7 +644,7 @@ func scanCompanyCTeDocument(rows *sql.Rows) (cte.CompanyDocument, error) {
 		&d.TotalValue, &d.ReceivableValue, &d.IcmsValue, &d.TotTribValue, &d.CargaValue, &d.ProdutoPredominante,
 		&d.Situacao, &d.LayoutVersion, &d.RawHash, &d.ParseWarnings, &d.CreatedAt, &d.UpdatedAt,
 		&cd.RelationID, &companyID, &role, &papeis, &visibility,
-		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt,
+		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt, &viewedAt,
 		&cd.EventCount,
 	)
 	if err != nil {
@@ -646,6 +666,9 @@ func scanCompanyCTeDocument(rows *sql.Rows) (cte.CompanyDocument, error) {
 		return cte.CompanyDocument{}, err
 	}
 	if cd.LastSyncedAt, err = parseRequiredTime("company cte last_synced_at", lastSyncedAt); err != nil {
+		return cte.CompanyDocument{}, err
+	}
+	if cd.ViewedAt, err = parseOptionalTime("company cte viewed_at", viewedAt); err != nil {
 		return cte.CompanyDocument{}, err
 	}
 	return cd, nil

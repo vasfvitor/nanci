@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   ambienteColor,
   ambienteLabel,
-  badgeColor,
+  sefazAmbiente,
   badgeProps,
-  badgeTextColor,
   blockedMessage,
   displayTable,
 } from './sefazDisplay'
@@ -27,24 +26,51 @@ describe('sefazDisplay', () => {
     ])
   })
 
+  it('abbreviates values, with ? for unknown and — for empty', () => {
+    const table = displayTable({
+      a: { label: 'Alfa', color: 'positive', abbr: 'A' },
+      b: { label: 'Beta', color: 'negative' },
+    })
+    expect(table.abbr('a')).toBe('A')
+    expect(table.abbr('b')).toBe('?')
+    expect(table.abbr('z')).toBe('?')
+    expect(table.abbr('constructor')).toBe('?')
+    expect(table.abbr('')).toBe('—')
+    expect(table.values()).toEqual(['a', 'b'])
+  })
+
+  it('builds state badges from the table', () => {
+    const table = displayTable({ a: { label: 'Alfa', color: 'positive', abbr: 'A' } })
+    expect(table.badge('a', 'Grupo')).toEqual({
+      key: 'Grupo:a',
+      abbr: 'A',
+      label: 'Alfa',
+      color: 'positive',
+      kind: 'Grupo',
+    })
+    expect(table.badge('a', 'Grupo', true)).toMatchObject({ secondary: true })
+    expect(table.badge('', 'Grupo')).toEqual({
+      key: 'Grupo:',
+      abbr: '—',
+      label: 'Desconhecido',
+      color: 'grey',
+      kind: 'Grupo',
+    })
+  })
+
   it('darkens info badges in light mode only', () => {
-    expect(badgeColor('info', false)).toBe('light-blue-9')
-    expect(badgeColor('info', true)).toBe('info')
-    expect(badgeColor('warning', false)).toBe('warning')
+    expect(badgeProps('info', false).color).toBe('light-blue-9')
+    expect(badgeProps('info', true).color).toBe('info')
+    expect(badgeProps('warning', false).color).toBe('warning')
   })
 
   it('picks a readable badge text color', () => {
-    expect(badgeTextColor('warning', false)).toBe('dark')
-    expect(badgeTextColor('grey', false)).toBe('dark')
-    expect(badgeTextColor('info', false)).toBe('white')
-    expect(badgeTextColor('positive', false)).toBe('white')
-    expect(badgeTextColor('info', true)).toBe('dark')
-    expect(badgeTextColor('positive', true)).toBe('dark')
-  })
-
-  it('binds badge fill and text colors together', () => {
-    expect(badgeProps('info', false)).toEqual({ color: 'light-blue-9', textColor: 'white' })
-    expect(badgeProps('warning', true)).toEqual({ color: 'warning', textColor: 'dark' })
+    expect(badgeProps('warning', false).textColor).toBe('dark')
+    expect(badgeProps('grey', false).textColor).toBe('dark')
+    expect(badgeProps('info', false).textColor).toBe('white')
+    expect(badgeProps('positive', false).textColor).toBe('white')
+    expect(badgeProps('info', true).textColor).toBe('dark')
+    expect(badgeProps('positive', true).textColor).toBe('dark')
   })
 
   it('colors the ambiente by tpAmb', () => {
@@ -57,6 +83,7 @@ describe('sefazDisplay', () => {
     expect(ambienteLabel('1')).toBe('Produção')
     expect(ambienteLabel('2')).toBe('Homologação')
     expect(ambienteLabel('')).toBe('Ambiente desconhecido')
+    expect(sefazAmbiente('1')).toEqual({ label: 'Produção', color: 'negative' })
   })
 
   it('explains each block reason', () => {

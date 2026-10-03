@@ -121,7 +121,7 @@ nanci.exe nfe testar-conexao --cnpj 12345678000199
 nanci.exe nfe pull --cnpj 12345678000199
 nanci.exe nfe status --cnpj 12345678000199
 
-# 4. Listar (filtros: --competencia/-m, --situacao, --completude, --papel/-p, --manifestacao, --emitente, --chave)
+# 4. Listar (filtros: --competencia/-m, --situacao, --completude, --papel/-p, --manifestacao, --emitente, --chave, --nao-vistos)
 nanci.exe nfe list --cnpj 12345678000199 --completude resumo -p destinatario
 
 # 5. Ciência da Operação: primeiro a simulação, que não envia nada;
@@ -173,11 +173,12 @@ Migrações `007` a `016` em `internal/store/migrations_v2/`:
 - `014`: remove `companies.initial_sync_completed_at`. A carga inicial da NFS-e, mostrada na lista de empresas e usada pela trava da política inicial no desktop, passa a vir só de `company_sync_sources`.
 - `015`: cria as tabelas de CT-e, descritas em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 - `016`: adiciona `tp_amb` (`1`, `2` ou vazio) a `nfe_documents` e `nfe_events`. As notas existentes recebem o ambiente da empresa que as vê, que até então não podia mudar depois da primeira sincronização de NF-e; os eventos recebem o da nota de mesma chave. Notas que nenhuma empresa vê e eventos sem nota ficam vazios.
+- `017`: adiciona `viewed_at` a `company_cte_documents`, descrita em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 
 Tabelas de NF-e:
 
 - `nfe_documents`: uma linha por chave de acesso, com os campos extraídos, a situação (`autorizada`, `denegada`, `cancelada`), a completude (`resumo` ou `completa`), o `tpAmb` (`tp_amb`) e o hash do XML bruto. Uma completa nunca é substituída por um resumo, e a situação só piora (cancelada > denegada > autorizada).
-- `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação e NSUs em que foi vista. A coluna `viewed_at` continua no esquema, mas nenhum fluxo a preenche.
+- `company_nfe_documents`: a relação empresa ↔ nota, com papel, motivo da visibilidade, estado da manifestação, NSUs em que foi vista e `viewed_at`, preenchida quando a empresa marca a nota como vista. Nota sem `viewed_at` é nova, e `nfe list --nao-vistos` mostra só as novas. A sincronização não mexe na coluna, e a redefinição de NF-e apaga a relação junto com ela.
 - `nfe_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`), com o `tpAmb` (`tp_amb`) do evento. Um `resEvento` é trocado pelo `procEventoNFe` quando este chega, e um evento enviado pelo Nanci se junta à cópia que volta pela distribuição.
 - `nfe_manifestacoes`: registro de cada envio de manifestação (lote, `tpAmb`, resultado, `cStat`, `xMotivo`, protocolo), inclusive falhas, para auditoria.
 - `company_nfe_export_marks`: o que já foi exportado e com qual hash, para a exportação incremental.

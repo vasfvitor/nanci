@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -142,40 +143,76 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 		VALUES (?, ?, ?, 'prestada', 'exact_prestador', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 	`
 
-	_, err := db.ExecContext(ctx, insertDoc, "doc-1", "111", now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash1")
-	if err != nil {
-		t.Fatalf("insert doc-1 err: %v", err)
+	chaves := map[string]string{
+		"doc-1": "35503082245852546000109000000000000126060000000011",
+		"doc-2": "35503082245852546000109000000000000226060000000022",
+		"doc-3": "35503082245852546000109000000000000326060000000033",
+		// A document without chNFSe keeps its infNFSe Id as the chave.
+		"doc-4": "NFS35503082245852546000109000000000000426060000000044",
 	}
-	_, err = db.ExecContext(ctx, insertRel, "rel-1", string(comp.ID), "doc-1")
-	if err != nil {
-		t.Fatalf("insert rel-1 err: %v", err)
-	}
-
-	_, err = db.ExecContext(ctx, insertDoc, "doc-2", "222", now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash2")
-	if err != nil {
-		t.Fatalf("insert doc-2 err: %v", err)
-	}
-	_, err = db.ExecContext(ctx, insertRel, "rel-2", string(comp.ID), "doc-2")
-	if err != nil {
-		t.Fatalf("insert rel-2 err: %v", err)
+	for _, id := range []string{"doc-1", "doc-2", "doc-3", "doc-4"} {
+		if _, err := db.ExecContext(ctx, insertDoc, id, chaves[id], now.Format("2006-01-02T15:04:05Z"), "2026-06", "hash-"+id); err != nil {
+			t.Fatalf("insert %s err: %v", id, err)
+		}
+		if _, err := db.ExecContext(ctx, insertRel, "rel-"+id, string(comp.ID), id); err != nil {
+			t.Fatalf("insert rel for %s err: %v", id, err)
+		}
 	}
 
-	input := app.ListInput{
+	unread := app.ListInput{
 		CNPJ:       "45852546000109",
 		OnlyUnread: true,
 	}
-	count, err := application.Documents.MarkDocumentsViewed(ctx, input)
+
+	const cnpj = "45852546000109"
+	unreadIDs := func() []string {
+		t.Helper()
+		docs, err := application.Documents.ListDocuments(ctx, unread)
+		if err != nil {
+			t.Fatalf("ListDocuments falhou: %v", err)
+		}
+		var ids []string
+		for _, d := range docs {
+			ids = append(ids, string(d.ID))
+		}
+		return ids
+	}
+
+	// Marking touches only the given documents.
+	count, err := application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{" " + chaves["doc-2"] + " "})
+	if err != nil {
+		t.Fatalf("MarkDocumentsViewed por chaves falhou: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("esperava marcar 1 documento, marcou %d", count)
+	}
+	if ids := unreadIDs(); len(ids) != 3 || slices.Contains(ids, "doc-2") {
+		t.Errorf("esperava doc-1, doc-3 e doc-4 não lidos, obteve %v", ids)
+	}
+
+	// The "NFS" fallback chave is accepted as stored.
+	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{chaves["doc-4"]})
+	if err != nil {
+		t.Fatalf("MarkDocumentsViewed com chave NFS falhou: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("esperava marcar o documento da chave NFS, marcou %d", count)
+	}
+
+	if _, err := application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{"111"}); err == nil {
+		t.Error("esperava erro para chave de acesso inválida")
+	}
+
+	// Already-viewed documents are not counted again.
+	count, err = application.Documents.MarkDocumentsViewed(ctx, cnpj, []string{chaves["doc-1"], chaves["doc-2"]})
 	if err != nil {
 		t.Fatalf("MarkDocumentsViewed falhou: %v", err)
 	}
-
-	if count != 2 {
-		t.Errorf("esperava marcar 2 documentos, marcou %d", count)
+	if count != 1 {
+		t.Errorf("esperava marcar 1 documento, marcou %d", count)
 	}
-
-	docs, _ := application.Documents.ListDocuments(ctx, input)
-	if len(docs) != 0 {
-		t.Errorf("esperava 0 documentos não lidos, obteve %d", len(docs))
+	if ids := unreadIDs(); !slices.Equal(ids, []string{"doc-3"}) {
+		t.Errorf("esperava só doc-3 não lido, obteve %v", ids)
 	}
 }
 

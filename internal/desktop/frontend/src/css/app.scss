@@ -121,3 +121,64 @@ body {
 .json-null {
   color: var(--app-json-null);
 }
+
+/* Monospaced digits for keys, numbers, dates and money */
+.text-mono {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Document tables (NFS-e, NF-e, CT-e): values stay on one line and party
+   names are cut with an ellipsis, so the table fits the default 1280px
+   window; only the expanded details wrap. The cell padding is tighter than
+   Quasar's dense table for the same reason. */
+.document-table td {
+  white-space: nowrap;
+}
+
+.document-table .q-table th,
+.document-table .q-table td {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.document-table .q-table th:first-child,
+.document-table .q-table td:first-child {
+  padding-left: 12px;
+}
+
+.document-table .q-table th:last-child,
+.document-table .q-table td:last-child {
+  padding-right: 12px;
+}
+
+/* The expanded details span every column, which is wider than the visible
+   table when it scrolls sideways; they size themselves to the scroll area
+   (100cqw), so it is a size container. */
+.document-table .q-table__middle {
+  container-type: inline-size;
+}
+
+.document-table .q-table td.document-detail-cell {
+  padding: 0;
+  white-space: normal;
+}
+
+/* The box over a document table that narrows the listed rows. */
+.document-search-input {
+  width: 350px;
+  max-width: 100%;
+}
+
+.numero-cell {
+  max-width: 100px;
+}
+
+/* A text column of an events table that wraps instead of widening it. The
+   selector outranks Quasar's nowrap table cells. */
+.q-table td.event-wrap {
+  min-width: 180px;
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: break-word;
+}

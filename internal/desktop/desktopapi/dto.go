@@ -166,6 +166,12 @@ type ListInput struct {
 	OnlyUnread bool
 }
 
+// MarkViewedInput names the documents of one company to mark as viewed.
+type MarkViewedInput struct {
+	CNPJ         string
+	ChavesAcesso []string
+}
+
 type PullInput struct {
 	CNPJ string
 	Mode string
@@ -365,6 +371,7 @@ type ListNFeInput struct {
 	Role         string // destinatario | emitente | transportador | autorizado | none
 	EmitenteCNPJ string
 	ChavesAcesso []string
+	OnlyUnread   bool
 }
 
 type NFeRow struct {
@@ -377,14 +384,21 @@ type NFeRow struct {
 	AuthorizedAt     *time.Time
 	Protocolo        string
 	TpNF             string // "0" entrada, "1" saída
+	TpAmb            string // "1" produção, "2" homologação
+	NatOp            string // empty on resumo
 	EmitenteCNPJ     string
 	EmitenteName     string
 	EmitenteIE       string
+	EmitenteUF       string
 	DestinatarioCNPJ string
 	DestinatarioName string
 	TotalValue       int64
+	ICMSValue        int64 // zero on resumo
+	IPIValue         int64 // zero on resumo
 	Situacao         string
 	Completeness     string
+	LayoutVersion    string
+	ParseWarnings    []string
 	Manifestacao     string
 	ManifestacaoAt   *time.Time
 	CienciaDue       *time.Time
@@ -393,6 +407,7 @@ type NFeRow struct {
 	EventCount       int
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
+	ViewedAt         *time.Time // nil while the NF-e is new
 	// DaysLeft is how many calendar days are left until ConclusiveDue: 0 on
 	// the due day, negative once it passed, nil without a deadline.
 	DaysLeft *int
@@ -596,14 +611,20 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		AuthorizedAt:          document.AuthorizedAt,
 		Protocolo:             document.Protocolo,
 		TpNF:                  document.TpNF,
+		TpAmb:                 document.TpAmb,
+		NatOp:                 document.NatOp,
 		EmitenteCNPJ:          document.EmitenteCNPJ,
 		EmitenteName:          document.EmitenteName,
 		EmitenteIE:            document.EmitenteIE,
+		EmitenteUF:            document.EmitenteUF,
 		DestinatarioCNPJ:      document.DestinatarioCNPJ,
 		DestinatarioName:      document.DestinatarioName,
 		TotalValue:            document.TotalValue.Cents(),
+		ICMSValue:             document.ICMSValue.Cents(),
+		IPIValue:              document.IPIValue.Cents(),
 		Situacao:              string(document.Situacao),
 		Completeness:          string(document.Completeness),
+		LayoutVersion:         document.LayoutVersion,
 		Manifestacao:          string(document.Manifestacao),
 		ManifestacaoAt:        document.ManifestacaoAt,
 		CienciaDue:            optionalTime(document.CienciaDue),
@@ -612,9 +633,12 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		EventCount:            document.EventCount,
 		FirstSyncedAt:         document.FirstSyncedAt,
 		LastSyncedAt:          document.LastSyncedAt,
+		ViewedAt:              document.ViewedAt,
 		TacitlyConfirmed:      document.TacitlyConfirmed,
 		CienciaBlockReason:    document.CienciaBlockReason,
 		ConclusiveBlockReason: document.ConclusiveBlockReason,
+		// Empty lists reach the frontend as [] instead of null.
+		ParseWarnings: append([]string{}, document.ParseWarnings...),
 	}
 	if !document.ConclusiveDue.IsZero() {
 		row.DaysLeft = &document.DaysLeft
@@ -720,6 +744,7 @@ type ListCTeInput struct {
 	// NFeChave keeps the CT-e that transported this NF-e.
 	NFeChave     string
 	ChavesAcesso []string
+	OnlyUnread   bool
 	Limit        int // 0 means no limit
 }
 
@@ -786,6 +811,7 @@ type CTeRow struct {
 	LastSeenNSU      *int64
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
+	ViewedAt         *time.Time // nil while the CT-e is new
 	LayoutVersion    string
 	ParseWarnings    []string
 }
@@ -944,6 +970,7 @@ func cteRow(document cte.CompanyDocument) CTeRow {
 		LastSeenNSU:      document.LastSeenNSU,
 		FirstSyncedAt:    document.FirstSyncedAt,
 		LastSyncedAt:     document.LastSyncedAt,
+		ViewedAt:         document.ViewedAt,
 		LayoutVersion:    document.LayoutVersion,
 		ParseWarnings:    append([]string{}, document.ParseWarnings...),
 	}

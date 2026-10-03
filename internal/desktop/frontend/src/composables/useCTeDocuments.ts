@@ -1,68 +1,70 @@
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { companyOption } from '@/composables/useCompanies'
-import { isNFeChaveFilter, useCTeLoaders } from '@/composables/useCTeLoaders'
+import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useCTeLoaders } from '@/composables/useCTeLoaders'
+import { useExportGuard } from '@/composables/useExportGuard'
+import { useMarkViewed } from '@/composables/useMarkViewed'
+import { useRowMap } from '@/composables/useRowMap'
+import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
-import type { CompanySummary } from '@/types/desktop'
-import { normalizeText } from '@/utils/formatters'
-import { cteDocumentCount, cteStatusLine } from '@/utils/cteDisplay'
+import { cteDocumentCount, cteStateBadges, cteStatusLine } from '@/utils/cteDisplay'
+import { sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useCTeLoaders()
-  const { filter, rows, loading, exporting, incremental, status, resettingCNPJ } =
-    storeToRefs(store)
-  const companyOptions = ref<{ label: string; value: string }[]>([])
-  const pagination = useTablePagination()
-  const filterText = ref('')
-
-  // searchIndex normalizes the searchable fields once per result set, not on
-  // every keystroke.
-  const searchIndex = computed(() =>
-    rows.value.map((row) => ({
-      row,
-      fields: [
-        row.ChaveAcesso,
-        row.Numero,
-        row.EmitenteCNPJ,
-        row.EmitenteName,
-        row.TomadorCNPJ,
-        row.TomadorName,
-      ].map(normalizeText),
-    }))
-  )
+  const {
+    filter,
+    listError,
+    rows,
+    selected,
+    filterText,
+    loading,
+    exporting,
+    markingViewed,
+    status,
+    resettingCNPJ,
+  } = storeToRefs(store)
+  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
+  const pagination = useTablePagination('cte')
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
-  const filteredRows = computed(() => {
-    const query = normalizeText(filterText.value)
-    if (!query) return rows.value
-    return searchIndex.value
-      .filter(({ fields }) => fields.some((field) => field.includes(query)))
-      .map(({ row }) => row)
+  const { filteredRows } = useRowTextFilter({
+    rows,
+    filterText,
+    fields: (row) => [
+      row.ChaveAcesso,
+      row.Numero,
+      row.EmitenteCNPJ,
+      row.EmitenteName,
+      row.TomadorCNPJ,
+      row.TomadorName,
+    ],
+    pagination,
   })
 
-  watch(filterText, () => {
-    pagination.value.page = 1
+  const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    filter,
+    mark: (cnpj, chavesAcesso) => desktopClient.markCTeViewed(cnpj, chavesAcesso),
+    rows,
+    filteredRows,
+    selected,
+    setRows: (next) => store.setRows(next),
+    markingViewed,
   })
 
-  const companyName = computed(() => {
-    if (status.value?.CompanyName) return status.value.CompanyName
-    const option = companyOptions.value.find((item) => item.value === filter.value.CNPJ)
-    return option?.label ?? ''
-  })
+  const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, cteStateBadges)
+
+  const companyName = computed(() => status.value?.CompanyName || selectedCompany.value?.Name || '')
+  const ambiente = computed(() => (status.value ? sefazAmbiente(status.value.TpAmb) : null))
   const documentCount = computed(() => cteDocumentCount(status.value))
   const statusLine = computed(() => (status.value ? cteStatusLine(status.value) : ''))
-
-  // nfeChaveError explains why the NF-e key filter cannot be sent, or is ''.
-  const nfeChaveError = computed(() =>
-    isNFeChaveFilter(store.listInput.NFeChave) ? '' : 'A chave de NF-e tem 44 caracteres'
-  )
 
   const isSyncing = computed(
     () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'cte')
@@ -73,28 +75,15 @@ export function useCTeDocuments() {
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
-  // loadCompanies lists the companies and keeps a known one selected,
-  // falling back to the first.
-  async function loadCompanies(): Promise<CompanySummary[]> {
-    const companies = await desktopClient.listCompanies()
-    companyOptions.value = companies.map(companyOption)
-    if (!companyOptions.value.some((option) => option.value === filter.value.CNPJ)) {
-      filter.value.CNPJ = companyOptions.value[0]?.value ?? ''
-    }
-    return companies
-  }
-
   // syncCTe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
   async function syncCTe() {
     const cnpj = filter.value.CNPJ
     if (!cnpj || syncStore.isSyncing(cnpj, 'cte') || resettingCNPJ.value === cnpj) return null
 
-    syncStore.startSync(cnpj, 'cte')
     try {
-      return await desktopClient.pullCTe(cnpj)
+      return await syncStore.runSync(cnpj, 'cte', () => desktopClient.pullCTe(cnpj))
     } finally {
-      syncStore.finishSync(cnpj, 'cte')
       await refresh(cnpj)
     }
   }
@@ -124,53 +113,50 @@ export function useCTeDocuments() {
 
   // The exports read the company from listInput, like the search that
   // filled the grid.
-  async function exportXML(chaveAcesso: string) {
-    const cnpj = store.listInput.CNPJ
-    if (!cnpj || exporting.value) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportCTeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso })
-    } finally {
-      exporting.value = false
-    }
+  const { runExport } = useExportGuard(exporting, () => store.listInput.CNPJ)
+
+  function exportXML(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportCTeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
-  // exportZIP exports exactly the given chaves, by default every row the
-  // grid shows; incremental leaves out the ones exported before. Competence
-  // and Role are left empty: the grid may hold the result of an earlier
-  // search, and an empty list would export everything.
-  async function exportZIP(chavesAcesso: string[] = filteredRows.value.map((row) => row.ChaveAcesso)) {
-    const cnpj = store.listInput.CNPJ
-    if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportCTeZIP({
+  // exportZIP exports exactly the given chaves; incremental leaves out the
+  // ones exported before. Competence and Role are left empty: the grid may
+  // hold the result of an earlier search, and an empty list would export
+  // everything.
+  async function exportZIP(chavesAcesso: string[], choice: { incremental: boolean }) {
+    if (chavesAcesso.length === 0) return null
+    return runExport((cnpj) =>
+      desktopClient.exportCTeZIP({
         CNPJ: cnpj,
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
-        Incremental: incremental.value,
+        Incremental: choice.incremental,
       })
-    } finally {
-      exporting.value = false
-    }
+    )
   }
 
   return {
     filter,
+    listError,
     rows,
+    selected,
     loading,
     exporting,
-    incremental,
+    markingViewed,
+    onlyUnviewed,
     status,
     pagination,
     filterText,
     filteredRows,
+    scopeRows,
+    unviewedChaves,
+    badgesByChave,
     companyOptions,
     companyName,
+    ambiente,
     documentCount,
     statusLine,
-    nfeChaveError,
     isSyncing,
     isResetting,
     syncBlockedUntil,
@@ -183,5 +169,6 @@ export function useCTeDocuments() {
     resetCTe,
     exportXML,
     exportZIP,
+    markViewed,
   }
 }

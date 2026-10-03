@@ -21,7 +21,9 @@ type DocumentFilter struct {
 	NFeChave     string
 	ChavesAcesso []string
 	TpAmb        string // "1" produção, "2" homologação
-	Limit        int
+	// OnlyUnread keeps rows the company has not marked as viewed.
+	OnlyUnread bool
+	Limit      int
 }
 
 // Counts summarizes one company's CT-e by primary role.

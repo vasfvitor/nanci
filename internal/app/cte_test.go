@@ -363,6 +363,55 @@ func TestCTeListDocumentsFilters(t *testing.T) {
 	}
 }
 
+func TestCTeMarkViewed(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seedCTeFixtures()
+	ctx := context.Background()
+	unread := ListCTeInput{CNPJ: nfeTestCNPJ, OnlyUnread: true}
+	listUnread := func() []string {
+		t.Helper()
+		docs, err := env.app.CTe.ListDocuments(ctx, unread)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cteChavesOf(docs)
+	}
+
+	if got := listUnread(); !slices.Equal(got, []string{cteChaveSimp, cteChaveGTVe, cteChaveOS, cteChaveToma4, cteChaveProc}) {
+		t.Fatalf("unread before marking = %v", got)
+	}
+
+	count, err := env.app.CTe.MarkViewed(ctx, nfeTestCNPJ, []string{cteChaveOS, " " + cteChaveGTVe + " "})
+	if err != nil {
+		t.Fatalf("MarkViewed by chaves: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("marked by chaves = %d, want 2", count)
+	}
+	if got := listUnread(); !slices.Equal(got, []string{cteChaveSimp, cteChaveToma4, cteChaveProc}) {
+		t.Errorf("unread after marking by chaves = %v", got)
+	}
+	docs, err := env.app.CTe.ListDocuments(ctx, ListCTeInput{CNPJ: nfeTestCNPJ, ChavesAcesso: []string{cteChaveOS}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 1 || docs[0].ViewedAt == nil {
+		t.Errorf("listed CT-e after marking = %+v, want ViewedAt set", docs)
+	}
+
+	if _, err := env.app.CTe.MarkViewed(ctx, nfeTestCNPJ, []string{"123"}); !errors.Is(err, dfe.ErrInvalidAccessKey) {
+		t.Errorf("MarkViewed with an invalid chave: err = %v, want dfe.ErrInvalidAccessKey", err)
+	}
+
+	count, err = env.app.CTe.MarkViewed(ctx, nfeTestCNPJ, nil)
+	if err != nil || count != 0 {
+		t.Errorf("MarkViewed without chaves = %d, %v; want 0, nil", count, err)
+	}
+	if got := listUnread(); !slices.Equal(got, []string{cteChaveSimp, cteChaveToma4, cteChaveProc}) {
+		t.Errorf("unread after marking no chave = %v", got)
+	}
+}
+
 func TestCTeTestConnectionOnlyChecksCTeTLS(t *testing.T) {
 	env := newNFeTestEnv(t)
 	stub := useFakeSEFAZ(t)

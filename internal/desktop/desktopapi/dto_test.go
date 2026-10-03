@@ -14,25 +14,34 @@ func TestNFeRows(t *testing.T) {
 	authorized := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 	cienciaDue := authorized.AddDate(0, 0, nfe.CienciaWarningDays)
 	conclusiveDue := authorized.AddDate(0, 0, nfe.ConclusiveDeadlineDays)
+	viewed := authorized.Add(2 * time.Hour)
 	docs := []app.NFeDocument{
 		{
 			CompanyDocument: nfe.CompanyDocument{
 				Document: nfe.Document{
-					ID:           "doc-1",
-					ChaveAcesso:  "35260912345678000195550010000123451000123456",
-					Serie:        "1",
-					Numero:       "12345",
-					IssueDate:    authorized.Add(-time.Hour),
-					AuthorizedAt: &authorized,
-					Protocolo:    "135260000000001",
-					TpNF:         "1",
-					TotalValue:   dfe.NewMoneyFromCents(123456),
-					Situacao:     nfe.SituacaoAutorizada,
-					Completeness: nfe.CompletenessCompleta,
+					ID:            "doc-1",
+					ChaveAcesso:   "35260912345678000195550010000123451000123456",
+					Serie:         "1",
+					Numero:        "12345",
+					IssueDate:     authorized.Add(-time.Hour),
+					AuthorizedAt:  &authorized,
+					Protocolo:     "135260000000001",
+					TpNF:          "1",
+					TpAmb:         "1",
+					NatOp:         "Venda de mercadoria",
+					EmitenteUF:    "SP",
+					TotalValue:    dfe.NewMoneyFromCents(123456),
+					ICMSValue:     dfe.NewMoneyFromCents(20400),
+					IPIValue:      dfe.NewMoneyFromCents(5050),
+					Situacao:      nfe.SituacaoAutorizada,
+					Completeness:  nfe.CompletenessCompleta,
+					LayoutVersion: "4.00",
+					ParseWarnings: []string{"aviso"},
 				},
 				RelationID:   "rel-1",
 				CompanyRole:  nfe.CompanyRoleDestinatario,
 				Manifestacao: nfe.ManifestacaoCiencia,
+				ViewedAt:     &viewed,
 				EventCount:   2,
 			},
 			Deadlines:          nfe.Deadlines{CienciaDue: cienciaDue, ConclusiveDue: conclusiveDue},
@@ -90,10 +99,25 @@ func TestNFeRows(t *testing.T) {
 	if row.EventCount != 2 {
 		t.Errorf("EventCount = %d, want 2", row.EventCount)
 	}
+	if row.ViewedAt == nil || !row.ViewedAt.Equal(viewed) {
+		t.Errorf("ViewedAt = %v, want %v", row.ViewedAt, viewed)
+	}
+	if row.TpAmb != "1" || row.NatOp != "Venda de mercadoria" || row.EmitenteUF != "SP" || row.LayoutVersion != "4.00" {
+		t.Errorf("TpAmb = %q, NatOp = %q, EmitenteUF = %q, LayoutVersion = %q", row.TpAmb, row.NatOp, row.EmitenteUF, row.LayoutVersion)
+	}
+	if row.ICMSValue != 20400 || row.IPIValue != 5050 {
+		t.Errorf("ICMSValue = %d, IPIValue = %d, want cents", row.ICMSValue, row.IPIValue)
+	}
+	if len(row.ParseWarnings) != 1 || row.ParseWarnings[0] != "aviso" {
+		t.Errorf("ParseWarnings = %v", row.ParseWarnings)
+	}
 
 	empty := rows[1]
-	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil || empty.CienciaDaysLeft != nil {
-		t.Errorf("dates = %v %v %v %v, days left = %v %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.DaysLeft, empty.CienciaDaysLeft)
+	if empty.ParseWarnings == nil {
+		t.Error("ParseWarnings = nil, want an empty slice so the frontend gets []")
+	}
+	if empty.AuthorizedAt != nil || empty.ManifestacaoAt != nil || empty.CienciaDue != nil || empty.ConclusiveDue != nil || empty.DaysLeft != nil || empty.CienciaDaysLeft != nil || empty.ViewedAt != nil {
+		t.Errorf("dates = %v %v %v %v %v, days left = %v %v; want all nil", empty.AuthorizedAt, empty.ManifestacaoAt, empty.CienciaDue, empty.ConclusiveDue, empty.ViewedAt, empty.DaysLeft, empty.CienciaDaysLeft)
 	}
 	if empty.Situacao != "cancelada" || empty.Completeness != "resumo" || empty.Manifestacao != "nao_realizada" || empty.CompanyRole != "none" {
 		t.Errorf("enums = %q %q %q %q", empty.Situacao, empty.Completeness, empty.Manifestacao, empty.CompanyRole)
@@ -256,6 +280,7 @@ func TestNFeEvents(t *testing.T) {
 
 func TestCTeRows(t *testing.T) {
 	authorized := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	viewed := authorized.Add(2 * time.Hour)
 	nsu := int64(42)
 	docs := []cte.CompanyDocument{
 		{
@@ -302,6 +327,7 @@ func TestCTeRows(t *testing.T) {
 			VisibilityReason: cte.VisibilityReasonExactTomador,
 			FirstSeenNSU:     &nsu,
 			LastSeenNSU:      &nsu,
+			ViewedAt:         &viewed,
 			EventCount:       2,
 		},
 		{
@@ -356,13 +382,16 @@ func TestCTeRows(t *testing.T) {
 	if row.EventCount != 2 || row.LayoutVersion != "4.00" || len(row.ParseWarnings) != 1 {
 		t.Errorf("EventCount = %d, LayoutVersion = %q, ParseWarnings = %v", row.EventCount, row.LayoutVersion, row.ParseWarnings)
 	}
+	if row.ViewedAt == nil || !row.ViewedAt.Equal(viewed) {
+		t.Errorf("ViewedAt = %v, want %v", row.ViewedAt, viewed)
+	}
 
 	empty := rows[1]
 	if empty.Modelo != "67" || empty.TipoDocumento != "cte_os" || empty.Situacao != "cancelada" || empty.CompanyRole != "none" {
 		t.Errorf("enums = %q %q %q %q", empty.Modelo, empty.TipoDocumento, empty.Situacao, empty.CompanyRole)
 	}
-	if empty.AuthorizedAt != nil || empty.FirstSeenNSU != nil || empty.TomadorIndicador != "" {
-		t.Errorf("AuthorizedAt = %v, FirstSeenNSU = %v, TomadorIndicador = %q", empty.AuthorizedAt, empty.FirstSeenNSU, empty.TomadorIndicador)
+	if empty.AuthorizedAt != nil || empty.FirstSeenNSU != nil || empty.ViewedAt != nil || empty.TomadorIndicador != "" {
+		t.Errorf("AuthorizedAt = %v, FirstSeenNSU = %v, ViewedAt = %v, TomadorIndicador = %q", empty.AuthorizedAt, empty.FirstSeenNSU, empty.ViewedAt, empty.TomadorIndicador)
 	}
 	if empty.Papeis == nil || empty.NFeChaves == nil || empty.ParseWarnings == nil {
 		t.Errorf("Papeis = %v, NFeChaves = %v, ParseWarnings = %v, want empty slices so the frontend gets []", empty.Papeis, empty.NFeChaves, empty.ParseWarnings)

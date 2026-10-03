@@ -191,7 +191,8 @@ type ListCTeInput struct {
 	// NFeChave keeps the CT-e that transported this NF-e.
 	NFeChave     string
 	ChavesAcesso []string
-	Limit        int // 0 means no limit
+	OnlyUnread   bool // keeps only CT-e the company has not marked as viewed
+	Limit        int  // 0 means no limit
 }
 
 // ListDocuments returns the company's CT-e of its current environment,
@@ -210,6 +211,24 @@ func (s *CTeService) ListDocuments(ctx context.Context, in ListCTeInput) ([]cte.
 		return nil, fmt.Errorf("listar CT-e: %w", err)
 	}
 	return docs, nil
+}
+
+// MarkViewed marks the company's CT-e with the given chaves as viewed and
+// returns how many were new.
+func (s *CTeService) MarkViewed(ctx context.Context, cnpj string, chaves []string) (int, error) {
+	parsed, err := parseAccessKeys(chaves)
+	if err != nil {
+		return 0, err
+	}
+	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	if err != nil {
+		return 0, err
+	}
+	count, err := s.CTeRepo.MarkViewed(ctx, comp.ID, parsed)
+	if err != nil {
+		return 0, fmt.Errorf("marcar CT-e como vistos: %w", err)
+	}
+	return count, nil
 }
 
 // ListEvents returns the events nanci holds for one of the company's CT-e,
@@ -289,6 +308,7 @@ func cteFilter(comp *nfse.Company, in ListCTeInput) (cte.DocumentFilter, error) 
 		TomadorCNPJ:  in.TomadorCNPJ,
 		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
+		OnlyUnread:   in.OnlyUnread,
 		Limit:        in.Limit,
 	}
 	if in.Situacao != "" {

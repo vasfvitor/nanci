@@ -161,6 +161,22 @@ func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID dfe.Com
 	return r.listCompanyDocuments(ctx, companyID, f, kind)
 }
 
+// MarkViewed marks the company's NF-e with the given chaves as viewed and
+// returns how many were not viewed before.
+func (r *NFeRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, chaves []string) (int, error) {
+	if len(chaves) == 0 {
+		return 0, nil
+	}
+	const query = `
+		UPDATE company_nfe_documents
+		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		WHERE company_id = ? AND viewed_at IS NULL AND nfe_document_id IN (
+			SELECT id FROM nfe_documents WHERE chave_acesso IN (SELECT value FROM json_each(?))
+		)
+	`
+	return execMarkViewed(ctx, r.db, query, companyID, chaves)
+}
+
 // CompanyDocumentByChave returns nfe.ErrDocumentNotFound when the company
 // does not see the chave in the tpAmb environment.
 func (r *NFeRepository) CompanyDocumentByChave(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (*nfe.CompanyDocument, error) {
@@ -501,7 +517,7 @@ const nfeCompanyDocumentColumns = `
 	d.tp_nf, d.fin_nfe, d.nat_op, d.total_value, d.icms_value, d.ipi_value,
 	d.situacao, d.completeness, d.layout_version, d.raw_hash, d.resumo_raw_hash, d.parse_warnings, d.tp_amb,
 	cd.relation_id, cd.company_id, cd.company_role, cd.visibility_reason, cd.manifestacao, cd.manifestacao_at,
-	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at,
+	cd.first_seen_nsu, cd.last_seen_nsu, cd.first_synced_at, cd.last_synced_at, cd.viewed_at,
 	(SELECT COUNT(*) FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso)`
 
 // listCompanyDocuments runs the single company NF-e query. A non-empty
@@ -598,6 +614,9 @@ func buildNFeFilterSQL(companyID dfe.CompanyID, f nfe.DocumentFilter) (string, [
 	if f.PendingManifestacao {
 		where += " AND cd.company_role = 'destinatario' AND d.situacao = 'autorizada' AND cd.manifestacao IN ('nenhuma', 'ciencia')"
 	}
+	if f.OnlyUnread {
+		where += " AND cd.viewed_at IS NULL"
+	}
 	return where, args
 }
 
@@ -605,7 +624,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 	var d sqlgen.NfeDocument
 	var cd nfe.CompanyDocument
 	var companyID, role, visibility, manifestacao string
-	var manifestacaoAt sql.NullString
+	var manifestacaoAt, viewedAt sql.NullString
 	var firstSeen, lastSeen sql.NullInt64
 	var firstSyncedAt, lastSyncedAt string
 
@@ -616,7 +635,7 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 		&d.TpNf, &d.FinNfe, &d.NatOp, &d.TotalValue, &d.IcmsValue, &d.IpiValue,
 		&d.Situacao, &d.Completeness, &d.LayoutVersion, &d.RawHash, &d.ResumoRawHash, &d.ParseWarnings, &d.TpAmb,
 		&cd.RelationID, &companyID, &role, &visibility, &manifestacao, &manifestacaoAt,
-		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt,
+		&firstSeen, &lastSeen, &firstSyncedAt, &lastSyncedAt, &viewedAt,
 		&cd.EventCount,
 	)
 	if err != nil {
@@ -635,6 +654,9 @@ func scanCompanyNFeDocument(rows *sql.Rows) (nfe.CompanyDocument, error) {
 	cd.LastSeenNSU = PtrFromNullInt64(lastSeen)
 
 	if cd.ManifestacaoAt, err = parseOptionalTime("company nfe manifestacao_at", manifestacaoAt); err != nil {
+		return nfe.CompanyDocument{}, err
+	}
+	if cd.ViewedAt, err = parseOptionalTime("company nfe viewed_at", viewedAt); err != nil {
 		return nfe.CompanyDocument{}, err
 	}
 

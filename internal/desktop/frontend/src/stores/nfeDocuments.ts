@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
+import { pruneSelection } from '@/utils/selection'
 
 export type NFeTab = 'notas' | 'pendencias'
 
@@ -15,6 +16,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     Manifestacao: '',
     Role: '',
     EmitenteCNPJ: '',
+    OnlyUnread: false,
   })
 
   // listInput is the only place the ListNFe request is built from the filter.
@@ -27,12 +29,17 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     Manifestacao: filter.value.Manifestacao || '',
     Role: filter.value.Role || '',
     EmitenteCNPJ: filter.value.EmitenteCNPJ || '',
+    OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
   const rows = ref<NFeRow[]>([])
   const selected = ref<NFeRow[]>([])
+  // filterText narrows the listed rows on the page, without a new search.
+  const filterText = ref('')
   const loading = shallowRef(false)
   const exporting = shallowRef(false)
+  // markingViewed is true while a "Marcar vistos" request is in flight.
+  const markingViewed = shallowRef(false)
   const status = shallowRef<NFeStatusResult | null>(null)
   const activeTab = shallowRef<NFeTab>('notas')
   const pending = ref<NFePendingRow[]>([])
@@ -51,13 +58,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // still present, swapped for their fresh rows so eligibility is current.
   function setRows(next: NFeRow[]) {
     rows.value = next
-    if (selected.value.length === 0) return
-
-    const byChave = new Map(next.map((row) => [row.ChaveAcesso, row]))
-    selected.value = selected.value.flatMap((row) => {
-      const fresh = byChave.get(row.ChaveAcesso)
-      return fresh ? [fresh] : []
-    })
+    selected.value = pruneSelection(next, selected.value)
   }
 
   // patchRow swaps the note with chave for its fresh row, or drops it when
@@ -73,8 +74,13 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     selected.value = patch(selected.value)
   }
 
+  // busyChaves are the notes with an event being sent.
+  const busyChaves = computed(
+    () => new Set([...(cienciaInFlight.value ?? []), ...manifestacaoInFlight.value])
+  )
+
   function isChaveBusy(chave: string) {
-    return Boolean(cienciaInFlight.value?.includes(chave)) || manifestacaoInFlight.value.has(chave)
+    return busyChaves.value.has(chave)
   }
 
   return {
@@ -82,8 +88,10 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     listInput,
     rows,
     selected,
+    filterText,
     loading,
     exporting,
+    markingViewed,
     status,
     activeTab,
     pending,

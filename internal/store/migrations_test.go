@@ -655,6 +655,55 @@ func TestMigration016BackfillsNFeTpAmb(t *testing.T) {
 	}
 }
 
+func TestMigration017AddsCTeViewedAt(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewedAt := func() (columns, indexes int) {
+		t.Helper()
+		if err := db.QueryRowContext(ctx, `
+			SELECT
+				(SELECT COUNT(*) FROM pragma_table_info('company_cte_documents') WHERE name = 'viewed_at'),
+				(SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_company_cte_documents_viewed_at')
+		`).Scan(&columns, &indexes); err != nil {
+			t.Fatal(err)
+		}
+		return columns, indexes
+	}
+
+	if _, err := provider.UpTo(ctx, 16); err != nil {
+		t.Fatalf("migrate to version 16: %v", err)
+	}
+	if columns, indexes := viewedAt(); columns != 0 || indexes != 0 {
+		t.Fatalf("before 017: viewed_at columns = %d, indexes = %d, want 0 and 0", columns, indexes)
+	}
+
+	if _, err := provider.UpTo(ctx, 17); err != nil {
+		t.Fatalf("migrate to version 17: %v", err)
+	}
+	if columns, indexes := viewedAt(); columns != 1 || indexes != 1 {
+		t.Fatalf("after 017: viewed_at columns = %d, indexes = %d, want 1 and 1", columns, indexes)
+	}
+	if _, err := provider.DownTo(ctx, 16); err != nil {
+		t.Fatalf("migrate down to version 16: %v", err)
+	}
+	if columns, indexes := viewedAt(); columns != 0 || indexes != 0 {
+		t.Errorf("after down: viewed_at columns = %d, indexes = %d, want 0 and 0", columns, indexes)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 	t.Helper()
 	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {

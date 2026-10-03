@@ -1,30 +1,67 @@
-// Display helpers shared by the SEFAZ document screens (NF-e and CT-e).
+// Display helpers shared by the document screens (NFS-e, NF-e and CT-e):
+// display tables for the state values, badge colors and the SEFAZ ambiente.
 
-type Display = { label: string; color: string }
+// Display is how a state value is shown: its full label, its color and the
+// short abbreviation the table badges carry.
+type Display = { label: string; color: string; abbr?: string }
 
 export type FilterOption = { label: string; value: string }
 
+// StateBadge is one abbreviated badge of a document row. kind names its group
+// ("Situação", "Papel"...), for the "Kind: Label" tooltip; key is unique
+// within a row; secondary badges go on a second, smaller line.
+export type StateBadge = {
+  key: string
+  abbr: string
+  label: string
+  color: string
+  kind: string
+  secondary?: boolean
+}
+
+export type DisplayTable = ReturnType<typeof displayTable>
+
 // displayTable looks values up in table. An unknown value is shown as
-// unknownLabel(value) in grey, and an empty one as "Desconhecido".
+// unknownLabel(value) in grey with the abbreviation "?", and an empty one as
+// "Desconhecido" with "—".
 export function displayTable(
   table: Record<string, Display>,
   unknownLabel: (value: string) => string = (value) => value
 ) {
   const find = (value: string) => (Object.hasOwn(table, value) ? table[value] : undefined)
+  const label = (value: string) => find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido')
+  const color = (value: string) => find(value)?.color ?? 'grey'
+  const abbr = (value: string) => (value ? (find(value)?.abbr ?? '?') : '—')
   return {
-    label: (value: string) => find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido'),
-    color: (value: string) => find(value)?.color ?? 'grey',
+    label,
+    color,
+    abbr,
+    // badge is the StateBadge of value in the group kind.
+    badge: (value: string, kind: string, secondary = false): StateBadge => ({
+      key: `${kind}:${value}`,
+      abbr: abbr(value),
+      label: label(value),
+      color: color(value),
+      kind,
+      ...(secondary ? { secondary: true } : {}),
+    }),
     // options lists every known value for a filter, after an empty "all" entry.
     options: (allLabel: string): FilterOption[] => [
       { label: allLabel, value: '' },
       ...Object.entries(table).map(([value, display]) => ({ label: display.label, value })),
     ],
+    // values lists every known value, in table order.
+    values: () => Object.keys(table),
   }
 }
 
+// VIEWED_BADGE is the badge of a document not viewed yet, in every table and
+// in the legends.
+export const VIEWED_BADGE = { label: 'Novo', color: 'warning' } as const
+
 // badgeColor is the fill of a badge of color. In light mode the info blue
 // is too light for white text, so it uses a darker shade.
-export function badgeColor(color: string, dark: boolean) {
+function badgeColor(color: string, dark: boolean) {
   if (!dark && color === 'info') return 'light-blue-9'
   return color
 }
@@ -32,7 +69,7 @@ export function badgeColor(color: string, dark: boolean) {
 // badgeTextColor picks a readable text color for a filled badge of color.
 // In dark mode every palette color is light, so text is dark; in light mode
 // only warning and grey are too light for white text.
-export function badgeTextColor(color: string, dark: boolean) {
+function badgeTextColor(color: string, dark: boolean) {
   if (dark || color === 'warning' || color === 'grey') return 'dark'
   return 'white'
 }
@@ -54,6 +91,11 @@ export function ambienteColor(tpAmb: string) {
   if (tpAmb === '1') return 'negative'
   if (tpAmb === '2') return 'warning'
   return 'grey'
+}
+
+// sefazAmbiente is the ambiente badge of a page header for tpAmb.
+export function sefazAmbiente(tpAmb: string) {
+  return { label: ambienteLabel(tpAmb), color: ambienteColor(tpAmb) }
 }
 
 export type SefazBlockInfo = {

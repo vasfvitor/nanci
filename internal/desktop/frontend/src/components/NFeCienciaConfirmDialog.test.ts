@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import NFeCienciaConfirmDialog from './NFeCienciaConfirmDialog.vue'
 import type { NFeCienciaPlan, NFeRow } from '@/types/desktop'
+import { mapNFeRow } from '@/platform/wails/client'
 
 const onDialogOK = vi.fn()
 
@@ -19,7 +20,7 @@ vi.mock('quasar', () => {
 })
 
 function note(chave: string, numero: string, totalValue: number): NFeRow {
-  return {
+  return mapNFeRow({
     ID: `rel-${numero}`,
     DocumentID: `doc-${numero}`,
     ChaveAcesso: chave,
@@ -43,7 +44,7 @@ function note(chave: string, numero: string, totalValue: number): NFeRow {
     TacitlyConfirmed: false,
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
-  }
+  })
 }
 
 const plan: NFeCienciaPlan = {

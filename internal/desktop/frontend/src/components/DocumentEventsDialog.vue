@@ -1,114 +1,99 @@
 <template>
-  <q-dialog v-model="isOpen">
-    <q-card style="min-width: 600px; max-width: 80vw;">
-      <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">Histórico de Eventos</div>
-        <q-space />
-        <q-btn v-close-popup icon="close" flat round dense />
-      </q-card-section>
+  <EventsDialogFrame
+    v-model="open"
+    title="Eventos da NFS-e"
+    :chave-acesso="chaveAcesso"
+    :rows="rows"
+    :columns="columns"
+    :loading="loading"
+    :load="load"
+  >
+    <template #body-cell-tipo="cellProps">
+      <q-td :props="cellProps">
+        <q-badge
+          v-bind="badgeProps(nfseEvent.color(cellProps.row.Type), $q.dark.isActive)"
+          :label="nfseEvent.label(cellProps.row.Type)"
+        />
+      </q-td>
+    </template>
 
-      <q-card-section>
-        <div class="text-caption q-mb-md">
-          Eventos vinculados ao documento (Cancelamentos, Substituições, etc).
-        </div>
+    <template #body-cell-descricao="cellProps">
+      <q-td :props="cellProps" class="event-wrap">
+        {{ cellProps.value }}
+      </q-td>
+    </template>
 
-        <q-table
-          :rows="events"
-          :columns="columns"
-          row-key="ID"
-          :loading="loading"
-          flat
-          bordered
+    <template #body-cell-substituta="cellProps">
+      <q-td :props="cellProps">
+        <span class="text-mono" :title="cellProps.row.ReplacementChaveAcesso">
+          {{ formatChaveAcesso(cellProps.row.ReplacementChaveAcesso) || '—' }}
+        </span>
+      </q-td>
+    </template>
+
+    <template #body-cell-acoes="cellProps">
+      <q-td :props="cellProps">
+        <q-btn
           dense
-          no-data-label="Nenhum evento encontrado."
-        >
-          <template #body-cell-type="cellProps">
-            <q-td :props="cellProps">
-              <q-badge :color="cellProps.row.Type === 'cancelamento' ? 'negative' : (cellProps.row.Type === 'substituicao' ? 'warning' : 'grey')">
-                {{ cellProps.row.Type.toUpperCase() }}
-              </q-badge>
-            </q-td>
-          </template>
-          
-          <template #body-cell-acoes="cellProps">
-            <q-td :props="cellProps" class="q-gutter-x-sm">
-              <q-btn
-                dense
-                flat
-                round
-                color="primary"
-                icon="code"
-                title="Copiar Caminho do XML do Evento"
-                @click="copyXML(cellProps.row.RawXMLPath)"
-              />
-            </q-td>
-          </template>
-        </q-table>
-      </q-card-section>
-
-      <q-card-actions align="right">
-        <q-btn v-close-popup flat label="Fechar" color="primary" />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+          flat
+          round
+          size="sm"
+          color="grey-7"
+          icon="content_copy"
+          title="Copiar caminho do XML do evento"
+          aria-label="Copiar caminho do XML do evento"
+          :disable="!cellProps.row.RawXMLPath"
+          @click="copyXMLPath(cellProps.row.RawXMLPath)"
+        />
+      </q-td>
+    </template>
+  </EventsDialogFrame>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useQuasar } from 'quasar'
-import { errorMessage } from '@/platform/wails/client'
-import { useDocuments } from '@/composables/useDocuments'
+import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar'
+import EventsDialogFrame, { eventDateColumn } from './EventsDialogFrame.vue'
+import { useEventList } from '@/composables/useEventList'
+import { useNotify } from '@/composables/useNotify'
+import { desktopClient } from '@/platform/wails/client'
 import type { DocumentEvent } from '@/types/desktop'
+import { formatChaveAcesso } from '@/utils/formatters'
+import { nfseEvent } from '@/utils/nfseDisplay'
+import { badgeProps } from '@/utils/sefazDisplay'
 
+const open = defineModel<boolean>({ required: true })
+
+// documentId loads the events; chaveAcesso is the key the frame shows.
 const props = defineProps<{
-  modelValue: boolean
   documentId: string
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
+  chaveAcesso: string
 }>()
 
 const $q = useQuasar()
-const { loadEvents: loadDocumentEvents } = useDocuments()
-const isOpen = ref(props.modelValue)
-const loading = ref(false)
-const events = ref<DocumentEvent[]>([])
+const { rows, loading, load } = useEventList(() =>
+  desktopClient.listEventsForDocument(props.documentId)
+)
+const { notifyError, notifyInfo } = useNotify()
 
-const columns = [
-  { name: 'eventAt', label: 'Data', field: (row: DocumentEvent) => row.EventAt ? row.EventAt : '—', align: 'left' as const, sortable: true },
-  { name: 'type', label: 'Tipo', field: 'Type', align: 'left' as const, sortable: true },
-  { name: 'description', label: 'Descrição / Motivo', field: 'Description', align: 'left' as const },
-  { name: 'replacement', label: 'Chave Substituta', field: 'ReplacementChaveAcesso', align: 'left' as const },
-  { name: 'acoes', label: 'Ações', field: () => '', align: 'right' as const },
+const columns: QTableColumn<DocumentEvent>[] = [
+  eventDateColumn,
+  { name: 'tipo', label: 'Tipo', field: 'Type', align: 'left' },
+  {
+    name: 'descricao',
+    label: 'Descrição',
+    field: (row: DocumentEvent) => row.Description || '—',
+    align: 'left',
+  },
+  { name: 'substituta', label: 'Chave substituta', field: 'ReplacementChaveAcesso', align: 'left' },
+  { name: 'acoes', label: 'XML', field: () => '', align: 'center' },
 ]
 
-watch(() => props.modelValue, (newVal) => {
-  isOpen.value = newVal
-  if (newVal && props.documentId) {
-    loadEvents()
-  }
-})
-
-watch(isOpen, (newVal) => {
-  emit('update:modelValue', newVal)
-})
-
-async function loadEvents() {
-  events.value = []
-  loading.value = true
+async function copyXMLPath(path: string) {
   try {
-    const res = await loadDocumentEvents(props.documentId)
-    events.value = res || []
-  } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar eventos: ' + errorMessage(err) })
-  } finally {
-    loading.value = false
+    await copyToClipboard(path)
+    notifyInfo('Caminho do XML do evento copiado.', { timeout: 1500 })
+  } catch (error) {
+    notifyError('Erro ao copiar o caminho do XML', error)
   }
-}
-
-async function copyXML(xmlPath: string) {
-  await navigator.clipboard.writeText(xmlPath)
-  $q.notify({ type: 'info', message: 'Caminho do XML copiado para a área de transferência.' })
 }
 </script>

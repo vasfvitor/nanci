@@ -1,13 +1,14 @@
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { copyToClipboard } from 'quasar'
-import { useNotify } from './useNotify'
+import { copyChave, useNotify } from './useNotify'
 import { WailsClientError } from '@/platform/wails/client'
 
-const notify = vi.fn()
+const notify = vi.hoisted(() => vi.fn())
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({ notify }),
+  Notify: { create: notify },
   copyToClipboard: vi.fn(),
 }))
 
@@ -39,13 +40,12 @@ describe('useNotify', () => {
 
   it('copies access keys without the NFS prefix', async () => {
     vi.mocked(copyToClipboard).mockResolvedValue(undefined)
-    await useNotify().copyChave('NFS123')
+    await copyChave('NFS123')
     expect(copyToClipboard).toHaveBeenCalledWith('123')
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'positive' }))
   })
 
   it('ignores empty keys and reports clipboard failures', async () => {
-    const { copyChave } = useNotify()
     await copyChave('')
     expect(copyToClipboard).not.toHaveBeenCalled()
 
@@ -56,5 +56,36 @@ describe('useNotify', () => {
       type: 'negative',
       message: 'Erro ao copiar chave: negado',
     })
+  })
+
+  it('notifies success, info and warning with extra options', () => {
+    const { notifySuccess, notifyInfo, notifyWarning } = useNotify()
+
+    notifySuccess('Feito.')
+    notifyInfo('Nada mudou.', { timeout: 1000 })
+    notifyWarning('Cuidado.', { caption: 'detalhe' })
+
+    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'positive', message: 'Feito.' },
+      { type: 'info', message: 'Nada mudou.', timeout: 1000 },
+      { type: 'warning', message: 'Cuidado.', caption: 'detalhe' },
+    ])
+  })
+
+  it('reports exports with one wording for every source', () => {
+    const { notifyExported } = useNotify()
+
+    notifyExported({ ExportedCount: 3, OutPath: 'C:/saida/notas.zip' })
+    notifyExported({ ExportedCount: 1, OutPath: 'C:/saida/nota.zip' })
+    notifyExported({ ExportedCount: 2, OutPath: 'C:/saida/danfse.zip' }, 'DANFSe')
+    notifyExported({ ExportedCount: 0, OutPath: '' })
+    notifyExported(null)
+
+    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'positive', message: '3 XMLs exportados para C:/saida/notas.zip.' },
+      { type: 'positive', message: '1 XML exportado para C:/saida/nota.zip.' },
+      { type: 'positive', message: '2 DANFSes exportados para C:/saida/danfse.zip.' },
+      { type: 'info', message: 'Nenhum documento para exportar.' },
+    ])
   })
 })

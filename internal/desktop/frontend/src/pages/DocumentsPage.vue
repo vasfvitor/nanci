@@ -1,610 +1,259 @@
 <template>
   <q-page padding>
-    <div class="row items-center justify-between q-mb-md">
-      <h5 class="q-my-none">NFS-e</h5>
-    </div>
+    <DocumentPageHeader
+      title="NFS-e"
+      :ambiente="ambiente"
+      :status-line="statusLine"
+      :syncing="isSyncing"
+      :sync-disabled="!filter.CNPJ || isResetting"
+      reset-title="Reinicia a sincronização da NFS-e a partir do NSU 0; os documentos ficam"
+      :resetting="isResetting"
+      :reset-disabled="!filter.CNPJ || isSyncing"
+      @sync="syncNFSe"
+      @reset="confirmResetSync"
+    />
 
-    <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
-      <q-select
-v-model="filter.CNPJ" class="col-12 col-md-3" :options="companyOptions" label="Empresa" emit-value
-        map-options outlined dense options-dense :disable="loading" @update:model-value="handleCompanyChange" />
+    <DocumentFilterBar
+      v-model:cnpj="filter.CNPJ"
+      v-model:competence="filter.Competence"
+      v-model:only-unviewed="onlyUnviewed"
+      :company-options="companyOptions"
+      :loading="loading"
+      :exporting="exporting"
+      :export-disabled="scopeRows.length === 0"
+      :mark-viewed-count="unviewedChaves.length"
+      @search="search"
+      @company-change="handleCompanyChange"
+      @mark-viewed="confirmMarkViewed"
+      @export="openExportDialog"
+    >
+      <DocumentFilterSelect v-model="filter.Direction" :options="nfseRoleFilterOptions" label="Papel" :disable="loading" />
+    </DocumentFilterBar>
 
-      <div class="col-12 col-md-3">
-        <CompetencePicker v-model="filter.Competence" :disable="loading" />
-      </div>
-
-      <q-select
-v-model="filter.Direction" class="col-12 col-md-2" :options="directionOptions" label="Direção"
-        emit-value map-options outlined dense options-dense :disable="loading" />
-
-      <q-toggle
-        v-model="filter.OnlyUnread"
-        label="Somente novos"
-        dense
-        class="col-auto q-mr-sm"
-        :disable="loading"
-        @update:model-value="handleCompanyChange"
-      />
-
-      <q-space />
-
-      <q-btn
-color="primary" icon="search" label="Buscar" :disable="loading || !filter.CNPJ" :loading="loading" dense
-        flat @click="search" />
-
-      <q-btn
-        v-if="documents.length > 0 && filter.OnlyUnread"
-        color="warning" icon="done_all" label="Marcar Vistos" :disable="loading" :loading="loading" dense
-        flat @click="markViewed" />
-
-      <q-btn
-        color="secondary" label="Exportar" :disable="exporting || documents.length === 0"
-        :loading="exporting" dense flat @click="openExportDialog" />
-    </div>
+    <StateLegend :sections="NFSE_LEGEND" class="q-mb-md" />
 
     <q-table
-v-model:pagination="pagination" v-model:selected="selected" :rows="filteredDocuments" :columns="columns"
-      row-key="RelationID" selection="multiple"
-      :loading="loading" no-data-label="Nenhum documento encontrado." binary-state-sort flat bordered dense
-      class="full-height documents-table">
+      v-model:pagination="pagination"
+      v-model:selected="selected"
+      :rows="filteredRows"
+      :columns="columns"
+      row-key="ChaveAcesso"
+      selection="multiple"
+      :loading="loading"
+      :no-data-label="filter.CNPJ ? 'Nenhuma NFS-e encontrada.' : 'Selecione uma empresa.'"
+      class="document-table"
+      binary-state-sort
+      flat
+      bordered
+      dense
+    >
       <template #top>
-        <div class="column full-width q-gutter-y-sm">
-          <div class="row items-center justify-between full-width">
-            <div class="text-subtitle1 text-weight-bold">
-              Notas fiscais de serviço
-            </div>
-
-            <q-input
-v-model="filterText" class="document-search-input"
-              placeholder="Filtrar por nome, CNPJ, número ou chave..." outlined dense clearable debounce="300">
-              <template #append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </div>
-
-          <div :class="['column q-gutter-y-xs text-caption q-pa-md rounded-borders full-width custom-border-dashed', $q.dark.isActive ? 'bg-grey-10 text-grey-4' : 'bg-grey-2 text-grey-8']">
-            <div :class="['text-weight-bold q-mb-xs', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
-              Legenda dos Indicadores:
-            </div>
-
-            <div class="row items-center q-gutter-x-sm">
-              <span :class="['text-weight-bold legend-label-width', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">Direção (D):</span>
-
-              <div class="row items-center q-gutter-x-md">
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="primary" label="P" class="text-weight-bold text-mono" dense />
-                  <span>Prestada</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="secondary" label="T" class="text-weight-bold text-mono" dense />
-                  <span>Tomada</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="accent" label="I" class="text-weight-bold text-mono" dense />
-                  <span>Intermediária</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="row items-center q-gutter-x-sm">
-              <span :class="['text-weight-bold legend-label-width', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">Visibilidade (V):</span>
-
-              <div class="row items-center q-gutter-x-md">
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="positive" label="PE" class="text-weight-bold text-mono" dense />
-                  <span>Prestador Exato</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="positive" label="TE" class="text-weight-bold text-mono" dense />
-                  <span>Tomador Exato</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="positive" label="IE" class="text-weight-bold text-mono" dense />
-                  <span>Intermediário Exato</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="warning" label="MR" class="text-weight-bold text-mono text-dark" dense />
-                  <span>Mesmo Raiz</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="row items-center q-gutter-x-sm">
-              <span :class="['text-weight-bold legend-label-width', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">Status (S):</span>
-
-              <div class="row items-center q-gutter-x-md">
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="positive" label="N" class="text-weight-bold text-mono" dense />
-                  <span>Normal</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="negative" label="C" class="text-weight-bold text-mono" dense />
-                  <span>Cancelada</span>
-                </span>
-
-                <span class="row items-center q-gutter-x-xs">
-                  <q-badge color="negative" label="S" class="text-weight-bold text-mono" dense />
-                  <span>Substituída</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DocumentTableTop v-model="filterText" title="Notas fiscais de serviço" />
       </template>
 
-      <template #body="props">
-        <q-tr :props="props">
+      <template #body="rowProps">
+        <q-tr :props="rowProps">
           <q-td auto-width>
-            <q-checkbox v-model="props.selected" dense />
+            <q-checkbox v-model="rowProps.selected" dense />
           </q-td>
-          <q-td v-for="col in props.cols" :key="col.name" :props="props">
-            <template v-if="col.name === 'actions'">
-              <div class="row no-wrap items-center justify-center q-gutter-x-xs">
-                <q-btn
-dense flat round size="sm" :color="props.expand ? 'primary' : 'grey-7'"
-                  :icon="props.expand ? 'expand_less' : 'expand_more'" title="Ver detalhes do serviço e impostos"
-                  aria-label="Ver detalhes do serviço e impostos" @click.stop="props.expand = !props.expand" />
+          <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
+            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="nfse">
+              <RowMenuItem label="Eventos" @click="openEvents(rowProps.row)" />
+              <RowMenuItem
+                label="Exportar XML"
+                :disable="exporting"
+                @click="exportXML(rowProps.row.ChaveAcesso)"
+              />
+              <RowMenuItem
+                label="Exportar DANFSe"
+                :disable="exporting"
+                @click="exportDANFSe(rowProps.row.ChaveAcesso)"
+              />
+            </RowActionsMenu>
 
-                <q-btn
-dense flat round size="sm" color="primary" icon="code" title="Exportar XML Original"
-                  aria-label="Exportar XML Original" :disable="exporting || !props.row.ChaveAcesso"
-                  @click.stop="exportXML(props.row.ChaveAcesso)" />
+            <NumeroCell v-else-if="col.name === 'numero'" :numero="col.value" :viewed-at="rowProps.row.ViewedAt" />
 
-                <q-btn
-dense flat round size="sm" color="negative" icon="picture_as_pdf" title="Exportar DANFSe"
-                  aria-label="Exportar DANFSe" :disable="exporting || !props.row.ChaveAcesso"
-                  @click.stop="exportDanfse(props.row.ChaveAcesso)" />
+            <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
 
-                <q-btn
-v-if="hasEvents(props.row)" dense flat round size="sm" color="warning" icon="history"
-                  title="Ver Eventos" aria-label="Ver Eventos" :disable="!props.row.DocumentID"
-                  @click.stop="openEventsDialog(props.row.DocumentID)" />
-              </div>
-            </template>
+            <PartyCell
+              v-else-if="col.name === 'emitente'"
+              :name="rowProps.row.PrestadorName"
+              :cnpj="rowProps.row.PrestadorCNPJ"
+            />
 
-            <template v-else-if="col.name === 'chaveAcesso'">
-              <div class="row no-wrap items-center q-gutter-x-xs chave-acesso-cell">
-                <span
-:title="props.row.ChaveAcesso"
-                  class="cursor-pointer text-weight-medium ellipsis chave-acesso-text"
-                  @click="copyChave(props.row.ChaveAcesso)">
-                  {{ formatChave(props.row.ChaveAcesso) }}
-                </span>
+            <PartyCell
+              v-else-if="col.name === 'destinatario'"
+              :name="rowProps.row.TomadorName"
+              :cnpj="rowProps.row.TomadorCNPJ"
+            />
 
-                <q-btn
-dense flat round size="xs" color="grey-7" icon="content_copy" title="Copiar Chave Completa"
-                  aria-label="Copiar Chave Completa" :disable="!props.row.ChaveAcesso"
-                  @click.stop="copyChave(props.row.ChaveAcesso)" />
+            <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []" />
 
-                <q-badge v-if="!props.row.ViewedAt" color="warning" text-color="dark" label="Novo" dense class="q-ml-xs text-weight-bold" />
-              </div>
-            </template>
-
-            <template v-else-if="col.name === 'info'">
-              <div class="row no-wrap items-center justify-center q-gutter-x-xs">
-                <q-badge :color="roleColor(props.row.CompanyRole)" class="text-weight-bold text-mono cursor-help">
-                  {{ getRoleAbbreviation(props.row.CompanyRole) }}
-                  <q-tooltip>Direção: {{ roleLabel(props.row.CompanyRole) }}</q-tooltip>
-                </q-badge>
-
-                <q-badge
-:color="visibilityColor(props.row.VisibilityReason)"
-                  class="text-weight-bold text-mono cursor-help">
-                  {{ getVisibilityAbbreviation(props.row.VisibilityReason) }}
-                  <q-tooltip>Visibilidade: {{ visibilityLabel(props.row.VisibilityReason) }}</q-tooltip>
-                </q-badge>
-
-                <q-badge :color="statusColor(props.row.Status)" class="text-weight-bold text-mono cursor-help">
-                  {{ getStatusAbbreviation(props.row.Status) }}
-                  <q-tooltip>Status: {{ getStatusLabel(props.row.Status) }}</q-tooltip>
-                </q-badge>
-              </div>
-            </template>
-
-            <template v-else-if="col.name === 'prestador'">
-              <div class="text-weight-medium">
-                {{ props.row.PrestadorCNPJ ? formatCpfCnpj(props.row.PrestadorCNPJ) : '-' }}
-              </div>
-              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.PrestadorName || ''">
-                {{ props.row.PrestadorName || '-' }}
-              </div>
-            </template>
-
-            <template v-else-if="col.name === 'tomador'">
-              <div class="text-weight-medium">
-                {{ props.row.TomadorCNPJ ? formatCpfCnpj(props.row.TomadorCNPJ) : '-' }}
-              </div>
-              <div class="text-caption text-grey-6 ellipsis partner-name" :title="props.row.TomadorName || ''">
-                {{ props.row.TomadorName || '-' }}
-              </div>
-            </template>
-
-            <template v-else>
-              <span :class="{ 'text-mono': monospaceColumns.has(col.name) }">
-                {{ col.value }}
-              </span>
-            </template>
+            <template v-else>{{ col.value }}</template>
           </q-td>
         </q-tr>
 
-        <q-tr v-if="props.expand" :props="props" :class="['detail-container-borders', $q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
-          <q-td :colspan="props.cols.length + 1" class="document-detail-cell">
-            <div class="document-detail q-pa-md">
-              <div class="row q-col-gutter-md">
-                <div class="col-12 col-md-7">
-                  <div class="text-subtitle2 text-primary q-mb-xs">
-                    Dados do Serviço
-                  </div>
-
-                  <div class="row q-col-gutter-sm text-body2">
-                    <div class="col-6">
-                      <span class="text-weight-bold">Número da NFSe:</span>
-                      {{ props.row.NFSeNumber || 'N/A' }}
-                    </div>
-
-                    <div class="col-6">
-                      <span class="text-weight-bold">Versão Layout:</span>
-                      {{ props.row.LayoutVersion || 'N/A' }}
-                    </div>
-                  </div>
-
-                  <div class="q-mt-sm">
-                    <span class="text-weight-bold text-body2">Descrição do Serviço:</span>
-                    <div
-                      :class="['q-mt-xs q-pa-sm text-body2 shadow-1 rounded-borders service-description custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
-                      {{ props.row.ServiceDescription || 'Sem descrição.' }}
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-12 col-md-5">
-                  <div class="text-subtitle2 text-primary q-mb-xs">
-                    Retenções e Tributos
-                  </div>
-
-                  <div :class="['q-pa-md shadow-1 rounded-borders custom-border-solid', $q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-white text-grey-8']">
-                    <div class="row q-col-gutter-xs text-body2">
-                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">ISS Retido:</div>
-                      <div class="col-6 text-right text-weight-medium">
-                        {{ formatCurrencyCents(props.row.ISSValue) }}
-                      </div>
-
-                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">IRRF:</div>
-                      <div class="col-6 text-right text-weight-medium">
-                        {{ formatCurrencyCents(props.row.IRRFValue) }}
-                      </div>
-
-                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">INSS:</div>
-                      <div class="col-6 text-right text-weight-medium">
-                        {{ formatCurrencyCents(props.row.INSSValue) }}
-                      </div>
-
-                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">PIS:</div>
-                      <div class="col-6 text-right text-weight-medium">
-                        {{ formatCurrencyCents(props.row.PISValue) }}
-                      </div>
-
-                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">COFINS:</div>
-                      <div class="col-6 text-right text-weight-medium">
-                        {{ formatCurrencyCents(props.row.COFINSValue) }}
-                      </div>
-
-                      <div :class="['col-6', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">CSLL:</div>
-                      <div class="col-6 text-right text-weight-medium">
-                        {{ formatCurrencyCents(props.row.CSLLValue) }}
-                      </div>
-
-                      <q-separator class="col-12 q-my-xs" />
-
-                      <div class="col-6 text-weight-bold text-primary">
-                        Total Retenções:
-                      </div>
-                      <div class="col-6 text-right text-weight-bold text-primary">
-                        {{ formatCurrencyCents(props.row.TotalRetentions) }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <DocumentDetailRow v-if="rowProps.expand" :row-props="rowProps">
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-7">
+              <DetailList title="Serviço" :items="servicoItems(rowProps.row)" />
+              <div class="text-weight-medium text-body2 q-mt-sm">Descrição do serviço</div>
+              <div class="text-body2 service-description">
+                {{ rowProps.row.ServiceDescription || '—' }}
               </div>
             </div>
-          </q-td>
-        </q-tr>
+            <DetailList
+              class="col-12 col-md-5"
+              title="Retenções e tributos"
+              :items="retencoesItems(rowProps.row)"
+            />
+
+            <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings" />
+          </div>
+        </DocumentDetailRow>
       </template>
     </q-table>
 
-    <DocumentEventsDialog v-model="showEventsDialog" :document-id="selectedDocumentId" />
+    <DocumentEventsDialog
+      v-model="showEventsDialog"
+      :document-id="eventsDocument.id"
+      :chave-acesso="eventsDocument.chave"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { useQuasar, type QTableColumn } from 'quasar'
-import CompetencePicker from '../components/CompetencePicker.vue'
+import { useQuasar } from 'quasar'
+import ChaveCell from '../components/ChaveCell.vue'
+import DetailList, { type DetailItem } from '../components/DetailList.vue'
+import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentEventsDialog from '../components/DocumentEventsDialog.vue'
-import ExportDialog from '../components/ExportDialog.vue'
+import DocumentFilterBar from '../components/DocumentFilterBar.vue'
+import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
+import DocumentPageHeader from '../components/DocumentPageHeader.vue'
+import DocumentTableTop from '../components/DocumentTableTop.vue'
+import type { ExportChoice } from '../components/ExportDialog.vue'
+import NumeroCell from '../components/NumeroCell.vue'
+import ParseWarnings from '../components/ParseWarnings.vue'
+import PartyCell from '../components/PartyCell.vue'
+import RowActionsMenu from '../components/RowActionsMenu.vue'
+import RowMenuItem from '../components/RowMenuItem.vue'
+import StateBadges from '../components/StateBadges.vue'
+import StateLegend from '../components/StateLegend.vue'
+import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
-import {
-  formatChaveAcesso,
-  formatCpfCnpj,
-  formatCurrencyCents,
-  formatDate,
-  normalizeText,
-} from '@/utils/formatters'
-import {
-  getRoleAbbreviation,
-  getStatusAbbreviation,
-  getStatusLabel,
-  getVisibilityAbbreviation,
-  roleColor,
-  roleLabel,
-  statusColor,
-  visibilityColor,
-  visibilityLabel,
-} from '@/utils/nfseDisplay'
-
-type Direction = '' | 'tomada' | 'prestada' | 'intermediario' | 'none'
-type ExportFormat = 'csv' | 'xlsx' | 'zip'
-
-import type { ExportResult } from '@/types/desktop'
-
-type SelectOption<T = string> = {
-  label: string
-  value: T
-}
-
-type DocumentRow = {
-  RelationID?: string
-  DocumentID?: string
-  ChaveAcesso?: string
-  NFSeNumber?: string
-  PrestadorCNPJ?: string
-  PrestadorName?: string
-  TomadorCNPJ?: string
-  TomadorName?: string
-  Status?: string
-  ServiceDescription?: string
-  CompanyRole?: string
-  VisibilityReason?: string
-  IssueDate?: string | Date | null
-  Competence?: string
-  ServiceValue?: number
-  LayoutVersion?: string
-  ISSValue?: number
-  IRRFValue?: number
-  INSSValue?: number
-  PISValue?: number
-  COFINSValue?: number
-  CSLLValue?: number
-  TotalRetentions?: number
-  ViewedAt?: string | Date | null
-}
-
+import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
+import { documentColumns } from '@/utils/documentColumns'
+import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
+import { nfseRoleFilterOptions, nfseSyncSummary } from '@/utils/nfseDisplay'
+import { NFSE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const route = useRoute()
-const documentsApi = useDocuments()
-const { notifyError, copyChave } = useNotify()
+const nfse = useDocuments()
+const { notifyError, notifySuccess, notifyExported, notifySyncError } = useNotify()
 
 const {
   filter,
-  documents,
-  pagination,
-  companyOptions,
+  selected,
   loading,
   exporting,
-} = documentsApi
+  pagination,
+  filterText,
+  filteredRows,
+  scopeRows,
+  unviewedChaves,
+  badgesByChave,
+  onlyUnviewed,
+  companyOptions,
+  selectedCompany,
+  ambiente,
+  statusLine,
+  isSyncing,
+  isResetting,
+} = nfse
 
 const showEventsDialog = ref(false)
-const selectedDocumentId = ref('')
-const filterText = ref('')
-const selected = ref<DocumentRow[]>([])
+const eventsDocument = ref({ id: '', chave: '' })
 
-const directionOptions: SelectOption<Direction>[] = [
-  { label: 'Todos', value: '' },
-  { label: 'Tomados', value: 'tomada' },
-  { label: 'Prestados', value: 'prestada' },
-  { label: 'Intermediário', value: 'intermediario' },
-  { label: 'Sem papel fiscal', value: 'none' },
+
+const exportFormats = [
+  { label: 'Planilha CSV', value: 'csv' },
+  { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
+  { label: 'XMLs originais (ZIP)', value: 'zip' },
+  { label: 'DANFSes (ZIP)', value: 'danfse-zip' },
 ]
 
-const monospaceColumns = new Set(['issueDate', 'competence', 'value'])
+const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
+  source: 'nfse',
+  selected,
+  scopeRows,
+  unviewedChaves,
+  markViewed: nfse.markViewed,
+  exportFormats,
+  exportList,
+})
 
-const columns: QTableColumn<DocumentRow>[] = [
-  {
-    name: 'actions',
-    label: 'Ações',
-    field: () => '',
-    align: 'center',
-  },
-  {
-    name: 'issueDate',
-    label: 'Emissão',
-    field: 'IssueDate',
-    sortable: true,
-    classes: 'text-no-wrap text-mono',
-    format: (value: string | Date | null | undefined) => formatDate(value ?? null),
-  },
-  {
-    name: 'competence',
-    label: 'Competência',
-    field: 'Competence',
-    sortable: true,
-    classes: 'text-no-wrap text-mono',
-    format: (value: string | undefined) => value || '-',
-  },
-  {
-    name: 'chaveAcesso',
-    label: 'Chave de Acesso',
-    field: 'ChaveAcesso',
-    classes: 'text-mono chave-acesso-column',
-    headerClasses: 'text-mono chave-acesso-column',
-    style: 'width: 1%; max-width: 220px;',
-    headerStyle: 'width: 1%; max-width: 220px;',
-  },
-  {
-    name: 'info',
-    label: 'Info',
-    align: 'center',
-    field: () => '',
-  },
-  {
-    name: 'prestador',
-    label: 'Prestador',
-    field: 'PrestadorCNPJ',
-    sortable: true,
-    classes: 'text-mono',
-  },
-  {
-    name: 'tomador',
-    label: 'Tomador',
-    field: 'TomadorCNPJ',
-    sortable: true,
-    classes: 'text-mono',
-  },
-  {
-    name: 'value',
-    label: 'Valor (R$)',
-    field: 'ServiceValue',
-    classes: 'text-mono',
-    format: (value: number | undefined) => formatCurrencyCents(value ?? 0),
-    sortable: true,
-  },
-]
+// The NFS-e has no série, so the number column says only "Número".
+const columns = documentColumns<DocumentRow>({
+  emitenteLabel: 'Prestador',
+  destinatarioLabel: 'Tomador',
+  numeroLabel: 'Número',
+  numero: (row) => row.NFSeNumber,
+  emitente: (row) => row.PrestadorName || row.PrestadorCNPJ,
+  destinatario: (row) => row.TomadorName || row.TomadorCNPJ,
+  valor: (row) => row.ServiceValue,
+})
 
-const filteredDocuments = computed(() => {
-  const query = normalizeText(filterText.value)
-
-  if (!query) {
-    return documents.value
+function servicoItems(row: DocumentRow): DetailItem[] {
+  const items: DetailItem[] = [
+    { label: 'Número', value: row.NFSeNumber, mono: true },
+    { label: 'Competência', value: formatCompetence(row.Competence), mono: true },
+    { label: 'Versão do layout', value: row.LayoutVersion },
+  ]
+  if (row.IntermediarioCNPJ || row.IntermediarioName) {
+    items.push({
+      label: 'Intermediário',
+      value: row.IntermediarioName,
+      caption: formatCpfCnpj(row.IntermediarioCNPJ),
+    })
   }
+  return items
+}
 
-  return documents.value.filter((document) => {
-    return [
-      document.ChaveAcesso,
-      document.NFSeNumber,
-      document.PrestadorCNPJ,
-      document.PrestadorName,
-      document.TomadorCNPJ,
-      document.TomadorName,
-      document.Status,
-      document.ServiceDescription,
-    ].some((value) => normalizeText(value).includes(query))
-  })
-})
-
-watch(filterText, () => {
-  pagination.value.page = 1
-})
-
-watch(documents, (rows) => {
-  if (selected.value.length === 0) {
-    return
-  }
-
-  const availableKeys = new Set(rows.map((row) => row.RelationID))
-  selected.value = selected.value.filter(
-    (row) => row.RelationID && availableKeys.has(row.RelationID)
-  )
-})
+function retencoesItems(row: DocumentRow): DetailItem[] {
+  return [
+    { label: 'ISS retido', value: formatCurrencyCents(row.ISSValue), mono: true },
+    { label: 'IRRF', value: formatCurrencyCents(row.IRRFValue), mono: true },
+    { label: 'INSS', value: formatCurrencyCents(row.INSSValue), mono: true },
+    { label: 'PIS', value: formatCurrencyCents(row.PISValue), mono: true },
+    { label: 'COFINS', value: formatCurrencyCents(row.COFINSValue), mono: true },
+    { label: 'CSLL', value: formatCurrencyCents(row.CSLLValue), mono: true },
+    { label: 'Total das retenções', value: formatCurrencyCents(row.TotalRetentions), mono: true },
+  ]
+}
 
 onMounted(() => {
   void loadCompanies()
 })
 
-function hasEvents(document: DocumentRow): boolean {
-  return document.Status === 'cancelada' || document.Status === 'substituida'
-}
-
-function formatChave(chave?: string): string {
-  return chave ? formatChaveAcesso(chave) : '-'
-}
-
-function parseRouteQueryParam(param: unknown): string {
+function routeParam(param: unknown): string {
   return Array.isArray(param) ? String(param[0] ?? '') : String(param ?? '')
 }
 
-function applyRouteFilters() {
-  const cnpjFromRoute = parseRouteQueryParam(route.query['cnpj'])
-  const competenceFromRoute = parseRouteQueryParam(route.query['competence'])
-
-  if (cnpjFromRoute) {
-    const matchingCompany = companyOptions.value.find((option) => option.value === cnpjFromRoute)
-
-    if (matchingCompany) {
-      filter.value.CNPJ = matchingCompany.value
-    }
-  }
-
-  if (/^\d{4}-\d{2}$/.test(competenceFromRoute)) {
-    filter.value.Competence = competenceFromRoute
-  }
-}
-
-function selectDefaultCompany() {
-  if (filter.value.CNPJ || companyOptions.value.length === 0) {
-    return
-  }
-
-  const [firstCompany] = companyOptions.value
-
-  if (!firstCompany) {
-    return
-  }
-
-  filter.value.CNPJ = firstCompany.value
-}
-
-function notifyExportSuccess(label: string, result: ExportResult | null | undefined) {
-  if (!result) return
-
-  if (result.ExportedCount === 0) {
-    $q.notify({
-      type: 'info',
-      message: 'Nenhum documento novo encontrado para exportação.',
-    })
-    return
-  }
-
-  if (!result.OutPath) return
-
-  const msg = result.Incremental
-    ? `${label} incremental exportado com sucesso para ${result.OutPath} (${result.ExportedCount} documentos)`
-    : `${label} exportado com sucesso para ${result.OutPath}`
-
-  $q.notify({
-    type: 'positive',
-    message: msg,
-  })
-}
-
-async function handleCompanyChange() {
-  if (!filter.value.CNPJ) {
-    return
-  }
-
-  await search()
-}
-
+// loadCompanies opens the page on the company and competência of the route
+// (?cnpj=&competence=, from the Empresas page), else on the company already
+// picked, else on the first one.
 async function loadCompanies() {
+  const competence = routeParam(route.query['competence'])
+  if (/^\d{4}-\d{2}$/.test(competence)) {
+    filter.value.Competence = competence
+  }
   try {
-    await documentsApi.loadCompanies()
-
-    if (companyOptions.value.length === 0) {
-      return
-    }
-
-    applyRouteFilters()
-    selectDefaultCompany()
-
+    await nfse.loadCompanies(routeParam(route.query['cnpj']))
     if (filter.value.CNPJ) {
       await search()
     }
@@ -613,200 +262,96 @@ async function loadCompanies() {
   }
 }
 
-async function search() {
-  if (!filter.value.CNPJ) {
-    return
-  }
+async function handleCompanyChange() {
+  selected.value = []
+  if (!filter.value.CNPJ) return
+  await search()
+}
 
+async function search() {
   try {
-    await documentsApi.search()
+    await nfse.search()
   } catch (error) {
-    notifyError('Erro ao buscar documentos', error)
+    notifyError('Erro ao buscar NFS-e', error)
   }
 }
 
-function openExportDialog() {
+async function syncNFSe() {
+  try {
+    const result = await nfse.syncNFSe()
+    if (result) notifySuccess(nfseSyncSummary(result))
+  } catch (error) {
+    notifySyncError('Erro na sincronização da NFS-e', error)
+  }
+}
+
+// confirmResetSync asks before restarting the NFS-e sync; it moves only the
+// cursor, and the confirmation says so.
+function confirmResetSync() {
   $q.dialog({
-    component: ExportDialog,
-    componentProps: {
-      selectedCount: selected.value.length
-    }
-  }).onOk(async (data: { format: string; incremental: boolean }) => {
-    const { format, incremental } = data
-
-    // Scenario 1: Items were selected manually
-    if (selected.value.length > 0) {
-      const chaves = selected.value.map(d => d.ChaveAcesso).filter(Boolean) as string[]
-      if (chaves.length === 0) { 
-        notifyError('Erro ao exportar', 'Nenhum documento selecionado possui chave de acesso válida')
-        return 
-      }
-      try {
-        let result: ExportResult | undefined | null
-        if (format === 'danfse-zip') {
-          result = await documentsApi.exportDANFSeZIP(false, '', chaves)
-        } else {
-          result = await documentsApi.exportDocuments(format as ExportFormat, false, '', chaves)
-        }
-        notifyExportSuccess(`Arquivo gerado`, result)
-        selected.value = [] // clear selection
-      } catch (error) {
-        notifyError('Erro ao exportar', error)
-      }
-      return
-    }
-
-    // Scenario 2: No specific items selected, use incremental and filters
-    try {
-      let result: ExportResult | undefined | null
-      if (format === 'danfse-zip') {
-        result = await documentsApi.exportDANFSeZIP(incremental)
-      } else {
-        result = await documentsApi.exportDocuments(format as ExportFormat, incremental)
-      }
-      notifyExportSuccess(`Arquivo gerado`, result)
-      
-      if (incremental && filter.value.OnlyUnread) {
-        await search()
-      }
-    } catch (error) {
-      notifyError('Erro ao exportar', error)
-    }
+    title: 'Redefinir NFS-e',
+    message: 'Reinicia a sincronização da NFS-e a partir do NSU 0. Os documentos já baixados ficam.',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Redefinir', color: 'negative' },
+  }).onOk(() => {
+    void resetSync()
   })
 }
 
-async function exportDanfse(chaveAcesso?: string) {
-  if (!chaveAcesso) {
-    return
-  }
-
+async function resetSync() {
+  const name = selectedCompany.value?.Name ?? ''
   try {
-    const result = await documentsApi.exportDANFSe(chaveAcesso)
-    notifyExportSuccess('DANFSe', result)
+    if (!(await nfse.resetSync())) return
+    notifySuccess(
+      name ? `Sincronização da NFS-e redefinida para ${name}.` : 'Sincronização da NFS-e redefinida.'
+    )
   } catch (error) {
-    notifyError('Erro ao exportar DANFSe', error)
+    notifyError('Erro ao redefinir a sincronização da NFS-e', error)
   }
 }
 
-async function exportXML(chaveAcesso?: string) {
-  if (!chaveAcesso) {
-    return
-  }
+function openEvents(row: DocumentRow) {
+  eventsDocument.value = { id: row.DocumentID, chave: row.ChaveAcesso }
+  showEventsDialog.value = true
+}
 
+async function exportXML(chaveAcesso: string) {
   try {
-    const result = await documentsApi.exportXML(chaveAcesso)
-    notifyExportSuccess('XML', result)
+    notifyExported(await nfse.exportXML(chaveAcesso), 'XML')
   } catch (error) {
     notifyError('Erro ao exportar XML', error)
   }
 }
 
-async function markViewed() {
-  $q.dialog({
-    title: 'Marcar Vistos',
-    message: 'Tem certeza que deseja marcar os documentos exibidos como vistos?',
-    cancel: true,
-    persistent: true
-  }).onOk(async () => {
-    try {
-      const count = await documentsApi.markDocumentsViewed()
-      $q.notify({
-        type: 'positive',
-        message: `${count} documentos marcados como vistos.`,
-      })
-    } catch (error) {
-      notifyError('Erro ao marcar documentos como vistos', error)
-    }
-  })
+async function exportDANFSe(chaveAcesso: string) {
+  try {
+    notifyExported(await nfse.exportDANFSe(chaveAcesso), 'DANFSe')
+  } catch (error) {
+    notifyError('Erro ao exportar DANFSe', error)
+  }
 }
 
-function openEventsDialog(documentId?: string) {
-  if (!documentId) {
-    return
+async function exportList(chaves: string[], choice: ExportChoice) {
+  try {
+    let result: ExportResult | null
+    let noun: string
+    if (choice.format === 'danfse-zip') {
+      result = await nfse.exportDANFSeZIP(chaves, choice)
+      noun = 'DANFSe'
+    } else {
+      result = await nfse.exportDocuments(choice.format as ExportFormat, chaves, choice)
+      noun = choice.format === 'zip' ? 'XML' : 'documento'
+    }
+    notifyExported(result, noun)
+  } catch (error) {
+    notifyError('Erro ao exportar NFS-e', error)
   }
-
-  selectedDocumentId.value = documentId
-  showEventsDialog.value = true
 }
 </script>
 
 <style scoped>
-:deep(.q-table) {
-  table-layout: auto;
-}
-
-/* Values stay on one line and the table scrolls sideways; partner names are
-   cut with an ellipsis and only the expanded details wrap. */
-.documents-table :deep(td) {
-  white-space: nowrap;
-}
-
-.documents-table :deep(td.document-detail-cell) {
-  padding: 0;
-  white-space: normal;
-}
-
-/* The expanded details span every column, which is wider than the visible
-   table when it scrolls sideways. Size them to the scroll area (100cqw) and
-   pin them to its left edge so they wrap inside what the user sees. */
-.documents-table :deep(.q-table__middle) {
-  container-type: inline-size;
-}
-
-.document-detail {
-  position: sticky;
-  left: 0;
-  width: 100cqw;
-  overflow-wrap: anywhere;
-}
-
-.document-search-input {
-  width: 350px;
-  max-width: 100%;
-}
-
-.custom-border-dashed {
-  border: 1px dashed var(--q-separator-color);
-}
-
-.custom-border-solid {
-  border: 1px solid var(--q-separator-color);
-}
-
-.legend-label-width {
-  min-width: 100px;
-}
-
-/* About the width of the formatted CNPJ above it, so the name does not widen
-   the column. The full name is in the title tooltip. */
-.partner-name {
-  max-width: 130px;
-}
-
 .service-description {
   white-space: pre-wrap;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.detail-container-borders {
-  border-top: 1px solid var(--q-separator-color);
-  border-bottom: 1px solid var(--q-separator-color);
-}
-
-:deep(.chave-acesso-column) {
-  width: 1%;
-  max-width: 220px;
-}
-
-.chave-acesso-cell {
-  width: fit-content;
-  max-width: 220px;
-}
-
-.chave-acesso-text {
-  display: inline-block;
-  max-width: 170px;
-  vertical-align: middle;
 }
 </style>

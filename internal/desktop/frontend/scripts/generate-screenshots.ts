@@ -14,6 +14,9 @@ type ScreenshotSpec = {
   ready?: string
   setup?: (page: Page) => Promise<void>
   nfeStatus?: Record<string, unknown>
+  // fitsWidth asserts that the document table fits the 1280px window without
+  // a horizontal scroll bar.
+  fitsWidth?: boolean
 }
 
 declare global {
@@ -199,6 +202,7 @@ const mockDocuments = [
     LastSeenNSU: 10,
     FirstSyncedAt: '2026-06-18T10:05:00Z',
     LastSyncedAt: '2026-06-18T10:05:00Z',
+    ViewedAt: '2026-06-18T11:00:00Z',
   },
   {
     ID: 'doc-2',
@@ -275,6 +279,7 @@ const mockDocuments = [
     LastSeenNSU: 45,
     FirstSyncedAt: '2026-06-15T09:10:00Z',
     LastSyncedAt: '2026-06-15T09:10:00Z',
+    ViewedAt: '2026-06-16T08:30:00Z',
   },
   {
     ID: 'doc-4',
@@ -331,27 +336,19 @@ const syncLogs = [
 const mockEvents = [
   {
     ID: 'ev-1',
-    Type: 'NFSE',
-    EventAt: '2026-06-14T14:20:00Z',
-    ReplacementChaveAcesso: '',
-    Description: 'Emissão Normal',
-    RawXMLPath: 'C:\\nanci\\xmls\\doc-4.xml',
+    Type: 'substituicao',
+    EventAt: '2026-06-14T16:30:00Z',
+    ReplacementChaveAcesso: '35260611222333000144560010000088891002003008',
+    Description: 'Nota fiscal substituída pela de número 8889.',
+    RawXMLPath: 'C:\\nanci\\xmls\\doc-4-subst.xml',
   },
   {
     ID: 'ev-2',
-    Type: 'CANC',
+    Type: 'cancelamento',
     EventAt: '2026-06-14T15:00:00Z',
     ReplacementChaveAcesso: '',
     Description: 'Cancelamento por erro de valores na prestação do serviço.',
     RawXMLPath: 'C:\\nanci\\xmls\\doc-4-canc.xml',
-  },
-  {
-    ID: 'ev-3',
-    Type: 'SUBST',
-    EventAt: '2026-06-14T16:30:00Z',
-    ReplacementChaveAcesso: '35260611222333000144560010000088891002003008',
-    Description: 'Nota fiscal substituída pela de final 8889.',
-    RawXMLPath: 'C:\\nanci\\xmls\\doc-4-subst.xml',
   },
 ]
 
@@ -386,7 +383,10 @@ function mockNFeRow<T extends MockNFeFields>(fields: T) {
     Serie: '1',
     AuthorizedAt: fields.IssueDate,
     TpNF: '1',
+    TpAmb: '1',
+    NatOp: 'Venda de mercadoria adquirida de terceiros',
     EmitenteIE: '',
+    EmitenteUF: 'SP',
     DestinatarioCNPJ: '12345678000100',
     DestinatarioName: 'ACME Tecnologia e Serviços LTDA',
     Situacao: 'autorizada',
@@ -395,10 +395,16 @@ function mockNFeRow<T extends MockNFeFields>(fields: T) {
     ManifestacaoAt: null,
     CienciaDue: null,
     ConclusiveDue: null,
+    ICMSValue: 0,
+    IPIValue: 0,
+    LayoutVersion: '4.00',
+    ParseWarnings: [] as string[],
     CompanyRole: 'destinatario',
     EventCount: 0,
     FirstSyncedAt: daysFromNow(-1),
     LastSyncedAt: daysFromNow(-1),
+    // Every note was seen but the new resumos and the note the company issued.
+    ViewedAt: daysFromNow(-1) as string | null,
     DaysLeft: null,
     CienciaDaysLeft: null,
     TacitlyConfirmed: false,
@@ -417,7 +423,10 @@ const mockNFeRows = [
     Protocolo: '135260004512001',
     EmitenteCNPJ: '11222333000181',
     EmitenteName: 'Distribuidora Fictícia de Peças Ltda',
+    EmitenteIE: '110042490114',
     TotalValue: 1248000,
+    ICMSValue: 149760,
+    IPIValue: 62400,
     Manifestacao: 'confirmada',
     ManifestacaoAt: daysFromNow(-10),
     EventCount: 2,
@@ -432,8 +441,12 @@ const mockNFeRows = [
     Protocolo: '131260018736002',
     EmitenteCNPJ: '27184593000140',
     EmitenteName: 'Metalúrgica Horizonte Ltda',
+    EmitenteUF: 'MG',
     TotalValue: 3875090,
     Completeness: 'resumo',
+    NatOp: '',
+    LayoutVersion: '',
+    ViewedAt: null,
     CienciaDue: daysFromNow(7),
     CienciaDaysLeft: 7,
   }),
@@ -446,8 +459,12 @@ const mockNFeRows = [
     Protocolo: '141260000927003',
     EmitenteCNPJ: '50361928000170',
     EmitenteName: 'Papelaria Aurora Comércio Ltda',
+    EmitenteUF: 'PR',
     TotalValue: 64350,
     Completeness: 'resumo',
+    NatOp: '',
+    LayoutVersion: '',
+    ViewedAt: null,
     CienciaDue: daysFromNow(2),
     CienciaDaysLeft: 2,
   }),
@@ -459,7 +476,10 @@ const mockNFeRows = [
     Protocolo: '133260052210004',
     EmitenteCNPJ: '38470215000149',
     EmitenteName: 'Atacadista Litoral Fluminense S.A.',
+    EmitenteIE: '86432157',
+    EmitenteUF: 'RJ',
     TotalValue: 921740,
+    ICMSValue: 110609,
     Manifestacao: 'ciencia',
     ManifestacaoAt: daysFromNow(-155),
     ConclusiveDue: daysFromNow(25),
@@ -477,8 +497,12 @@ const mockNFeRows = [
     EmitenteName: 'ACME Tecnologia e Serviços LTDA',
     DestinatarioCNPJ: '45091726000115',
     DestinatarioName: 'Agropecuária Campo Verde Ltda',
+    NatOp: 'Venda de produção do estabelecimento',
+    EmitenteIE: '114851203119',
     TotalValue: 215000,
+    ICMSValue: 38700,
     CompanyRole: 'emitente',
+    ViewedAt: null,
     CienciaBlockReason: 'a empresa não é a destinatária',
     ConclusiveBlockReason: 'a empresa não é a destinatária',
   }),
@@ -490,9 +514,12 @@ const mockNFeRows = [
     Protocolo: '142260007741006',
     EmitenteCNPJ: '61904387000103',
     EmitenteName: 'Comercial Serra Azul Ltda',
+    EmitenteUF: 'SC',
     TotalValue: 158990,
     Situacao: 'cancelada',
     Completeness: 'resumo',
+    NatOp: '',
+    LayoutVersion: '',
     EventCount: 1,
     CienciaBlockReason: 'NF-e cancelada',
     ConclusiveBlockReason: 'NF-e cancelada',
@@ -505,7 +532,11 @@ const mockNFeRows = [
     Protocolo: '150260003305007',
     EmitenteCNPJ: '45091726000115',
     EmitenteName: 'Agropecuária Campo Verde Ltda',
+    EmitenteIE: '283746591',
+    EmitenteUF: 'MS',
+    NatOp: 'Venda de produção do estabelecimento',
     TotalValue: 4730000,
+    ICMSValue: 567600,
     Manifestacao: 'ciencia',
     ManifestacaoAt: daysFromNow(-90),
     ConclusiveDue: daysFromNow(90),
@@ -646,6 +677,7 @@ function mockCTeRow<T extends MockCTeFields>(fields: T) {
     LastSyncedAt: daysFromNow(-1),
     LayoutVersion: '4.00',
     ParseWarnings: [] as string[],
+    ViewedAt: daysFromNow(-1) as string | null,
     ...fields,
   }
 }
@@ -689,6 +721,7 @@ const mockCTeRows = [
     ProdutoPredominante: 'Equipamentos de informática',
     NFeChaves: ['35260912345678000100550010000003181157930460'],
     Papeis: ['tomador', 'remetente'],
+    ViewedAt: null,
   }),
   mockCTeRow({
     ID: 'cte-3',
@@ -751,6 +784,7 @@ const mockCTeRows = [
     ProdutoPredominante: 'Material de escritório',
     NFeChaves: ['41260950361928000170550020000009271361025847'],
     ParseWarnings: ['tomador sem inscrição estadual no XML'],
+    ViewedAt: null,
   }),
 ]
 
@@ -882,29 +916,29 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Notas fiscais de serviço' },
-  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Notas fiscais de serviço' },
+  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Agência de Publicidade Marketing S/A', fitsWidth: true },
+  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Agência de Publicidade Marketing S/A', fitsWidth: true },
 
   {
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'light',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Abre a expansão da primeira nota fiscal
-      await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
-      await page.waitForTimeout(500) // espera a animação de expansão
+      await page.locator('button[aria-label="Ver detalhes da NFS-e"]').first().click()
+      await page.waitForSelector('text=Retenções e tributos', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
     },
   },
   {
     route: '/documents',
     name: 'detalhes-documento',
     theme: 'dark',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Abre a expansão da primeira nota fiscal
-      await page.click('button[aria-label="Ver detalhes do serviço e impostos"]')
-      await page.waitForTimeout(500) // espera a animação de expansão
+      await page.locator('button[aria-label="Ver detalhes da NFS-e"]').first().click()
+      await page.waitForSelector('text=Retenções e tributos', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
     },
   },
 
@@ -912,32 +946,24 @@ const screenshots: ScreenshotSpec[] = [
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'light',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
-      // Pode ser o primeiro botão de histórico que encontrar
-      const btn = page.locator('button[aria-label="Ver Eventos"]').first()
-      if (await btn.isVisible()) {
-        await btn.click()
-        await page.waitForSelector('.q-dialog', { timeout: 3000 })
-        await page.waitForSelector('text="Emissão Normal"', { timeout: 3000 })
-      }
+      // A NFS-e 8888, substituída, tem os eventos da mock
+      await page.locator('tbody tr', { hasText: '8888' }).locator('button[aria-label="Ações da NFS-e"]').click()
+      await page.click('.q-menu >> text=Eventos')
+      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', { timeout: 3000 })
     },
   },
   {
     route: '/documents',
     name: 'dialogo-eventos-documento',
     theme: 'dark',
-    ready: 'text=Notas fiscais de serviço',
+    ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
-      // Clica no botão de eventos da quarta nota (a que tem eventos na mock, status 'substituida')
-      // Pode ser o primeiro botão de histórico que encontrar
-      const btn = page.locator('button[aria-label="Ver Eventos"]').first()
-      if (await btn.isVisible()) {
-        await btn.click()
-        await page.waitForSelector('.q-dialog', { timeout: 3000 })
-        await page.waitForSelector('text="Emissão Normal"', { timeout: 3000 })
-      }
+      // A NFS-e 8888, substituída, tem os eventos da mock
+      await page.locator('tbody tr', { hasText: '8888' }).locator('button[aria-label="Ações da NFS-e"]').click()
+      await page.click('.q-menu >> text=Eventos')
+      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', { timeout: 3000 })
     },
   },
 
@@ -979,8 +1005,32 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/nfe', name: 'nfe', theme: 'light', ready: 'text=Metalúrgica Horizonte Ltda' },
-  { route: '/nfe', name: 'nfe', theme: 'dark', ready: 'text=Metalúrgica Horizonte Ltda' },
+  { route: '/nfe', name: 'nfe', theme: 'light', ready: 'text=Metalúrgica Horizonte Ltda', fitsWidth: true },
+  { route: '/nfe', name: 'nfe', theme: 'dark', ready: 'text=Metalúrgica Horizonte Ltda', fitsWidth: true },
+
+  {
+    route: '/nfe',
+    name: 'detalhes-nfe',
+    theme: 'light',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    setup: async (page) => {
+      // A segunda linha é uma nota completa, com natureza da operação, IE e impostos
+      await page.locator('tbody tr', { hasText: '000.000.318' }).locator('button[aria-label="Ver detalhes da NF-e"]').click()
+      await page.waitForSelector('text=Natureza da operação', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
+    },
+  },
+  {
+    route: '/nfe',
+    name: 'detalhes-nfe',
+    theme: 'dark',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    setup: async (page) => {
+      await page.locator('tbody tr', { hasText: '000.000.318' }).locator('button[aria-label="Ver detalhes da NF-e"]').click()
+      await page.waitForSelector('text=Natureza da operação', { timeout: 3000 })
+      await page.waitForTimeout(300) // espera a animação da expansão
+    },
+  },
 
   {
     route: '/nfe',
@@ -1029,8 +1079,8 @@ const screenshots: ScreenshotSpec[] = [
     nfeStatus: mockNFeBlockedStatus,
   },
 
-  { route: '/cte', name: 'cte', theme: 'light', ready: 'text=Expresso Litoral Cargas Ltda' },
-  { route: '/cte', name: 'cte', theme: 'dark', ready: 'text=Expresso Litoral Cargas Ltda' },
+  { route: '/cte', name: 'cte', theme: 'light', ready: 'text=Expresso Litoral Cargas Ltda', fitsWidth: true },
+  { route: '/cte', name: 'cte', theme: 'dark', ready: 'text=Expresso Litoral Cargas Ltda', fitsWidth: true },
 
   {
     route: '/cte',
@@ -1091,6 +1141,10 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             ExportXML: async () => ({ OutPath: 'C:\\exports\\nfs.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
             ExportLogs: async () => undefined,
             CountPendingExports: async () => 0,
+            GetBuildInfo: async () => ({ version: 'v0.4.0', commit: '296a3d9', date: '2026-09-30T12:00:00Z' }),
+            GetDataDirectory: async () => 'C:\\Users\\usuario\\AppData\\Roaming\\nanci',
+            OpenDataDirectory: async () => undefined,
+            OpenLogsDirectory: async () => undefined,
             ExportNFeXML: async () => ({ OutPath: 'C:\\exports\\nfe.xml', ExportedCount: 1, SkippedResumos: 0 }),
             ExportNFeZIP: async () => ({ OutPath: 'C:\\exports\\nfe.zip', ExportedCount: 4, SkippedResumos: 3 }),
             ListNFe: async () => nfe.rows,
@@ -1109,7 +1163,9 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             PullCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, Status: 'success' }),
             ResetCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, CompanyDocuments: 5, Documents: 5, Events: 3, ExportMarks: 0 }),
             StatusCTe: async () => cte.status,
+            MarkCTeViewed: async () => 0,
             MarkDocumentsViewed: async () => 0,
+            MarkNFeViewed: async () => 0,
             ListCompanies: async () => companies,
             ListCredentials: async () => credentials,
             ListDocuments: async () => documents,
@@ -1270,6 +1326,29 @@ async function waitForApp(page: Page, spec: ScreenshotSpec) {
   await page.waitForTimeout(150)
 }
 
+// widthFailures collects the screenshots whose document table scrolls
+// sideways; main fails the run when there is any.
+const widthFailures: string[] = []
+
+// checkTableWidth fails the spec when the document table is wider than its
+// scroll area at the 1280px window.
+async function checkTableWidth(page: Page, spec: ScreenshotSpec) {
+  const size = await page.evaluate(() => {
+    const middle = document.querySelector('.document-table .q-table__middle')
+    return middle ? { scrollWidth: middle.scrollWidth, clientWidth: middle.clientWidth } : null
+  })
+  const label = `${spec.name}-${spec.theme}`
+  if (!size) {
+    widthFailures.push(`${label}: .document-table .q-table__middle not found`)
+  } else if (size.scrollWidth > size.clientWidth) {
+    widthFailures.push(
+      `${label}: the table is ${size.scrollWidth}px wide in a ${size.clientWidth}px scroll area`
+    )
+  } else {
+    console.log(`fits ${label}: ${size.scrollWidth}px <= ${size.clientWidth}px`)
+  }
+}
+
 async function capture(browser: Browser, spec: ScreenshotSpec) {
   const { context, page } = await createPage(browser, spec)
 
@@ -1295,6 +1374,10 @@ async function capture(browser: Browser, spec: ScreenshotSpec) {
     if (spec.setup) {
       await spec.setup(page)
       await page.waitForTimeout(150)
+    }
+
+    if (spec.fitsWidth) {
+      await checkTableWidth(page, spec)
     }
 
     const outPath = path.join(screenshotsDir, `${spec.name}-${spec.theme}.png`)
@@ -1329,12 +1412,24 @@ async function main() {
 
     browser = await chromium.launch({ headless: true })
 
-    for (const spec of screenshots) {
+    // Routes given on the command line ("pnpm run screenshots cte nfe") limit
+    // the run to their screenshots; the leading slash is optional.
+    const routes = process.argv.slice(2).map((route) => `/${route.replace(/^\/+/, '')}`)
+    const specs =
+      routes.length > 0 ? screenshots.filter((spec) => routes.includes(spec.route)) : screenshots
+    if (specs.length === 0) {
+      throw new Error(`no screenshot for the routes ${routes.join(', ')}`)
+    }
+    for (const spec of specs) {
       await capture(browser, spec)
     }
   } finally {
     await browser?.close()
     await server?.close()
+  }
+
+  if (widthFailures.length > 0) {
+    throw new Error(`document tables wider than the 1280px window:\n${widthFailures.join('\n')}`)
   }
 }
 

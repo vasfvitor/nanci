@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
@@ -91,45 +90,9 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
-		WHERE cd.company_id = ?
 	`
-	args := []any{string(companyID)}
-
-	if filter.Competence != "" {
-		query += " AND d.competence = ?"
-		args = append(args, filter.Competence)
-	}
-	if filter.Direction != "" {
-		query += " AND cd.company_role = ?"
-		args = append(args, filter.Direction)
-	}
-	if filter.Status != "" {
-		query += " AND d.status = ?"
-		args = append(args, filter.Status)
-	}
-	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
-		args = append(args, *filter.FromNSU)
-	}
-	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
-		args = append(args, *filter.ToNSU)
-	}
-	if filter.OnlyUnread {
-		query += " AND cd.viewed_at IS NULL"
-	}
-	if filter.IssueDateGTE != nil {
-		query += " AND d.issue_date >= ?"
-		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
-	}
-	if len(filter.ChavesAcesso) > 0 {
-		placeholders := make([]string, len(filter.ChavesAcesso))
-		for i, chave := range filter.ChavesAcesso {
-			placeholders[i] = "?"
-			args = append(args, chave)
-		}
-		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ",")) // #nosec G202 -- joins only "?" placeholders; values go through args.
-	}
+	where, args := buildNFSeFilterSQL(companyID, filter)
+	query += " WHERE " + where // #nosec G202 -- constant conditions with ? placeholders from buildNFSeFilterSQL.
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -250,6 +213,52 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	return events, nil
 }
 
+// pendingExportCondition keeps the rows never exported with the joined
+// kind, or whose raw hash changed since.
+const pendingExportCondition = " AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)"
+
+// buildNFSeFilterSQL returns the WHERE conditions for filter over the
+// aliases cd (company_documents) and d (documents), and their arguments.
+// Limit is left to the caller.
+func buildNFSeFilterSQL(companyID dfe.CompanyID, filter nfse.DocumentFilter) (string, []any) {
+	where := "cd.company_id = ?"
+	args := []any{string(companyID)}
+
+	if filter.Competence != "" {
+		where += " AND d.competence = ?"
+		args = append(args, filter.Competence)
+	}
+	if filter.Direction != "" {
+		where += " AND cd.company_role = ?"
+		args = append(args, filter.Direction)
+	}
+	if filter.Status != "" {
+		where += " AND d.status = ?"
+		args = append(args, filter.Status)
+	}
+	if filter.FromNSU != nil {
+		where += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
+		args = append(args, *filter.FromNSU)
+	}
+	if filter.ToNSU != nil {
+		where += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
+		args = append(args, *filter.ToNSU)
+	}
+	if filter.OnlyUnread {
+		where += " AND cd.viewed_at IS NULL"
+	}
+	if filter.IssueDateGTE != nil {
+		where += " AND d.issue_date >= ?"
+		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
+	}
+	if len(filter.ChavesAcesso) > 0 {
+		where += " AND d.chave_acesso IN (SELECT value FROM json_each(?))"
+		chaves, _ := json.Marshal(filter.ChavesAcesso) // a []string always marshals
+		args = append(args, string(chaves))
+	}
+	return where, args
+}
+
 func hydrateCompanyDocument(d *nfse.CompanyDocument, issueDate, createdAt, updatedAt string, parseWarnings sql.NullString, firstSeen, lastSeen sql.NullInt64, firstSyncedAt, lastSyncedAt string, viewedAt sql.NullString) error {
 	var err error
 	d.IssueDate, err = parseRequiredTime("document issue_date", issueDate)
@@ -311,7 +320,6 @@ func decodeWarnings(value sql.NullString, dst *[]string) error {
 
 // ListPendingExportDocuments retrieves documents that have not been exported for the given kind, or where the hash changed.
 func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter, kind string) ([]nfse.CompanyDocument, error) {
-	// Re-use ListCompanyDocuments logic but add a JOIN/WHERE for pending export
 	query := `
 		SELECT
 			d.id, d.chave_acesso, d.issue_date, d.competence,
@@ -326,45 +334,10 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
-		WHERE cd.company_id = ? AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)
 	`
-	args := []any{kind, string(companyID)}
-
-	if filter.Competence != "" {
-		query += " AND d.competence = ?"
-		args = append(args, filter.Competence)
-	}
-	if filter.Direction != "" {
-		query += " AND cd.company_role = ?"
-		args = append(args, filter.Direction)
-	}
-	if filter.Status != "" {
-		query += " AND d.status = ?"
-		args = append(args, filter.Status)
-	}
-	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
-		args = append(args, *filter.FromNSU)
-	}
-	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
-		args = append(args, *filter.ToNSU)
-	}
-	if filter.OnlyUnread {
-		query += " AND cd.viewed_at IS NULL"
-	}
-	if filter.IssueDateGTE != nil {
-		query += " AND d.issue_date >= ?"
-		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
-	}
-	if len(filter.ChavesAcesso) > 0 {
-		placeholders := make([]string, len(filter.ChavesAcesso))
-		for i, chave := range filter.ChavesAcesso {
-			placeholders[i] = "?"
-			args = append(args, chave)
-		}
-		query += fmt.Sprintf(" AND d.chave_acesso IN (%s)", strings.Join(placeholders, ",")) // #nosec G202 -- joins only "?" placeholders; values go through args.
-	}
+	where, whereArgs := buildNFSeFilterSQL(companyID, filter)
+	query += " WHERE " + where + pendingExportCondition // #nosec G202 -- constant conditions with ? placeholders from buildNFSeFilterSQL.
+	args := append([]any{kind}, whereArgs...)
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -422,37 +395,10 @@ func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, co
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
-		WHERE cd.company_id = ? AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)
 	`
-	args := []any{kind, string(companyID)}
-
-	if filter.Competence != "" {
-		query += " AND d.competence = ?"
-		args = append(args, filter.Competence)
-	}
-	if filter.Direction != "" {
-		query += " AND cd.company_role = ?"
-		args = append(args, filter.Direction)
-	}
-	if filter.Status != "" {
-		query += " AND d.status = ?"
-		args = append(args, filter.Status)
-	}
-	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
-		args = append(args, *filter.FromNSU)
-	}
-	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
-		args = append(args, *filter.ToNSU)
-	}
-	if filter.OnlyUnread {
-		query += " AND cd.viewed_at IS NULL"
-	}
-	if filter.IssueDateGTE != nil {
-		query += " AND d.issue_date >= ?"
-		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
-	}
+	where, whereArgs := buildNFSeFilterSQL(companyID, filter)
+	query += " WHERE " + where + pendingExportCondition // #nosec G202 -- constant conditions with ? placeholders from buildNFSeFilterSQL.
+	args := append([]any{kind}, whereArgs...)
 
 	var count int
 	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
@@ -494,56 +440,35 @@ func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyI
 	return tx.Commit()
 }
 
-// MarkDocumentsViewed marks documents matching the filter as viewed.
-func (s *DocumentRepository) MarkDocumentsViewed(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter) (int, error) {
-	// First we need to find the relation_ids that match, then update them.
-	// Or we can do an UPDATE with a subquery.
-	query := `
+// MarkViewed marks the company's NFS-e with the given chaves as viewed and
+// returns how many were not viewed before.
+func (s *DocumentRepository) MarkViewed(ctx context.Context, companyID dfe.CompanyID, chaves []string) (int, error) {
+	if len(chaves) == 0 {
+		return 0, nil
+	}
+	const query = `
 		UPDATE company_documents
 		SET viewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		WHERE company_id = ? AND viewed_at IS NULL AND relation_id IN (
-			SELECT cd.relation_id
-			FROM company_documents cd
-			INNER JOIN documents d ON d.id = cd.document_id
-			WHERE cd.company_id = ?
+		WHERE company_id = ? AND viewed_at IS NULL AND document_id IN (
+			SELECT id FROM documents WHERE chave_acesso IN (SELECT value FROM json_each(?))
+		)
 	`
-	args := []any{string(companyID), string(companyID)}
+	return execMarkViewed(ctx, s.db, query, companyID, chaves)
+}
 
-	if filter.Competence != "" {
-		query += " AND d.competence = ?"
-		args = append(args, filter.Competence)
-	}
-	if filter.Direction != "" {
-		query += " AND cd.company_role = ?"
-		args = append(args, filter.Direction)
-	}
-	if filter.Status != "" {
-		query += " AND d.status = ?"
-		args = append(args, filter.Status)
-	}
-	if filter.FromNSU != nil {
-		query += " AND cd.last_seen_nsu IS NOT NULL AND cd.last_seen_nsu >= ?"
-		args = append(args, *filter.FromNSU)
-	}
-	if filter.ToNSU != nil {
-		query += " AND cd.first_seen_nsu IS NOT NULL AND cd.first_seen_nsu <= ?"
-		args = append(args, *filter.ToNSU)
-	}
-	if filter.IssueDateGTE != nil {
-		query += " AND d.issue_date >= ?"
-		args = append(args, filter.IssueDateGTE.Format("2006-01-02"))
-	}
-	query += ")"
-
-	res, err := s.db.ExecContext(ctx, query, args...)
+// execMarkViewed runs a MarkViewed update, whose arguments are the company
+// and the chaves as a JSON array, and returns the rows it changed.
+func execMarkViewed(ctx context.Context, db *sql.DB, query string, companyID dfe.CompanyID, chaves []string) (int, error) {
+	chavesJSON, _ := json.Marshal(chaves) // a []string always marshals
+	res, err := db.ExecContext(ctx, query, string(companyID), string(chavesJSON))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("mark documents viewed: %w", err)
 	}
-	rows, err := res.RowsAffected()
+	n, err := res.RowsAffected()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("mark documents viewed: %w", err)
 	}
-	return int(rows), nil
+	return int(n), nil
 }
 
 // CountDocumentsByRole returns a map of role to document count for the given company.

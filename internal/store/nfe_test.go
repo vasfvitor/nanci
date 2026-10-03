@@ -521,6 +521,7 @@ func TestNFeListFilters(t *testing.T) {
 		{"chaves", nfe.DocumentFilter{ChavesAcesso: []string{nfeKeyCancelada, nfeKeyDenegada}}, []string{nfeKeyDenegada, nfeKeyCancelada}},
 
 		{"pending manifestacao", nfe.DocumentFilter{PendingManifestacao: true}, []string{nfeKeyProc}},
+		{"only unread before any mark", nfe.DocumentFilter{OnlyUnread: true}, all},
 		{"limit", nfe.DocumentFilter{Limit: 1}, []string{nfeKeyDenegada}},
 	}
 	for _, tt := range tests {
@@ -533,6 +534,62 @@ func TestNFeListFilters(t *testing.T) {
 
 	if got := f.list("emitente", nfe.DocumentFilter{Role: nfe.CompanyRoleEmitente}); !slices.Equal(got, []string{nfeKeyProc}) {
 		t.Errorf("emitente company rows = %v", got)
+	}
+}
+
+func TestNFeMarkViewed(t *testing.T) {
+	ctx := context.Background()
+	f := newNFeFixture(t)
+	seedFilterDocuments(f)
+	unread := nfe.DocumentFilter{OnlyUnread: true}
+	mark := func(chaves ...string) int {
+		t.Helper()
+		n, err := f.repo.MarkViewed(ctx, "mock", chaves)
+		if err != nil {
+			t.Fatalf("MarkViewed: %v", err)
+		}
+		return n
+	}
+
+	if doc := f.companyDocument("mock", nfeKeyDenegada); doc.ViewedAt != nil {
+		t.Errorf("ViewedAt before marking = %v, want nil", doc.ViewedAt)
+	}
+
+	// Only the given NF-e.
+	if n := mark(nfeKeyDenegada); n != 1 {
+		t.Errorf("marked by chave = %d, want 1", n)
+	}
+	if got := f.list("mock", unread); !slices.Equal(got, []string{nfeKeyProc, nfeKeyCancelada}) {
+		t.Errorf("unread after marking by chave = %v", got)
+	}
+	if doc := f.companyDocument("mock", nfeKeyDenegada); doc.ViewedAt == nil {
+		t.Error("ViewedAt after marking = nil")
+	}
+
+	// The denegada already viewed is not counted again.
+	if n := mark(nfeKeyDenegada, nfeKeyProc); n != 1 {
+		t.Errorf("marked = %d, want 1 (the autorizada)", n)
+	}
+	if got := f.list("mock", unread); !slices.Equal(got, []string{nfeKeyCancelada}) {
+		t.Errorf("unread after marking = %v, want the resumo", got)
+	}
+
+	// The mark belongs to the company: the emitente still sees it as new.
+	if got := f.list("emitente", unread); !slices.Equal(got, []string{nfeKeyProc}) {
+		t.Errorf("emitente unread = %v", got)
+	}
+
+	// A new copy from the distribution keeps the mark.
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-a"), 9)
+	if got := f.list("mock", unread); !slices.Equal(got, []string{nfeKeyCancelada}) {
+		t.Errorf("unread after a new copy = %v", got)
+	}
+
+	if n := mark(); n != 0 {
+		t.Errorf("marked without chaves = %d, want 0", n)
+	}
+	if n := mark(nfeKeyCancelada); n != 1 {
+		t.Errorf("marked the resumo = %d, want 1", n)
 	}
 }
 

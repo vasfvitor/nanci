@@ -39,20 +39,35 @@ export function parseDate(value: string | Date | null | undefined): Date | null 
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
+const dateFormat = new Intl.DateTimeFormat('pt-BR')
+
 export function formatDate(value: string | Date | null | undefined) {
-  return parseDate(value)?.toLocaleDateString('pt-BR') ?? ''
+  const date = parseDate(value)
+  return date ? dateFormat.format(date) : ''
 }
 
 export function formatDateTime(value: string | Date | null | undefined, fallback = '-') {
   return parseDate(value)?.toLocaleString('pt-BR') ?? fallback
 }
 
+const centsFormat = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+// formatCents prints integer cents as a pt-BR amount without the currency
+// symbol, for columns whose header already says "(R$)": 123456 is
+// "1.234,56".
+export function formatCents(value: number | null | undefined) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '0,00'
+  return centsFormat.format(value / 100)
+}
+
+// formatCurrencyCents is formatCents with the currency symbol, as pt-BR
+// writes it: "R$ 1.234,56", "-R$ 19,90".
 export function formatCurrencyCents(value: number | null | undefined) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return 'R$ 0,00'
-  return (value / 100).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
+  const amount = formatCents(value)
+  return amount.startsWith('-') ? `-R$\u00a0${amount.slice(1)}` : `R$\u00a0${amount}`
 }
 
 export function formatChaveAcesso(chave: string) {
@@ -86,7 +101,30 @@ export function formatNFeNumber(numero: string | null | undefined, serie?: strin
   return formatted ? `${formatted} / série ${serieLabel}` : `série ${serieLabel}`
 }
 
+// formatCompetence prints a YYYY-MM competência as MM/YYYY. An empty value
+// prints as '', and any other value as it is.
+export function formatCompetence(value: string | null | undefined): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? '')
+  return match ? `${match[2]}/${match[1]}` : (value ?? '')
+}
+
 // formatTime prints a local HH:MM time, or fallback for empty/invalid values.
 export function formatTime(value: string | Date | null | undefined, fallback = '') {
   return parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? fallback
+}
+
+// withViewed returns rows with ViewedAt set to now on the rows whose access
+// key is in chaves and that were still new, as "Marcar vistos" leaves them.
+// The other rows are returned as they are.
+export function withViewed<
+  Row extends { ChaveAcesso: string; ViewedAt?: string | Date | null | undefined },
+>(
+  rows: Row[],
+  chaves: string[],
+  now: Date = new Date()
+): Row[] {
+  const marked = new Set(chaves)
+  return rows.map((row) =>
+    marked.has(row.ChaveAcesso) && !row.ViewedAt ? { ...row, ViewedAt: now } : row
+  )
 }

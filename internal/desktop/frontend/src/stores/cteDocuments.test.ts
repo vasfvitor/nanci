@@ -1,6 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useCTeDocumentsStore } from './cteDocuments'
+import { mapCTeRow } from '@/platform/wails/client'
+import type { CTeRow } from '@/types/desktop'
+
+function cteRow(chave: string, overrides: Partial<CTeRow> = {}): CTeRow {
+  return mapCTeRow({ ChaveAcesso: chave, Numero: '1', ...overrides })
+}
 
 describe('cteDocuments store', () => {
   beforeEach(() => {
@@ -25,7 +31,14 @@ describe('cteDocuments store', () => {
       EmitenteCNPJ: '',
       TomadorCNPJ: '',
       NFeChave: '',
+      OnlyUnread: false,
     })
+  })
+
+  it('sends "Somente não vistos" in the list request', () => {
+    const store = useCTeDocumentsStore()
+    store.filter.OnlyUnread = true
+    expect(store.listInput.OnlyUnread).toBe(true)
   })
 
   it('keeps only the letters and digits of the typed CNPJ and NF-e key', () => {
@@ -35,5 +48,35 @@ describe('cteDocuments store', () => {
 
     expect(store.listInput.TomadorCNPJ).toBe('12ABC678000100')
     expect(store.listInput.NFeChave).toBe('35260911222333000181550010000045121418273651')
+  })
+
+  it('keeps only the selected CT-e still present, as their fresh rows', () => {
+    const store = useCTeDocumentsStore()
+    store.setRows([cteRow('a'), cteRow('b')])
+    store.selected = [cteRow('a'), cteRow('b')]
+
+    const freshB = cteRow('b', { Numero: '2' })
+    store.setRows([freshB, cteRow('c')])
+
+    expect(store.rows.map((row) => row.ChaveAcesso)).toEqual(['b', 'c'])
+    expect(store.selected).toEqual([freshB])
+  })
+
+  it('starts with an empty text filter and selection', () => {
+    const store = useCTeDocumentsStore()
+    expect(store.filterText).toBe('')
+    expect(store.selected).toEqual([])
+  })
+
+  it('flags an NF-e key filter that is not 44 characters', () => {
+    const store = useCTeDocumentsStore()
+    expect(store.listError).toBe('')
+
+    store.filter.NFeChave = '3526 0911'
+    expect(store.listError).toBe('A chave de NF-e tem 44 caracteres')
+
+    // An alphanumeric CNPJ puts letters in the key.
+    store.filter.NFeChave = `3526 09AB ${'1234 '.repeat(9)}`
+    expect(store.listError).toBe('')
   })
 })

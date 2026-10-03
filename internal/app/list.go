@@ -63,14 +63,18 @@ func (s *DocumentService) ListDocuments(ctx context.Context, input ListInput) ([
 	return docs, nil
 }
 
-// MarkDocumentsViewed marks documents matching the given filters as viewed.
-// Returns the number of documents updated.
-func (s *DocumentService) MarkDocumentsViewed(ctx context.Context, input ListInput) (int, error) {
-	companyID, filter, err := s.buildFilter(ctx, input)
+// MarkDocumentsViewed marks the company's NFS-e with the given chaves as
+// viewed and returns how many were new.
+func (s *DocumentService) MarkDocumentsViewed(ctx context.Context, cnpj string, chaves []string) (int, error) {
+	parsed, err := parseNFSeAccessKeys(chaves)
 	if err != nil {
 		return 0, err
 	}
-	count, err := s.DocumentRepo.MarkDocumentsViewed(ctx, companyID, filter)
+	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	if err != nil {
+		return 0, err
+	}
+	count, err := s.DocumentRepo.MarkViewed(ctx, company.ID, parsed)
 	if err != nil {
 		return 0, fmt.Errorf("marcar documentos como vistos: %w", err)
 	}

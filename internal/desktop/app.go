@@ -550,13 +550,10 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 	return a.core.Exports.CountPendingExportDocuments(a.ctx, exportInput, format)
 }
 
-func (a *App) MarkDocumentsViewed(input desktopapi.ListInput) (int, error) {
-	return a.core.Documents.MarkDocumentsViewed(a.ctx, app.ListInput{
-		CNPJ:       input.CNPJ,
-		Competence: input.Competence,
-		Direction:  input.Direction,
-		OnlyUnread: input.OnlyUnread,
-	})
+// MarkDocumentsViewed marks the company's NFS-e with the given chaves as
+// viewed and returns how many were new.
+func (a *App) MarkDocumentsViewed(input desktopapi.MarkViewedInput) (int, error) {
+	return a.core.Documents.MarkDocumentsViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
 }
 
 func formatExportError(err error) error {
@@ -773,11 +770,18 @@ func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error
 		Manifestacao: input.Manifestacao,
 		EmitenteCNPJ: input.EmitenteCNPJ,
 		ChavesAcesso: input.ChavesAcesso,
+		OnlyUnread:   input.OnlyUnread,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return desktopapi.NFeRows(documents), nil
+}
+
+// MarkNFeViewed marks the company's NF-e with the given chaves as viewed and
+// returns how many were new.
+func (a *App) MarkNFeViewed(input desktopapi.MarkViewedInput) (int, error) {
+	return a.core.NFe.MarkViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
 }
 
 func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {
@@ -957,12 +961,19 @@ func (a *App) ListCTe(input desktopapi.ListCTeInput) ([]desktopapi.CTeRow, error
 		TomadorCNPJ:  input.TomadorCNPJ,
 		NFeChave:     input.NFeChave,
 		ChavesAcesso: input.ChavesAcesso,
+		OnlyUnread:   input.OnlyUnread,
 		Limit:        input.Limit,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return desktopapi.CTeRows(documents), nil
+}
+
+// MarkCTeViewed marks the company's CT-e with the given chaves as viewed and
+// returns how many were new.
+func (a *App) MarkCTeViewed(input desktopapi.MarkViewedInput) (int, error) {
+	return a.core.CTe.MarkViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
 }
 
 func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent, error) {

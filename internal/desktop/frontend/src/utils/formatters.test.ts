@@ -1,6 +1,8 @@
 import {
+  formatCents,
   formatChaveAcesso,
   formatChaveDFe,
+  formatCompetence,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
@@ -9,14 +11,8 @@ import {
   formatTime,
   normalizeText,
   parseDate,
+  withViewed,
 } from './formatters'
-import {
-  roleColor,
-  roleLabel,
-  statusColor,
-  visibilityColor,
-  visibilityLabel,
-} from './nfseDisplay'
 
 describe('formatters', () => {
   it('formats CNPJ and CPF values', () => {
@@ -52,7 +48,18 @@ describe('formatters', () => {
 
   it('formats integer cents as BRL', () => {
     expect(formatCurrencyCents(123456).replace(/\s/u, ' ')).toBe('R$ 1.234,56')
-    expect(formatCurrencyCents(undefined)).toBe('R$ 0,00')
+    expect(formatCurrencyCents(undefined)).toBe('R$ 0,00')
+    expect(formatCurrencyCents(-1990)).toBe('-R$ 19,90')
+  })
+
+  it('formats integer cents without the currency symbol', () => {
+    expect(formatCents(123456)).toBe('1.234,56')
+    expect(formatCents(5)).toBe('0,05')
+    expect(formatCents(-1990)).toBe('-19,90')
+    expect(formatCents(0)).toBe('0,00')
+    expect(formatCents(null)).toBe('0,00')
+    expect(formatCents(undefined)).toBe('0,00')
+    expect(formatCents(Number.NaN)).toBe('0,00')
   })
 
   it('formats access keys for display', () => {
@@ -96,6 +103,13 @@ describe('formatters', () => {
     expect(formatParty(null, null)).toBe('')
   })
 
+  it('formats a competência as MM/YYYY', () => {
+    expect(formatCompetence('2026-09')).toBe('09/2026')
+    expect(formatCompetence('')).toBe('')
+    expect(formatCompetence(null)).toBe('')
+    expect(formatCompetence('2026')).toBe('2026')
+  })
+
   it('formats local HH:MM times', () => {
     expect(formatTime(new Date(2026, 8, 23, 14, 5))).toBe('14:05')
     expect(formatTime(null, '-')).toBe('-')
@@ -103,18 +117,21 @@ describe('formatters', () => {
   })
 })
 
-describe('nfse display helpers', () => {
-  it('maps known role, status, and visibility values', () => {
-    expect(statusColor('normal')).toBe('positive')
-    expect(roleLabel('intermediario')).toBe('Intermediário')
-    expect(roleColor('tomada')).toBe('secondary')
-    expect(visibilityLabel('same_root_only')).toBe('Mesmo raiz apenas')
-    expect(visibilityColor('exact_tomador')).toBe('positive')
-  })
+describe('withViewed', () => {
+  it('marks the new rows among chaves and leaves the others as they are', () => {
+    const now = new Date('2026-09-30T12:00:00Z')
+    const before = new Date('2026-09-01T12:00:00Z')
+    const rows = [
+      { ChaveAcesso: 'a', ViewedAt: null },
+      { ChaveAcesso: 'b', ViewedAt: before },
+      { ChaveAcesso: 'c', ViewedAt: null },
+    ]
 
-  it('falls back for unknown values', () => {
-    expect(statusColor('other')).toBe('grey')
-    expect(roleLabel('other')).toBe('other')
-    expect(visibilityLabel('')).toBe('Desconhecida')
+    const result = withViewed(rows, ['a', 'b'], now)
+
+    expect(result.map((row) => row.ViewedAt)).toEqual([now, before, null])
+    expect(result[1]).toBe(rows[1])
+    expect(result[2]).toBe(rows[2])
+    expect(rows[0]?.ViewedAt).toBeNull()
   })
 })

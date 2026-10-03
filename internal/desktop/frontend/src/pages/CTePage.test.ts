@@ -1,15 +1,16 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
+import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CTePage from './CTePage.vue'
 import { desktopClient, mapCTeRow } from '@/platform/wails/client'
-import type { CTeStatusResult } from '@/types/desktop'
+import type { CTeRow, CTeStatusResult } from '@/types/desktop'
+import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 
 type OkHandler = (payload: unknown) => void
 
 const notify = vi.fn()
 const okHandlers: OkHandler[] = []
-const dialog = vi.fn(() => ({
+const dialog = vi.fn((_options: Record<string, unknown>) => ({
   onOk: (handler: OkHandler) => {
     okHandlers.push(handler)
   },
@@ -21,6 +22,7 @@ vi.mock('quasar', () => ({
     notify,
     dialog,
   }),
+  useDialogPluginComponent: vi.fn(),
   copyToClipboard: vi.fn(),
   date: { formatDate: vi.fn(() => '2026-08') },
 }))
@@ -37,6 +39,7 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     resetCTe: vi.fn(),
     exportCTeXML: vi.fn(),
     exportCTeZIP: vi.fn(),
+    markCTeViewed: vi.fn(),
   },
 }))
 
@@ -57,6 +60,7 @@ const company = {
 }
 
 const nfeChave = '35260911222333000181550010000045121418273651'
+const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
 
 const tomada = mapCTeRow({
   ChaveAcesso: '35260811222333000181570010000012341000012345',
@@ -103,10 +107,15 @@ function status(overrides: Partial<CTeStatusResult> = {}): CTeStatusResult {
   }
 }
 
-function mountPage() {
+function mountPage(pinia?: Pinia) {
   return shallowMount(CTePage, {
     global: {
+      plugins: pinia ? [pinia] : [],
       stubs: {
+        DocumentFilterBar: false,
+        DocumentPageHeader: false,
+        DocumentTableTop: false,
+        DocumentFilterSelect: false,
         'q-page': { template: '<div><slot /></div>' },
         'q-banner': { template: '<div class="q-banner-stub"><slot /></div>' },
         'q-btn': {
@@ -117,8 +126,8 @@ function mountPage() {
         },
         'q-table': {
           name: 'QTable',
-          props: ['rows', 'pagination'],
-          emits: ['update:pagination'],
+          props: ['rows', 'pagination', 'selected', 'columns', 'noDataLabel'],
+          emits: ['update:pagination', 'update:selected'],
           template: '<div><slot name="top" /></div>',
         },
         'q-select': {
@@ -133,6 +142,12 @@ function mountPage() {
           emits: ['update:modelValue'],
           template: '<div><slot /></div>',
         },
+        'q-toggle': {
+          name: 'QToggle',
+          props: ['modelValue', 'label'],
+          emits: ['update:modelValue'],
+          template: '<div />',
+        },
         CTeEventsDialog: { template: '<div />' },
       },
     },
@@ -141,8 +156,11 @@ function mountPage() {
 
 type Page = ReturnType<typeof mountPage>
 
-function button(wrapper: Page, label: string) {
-  const found = wrapper.findAllComponents({ name: 'QBtn' }).find((btn) => btn.props('label') === label)
+function button(wrapper: Page, label: string | RegExp) {
+  const found = wrapper.findAllComponents({ name: 'QBtn' }).find((btn) => {
+    const text = String(btn.props('label'))
+    return typeof label === 'string' ? text === label : label.test(text)
+  })
   if (!found) throw new Error(`button ${label} not found`)
   return found
 }
@@ -153,6 +171,15 @@ function field(wrapper: Page, name: 'QSelect' | 'QInput', label: string) {
     .find((input) => input.props('label') === label || input.props('placeholder') === label)
   if (!found) throw new Error(`${name} ${label} not found`)
   return found
+}
+
+function table(wrapper: Page) {
+  return wrapper.getComponent({ name: 'QTable' })
+}
+
+async function select(wrapper: Page, rows: CTeRow[]) {
+  table(wrapper).vm.$emit('update:selected', rows)
+  await flushPromises()
 }
 
 describe('CTePage', () => {
@@ -172,20 +199,65 @@ describe('CTePage', () => {
 
     expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: company.CNPJ }))
     expect(desktopClient.statusCTe).toHaveBeenCalledWith(company.CNPJ)
-    expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([tomada, servico])
+    expect(table(wrapper).props('rows')).toEqual([tomada, servico])
+    expect(table(wrapper).props('noDataLabel')).toBe('Nenhum CT-e encontrado.')
     expect(wrapper.text()).toContain('NSU 10/10 · CT-e: 2')
+  })
+
+  it('asks for a company when there is none', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(desktopClient.listCTe).not.toHaveBeenCalled()
+    expect(table(wrapper).props('noDataLabel')).toBe('Selecione uma empresa.')
+  })
+
+  it('clears the selection when the company changes', async () => {
+    const outra = { ...company, CNPJ: '98765432000199', Name: 'Outra' }
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
+    const wrapper = mountPage()
+    await flushPromises()
+    await select(wrapper, [tomada])
+
+    field(wrapper, 'QSelect', 'Empresa').vm.$emit('update:modelValue', outra.CNPJ)
+    await flushPromises()
+
+    expect(desktopClient.listCTe).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: outra.CNPJ }))
+    expect(table(wrapper).props('selected')).toEqual([])
+  })
+
+  it('shows the standard document columns in order', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const columns = table(wrapper).props('columns') as { name: string; label: string }[]
+    expect(columns.map((column) => column.name)).toEqual([...DOCUMENT_COLUMN_NAMES])
+    expect(columns.find((column) => column.name === 'destinatario')?.label).toBe('Tomador')
   })
 
   it('narrows the rows by accent- and case-insensitive text', async () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    field(wrapper, 'QInput', 'Filtrar por chave, número, emitente ou tomador...').vm.$emit(
-      'update:modelValue',
-      'FICTICIA'
-    )
+    field(wrapper, 'QInput', placeholder).vm.$emit('update:modelValue', 'FICTICIA')
     await flushPromises()
-    expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([tomada])
+    expect(table(wrapper).props('rows')).toEqual([tomada])
+  })
+
+  it('keeps the text filter and the selection after leaving the page and coming back', async () => {
+    const pinia = createPinia()
+    const first = mountPage(pinia)
+    await flushPromises()
+    field(first, 'QInput', placeholder).vm.$emit('update:modelValue', 'FICTICIA')
+    await select(first, [tomada])
+    first.unmount()
+
+    const second = mountPage(pinia)
+    await flushPromises()
+    expect(field(second, 'QInput', placeholder).props('modelValue')).toBe('FICTICIA')
+    expect(table(second).props('rows')).toEqual([tomada])
+    expect(table(second).props('selected')).toEqual([tomada])
   })
 
   it('searches with the filters the user picked', async () => {
@@ -212,7 +284,19 @@ describe('CTePage', () => {
       EmitenteCNPJ: '',
       TomadorCNPJ: company.CNPJ,
       NFeChave: nfeChave,
+      OnlyUnread: false,
     })
+  })
+
+  it('searches the unviewed CT-e when "Somente não vistos" is turned on', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCTe).mockClear()
+
+    wrapper.getComponent({ name: 'QToggle' }).vm.$emit('update:modelValue', true)
+    await flushPromises()
+
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
   })
 
   it('does not search with an NF-e key that is not 44 characters', async () => {
@@ -227,7 +311,21 @@ describe('CTePage', () => {
     expect(chave.props('error')).toBe(true)
     expect(chave.props('errorMessage')).toBe('A chave de NF-e tem 44 caracteres')
     expect(button(wrapper, 'Buscar').props('disable')).toBe(true)
+    await chave.trigger('keyup', { key: 'Enter' })
     expect(desktopClient.listCTe).not.toHaveBeenCalled()
+  })
+
+  it('searches on Enter in the CNPJ do tomador', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCTe).mockClear()
+
+    const tomador = field(wrapper, 'QInput', 'CNPJ do tomador')
+    tomador.vm.$emit('update:modelValue', '12345678000199')
+    await tomador.trigger('keyup', { key: 'Enter' })
+    await flushPromises()
+
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ TomadorCNPJ: '12345678000199' }))
   })
 
   it('disables sync and explains the block while SEFAZ blocks the company', async () => {
@@ -266,21 +364,106 @@ describe('CTePage', () => {
     )
   })
 
-  it('exports the listed rows as a ZIP, incremental when asked', async () => {
-    vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue(null)
+  it('exports the filtered rows as a ZIP with the choice of the dialog', async () => {
+    vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue({
+      OutPath: 'C:\\exports\\cte.zip',
+      Format: 'zip',
+      Incremental: true,
+      ExportedCount: 1,
+    })
     const wrapper = mountPage()
+    await flushPromises()
+    field(wrapper, 'QInput', placeholder).vm.$emit('update:modelValue', 'serra')
     await flushPromises()
 
     await button(wrapper, 'Exportar').trigger('click')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        componentProps: {
+          source: 'cte',
+          count: 1,
+          scope: 'listed',
+          formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
+          showIncludeResumos: false,
+        },
+      })
+    )
+    expect(desktopClient.exportCTeZIP).not.toHaveBeenCalled()
+
+    okHandlers[0]?.({ format: 'zip', incremental: true, includeResumos: false })
     await flushPromises()
 
     expect(desktopClient.exportCTeZIP).toHaveBeenCalledWith({
       CNPJ: company.CNPJ,
       Competence: '',
       Role: '',
-      ChavesAcesso: [tomada.ChaveAcesso, servico.ChaveAcesso],
-      Incremental: false,
+      ChavesAcesso: [servico.ChaveAcesso],
+      Incremental: true,
     })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 XML exportado para C:\\exports\\cte.zip.',
+    })
+  })
+
+  it('exports the selection when there is one', async () => {
+    vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue(null)
+    const wrapper = mountPage()
+    await flushPromises()
+    await select(wrapper, [tomada])
+
+    await button(wrapper, 'Exportar').trigger('click')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        componentProps: expect.objectContaining({ count: 1, scope: 'selected' }),
+      })
+    )
+    okHandlers[0]?.({ format: 'zip', incremental: false, includeResumos: false })
+    await flushPromises()
+
+    expect(desktopClient.exportCTeZIP).toHaveBeenCalledWith(
+      expect.objectContaining({ ChavesAcesso: [tomada.ChaveAcesso], Incremental: false })
+    )
+  })
+
+  it('marks the selected CT-e viewed without asking', async () => {
+    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(1)
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (2)')
+
+    await select(wrapper, [servico])
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
+    await button(wrapper, /^Marcar vistos/).trigger('click')
+    await flushPromises()
+
+    expect(dialog).not.toHaveBeenCalled()
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(company.CNPJ, [servico.ChaveAcesso])
+    expect(table(wrapper).props('selected')).toEqual([])
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
+    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
+  })
+
+  it('asks before marking the whole list viewed', async () => {
+    vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(2)
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, /^Marcar vistos/).trigger('click')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Marcar como vistos os 2 CT-e novos da lista?' })
+    )
+    expect(desktopClient.markCTeViewed).not.toHaveBeenCalled()
+
+    okHandlers[0]?.(undefined)
+    await flushPromises()
+
+    expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(company.CNPJ, [
+      tomada.ChaveAcesso,
+      servico.ChaveAcesso,
+    ])
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
+    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
   })
 
   it('previews the reset, confirms it with the counts and then resets', async () => {

@@ -1,11 +1,11 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
+import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFePage from './NFePage.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '@/components/NFeEventResultsDialog.vue'
 import NFeManifestacaoDialog from '@/components/NFeManifestacaoDialog.vue'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, mapNFeRow } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type {
   NFeCienciaPlan,
@@ -14,12 +14,13 @@ import type {
   NFeRow,
   NFeStatusResult,
 } from '@/types/desktop'
+import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 
 type OkHandler = (payload: unknown) => void
 
 const notify = vi.fn()
 const okHandlers: OkHandler[] = []
-const dialog = vi.fn(() => ({
+const dialog = vi.fn((_options: Record<string, unknown>) => ({
   onOk: (handler: OkHandler) => {
     okHandlers.push(handler)
   },
@@ -31,6 +32,7 @@ vi.mock('quasar', () => ({
     notify,
     dialog,
   }),
+  useDialogPluginComponent: vi.fn(),
   copyToClipboard: vi.fn(),
   date: { formatDate: vi.fn(() => '2024-09') },
 }))
@@ -48,7 +50,9 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     registerNFeManifestacao: vi.fn(),
     pullNFe: vi.fn(),
     resetNFe: vi.fn(),
+    exportNFeXML: vi.fn(),
     exportNFeZIP: vi.fn(),
+    markNFeViewed: vi.fn(),
   },
 }))
 
@@ -68,8 +72,10 @@ const company = {
   LastRunStopReason: '',
 }
 
+const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
+
 function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
-  return {
+  return mapNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,
@@ -94,7 +100,7 @@ function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
     ...overrides,
-  }
+  })
 }
 
 function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
@@ -126,15 +132,28 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
 const destinatario = nfeRow('a')
 const emitida = nfeRow('b', {
   CompanyRole: 'emitente',
+  DestinatarioName: 'Agropecuária Campo Verde',
+  DestinatarioCNPJ: '45091726000115',
   CienciaBlockReason: 'a empresa não é a destinatária',
   ConclusiveBlockReason: 'a empresa não é a destinatária',
 })
 
-function mountPage() {
+function mountPage(pinia?: Pinia) {
   return shallowMount(NFePage, {
     global: {
+      plugins: pinia ? [pinia] : [],
       stubs: {
+        DocumentFilterBar: false,
+        DocumentPageHeader: false,
+        DocumentTableTop: false,
+        DocumentFilterSelect: false,
         'q-page': { template: '<div><slot /></div>' },
+        'q-tabs': {
+          name: 'QTabs',
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template: '<div><slot /></div>',
+        },
         'q-tab-panels': { template: '<div><slot /></div>' },
         'q-tab-panel': { template: '<div><slot /></div>' },
         'q-banner': { template: '<div class="q-banner-stub"><slot /></div>' },
@@ -146,15 +165,27 @@ function mountPage() {
         },
         'q-table': {
           name: 'QTable',
-          props: ['rows', 'selected', 'pagination'],
+          props: ['rows', 'selected', 'pagination', 'columns', 'noDataLabel'],
           emits: ['update:selected', 'update:pagination'],
           template: '<div><slot name="top" /></div>',
+        },
+        'q-select': {
+          name: 'QSelect',
+          props: ['modelValue', 'label'],
+          emits: ['update:modelValue'],
+          template: '<div />',
         },
         'q-input': {
           name: 'QInput',
           props: ['modelValue', 'placeholder'],
           emits: ['update:modelValue'],
           template: '<div><slot /></div>',
+        },
+        'q-toggle': {
+          name: 'QToggle',
+          props: ['modelValue', 'label'],
+          emits: ['update:modelValue'],
+          template: '<div />',
         },
         NFePendingPanel: { name: 'NFePendingPanel', template: '<div />' },
         NFeEventsDialog: { template: '<div />' },
@@ -166,16 +197,42 @@ function mountPage() {
   })
 }
 
-function buttonStartingWith(wrapper: ReturnType<typeof mountPage>, label: string) {
-  const found = wrapper
-    .findAllComponents({ name: 'QBtn' })
-    .find((btn) => String(btn.props('label') ?? '').startsWith(label))
+type Page = ReturnType<typeof mountPage>
+
+function button(wrapper: Page, label: string | RegExp) {
+  const found = wrapper.findAllComponents({ name: 'QBtn' }).find((btn) => {
+    const text = String(btn.props('label') ?? '')
+    return typeof label === 'string' ? text === label : label.test(text)
+  })
   if (!found) throw new Error(`button ${label} not found`)
   return found
 }
 
-async function selectRows(wrapper: ReturnType<typeof mountPage>, rows: NFeRow[]) {
-  wrapper.getComponent({ name: 'QTable' }).vm.$emit('update:selected', rows)
+function searchInput(wrapper: Page) {
+  const found = wrapper
+    .findAllComponents({ name: 'QInput' })
+    .find((input) => input.props('placeholder') === placeholder)
+  if (!found) throw new Error('search input not found')
+  return found
+}
+
+function select(wrapper: Page, label: string) {
+  const found = wrapper.findAllComponents({ name: 'QSelect' }).find((input) => input.props('label') === label)
+  if (!found) throw new Error(`select ${label} not found`)
+  return found
+}
+
+function table(wrapper: Page) {
+  return wrapper.getComponent({ name: 'QTable' })
+}
+
+async function selectRows(wrapper: Page, rows: NFeRow[]) {
+  table(wrapper).vm.$emit('update:selected', rows)
+  await flushPromises()
+}
+
+async function filterRows(wrapper: Page, text: string) {
+  searchInput(wrapper).vm.$emit('update:modelValue', text)
   await flushPromises()
 }
 
@@ -191,41 +248,121 @@ describe('NFePage', () => {
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
   })
 
-  it('filters the notes by accent- and case-insensitive text', async () => {
+  it('lists the NF-e of the first company with its status', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: company.CNPJ }))
+    expect(desktopClient.statusNFe).toHaveBeenCalledWith(company.CNPJ)
+    expect(table(wrapper).props('rows')).toEqual([destinatario, emitida])
+    expect(table(wrapper).props('noDataLabel')).toBe('Nenhuma NF-e encontrada.')
+    expect(wrapper.find('h5').text()).toBe('NF-e')
+    expect(wrapper.text()).toContain('NSU 10/10 · Pendências: 0')
+  })
+
+  it('asks for a company when there is none', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(desktopClient.listNFe).not.toHaveBeenCalled()
+    expect(table(wrapper).props('noDataLabel')).toBe('Selecione uma empresa.')
+  })
+
+  it('shows the standard document columns in order, sorted by issue date', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const columns = table(wrapper).props('columns') as { name: string; label: string; sortable?: boolean }[]
+    expect(columns.map((column) => column.name)).toEqual([...DOCUMENT_COLUMN_NAMES])
+    expect(columns.find((column) => column.name === 'destinatario')?.label).toBe('Destinatário')
+    expect(columns.find((column) => column.name === 'issueDate')?.sortable).toBe(true)
+    expect(table(wrapper).props('pagination')).toMatchObject({ sortBy: 'issueDate', descending: true })
+  })
+
+  it('filters the notes by accent- and case-insensitive text, destinatário included', async () => {
     const acentuada = nfeRow('c', { EmitenteName: 'São João Ltda' })
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida, acentuada])
     const wrapper = mountPage()
     await flushPromises()
+    expect(table(wrapper).props('rows')).toHaveLength(3)
 
-    const table = () => wrapper.getComponent({ name: 'QTable' })
-    const search = wrapper
-      .findAllComponents({ name: 'QInput' })
-      .find((input) => String(input.props('placeholder') ?? '').startsWith('Filtrar'))
-    expect(table().props('rows')).toHaveLength(3)
+    await filterRows(wrapper, 'SAO JOAO')
+    expect(table(wrapper).props('rows')).toEqual([acentuada])
 
-    search?.vm.$emit('update:modelValue', 'SAO JOAO')
+    await filterRows(wrapper, 'campo verde')
+    expect(table(wrapper).props('rows')).toEqual([emitida])
+  })
+
+  it('keeps the text filter, the selection and the tab after leaving the page and coming back', async () => {
+    const pinia = createPinia()
+    const first = mountPage(pinia)
     await flushPromises()
-    expect(table().props('rows')).toEqual([acentuada])
-
-    search?.vm.$emit('update:modelValue', 'b')
+    await filterRows(first, 'campo verde')
+    await selectRows(first, [emitida])
+    first.getComponent({ name: 'QTabs' }).vm.$emit('update:modelValue', 'pendencias')
     await flushPromises()
-    expect(table().props('rows')).toEqual([emitida])
+    first.unmount()
+
+    const second = mountPage(pinia)
+    await flushPromises()
+    expect(searchInput(second).props('modelValue')).toBe('campo verde')
+    expect(table(second).props('rows')).toEqual([emitida])
+    expect(table(second).props('selected')).toEqual([emitida])
+    expect(second.getComponent({ name: 'QTabs' }).props('modelValue')).toBe('pendencias')
+  })
+
+  it('searches with the filters the user picked', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listNFe).mockClear()
+
+    select(wrapper, 'Situação').vm.$emit('update:modelValue', 'cancelada')
+    select(wrapper, 'Completude').vm.$emit('update:modelValue', 'completa')
+    select(wrapper, 'Manifestação').vm.$emit('update:modelValue', 'ciencia')
+    select(wrapper, 'Papel').vm.$emit('update:modelValue', 'emitente')
+    await flushPromises()
+
+    await button(wrapper, 'Buscar').trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.listNFe).toHaveBeenCalledWith({
+      CNPJ: company.CNPJ,
+      Competence: '',
+      Situacao: 'cancelada',
+      Completeness: 'completa',
+      Manifestacao: 'ciencia',
+      Role: 'emitente',
+      EmitenteCNPJ: '',
+      OnlyUnread: false,
+    })
+  })
+
+  it('searches the unviewed NF-e when "Somente não vistos" is turned on', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listNFe).mockClear()
+
+    wrapper.getComponent({ name: 'QToggle' }).vm.$emit('update:modelValue', true)
+    await flushPromises()
+
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
   })
 
   it('keeps the ciência button disabled without an eligible selection', async () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    const button = () => buttonStartingWith(wrapper, 'Registrar ciência')
-    expect(button().props('disable')).toBe(true)
+    const ciencia = () => button(wrapper, /^Registrar ciência/)
+    expect(ciencia().props('disable')).toBe(true)
 
     await selectRows(wrapper, [emitida])
-    expect(button().props('label')).toBe('Registrar ciência (0)')
-    expect(button().props('disable')).toBe(true)
+    expect(ciencia().props('label')).toBe('Registrar ciência (0)')
+    expect(ciencia().props('disable')).toBe(true)
 
     await selectRows(wrapper, [emitida, destinatario])
-    expect(button().props('label')).toBe('Registrar ciência (1)')
-    expect(button().props('disable')).toBe(false)
+    expect(ciencia().props('label')).toBe('Registrar ciência (1)')
+    expect(ciencia().props('disable')).toBe(false)
   })
 
   it('keeps the ciência button busy while a plan from an earlier mount is in flight', async () => {
@@ -235,9 +372,9 @@ describe('NFePage', () => {
 
     useNFeDocumentsStore().planningCiencia = true
     await flushPromises()
-    const button = buttonStartingWith(wrapper, 'Registrar ciência')
-    expect(button.props('loading')).toBe(true)
-    expect(button.props('disable')).toBe(true)
+    const ciencia = button(wrapper, /^Registrar ciência/)
+    expect(ciencia.props('loading')).toBe(true)
+    expect(ciencia.props('disable')).toBe(true)
   })
 
   it('opens the confirm dialog with the eligible chaves from planNFeCiencia', async () => {
@@ -265,7 +402,7 @@ describe('NFePage', () => {
     await flushPromises()
     await selectRows(wrapper, [destinatario, emitida])
 
-    await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
+    await button(wrapper, /^Registrar ciência/).trigger('click')
     await flushPromises()
 
     expect(desktopClient.planNFeCiencia).toHaveBeenCalledWith(company.CNPJ, ['a', 'b'])
@@ -292,30 +429,115 @@ describe('NFePage', () => {
     )
   })
 
-  it('exports the rows the grid shows when nothing is selected', async () => {
+  it('exports the filtered rows as a ZIP with the choice of the dialog', async () => {
+    vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue({
+      OutPath: 'C:\\exports\\nfe.zip',
+      Format: 'zip',
+      Incremental: true,
+      ExportedCount: 1,
+      SkippedResumos: 2,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+    await filterRows(wrapper, 'campo verde')
+
+    await button(wrapper, 'Exportar').trigger('click')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        componentProps: {
+          source: 'nfe',
+          count: 1,
+          scope: 'listed',
+          formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
+          showIncludeResumos: true,
+        },
+      })
+    )
+    expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
+
+    okHandlers[0]?.({ format: 'zip', incremental: true, includeResumos: false })
+    await flushPromises()
+
+    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith({
+      CNPJ: company.CNPJ,
+      Competence: '',
+      Role: '',
+      ChavesAcesso: [emitida.ChaveAcesso],
+      IncludeResumos: false,
+      Incremental: true,
+    })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 XML exportado para C:\\exports\\nfe.zip.',
+    })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'info',
+      message: '2 resumos ignorados: o XML completo ainda não foi baixado.',
+    })
+  })
+
+  it('exports the selection, with the resumos when asked', async () => {
     vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue(null)
     const wrapper = mountPage()
     await flushPromises()
-
-    const search = wrapper
-      .findAllComponents({ name: 'QInput' })
-      .find((input) => String(input.props('placeholder') ?? '').startsWith('Filtrar'))
-    if (!search) throw new Error('search input not found')
-    search.vm.$emit('update:modelValue', 'b')
-    await flushPromises()
-
-    await buttonStartingWith(wrapper, 'Exportar XML (ZIP)').trigger('click')
-    await flushPromises()
-    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
-      expect.objectContaining({ CNPJ: company.CNPJ, Competence: '', Role: '', ChavesAcesso: ['b'] })
-    )
-
     await selectRows(wrapper, [destinatario])
-    await buttonStartingWith(wrapper, 'Exportar XML (ZIP)').trigger('click')
-    await flushPromises()
-    expect(desktopClient.exportNFeZIP).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ChavesAcesso: ['a'] })
+
+    await button(wrapper, 'Exportar').trigger('click')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        componentProps: expect.objectContaining({ count: 1, scope: 'selected' }),
+      })
     )
+    okHandlers[0]?.({ format: 'zip', incremental: false, includeResumos: true })
+    await flushPromises()
+
+    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ChavesAcesso: [destinatario.ChaveAcesso],
+        IncludeResumos: true,
+        Incremental: false,
+      })
+    )
+  })
+
+  it('marks the selected NF-e viewed without asking', async () => {
+    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(1)
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (2)')
+
+    await selectRows(wrapper, [emitida])
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
+    await button(wrapper, /^Marcar vistos/).trigger('click')
+    await flushPromises()
+
+    expect(dialog).not.toHaveBeenCalled()
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(company.CNPJ, [emitida.ChaveAcesso])
+    expect(table(wrapper).props('selected')).toEqual([])
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
+    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
+  })
+
+  it('asks before marking the whole list viewed', async () => {
+    vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(2)
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, /^Marcar vistos/).trigger('click')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Marcar como vistas as 2 NF-e novas da lista?' })
+    )
+    expect(desktopClient.markNFeViewed).not.toHaveBeenCalled()
+
+    okHandlers[0]?.(undefined)
+    await flushPromises()
+
+    expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(company.CNPJ, [
+      destinatario.ChaveAcesso,
+      emitida.ChaveAcesso,
+    ])
+    expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
+    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
   })
 
   it('does not open the dialog when planNFeCiencia finds no eligible note', async () => {
@@ -328,7 +550,7 @@ describe('NFePage', () => {
     await flushPromises()
     await selectRows(wrapper, [destinatario])
 
-    await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
+    await button(wrapper, /^Registrar ciência/).trigger('click')
     await flushPromises()
 
     expect(dialog).not.toHaveBeenCalled()
@@ -344,16 +566,35 @@ describe('NFePage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(buttonStartingWith(wrapper, 'Sincronizar NF-e').props('disable')).toBe(true)
+    expect(button(wrapper, 'Sincronizar NF-e').props('disable')).toBe(true)
     expect(wrapper.find('.q-banner-stub').text()).toContain('Consultas bloqueadas pela SEFAZ até')
   })
 
-  it('enables sync when the company is not blocked', async () => {
+  it('syncs when the company is not blocked', async () => {
+    vi.mocked(desktopClient.pullNFe).mockResolvedValue({
+      Status: 'success',
+      CompletasSaved: 2,
+      ResumosSaved: 1,
+      EventsSaved: 3,
+      LastNSU: 12,
+      MaxNSU: 12,
+    } as Awaited<ReturnType<typeof desktopClient.pullNFe>>)
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(buttonStartingWith(wrapper, 'Sincronizar NF-e').props('disable')).toBe(false)
     expect(wrapper.find('.q-banner-stub').exists()).toBe(false)
+    const sync = button(wrapper, 'Sincronizar NF-e')
+    expect(sync.props('disable')).toBe(false)
+    await sync.trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.pullNFe).toHaveBeenCalledWith(company.CNPJ)
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'positive',
+        message: expect.stringContaining('2 completas, 1 resumos, 3 eventos'),
+      })
+    )
   })
 
   it('resets the company NF-e after the confirmation', async () => {
@@ -370,7 +611,7 @@ describe('NFePage', () => {
 
     const wrapper = mountPage()
     await flushPromises()
-    await buttonStartingWith(wrapper, 'Redefinir NF-e').trigger('click')
+    await button(wrapper, 'Redefinir NF-e').trigger('click')
 
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -391,9 +632,11 @@ describe('NFePage', () => {
 
     expect(desktopClient.resetNFe).toHaveBeenCalledWith(company.CNPJ)
     expect(desktopClient.listNFe).toHaveBeenCalled()
-    expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'positive', message: expect.stringContaining('3 notas e 4 eventos') })
-    )
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: 'NF-e redefinidas: 3 notas e 4 eventos removidos.',
+      caption: '1 manifestações enviadas mantidas no histórico.',
+    })
   })
 
   it('shows the per-note results when a ciência has problems', async () => {
@@ -417,7 +660,7 @@ describe('NFePage', () => {
     const wrapper = mountPage()
     await flushPromises()
     await selectRows(wrapper, [destinatario])
-    await buttonStartingWith(wrapper, 'Registrar ciência').trigger('click')
+    await button(wrapper, /^Registrar ciência/).trigger('click')
     await flushPromises()
     okHandlers[0]?.(['a'])
     await flushPromises()

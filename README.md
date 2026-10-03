@@ -99,7 +99,7 @@ nanci.exe nfe ciencia --cnpj 12345678000199 --todos-resumos --confirmar
 | `nfe testar-conexao` | Carrega o certificado e testa o TLS com a SEFAZ, sem consumir consultas. |
 | `nfe pull` | Baixa resumos, NF-e completas e eventos (até 20 consultas por hora). |
 | `nfe status` | Mostra cursor, bloqueios, consultas da última hora e totais. |
-| `nfe list` | Lista as NF-e. Filtros: `--competencia`/`-m`, `--situacao`, `--completude` (resumo, completa), `--papel`/`-p`, `--manifestacao`, `--emitente` e `--chave` (pode repetir). |
+| `nfe list` | Lista as NF-e. Filtros: `--competencia`/`-m`, `--situacao`, `--completude` (resumo, completa), `--papel`/`-p`, `--manifestacao`, `--emitente` e `--chave` (pode repetir); `--nao-vistos` mostra só as ainda não marcadas como vistas. |
 | `nfe ciencia` | Registra a Ciência da Operação em lote, por `--chave` (pode repetir) ou `--todos-resumos`. Simulação sem `--confirmar`. |
 | `nfe manifestar` | Registra uma manifestação conclusiva de uma nota: `--chave`, `--tipo` (confirmacao, desconhecimento ou nao_realizada) e `--justificativa` (15 a 255 caracteres, obrigatória para nao_realizada). Simulação sem `--confirmar`. |
 | `nfe pendentes` | Lista as notas sem manifestação conclusiva e seus prazos. `--vencendo-em N` mostra só as que vencem em até N dias. |
@@ -118,7 +118,7 @@ Os comandos ficam em `nanci cte`, recebem a empresa por `--cnpj` e usam o mesmo 
 | `cte testar-conexao` | Carrega o certificado e testa o TLS com a SEFAZ, sem consumir consultas. |
 | `cte pull` | Baixa CT-e, CT-e OS, GTV-e e eventos (até 20 consultas por hora). |
 | `cte status` | Mostra cursor, bloqueios, consultas da última hora e totais por papel. |
-| `cte list` | Lista os CT-e. Filtros: `--competencia`/`-m`, `--situacao`, `--papel`/`-p` (casa com qualquer papel da empresa no documento), `--modelo` (57, 64 ou 67), `--emitente`, `--tomador`, `--nfe` (chave de uma NF-e transportada) e `--chave` (pode repetir). |
+| `cte list` | Lista os CT-e. Filtros: `--competencia`/`-m`, `--situacao`, `--papel`/`-p` (casa com qualquer papel da empresa no documento), `--modelo` (57, 64 ou 67), `--emitente`, `--tomador`, `--nfe` (chave de uma NF-e transportada) e `--chave` (pode repetir); `--nao-vistos` mostra só os ainda não marcados como vistos. |
 | `cte export zip` | Exporta os XMLs e eventos em ZIP (`--out`/`-o`, padrão `cte.zip`). Filtros: `--competencia`/`-m`, `--papel`/`-p` e `--chave`; `--incremental` exporta só o que ainda não foi exportado. |
 | `cte export xml` | Exporta o XML de um CT-e (`--chave`) para `--out`/`-o`, por padrão `<chave>.xml`. |
 | `cte reset` | Remove os CT-e da empresa, nos dois ambientes, e reinicia a sincronização CT-e. Simulação sem `--confirmar`. |

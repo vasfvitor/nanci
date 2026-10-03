@@ -1,48 +1,18 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-gutter-sm q-mb-sm">
-      <h5 class="q-my-none">NF-e (Modelo 55)</h5>
-      <q-badge
-        v-if="status"
-        v-bind="badgeProps(ambienteColor(status.TpAmb), $q.dark.isActive)"
-        :label="ambienteLabel(status.TpAmb)"
-        class="text-weight-bold"
-      />
-      <q-space />
-      <q-btn
-        flat
-        color="negative"
-        icon="restart_alt"
-        label="Redefinir NF-e"
-        title="Remove as NF-e da empresa e reinicia a sincronização NF-e"
-        :loading="isResetting"
-        :disable="!filter.CNPJ || isSyncing"
-        @click="confirmResetNFe"
-      />
-      <q-btn
-        color="primary"
-        icon="sync"
-        label="Sincronizar NF-e"
-        :loading="isSyncing"
-        :disable="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
-        @click="syncNFe"
-      />
-    </div>
-
-    <div v-if="status" class="text-caption text-app-muted q-mb-sm">{{ statusLine }}</div>
-
-    <q-banner
-      v-if="blockedText"
-      dense
-      rounded
-      class="q-mb-md"
-      :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
-    >
-      <template #avatar>
-        <q-icon name="schedule" />
-      </template>
-      {{ blockedText }}
-    </q-banner>
+    <DocumentPageHeader
+      title="NF-e"
+      :ambiente="ambiente"
+      :status-line="statusLine"
+      :blocked-text="blockedText"
+      :syncing="isSyncing"
+      :sync-disabled="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
+      reset-title="Remove as NF-e da empresa e reinicia a sincronização NF-e"
+      :resetting="isResetting"
+      :reset-disabled="!filter.CNPJ || isSyncing"
+      @sync="syncNFe"
+      @reset="confirmResetNFe"
+    />
 
     <q-tabs
       v-model="activeTab"
@@ -64,109 +34,42 @@
       </q-tab>
     </q-tabs>
 
-    <q-tab-panels v-model="activeTab" animated keep-alive>
+    <q-tab-panels v-model="activeTab" animated keep-alive class="bg-transparent">
       <q-tab-panel name="notas" class="q-pa-none">
-        <div class="row q-gutter-sm items-center q-mb-md q-pa-sm rounded-borders shadow-1">
-          <q-select
-            v-model="filter.CNPJ"
-            class="col-12 col-md-4"
-            :options="companyOptions"
-            label="Empresa"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-            @update:model-value="handleCompanyChange"
-          />
+        <DocumentFilterBar
+          v-model:cnpj="filter.CNPJ"
+          v-model:competence="filter.Competence"
+          v-model:only-unviewed="onlyUnviewed"
+          :company-options="companyOptions"
+          :loading="loading"
+          :exporting="exporting"
+          :export-disabled="scopeRows.length === 0"
+          :mark-viewed-count="unviewedChaves.length"
+          @search="search"
+          @company-change="handleCompanyChange"
+          @mark-viewed="confirmMarkViewed"
+          @export="openExportDialog"
+        >
+          <DocumentFilterSelect v-model="filter.Situacao" :options="situacaoFilterOptions" label="Situação" :disable="loading" />
+          <DocumentFilterSelect v-model="filter.Completeness" :options="completenessFilterOptions" label="Completude" :disable="loading" />
+          <DocumentFilterSelect v-model="filter.Manifestacao" :options="manifestacaoFilterOptions" label="Manifestação" :disable="loading" />
+          <DocumentFilterSelect v-model="filter.Role" :options="nfeRoleFilterOptions" label="Papel" :disable="loading" />
 
-          <div class="col-12 col-sm-6 col-md-3" title="Competência pelo mês de emissão">
-            <CompetencePicker v-model="filter.Competence" :disable="loading" />
-          </div>
+          <template #actions>
+            <q-btn
+              color="primary"
+              icon="task_alt"
+              :label="`Registrar ciência (${eligibleSelection.length})`"
+              :disable="eligibleSelection.length === 0 || planningCiencia || Boolean(cienciaInFlight)"
+              :loading="planningCiencia"
+              dense
+              flat
+              @click="registerSelectedCiencia"
+            />
+          </template>
+        </DocumentFilterBar>
 
-          <q-select
-            v-model="filter.Situacao"
-            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="situacaoFilterOptions"
-            label="Situação"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-          <q-select
-            v-model="filter.Completeness"
-            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="completenessFilterOptions"
-            label="Completude"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-          <q-select
-            v-model="filter.Manifestacao"
-            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="manifestacaoFilterOptions"
-            label="Manifestação"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-          <q-select
-            v-model="filter.Role"
-            class="col-6 col-sm-3 col-md-2 nfe-filter-select"
-            :options="nfeRoleFilterOptions"
-            label="Papel"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :disable="loading"
-          />
-
-          <q-space />
-
-          <q-btn
-            color="primary"
-            icon="search"
-            label="Buscar"
-            :disable="loading || !filter.CNPJ"
-            :loading="loading"
-            dense
-            flat
-            @click="search"
-          />
-          <q-btn
-            color="primary"
-            icon="task_alt"
-            :label="`Registrar ciência (${eligibleSelection.length})`"
-            :disable="eligibleSelection.length === 0 || planningCiencia || Boolean(cienciaInFlight)"
-            :loading="planningCiencia"
-            dense
-            flat
-            @click="registerSelectedCiencia"
-          />
-          <q-btn
-            color="secondary"
-            icon="folder_zip"
-            label="Exportar XML (ZIP)"
-            :disable="exporting || filteredRows.length === 0"
-            :loading="exporting"
-            dense
-            flat
-            @click="exportZIP"
-          />
-        </div>
+        <StateLegend :sections="NFE_LEGEND" class="q-mb-md" />
 
         <q-table
           v-model:pagination="pagination"
@@ -176,177 +79,112 @@
           row-key="ChaveAcesso"
           selection="multiple"
           :loading="loading"
-          no-data-label="Nenhuma NF-e encontrada."
-          class="nfe-table"
+          :no-data-label="filter.CNPJ ? 'Nenhuma NF-e encontrada.' : 'Selecione uma empresa.'"
+          class="document-table"
           binary-state-sort
           flat
           bordered
           dense
         >
           <template #top>
-            <div class="row items-center justify-between full-width">
-              <div class="text-subtitle1 text-weight-bold">Notas fiscais eletrônicas</div>
-              <q-input
-                v-model="filterText"
-                class="nfe-search-input"
-                placeholder="Filtrar por chave, número ou emitente..."
-                outlined
-                dense
-                clearable
-                debounce="300"
-              >
-                <template #append>
-                  <q-icon name="search" />
-                </template>
-              </q-input>
-            </div>
+            <DocumentTableTop v-model="filterText" title="Notas fiscais eletrônicas" />
           </template>
 
-          <template #body-cell-acoes="cellProps">
-            <q-td :props="cellProps" auto-width>
-              <q-btn
-                dense
-                flat
-                round
-                size="sm"
-                color="grey-7"
-                icon="more_vert"
-                aria-label="Ações da nota"
-                :disable="isChaveBusy(cellProps.row.ChaveAcesso)"
-              >
-                <q-menu auto-close>
-                  <q-list dense class="nfe-row-menu">
-                    <q-item
-                      clickable
-                      :disable="rowActions(cellProps.row).conclusiveBlockReason !== null"
-                      @click="openManifestacao(cellProps.row)"
-                    >
-                      <q-item-section>
-                        <q-item-label>Manifestar…</q-item-label>
-                        <q-item-label v-if="rowActions(cellProps.row).conclusiveBlockReason" caption>
-                          {{ rowActions(cellProps.row).conclusiveBlockReason }}
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                    <q-item
-                      clickable
-                      :disable="rowActions(cellProps.row).cienciaBlockReason !== null || Boolean(cienciaInFlight)"
-                      @click="startCiencia([cellProps.row.ChaveAcesso])"
-                    >
-                      <q-item-section>
-                        <q-item-label>Registrar ciência</q-item-label>
-                        <q-item-label v-if="rowActions(cellProps.row).cienciaBlockReason" caption>
-                          {{ rowActions(cellProps.row).cienciaBlockReason }}
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                    <q-item clickable @click="openEvents(cellProps.row.ChaveAcesso)">
-                      <q-item-section>Eventos</q-item-section>
-                    </q-item>
-                    <q-item
-                      clickable
-                      :disable="exporting || !rowActions(cellProps.row).canExportXML"
-                      @click="exportXML(cellProps.row.ChaveAcesso)"
-                    >
-                      <q-item-section>
-                        <q-item-label>Exportar XML</q-item-label>
-                        <q-item-label v-if="!rowActions(cellProps.row).canExportXML" caption>
-                          XML completo ainda não baixado
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
-            </q-td>
-          </template>
+          <template #body="rowProps">
+            <q-tr :props="rowProps">
+              <q-td auto-width>
+                <q-checkbox v-model="rowProps.selected" dense />
+              </q-td>
+              <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
+                <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="nfe">
+                  <RowMenuItem
+                    label="Manifestar…"
+                    :caption="manifestarCaption(rowProps.row)"
+                    :disable="!canManifest(rowProps.row)"
+                    @click="openManifestacao(rowProps.row)"
+                  />
+                  <RowMenuItem
+                    label="Registrar ciência"
+                    :caption="cienciaCaption(rowProps.row)"
+                    :disable="!canRegisterCiencia(rowProps.row)"
+                    @click="startCiencia([rowProps.row.ChaveAcesso])"
+                  />
+                  <RowMenuItem
+                    :label="`Eventos (${rowProps.row.EventCount})`"
+                    :disable="rowProps.row.EventCount === 0"
+                    @click="openEvents(rowProps.row.ChaveAcesso)"
+                  />
+                  <RowMenuItem
+                    label="Exportar XML"
+                    :caption="nfeRowActions(rowProps.row).canExportXML ? '' : 'XML completo ainda não baixado'"
+                    :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
+                    @click="exportXML(rowProps.row.ChaveAcesso)"
+                  />
+                </RowActionsMenu>
 
-          <template #body-cell-chave="cellProps">
-            <q-td :props="cellProps">
-              <div class="row no-wrap items-center q-gutter-x-xs">
-                <span
-                  :title="formatChaveDFe(cellProps.row.ChaveAcesso)"
-                  class="cursor-pointer text-weight-medium text-mono"
-                  @click="copyChave(cellProps.row.ChaveAcesso)"
-                >
-                  {{ formatChaveAcesso(cellProps.row.ChaveAcesso) }}
-                </span>
-                <q-btn
-                  dense
-                  flat
-                  round
-                  size="xs"
-                  color="grey-7"
-                  icon="content_copy"
-                  title="Copiar chave completa"
-                  aria-label="Copiar chave completa"
-                  @click.stop="copyChave(cellProps.row.ChaveAcesso)"
+                <NumeroCell
+                  v-else-if="col.name === 'numero'"
+                  :numero="col.value"
+                  :serie="rowProps.row.Serie"
+                  :viewed-at="rowProps.row.ViewedAt"
                 />
-              </div>
-            </q-td>
-          </template>
 
-          <template #body-cell-emitente="cellProps">
-            <q-td :props="cellProps">
-              <div class="text-weight-medium text-mono">{{ formatCpfCnpj(cellProps.row.EmitenteCNPJ) || '-' }}</div>
-              <div class="text-caption text-app-muted partner-name" :title="cellProps.row.EmitenteName">
-                {{ cellProps.row.EmitenteName || '-' }}
-              </div>
-            </q-td>
-          </template>
+                <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
 
-          <template #body-cell-situacao="cellProps">
-            <q-td :props="cellProps">
-              <q-badge
-                v-bind="badgeProps(situacaoColor(cellProps.row.Situacao), $q.dark.isActive)"
-                :label="situacaoLabel(cellProps.row.Situacao)"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-completude="cellProps">
-            <q-td :props="cellProps">
-              <q-badge
-                v-bind="badgeProps(completenessColor(cellProps.row.Completeness), $q.dark.isActive)"
-                :label="completenessLabel(cellProps.row.Completeness)"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-manifestacao="cellProps">
-            <q-td :props="cellProps">
-              <div class="row no-wrap items-center q-gutter-x-xs">
-                <q-spinner v-if="isChaveBusy(cellProps.row.ChaveAcesso)" size="xs" color="primary" />
-                <q-badge
-                  v-bind="badgeProps(manifestacaoColor(cellProps.row.Manifestacao), $q.dark.isActive)"
-                  :label="manifestacaoLabel(cellProps.row.Manifestacao)"
+                <PartyCell
+                  v-else-if="col.name === 'emitente'"
+                  :name="rowProps.row.EmitenteName"
+                  :cnpj="rowProps.row.EmitenteCNPJ"
                 />
-                <q-chip
-                  v-if="showsConclusiveDeadline(cellProps.row)"
-                  dense
-                  square
-                  outline
-                  size="sm"
-                  :color="deadlineColor(cellProps.row.DaysLeft, 'conclusiva')"
-                  :label="conclusiveDeadlineLabel(cellProps.row.DaysLeft)"
-                  :title="`Prazo da manifestação conclusiva: ${formatDate(cellProps.row.ConclusiveDue)}`"
-                />
-              </div>
-            </q-td>
-          </template>
 
-          <template #body-cell-papel="cellProps">
-            <q-td :props="cellProps">
-              <q-badge
-                v-bind="badgeProps(nfeRoleColor(cellProps.row.CompanyRole), $q.dark.isActive)"
-                :label="nfeRoleLabel(cellProps.row.CompanyRole)"
-              />
-            </q-td>
+                <PartyCell
+                  v-else-if="col.name === 'destinatario'"
+                  :name="rowProps.row.DestinatarioName"
+                  :cnpj="rowProps.row.DestinatarioCNPJ"
+                />
+
+                <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []">
+                  <template
+                    v-if="isChaveBusy(rowProps.row.ChaveAcesso) || showsConclusiveDeadline(rowProps.row)"
+                    #default
+                  >
+                    <q-spinner v-if="isChaveBusy(rowProps.row.ChaveAcesso)" size="xs" color="primary" />
+                    <q-chip
+                      v-if="showsConclusiveDeadline(rowProps.row)"
+                      dense
+                      square
+                      outline
+                      size="sm"
+                      class="q-ma-none"
+                      :color="deadlineColor(rowProps.row.DaysLeft, 'conclusiva')"
+                      :label="conclusiveDeadlineLabel(rowProps.row.DaysLeft)"
+                      :title="`Prazo da manifestação conclusiva: ${formatDate(rowProps.row.ConclusiveDue)}`"
+                    />
+                  </template>
+                </StateBadges>
+
+                <template v-else>{{ col.value }}</template>
+              </q-td>
+            </q-tr>
+
+            <DocumentDetailRow v-if="rowProps.expand" :row-props="rowProps">
+              <div class="row q-col-gutter-md">
+                <DetailList class="col-12 col-md-5" title="Nota" :items="notaItems(rowProps.row)" />
+                <DetailList class="col-12 col-md-4" title="Emitente" :items="emitenteItems(rowProps.row)" />
+                <div class="col-12 col-md-3">
+                  <DetailList title="Destinatário" :items="destinatarioItems(rowProps.row)" class="q-mb-md" />
+                  <DetailList title="Valores" :items="valoresItems(rowProps.row)" />
+                </div>
+
+                <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings" />
+              </div>
+            </DocumentDetailRow>
           </template>
         </q-table>
       </q-tab-panel>
 
       <q-tab-panel name="pendencias" class="q-pa-none">
+        <StateLegend :sections="NFE_PENDING_LEGEND" class="q-mb-md" />
         <NFePendingPanel
           :rows="pending"
           :loading="pendingLoading"
@@ -364,60 +202,65 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useQuasar, type QTableColumn } from 'quasar'
-import CompetencePicker from '../components/CompetencePicker.vue'
+import { useQuasar } from 'quasar'
+import ChaveCell from '../components/ChaveCell.vue'
+import DetailList, { type DetailItem } from '../components/DetailList.vue'
+import DocumentDetailRow from '../components/DocumentDetailRow.vue'
+import DocumentFilterBar from '../components/DocumentFilterBar.vue'
+import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
+import DocumentPageHeader from '../components/DocumentPageHeader.vue'
+import DocumentTableTop from '../components/DocumentTableTop.vue'
+import type { ExportChoice } from '../components/ExportDialog.vue'
 import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
+import NumeroCell from '../components/NumeroCell.vue'
+import ParseWarnings from '../components/ParseWarnings.vue'
+import PartyCell from '../components/PartyCell.vue'
+import RowActionsMenu from '../components/RowActionsMenu.vue'
+import RowMenuItem from '../components/RowMenuItem.vue'
+import StateBadges from '../components/StateBadges.vue'
+import StateLegend from '../components/StateLegend.vue'
+import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type {
-  ISODateValue,
-  NFeConclusiveTipo,
-  NFeEventBatchResult,
-  NFeEventResult,
-  NFeRow,
-} from '@/types/desktop'
+import type { NFeConclusiveTipo, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
+import { documentColumns } from '@/utils/documentColumns'
 import {
-  formatChaveAcesso,
-  formatChaveDFe,
   formatCpfCnpj,
   formatCurrencyCents,
   formatDate,
+  formatDateTime,
   formatNFeNumber,
 } from '@/utils/formatters'
-import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { NFE_LEGEND, NFE_PENDING_LEGEND } from '@/utils/stateLegends'
 import {
-  completenessColor,
-  completenessLabel,
   completenessFilterOptions,
   conclusiveDeadlineLabel,
   deadlineColor,
-  manifestacaoColor,
-  manifestacaoLabel,
   manifestacaoFilterOptions,
-  nfeRoleColor,
-  nfeRoleLabel,
   nfeRoleFilterOptions,
-  situacaoColor,
-  situacaoLabel,
   situacaoFilterOptions,
+  situacaoLabel,
   showsConclusiveDeadline,
 } from '@/utils/nfeDisplay'
 import {
   countOutcomes,
   isProblemOutcome,
+  nfeRowActions,
   noEligibleCienciaMessage,
 } from '@/utils/nfeManifestacao'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
 const manifestacao = useNFeManifestacao()
-const { notifyError, notifySyncError, copyChave } = useNotify()
+const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
+  useNotify()
 
 const {
   filter,
@@ -429,8 +272,13 @@ const {
   pagination,
   filterText,
   filteredRows,
+  scopeRows,
+  unviewedChaves,
+  badgesByChave,
+  onlyUnviewed,
   companyOptions,
   companyName,
+  ambiente,
   pendingCount,
   noteCount,
   statusLine,
@@ -438,7 +286,6 @@ const {
   isResetting,
   syncBlockedUntil,
   blockedText,
-  rowActions,
 } = nfe
 const {
   pending,
@@ -452,40 +299,90 @@ const {
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
 
-const columns: QTableColumn<NFeRow>[] = [
-  { name: 'acoes', label: 'Ações', field: () => '', align: 'center' },
-  {
-    name: 'emissao',
-    label: 'Emissão',
-    field: 'IssueDate',
-    sortable: true,
-    align: 'left',
-    classes: 'text-no-wrap text-mono',
-    format: (value: ISODateValue) => formatDate(value),
-  },
-  {
-    name: 'numero',
-    label: 'Número / Série',
-    field: (row) => formatNFeNumber(row.Numero, row.Serie),
-    align: 'left',
-    classes: 'text-no-wrap text-mono',
-  },
-  { name: 'chave', label: 'Chave de Acesso', field: 'ChaveAcesso', align: 'left' },
-  { name: 'emitente', label: 'Emitente', field: 'EmitenteCNPJ', sortable: true, align: 'left' },
-  {
-    name: 'valor',
-    label: 'Valor (R$)',
-    field: 'TotalValue',
-    sortable: true,
-    align: 'right',
-    classes: 'text-mono',
-    format: (value: number) => formatCurrencyCents(value),
-  },
-  { name: 'situacao', label: 'Situação', field: 'Situacao', align: 'left' },
-  { name: 'completude', label: 'Completude', field: 'Completeness', align: 'left' },
-  { name: 'manifestacao', label: 'Manifestação', field: 'Manifestacao', align: 'left' },
-  { name: 'papel', label: 'Papel', field: 'CompanyRole', align: 'left' },
-]
+
+const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
+  source: 'nfe',
+  selected,
+  scopeRows,
+  unviewedChaves,
+  markViewed: nfe.markViewed,
+  exportFormats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
+  showIncludeResumos: true,
+  exportList: exportZIP,
+})
+
+const columns = documentColumns<NFeRow>({
+  emitenteLabel: 'Emitente',
+  destinatarioLabel: 'Destinatário',
+  numero: (row) => formatNFeNumber(row.Numero),
+  emitente: (row) => row.EmitenteName || row.EmitenteCNPJ,
+  destinatario: (row) => row.DestinatarioName || row.DestinatarioCNPJ,
+  valor: (row) => row.TotalValue,
+})
+
+// A note with an event being sent takes no other; its menu says why.
+const SENDING_CAPTION = 'Envio em andamento'
+
+function canManifest(row: NFeRow) {
+  return nfeRowActions(row).conclusiveBlockReason === null && !isChaveBusy(row.ChaveAcesso)
+}
+
+function manifestarCaption(row: NFeRow) {
+  if (isChaveBusy(row.ChaveAcesso)) return SENDING_CAPTION
+  return nfeRowActions(row).conclusiveBlockReason ?? ''
+}
+
+function canRegisterCiencia(row: NFeRow) {
+  return (
+    nfeRowActions(row).cienciaBlockReason === null &&
+    !cienciaInFlight.value &&
+    !isChaveBusy(row.ChaveAcesso)
+  )
+}
+
+function cienciaCaption(row: NFeRow) {
+  if (isChaveBusy(row.ChaveAcesso)) return SENDING_CAPTION
+  return nfeRowActions(row).cienciaBlockReason ?? ''
+}
+
+function notaItems(row: NFeRow): DetailItem[] {
+  return [
+    { label: 'Número', value: formatNFeNumber(row.Numero), mono: true },
+    { label: 'Série', value: row.Serie, mono: true },
+    { label: 'Natureza da operação', value: row.NatOp },
+    { label: 'Layout', value: row.LayoutVersion, mono: true },
+    { label: 'Ambiente', value: row.TpAmb ? ambienteLabel(row.TpAmb) : '' },
+    { label: 'Situação', value: row.Situacao ? situacaoLabel(row.Situacao) : '' },
+    { label: 'Protocolo', value: row.Protocolo, mono: true },
+    { label: 'Autorizada em', value: formatDateTime(row.AuthorizedAt, '') },
+  ]
+}
+
+function emitenteItems(row: NFeRow): DetailItem[] {
+  return [
+    { label: 'Nome', value: row.EmitenteName },
+    { label: 'CNPJ', value: formatCpfCnpj(row.EmitenteCNPJ), mono: true },
+    { label: 'IE', value: row.EmitenteIE, mono: true },
+    { label: 'UF', value: row.EmitenteUF },
+  ]
+}
+
+function destinatarioItems(row: NFeRow): DetailItem[] {
+  return [
+    { label: 'Nome', value: row.DestinatarioName },
+    { label: 'CNPJ', value: formatCpfCnpj(row.DestinatarioCNPJ), mono: true },
+  ]
+}
+
+// A resumo carries only the total, so its taxes show as "—".
+function valoresItems(row: NFeRow): DetailItem[] {
+  const completa = row.Completeness === 'completa'
+  return [
+    { label: 'Total', value: formatCurrencyCents(row.TotalValue), mono: true },
+    { label: 'ICMS', value: completa ? formatCurrencyCents(row.ICMSValue) : '', mono: true },
+    { label: 'IPI', value: completa ? formatCurrencyCents(row.IPIValue) : '', mono: true },
+  ]
+}
 
 onMounted(() => {
   void loadCompanies()
@@ -540,10 +437,9 @@ async function syncNFe() {
   try {
     const result = await nfe.syncNFe()
     if (!result) return
-    $q.notify({
-      type: 'positive',
-      message: `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`,
-    })
+    notifySuccess(
+      `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`
+    )
   } catch (error) {
     notifySyncError('Erro na sincronização da NF-e', error)
   }
@@ -571,14 +467,13 @@ async function resetNFe() {
     const result = await nfe.resetNFe()
     if (!result) return
     selected.value = []
-    $q.notify({
-      type: 'positive',
-      message: `NF-e redefinidas: ${result.CompanyDocuments} notas e ${result.Events} eventos removidos.`,
-      caption: `${result.ManifestacoesKept} manifestações enviadas mantidas no histórico.`,
-    })
+    notifySuccess(
+      `NF-e redefinidas: ${result.CompanyDocuments} notas e ${result.Events} eventos removidos.`,
+      { caption: `${result.ManifestacoesKept} manifestações enviadas mantidas no histórico.` }
+    )
   } catch (error) {
     if (wailsErrorCode(error) === 'sync_running') {
-      $q.notify({ type: 'warning', message: 'Aguarde a sincronização NF-e terminar antes de redefinir.' })
+      notifyWarning('Aguarde a sincronização NF-e terminar antes de redefinir.')
     } else {
       notifyError('Erro ao redefinir NF-e', error)
     }
@@ -604,7 +499,7 @@ async function startCiencia(chavesAcesso: string[]) {
 
   const noEligible = noEligibleCienciaMessage(plan)
   if (noEligible) {
-    $q.notify({ type: 'warning', message: noEligible })
+    notifyWarning(noEligible)
     return
   }
 
@@ -625,13 +520,13 @@ async function sendCiencia(chavesAcesso: string[]) {
   try {
     const result = await manifestacao.registerCiencia(chavesAcesso)
     if (!result) {
-      $q.notify({ type: 'warning', message: 'Já existe um envio de ciência em andamento.' })
+      notifyWarning('Já existe um envio de ciência em andamento.')
       return
     }
     notifyCienciaResult(result)
   } catch (error) {
     if (wailsErrorCode(error) === 'canceled') {
-      $q.notify({ type: 'warning', message: 'Envio de ciência cancelado.' })
+      notifyWarning('Envio de ciência cancelado.')
     } else {
       notifyError('Erro ao registrar ciência', error)
     }
@@ -641,20 +536,22 @@ async function sendCiencia(chavesAcesso: string[]) {
 function notifyCienciaResult(result: NFeEventBatchResult) {
   const counts = countOutcomes(result.Results)
   const hasProblems = result.Results.some(isProblemOutcome) || Boolean(result.Interrupted)
-  $q.notify({
-    type: hasProblems ? 'warning' : 'positive',
-    message: `Ciência: ${counts.registrada} registradas, ${counts.ja_registrada} já registradas, ${counts.rejeitada} rejeitadas, ${counts.nao_enviada} não enviadas.`,
-    caption: 'O XML completo chega na próxima sincronização.',
-    timeout: 10000,
-    actions: [
-      {
-        label: 'Sincronizar agora',
-        handler: () => {
-          void syncNFe()
+  const notify = hasProblems ? notifyWarning : notifySuccess
+  notify(
+    `Ciência: ${counts.registrada} registradas, ${counts.ja_registrada} já registradas, ${counts.rejeitada} rejeitadas, ${counts.nao_enviada} não enviadas.`,
+    {
+      caption: 'O XML completo chega na próxima sincronização.',
+      timeout: 10000,
+      actions: [
+        {
+          label: 'Sincronizar agora',
+          handler: () => {
+            void syncNFe()
+          },
         },
-      },
-    ],
-  })
+      ],
+    }
+  )
 
   if (hasProblems) {
     $q.dialog({ component: NFeEventResultsDialog, componentProps: { result } })
@@ -677,13 +574,13 @@ async function sendManifestacao(chaveAcesso: string, tipo: NFeConclusiveTipo, ju
   try {
     const result = await manifestacao.registerManifestacao(chaveAcesso, tipo, justificativa)
     if (!result) {
-      $q.notify({ type: 'warning', message: 'Esta nota já tem um envio em andamento.' })
+      notifyWarning('Esta nota já tem um envio em andamento.')
       return
     }
     notifyManifestacaoResult(result)
   } catch (error) {
     if (wailsErrorCode(error) === 'canceled') {
-      $q.notify({ type: 'warning', message: 'Envio da manifestação cancelado.' })
+      notifyWarning('Envio da manifestação cancelado.')
     } else {
       notifyError('Erro ao registrar manifestação', error)
     }
@@ -694,16 +591,16 @@ function notifyManifestacaoResult(result: NFeEventResult) {
   const detail = [result.CStat, result.XMotivo].filter(Boolean).join(' - ')
   switch (result.Status) {
     case 'registrada':
-      $q.notify({ type: 'positive', message: `Manifestação registrada. Protocolo ${result.Protocolo || '-'}.` })
+      notifySuccess(`Manifestação registrada. Protocolo ${result.Protocolo || '—'}.`)
       return
     case 'ja_registrada':
-      $q.notify({ type: 'info', message: 'A manifestação já estava registrada na SEFAZ.' })
+      notifyInfo('A manifestação já estava registrada na SEFAZ.')
       return
     case 'rejeitada':
-      $q.notify({ type: 'negative', message: `Manifestação rejeitada pela SEFAZ: ${detail}` })
+      notifyError('Manifestação rejeitada pela SEFAZ', detail)
       return
     default:
-      $q.notify({ type: 'warning', message: `Manifestação não enviada. ${detail}`.trim() })
+      notifyWarning(`Manifestação não enviada. ${detail}`.trim())
   }
 }
 
@@ -714,62 +611,27 @@ function openEvents(chaveAcesso: string) {
 
 async function exportXML(chaveAcesso: string) {
   try {
-    const result = await nfe.exportXML(chaveAcesso)
-    if (result) {
-      $q.notify({ type: 'positive', message: `XML exportado para ${result.OutPath}.` })
-    }
+    notifyExported(await nfe.exportXML(chaveAcesso), 'XML')
   } catch (error) {
     notifyError('Erro ao exportar XML', error)
   }
 }
 
-// exportZIP exports the selected rows, or else every row the grid shows.
-async function exportZIP() {
+// exportZIP reports the export and, apart, the resumos it left out because
+// their complete XML has not arrived yet.
+async function exportZIP(chaves: string[], choice: ExportChoice) {
   try {
-    const result = await nfe.exportZIP()
-    if (!result) return
-    const skipped =
-      result.SkippedResumos > 0
-        ? ` ${result.SkippedResumos} resumos ignorados (XML completo ainda não baixado).`
-        : ''
-    if (result.ExportedCount === 0) {
-      $q.notify({ type: 'info', message: `Nenhum XML completo encontrado para exportação.${skipped}` })
-      return
+    const result = await nfe.exportZIP(chaves, choice)
+    notifyExported(result, 'XML')
+    if (result && result.SkippedResumos > 0) {
+      notifyInfo(
+        result.SkippedResumos === 1
+          ? '1 resumo ignorado: o XML completo ainda não foi baixado.'
+          : `${result.SkippedResumos} resumos ignorados: o XML completo ainda não foi baixado.`
+      )
     }
-    $q.notify({
-      type: 'positive',
-      message: `${result.ExportedCount} XMLs exportados para ${result.OutPath}.${skipped}`,
-    })
   } catch (error) {
     notifyError('Erro ao exportar XMLs', error)
   }
 }
 </script>
-
-<style scoped>
-/* Values stay on one line and the table scrolls sideways; only the emitente
-   name wraps. */
-.nfe-table :deep(td) {
-  white-space: nowrap;
-}
-
-.nfe-filter-select {
-  min-width: 140px;
-}
-
-.nfe-search-input {
-  width: 350px;
-  max-width: 100%;
-}
-
-.partner-name {
-  min-width: 220px;
-  max-width: 280px;
-  white-space: normal;
-  overflow-wrap: break-word;
-}
-
-.nfe-row-menu {
-  min-width: 220px;
-}
-</style>

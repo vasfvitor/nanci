@@ -55,6 +55,9 @@ type CompanyDocument struct {
 	LastSeenNSU    *int64
 	FirstSyncedAt  time.Time
 	LastSyncedAt   time.Time
+	// ViewedAt is when the company marked the NF-e as viewed; nil while it
+	// is new.
+	ViewedAt *time.Time
 	// EventCount is how many events nanci holds for the chave.
 	EventCount int
 }

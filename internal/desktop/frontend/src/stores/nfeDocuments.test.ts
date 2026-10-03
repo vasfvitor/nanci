@@ -2,9 +2,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useNFeDocumentsStore } from './nfeDocuments'
 import type { NFeRow } from '@/types/desktop'
+import { mapNFeRow } from '@/platform/wails/client'
 
 function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
-  return {
+  return mapNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,
@@ -29,7 +30,7 @@ function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
     CienciaBlockReason: '',
     ConclusiveBlockReason: '',
     ...overrides,
-  }
+  })
 }
 
 describe('nfeDocuments store', () => {
@@ -52,7 +53,18 @@ describe('nfeDocuments store', () => {
       Manifestacao: '',
       Role: 'destinatario',
       EmitenteCNPJ: '',
+      OnlyUnread: false,
     })
+  })
+
+  it('sends "Somente não vistos" in the list request', () => {
+    const store = useNFeDocumentsStore()
+    store.filter.OnlyUnread = true
+    expect(store.listInput.OnlyUnread).toBe(true)
+
+    // A missing field reads as false.
+    store.filter.OnlyUnread = null as unknown as boolean
+    expect(store.listInput.OnlyUnread).toBe(false)
   })
 
   it('patches one row and the selection, or drops it when it no longer matches', () => {

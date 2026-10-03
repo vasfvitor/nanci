@@ -353,9 +353,11 @@ CREATE TABLE company_cte_documents (
     last_seen_nsu INTEGER,
     first_synced_at TEXT NOT NULL,
     last_synced_at TEXT NOT NULL,
+    viewed_at TEXT,
     UNIQUE (company_id, cte_document_id)
 );
 CREATE INDEX idx_company_cte_documents_document ON company_cte_documents(cte_document_id);
+CREATE INDEX idx_company_cte_documents_viewed_at ON company_cte_documents(company_id, viewed_at);
 
 -- One row per (chave, tpEvento, nSeqEvento). An event may arrive before its
 -- document; cte_document_id is filled when the document arrives.

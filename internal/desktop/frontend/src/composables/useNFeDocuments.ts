@@ -1,65 +1,68 @@
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { companyOption } from '@/composables/useCompanies'
+import { useCompanyFilter } from '@/composables/useCompanyFilter'
+import { useExportGuard } from '@/composables/useExportGuard'
+import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
+import { useRowMap } from '@/composables/useRowMap'
+import { useRowTextFilter } from '@/composables/useRowTextFilter'
 import { useSefazBlock } from '@/composables/useSefazBlock'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type { CompanySummary, NFeRow } from '@/types/desktop'
-import { normalizeText } from '@/utils/formatters'
-import { nfeNoteCount, nfePendingCount, nfeStatusLine } from '@/utils/nfeDisplay'
-import { nfeRowActions } from '@/utils/nfeManifestacao'
+import { nfeNoteCount, nfePendingCount, nfeStateBadges, nfeStatusLine } from '@/utils/nfeDisplay'
+import { sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useNFeLoaders()
-  const { filter, rows, selected, loading, exporting, status, activeTab, resettingCNPJ } =
-    storeToRefs(store)
-  const companyOptions = ref<{ label: string; value: string }[]>([])
-  const pagination = useTablePagination()
-  const filterText = ref('')
-
-  // searchIndex normalizes the searchable fields once per result set, not on
-  // every keystroke.
-  const searchIndex = computed(() =>
-    rows.value.map((row) => ({
-      row,
-      fields: [row.ChaveAcesso, row.Numero, row.EmitenteCNPJ, row.EmitenteName].map(normalizeText),
-    }))
-  )
+  const {
+    filter,
+    rows,
+    selected,
+    filterText,
+    loading,
+    exporting,
+    markingViewed,
+    status,
+    activeTab,
+    resettingCNPJ,
+  } = storeToRefs(store)
+  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
+  const pagination = useTablePagination('nfe')
 
   // filteredRows is what the grid shows: the search result narrowed by the
   // accent- and case-insensitive filterText.
-  const filteredRows = computed(() => {
-    const query = normalizeText(filterText.value)
-    if (!query) return rows.value
-    return searchIndex.value
-      .filter(({ fields }) => fields.some((field) => field.includes(query)))
-      .map(({ row }) => row)
+  const { filteredRows } = useRowTextFilter({
+    rows,
+    filterText,
+    fields: (row) => [
+      row.ChaveAcesso,
+      row.Numero,
+      row.EmitenteCNPJ,
+      row.EmitenteName,
+      row.DestinatarioCNPJ,
+      row.DestinatarioName,
+    ],
+    pagination,
   })
 
-  watch(filterText, () => {
-    pagination.value.page = 1
+  const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    filter,
+    mark: (cnpj, chavesAcesso) => desktopClient.markNFeViewed(cnpj, chavesAcesso),
+    rows,
+    filteredRows,
+    selected,
+    setRows: (next) => store.setRows(next),
+    markingViewed,
   })
 
-  // actionsByChave holds the row menu state of every row the grid shows,
-  // computed once per result set rather than on each render of a row.
-  const actionsByChave = computed(
-    () => new Map(filteredRows.value.map((row) => [row.ChaveAcesso, nfeRowActions(row)]))
-  )
+  const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, nfeStateBadges)
 
-  function rowActions(row: NFeRow) {
-    return actionsByChave.value.get(row.ChaveAcesso) ?? nfeRowActions(row)
-  }
-
-  const companyName = computed(() => {
-    if (status.value?.CompanyName) return status.value.CompanyName
-    const option = companyOptions.value.find((item) => item.value === filter.value.CNPJ)
-    return option?.label ?? ''
-  })
+  const companyName = computed(() => status.value?.CompanyName || selectedCompany.value?.Name || '')
+  const ambiente = computed(() => (status.value ? sefazAmbiente(status.value.TpAmb) : null))
   const pendingCount = computed(() => nfePendingCount(status.value))
   const noteCount = computed(() => nfeNoteCount(status.value))
   const statusLine = computed(() => (status.value ? nfeStatusLine(status.value) : ''))
@@ -73,28 +76,15 @@ export function useNFeDocuments() {
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
-  // loadCompanies lists the companies and keeps a known one selected,
-  // falling back to the first.
-  async function loadCompanies(): Promise<CompanySummary[]> {
-    const companies = await desktopClient.listCompanies()
-    companyOptions.value = companies.map(companyOption)
-    if (!companyOptions.value.some((option) => option.value === filter.value.CNPJ)) {
-      filter.value.CNPJ = companyOptions.value[0]?.value ?? ''
-    }
-    return companies
-  }
-
   // syncNFe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
   async function syncNFe() {
     const cnpj = filter.value.CNPJ
     if (!cnpj || syncStore.isSyncing(cnpj, 'nfe') || resettingCNPJ.value === cnpj) return null
 
-    syncStore.startSync(cnpj, 'nfe')
     try {
-      return await desktopClient.pullNFe(cnpj)
+      return await syncStore.runSync(cnpj, 'nfe', () => desktopClient.pullNFe(cnpj))
     } finally {
-      syncStore.finishSync(cnpj, 'nfe')
       await refresh(cnpj)
     }
   }
@@ -117,42 +107,31 @@ export function useNFeDocuments() {
 
   // The exports read the company from listInput, like the search that
   // filled the grid.
-  async function exportXML(chaveAcesso: string) {
-    const cnpj = store.listInput.CNPJ
-    if (!cnpj || exporting.value) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportNFeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso })
-    } finally {
-      exporting.value = false
-    }
+  const { runExport } = useExportGuard(exporting, () => store.listInput.CNPJ)
+
+  function exportXML(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportNFeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
-  // exportChaves are the chaves a ZIP export takes by default: the selected
-  // rows, or else every row the grid shows.
-  const exportChaves = computed(() =>
-    (selected.value.length > 0 ? selected.value : filteredRows.value).map((row) => row.ChaveAcesso)
-  )
-
-  // exportZIP exports exactly the given chaves, by default exportChaves.
-  // Competence and Role are left empty: the grid may hold the result of an
-  // earlier search, and an empty list would export everything.
-  async function exportZIP(chavesAcesso: string[] = exportChaves.value) {
-    const cnpj = store.listInput.CNPJ
-    if (!cnpj || exporting.value || chavesAcesso.length === 0) return null
-    exporting.value = true
-    try {
-      return await desktopClient.exportNFeZIP({
+  // exportZIP exports exactly the given chaves; incremental leaves out the
+  // ones exported before and includeResumos adds the resumos, which have no
+  // complete XML. Competence and Role are left empty: the grid may hold the
+  // result of an earlier search, and an empty list would export everything.
+  async function exportZIP(
+    chavesAcesso: string[],
+    choice: { incremental: boolean; includeResumos: boolean }
+  ) {
+    if (chavesAcesso.length === 0) return null
+    return runExport((cnpj) =>
+      desktopClient.exportNFeZIP({
         CNPJ: cnpj,
         Competence: '',
         Role: '',
         ChavesAcesso: chavesAcesso,
-        IncludeResumos: false,
-        Incremental: false,
+        IncludeResumos: choice.includeResumos,
+        Incremental: choice.incremental,
       })
-    } finally {
-      exporting.value = false
-    }
+    )
   }
 
   return {
@@ -161,13 +140,19 @@ export function useNFeDocuments() {
     selected,
     loading,
     exporting,
+    markingViewed,
+    onlyUnviewed,
     status,
     activeTab,
     pagination,
     filterText,
     filteredRows,
+    scopeRows,
+    unviewedChaves,
+    badgesByChave,
     companyOptions,
     companyName,
+    ambiente,
     pendingCount,
     noteCount,
     statusLine,
@@ -175,7 +160,6 @@ export function useNFeDocuments() {
     isResetting,
     syncBlockedUntil,
     blockedText,
-    rowActions,
     loadCompanies,
     search,
     loadStatus,
@@ -183,5 +167,6 @@ export function useNFeDocuments() {
     resetNFe,
     exportXML,
     exportZIP,
+    markViewed,
   }
 }
