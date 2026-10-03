@@ -4,9 +4,10 @@ import { withViewed } from '@/utils/formatters'
 type ViewedRow = { ChaveAcesso: string; ViewedAt?: string | Date | null | undefined }
 
 export type MarkViewedOptions<Row extends ViewedRow> = {
-  // filter is the page filter; its CNPJ is the company the grid shows and
-  // OnlyUnread is the "Somente não vistos" toggle.
-  filter: Ref<{ CNPJ: string; OnlyUnread?: boolean }>
+  // cnpj returns the company the grid shows.
+  cnpj: () => string
+  // filter is the page filter; OnlyUnread is the "Somente não vistos" toggle.
+  filter: Ref<{ OnlyUnread?: boolean }>
   // mark sends the request for the company and the chaves only: the other
   // filters may have changed since the grid was filled.
   mark: (cnpj: string, chavesAcesso: string[]) => Promise<number>
@@ -43,7 +44,7 @@ export function useMarkViewed<Row extends ViewedRow>(options: MarkViewedOptions<
   // markViewed returns how many of the documents were new, or null when
   // nothing was sent.
   async function markViewed(chavesAcesso: string[]): Promise<number | null> {
-    const cnpj = options.filter.value.CNPJ
+    const cnpj = options.cnpj()
     if (!cnpj || options.markingViewed.value || chavesAcesso.length === 0) return null
     options.markingViewed.value = true
     try {

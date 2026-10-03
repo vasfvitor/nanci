@@ -22,7 +22,7 @@ export function useNFeManifestacao() {
   // nothing and asks for no password. It returns null while another plan is
   // in flight.
   async function planCiencia(chavesAcesso: string[]) {
-    const cnpj = store.filter.CNPJ
+    const cnpj = store.listInput.CNPJ
     if (!cnpj || chavesAcesso.length === 0 || planningCiencia.value) return null
 
     planningCiencia.value = true
@@ -34,7 +34,7 @@ export function useNFeManifestacao() {
   }
 
   async function registerCiencia(chavesAcesso: string[]) {
-    const cnpj = store.filter.CNPJ
+    const cnpj = store.listInput.CNPJ
     if (!cnpj || chavesAcesso.length === 0) return null
     if (cienciaInFlight.value || chavesAcesso.some((chave) => store.isChaveBusy(chave))) return null
 
@@ -56,7 +56,7 @@ export function useNFeManifestacao() {
     tipo: NFeConclusiveTipo,
     justificativa = ''
   ) {
-    const cnpj = store.filter.CNPJ
+    const cnpj = store.listInput.CNPJ
     if (!cnpj || store.isChaveBusy(chaveAcesso)) return null
 
     manifestacaoInFlight.value.add(chaveAcesso)

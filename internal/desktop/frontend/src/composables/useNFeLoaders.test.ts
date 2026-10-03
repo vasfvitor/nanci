@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeLoaders } from './useNFeLoaders'
 import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
@@ -27,12 +28,13 @@ function deferred<T>() {
 
 describe('useNFeLoaders', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listNFe).mockResolvedValue([row])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(statusResult)
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([pendingRow])
-    useNFeDocumentsStore().filter.CNPJ = '123'
+    useWorkspaceStore().cnpj = '123'
   })
 
   it('refreshes notes, status and pendências of the selected company', async () => {
@@ -48,7 +50,7 @@ describe('useNFeLoaders', () => {
   })
 
   it('skips the refresh once another company is selected', async () => {
-    useNFeDocumentsStore().filter.CNPJ = '456'
+    useWorkspaceStore().cnpj = '456'
 
     await useNFeLoaders().refresh('123')
 
@@ -63,11 +65,25 @@ describe('useNFeLoaders', () => {
     vi.mocked(desktopClient.statusNFe).mockReturnValue(call.promise)
 
     const loading = useNFeLoaders().loadStatus()
-    store.filter.CNPJ = '456'
+    useWorkspaceStore().cnpj = '456'
     call.resolve(statusResult)
 
     await expect(loading).resolves.toEqual(statusResult)
     expect(store.status).toBeNull()
+  })
+
+  it('drops a note reload that arrives after the company changed', async () => {
+    const store = useNFeDocumentsStore()
+    await useNFeLoaders().search()
+    const call = deferred<NFeRow[]>()
+    vi.mocked(desktopClient.listNFe).mockReturnValue(call.promise)
+
+    const refreshing = useNFeLoaders().refreshNote('123', 'a')
+    useWorkspaceStore().cnpj = '456'
+    call.resolve([])
+    await refreshing
+
+    expect(store.rows).toEqual([row])
   })
 
   it('does not fail when a reload fails', async () => {

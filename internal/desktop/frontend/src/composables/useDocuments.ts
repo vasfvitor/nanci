@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCompanyFilter } from '@/composables/useCompanyFilter'
 import { useDocumentLoaders } from '@/composables/useDocumentLoaders'
 import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
@@ -10,32 +9,35 @@ import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { ExportFormat } from '@/types/desktop'
 import { nfseAmbiente, nfseStateBadges, nfseStatusLine } from '@/utils/nfseDisplay'
 
 // useDocuments holds the NFS-e page: the list, its filters and the actions
 // on the listed NFS-e. The state that outlives the page is in the documents
-// store; the NFS-e sync is the one the Empresas page runs, so both screens
-// share its busy state through the companySync store. The NFS-e has no
-// status call: its sync state comes with the company list, which a sync or
-// a reset reloads once, in refresh.
+// store, and the sync busy state in the companySync store, so a remounted
+// page sees a sync in flight. The company and the competência come from the
+// workspace. The NFS-e has no status call: its sync state comes with the
+// workspace company list, which a sync or a reset reloads once, in refresh.
 export function useDocuments() {
   const store = useDocumentsStore()
+  const workspace = useWorkspaceStore()
   const syncStore = useCompanySyncStore()
   const { isSelected, search } = useDocumentLoaders(store, (input) =>
     desktopClient.listDocuments(input)
   )
+  const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
     documents,
     selected,
+    rowsFor,
     filterText,
     loading,
     exporting,
     markingViewed,
     resettingCNPJ,
   } = storeToRefs(store)
-  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
   const pagination = useTablePagination('nfse')
 
   // filteredRows is what the grid shows: the search result narrowed by the
@@ -57,6 +59,7 @@ export function useDocuments() {
   })
 
   const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    cnpj: () => store.listInput.CNPJ,
     filter,
     mark: (cnpj, chavesAcesso) => desktopClient.markDocumentsViewed(cnpj, chavesAcesso),
     rows: documents,
@@ -75,24 +78,24 @@ export function useDocuments() {
     selectedCompany.value ? nfseStatusLine(selectedCompany.value) : ''
   )
 
-  const isSyncing = computed(
-    () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'nfse')
-  )
-  const isResetting = computed(
-    () => Boolean(filter.value.CNPJ) && resettingCNPJ.value === filter.value.CNPJ
-  )
+  const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'nfse'))
+  const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
-  // refresh reloads the list and the company list, whose sync fields feed
-  // the status line, after a sync or a reset. Its own failures are not
-  // reported, so they never hide the result of the sync.
+  // refresh reloads the company list, whose sync fields feed the status line
+  // and the Empresas page, after a sync or a reset, and the NFS-e list when
+  // the company is still the selected one. The company list reloads either
+  // way, so a sync of another company does not leave its fields old. Its own
+  // failures are not reported, so they never hide the result of the sync.
   async function refresh(companyCNPJ: string) {
-    if (!isSelected(companyCNPJ)) return
-    await Promise.allSettled([search(), loadCompanies()])
+    await Promise.allSettled([
+      workspace.loadCompanies(),
+      isSelected(companyCNPJ) ? search() : Promise.resolve([]),
+    ])
   }
 
   // syncNFSe runs one ADN pull for the selected company.
   async function syncNFSe() {
-    const companyCNPJ = filter.value.CNPJ
+    const companyCNPJ = cnpj.value
     if (
       !companyCNPJ ||
       syncStore.isSyncing(companyCNPJ, 'nfse') ||
@@ -112,7 +115,7 @@ export function useDocuments() {
   // resetSync restarts the company's NFS-e sync from NSU 0. It moves only
   // the cursor: the documents stay.
   async function resetSync() {
-    const companyCNPJ = filter.value.CNPJ
+    const companyCNPJ = cnpj.value
     if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'nfse'))
       return false
     resettingCNPJ.value = companyCNPJ
@@ -178,6 +181,8 @@ export function useDocuments() {
     filter,
     documents,
     selected,
+    rowsFor,
+    clearRows: () => store.clearRows(),
     loading,
     exporting,
     markingViewed,
@@ -188,13 +193,13 @@ export function useDocuments() {
     scopeRows,
     unviewedChaves,
     badgesByChave,
-    companyOptions,
+    cnpj,
+    competence,
     selectedCompany,
     ambiente,
     statusLine,
     isSyncing,
     isResetting,
-    loadCompanies,
     search,
     syncNFSe,
     resetSync,

@@ -6,10 +6,10 @@
       :status-line="statusLine"
       :blocked-text="blockedText"
       :syncing="isSyncing"
-      :sync-disabled="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
+      :sync-disabled="!cnpj || isResetting || Boolean(syncBlockedUntil)"
       reset-title="Remove as NF-e da empresa e reinicia a sincronização NF-e"
       :resetting="isResetting"
-      :reset-disabled="!filter.CNPJ || isSyncing"
+      :reset-disabled="!cnpj || isSyncing"
       @sync="syncNFe"
       @reset="confirmResetNFe"
     />
@@ -37,8 +37,8 @@
     <q-tab-panels v-model="activeTab" animated keep-alive class="bg-transparent">
       <q-tab-panel name="notas" class="q-pa-none">
         <DocumentFilterBar
-          v-model:cnpj="filter.CNPJ"
-          v-model:competence="filter.Competence"
+          v-model:cnpj="cnpj"
+          v-model:competence="competence"
           v-model:only-unviewed="onlyUnviewed"
           :company-options="companyOptions"
           :loading="loading"
@@ -46,7 +46,6 @@
           :export-disabled="scopeRows.length === 0"
           :mark-viewed-count="unviewedChaves.length"
           @search="search"
-          @company-change="handleCompanyChange"
           @mark-viewed="confirmMarkViewed"
           @export="openExportDialog"
         >
@@ -79,7 +78,7 @@
           row-key="ChaveAcesso"
           selection="multiple"
           :loading="loading"
-          :no-data-label="filter.CNPJ ? 'Nenhuma NF-e encontrada.' : 'Selecione uma empresa.'"
+          :no-data-label="cnpj ? 'Nenhuma NF-e encontrada.' : noCompanyLabel"
           class="document-table"
           binary-state-sort
           flat
@@ -196,12 +195,12 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <NFeEventsDialog v-model="showEventsDialog" :cnpj="filter.CNPJ" :chave-acesso="eventsChave" />
+    <NFeEventsDialog v-model="showEventsDialog" :cnpj="cnpj" :chave-acesso="eventsChave" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
@@ -223,11 +222,14 @@ import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
+import { companyOption } from '@/composables/useCompanies'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNotify } from '@/composables/useNotify'
+import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { NFeConclusiveTipo, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {
@@ -258,6 +260,7 @@ import {
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
+const workspace = useWorkspaceStore()
 const manifestacao = useNFeManifestacao()
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()
@@ -276,7 +279,7 @@ const {
   unviewedChaves,
   badgesByChave,
   onlyUnviewed,
-  companyOptions,
+  competence,
   companyName,
   ambiente,
   pendingCount,
@@ -384,30 +387,23 @@ function valoresItems(row: NFeRow): DetailItem[] {
   ]
 }
 
-onMounted(() => {
-  void loadCompanies()
+// The filter bar picks from the workspace companies until the drawer does.
+const companyOptions = computed(() => workspace.companies.map(companyOption))
+
+// The page lists the workspace company and competência. A new company also
+// reloads the status; a new competência only the list.
+const { cnpj, noCompanyLabel } = useWorkspaceList({
+  rowsFor: () => nfe.rowsFor.value,
+  clear: ({ company }) => {
+    nfe.clearRows()
+    if (!company) return
+    status.value = null
+    pending.value = []
+  },
+  reload: async ({ company }) => {
+    await (company ? Promise.all([search(), loadStatus(), loadPending()]) : search())
+  },
 })
-
-async function loadCompanies() {
-  try {
-    await nfe.loadCompanies()
-    if (filter.value.CNPJ) {
-      await refreshAll()
-    }
-  } catch (error) {
-    notifyError('Erro ao carregar empresas', error)
-  }
-}
-
-async function refreshAll() {
-  await Promise.all([search(), loadStatus(), loadPending()])
-}
-
-async function handleCompanyChange() {
-  selected.value = []
-  if (!filter.value.CNPJ) return
-  await refreshAll()
-}
 
 async function search() {
   try {
@@ -446,7 +442,7 @@ async function syncNFe() {
 }
 
 function confirmResetNFe() {
-  if (!filter.value.CNPJ) return
+  if (!cnpj.value) return
   $q.dialog({
     title: 'Redefinir NF-e',
     message:
@@ -507,7 +503,7 @@ async function startCiencia(chavesAcesso: string[]) {
     component: NFeCienciaConfirmDialog,
     componentProps: {
       companyName: companyName.value,
-      cnpj: filter.value.CNPJ,
+      cnpj: cnpj.value,
       tpAmb: status.value?.TpAmb ?? '',
       plan,
     },

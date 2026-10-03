@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeManifestacao } from './useNFeManifestacao'
 import { desktopClient, mapNFeRow } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { NFeCienciaPlan, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
@@ -63,13 +64,13 @@ function deferred<T>() {
 
 describe('useNFeManifestacao', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listNFe).mockResolvedValue([nfeRow('a')])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue({} as never)
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
-    const store = useNFeDocumentsStore()
-    store.filter.CNPJ = '123'
+    useWorkspaceStore().cnpj = '123'
   })
 
   it('loads pendências and plans ciência for the selected company', async () => {
@@ -206,6 +207,7 @@ describe('useNFeManifestacao', () => {
   it('reloads only the manifested note when it is listed', async () => {
     const store = useNFeDocumentsStore()
     store.setRows([nfeRow('a'), nfeRow('b')])
+    store.rowsFor = { cnpj: '123', competence: '' }
     const fresh = { ...nfeRow('a'), Manifestacao: 'confirmada' as const }
     vi.mocked(desktopClient.listNFe).mockResolvedValue([fresh])
     vi.mocked(desktopClient.registerNFeManifestacao).mockResolvedValue({

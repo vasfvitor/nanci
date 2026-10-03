@@ -1,9 +1,9 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { createPinia, setActivePinia, type Pinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentsPage from './DocumentsPage.vue'
 import { desktopClient, mapDocumentRow } from '@/platform/wails/client'
-import { useDocumentsStore } from '@/stores/documents'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, DocumentRow, PullResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 
@@ -16,7 +16,6 @@ const dialog = vi.fn((_options: Record<string, unknown>) => ({
     okHandlers.push(handler)
   },
 }))
-const route = { query: {} as Record<string, string> }
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({
@@ -27,10 +26,6 @@ vi.mock('quasar', () => ({
   useDialogPluginComponent: vi.fn(),
   copyToClipboard: vi.fn(),
   date: { formatDate: vi.fn(() => '2026-07') },
-}))
-
-vi.mock('vue-router', () => ({
-  useRoute: () => route,
 }))
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
@@ -107,10 +102,11 @@ const software = documentRow('B'.repeat(50), {
 })
 const treinamento = documentRow('C'.repeat(50), { NFSeNumber: '9012', PrestadorName: 'Treinamentos' })
 
-function mountPage(pinia?: Pinia) {
+// mountPage mounts on the active Pinia, so two mounts in a test stand for
+// leaving the page and coming back.
+function mountPage() {
   return shallowMount(DocumentsPage, {
     global: {
-      plugins: pinia ? [pinia] : [],
       stubs: {
         DocumentFilterBar: false,
         DocumentPageHeader: false,
@@ -190,14 +186,14 @@ function deferred<T>() {
 }
 
 describe('DocumentsPage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
     okHandlers.length = 0
-    route.query = {}
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([acme, outra])
     vi.mocked(desktopClient.listDocuments).mockResolvedValue([consultoria, software, treinamento])
+    await useWorkspaceStore().loadCompanies()
   })
 
   it('lists the NFS-e of the first company with its ambiente and status line', async () => {
@@ -222,31 +218,27 @@ describe('DocumentsPage', () => {
 
   it('asks for a company when there is none', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
     const wrapper = mountPage()
     await flushPromises()
 
     expect(desktopClient.listDocuments).not.toHaveBeenCalled()
-    expect(table(wrapper).props('noDataLabel')).toBe('Selecione uma empresa.')
-  })
-
-  it('opens on the company and competência of the route', async () => {
-    route.query = { cnpj: outra.CNPJ, competence: '2026-05' }
-    mountPage()
-    await flushPromises()
-
-    expect(desktopClient.listDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ CNPJ: outra.CNPJ, Competence: '2026-05' })
+    expect(table(wrapper).props('noDataLabel')).toBe(
+      'Nenhuma empresa cadastrada. Cadastre uma em Empresas.'
     )
   })
 
-  it('falls back to the first company when the picked one is gone', async () => {
-    useDocumentsStore().filter.CNPJ = '11111111000111'
+  it('searches when the competência changes', async () => {
     mountPage()
     await flushPromises()
+    vi.mocked(desktopClient.listDocuments).mockClear()
 
-    expect(useDocumentsStore().filter.CNPJ).toBe(acme.CNPJ)
+    useWorkspaceStore().competence = '2026-05'
+    await flushPromises()
+
+    expect(desktopClient.listDocuments).toHaveBeenCalledTimes(1)
     expect(desktopClient.listDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ CNPJ: acme.CNPJ })
+      expect.objectContaining({ CNPJ: acme.CNPJ, Competence: '2026-05' })
     )
   })
 
@@ -258,7 +250,7 @@ describe('DocumentsPage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    field(wrapper, 'QSelect', 'Empresa').vm.$emit('update:modelValue', outra.CNPJ)
+    useWorkspaceStore().cnpj = outra.CNPJ
     await flushPromises()
     expect(table(wrapper).props('rows')).toEqual([treinamento])
 
@@ -272,7 +264,7 @@ describe('DocumentsPage', () => {
     await flushPromises()
     await select(wrapper, [consultoria])
 
-    field(wrapper, 'QSelect', 'Empresa').vm.$emit('update:modelValue', outra.CNPJ)
+    useWorkspaceStore().cnpj = outra.CNPJ
     await flushPromises()
 
     expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(
@@ -340,18 +332,39 @@ describe('DocumentsPage', () => {
   })
 
   it('keeps the text filter and the selection after leaving the page and coming back', async () => {
-    const pinia = createPinia()
-    const first = mountPage(pinia)
+    const first = mountPage()
     await flushPromises()
     field(first, 'QInput', placeholder).vm.$emit('update:modelValue', 'contabil')
     await select(first, [consultoria])
     first.unmount()
 
-    const second = mountPage(pinia)
+    const second = mountPage()
     await flushPromises()
     expect(field(second, 'QInput', placeholder).props('modelValue')).toBe('contabil')
     expect(table(second).props('rows')).toEqual([consultoria])
     expect(table(second).props('selected')).toEqual([consultoria])
+  })
+
+  it('clears the rows of another company when it comes back', async () => {
+    const first = mountPage()
+    await flushPromises()
+    await select(first, [consultoria])
+    first.unmount()
+
+    useWorkspaceStore().cnpj = outra.CNPJ
+    const list = deferred<DocumentRow[]>()
+    vi.mocked(desktopClient.listDocuments).mockReturnValue(list.promise)
+    const second = mountPage()
+    await flushPromises()
+    expect(table(second).props('rows')).toEqual([])
+    expect(table(second).props('selected')).toEqual([])
+
+    list.resolve([treinamento])
+    await flushPromises()
+    expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ CNPJ: outra.CNPJ })
+    )
+    expect(table(second).props('rows')).toEqual([treinamento])
   })
 
   it('drops selected rows that are absent from a new result set', async () => {

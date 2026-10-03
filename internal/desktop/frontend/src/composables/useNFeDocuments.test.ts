@@ -4,6 +4,7 @@ import { useNFeDocuments } from './useNFeDocuments'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { nfeStateBadges } from '@/utils/nfeDisplay'
 import { nextTick } from 'vue'
 import type {
@@ -92,8 +93,8 @@ describe('useNFeDocuments', () => {
 
   it('searches with the store list input', async () => {
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
-    nfe.filter.value.Competence = '2024-09'
+    nfe.cnpj.value = '123'
+    nfe.competence.value = '2024-09'
     nfe.filter.value.Manifestacao = 'nenhuma'
 
     await nfe.search()
@@ -119,7 +120,7 @@ describe('useNFeDocuments', () => {
     )
 
     const firstPage = useNFeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const syncing = firstPage.syncNFe()
 
     const remountedPage = useNFeDocuments()
@@ -147,7 +148,7 @@ describe('useNFeDocuments', () => {
     )
 
     const firstPage = useNFeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const resetting = firstPage.resetNFe()
 
     const remountedPage = useNFeDocuments()
@@ -167,7 +168,7 @@ describe('useNFeDocuments', () => {
 
   it('does not reset while the NF-e sync runs', async () => {
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
     useCompanySyncStore().startSync('123', 'nfe')
 
     await expect(nfe.resetNFe()).resolves.toBeNull()
@@ -178,7 +179,7 @@ describe('useNFeDocuments', () => {
     vi.mocked(desktopClient.pullNFe).mockRejectedValue(new Error('consultas bloqueadas'))
 
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
 
     await expect(nfe.syncNFe()).rejects.toThrow('consultas bloqueadas')
     expect(nfe.isSyncing.value).toBe(false)
@@ -190,7 +191,7 @@ describe('useNFeDocuments', () => {
     vi.setSystemTime(new Date('2026-09-23T12:00:00Z'))
 
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
     expect(nfe.syncBlockedUntil.value).toBeNull()
 
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(
@@ -211,7 +212,7 @@ describe('useNFeDocuments', () => {
 
   it('does not export a ZIP without chaves', async () => {
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
 
     await expect(nfe.exportZIP([], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
@@ -219,8 +220,8 @@ describe('useNFeDocuments', () => {
 
   it('exports XML and ZIP for the given chaves with the choice of the dialog', async () => {
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
-    nfe.filter.value.Competence = '2024-09'
+    nfe.cnpj.value = '123'
+    nfe.competence.value = '2024-09'
     nfe.filter.value.Role = 'destinatario'
 
     await nfe.exportXML('chave-1')
@@ -239,15 +240,14 @@ describe('useNFeDocuments', () => {
 
   it('exports for the company in the list input, as the grid shows it', async () => {
     const nfe = useNFeDocuments()
-    // A cleared select sets null; listInput normalizes it.
-    nfe.filter.value.CNPJ = null as unknown as string
+    nfe.cnpj.value = ''
 
     await expect(nfe.exportXML('chave-1')).resolves.toBeNull()
     await expect(nfe.exportZIP(['chave-1'], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
     expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
 
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
     await nfe.exportXML('chave-1')
     await nfe.exportZIP(['chave-1'], plainExport)
 
@@ -265,7 +265,7 @@ describe('useNFeDocuments', () => {
     )
 
     const firstPage = useNFeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const exporting = firstPage.exportZIP(['chave-1'], plainExport)
 
     const remountedPage = useNFeDocuments()
@@ -285,7 +285,7 @@ describe('useNFeDocuments', () => {
     vi.mocked(desktopClient.exportNFeXML).mockRejectedValue(new Error('boom'))
 
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
 
     await expect(nfe.exportXML('chave-1')).rejects.toThrow('boom')
     expect(nfe.exporting.value).toBe(false)
@@ -341,11 +341,11 @@ describe('useNFeDocuments', () => {
     vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(1)
     const store = useNFeDocumentsStore()
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
     store.setRows([nfeRow('a'), nfeRow('b')])
     nfe.selected.value = [store.rows[0] as NFeRow]
     // A filter edited after the search that filled the grid must not narrow the marking.
-    nfe.filter.value.Competence = '2026-06'
+    nfe.competence.value = '2026-06'
     nfe.filter.value.Situacao = 'cancelada'
     nfe.filter.value.Role = 'emitente'
 
@@ -362,7 +362,7 @@ describe('useNFeDocuments', () => {
     vi.mocked(desktopClient.markNFeViewed).mockResolvedValue(1)
     const store = useNFeDocumentsStore()
     const nfe = useNFeDocuments()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
     nfe.onlyUnviewed.value = true
     store.setRows([nfeRow('a'), nfeRow('b')])
 
@@ -376,7 +376,7 @@ describe('useNFeDocuments', () => {
   it('does not mark without a company or chaves', async () => {
     const nfe = useNFeDocuments()
     await expect(nfe.markViewed(['a'])).resolves.toBeNull()
-    nfe.filter.value.CNPJ = '123'
+    nfe.cnpj.value = '123'
     await expect(nfe.markViewed([])).resolves.toBeNull()
     expect(desktopClient.markNFeViewed).not.toHaveBeenCalled()
   })
@@ -386,7 +386,7 @@ describe('useNFeDocuments', () => {
     vi.mocked(desktopClient.markNFeViewed).mockReturnValue(mark.promise)
 
     const firstPage = useNFeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const marking = firstPage.markViewed(['a'])
 
     const remountedPage = useNFeDocuments()
@@ -399,29 +399,12 @@ describe('useNFeDocuments', () => {
     expect(remountedPage.markingViewed.value).toBe(false)
   })
 
-  it('keeps a known company selected and falls back to the first', async () => {
-    const companies = [
-      { CNPJ: '111', Name: 'Primeira' },
-      { CNPJ: '222', Name: 'Segunda' },
-    ] as CompanySummary[]
-    vi.mocked(desktopClient.listCompanies).mockResolvedValue(companies)
-    const nfe = useNFeDocuments()
-
-    nfe.filter.value.CNPJ = '222'
-    await nfe.loadCompanies()
-    expect(nfe.filter.value.CNPJ).toBe('222')
-
-    nfe.filter.value.CNPJ = '999'
-    await nfe.loadCompanies()
-    expect(nfe.filter.value.CNPJ).toBe('111')
-  })
-
   it('derives the company name, counts and status line from the status', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([
       { CNPJ: '123', Name: 'Empresa da lista' } as CompanySummary,
     ])
     const nfe = useNFeDocuments()
-    await nfe.loadCompanies()
+    await useWorkspaceStore().loadCompanies()
     expect(nfe.companyName.value).toContain('Empresa da lista')
     expect(nfe.statusLine.value).toBe('')
 

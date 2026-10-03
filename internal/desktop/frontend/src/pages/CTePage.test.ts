@@ -1,8 +1,9 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { createPinia, setActivePinia, type Pinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CTePage from './CTePage.vue'
 import { desktopClient, mapCTeRow } from '@/platform/wails/client'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 
@@ -107,10 +108,11 @@ function status(overrides: Partial<CTeStatusResult> = {}): CTeStatusResult {
   }
 }
 
-function mountPage(pinia?: Pinia) {
+// mountPage mounts on the active Pinia, so two mounts in a test stand for
+// leaving the page and coming back.
+function mountPage() {
   return shallowMount(CTePage, {
     global: {
-      plugins: pinia ? [pinia] : [],
       stubs: {
         DocumentFilterBar: false,
         DocumentPageHeader: false,
@@ -183,7 +185,7 @@ async function select(wrapper: Page, rows: CTeRow[]) {
 }
 
 describe('CTePage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
@@ -191,6 +193,7 @@ describe('CTePage', () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listCTe).mockResolvedValue([tomada, servico])
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(status())
+    await useWorkspaceStore().loadCompanies()
   })
 
   it('lists the CT-e of the first company with its status', async () => {
@@ -206,21 +209,41 @@ describe('CTePage', () => {
 
   it('asks for a company when there is none', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
     const wrapper = mountPage()
     await flushPromises()
 
     expect(desktopClient.listCTe).not.toHaveBeenCalled()
-    expect(table(wrapper).props('noDataLabel')).toBe('Selecione uma empresa.')
+    expect(table(wrapper).props('noDataLabel')).toBe(
+      'Nenhuma empresa cadastrada. Cadastre uma em Empresas.'
+    )
+  })
+
+  it('searches when the competência changes, without reloading the status', async () => {
+    mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCTe).mockClear()
+    vi.mocked(desktopClient.statusCTe).mockClear()
+
+    useWorkspaceStore().competence = '2024-08'
+    await flushPromises()
+
+    expect(desktopClient.listCTe).toHaveBeenCalledTimes(1)
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(
+      expect.objectContaining({ CNPJ: company.CNPJ, Competence: '2024-08' })
+    )
+    expect(desktopClient.statusCTe).not.toHaveBeenCalled()
   })
 
   it('clears the selection when the company changes', async () => {
-    const outra = { ...company, CNPJ: '98765432000199', Name: 'Outra' }
+    const outra = { ...company, ID: 'company-2', CNPJ: '12345678000100', Name: 'Outra' }
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
+    await useWorkspaceStore().loadCompanies()
     const wrapper = mountPage()
     await flushPromises()
     await select(wrapper, [tomada])
 
-    field(wrapper, 'QSelect', 'Empresa').vm.$emit('update:modelValue', outra.CNPJ)
+    useWorkspaceStore().cnpj = outra.CNPJ
     await flushPromises()
 
     expect(desktopClient.listCTe).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: outra.CNPJ }))
@@ -246,14 +269,13 @@ describe('CTePage', () => {
   })
 
   it('keeps the text filter and the selection after leaving the page and coming back', async () => {
-    const pinia = createPinia()
-    const first = mountPage(pinia)
+    const first = mountPage()
     await flushPromises()
     field(first, 'QInput', placeholder).vm.$emit('update:modelValue', 'FICTICIA')
     await select(first, [tomada])
     first.unmount()
 
-    const second = mountPage(pinia)
+    const second = mountPage()
     await flushPromises()
     expect(field(second, 'QInput', placeholder).props('modelValue')).toBe('FICTICIA')
     expect(table(second).props('rows')).toEqual([tomada])

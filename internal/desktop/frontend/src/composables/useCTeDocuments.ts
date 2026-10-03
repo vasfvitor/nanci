@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCompanyFilter } from '@/composables/useCompanyFilter'
 import { useCTeLoaders } from '@/composables/useCTeLoaders'
 import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
@@ -11,18 +10,22 @@ import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { cteDocumentCount, cteStateBadges, cteStatusLine } from '@/utils/cteDisplay'
 import { sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
+  const workspace = useWorkspaceStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useCTeLoaders()
+  const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
     listError,
     rows,
     selected,
+    rowsFor,
     filterText,
     loading,
     exporting,
@@ -30,7 +33,6 @@ export function useCTeDocuments() {
     status,
     resettingCNPJ,
   } = storeToRefs(store)
-  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
   const pagination = useTablePagination('cte')
 
   // filteredRows is what the grid shows: the search result narrowed by the
@@ -50,6 +52,7 @@ export function useCTeDocuments() {
   })
 
   const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    cnpj: () => store.listInput.CNPJ,
     filter,
     mark: (cnpj, chavesAcesso) => desktopClient.markCTeViewed(cnpj, chavesAcesso),
     rows,
@@ -66,48 +69,50 @@ export function useCTeDocuments() {
   const documentCount = computed(() => cteDocumentCount(status.value))
   const statusLine = computed(() => (status.value ? cteStatusLine(status.value) : ''))
 
-  const isSyncing = computed(
-    () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'cte')
-  )
-  const isResetting = computed(
-    () => Boolean(filter.value.CNPJ) && resettingCNPJ.value === filter.value.CNPJ
-  )
+  const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'cte'))
+  const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
   // syncCTe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
   async function syncCTe() {
-    const cnpj = filter.value.CNPJ
-    if (!cnpj || syncStore.isSyncing(cnpj, 'cte') || resettingCNPJ.value === cnpj) return null
+    const companyCNPJ = cnpj.value
+    if (
+      !companyCNPJ ||
+      syncStore.isSyncing(companyCNPJ, 'cte') ||
+      resettingCNPJ.value === companyCNPJ
+    ) {
+      return null
+    }
 
     try {
-      return await syncStore.runSync(cnpj, 'cte', () => desktopClient.pullCTe(cnpj))
+      return await syncStore.runSync(companyCNPJ, 'cte', () => desktopClient.pullCTe(companyCNPJ))
     } finally {
-      await refresh(cnpj)
+      await refresh(companyCNPJ)
     }
   }
 
   // previewReset counts what resetCTe would remove, for the confirmation.
   async function previewReset() {
-    const cnpj = filter.value.CNPJ
-    if (!cnpj || resettingCNPJ.value || syncStore.isSyncing(cnpj, 'cte')) return null
-    return desktopClient.previewResetCTe(cnpj)
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'cte')) return null
+    return desktopClient.previewResetCTe(companyCNPJ)
   }
 
   // resetCTe removes the company's CT-e and resets its CT-e sync. It never
   // runs alongside a pull, and its in-flight marker lives in the store so the
   // page stays busy after navigating away and back.
   async function resetCTe() {
-    const cnpj = filter.value.CNPJ
-    if (!cnpj || resettingCNPJ.value || syncStore.isSyncing(cnpj, 'cte')) return null
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'cte')) return null
 
-    resettingCNPJ.value = cnpj
+    resettingCNPJ.value = companyCNPJ
     try {
-      return await desktopClient.resetCTe(cnpj)
+      return await desktopClient.resetCTe(companyCNPJ)
     } finally {
       resettingCNPJ.value = ''
-      await refresh(cnpj)
+      await refresh(companyCNPJ)
     }
   }
 
@@ -141,6 +146,8 @@ export function useCTeDocuments() {
     listError,
     rows,
     selected,
+    rowsFor,
+    clearRows: () => store.clearRows(),
     loading,
     exporting,
     markingViewed,
@@ -152,7 +159,9 @@ export function useCTeDocuments() {
     scopeRows,
     unviewedChaves,
     badgesByChave,
-    companyOptions,
+    cnpj,
+    competence,
+    selectedCompany,
     companyName,
     ambiente,
     documentCount,
@@ -161,7 +170,6 @@ export function useCTeDocuments() {
     isResetting,
     syncBlockedUntil,
     blockedText,
-    loadCompanies,
     search,
     loadStatus,
     syncCTe,

@@ -1,23 +1,26 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { DocumentRow, ListDocumentsInput } from '@/types/desktop'
-import type { WorkspaceKey } from '@/stores/workspace'
+import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
 import { pruneSelection } from '@/utils/selection'
 
 // The store holds NFS-e page state that outlives the page.
 export const useDocumentsStore = defineStore('documents', () => {
-  const filter = ref<ListDocumentsInput>({
-    CNPJ: '',
-    Competence: '',
+  const workspace = useWorkspaceStore()
+
+  // filter holds the NFS-e filters; the company and the competência come
+  // from the workspace.
+  const filter = ref<Omit<ListDocumentsInput, 'CNPJ' | 'Competence'>>({
     Direction: '',
     OnlyUnread: false,
   })
 
   // listInput is the only place the ListDocuments request is built from the
-  // filter. Clearable inputs set null, so every field is normalized here.
+  // workspace and the filter. Clearable inputs set null, so every field is
+  // normalized here.
   const listInput = computed<ListDocumentsInput>(() => ({
-    CNPJ: filter.value.CNPJ || '',
-    Competence: filter.value.Competence || '',
+    CNPJ: workspace.cnpj,
+    Competence: workspace.competence || '',
     Direction: filter.value.Direction || '',
     OnlyUnread: filter.value.OnlyUnread || false,
   }))

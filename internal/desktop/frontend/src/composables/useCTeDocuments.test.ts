@@ -5,6 +5,7 @@ import { useCTeDocuments } from './useCTeDocuments'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type {
   CompanySummary,
   CTeResetResult,
@@ -85,8 +86,8 @@ describe('useCTeDocuments', () => {
 
   it('searches with the store list input', async () => {
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
-    cte.filter.value.Competence = '2026-08'
+    cte.cnpj.value = '123'
+    cte.competence.value = '2026-08'
     cte.filter.value.Modelo = '57'
     cte.filter.value.Role = 'tomador'
 
@@ -126,7 +127,7 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.exportCTeZIP).mockReturnValue(zip.promise)
 
     const firstPage = useCTeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const syncing = firstPage.syncCTe()
     const exporting = firstPage.exportZIP(['chave-1'], { incremental: false })
 
@@ -160,7 +161,7 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.resetCTe).mockReturnValue(reset.promise)
 
     const firstPage = useCTeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const resetting = firstPage.resetCTe()
 
     const remountedPage = useCTeDocuments()
@@ -182,7 +183,7 @@ describe('useCTeDocuments', () => {
 
   it('does not preview or reset while the CT-e sync runs', async () => {
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
     useCompanySyncStore().startSync('123', 'cte')
 
     await expect(cte.previewReset()).resolves.toBeNull()
@@ -195,7 +196,7 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.pullCTe).mockRejectedValue(new Error('consultas bloqueadas'))
 
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
 
     await expect(cte.syncCTe()).rejects.toThrow('consultas bloqueadas')
     expect(cte.isSyncing.value).toBe(false)
@@ -207,7 +208,7 @@ describe('useCTeDocuments', () => {
     vi.setSystemTime(new Date('2026-09-23T12:00:00Z'))
 
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
     expect(cte.syncBlockedUntil.value).toBeNull()
 
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(
@@ -224,8 +225,8 @@ describe('useCTeDocuments', () => {
 
   it('exports XML and ZIP for the given chaves, incremental when asked', async () => {
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
-    cte.filter.value.Competence = '2026-08'
+    cte.cnpj.value = '123'
+    cte.competence.value = '2026-08'
     cte.filter.value.Role = 'tomador'
 
     await cte.exportXML('chave-1')
@@ -248,7 +249,7 @@ describe('useCTeDocuments', () => {
 
   it('does not export an empty list of chaves', async () => {
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
 
     await expect(cte.exportZIP([], { incremental: false })).resolves.toBeNull()
     expect(desktopClient.exportCTeZIP).not.toHaveBeenCalled()
@@ -275,11 +276,11 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(1)
     const store = useCTeDocumentsStore()
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
     store.rows = [cteRow('a'), cteRow('b')]
     cte.selected.value = [store.rows[0] as CTeRow]
     // A filter edited after the search that filled the grid must not narrow the marking.
-    cte.filter.value.Competence = '2026-06'
+    cte.competence.value = '2026-06'
     cte.filter.value.Modelo = '67'
     cte.filter.value.TomadorCNPJ = '98.765.432/0001-99'
 
@@ -296,7 +297,7 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.markCTeViewed).mockResolvedValue(1)
     const store = useCTeDocumentsStore()
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
     cte.onlyUnviewed.value = true
     store.setRows([cteRow('a'), cteRow('b')])
 
@@ -312,7 +313,7 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.markCTeViewed).mockReturnValue(mark.promise)
 
     const firstPage = useCTeDocuments()
-    firstPage.filter.value.CNPJ = '123'
+    firstPage.cnpj.value = '123'
     const marking = firstPage.markViewed(['a'])
 
     const remountedPage = useCTeDocuments()
@@ -329,7 +330,7 @@ describe('useCTeDocuments', () => {
     vi.mocked(desktopClient.exportCTeXML).mockRejectedValue(new Error('boom'))
 
     const cte = useCTeDocuments()
-    cte.filter.value.CNPJ = '123'
+    cte.cnpj.value = '123'
 
     await expect(cte.exportXML('chave-1')).rejects.toThrow('boom')
     expect(cte.exporting.value).toBe(false)
@@ -351,28 +352,12 @@ describe('useCTeDocuments', () => {
     expect(cte.filteredRows.value).toEqual([other])
   })
 
-  it('keeps a known company selected and falls back to the first', async () => {
-    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
-      { CNPJ: '111', Name: 'Primeira' },
-      { CNPJ: '222', Name: 'Segunda' },
-    ] as CompanySummary[])
-    const cte = useCTeDocuments()
-
-    cte.filter.value.CNPJ = '222'
-    await cte.loadCompanies()
-    expect(cte.filter.value.CNPJ).toBe('222')
-
-    cte.filter.value.CNPJ = '999'
-    await cte.loadCompanies()
-    expect(cte.filter.value.CNPJ).toBe('111')
-  })
-
   it('derives the company name, count and status line from the status', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([
       { CNPJ: '123', Name: 'Empresa da lista' } as CompanySummary,
     ])
     const cte = useCTeDocuments()
-    await cte.loadCompanies()
+    await useWorkspaceStore().loadCompanies()
     expect(cte.companyName.value).toContain('Empresa da lista')
     expect(cte.statusLine.value).toBe('')
 

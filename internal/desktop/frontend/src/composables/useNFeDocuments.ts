@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCompanyFilter } from '@/composables/useCompanyFilter'
 import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
@@ -11,17 +10,21 @@ import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { nfeNoteCount, nfePendingCount, nfeStateBadges, nfeStatusLine } from '@/utils/nfeDisplay'
 import { sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
+  const workspace = useWorkspaceStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useNFeLoaders()
+  const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
     rows,
     selected,
+    rowsFor,
     filterText,
     loading,
     exporting,
@@ -30,7 +33,6 @@ export function useNFeDocuments() {
     activeTab,
     resettingCNPJ,
   } = storeToRefs(store)
-  const { companyOptions, selectedCompany, loadCompanies } = useCompanyFilter(filter)
   const pagination = useTablePagination('nfe')
 
   // filteredRows is what the grid shows: the search result narrowed by the
@@ -50,6 +52,7 @@ export function useNFeDocuments() {
   })
 
   const { onlyUnviewed, scopeRows, unviewedChaves, markViewed } = useMarkViewed({
+    cnpj: () => store.listInput.CNPJ,
     filter,
     mark: (cnpj, chavesAcesso) => desktopClient.markNFeViewed(cnpj, chavesAcesso),
     rows,
@@ -67,25 +70,27 @@ export function useNFeDocuments() {
   const noteCount = computed(() => nfeNoteCount(status.value))
   const statusLine = computed(() => (status.value ? nfeStatusLine(status.value) : ''))
 
-  const isSyncing = computed(
-    () => Boolean(filter.value.CNPJ) && syncStore.isSyncing(filter.value.CNPJ, 'nfe')
-  )
-  const isResetting = computed(
-    () => Boolean(filter.value.CNPJ) && resettingCNPJ.value === filter.value.CNPJ
-  )
+  const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'nfe'))
+  const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
   // syncNFe runs one distribution pull. The in-flight marker lives in the
   // companySync store so the button stays busy after navigating away and back.
   async function syncNFe() {
-    const cnpj = filter.value.CNPJ
-    if (!cnpj || syncStore.isSyncing(cnpj, 'nfe') || resettingCNPJ.value === cnpj) return null
+    const companyCNPJ = cnpj.value
+    if (
+      !companyCNPJ ||
+      syncStore.isSyncing(companyCNPJ, 'nfe') ||
+      resettingCNPJ.value === companyCNPJ
+    ) {
+      return null
+    }
 
     try {
-      return await syncStore.runSync(cnpj, 'nfe', () => desktopClient.pullNFe(cnpj))
+      return await syncStore.runSync(companyCNPJ, 'nfe', () => desktopClient.pullNFe(companyCNPJ))
     } finally {
-      await refresh(cnpj)
+      await refresh(companyCNPJ)
     }
   }
 
@@ -93,15 +98,15 @@ export function useNFeDocuments() {
   // runs alongside a pull, and its in-flight marker lives in the store so the
   // page stays busy after navigating away and back.
   async function resetNFe() {
-    const cnpj = filter.value.CNPJ
-    if (!cnpj || resettingCNPJ.value || syncStore.isSyncing(cnpj, 'nfe')) return null
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ || resettingCNPJ.value || syncStore.isSyncing(companyCNPJ, 'nfe')) return null
 
-    resettingCNPJ.value = cnpj
+    resettingCNPJ.value = companyCNPJ
     try {
-      return await desktopClient.resetNFe(cnpj)
+      return await desktopClient.resetNFe(companyCNPJ)
     } finally {
       resettingCNPJ.value = ''
-      await refresh(cnpj)
+      await refresh(companyCNPJ)
     }
   }
 
@@ -138,6 +143,8 @@ export function useNFeDocuments() {
     filter,
     rows,
     selected,
+    rowsFor,
+    clearRows: () => store.clearRows(),
     loading,
     exporting,
     markingViewed,
@@ -150,7 +157,9 @@ export function useNFeDocuments() {
     scopeRows,
     unviewedChaves,
     badgesByChave,
-    companyOptions,
+    cnpj,
+    competence,
+    selectedCompany,
     companyName,
     ambiente,
     pendingCount,
@@ -160,7 +169,6 @@ export function useNFeDocuments() {
     isResetting,
     syncBlockedUntil,
     blockedText,
-    loadCompanies,
     search,
     loadStatus,
     syncNFe,

@@ -5,17 +5,17 @@
       :ambiente="ambiente"
       :status-line="statusLine"
       :syncing="isSyncing"
-      :sync-disabled="!filter.CNPJ || isResetting"
+      :sync-disabled="!cnpj || isResetting"
       reset-title="Reinicia a sincronização da NFS-e a partir do NSU 0; os documentos ficam"
       :resetting="isResetting"
-      :reset-disabled="!filter.CNPJ || isSyncing"
+      :reset-disabled="!cnpj || isSyncing"
       @sync="syncNFSe"
       @reset="confirmResetSync"
     />
 
     <DocumentFilterBar
-      v-model:cnpj="filter.CNPJ"
-      v-model:competence="filter.Competence"
+      v-model:cnpj="cnpj"
+      v-model:competence="competence"
       v-model:only-unviewed="onlyUnviewed"
       :company-options="companyOptions"
       :loading="loading"
@@ -23,7 +23,6 @@
       :export-disabled="scopeRows.length === 0"
       :mark-viewed-count="unviewedChaves.length"
       @search="search"
-      @company-change="handleCompanyChange"
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
@@ -40,7 +39,7 @@
       row-key="ChaveAcesso"
       selection="multiple"
       :loading="loading"
-      :no-data-label="filter.CNPJ ? 'Nenhuma NFS-e encontrada.' : 'Selecione uma empresa.'"
+      :no-data-label="cnpj ? 'Nenhuma NFS-e encontrada.' : noCompanyLabel"
       class="document-table"
       binary-state-sort
       flat
@@ -123,8 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
@@ -142,9 +140,12 @@ import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
+import { companyOption } from '@/composables/useCompanies'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
+import { useWorkspaceList } from '@/composables/useWorkspaceList'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
@@ -152,8 +153,8 @@ import { nfseRoleFilterOptions, nfseSyncSummary } from '@/utils/nfseDisplay'
 import { NFSE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
-const route = useRoute()
 const nfse = useDocuments()
+const workspace = useWorkspaceStore()
 const { notifyError, notifySuccess, notifyExported, notifySyncError } = useNotify()
 
 const {
@@ -168,7 +169,7 @@ const {
   unviewedChaves,
   badgesByChave,
   onlyUnviewed,
-  companyOptions,
+  competence,
   selectedCompany,
   ambiente,
   statusLine,
@@ -236,37 +237,16 @@ function retencoesItems(row: DocumentRow): DetailItem[] {
   ]
 }
 
-onMounted(() => {
-  void loadCompanies()
+// The filter bar picks from the workspace companies until the drawer does.
+const companyOptions = computed(() => workspace.companies.map(companyOption))
+
+// The page lists the workspace company and competência, and searches again
+// when either changes.
+const { cnpj, noCompanyLabel } = useWorkspaceList({
+  rowsFor: () => nfse.rowsFor.value,
+  clear: () => nfse.clearRows(),
+  reload: () => search(),
 })
-
-function routeParam(param: unknown): string {
-  return Array.isArray(param) ? String(param[0] ?? '') : String(param ?? '')
-}
-
-// loadCompanies opens the page on the company and competência of the route
-// (?cnpj=&competence=, from the Empresas page), else on the company already
-// picked, else on the first one.
-async function loadCompanies() {
-  const competence = routeParam(route.query['competence'])
-  if (/^\d{4}-\d{2}$/.test(competence)) {
-    filter.value.Competence = competence
-  }
-  try {
-    await nfse.loadCompanies(routeParam(route.query['cnpj']))
-    if (filter.value.CNPJ) {
-      await search()
-    }
-  } catch (error) {
-    notifyError('Erro ao carregar empresas', error)
-  }
-}
-
-async function handleCompanyChange() {
-  selected.value = []
-  if (!filter.value.CNPJ) return
-  await search()
-}
 
 async function search() {
   try {

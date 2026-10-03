@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
-import type { WorkspaceKey } from '@/stores/workspace'
+import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
 import { pruneSelection } from '@/utils/selection'
 
 export type NFeTab = 'notas' | 'pendencias'
@@ -9,9 +9,11 @@ export type NFeTab = 'notas' | 'pendencias'
 // The store holds NF-e page state that outlives the page. Composables write
 // plain state through storeToRefs; only setRows and patchRow carry logic.
 export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
-  const filter = ref<ListNFeInput>({
-    CNPJ: '',
-    Competence: '',
+  const workspace = useWorkspaceStore()
+
+  // filter holds the NF-e filters; the company and the competência come from
+  // the workspace.
+  const filter = ref<Omit<ListNFeInput, 'CNPJ' | 'Competence'>>({
     Situacao: '',
     Completeness: '',
     Manifestacao: '',
@@ -20,11 +22,12 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     OnlyUnread: false,
   })
 
-  // listInput is the only place the ListNFe request is built from the filter.
-  // Clearable inputs set null, so every field is normalized here.
+  // listInput is the only place the ListNFe request is built from the
+  // workspace and the filter. Clearable inputs set null, so every field is
+  // normalized here.
   const listInput = computed<ListNFeInput>(() => ({
-    CNPJ: filter.value.CNPJ || '',
-    Competence: filter.value.Competence || '',
+    CNPJ: workspace.cnpj,
+    Competence: workspace.competence || '',
     Situacao: filter.value.Situacao || '',
     Completeness: filter.value.Completeness || '',
     Manifestacao: filter.value.Manifestacao || '',

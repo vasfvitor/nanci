@@ -1,11 +1,12 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { createPinia, setActivePinia, type Pinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFePage from './NFePage.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '@/components/NFeEventResultsDialog.vue'
 import NFeManifestacaoDialog from '@/components/NFeManifestacaoDialog.vue'
 import { desktopClient, mapNFeRow } from '@/platform/wails/client'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type {
   NFeCienciaPlan,
@@ -138,10 +139,11 @@ const emitida = nfeRow('b', {
   ConclusiveBlockReason: 'a empresa não é a destinatária',
 })
 
-function mountPage(pinia?: Pinia) {
+// mountPage mounts on the active Pinia, so two mounts in a test stand for
+// leaving the page and coming back.
+function mountPage() {
   return shallowMount(NFePage, {
     global: {
-      plugins: pinia ? [pinia] : [],
       stubs: {
         DocumentFilterBar: false,
         DocumentPageHeader: false,
@@ -237,7 +239,7 @@ async function filterRows(wrapper: Page, text: string) {
 }
 
 describe('NFePage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
@@ -246,6 +248,7 @@ describe('NFePage', () => {
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
   })
 
   it('lists the NF-e of the first company with its status', async () => {
@@ -262,11 +265,32 @@ describe('NFePage', () => {
 
   it('asks for a company when there is none', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
     const wrapper = mountPage()
     await flushPromises()
 
     expect(desktopClient.listNFe).not.toHaveBeenCalled()
-    expect(table(wrapper).props('noDataLabel')).toBe('Selecione uma empresa.')
+    expect(table(wrapper).props('noDataLabel')).toBe(
+      'Nenhuma empresa cadastrada. Cadastre uma em Empresas.'
+    )
+  })
+
+  it('searches when the competência changes, without reloading the status', async () => {
+    mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listNFe).mockClear()
+    vi.mocked(desktopClient.statusNFe).mockClear()
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockClear()
+
+    useWorkspaceStore().competence = '2024-08'
+    await flushPromises()
+
+    expect(desktopClient.listNFe).toHaveBeenCalledTimes(1)
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(
+      expect.objectContaining({ CNPJ: company.CNPJ, Competence: '2024-08' })
+    )
+    expect(desktopClient.statusNFe).not.toHaveBeenCalled()
+    expect(desktopClient.listNFePendingManifestacoes).not.toHaveBeenCalled()
   })
 
   it('shows the standard document columns in order, sorted by issue date', async () => {
@@ -295,8 +319,7 @@ describe('NFePage', () => {
   })
 
   it('keeps the text filter, the selection and the tab after leaving the page and coming back', async () => {
-    const pinia = createPinia()
-    const first = mountPage(pinia)
+    const first = mountPage()
     await flushPromises()
     await filterRows(first, 'campo verde')
     await selectRows(first, [emitida])
@@ -304,7 +327,7 @@ describe('NFePage', () => {
     await flushPromises()
     first.unmount()
 
-    const second = mountPage(pinia)
+    const second = mountPage()
     await flushPromises()
     expect(searchInput(second).props('modelValue')).toBe('campo verde')
     expect(table(second).props('rows')).toEqual([emitida])

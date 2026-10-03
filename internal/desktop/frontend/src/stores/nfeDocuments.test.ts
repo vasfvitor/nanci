@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useNFeDocumentsStore } from './nfeDocuments'
+import { useWorkspaceStore } from './workspace'
 import type { NFeRow } from '@/types/desktop'
 import { mapNFeRow } from '@/platform/wails/client'
 
@@ -35,13 +36,15 @@ function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
 
 describe('nfeDocuments store', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
   it('builds the list request from the filter, normalizing cleared fields', () => {
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = '123'
+    workspace.competence = null as unknown as string
     const store = useNFeDocumentsStore()
-    store.filter.CNPJ = '123'
-    store.filter.Competence = null as unknown as string
     store.filter.Situacao = 'autorizada'
     store.filter.Role = 'destinatario'
 

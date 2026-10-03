@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
-import type { WorkspaceKey } from '@/stores/workspace'
+import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
 import { pruneSelection } from '@/utils/selection'
 
 // compactCode keeps the letters and digits of a typed CNPJ or access key,
@@ -21,9 +21,11 @@ function isNFeChaveFilter(chave: string) {
 
 // The store holds CT-e page state that outlives the page.
 export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
-  const filter = ref<ListCTeInput>({
-    CNPJ: '',
-    Competence: '',
+  const workspace = useWorkspaceStore()
+
+  // filter holds the CT-e filters; the company and the competência come from
+  // the workspace.
+  const filter = ref<Omit<ListCTeInput, 'CNPJ' | 'Competence'>>({
     Situacao: '',
     Role: '',
     Modelo: '',
@@ -33,11 +35,12 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     OnlyUnread: false,
   })
 
-  // listInput is the only place the ListCTe request is built from the filter.
-  // Clearable inputs set null, so every field is normalized here.
+  // listInput is the only place the ListCTe request is built from the
+  // workspace and the filter. Clearable inputs set null, so every field is
+  // normalized here.
   const listInput = computed<ListCTeInput>(() => ({
-    CNPJ: filter.value.CNPJ || '',
-    Competence: filter.value.Competence || '',
+    CNPJ: workspace.cnpj,
+    Competence: workspace.competence || '',
     Situacao: filter.value.Situacao || '',
     Role: filter.value.Role || '',
     Modelo: filter.value.Modelo || '',

@@ -3,8 +3,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CompaniesPage from './CompaniesPage.vue'
 import { desktopClient, WailsClientError } from '@/platform/wails/client'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 const notify = vi.fn()
+const push = vi.fn()
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({
@@ -15,7 +17,7 @@ vi.mock('quasar', () => ({
 }))
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
 }))
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
@@ -145,6 +147,30 @@ describe('CompaniesPage credential assignment', () => {
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'positive' })
     )
+  })
+})
+
+describe('CompaniesPage documents link', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+  })
+
+  it('sets the workspace company and opens /documents', async () => {
+    const outra = { ...company, ID: 'company-2', CNPJ: '98765432000188', Name: 'Empresa Dois' }
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
+    const wrapper = mountPage(actionsCellTable)
+    await flushPromises()
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = outra.CNPJ
+
+    // The actions cell renders the first row, company.
+    await wrapper.get('button[title="Ver NFS-e"]').trigger('click')
+
+    expect(workspace.cnpj).toBe(company.CNPJ)
+    expect(push).toHaveBeenCalledWith('/documents')
   })
 })
 

@@ -130,6 +130,7 @@ import { errorMessage } from '@/platform/wails/client'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useConsoleStore } from '@/stores/console'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { useCompanies } from '@/composables/useCompanies'
 import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
@@ -138,6 +139,7 @@ import type { CompanySummary } from '@/types/desktop'
 
 const $q = useQuasar()
 const router = useRouter()
+const workspace = useWorkspaceStore()
 const consoleStore = useConsoleStore()
 const { debugEnabled } = storeToRefs(consoleStore)
 const companiesApi = useCompanies()
@@ -171,8 +173,10 @@ function openEditDialog(company: CompanySummary) {
   showEditDialog.value = true
 }
 
+// openDocuments makes the company the workspace one and opens its NFS-e.
 function openDocuments(cnpj: string) {
-  router.push({ path: '/documents', query: { cnpj } })
+  workspace.cnpj = cnpj
+  void router.push('/documents')
 }
 
 function syncStartLabel(company: CompanySummary) {

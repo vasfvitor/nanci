@@ -15,12 +15,11 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-// setup stands for a page store: the selected company in filter, the list
-// request in listInput and the rows, loading flag, search key and status the
-// loaders fill.
+// setup stands for a page store: the list request in listInput, whose CNPJ
+// is the selected company, and the rows, loading flag, search key and status
+// the loaders fill.
 function setup(withStatus = true) {
   const store = reactive({
-    filter: { CNPJ: '123' },
     listInput: { CNPJ: '123', Competence: '2026-05', Code: '' } as Input,
     listError: '',
     loading: false,
@@ -71,7 +70,7 @@ describe('useDocumentLoaders', () => {
 
     const searching = loaders.search()
     expect(store.loading).toBe(true)
-    store.filter.CNPJ = '456'
+    store.listInput = { ...store.listInput, CNPJ: '456' }
     call.resolve([{ ChaveAcesso: 'late' }])
 
     await expect(searching).resolves.toEqual([{ ChaveAcesso: 'late' }])
@@ -151,7 +150,7 @@ describe('useDocumentLoaders', () => {
     const call = deferred<Status>()
     fetch.mockReturnValue(call.promise)
     const loading = loaders.loadStatus()
-    store.filter.CNPJ = '456'
+    store.listInput = { ...store.listInput, CNPJ: '456' }
     call.resolve({ LastNSU: 9 })
     await loading
     expect(store.status).toEqual({ LastNSU: 7 })
@@ -160,7 +159,7 @@ describe('useDocumentLoaders', () => {
   it('clears the status without a company', async () => {
     const { store, fetch, loaders } = setup()
     store.status = { LastNSU: 1 }
-    store.filter.CNPJ = ''
+    store.listInput = { ...store.listInput, CNPJ: '' }
 
     await expect(loaders.loadStatus()).resolves.toBeNull()
     expect(store.status).toBeNull()

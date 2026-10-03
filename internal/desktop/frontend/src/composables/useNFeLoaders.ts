@@ -16,7 +16,7 @@ export function useNFeLoaders() {
     (cnpj) => desktopClient.statusNFe(cnpj)
   )
 
-  async function loadPending(cnpj: string = store.filter.CNPJ) {
+  async function loadPending(cnpj: string = store.listInput.CNPJ) {
     if (!cnpj) {
       pending.value = []
       return []
@@ -33,11 +33,14 @@ export function useNFeLoaders() {
 
   // reloadNote fetches one listed note with the current filters and patches
   // it in the list; a note that no longer matches them leaves the list, as a
-  // full search would do.
+  // full search would do. The patch is dropped when the user picked another
+  // company meanwhile, or when the rows are no longer of this company.
   async function reloadNote(chaveAcesso: string) {
     const input = { ...store.listInput, ChavesAcesso: [chaveAcesso] }
     const result = await desktopClient.listNFe(input)
-    if (isSelected(input.CNPJ)) store.patchRow(chaveAcesso, result[0] ?? null)
+    if (isSelected(input.CNPJ) && store.rowsFor?.cnpj === input.CNPJ) {
+      store.patchRow(chaveAcesso, result[0] ?? null)
+    }
   }
 
   // refresh reloads notes, status and pendências after work that already

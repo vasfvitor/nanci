@@ -6,17 +6,17 @@
       :status-line="statusLine"
       :blocked-text="blockedText"
       :syncing="isSyncing"
-      :sync-disabled="!filter.CNPJ || isResetting || Boolean(syncBlockedUntil)"
+      :sync-disabled="!cnpj || isResetting || Boolean(syncBlockedUntil)"
       reset-title="Remove os CT-e da empresa e reinicia a sincronização CT-e"
       :resetting="isResetting || previewingReset"
-      :reset-disabled="!filter.CNPJ || isSyncing"
+      :reset-disabled="!cnpj || isSyncing"
       @sync="syncCTe"
       @reset="confirmResetCTe"
     />
 
     <DocumentFilterBar
-      v-model:cnpj="filter.CNPJ"
-      v-model:competence="filter.Competence"
+      v-model:cnpj="cnpj"
+      v-model:competence="competence"
       v-model:only-unviewed="onlyUnviewed"
       :company-options="companyOptions"
       :loading="loading"
@@ -25,7 +25,6 @@
       :search-disabled="Boolean(listError)"
       :mark-viewed-count="unviewedChaves.length"
       @search="search"
-      @company-change="handleCompanyChange"
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
@@ -69,7 +68,7 @@
       row-key="ChaveAcesso"
       selection="multiple"
       :loading="loading"
-      :no-data-label="filter.CNPJ ? 'Nenhum CT-e encontrado.' : 'Selecione uma empresa.'"
+      :no-data-label="cnpj ? 'Nenhum CT-e encontrado.' : noCompanyLabel"
       class="document-table"
       binary-state-sort
       flat
@@ -168,12 +167,12 @@
       </template>
     </q-table>
 
-    <CTeEventsDialog v-model="showEventsDialog" :cnpj="filter.CNPJ" :chave-acesso="eventsChave" />
+    <CTeEventsDialog v-model="showEventsDialog" :cnpj="cnpj" :chave-acesso="eventsChave" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
@@ -192,9 +191,12 @@ import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
+import { companyOption } from '@/composables/useCompanies'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { copyChave, useNotify } from '@/composables/useNotify'
+import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeResetResult, CTeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {
@@ -217,6 +219,7 @@ import { CTE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const cte = useCTeDocuments()
+const workspace = useWorkspaceStore()
 const { notifyError, notifySuccess, notifyWarning, notifyExported, notifySyncError } = useNotify()
 
 const {
@@ -231,9 +234,10 @@ const {
   unviewedChaves,
   badgesByChave,
   onlyUnviewed,
+  status,
   companyName,
   ambiente,
-  companyOptions,
+  competence,
   statusLine,
   listError,
   isSyncing,
@@ -297,30 +301,22 @@ function valoresItems(row: CTeRow): DetailItem[] {
   ]
 }
 
-onMounted(() => {
-  void loadCompanies()
+// The filter bar picks from the workspace companies until the drawer does.
+const companyOptions = computed(() => workspace.companies.map(companyOption))
+
+// The page lists the workspace company and competência. A new company also
+// reloads the status; a new competência only the list.
+const { cnpj, noCompanyLabel } = useWorkspaceList({
+  rowsFor: () => cte.rowsFor.value,
+  clear: ({ company }) => {
+    cte.clearRows()
+    if (!company) return
+    status.value = null
+  },
+  reload: async ({ company }) => {
+    await (company ? Promise.all([search(), loadStatus()]) : search())
+  },
 })
-
-async function loadCompanies() {
-  try {
-    await cte.loadCompanies()
-    if (filter.value.CNPJ) {
-      await refreshAll()
-    }
-  } catch (error) {
-    notifyError('Erro ao carregar empresas', error)
-  }
-}
-
-async function refreshAll() {
-  await Promise.all([search(), loadStatus()])
-}
-
-async function handleCompanyChange() {
-  selected.value = []
-  if (!filter.value.CNPJ) return
-  await refreshAll()
-}
 
 async function search() {
   try {

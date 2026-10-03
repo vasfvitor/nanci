@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect } from 'vitest'
 import { useDocumentsStore } from './documents'
+import { useWorkspaceStore } from './workspace'
 import { mapDocumentRow } from '@/platform/wails/client'
 import type { DocumentRow } from '@/types/desktop'
 
@@ -10,13 +11,14 @@ function documentRow(chave: string, overrides: Partial<DocumentRow> = {}): Docum
 
 describe('documents store', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
   it('initializes with empty filter and document rows', () => {
     const store = useDocumentsStore()
 
-    expect(store.filter).toEqual({ CNPJ: '', Competence: '', Direction: '', OnlyUnread: false })
+    expect(store.filter).toEqual({ Direction: '', OnlyUnread: false })
     expect(store.documents).toEqual([])
   })
 
@@ -30,11 +32,19 @@ describe('documents store', () => {
 
   it('keeps filter requests mutable by feature composables', () => {
     const store = useDocumentsStore()
-    store.filter.CNPJ = '123'
-    store.filter.Competence = '2026-06'
     store.filter.Direction = 'tomada'
 
-    expect(store.filter).toEqual({
+    expect(store.filter).toEqual({ Direction: 'tomada', OnlyUnread: false })
+  })
+
+  it('builds the list request from the workspace and the filter', () => {
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = '123'
+    workspace.competence = '2026-06'
+    const store = useDocumentsStore()
+    store.filter.Direction = 'tomada'
+
+    expect(store.listInput).toEqual({
       CNPJ: '123',
       Competence: '2026-06',
       Direction: 'tomada',
@@ -43,9 +53,10 @@ describe('documents store', () => {
   })
 
   it('builds the list request from the filter, normalizing cleared fields', () => {
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = '123'
+    workspace.competence = null as unknown as string
     const store = useDocumentsStore()
-    store.filter.CNPJ = '123'
-    store.filter.Competence = null as unknown as string
     store.filter.Direction = null as unknown as string
 
     expect(store.listInput).toEqual({

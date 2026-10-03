@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useCTeDocumentsStore } from './cteDocuments'
+import { useWorkspaceStore } from './workspace'
 import { mapCTeRow } from '@/platform/wails/client'
 import type { CTeRow } from '@/types/desktop'
 
@@ -10,13 +11,15 @@ function cteRow(chave: string, overrides: Partial<CTeRow> = {}): CTeRow {
 
 describe('cteDocuments store', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
   it('builds the list request from the filter, normalizing cleared fields', () => {
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = '123'
+    workspace.competence = null as unknown as string
     const store = useCTeDocumentsStore()
-    store.filter.CNPJ = '123'
-    store.filter.Competence = null as unknown as string
     store.filter.Situacao = 'cancelada'
     store.filter.Role = 'remetente'
     store.filter.Modelo = '67'

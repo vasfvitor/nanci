@@ -2,9 +2,8 @@ import type { WorkspaceKey } from '@/stores/workspace'
 
 // LoaderStore is the part of a page store the loaders read and fill.
 export type LoaderStore<Input extends { CNPJ: string; Competence: string }, Row> = {
-  // filter.CNPJ is the company the page shows now.
-  filter: { CNPJ: string }
-  // listInput is the list request built from the current filter.
+  // listInput is the list request built from the workspace and the filter;
+  // its CNPJ is the company the page shows now.
   readonly listInput: Input
   // listError explains why listInput must not be sent, such as a malformed
   // field the page already flags, or is ''.
@@ -31,7 +30,7 @@ export function useDocumentLoaders<
   list: (input: Input) => Promise<Row[]>,
   fetchStatus?: (cnpj: string) => Promise<Status>
 ) {
-  const isSelected = (cnpj: string) => store.filter.CNPJ === cnpj
+  const isSelected = (cnpj: string) => store.listInput.CNPJ === cnpj
 
   async function search(): Promise<Row[]> {
     const input = store.listInput
@@ -52,7 +51,7 @@ export function useDocumentLoaders<
     }
   }
 
-  async function loadStatus(cnpj: string = store.filter.CNPJ): Promise<Status | null> {
+  async function loadStatus(cnpj: string = store.listInput.CNPJ): Promise<Status | null> {
     if (!fetchStatus) return null
     if (!cnpj) {
       store.status = null

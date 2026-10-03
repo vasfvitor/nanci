@@ -15,13 +15,15 @@ function deferred<T>() {
 // setup builds the page state the way a store holds it, so two calls of
 // useMarkViewed over it stand for a page and its remount.
 function setup() {
-  const filter = ref({ CNPJ: '123', Competence: '2026-06', OnlyUnread: false })
+  const cnpj = ref('123')
+  const filter = ref({ OnlyUnread: false })
   const rows = ref<Row[]>([{ ChaveAcesso: 'a' }, { ChaveAcesso: 'b' }])
   const filteredRows = ref<Row[]>(rows.value)
   const selected = ref<Row[]>([])
   const markingViewed = shallowRef(false)
   const mark = vi.fn(async (_cnpj: string, chaves: string[]) => chaves.length)
   const options = {
+    cnpj: () => cnpj.value,
     filter,
     mark,
     rows,
@@ -32,7 +34,7 @@ function setup() {
     },
     markingViewed,
   }
-  return { filter, rows, filteredRows, selected, markingViewed, mark, options }
+  return { cnpj, filter, rows, filteredRows, selected, markingViewed, mark, options }
 }
 
 describe('useMarkViewed', () => {
@@ -77,11 +79,11 @@ describe('useMarkViewed', () => {
   })
 
   it('does not mark without a company or chaves', async () => {
-    const { filter, mark, options } = setup()
+    const { cnpj, mark, options } = setup()
     const { markViewed } = useMarkViewed(options)
 
     await expect(markViewed([])).resolves.toBeNull()
-    filter.value.CNPJ = ''
+    cnpj.value = ''
     await expect(markViewed(['a'])).resolves.toBeNull()
     expect(mark).not.toHaveBeenCalled()
   })

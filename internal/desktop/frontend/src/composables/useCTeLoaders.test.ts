@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCTeLoaders } from './useCTeLoaders'
 import { desktopClient } from '@/platform/wails/client'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
@@ -25,11 +26,12 @@ function deferred<T>() {
 
 describe('useCTeLoaders', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listCTe).mockResolvedValue([row])
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(statusResult)
-    useCTeDocumentsStore().filter.CNPJ = '123'
+    useWorkspaceStore().cnpj = '123'
   })
 
   it('refreshes the CT-e list and status of the selected company', async () => {
@@ -44,7 +46,7 @@ describe('useCTeLoaders', () => {
   })
 
   it('skips the refresh once another company is selected', async () => {
-    useCTeDocumentsStore().filter.CNPJ = '456'
+    useWorkspaceStore().cnpj = '456'
 
     await useCTeLoaders().refresh('123')
 
@@ -58,7 +60,7 @@ describe('useCTeLoaders', () => {
     vi.mocked(desktopClient.listCTe).mockReturnValue(call.promise)
 
     const searching = useCTeLoaders().search()
-    store.filter.CNPJ = '456'
+    useWorkspaceStore().cnpj = '456'
     call.resolve([row])
 
     await expect(searching).resolves.toEqual([row])
