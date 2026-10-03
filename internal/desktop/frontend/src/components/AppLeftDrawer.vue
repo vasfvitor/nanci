@@ -33,14 +33,14 @@
         <template #option="scope">
           <q-item v-bind="scope.itemProps">
             <q-item-section>
-              <q-item-label>{{ scope.opt.name }}</q-item-label>
+              <q-item-label>{{ scope.opt.label }}</q-item-label>
               <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
             </q-item-section>
           </q-item>
         </template>
       </q-select>
 
-      <CompetencePicker v-model="draft" :error="Boolean(draftError)" :error-message="draftError" />
+      <CompetencePicker v-model="competence" />
     </section>
 
     <q-separator />
@@ -117,12 +117,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import CompetencePicker from './CompetencePicker.vue'
-import { companyOption } from '@/composables/useCompanies'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { isCompetence } from '@/utils/competence'
 import { formatCpfCnpj } from '@/utils/formatters'
 
 // AppLeftDrawer is the app navigation, topped by the workspace company and
@@ -130,45 +128,26 @@ import { formatCpfCnpj } from '@/utils/formatters'
 const model = defineModel<boolean>({ default: false })
 
 const workspace = useWorkspaceStore()
-const { cnpj, companies, loaded, loadError, selectedCompany } = storeToRefs(workspace)
+// competence is written by CompetencePicker, which only sets a complete
+// competência or '' when cleared.
+const { cnpj, competence, companies, loaded, loadError, selectedCompany } = storeToRefs(workspace)
 
 const competenceHelp =
   'Competência: na NFS-e é a competência da nota (compNFSe); na NF-e e no CT-e, o mês de emissão. Vazia, lista todos os meses.'
 
 // companyOptions are the workspace companies, with the name and the
-// formatted CNPJ the option list shows.
+// formatted CNPJ the option list shows. The label is the name, so typing
+// over the closed select jumps to a company by name.
 const companyOptions = computed(() =>
   companies.value.map((company) => ({
-    ...companyOption(company),
-    name: company.Name,
+    label: company.Name,
+    value: company.CNPJ,
     caption: formatCpfCnpj(company.CNPJ),
   }))
 )
 
 // noCompanies is true once a list arrived empty.
 const noCompanies = computed(() => loaded.value && !loadError.value && companies.value.length === 0)
-
-// draft is the competência as typed. It reaches the workspace only when
-// complete or cleared, so a partial "2026-0" never searches nor is saved.
-const draft = ref<string>(workspace.competence)
-watch(draft, (value) => {
-  if (!value) workspace.competence = ''
-  else if (isCompetence(value)) workspace.competence = value
-})
-watch(
-  () => workspace.competence,
-  (value) => {
-    if (value !== (draft.value || '')) draft.value = value
-  }
-)
-
-// draftError says why the draft has not reached the workspace, or is '',
-// since the lists stay on the previous competência meanwhile.
-const draftError = computed(() => {
-  const value = draft.value
-  if (!value || isCompetence(value)) return ''
-  return value.length < 'AAAA-MM'.length ? 'Mês incompleto' : 'Mês inválido'
-})
 
 // retryCompanies lists the companies again. A failure shows in loadError.
 function retryCompanies() {

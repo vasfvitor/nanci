@@ -32,7 +32,13 @@ const loadCompany = vi.fn(async () => {})
 function mount() {
   const scope = effectScope()
   const list = scope.run(() =>
-    useWorkspaceList({ rowsFor: () => rowsFor.value, clearRows, loadRows, clearCompany, loadCompany })
+    useWorkspaceList({
+      rowsFor: () => rowsFor.value,
+      clearRows,
+      loadRows,
+      clearCompany,
+      loadCompany,
+    })
   ) as ReturnType<typeof useWorkspaceList>
   return { list, unmount: () => scope.stop() }
 }

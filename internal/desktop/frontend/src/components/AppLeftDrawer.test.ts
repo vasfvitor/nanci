@@ -59,7 +59,7 @@ const stubs = {
   },
   CompetencePicker: {
     name: 'CompetencePicker',
-    props: ['modelValue', 'error', 'errorMessage'],
+    props: ['modelValue'],
     emits: ['update:modelValue'],
     template: '<input class="competence" />',
   },
@@ -95,8 +95,8 @@ describe('AppLeftDrawer', () => {
     expect(select.props('hint')).toBe('11.222.333/0001-81')
     expect(select.props('loading')).toBe(false)
     expect(select.props('options')).toEqual([
-      expect.objectContaining({ value: acme.CNPJ, name: 'ACME Comércio', caption: '11.222.333/0001-81' }),
-      expect.objectContaining({ value: wayne.CNPJ, name: 'Wayne Empreendimentos', caption: '44.555.666/0001-99' }),
+      { value: acme.CNPJ, label: 'ACME Comércio', caption: '11.222.333/0001-81' },
+      { value: wayne.CNPJ, label: 'Wayne Empreendimentos', caption: '44.555.666/0001-99' },
     ])
   })
 
@@ -111,49 +111,20 @@ describe('AppLeftDrawer', () => {
     expect(workspace.cnpj).toBe(wayne.CNPJ)
   })
 
-  it('writes the competência only when complete, and clearing writes an empty one', async () => {
+  it('writes the competência the picker sends', async () => {
     const workspace = useWorkspaceStore()
     workspace.competence = '2026-08'
     const wrapper = mountDrawer()
     const picker = wrapper.getComponent({ name: 'CompetencePicker' })
     expect(picker.props('modelValue')).toBe('2026-08')
 
-    picker.vm.$emit('update:modelValue', '2026-0')
-    await flushPromises()
-    expect(workspace.competence).toBe('2026-08')
-
     picker.vm.$emit('update:modelValue', '2026-09')
     await flushPromises()
     expect(workspace.competence).toBe('2026-09')
 
-    picker.vm.$emit('update:modelValue', null)
+    picker.vm.$emit('update:modelValue', '')
     await flushPromises()
     expect(workspace.competence).toBe('')
-  })
-
-  it('flags an incomplete competência until it is complete', async () => {
-    const workspace = useWorkspaceStore()
-    workspace.competence = '2026-08'
-    const wrapper = mountDrawer()
-    const picker = wrapper.getComponent({ name: 'CompetencePicker' })
-    expect(picker.props('error')).toBe(false)
-
-    picker.vm.$emit('update:modelValue', '2026-0')
-    await flushPromises()
-    expect(picker.props('error')).toBe(true)
-    expect(picker.props('errorMessage')).toBe('Mês incompleto')
-    expect(workspace.competence).toBe('2026-08')
-
-    picker.vm.$emit('update:modelValue', '2026-13')
-    await flushPromises()
-    expect(picker.props('errorMessage')).toBe('Mês inválido')
-    expect(workspace.competence).toBe('2026-08')
-
-    picker.vm.$emit('update:modelValue', '2026-09')
-    await flushPromises()
-    expect(picker.props('error')).toBe(false)
-    expect(picker.props('errorMessage')).toBe('')
-    expect(workspace.competence).toBe('2026-09')
   })
 
   it('follows a competência set elsewhere', async () => {

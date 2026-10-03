@@ -6,14 +6,14 @@
       dense
       flat
       round
-      :disable="disable || !model"
+      :disable="disable || !base"
       title="Competência anterior"
       aria-label="Competência anterior"
       @click="shift(-1)"
     />
 
     <q-input
-      v-model="model"
+      :model-value="draft"
       class="col"
       label="Competência"
       outlined
@@ -21,15 +21,16 @@
       clearable
       mask="####-##"
       :disable="disable"
-      :error="error"
-      :error-message="errorMessage"
+      :error="Boolean(draftError)"
+      :error-message="draftError"
       hide-bottom-space
+      @update:model-value="onType"
     >
       <template #append>
         <q-icon name="event" class="cursor-pointer">
           <q-popup-proxy ref="datePopup" cover transition-show="scale" transition-hide="scale">
             <q-date
-              v-model="model"
+              :model-value="draft"
               minimal
               mask="YYYY-MM"
               emit-immediately
@@ -53,7 +54,7 @@
       dense
       flat
       round
-      :disable="disable || !model"
+      :disable="disable || !base"
       title="Próxima competência"
       aria-label="Próxima competência"
       @click="shift(1)"
@@ -62,34 +63,98 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { competenceOf, shiftCompetence } from '@/utils/competence'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { competenceOf, isCompetence, shiftCompetence } from '@/utils/competence'
 
 // CompetencePicker edits a YYYY-MM competence: typed, picked from a month
-// calendar, or stepped a month at a time. error and errorMessage flag the
-// field, as for a month typed only in part.
+// calendar, or stepped a month at a time. The model only ever gets a
+// complete competence or '' when cleared; a month typed in part stays in
+// the field, flagged, and the model keeps the last complete one.
 const model = defineModel<string>({ required: true })
 
 defineProps<{
   disable?: boolean
-  error?: boolean
-  errorMessage?: string
 }>()
+
+// STEP_DELAY_MS lets quick chevron clicks or calendar picks reach the model
+// once, so stepping several months starts one search.
+const STEP_DELAY_MS = 200
+
+// draft is the field text, ahead of the model while partial or while a
+// step waits for STEP_DELAY_MS. The model watcher below fills it.
+const draft = ref('')
+let pendingStep: ReturnType<typeof setTimeout> | undefined
+
+// cancelStep drops a step still waiting for STEP_DELAY_MS.
+function cancelStep() {
+  clearTimeout(pendingStep)
+  pendingStep = undefined
+}
+
+// base is the competence the chevrons step from: the draft when complete,
+// else the model.
+const base = computed(() => (isCompetence(draft.value) ? draft.value : model.value))
+
+// draftError says why the draft has not reached the model, or is ''.
+const draftError = computed(() => {
+  const value = draft.value
+  if (!value || isCompetence(value)) return ''
+  return value.length < 'AAAA-MM'.length ? 'Mês incompleto' : 'Mês inválido'
+})
+
+// A competência set elsewhere replaces the draft and any step in wait.
+watch(
+  model,
+  (value) => {
+    if (value === draft.value) return
+    cancelStep()
+    draft.value = value
+  },
+  { immediate: true }
+)
+
+function commit(value: string) {
+  cancelStep()
+  draft.value = value
+  if (value !== model.value) model.value = value
+}
+
+function commitSoon(value: string) {
+  cancelStep()
+  draft.value = value
+  pendingStep = setTimeout(() => commit(value), STEP_DELAY_MS)
+}
+
+// A step still waiting when the picker goes away is kept.
+onBeforeUnmount(() => {
+  if (pendingStep !== undefined) commit(draft.value)
+})
+
+// onType takes the typed text; clearable sets null. Only a complete or
+// cleared value reaches the model, and typing drops a step in wait.
+function onType(value: string | number | null) {
+  const text = String(value ?? '')
+  cancelStep()
+  draft.value = text
+  if (!text || isCompetence(text)) commit(text)
+}
 
 const datePopup = ref<{ hide: () => void } | null>(null)
 
-function onDateChange(_value: string, reason: string) {
+// A month picked again in the calendar unselects it, as null.
+function onDateChange(value: string | null, reason: string) {
+  commitSoon(value ?? '')
   if (reason === 'month') {
     datePopup.value?.hide()
   }
 }
 
 function setToday() {
-  model.value = competenceOf(new Date())
+  commit(competenceOf(new Date()))
   datePopup.value?.hide()
 }
 
 function shift(monthDelta: number) {
-  model.value = shiftCompetence(model.value, monthDelta)
+  commitSoon(shiftCompetence(base.value, monthDelta))
 }
 </script>
