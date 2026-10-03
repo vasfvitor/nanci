@@ -13,67 +13,75 @@ import (
 	"github.com/vasfvitor/nanci/internal/sync"
 )
 
-// sefazSourceStatus is the part of the NF-e and CT-e status that comes from
-// the sync tables, the same for both SEFAZ sources.
-type sefazSourceStatus struct {
-	comp              *nfse.Company
-	tpAmb             string // "1" produção, "2" homologação
-	lastNSU           int64
-	maxNSU            *int64 // nil when unknown
-	lastSyncAt        *time.Time
-	lastRunStatus     string
-	lastRunStopReason string
-	initialSyncDoneAt *time.Time
-	nextAllowedAt     *time.Time // set while SEFAZ must not be queried
-	blockedReason     string     // empty when not blocked
-	requestsLastHour  int
-	requestBudget     int
+// SefazSourceStatus is the part of the NF-e and CT-e status that comes from
+// the company and the sync tables, the same for both SEFAZ sources.
+type SefazSourceStatus struct {
+	CompanyName       string
+	CNPJ              string
+	UF                string
+	TpAmb             string // "1" produção, "2" homologação
+	LastNSU           int64
+	MaxNSU            *int64 // nil when unknown
+	LastSyncAt        *time.Time
+	LastRunStatus     string
+	LastRunStopReason string
+	InitialSyncDoneAt *time.Time
+	NextAllowedAt     *time.Time // set while SEFAZ must not be queried
+	BlockedReason     string     // caught_up | consumo_indevido | rate_budget; empty when not blocked
+	RequestsLastHour  int
+	RequestBudget     int
 }
 
 // loadSefazSourceStatus reads the company's cursor, last run, initial sync
-// and request limits for one SEFAZ source. It never contacts SEFAZ.
-func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source nfse.SyncSource) (sefazSourceStatus, error) {
+// and request limits for one SEFAZ source, and returns them with the
+// company. It never contacts SEFAZ.
+func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source nfse.SyncSource) (SefazSourceStatus, *nfse.Company, error) {
 	comp, err := lookupCompanyByCNPJ(ctx, companies, cnpj)
 	if err != nil {
-		return sefazSourceStatus{}, err
+		return SefazSourceStatus{}, nil, err
 	}
 	tpAmb, err := environmentTpAmb(comp)
 	if err != nil {
-		return sefazSourceStatus{}, err
+		return SefazSourceStatus{}, nil, err
 	}
-	status := sefazSourceStatus{comp: comp, tpAmb: tpAmb}
+	status := SefazSourceStatus{
+		CompanyName: comp.Name,
+		CNPJ:        comp.CNPJ,
+		UF:          comp.UF,
+		TpAmb:       tpAmb,
+	}
 
 	snapshot, err := syncRepo.LatestSyncSnapshot(ctx, comp.ID, source, comp.Environment, comp.CNPJ)
 	if err != nil {
-		return sefazSourceStatus{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
+		return SefazSourceStatus{}, nil, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
 	if snapshot.State != nil {
-		status.lastNSU = snapshot.State.LastProcessedNSU
-		status.maxNSU = snapshot.State.MaxNSU
-		status.lastSyncAt = snapshot.State.LastSuccessAt
+		status.LastNSU = snapshot.State.LastProcessedNSU
+		status.MaxNSU = snapshot.State.MaxNSU
+		status.LastSyncAt = snapshot.State.LastSuccessAt
 	}
 	if snapshot.Run != nil {
-		status.lastRunStatus = string(snapshot.Run.Status)
-		status.lastRunStopReason = string(snapshot.Run.StopReason)
+		status.LastRunStatus = string(snapshot.Run.Status)
+		status.LastRunStopReason = string(snapshot.Run.StopReason)
 		if snapshot.Run.FinishedAt != nil {
-			status.lastSyncAt = snapshot.Run.FinishedAt
+			status.LastSyncAt = snapshot.Run.FinishedAt
 		}
 	}
 
 	sourceState, err := syncRepo.SourceState(ctx, comp.ID, source, comp.Environment)
 	if err != nil {
-		return sefazSourceStatus{}, fmt.Errorf("carregar estado da origem: %w", err)
+		return SefazSourceStatus{}, nil, fmt.Errorf("carregar estado da origem: %w", err)
 	}
-	status.initialSyncDoneAt = sourceState.InitialSyncDoneAt
+	status.InitialSyncDoneAt = sourceState.InitialSyncDoneAt
 	limits, err := manager.SourceLimits(ctx, comp, source)
 	if err != nil {
-		return sefazSourceStatus{}, err
+		return SefazSourceStatus{}, nil, err
 	}
-	status.nextAllowedAt = limits.NextAllowedAt
-	status.blockedReason = string(limits.BlockedReason)
-	status.requestsLastHour = limits.RequestsLastHour
-	status.requestBudget = limits.RequestBudget
-	return status, nil
+	status.NextAllowedAt = limits.NextAllowedAt
+	status.BlockedReason = string(limits.BlockedReason)
+	status.RequestsLastHour = limits.RequestsLastHour
+	status.RequestBudget = limits.RequestBudget
+	return status, comp, nil
 }
 
 // sefazConnection names what a connection test checks.

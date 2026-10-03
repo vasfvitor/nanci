@@ -274,15 +274,17 @@ func TestCTeStatusCountsByRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := CTeStatusResult{
-		CompanyName:   "Empresa Mock",
-		CNPJ:          nfeTestCNPJ,
-		UF:            "SP",
-		TpAmb:         "1",
-		NextAllowedAt: &until,
-		BlockedReason: string(nfse.SyncStopReasonConsumoIndevido),
-		RequestBudget: 20,
-		TotalTomador:  4, // procte, OS, GTV-e and Simplificado; the homologação one is not counted
-		TotalOutros:   1, // procte-toma4 as autorizado
+		SefazSourceStatus: SefazSourceStatus{
+			CompanyName:   "Empresa Mock",
+			CNPJ:          nfeTestCNPJ,
+			UF:            "SP",
+			TpAmb:         "1",
+			NextAllowedAt: &until,
+			BlockedReason: string(nfse.SyncStopReasonConsumoIndevido),
+			RequestBudget: 20,
+		},
+		TotalTomador: 4, // procte, OS, GTV-e and Simplificado; the homologação one is not counted
+		TotalOutros:  1, // procte-toma4 as autorizado
 	}
 	if status.NextAllowedAt == nil || !status.NextAllowedAt.Equal(until) {
 		t.Errorf("NextAllowedAt = %v, want %v", status.NextAllowedAt, until)

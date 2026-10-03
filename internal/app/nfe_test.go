@@ -350,13 +350,15 @@ func TestNFeStatusCounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := NFeStatusResult{
-		CompanyName:       "Empresa Mock",
-		CNPJ:              nfeTestCNPJ,
-		UF:                "SP",
-		TpAmb:             "1",
-		NextAllowedAt:     &until,
-		BlockedReason:     string(nfse.SyncStopReasonConsumoIndevido),
-		RequestBudget:     20,
+		SefazSourceStatus: SefazSourceStatus{
+			CompanyName:   "Empresa Mock",
+			CNPJ:          nfeTestCNPJ,
+			UF:            "SP",
+			TpAmb:         "1",
+			NextAllowedAt: &until,
+			BlockedReason: string(nfse.SyncStopReasonConsumoIndevido),
+			RequestBudget: 20,
+		},
 		TotalDestinatario: 4,
 		TotalResumos:      2,
 		TotalCompletas:    2,

@@ -109,20 +109,7 @@ func (s *NFeService) Pull(ctx context.Context, cnpj string) (NFePullResult, erro
 
 // NFeStatusResult describes a company's NF-e sync state and totals.
 type NFeStatusResult struct {
-	CompanyName       string
-	CNPJ              string
-	UF                string
-	TpAmb             string // "1" produção, "2" homologação
-	LastNSU           int64
-	MaxNSU            *int64 // nil when unknown
-	LastSyncAt        *time.Time
-	LastRunStatus     string
-	LastRunStopReason string
-	InitialSyncDoneAt *time.Time
-	NextAllowedAt     *time.Time // set while SEFAZ must not be queried
-	BlockedReason     string     // caught_up | consumo_indevido | rate_budget; empty when not blocked
-	RequestsLastHour  int
-	RequestBudget     int
+	SefazSourceStatus
 	TotalDestinatario int
 	TotalEmitente     int
 	TotalOutros       int
@@ -136,29 +123,14 @@ type NFeStatusResult struct {
 // Status reports the company's NF-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, error) {
-	src, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceNFe)
+	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceNFe)
 	if err != nil {
 		return NFeStatusResult{}, err
 	}
-	comp, tpAmb := src.comp, src.tpAmb
+	tpAmb := src.TpAmb
 	now := s.now()
 
-	result := NFeStatusResult{
-		CompanyName:       comp.Name,
-		CNPJ:              comp.CNPJ,
-		UF:                comp.UF,
-		TpAmb:             tpAmb,
-		LastNSU:           src.lastNSU,
-		MaxNSU:            src.maxNSU,
-		LastSyncAt:        src.lastSyncAt,
-		LastRunStatus:     src.lastRunStatus,
-		LastRunStopReason: src.lastRunStopReason,
-		InitialSyncDoneAt: src.initialSyncDoneAt,
-		NextAllowedAt:     src.nextAllowedAt,
-		BlockedReason:     src.blockedReason,
-		RequestsLastHour:  src.requestsLastHour,
-		RequestBudget:     src.requestBudget,
-	}
+	result := NFeStatusResult{SefazSourceStatus: src}
 
 	counts, err := s.NFeRepo.CountSummary(ctx, comp.ID, tpAmb)
 	if err != nil {

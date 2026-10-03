@@ -87,20 +87,7 @@ func (s *CTeService) Pull(ctx context.Context, cnpj string) (CTePullResult, erro
 // CTeStatusResult describes a company's CT-e sync state and totals. The
 // totals count the documents of the current environment by primary role.
 type CTeStatusResult struct {
-	CompanyName       string
-	CNPJ              string
-	UF                string
-	TpAmb             string // "1" produção, "2" homologação
-	LastNSU           int64
-	MaxNSU            *int64 // nil when unknown
-	LastSyncAt        *time.Time
-	LastRunStatus     string
-	LastRunStopReason string
-	InitialSyncDoneAt *time.Time
-	NextAllowedAt     *time.Time // set while SEFAZ must not be queried
-	BlockedReason     string     // caught_up | consumo_indevido | rate_budget; empty when not blocked
-	RequestsLastHour  int
-	RequestBudget     int
+	SefazSourceStatus
 	TotalTomador      int
 	TotalDestinatario int
 	TotalRemetente    int
@@ -110,28 +97,13 @@ type CTeStatusResult struct {
 // Status reports the company's CT-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *CTeService) Status(ctx context.Context, cnpj string) (CTeStatusResult, error) {
-	src, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceCTe)
+	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceCTe)
 	if err != nil {
 		return CTeStatusResult{}, err
 	}
-	comp, tpAmb := src.comp, src.tpAmb
+	tpAmb := src.TpAmb
 
-	result := CTeStatusResult{
-		CompanyName:       comp.Name,
-		CNPJ:              comp.CNPJ,
-		UF:                comp.UF,
-		TpAmb:             tpAmb,
-		LastNSU:           src.lastNSU,
-		MaxNSU:            src.maxNSU,
-		LastSyncAt:        src.lastSyncAt,
-		LastRunStatus:     src.lastRunStatus,
-		LastRunStopReason: src.lastRunStopReason,
-		InitialSyncDoneAt: src.initialSyncDoneAt,
-		NextAllowedAt:     src.nextAllowedAt,
-		BlockedReason:     src.blockedReason,
-		RequestsLastHour:  src.requestsLastHour,
-		RequestBudget:     src.requestBudget,
-	}
+	result := CTeStatusResult{SefazSourceStatus: src}
 
 	counts, err := s.CTeRepo.CountSummary(ctx, comp.ID, tpAmb)
 	if err != nil {
