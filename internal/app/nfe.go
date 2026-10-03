@@ -136,53 +136,29 @@ type NFeStatusResult struct {
 // Status reports the company's NF-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	src, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceNFe)
 	if err != nil {
 		return NFeStatusResult{}, err
 	}
-	tpAmb, err := environmentTpAmb(comp)
-	if err != nil {
-		return NFeStatusResult{}, err
-	}
+	comp, tpAmb := src.comp, src.tpAmb
 	now := s.now()
 
 	result := NFeStatusResult{
-		CompanyName: comp.Name,
-		CNPJ:        comp.CNPJ,
-		UF:          comp.UF,
-		TpAmb:       tpAmb,
+		CompanyName:       comp.Name,
+		CNPJ:              comp.CNPJ,
+		UF:                comp.UF,
+		TpAmb:             tpAmb,
+		LastNSU:           src.lastNSU,
+		MaxNSU:            src.maxNSU,
+		LastSyncAt:        src.lastSyncAt,
+		LastRunStatus:     src.lastRunStatus,
+		LastRunStopReason: src.lastRunStopReason,
+		InitialSyncDoneAt: src.initialSyncDoneAt,
+		NextAllowedAt:     src.nextAllowedAt,
+		BlockedReason:     src.blockedReason,
+		RequestsLastHour:  src.requestsLastHour,
+		RequestBudget:     src.requestBudget,
 	}
-
-	snapshot, err := s.SyncRepo.LatestSyncSnapshot(ctx, comp.ID, nfse.SyncSourceNFe, comp.Environment, comp.CNPJ)
-	if err != nil {
-		return NFeStatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
-	}
-	if snapshot.State != nil {
-		result.LastNSU = snapshot.State.LastProcessedNSU
-		result.MaxNSU = snapshot.State.MaxNSU
-		result.LastSyncAt = snapshot.State.LastSuccessAt
-	}
-	if snapshot.Run != nil {
-		result.LastRunStatus = string(snapshot.Run.Status)
-		result.LastRunStopReason = string(snapshot.Run.StopReason)
-		if snapshot.Run.FinishedAt != nil {
-			result.LastSyncAt = snapshot.Run.FinishedAt
-		}
-	}
-
-	sourceState, err := s.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFe, comp.Environment)
-	if err != nil {
-		return NFeStatusResult{}, fmt.Errorf("carregar estado da origem: %w", err)
-	}
-	result.InitialSyncDoneAt = sourceState.InitialSyncDoneAt
-	limits, err := s.SyncManager.SourceLimits(ctx, comp, nfse.SyncSourceNFe)
-	if err != nil {
-		return NFeStatusResult{}, err
-	}
-	result.NextAllowedAt = limits.NextAllowedAt
-	result.BlockedReason = string(limits.BlockedReason)
-	result.RequestsLastHour = limits.RequestsLastHour
-	result.RequestBudget = limits.RequestBudget
 
 	counts, err := s.NFeRepo.CountSummary(ctx, comp.ID, tpAmb)
 	if err != nil {
@@ -398,42 +374,11 @@ func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.Com
 // SEFAZ distribution host. It sends no request, so it does not use the
 // hourly budget; SEFAZ only checks the client certificate on a real query.
 func (s *NFeService) TestConnection(ctx context.Context, cnpj string) (ConnectionTestResult, error) {
-	var result ConnectionTestResult
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
-	if err != nil {
-		return result, err
-	}
-
-	loaded, err := s.Certificates.LoadForCompany(ctx, comp, "Teste de conexão NF-e")
-	if err != nil {
-		if errors.Is(err, ErrOperationCanceled) {
-			return result, err
-		}
-		result.StatusExplanation = fmt.Sprintf("Erro ao carregar certificado/senha: %v", err)
-		return result, nil
-	}
-	result.CertLoaded = true
-	result.CertSubject = loaded.Credential.SubjectName
-	if loaded.Credential.NotAfter != nil {
-		result.CertExpiration = loaded.Credential.NotAfter.Format("02/01/2006 15:04:05")
-	}
-
-	client, err := newSEFAZClient(sefaz.ClientConfig{
-		Environment: comp.Environment,
-		Certificate: &loaded.TLS,
-		Log:         s.Log,
+	return testSefazConnection(ctx, s.Log, s.CompanyStore, s.Certificates, cnpj, sefazConnection{
+		purpose: "Teste de conexão NF-e",
+		target:  "SEFAZ",
+		check:   func(ctx context.Context, client sefazClient) error { return client.CheckTLS(ctx) },
 	})
-	if err != nil {
-		result.StatusExplanation = fmt.Sprintf("Erro ao configurar cliente SEFAZ: %v", err)
-		return result, nil
-	}
-	if err := client.CheckTLS(ctx); err != nil {
-		result.StatusExplanation = fmt.Sprintf("Falha na conexão TLS com a SEFAZ: %v", err)
-		return result, nil
-	}
-	result.EndpointReached = true
-	result.StatusExplanation = "Conexão TLS com a SEFAZ estabelecida. Nenhuma consulta foi enviada, para não gastar o limite de consultas por hora; a SEFAZ só valida o certificado na primeira consulta."
-	return result, nil
 }
 
 // buildFilter resolves the company and validates the list filters.
