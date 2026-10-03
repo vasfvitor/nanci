@@ -29,8 +29,16 @@ export function useCompanies() {
     })
   }
 
+  // loadCompanies lists the companies again, as after a change.
   async function loadCompanies() {
     return trackLoad(() => workspace.loadCompanies())
+  }
+
+  // ensureCompanies returns the workspace list and shares a load in flight,
+  // such as the one the layout starts when the app opens, so a page that
+  // opens lists the companies once.
+  async function ensureCompanies() {
+    return trackLoad(() => workspace.ensureCompanies())
   }
 
   async function reloadData() {
@@ -50,6 +58,7 @@ export function useCompanies() {
     credentials,
     loading,
     loadCompanies,
+    ensureCompanies,
     loadCredentials,
     reloadData,
     assignCredential,

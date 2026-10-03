@@ -173,11 +173,32 @@ function syncStartLabel(company: CompanySummary) {
   }
 }
 
-async function loadCompanies() {
-  const list = await companiesApi.loadCompanies()
+function setSelectedCredentials(list: CompanySummary[]) {
   selectedCredentials.value = Object.fromEntries(
     list.map((company) => [company.CNPJ, company.CredentialID])
   )
+}
+
+async function loadCompanies() {
+  setSelectedCredentials(await companiesApi.loadCompanies())
+}
+
+// loadInitial fills the page when it opens. The company list comes from the
+// workspace load the layout also waits for, so it is listed once. The layout
+// notifies a failure of that load and the drawer keeps showing it, so the
+// page only notifies a failed credentials load.
+async function loadInitial() {
+  const [credentialsResult, companiesResult] = await Promise.allSettled([
+    companiesApi.loadCredentials(),
+    companiesApi.ensureCompanies(),
+  ])
+  if (companiesResult.status === 'fulfilled') setSelectedCredentials(companiesResult.value)
+  if (credentialsResult.status === 'rejected') {
+    $q.notify({
+      type: 'negative',
+      message: 'Erro ao carregar credenciais: ' + errorMessage(credentialsResult.reason),
+    })
+  }
 }
 
 async function reloadData() {
@@ -206,7 +227,7 @@ async function assignCredential(cnpj: string) {
 }
 
 onMounted(() => {
-  reloadData()
+  void loadInitial()
 })
 
 </script>

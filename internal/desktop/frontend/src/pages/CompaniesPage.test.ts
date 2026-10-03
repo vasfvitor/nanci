@@ -148,6 +148,51 @@ describe('CompaniesPage credential assignment', () => {
   })
 })
 
+describe('CompaniesPage initial load', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+  })
+
+  it('lists the companies once with the layout load', async () => {
+    const wrapper = mountPage()
+    // The layout mounts after the page and asks for the list too.
+    const layoutLoad = useWorkspaceStore().ensureCompanies()
+    await flushPromises()
+    await layoutLoad
+
+    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
+    expect(wrapper.getComponent({ name: 'QSelect' }).props('modelValue')).toBe('cred-1')
+  })
+
+  it('leaves a failed company list to the layout', async () => {
+    vi.mocked(desktopClient.listCompanies).mockRejectedValue(new Error('boom'))
+
+    mountPage()
+    await flushPromises()
+
+    expect(notify).not.toHaveBeenCalled()
+    expect(useWorkspaceStore().loadError).toBe('boom')
+  })
+
+  it('notifies a failed credentials load once', async () => {
+    vi.mocked(desktopClient.listCredentials).mockRejectedValue(new Error('boom'))
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith({
+      type: 'negative',
+      message: 'Erro ao carregar credenciais: boom',
+    })
+    expect(wrapper.getComponent({ name: 'QSelect' }).props('modelValue')).toBe('cred-1')
+  })
+})
+
 describe('CompaniesPage actions', () => {
   beforeEach(() => {
     localStorage.clear()

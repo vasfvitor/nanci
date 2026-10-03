@@ -51,6 +51,23 @@ describe('useCompanies', () => {
     expect(companies.companies.value).toEqual([company])
   })
 
+  it('initial load reuses the workspace list', async () => {
+    const company = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    const workspace = useWorkspaceStore()
+    const companies = useCompanies()
+
+    // The layout and the page start their loads together, then again once
+    // the list is loaded.
+    const layoutLoad = workspace.ensureCompanies()
+    await expect(companies.ensureCompanies()).resolves.toEqual([company])
+    await layoutLoad
+    await expect(companies.ensureCompanies()).resolves.toEqual([company])
+
+    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
+    expect(companies.loading.value).toBe(false)
+  })
+
   it('stays loading until the outer reload finishes, not the first inner load', async () => {
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
 
