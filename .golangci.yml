@@ -58,15 +58,6 @@ linters:
   settings:
     depguard:
       rules:
-        app-core:
-          files:
-            - "**/internal/app/**/*.go"
-            - "!**/*_test.go"
-          deny:
-            - pkg: "github.com/vasfvitor/nanci/internal/store"
-              desc: "Core business logic (app) cannot depend on the database layer."
-            - pkg: "database/sql"
-              desc: "Core business logic (app) cannot depend on SQL."
         domain:
           files:
             - "**/internal/nfse/**/*.go"

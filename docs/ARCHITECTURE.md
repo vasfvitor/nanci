@@ -49,7 +49,6 @@ Uma nova origem precisa de um `Source`, tabelas e tela próprias; o loop, o orç
 
 ## Regras de Dependência
 
-O `golangci-lint` (regra `depguard` em `.golangci.yml`) impede que:
+`internal/app` usa `internal/store` e `internal/sync` direto, de propósito: a camada de casos de uso é fina e os repositórios são testados com SQLite real, então uma interface entre os dois só repetiria as assinaturas.
 
-- `internal/app` dependa de `internal/store` ou de `database/sql`;
-- os pacotes de domínio `internal/nfse`, `internal/nfe`, `internal/cte` e `internal/dfe` dependam de `internal/app`, `internal/store` ou `database/sql`.
+Os pacotes de domínio `internal/nfse`, `internal/nfe`, `internal/cte` e `internal/dfe` não importam `internal/app`, `internal/store` nem `database/sql`. A regra `domain` do `depguard` em `.golangci.yml` cobra isso, mas só fora do Windows. No Windows os caminhos usam barra invertida, os globs de `files` não casam e a regra não dispara.
