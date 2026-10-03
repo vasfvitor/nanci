@@ -7,14 +7,15 @@ import {
   type LegendSection,
 } from './stateLegends'
 import {
-  completenessFilterOptions,
-  manifestacaoFilterOptions,
-  nfeRoleFilterOptions,
+  nfeCompleteness,
+  nfeManifestacao,
+  nfeRole,
+  nfeSituacao,
   nfeStateBadges,
-  situacaoFilterOptions,
 } from './nfeDisplay'
-import { ctePapelFilterOptions, cteSituacaoFilterOptions, cteStateBadges } from './cteDisplay'
-import { nfseStateBadges } from './nfseDisplay'
+import { ctePapel, cteSituacao, cteStateBadges, cteTipoDocumento } from './cteDisplay'
+import { nfseRole, nfseStateBadges, nfseStatus, nfseVisibility } from './nfseDisplay'
+import type { DisplayTable } from './sefazDisplay'
 
 function section(sections: LegendSection[], title: string) {
   const found = sections.find((entry) => entry.title === title)
@@ -30,24 +31,30 @@ function names(sections: LegendSection[], title: string) {
   return section(sections, title).items.map((entry) => entry.name)
 }
 
-// Every value a filter offers must be explained by the legend, in the same
-// order and with the same label the table shows.
-function filterLabels(options: { label: string; value: string }[]) {
-  return options.filter((option) => option.value !== '').map((option) => option.label)
+// known lists the values of table a legend must explain: all of them, but
+// the placeholder for an unknown value.
+function known(table: DisplayTable) {
+  return table.values().filter((value) => value !== 'unknown')
 }
 
 describe('stateLegends', () => {
-  it('NFSE_LEGEND explains the new badge and every abbreviation', () => {
-    const legend = NFSE_LEGEND
-    expect(badges(legend, 'Novo')).toEqual(['Novo'])
-    expect(badges(legend, 'Papel')).toEqual(['P', 'T', 'I', 'SP'])
-    expect(badges(legend, 'Visibilidade')).toEqual(['PE', 'TE', 'IE', 'MR'])
-    expect(badges(legend, 'Status')).toEqual(['N', 'C', 'S'])
-    expect(section(legend, 'Status').items[1]).toMatchObject({
-      badge: 'C',
-      name: 'Cancelada',
-      color: 'negative',
-    })
+  it('explains every known value of each table', () => {
+    const cases: [LegendSection[], string, DisplayTable][] = [
+      [NFSE_LEGEND, 'Status', nfseStatus],
+      [NFSE_LEGEND, 'Visibilidade', nfseVisibility],
+      [NFSE_LEGEND, 'Papel', nfseRole],
+      [NFE_LEGEND, 'Situação', nfeSituacao],
+      [NFE_LEGEND, 'Completude', nfeCompleteness],
+      [NFE_LEGEND, 'Manifestação', nfeManifestacao],
+      [NFE_LEGEND, 'Papel', nfeRole],
+      [CTE_LEGEND, 'Documento', cteTipoDocumento],
+      [CTE_LEGEND, 'Situação', cteSituacao],
+      [CTE_LEGEND, 'Papel', ctePapel],
+    ]
+    for (const [legend, title, table] of cases) {
+      expect(badges(legend, title), title).toEqual(known(table).map(table.abbr))
+      expect(names(legend, title), title).toEqual(known(table).map(table.label))
+    }
   })
 
   it('NFSE_LEGEND lists the groups in the order of the badges', () => {
@@ -67,17 +74,8 @@ describe('stateLegends', () => {
     }
   })
 
-  it('NFE_LEGEND explains every NF-e abbreviation, named like the filters', () => {
-    const legend = NFE_LEGEND
-    expect(badges(legend, 'Situação')).toEqual(['A', 'D', 'C'])
-    expect(badges(legend, 'Completude')).toEqual(['R', 'X'])
-    expect(badges(legend, 'Manifestação')).toEqual(['SM', 'CI', 'CO', 'DE', 'NR'])
-    expect(badges(legend, 'Papel')).toEqual(['D', 'E', 'T', 'A', 'SP'])
-    expect(names(legend, 'Situação')).toEqual(filterLabels(situacaoFilterOptions))
-    expect(names(legend, 'Completude')).toEqual(filterLabels(completenessFilterOptions))
-    expect(names(legend, 'Manifestação')).toEqual(filterLabels(manifestacaoFilterOptions))
-    expect(names(legend, 'Papel')).toEqual(filterLabels(nfeRoleFilterOptions))
-    expect(badges(legend, 'Prazo')).toEqual(['Confirmada tacitamente'])
+  it('NFE_LEGEND ends with the tacit confirmation chip', () => {
+    expect(badges(NFE_LEGEND, 'Prazo')).toEqual(['Confirmada tacitamente'])
   })
 
   it('NFE_LEGEND lists the groups in the order of the badges, then the deadline chip', () => {
@@ -117,16 +115,6 @@ describe('stateLegends', () => {
     ])
   })
 
-  it('CTE_LEGEND explains every CT-e abbreviation, named by its label', () => {
-    const legend = CTE_LEGEND
-    expect(badges(legend, 'Documento')).toEqual(['CT', 'OS', 'GV', 'CS'])
-    expect(badges(legend, 'Situação')).toEqual(['A', 'D', 'C'])
-    expect(badges(legend, 'Papel')).toEqual(['TO', 'DE', 'RE', 'EX', 'RC', 'EM', 'AU', 'SP'])
-    expect(names(legend, 'Papel')).toEqual(filterLabels(ctePapelFilterOptions))
-    expect(names(legend, 'Situação')).toEqual(filterLabels(cteSituacaoFilterOptions))
-    expect(names(legend, 'Documento')).toEqual(['CT-e', 'CT-e OS', 'GTV-e', 'CT-e Simplificado'])
-  })
-
   it('CTE_LEGEND lists the groups in the order of the badges, without an export section', () => {
     const titles = CTE_LEGEND.map((entry) => entry.title)
     const kinds = cteStateBadges({
@@ -151,14 +139,18 @@ describe('stateLegends', () => {
 })
 
 describe('NFSE_LEGEND', () => {
-  it('explains every papel the Papel filter offers, with the table labels', () => {
+  it('lists the papéis in the order of the table and the Papel filter', () => {
     const papel = section(NFSE_LEGEND, 'Papel')
     expect(papel.items.map((entry) => entry.name)).toEqual([
-      'Prestada',
       'Tomada',
+      'Prestada',
       'Intermediário',
       'Sem papel fiscal',
     ])
     expect(papel.items[3]).toMatchObject({ badge: 'SP', color: 'grey' })
+  })
+
+  it('leaves the unknown visibilidade out', () => {
+    expect(badges(NFSE_LEGEND, 'Visibilidade')).toEqual(['PE', 'TE', 'IE', 'MR'])
   })
 })

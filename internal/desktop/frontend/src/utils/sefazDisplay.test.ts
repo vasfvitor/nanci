@@ -39,6 +39,18 @@ describe('sefazDisplay', () => {
     expect(table.values()).toEqual(['a', 'b'])
   })
 
+  it('lists the legend of the described values, in table order', () => {
+    const table = displayTable({
+      b: { label: 'Beta', color: 'negative', abbr: 'B', description: 'Valor beta.' },
+      x: { label: 'Sem descrição', color: 'grey', abbr: 'X' },
+      a: { label: 'Alfa', color: 'positive', description: 'Valor alfa.' },
+    })
+    expect(table.legend()).toEqual([
+      { badge: 'B', color: 'negative', name: 'Beta', description: 'Valor beta.' },
+      { badge: '?', color: 'positive', name: 'Alfa', description: 'Valor alfa.' },
+    ])
+  })
+
   it('builds state badges from the table', () => {
     const table = displayTable({ a: { label: 'Alfa', color: 'positive', abbr: 'A' } })
     expect(table.badge('a', 'Grupo')).toEqual({

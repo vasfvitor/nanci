@@ -3,25 +3,77 @@ import { formatDateTime } from '@/utils/formatters'
 import { ambienteColor, displayTable, type StateBadge } from '@/utils/sefazDisplay'
 
 const nfseStatusEntries = {
-  normal: { label: 'Normal', color: 'positive', abbr: 'N' },
-  cancelada: { label: 'Cancelada', color: 'negative', abbr: 'C' },
-  substituida: { label: 'Substituída', color: 'negative', abbr: 'S' },
+  normal: { label: 'Normal', color: 'positive', abbr: 'N', description: 'Nota válida.' },
+  cancelada: {
+    label: 'Cancelada',
+    color: 'negative',
+    abbr: 'C',
+    description: 'Nota cancelada por evento registrado no ADN.',
+  },
+  substituida: {
+    label: 'Substituída',
+    color: 'negative',
+    abbr: 'S',
+    description: 'Nota substituída por outra NFS-e.',
+  },
 }
 
 // Why the ADN delivered the NFS-e to the company.
 const nfseVisibilityEntries = {
-  exact_prestador: { label: 'Prestador exato', color: 'positive', abbr: 'PE' },
-  exact_tomador: { label: 'Tomador exato', color: 'positive', abbr: 'TE' },
-  exact_intermediario: { label: 'Intermediário exato', color: 'positive', abbr: 'IE' },
-  same_root_only: { label: 'Mesmo raiz apenas', color: 'warning', abbr: 'MR' },
+  exact_prestador: {
+    label: 'Prestador exato',
+    color: 'positive',
+    abbr: 'PE',
+    description: 'A empresa é a prestadora da nota, pelo CNPJ exato.',
+  },
+  exact_tomador: {
+    label: 'Tomador exato',
+    color: 'positive',
+    abbr: 'TE',
+    description: 'A empresa é a tomadora da nota, pelo CNPJ exato.',
+  },
+  exact_intermediario: {
+    label: 'Intermediário exato',
+    color: 'positive',
+    abbr: 'IE',
+    description: 'A empresa é a intermediária da nota, pelo CNPJ exato.',
+  },
+  same_root_only: {
+    label: 'Mesmo raiz apenas',
+    color: 'warning',
+    abbr: 'MR',
+    description:
+      'A nota é de outro estabelecimento da mesma raiz de CNPJ, matriz ou filial. A empresa não tem papel fiscal nela.',
+  },
   unknown: { label: 'Desconhecida', color: 'grey', abbr: '?' },
 }
 
 const nfseRoleEntries = {
-  tomada: { label: 'Tomada', color: 'secondary', abbr: 'T' },
-  prestada: { label: 'Prestada', color: 'primary', abbr: 'P' },
-  intermediario: { label: 'Intermediário', color: 'accent', abbr: 'I' },
-  none: { label: 'Sem papel fiscal', color: 'grey', abbr: 'SP' },
+  tomada: {
+    label: 'Tomada',
+    color: 'secondary',
+    abbr: 'T',
+    description: 'A empresa tomou o serviço; a nota foi emitida por outro prestador.',
+  },
+  prestada: {
+    label: 'Prestada',
+    color: 'primary',
+    abbr: 'P',
+    description: 'A empresa prestou o serviço e emitiu a nota.',
+  },
+  intermediario: {
+    label: 'Intermediário',
+    color: 'accent',
+    abbr: 'I',
+    description: 'A empresa consta como intermediária do serviço.',
+  },
+  none: {
+    label: 'Sem papel fiscal',
+    color: 'grey',
+    abbr: 'SP',
+    description:
+      'A nota chegou pela raiz do CNPJ; a empresa não é prestadora, tomadora nem intermediária.',
+  },
 }
 
 export const nfseStatus = displayTable(nfseStatusEntries)

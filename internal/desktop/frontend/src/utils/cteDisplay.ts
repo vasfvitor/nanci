@@ -3,21 +3,80 @@ import { formatDateTime } from '@/utils/formatters'
 import { displayTable, type StateBadge } from '@/utils/sefazDisplay'
 
 export const cteSituacao = displayTable({
-  autorizada: { label: 'Autorizada', color: 'positive', abbr: 'A' },
-  denegada: { label: 'Denegada', color: 'negative', abbr: 'D' },
-  cancelada: { label: 'Cancelada', color: 'negative', abbr: 'C' },
+  autorizada: {
+    label: 'Autorizada',
+    color: 'positive',
+    abbr: 'A',
+    description: 'CT-e autorizado pela SEFAZ.',
+  },
+  denegada: {
+    label: 'Denegada',
+    color: 'negative',
+    abbr: 'D',
+    description:
+      'A SEFAZ negou a autorização por irregularidade fiscal de uma das partes. O documento não tem validade.',
+  },
+  cancelada: {
+    label: 'Cancelada',
+    color: 'negative',
+    abbr: 'C',
+    description: 'CT-e cancelado pelo emitente.',
+  },
 })
 
 // The roles are listed in priority order, as the backend picks the primary one.
 export const ctePapel = displayTable({
-  tomador: { label: 'Tomador', color: 'accent', abbr: 'TO' },
-  destinatario: { label: 'Destinatário', color: 'secondary', abbr: 'DE' },
-  remetente: { label: 'Remetente', color: 'info', abbr: 'RE' },
-  expedidor: { label: 'Expedidor', color: 'info', abbr: 'EX' },
-  recebedor: { label: 'Recebedor', color: 'info', abbr: 'RC' },
-  emitente: { label: 'Emitente', color: 'primary', abbr: 'EM' },
-  autorizado: { label: 'Autorizado', color: 'info', abbr: 'AU' },
-  none: { label: 'Sem papel fiscal', color: 'grey', abbr: 'SP' },
+  tomador: {
+    label: 'Tomador',
+    color: 'accent',
+    abbr: 'TO',
+    description: 'A empresa contratou o transporte e paga o frete.',
+  },
+  destinatario: {
+    label: 'Destinatário',
+    color: 'secondary',
+    abbr: 'DE',
+    description: 'A empresa é a destinatária da carga.',
+  },
+  remetente: {
+    label: 'Remetente',
+    color: 'info',
+    abbr: 'RE',
+    description: 'A empresa é a remetente da carga.',
+  },
+  expedidor: {
+    label: 'Expedidor',
+    color: 'info',
+    abbr: 'EX',
+    description: 'A empresa entrega a carga ao transportador no lugar do remetente.',
+  },
+  recebedor: {
+    label: 'Recebedor',
+    color: 'info',
+    abbr: 'RC',
+    description: 'A empresa recebe a carga no lugar do destinatário.',
+  },
+  emitente: {
+    label: 'Emitente',
+    color: 'primary',
+    abbr: 'EM',
+    description:
+      'A empresa emitiu o CT-e. A SEFAZ não devolve ao emitente os próprios documentos, então ele só aparece aqui se chegou por outro caminho.',
+  },
+  autorizado: {
+    label: 'Autorizado',
+    color: 'info',
+    abbr: 'AU',
+    description:
+      'O CNPJ ou CPF da empresa foi informado no grupo autXML, como autorizado a obter o XML.',
+  },
+  none: {
+    label: 'Sem papel fiscal',
+    color: 'grey',
+    abbr: 'SP',
+    description:
+      'A empresa só tem a mesma raiz de CNPJ de uma das partes, ou o motivo da distribuição não foi identificado.',
+  },
 })
 
 export const cteModelo = displayTable(
@@ -30,10 +89,31 @@ export const cteModelo = displayTable(
 )
 
 export const cteTipoDocumento = displayTable({
-  cte: { label: 'CT-e', color: 'primary', abbr: 'CT' },
-  cte_os: { label: 'CT-e OS', color: 'secondary', abbr: 'OS' },
-  gtve: { label: 'GTV-e', color: 'accent', abbr: 'GV' },
-  cte_simplificado: { label: 'CT-e Simplificado', color: 'info', abbr: 'CS' },
+  cte: {
+    label: 'CT-e',
+    color: 'primary',
+    abbr: 'CT',
+    description: 'Conhecimento de Transporte Eletrônico (modelo 57).',
+  },
+  cte_os: {
+    label: 'CT-e OS',
+    color: 'secondary',
+    abbr: 'OS',
+    description:
+      'CT-e de Outros Serviços (modelo 67): transporte de pessoas, de valores ou excesso de bagagem.',
+  },
+  gtve: {
+    label: 'GTV-e',
+    color: 'accent',
+    abbr: 'GV',
+    description: 'Guia de Transporte de Valores Eletrônica (modelo 64).',
+  },
+  cte_simplificado: {
+    label: 'CT-e Simplificado',
+    color: 'info',
+    abbr: 'CS',
+    description: 'CT-e Simplificado (modelo 57), com menos campos.',
+  },
 })
 
 // tpServ codes of the CT-e (0 to 4) and of the CT-e OS (6 to 8).

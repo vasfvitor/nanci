@@ -12,30 +12,112 @@ export const DEADLINE_THRESHOLDS: Record<DeadlineKind, { warning: number; urgent
 }
 
 export const nfeSituacao = displayTable({
-  autorizada: { label: 'Autorizada', color: 'positive', abbr: 'A' },
-  denegada: { label: 'Denegada', color: 'negative', abbr: 'D' },
-  cancelada: { label: 'Cancelada', color: 'negative', abbr: 'C' },
+  autorizada: {
+    label: 'Autorizada',
+    color: 'positive',
+    abbr: 'A',
+    description: 'Nota autorizada pela SEFAZ.',
+  },
+  denegada: {
+    label: 'Denegada',
+    color: 'negative',
+    abbr: 'D',
+    description:
+      'A SEFAZ negou a autorização por irregularidade fiscal do emitente ou do destinatário. A nota não tem validade.',
+  },
+  cancelada: {
+    label: 'Cancelada',
+    color: 'negative',
+    abbr: 'C',
+    description: 'Nota cancelada pelo emitente.',
+  },
 })
 
 export const nfeCompleteness = displayTable({
-  resumo: { label: 'Resumo', color: 'warning', abbr: 'R' },
-  completa: { label: 'Completa', color: 'positive', abbr: 'X' },
+  resumo: {
+    label: 'Resumo',
+    color: 'warning',
+    abbr: 'R',
+    description:
+      'Só o resumo chegou. A SEFAZ distribui o XML completo depois da Ciência da Operação ou de uma manifestação conclusiva.',
+  },
+  completa: {
+    label: 'Completa',
+    color: 'positive',
+    abbr: 'X',
+    description: 'O XML completo está guardado e pode ser exportado.',
+  },
 })
 
 export const nfeManifestacao = displayTable({
-  nenhuma: { label: 'Sem manifestação', color: 'grey', abbr: 'SM' },
-  ciencia: { label: 'Ciência', color: 'info', abbr: 'CI' },
-  confirmada: { label: 'Confirmada', color: 'positive', abbr: 'CO' },
-  desconhecida: { label: 'Desconhecida', color: 'negative', abbr: 'DE' },
-  nao_realizada: { label: 'Operação não realizada', color: 'warning', abbr: 'NR' },
+  nenhuma: {
+    label: 'Sem manifestação',
+    color: 'grey',
+    abbr: 'SM',
+    description: 'Nenhum evento de manifestação registrado pela empresa.',
+  },
+  ciencia: {
+    label: 'Ciência',
+    color: 'info',
+    abbr: 'CI',
+    description:
+      'Ciência da Operação registrada. Libera o XML completo, mas não conclui nada: a nota ainda espera uma manifestação conclusiva.',
+  },
+  confirmada: {
+    label: 'Confirmada',
+    color: 'positive',
+    abbr: 'CO',
+    description: 'Confirmação da Operação: a empresa atestou à SEFAZ que a operação ocorreu.',
+  },
+  desconhecida: {
+    label: 'Desconhecida',
+    color: 'negative',
+    abbr: 'DE',
+    description:
+      'Desconhecimento da Operação: a empresa declarou à SEFAZ que não reconhece a operação.',
+  },
+  nao_realizada: {
+    label: 'Operação não realizada',
+    color: 'warning',
+    abbr: 'NR',
+    description:
+      'Operação não Realizada: a empresa declarou à SEFAZ que a operação não aconteceu, com justificativa.',
+  },
 })
 
 export const nfeRole = displayTable({
-  destinatario: { label: 'Destinatário', color: 'secondary', abbr: 'D' },
-  emitente: { label: 'Emitente', color: 'primary', abbr: 'E' },
-  transportador: { label: 'Transportador', color: 'accent', abbr: 'T' },
-  autorizado: { label: 'Autorizado', color: 'info', abbr: 'A' },
-  none: { label: 'Sem papel fiscal', color: 'grey', abbr: 'SP' },
+  destinatario: {
+    label: 'Destinatário',
+    color: 'secondary',
+    abbr: 'D',
+    description: 'A nota foi emitida contra o CNPJ da empresa. Só esse papel permite manifestar.',
+  },
+  emitente: {
+    label: 'Emitente',
+    color: 'primary',
+    abbr: 'E',
+    description:
+      'A empresa emitiu a nota. A SEFAZ não devolve ao emitente as próprias notas, então ela só aparece aqui se chegou por outro caminho.',
+  },
+  transportador: {
+    label: 'Transportador',
+    color: 'accent',
+    abbr: 'T',
+    description: 'A empresa é a transportadora da nota.',
+  },
+  autorizado: {
+    label: 'Autorizado',
+    color: 'info',
+    abbr: 'A',
+    description: 'O CNPJ da empresa foi informado no grupo autXML, como autorizado a obter o XML.',
+  },
+  none: {
+    label: 'Sem papel fiscal',
+    color: 'grey',
+    abbr: 'SP',
+    description:
+      'A empresa só tem a mesma raiz de CNPJ de uma das partes, ou o motivo da distribuição não foi identificado.',
+  },
 })
 
 const nfeEvent = displayTable(

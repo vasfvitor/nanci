@@ -1,9 +1,28 @@
 // Display helpers shared by the document screens (NFS-e, NF-e and CT-e):
 // display tables for the state values, badge colors and the SEFAZ ambiente.
 
-// Display is how a state value is shown: its full label, its color and the
-// short abbreviation the table badges carry.
-type Display = { label: string; color: string; abbr?: string }
+// Display is how a state value is shown: its full label, its color, the
+// short abbreviation the table badges carry and the description its legend
+// entry gives.
+type Display = { label: string; color: string; abbr?: string; description?: string }
+
+export type LegendItem = {
+  // Text inside the badge, as the table shows it.
+  badge: string
+  color: string
+  // Full name when the badge is an abbreviation.
+  name?: string
+  description: string
+  // Rendered as an outlined chip instead of a filled badge.
+  outline?: boolean
+}
+
+export type LegendSection = {
+  title: string
+  // Optional line under the title, for notes that apply to the whole group.
+  note?: string
+  items: LegendItem[]
+}
 
 export type FilterOption = { label: string; value: string }
 
@@ -52,6 +71,12 @@ export function displayTable(
     ],
     // values lists every known value, in table order.
     values: () => Object.keys(table),
+    // legend lists the legend entries of the values that have a description,
+    // in table order.
+    legend: (): LegendItem[] =>
+      Object.entries(table).flatMap(([value, { label, color, description }]) =>
+        description ? [{ badge: abbr(value), color, name: label, description }] : []
+      ),
   }
 }
 
