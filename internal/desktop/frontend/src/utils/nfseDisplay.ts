@@ -50,8 +50,8 @@ export function nfseStateBadges(
   ]
 }
 
-// nfseAmbiente names the ADN environment of a company, colored like the
-// SEFAZ tpAmb it matches: production is where documents are fiscal acts.
+// nfseAmbiente is the ambiente badge of a company: produção takes the color
+// of SEFAZ tpAmb 1, produção restrita the color of tpAmb 2.
 export function nfseAmbiente(environment: string) {
   if (environment === 'producao') return { label: 'Produção', color: ambienteColor('1') }
   if (environment === 'producao_restrita') {

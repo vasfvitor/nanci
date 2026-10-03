@@ -17,7 +17,7 @@ export const DOCUMENT_SOURCES: Record<DocumentSource, SourceInfo> = {
   cte: { noun: 'CT-e', feminine: false, article: 'do' },
 }
 
-// agree ends stem in the gender of source and the number of count:
+// agree inflects stem for the gender of source and the number of count:
 // agree('nfe', 'vist', 2) is "vistas", agree('cte', 'nov', 1) is "novo".
 export function agree(source: DocumentSource, stem: string, count: number) {
   return stem + (DOCUMENT_SOURCES[source].feminine ? 'a' : 'o') + (count === 1 ? '' : 's')

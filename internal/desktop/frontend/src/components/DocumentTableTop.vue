@@ -19,8 +19,8 @@
 
 <script setup lang="ts">
 // DocumentTableTop is the top of a document table: its title and the box
-// that narrows the listed rows. Each page searches more fields than the
-// placeholder names; it says only what fits in the 350px box.
+// that narrows the listed rows. The placeholder names only the fields that
+// fit in the 350px box; each page searches a few more.
 defineProps<{
   title: string
 }>()

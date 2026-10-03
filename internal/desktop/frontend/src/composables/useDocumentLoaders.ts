@@ -11,8 +11,8 @@ export type LoaderStore<Input extends { CNPJ: string }, Row> = {
   setRows: (rows: Row[]) => void
 }
 
-// useDocumentLoaders loads a document list into a page store and, for the
-// sources with a sync status, the status through fetchStatus into
+// useDocumentLoaders loads the document list of a page into its store and,
+// when the source has a sync status (fetchStatus), the status into
 // store.status. A result that arrives after the user picked another company
 // is dropped.
 export function useDocumentLoaders<Input extends { CNPJ: string }, Row, Status = never>(
@@ -46,10 +46,9 @@ export function useDocumentLoaders<Input extends { CNPJ: string }, Row, Status =
     return result
   }
 
-  // refresh reloads the list and status after work that already happened: a
-  // sync or a reset. It also runs after a failed pull, because the status
-  // then carries the block reason. Its own failures must not hide the result
-  // of that work.
+  // refresh reloads the list and the status after a sync or a reset, failed
+  // pulls included, since the status then carries the block reason. Its own
+  // failures are not reported, so they never hide the result of the sync.
   async function refresh(cnpj: string) {
     if (!isSelected(cnpj)) return
     await Promise.allSettled([search(), loadStatus(cnpj)])

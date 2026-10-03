@@ -35,8 +35,8 @@ export type LegendSection = {
   items: LegendItem[]
 }
 
-// abbreviated explains value of table as an abbreviated badge, named by its
-// full label.
+// abbreviated builds the legend entry of one value of table: badge, color and
+// name come from the table, the description from the caller.
 function abbreviated(table: DisplayTable, value: string, description: string): LegendItem {
   return {
     badge: table.abbr(value),
@@ -46,10 +46,15 @@ function abbreviated(table: DisplayTable, value: string, description: string): L
   }
 }
 
-// deadlineItem explains the chip of days left before a deadline of kind, as
-// the table draws it.
+// deadlineItem builds the entry of a deadline chip with the label and color
+// the table gives days of kind.
 function deadlineItem(days: number, kind: DeadlineKind, description: string): LegendItem {
-  return { badge: deadlineLabel(days), color: deadlineColor(days, kind), outline: true, description }
+  return {
+    badge: deadlineLabel(days),
+    color: deadlineColor(days, kind),
+    outline: true,
+    description,
+  }
 }
 
 // VIEWED_SECTION explains the "Novo" badge every document table shows.
@@ -60,7 +65,7 @@ const VIEWED_SECTION: LegendSection = {
       badge: VIEWED_BADGE.label,
       color: VIEWED_BADGE.color,
       description:
-        'Documento ainda não visto. Sai de "Somente não vistos" quando você usa "Marcar vistos" na seleção ou na lista exibida.',
+        'Ninguém marcou este documento como visto. "Marcar vistos" tira a marca da seleção ou da lista exibida; "Somente não vistos" filtra por ela.',
     },
   ],
 }
@@ -84,22 +89,22 @@ export const NFSE_LEGEND: LegendSection[] = [
       abbreviated(
         nfseVisibility,
         'exact_prestador',
-        'O CNPJ da empresa é exatamente o prestador da nota.'
+        'A empresa é a prestadora da nota, pelo CNPJ exato.'
       ),
       abbreviated(
         nfseVisibility,
         'exact_tomador',
-        'O CNPJ da empresa é exatamente o tomador da nota.'
+        'A empresa é a tomadora da nota, pelo CNPJ exato.'
       ),
       abbreviated(
         nfseVisibility,
         'exact_intermediario',
-        'O CNPJ da empresa é exatamente o intermediário da nota.'
+        'A empresa é a intermediária da nota, pelo CNPJ exato.'
       ),
       abbreviated(
         nfseVisibility,
         'same_root_only',
-        'A nota é de outro estabelecimento com a mesma raiz de CNPJ (matriz ou filial). A empresa não tem papel fiscal nela.'
+        'A nota é de outro estabelecimento da mesma raiz de CNPJ, matriz ou filial. A empresa não tem papel fiscal nela.'
       ),
     ],
   },
@@ -144,7 +149,7 @@ export const NFE_LEGEND: LegendSection[] = [
       abbreviated(
         nfeCompleteness,
         'resumo',
-        'Só os dados básicos chegaram. O XML completo é distribuído depois da Ciência da Operação ou de uma manifestação conclusiva.'
+        'Só o resumo chegou. A SEFAZ distribui o XML completo depois da Ciência da Operação ou de uma manifestação conclusiva.'
       ),
       abbreviated(
         nfeCompleteness,
@@ -155,7 +160,7 @@ export const NFE_LEGEND: LegendSection[] = [
   },
   {
     title: 'Manifestação',
-    note: 'Estado derivado dos eventos que a própria empresa registrou. As conclusivas são definitivas na SEFAZ.',
+    note: 'Vem dos eventos que a própria empresa registrou. Uma manifestação conclusiva não se desfaz na SEFAZ.',
     items: [
       abbreviated(
         nfeManifestacao,
@@ -165,22 +170,22 @@ export const NFE_LEGEND: LegendSection[] = [
       abbreviated(
         nfeManifestacao,
         'ciencia',
-        'Ciência da Operação registrada. Não é conclusiva: libera o XML completo e a nota ainda aguarda uma manifestação conclusiva.'
+        'Ciência da Operação registrada. Libera o XML completo, mas não conclui nada: a nota ainda espera uma manifestação conclusiva.'
       ),
       abbreviated(
         nfeManifestacao,
         'confirmada',
-        'Confirmação da Operação: a empresa confirma que a operação ocorreu.'
+        'Confirmação da Operação: a empresa atestou à SEFAZ que a operação ocorreu.'
       ),
       abbreviated(
         nfeManifestacao,
         'desconhecida',
-        'Desconhecimento da Operação: a empresa declara não reconhecer a operação.'
+        'Desconhecimento da Operação: a empresa declarou à SEFAZ que não reconhece a operação.'
       ),
       abbreviated(
         nfeManifestacao,
         'nao_realizada',
-        'Operação não Realizada: a operação foi solicitada mas não aconteceu, com justificativa.'
+        'Operação não Realizada: a empresa declarou à SEFAZ que a operação não aconteceu, com justificativa.'
       ),
     ],
   },
@@ -195,7 +200,7 @@ export const NFE_LEGEND: LegendSection[] = [
       abbreviated(
         nfeRole,
         'emitente',
-        'A empresa emitiu a nota. A SEFAZ não distribui as próprias notas; ela só aparece quando chega por outro motivo.'
+        'A empresa emitiu a nota. A SEFAZ não devolve ao emitente as próprias notas, então ela só aparece aqui se chegou por outro caminho.'
       ),
       abbreviated(nfeRole, 'transportador', 'A empresa é a transportadora da nota.'),
       abbreviated(
@@ -206,20 +211,20 @@ export const NFE_LEGEND: LegendSection[] = [
       abbreviated(
         nfeRole,
         'none',
-        'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
+        'A empresa só tem a mesma raiz de CNPJ de uma das partes, ou o motivo da distribuição não foi identificado.'
       ),
     ],
   },
   {
     title: 'Prazo',
-    note: 'Chip sob as siglas das notas com ciência: dias até o fim dos 90 dias para a manifestação conclusiva, contados da autorização. Amarelo a 30 dias do fim, vermelho a 10.',
+    note: 'Nas notas com ciência, o chip sob as siglas conta os dias que faltam dos 90 para a manifestação conclusiva, a partir da autorização. Fica amarelo faltando 30 dias e vermelho faltando 10.',
     items: [
       {
         badge: TACIT_CONFIRMATION_LABEL,
         color: 'negative',
         outline: true,
         description:
-          'Os 90 dias passaram sem manifestação conclusiva. A operação é considerada ocorrida, com os mesmos efeitos da confirmação.',
+          'Os 90 dias passaram sem manifestação conclusiva. Para a SEFAZ a operação ocorreu, como se tivesse sido confirmada.',
       },
     ],
   },
@@ -234,7 +239,7 @@ const conclusiva = DEADLINE_THRESHOLDS.conclusiva
 export const NFE_PENDING_LEGEND: LegendSection[] = [
   {
     title: 'Sem ciência',
-    note: 'Notas em que a empresa é destinatária e ainda não registrou nenhuma manifestação. O chip mostra os dias até o fim dos 10 dias recomendados para a ciência, contados da autorização.',
+    note: 'Notas de que a empresa é destinatária e ainda sem manifestação. O chip conta os dias que faltam dos 10 recomendados para a ciência, a partir da autorização.',
     items: [
       deadlineItem(10, 'ciencia', `Prazo perto do fim (${ciencia.warning} dias ou menos).`),
       deadlineItem(3, 'ciencia', `Últimos dias (${ciencia.urgent} dias ou menos).`),
@@ -242,13 +247,13 @@ export const NFE_PENDING_LEGEND: LegendSection[] = [
       deadlineItem(
         -5,
         'ciencia',
-        'Ciência atrasada. Ela ainda pode ser registrada, e continua liberando o XML completo.'
+        'Ciência atrasada. Ainda pode ser registrada e continua liberando o XML completo.'
       ),
     ],
   },
   {
     title: 'Sem manifestação conclusiva',
-    note: 'Notas com ciência registrada que ainda aguardam uma manifestação conclusiva. O chip mostra os dias até o fim dos 90 dias, contados da autorização.',
+    note: 'Notas com ciência e ainda sem manifestação conclusiva. O chip conta os dias que faltam dos 90, a partir da autorização.',
     items: [
       deadlineItem(45, 'conclusiva', 'Dentro do prazo.'),
       deadlineItem(20, 'conclusiva', `Prazo perto do fim (${conclusiva.warning} dias ou menos).`),
@@ -258,7 +263,7 @@ export const NFE_PENDING_LEGEND: LegendSection[] = [
         color: 'negative',
         outline: true,
         description:
-          'Os 90 dias passaram. A operação é considerada ocorrida, com os mesmos efeitos da confirmação, e a nota sai das pendências.',
+          'Os 90 dias passaram. Para a SEFAZ a operação ocorreu, como se tivesse sido confirmada, e a nota sai das pendências.',
       },
     ],
   },
@@ -305,7 +310,7 @@ export const CTE_LEGEND: LegendSection[] = [
     title: 'Papel',
     note: 'A empresa pode ter mais de um papel no mesmo CT-e. O principal vem na primeira linha; os outros, menores, na segunda.',
     items: [
-      abbreviated(ctePapel, 'tomador', 'A empresa toma o serviço de transporte e escritura o frete.'),
+      abbreviated(ctePapel, 'tomador', 'A empresa contratou o transporte e paga o frete.'),
       abbreviated(ctePapel, 'destinatario', 'A empresa é a destinatária da carga.'),
       abbreviated(ctePapel, 'remetente', 'A empresa é a remetente da carga.'),
       abbreviated(
@@ -317,7 +322,7 @@ export const CTE_LEGEND: LegendSection[] = [
       abbreviated(
         ctePapel,
         'emitente',
-        'A empresa emitiu o CT-e. A SEFAZ não distribui os próprios documentos; ele só aparece quando chega por outro motivo.'
+        'A empresa emitiu o CT-e. A SEFAZ não devolve ao emitente os próprios documentos, então ele só aparece aqui se chegou por outro caminho.'
       ),
       abbreviated(
         ctePapel,
@@ -327,7 +332,7 @@ export const CTE_LEGEND: LegendSection[] = [
       abbreviated(
         ctePapel,
         'none',
-        'A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado.'
+        'A empresa só tem a mesma raiz de CNPJ de uma das partes, ou o motivo da distribuição não foi identificado.'
       ),
     ],
   },

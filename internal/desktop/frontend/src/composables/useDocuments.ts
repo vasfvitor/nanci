@@ -83,8 +83,8 @@ export function useDocuments() {
   )
 
   // refresh reloads the list and the company list, whose sync fields feed
-  // the status line, after a sync or a reset. Its own failures must not hide
-  // the result of that work.
+  // the status line, after a sync or a reset. Its own failures are not
+  // reported, so they never hide the result of the sync.
   async function refresh(companyCNPJ: string) {
     if (!isSelected(companyCNPJ)) return
     await Promise.allSettled([search(), loadCompanies()])

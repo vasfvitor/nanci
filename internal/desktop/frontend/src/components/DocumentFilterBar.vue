@@ -102,7 +102,7 @@ const emit = defineEmits<{
 
 const canSearch = computed(() => !props.loading && !props.searchDisabled && Boolean(cnpj.value))
 
-// search asks for a search when one can be sent now.
+// search emits search unless the bar is loading, disabled or has no company.
 function search() {
   if (canSearch.value) emit('search')
 }
