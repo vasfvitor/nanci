@@ -1,5 +1,9 @@
 <template>
-  <q-layout view="hHh Lpr lFf">
+  <!-- container: the page scrolls inside the layout, not the window. The
+       root scrollbar of the window swallows mouse events, so the Wails
+       runtime never saw the right edge and the frameless window could not be
+       resized sideways. -->
+  <q-layout view="hHh Lpr lFf" container style="height: 100vh">
     <q-header bordered class="bg-app-header text-white">
       <AppTitleBar
         @toggle-menu="leftDrawerOpen = !leftDrawerOpen"
