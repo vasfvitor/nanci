@@ -535,6 +535,54 @@ func TestNFeExportXMLZipLayoutAndIncrementalMarks(t *testing.T) {
 	}
 }
 
+// An event stored in the same second as the export mark is still exported
+// by the next incremental export, and only once.
+func TestNFeExportXMLZipIncrementalSeesAnEventOfTheSameSecond(t *testing.T) {
+	env := newNFeTestEnv(t)
+	env.seed("procnfe.xml", 1)
+	ctx := context.Background()
+	outDir := t.TempDir()
+
+	first := filepath.Join(outDir, "first.zip")
+	res, err := env.app.NFe.ExportXMLZip(ctx, NFeExportInput{CNPJ: nfeTestCNPJ, Incremental: true, OutPath: first})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ExportedCount != 1 {
+		t.Fatalf("first incremental = %+v, want the procNFe", res)
+	}
+
+	env.seed("proceventonfe-cce.xml", 2)
+	if _, err := env.db.ExecContext(ctx, `UPDATE nfe_events SET created_at = (SELECT exported_at FROM company_nfe_export_marks)`); err != nil {
+		t.Fatal(err)
+	}
+
+	second := filepath.Join(outDir, "second.zip")
+	res, err = env.app.NFe.ExportXMLZip(ctx, NFeExportInput{CNPJ: nfeTestCNPJ, Incremental: true, OutPath: second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ExportedCount != 1 {
+		t.Fatalf("second incremental = %+v, want the procNFe again", res)
+	}
+	want := []string{
+		"2026-09/destinatario/" + nfeChaveProc + "-procNFe.xml",
+		"2026-09/destinatario/eventos/" + nfeChaveProc + "-110110-1.xml",
+	}
+	if got := sortedKeys(zipEntries(t, second)); !slices.Equal(got, want) {
+		t.Fatalf("zip entries = %v, want %v", got, want)
+	}
+
+	third := filepath.Join(outDir, "third.zip")
+	res, err = env.app.NFe.ExportXMLZip(ctx, NFeExportInput{CNPJ: nfeTestCNPJ, Incremental: true, OutPath: third})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ExportedCount != 0 {
+		t.Errorf("third incremental = %+v, want nothing exported", res)
+	}
+}
+
 func TestNFeTestConnectionOnlyChecksTLS(t *testing.T) {
 	env := newNFeTestEnv(t)
 	stub := useFakeSEFAZ(t)

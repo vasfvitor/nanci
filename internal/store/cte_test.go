@@ -507,10 +507,12 @@ func TestCTeExportMarks(t *testing.T) {
 	}
 
 	// A cancelamento stored after the export makes the document pending
-	// again. The marks are moved back so the event is not stored in the
-	// same second.
-	mustExec(t, f.db, `UPDATE company_cte_export_marks SET exported_at = '2026-09-01T00:00:00Z'`)
+	// again, even when it is stored in the same second as the mark.
 	f.applyEvent(f.event("proceventocte-cancelamento.xml", "hash-canc"))
+	mustExec(t, f.db, `UPDATE cte_events SET created_at = (
+		SELECT m.exported_at FROM company_cte_export_marks m
+		INNER JOIN cte_documents d ON d.id = m.cte_document_id
+		WHERE d.chave_acesso = cte_events.chave_acesso)`)
 	pending, err = f.repo.ListPendingExport(ctx, "mock", cte.DocumentFilter{}, cte.ExportKindXML)
 	if err != nil {
 		t.Fatal(err)

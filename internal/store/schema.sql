@@ -277,6 +277,7 @@ CREATE TABLE company_nfe_export_marks (
     export_kind TEXT NOT NULL CHECK (export_kind IN ('xml')),
     exported_hash TEXT NOT NULL,
     exported_at TEXT NOT NULL,
+    exported_events INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (company_id, nfe_document_id, export_kind)
 );
 
@@ -395,5 +396,6 @@ CREATE TABLE company_cte_export_marks (
     export_kind TEXT NOT NULL CHECK (export_kind IN ('xml')),
     exported_hash TEXT NOT NULL,
     exported_at TEXT NOT NULL,
+    exported_events INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (company_id, cte_document_id, export_kind)
 );

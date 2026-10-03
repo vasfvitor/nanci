@@ -704,6 +704,107 @@ func TestMigration017AddsCTeViewedAt(t *testing.T) {
 	}
 }
 
+func TestMigration018CountsExportedEvents(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 17); err != nil {
+		t.Fatalf("migrate to version 17: %v", err)
+	}
+
+	const before = "2026-09-01T09:00:00Z"
+	const exportedAt = "2026-09-01T10:00:00Z"
+	const nfeChave = "35260911222333000181550010000012341123456787"
+	const cteChave = "35260912345678000195570010000001011123456784"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, before, before)
+
+	mustExec(t, db, `
+		INSERT INTO nfe_documents (id, chave_acesso, modelo, serie, numero, issue_date, competence, protocolo,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, destinatario_cnpj, destinatario_name, transportador_cnpj,
+			tp_nf, fin_nfe, nat_op, situacao, completeness, layout_version, raw_hash, created_at, updated_at)
+		VALUES ('nfe-1', ?, '55', '1', '1', ?, '2026-09', '', '', '', '', 'SP', '', '', '', '1', '', '', 'autorizada', 'completa', '4.00', 'hash-nfe', ?, ?)
+	`, nfeChave, before, before, before)
+	insertNFeEvent := `
+		INSERT INTO nfe_events (id, chave_acesso, tp_evento, type, n_seq_evento, protocolo, autor_cnpj, description,
+			justificativa, correcao, completeness, raw_hash, created_at, updated_at)
+		VALUES (?, ?, ?, 'ciencia', 1, '', '', '', '', '', 'completa', ?, ?, ?)
+	`
+	mustExec(t, db, insertNFeEvent, "nfe-ev-before", nfeChave, "210210", "hash-ev-1", before, before)
+	mustExec(t, db, insertNFeEvent, "nfe-ev-same-second", nfeChave, "210200", "hash-ev-2", exportedAt, exportedAt)
+	mustExec(t, db, `
+		INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at)
+		VALUES ('comp-1', 'nfe-1', 'xml', 'hash-nfe', ?)
+	`, exportedAt)
+
+	mustExec(t, db, `
+		INSERT INTO cte_documents (id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op,
+			issue_date, competence, protocolo, tp_cte, tp_serv, modal,
+			mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name,
+			destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
+			tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
+			produto_predominante, situacao, layout_version, raw_hash, created_at, updated_at)
+		VALUES ('cte-1', ?, '1', '57', 'cte', '1', '101', '6353', '', ?, '2026-09', '', '0', '0', '01',
+			'', '', 'SP', '', '', 'RJ', '12345678000195', 'Transportadora', '', 'SP', '', '', '', '', '', '', '', '',
+			'3', '70860312000150', 'Company', '', 'RJ', '', 'autorizada', '4.00', 'hash-cte', ?, ?)
+	`, cteChave, before, before, before)
+	insertCTeEvent := `
+		INSERT INTO cte_events (id, chave_acesso, tp_amb, c_orgao, tp_evento, type, n_seq_evento, protocolo, autor_cnpj,
+			description, justificativa, observacao, correcao, condicao_uso, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '1', '35', ?, 'carta_correcao', 1, '', '', '', '', '', '', '', ?, ?, ?)
+	`
+	mustExec(t, db, insertCTeEvent, "cte-ev-before", cteChave, "110110", "hash-cte-ev-1", before, before)
+	mustExec(t, db, insertCTeEvent, "cte-ev-same-second", cteChave, "110180", "hash-cte-ev-2", exportedAt, exportedAt)
+	mustExec(t, db, `
+		INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at)
+		VALUES ('comp-1', 'cte-1', 'xml', 'hash-cte', ?)
+	`, exportedAt)
+
+	if _, err := provider.UpTo(ctx, 18); err != nil {
+		t.Fatalf("migrate to version 18: %v", err)
+	}
+	// Only the event stored strictly before the mark counts as exported, so
+	// the one of the same second leaves the document pending once.
+	for _, table := range []string{"company_nfe_export_marks", "company_cte_export_marks"} {
+		var exported int
+		if err := db.QueryRowContext(ctx, `SELECT exported_events FROM `+table).Scan(&exported); err != nil { // #nosec G202 -- fixed table names.
+			t.Fatalf("read %s.exported_events: %v", table, err)
+		}
+		if exported != 1 {
+			t.Errorf("%s exported_events = %d, want 1", table, exported)
+		}
+	}
+
+	if _, err := provider.DownTo(ctx, 17); err != nil {
+		t.Fatalf("migrate down to version 17: %v", err)
+	}
+	var columns int
+	if err := db.QueryRowContext(ctx, `
+		SELECT (SELECT COUNT(*) FROM pragma_table_info('company_nfe_export_marks') WHERE name = 'exported_events')
+			+ (SELECT COUNT(*) FROM pragma_table_info('company_cte_export_marks') WHERE name = 'exported_events')
+	`).Scan(&columns); err != nil {
+		t.Fatal(err)
+	}
+	if columns != 0 {
+		t.Errorf("exported_events columns after down = %d, want 0", columns)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
 	t.Helper()
 	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {

@@ -241,19 +241,21 @@ func (q *Queries) ListNFeEventsByChave(ctx context.Context, chaveAcesso string) 
 }
 
 const markNFeExported = `-- name: MarkNFeExported :exec
-INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at, exported_events)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_id, nfe_document_id, export_kind) DO UPDATE SET
     exported_hash = excluded.exported_hash,
-    exported_at = excluded.exported_at
+    exported_at = excluded.exported_at,
+    exported_events = excluded.exported_events
 `
 
 type MarkNFeExportedParams struct {
-	CompanyID     string
-	NfeDocumentID string
-	ExportKind    string
-	ExportedHash  string
-	ExportedAt    string
+	CompanyID      string
+	NfeDocumentID  string
+	ExportKind     string
+	ExportedHash   string
+	ExportedAt     string
+	ExportedEvents int64
 }
 
 func (q *Queries) MarkNFeExported(ctx context.Context, arg MarkNFeExportedParams) error {
@@ -263,6 +265,7 @@ func (q *Queries) MarkNFeExported(ctx context.Context, arg MarkNFeExportedParams
 		arg.ExportKind,
 		arg.ExportedHash,
 		arg.ExportedAt,
+		arg.ExportedEvents,
 	)
 	return err
 }

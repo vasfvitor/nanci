@@ -148,8 +148,9 @@ WHERE chave_acesso = ?
 ORDER BY COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento;
 
 -- name: MarkCTeExported :exec
-INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at, exported_events)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_id, cte_document_id, export_kind) DO UPDATE SET
     exported_hash = excluded.exported_hash,
-    exported_at = excluded.exported_at;
+    exported_at = excluded.exported_at,
+    exported_events = excluded.exported_events;

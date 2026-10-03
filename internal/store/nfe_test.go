@@ -683,10 +683,10 @@ func TestNFeExportMarks(t *testing.T) {
 		t.Errorf("pending after second export = %v, want none", chaves(docs))
 	}
 
-	// An event stored after the export makes the document pending again. The
-	// mark is moved back so the event is not stored in the same second.
-	mustExec(t, f.db, `UPDATE company_nfe_export_marks SET exported_at = '2026-09-01T00:00:00Z'`)
+	// An event stored after the export makes the document pending again,
+	// even when it is stored in the same second as the mark.
 	f.applyEvent(f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia"))
+	mustExec(t, f.db, `UPDATE nfe_events SET created_at = (SELECT exported_at FROM company_nfe_export_marks)`)
 	docs = pending()
 	if !slices.Equal(chaves(docs), []string{nfeKeyProc}) {
 		t.Fatalf("pending after a new event = %v, want %s", chaves(docs), nfeKeyProc)

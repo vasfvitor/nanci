@@ -152,8 +152,8 @@ func (r *NFeRepository) ListCompanyDocuments(ctx context.Context, companyID dfe.
 
 // ListPendingExport returns the rows ListCompanyDocuments would return that
 // were never exported with this kind, whose raw hash changed since (for
-// example after a resumo was upgraded to completa), or that got a new event
-// since, such as a cancelamento or a manifestação.
+// example after a resumo was upgraded to completa), or whose event count
+// changed since, such as after a cancelamento or a manifestação.
 func (r *NFeRepository) ListPendingExport(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter, kind string) ([]nfe.CompanyDocument, error) {
 	if kind == "" {
 		return nil, errors.New("export kind is required")
@@ -278,7 +278,9 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID dfe.CompanyI
 	return counts, nil
 }
 
-// MarkExported records the current raw hash of each document as exported.
+// MarkExported records the current raw hash and event count of each
+// document as exported. The event count is the one listed with the document,
+// so an event stored while the export was written stays pending.
 func (r *NFeRepository) MarkExported(ctx context.Context, companyID dfe.CompanyID, kind string, docs []nfe.CompanyDocument) error {
 	if len(docs) == 0 {
 		return nil
@@ -293,11 +295,12 @@ func (r *NFeRepository) MarkExported(ctx context.Context, companyID dfe.CompanyI
 	now := time.Now().UTC().Format(time.RFC3339)
 	for _, doc := range docs {
 		err := q.MarkNFeExported(ctx, sqlgen.MarkNFeExportedParams{
-			CompanyID:     string(companyID),
-			NfeDocumentID: doc.ID,
-			ExportKind:    kind,
-			ExportedHash:  doc.RawHash,
-			ExportedAt:    now,
+			CompanyID:      string(companyID),
+			NfeDocumentID:  doc.ID,
+			ExportKind:     kind,
+			ExportedHash:   doc.RawHash,
+			ExportedAt:     now,
+			ExportedEvents: int64(doc.EventCount),
 		})
 		if err != nil {
 			return fmt.Errorf("mark nfe document %s exported: %w", doc.ChaveAcesso, err)
@@ -538,10 +541,12 @@ func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID dfe.
 	query += " WHERE " + where // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
 	args = append(args, whereArgs...)
 	if exportKind != "" {
-		// An event stored after the mark, such as a cancelamento that
-		// arrived after the export, makes the document pending again.
+		// A change in the event count since the mark, such as a
+		// cancelamento that arrived after the export, makes the document
+		// pending again. Counting instead of comparing created_at with
+		// exported_at also catches an event stored in the same second.
 		query += ` AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash
-			OR EXISTS (SELECT 1 FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso AND e.created_at > m.exported_at))`
+			OR m.exported_events != (SELECT COUNT(*) FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso))`
 	}
 
 	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"

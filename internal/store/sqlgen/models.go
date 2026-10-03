@@ -39,11 +39,12 @@ type CompanyCteDocument struct {
 }
 
 type CompanyCteExportMark struct {
-	CompanyID     string
-	CteDocumentID string
-	ExportKind    string
-	ExportedHash  string
-	ExportedAt    string
+	CompanyID      string
+	CteDocumentID  string
+	ExportKind     string
+	ExportedHash   string
+	ExportedAt     string
+	ExportedEvents int64
 }
 
 type CompanyDocument struct {
@@ -83,11 +84,12 @@ type CompanyNfeDocument struct {
 }
 
 type CompanyNfeExportMark struct {
-	CompanyID     string
-	NfeDocumentID string
-	ExportKind    string
-	ExportedHash  string
-	ExportedAt    string
+	CompanyID      string
+	NfeDocumentID  string
+	ExportKind     string
+	ExportedHash   string
+	ExportedAt     string
+	ExportedEvents int64
 }
 
 type CompanySyncSource struct {
