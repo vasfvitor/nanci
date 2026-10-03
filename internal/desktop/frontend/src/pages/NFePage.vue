@@ -34,7 +34,7 @@
       </q-tab>
     </q-tabs>
 
-    <q-tab-panels v-model="activeTab" animated keep-alive>
+    <q-tab-panels v-model="activeTab" animated keep-alive class="bg-transparent">
       <q-tab-panel name="notas" class="q-pa-none">
         <DocumentFilterBar
           v-model:cnpj="filter.CNPJ"
