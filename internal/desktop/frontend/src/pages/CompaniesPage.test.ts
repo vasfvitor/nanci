@@ -2,7 +2,7 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CompaniesPage from './CompaniesPage.vue'
-import { desktopClient, WailsClientError } from '@/platform/wails/client'
+import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const notify = vi.fn()
@@ -26,8 +26,6 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     listCompanies: vi.fn(),
     listCredentials: vi.fn(),
     assignCredential: vi.fn(),
-    pull: vi.fn(),
-    setLogLevel: vi.fn(),
   },
 }))
 
@@ -58,7 +56,7 @@ function mountPage(tableTemplate = credentialCellTable) {
     global: {
       stubs: {
         'q-page': { template: '<div><slot /></div>' },
-        'q-btn': { template: '<button />' },
+        'q-btn': { props: ['title', 'icon'], template: '<button :title="title" :data-icon="icon" />' },
         'q-badge': { template: '<div />' },
         'q-td': { template: '<td><slot /></td>' },
         'q-select': {
@@ -150,7 +148,7 @@ describe('CompaniesPage credential assignment', () => {
   })
 })
 
-describe('CompaniesPage documents link', () => {
+describe('CompaniesPage actions', () => {
   beforeEach(() => {
     localStorage.clear()
     setActivePinia(createPinia())
@@ -158,7 +156,7 @@ describe('CompaniesPage documents link', () => {
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
   })
 
-  it('sets the workspace company and opens /documents', async () => {
+  it('Ver documentos sets the workspace company and opens /documents', async () => {
     const outra = { ...company, ID: 'company-2', CNPJ: '98765432000188', Name: 'Empresa Dois' }
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
     const wrapper = mountPage(actionsCellTable)
@@ -167,50 +165,22 @@ describe('CompaniesPage documents link', () => {
     workspace.cnpj = outra.CNPJ
 
     // The actions cell renders the first row, company.
-    await wrapper.get('button[title="Ver NFS-e"]').trigger('click')
+    await wrapper.get('button[title="Ver documentos"]').trigger('click')
 
     expect(workspace.cnpj).toBe(company.CNPJ)
     expect(push).toHaveBeenCalledWith('/documents')
   })
-})
 
-describe('CompaniesPage sync errors', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    setActivePinia(createPinia())
-    vi.clearAllMocks()
+  it('has no sync or reset actions', async () => {
+    // Not even with debug logs on: the NFS-e page owns sync and reset.
+    localStorage.setItem('nanci:logLevel', 'debug')
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
-    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
-  })
-
-  async function clickSync(error: Error) {
-    vi.mocked(desktopClient.pull).mockRejectedValue(error)
     const wrapper = mountPage(actionsCellTable)
     await flushPromises()
 
-    await wrapper.get('button[title="Sincronizar NFS-e"]').trigger('click')
-    await flushPromises()
-  }
-
-  it('warns instead of failing when a sync is already running', async () => {
-    await clickSync(new WailsClientError('sincronização já em andamento', 'sync_running'))
-
-    expect(notify).toHaveBeenCalledWith({
-      type: 'warning',
-      message: 'Sincronização já em andamento para esta empresa.',
-    })
-    expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'negative' }))
-  })
-
-  it('warns when the password prompt was cancelled', async () => {
-    await clickSync(new WailsClientError('operação cancelada', 'canceled'))
-
-    expect(notify).toHaveBeenCalledWith({ type: 'warning', message: 'Sincronização cancelada.' })
-  })
-
-  it('reports other sync errors as failures', async () => {
-    await clickSync(new Error('boom'))
-
-    expect(notify).toHaveBeenCalledWith({ type: 'negative', message: 'Erro na sincronização: boom' })
+    const titles = wrapper.findAll('button').map((button) => button.attributes('title'))
+    expect(titles).toEqual(['Ver documentos', 'Editar'])
+    expect(wrapper.find('button[data-icon="sync"]').exists()).toBe(false)
+    expect(wrapper.find('button[data-icon="restart_alt"]').exists()).toBe(false)
   })
 })

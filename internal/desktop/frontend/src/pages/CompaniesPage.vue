@@ -22,6 +22,12 @@
         />
       </template>
 
+      <template #body-cell-nome="props">
+        <q-td :props="props" :class="{ 'text-primary text-weight-bold': props.row.CNPJ === workspace.cnpj }">
+          {{ props.row.Name }}
+        </q-td>
+      </template>
+
       <template #body-cell-ambiente="props">
         <q-td :props="props">
           <q-badge
@@ -76,18 +82,9 @@
             round
             color="secondary"
             icon="description"
-            title="Ver NFS-e"
+            title="Ver documentos"
+            aria-label="Ver documentos"
             @click="openDocuments(props.row.CNPJ)"
-          />
-          <q-btn
-            dense
-            flat
-            round
-            color="primary"
-            icon="sync"
-            :loading="isSyncingCompany(props.row.CNPJ)"
-            title="Sincronizar NFS-e"
-            @click="syncCompany(props.row.CNPJ)"
           />
           <q-btn
             dense
@@ -97,16 +94,6 @@
             icon="edit"
             title="Editar"
             @click="openEditDialog(props.row)"
-          />
-          <q-btn
-            v-if="debugEnabled"
-            dense
-            flat
-            round
-            color="negative"
-            icon="restart_alt"
-            title="Resetar NSU"
-            @click="confirmResetSync(props.row)"
           />
         </q-td>
       </template>
@@ -122,29 +109,22 @@
 </template>
 
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { useRouter } from 'vue-router'
 import { errorMessage } from '@/platform/wails/client'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
-import { useConsoleStore } from '@/stores/console'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useCompanies } from '@/composables/useCompanies'
-import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
-import { nfseSyncSummary } from '@/utils/nfseDisplay'
 import type { CompanySummary } from '@/types/desktop'
 
 const $q = useQuasar()
 const router = useRouter()
 const workspace = useWorkspaceStore()
-const consoleStore = useConsoleStore()
-const { debugEnabled } = storeToRefs(consoleStore)
 const companiesApi = useCompanies()
-const { notifySyncError } = useNotify()
-const { companies, credentials, loading, isSyncingCompany } = companiesApi
+const { companies, credentials, loading } = companiesApi
 const showAddDialog = ref(false)
 const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)
@@ -173,7 +153,8 @@ function openEditDialog(company: CompanySummary) {
   showEditDialog.value = true
 }
 
-// openDocuments makes the company the workspace one and opens its NFS-e.
+// openDocuments makes the company the workspace one and opens its documents,
+// starting at the NFS-e.
 function openDocuments(cnpj: string) {
   workspace.cnpj = cnpj
   void router.push('/documents')
@@ -222,41 +203,6 @@ async function assignCredential(cnpj: string) {
     selectedCredentials.value[cnpj] = previousCredId
     $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + errorMessage(err) })
   }
-}
-
-async function syncCompany(cnpj: string) {
-  try {
-    const result = await companiesApi.syncCompany(cnpj)
-    $q.notify({ type: 'positive', message: nfseSyncSummary(result) })
-    await loadCompanies()
-  } catch (err) {
-    notifySyncError('Erro na sincronização', err)
-  }
-}
-
-function confirmResetSync(company: CompanySummary) {
-  $q.dialog({
-    title: 'Resetar sincronização',
-    message: `Isso vai zerar o cursor de sincronização de ${company.Name} (${company.CNPJ}) sem apagar documentos já baixados. A próxima sincronização poderá revisitar NSUs antigos. Continuar?`,
-    cancel: true,
-    persistent: true,
-    ok: {
-      label: 'Resetar',
-      color: 'negative',
-      flat: false,
-    },
-  }).onOk(async () => {
-    try {
-      await companiesApi.resetSyncState(company.CNPJ)
-      $q.notify({
-        type: 'warning',
-        message: `Cursor de sincronização resetado para ${company.Name}.`,
-      })
-      await loadCompanies()
-    } catch (err) {
-      $q.notify({ type: 'negative', message: 'Erro ao resetar sincronização: ' + errorMessage(err) })
-    }
-  })
 }
 
 onMounted(() => {

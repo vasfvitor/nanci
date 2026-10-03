@@ -2,17 +2,14 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, vi } from 'vitest'
 import { useCompanies } from './useCompanies'
 import { desktopClient } from '@/platform/wails/client'
-import { useCompanySyncStore } from '@/stores/companySync'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { CompanySummary, PullResult } from '@/types/desktop'
+import type { CompanySummary } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     assignCredential: vi.fn(),
     listCompanies: vi.fn(),
     listCredentials: vi.fn(),
-    pull: vi.fn(),
-    resetSyncState: vi.fn(),
   },
 }))
 
@@ -75,59 +72,5 @@ describe('useCompanies', () => {
     resolveCompanies([])
     await pending
     expect(companies.loading.value).toBe(false)
-  })
-
-  it('preserves in-flight sync state across composable instances', async () => {
-    let resolvePull!: (value: PullResult) => void
-    vi.mocked(desktopClient.pull).mockReturnValue(
-      new Promise((resolve) => {
-        resolvePull = resolve
-      }) as ReturnType<typeof desktopClient.pull>
-    )
-    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
-
-    const firstPage = useCompanies()
-    const syncPromise = firstPage.syncCompany('123')
-
-    const remountedPage = useCompanies()
-    expect(remountedPage.isSyncingCompany('123')).toBe(true)
-    expect(useCompanySyncStore().isSyncing('123', 'nfe')).toBe(false)
-
-    resolvePull({
-      CompanyName: 'Empresa',
-      CNPJ: '123',
-      CredentialLabel: 'Certificado',
-      CredentialCNPJ: '123',
-      ConsultationBasis: '',
-      Status: 'completed',
-      StopReason: 'done',
-      LastProcessedNSU: 1,
-      LastFoundNSU: 1,
-      EmptyStreak: 0,
-      DocumentsFound: 0,
-      EventsFound: 0,
-      DocumentsSaved: 0,
-      EventsSaved: 0,
-      DocumentsSkippedByPolicy: 0,
-      EventsSkippedByPolicy: 0,
-      Errors: 0,
-      Duration: 0,
-    })
-    await syncPromise
-
-    expect(remountedPage.isSyncingCompany('123')).toBe(false)
-    expect(useCompanySyncStore().isSyncing('123', 'nfse')).toBe(false)
-  })
-
-  it('does not mark the NFS-e sync button while an NF-e sync runs', () => {
-    const companies = useCompanies()
-    const syncStore = useCompanySyncStore()
-
-    syncStore.startSync('123', 'nfe')
-
-    expect(companies.isSyncingCompany('123')).toBe(false)
-    expect(syncStore.isSyncing('123', 'nfe')).toBe(true)
-
-    syncStore.finishSync('123', 'nfe')
   })
 })
