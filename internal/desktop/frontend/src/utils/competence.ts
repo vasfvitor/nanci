@@ -19,3 +19,8 @@ export function shiftCompetence(
   }
   return competenceOf(new Date(year, month - 1 + monthDelta, 1))
 }
+
+// isCompetence reports whether value is a YYYY-MM competence with a real month.
+export function isCompetence(value: string | null | undefined): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value ?? '')
+}

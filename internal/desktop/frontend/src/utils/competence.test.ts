@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { competenceOf, shiftCompetence } from './competence'
+import { competenceOf, isCompetence, shiftCompetence } from './competence'
 
 describe('competence', () => {
   const now = new Date(2026, 8, 23)
@@ -23,5 +23,18 @@ describe('competence', () => {
   it('leaves an invalid competence unchanged', () => {
     expect(shiftCompetence('2026-13', 1, now)).toBe('2026-13')
     expect(shiftCompetence('abc', 1, now)).toBe('abc')
+  })
+
+  it('accepts only a YYYY-MM competence with a real month', () => {
+    expect(isCompetence('2026-01')).toBe(true)
+    expect(isCompetence('2026-12')).toBe(true)
+    expect(isCompetence('2026-00')).toBe(false)
+    expect(isCompetence('2026-13')).toBe(false)
+    expect(isCompetence('2026-1')).toBe(false)
+    expect(isCompetence('2026-0')).toBe(false)
+    expect(isCompetence(' 2026-01')).toBe(false)
+    expect(isCompetence('')).toBe(false)
+    expect(isCompetence(null)).toBe(false)
+    expect(isCompetence(undefined)).toBe(false)
   })
 })
