@@ -15,23 +15,7 @@ import (
 
 func TestMigration007KeysSyncStateAndRunsBySource(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 6); err != nil {
-		t.Fatalf("migrate to version 6: %v", err)
-	}
+	db, provider := migrateTo(t, 6)
 
 	const now = "2026-06-01T10:00:00Z"
 	mustExec(t, db, `
@@ -127,23 +111,7 @@ func TestMigration007KeysSyncStateAndRunsBySource(t *testing.T) {
 
 func TestMigration008AddsNFeTables(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 7); err != nil {
-		t.Fatalf("migrate to version 7: %v", err)
-	}
+	db, provider := migrateTo(t, 7)
 
 	nfeTables := []string{"nfe_documents", "company_nfe_documents", "nfe_events", "nfe_manifestations", "company_nfe_export_marks"}
 	countTables := func() int {
@@ -203,23 +171,7 @@ func TestMigration008AddsNFeTables(t *testing.T) {
 
 func TestMigration009AddsCompanyUF(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 8); err != nil {
-		t.Fatalf("migrate to version 8: %v", err)
-	}
+	db, provider := migrateTo(t, 8)
 	const now = "2026-09-01T10:00:00Z"
 	mustExec(t, db, `
 		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
@@ -251,23 +203,7 @@ func TestMigration009AddsCompanyUF(t *testing.T) {
 
 func TestMigration010AddsSyncItemFailures(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 9); err != nil {
-		t.Fatalf("migrate to version 9: %v", err)
-	}
+	db, provider := migrateTo(t, 9)
 	const now = "2026-09-01T10:00:00Z"
 	mustExec(t, db, `
 		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
@@ -308,23 +244,7 @@ func TestMigration010AddsSyncItemFailures(t *testing.T) {
 
 func TestMigration011AddsManifestacaoTpAmb(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 10); err != nil {
-		t.Fatalf("migrate to version 10: %v", err)
-	}
+	db, provider := migrateTo(t, 10)
 	const now = "2026-09-01T10:00:00Z"
 	mustExec(t, db, `
 		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
@@ -362,23 +282,7 @@ func TestMigration011AddsManifestacaoTpAmb(t *testing.T) {
 
 func TestMigration012IndexesCompanyNFeDocumentsByDocument(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 11); err != nil {
-		t.Fatalf("migrate to version 11: %v", err)
-	}
+	db, provider := migrateTo(t, 11)
 	countIndex := func() int {
 		t.Helper()
 		var n int
@@ -409,23 +313,7 @@ func TestMigration012IndexesCompanyNFeDocumentsByDocument(t *testing.T) {
 
 func TestMigration013RenamesManifestacoesAndChecksSyncRequestSource(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 12); err != nil {
-		t.Fatalf("migrate to version 12: %v", err)
-	}
+	db, provider := migrateTo(t, 12)
 	const now = "2026-09-01T10:00:00Z"
 	mustExec(t, db, `
 		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
@@ -492,23 +380,7 @@ func TestMigration013RenamesManifestacoesAndChecksSyncRequestSource(t *testing.T
 
 func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 13); err != nil {
-		t.Fatalf("migrate to version 13: %v", err)
-	}
+	db, provider := migrateTo(t, 13)
 
 	const syncedAt = "2026-06-01T10:00:00Z"
 	const mirrorOnlyAt = "2026-05-01T10:00:00Z"
@@ -572,25 +444,86 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	}
 }
 
+func TestMigration015AddsCTeTables(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 14)
+	const now = "2026-09-01T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+
+	cteTables := []string{"cte_documents", "company_cte_documents", "cte_events", "company_cte_export_marks"}
+	countTables := func() int {
+		t.Helper()
+		var n int
+		err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM sqlite_master
+			WHERE type = 'table' AND name IN (?, ?, ?, ?)
+		`, cteTables[0], cteTables[1], cteTables[2], cteTables[3]).Scan(&n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 15); err != nil {
+		t.Fatalf("migrate to version 15: %v", err)
+	}
+	if n := countTables(); n != len(cteTables) {
+		t.Errorf("CT-e tables after up = %d, want %d", n, len(cteTables))
+	}
+
+	insertDocument := `
+		INSERT INTO cte_documents (id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op,
+			issue_date, competence, protocolo, tp_cte, tp_serv, modal,
+			mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim,
+			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name,
+			destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
+			tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
+			produto_predominante, situacao, layout_version, raw_hash, created_at, updated_at)
+		VALUES (?, ?, '1', '57', 'cte', '1', '101', '6353', '', ?, '2026-09', '', '0', '0', '01',
+			'', '', 'SP', '', '', 'RJ', '12345678000195', 'Transportadora', '', 'SP', '', '', '', '', '', '', '', '',
+			'3', '70860312000150', 'Company', '', 'RJ', '', ?, '4.00', ?, ?, ?)
+	`
+	mustExec(t, db, insertDocument, "doc-1", "35260912345678000195570010000001011123456784", now, "autorizada", "hash-1", now, now)
+	if _, err := db.ExecContext(ctx, insertDocument, "doc-2", "35260912345678000195570010000001021234567891", now, "autorizado", "hash-2", now, now); err == nil {
+		t.Error("cte_documents accepted situacao 'autorizado', want a CHECK failure")
+	}
+	mustExec(t, db, `
+		INSERT INTO company_cte_documents (relation_id, company_id, cte_document_id, company_role, papeis,
+			visibility_reason, first_synced_at, last_synced_at)
+		VALUES ('rel-1', 'comp-1', 'doc-1', 'tomador', 'tomador,destinatario', 'exact_tomador', ?, ?)
+	`, now, now)
+	var autorizados, nfeChaves string
+	var maskedKeys int
+	err := db.QueryRowContext(ctx, `SELECT autorizados_cnpj, nfe_chaves, masked_keys FROM cte_documents WHERE id = 'doc-1'`).
+		Scan(&autorizados, &nfeChaves, &maskedKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if autorizados != "" || nfeChaves != "" || maskedKeys != 0 {
+		t.Errorf("default (autorizados_cnpj, nfe_chaves, masked_keys) = (%q, %q, %d), want empty", autorizados, nfeChaves, maskedKeys)
+	}
+
+	if _, err := provider.DownTo(ctx, 14); err != nil {
+		t.Fatalf("migrate down to version 14: %v", err)
+	}
+	if n := countTables(); n != 0 {
+		t.Errorf("CT-e tables after down = %d, want 0", n)
+	}
+	var companies int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM companies`).Scan(&companies); err != nil {
+		t.Fatal(err)
+	}
+	if companies != 1 {
+		t.Errorf("companies after down = %d, want 1", companies)
+	}
+}
+
 func TestMigration016BackfillsNFeTpAmb(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 14); err != nil {
-		t.Fatalf("migrate to version 14: %v", err)
-	}
+	db, provider := migrateTo(t, 14)
 
 	const now = "2026-09-01T10:00:00Z"
 	insertCompany := `
@@ -661,20 +594,7 @@ func TestMigration016BackfillsNFeTpAmb(t *testing.T) {
 
 func TestMigration017AddsCTeViewedAt(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
+	db, provider := migrateTo(t, 16)
 	viewedAt := func() (columns, indexes int) {
 		t.Helper()
 		if err := db.QueryRowContext(ctx, `
@@ -687,9 +607,6 @@ func TestMigration017AddsCTeViewedAt(t *testing.T) {
 		return columns, indexes
 	}
 
-	if _, err := provider.UpTo(ctx, 16); err != nil {
-		t.Fatalf("migrate to version 16: %v", err)
-	}
 	if columns, indexes := viewedAt(); columns != 0 || indexes != 0 {
 		t.Fatalf("before 017: viewed_at columns = %d, indexes = %d, want 0 and 0", columns, indexes)
 	}
@@ -710,23 +627,7 @@ func TestMigration017AddsCTeViewedAt(t *testing.T) {
 
 func TestMigration018CountsExportedEvents(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 17); err != nil {
-		t.Fatalf("migrate to version 17: %v", err)
-	}
+	db, provider := migrateTo(t, 17)
 
 	const before = "2026-09-01T09:00:00Z"
 	const exportedAt = "2026-09-01T10:00:00Z"
@@ -811,23 +712,7 @@ func TestMigration018CountsExportedEvents(t *testing.T) {
 
 func TestMigration019KeysSyncSourcesByEnvironment(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 18); err != nil {
-		t.Fatalf("migrate to version 18: %v", err)
-	}
+	db, provider := migrateTo(t, 18)
 
 	const now = "2026-09-01T10:00:00Z"
 	const blockedUntil = "2026-09-01T11:00:00Z"
@@ -931,125 +816,9 @@ func TestMigration019KeysSyncSourcesByEnvironment(t *testing.T) {
 	}
 }
 
-func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
-	t.Helper()
-	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {
-		t.Fatalf("exec %q: %v", query, err)
-	}
-}
-
-func TestMigration015AddsCTeTables(t *testing.T) {
-	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 14); err != nil {
-		t.Fatalf("migrate to version 14: %v", err)
-	}
-	const now = "2026-09-01T10:00:00Z"
-	mustExec(t, db, `
-		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
-		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
-	`, now, now)
-
-	cteTables := []string{"cte_documents", "company_cte_documents", "cte_events", "company_cte_export_marks"}
-	countTables := func() int {
-		t.Helper()
-		var n int
-		err := db.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM sqlite_master
-			WHERE type = 'table' AND name IN (?, ?, ?, ?)
-		`, cteTables[0], cteTables[1], cteTables[2], cteTables[3]).Scan(&n)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return n
-	}
-
-	if _, err := provider.UpTo(ctx, 15); err != nil {
-		t.Fatalf("migrate to version 15: %v", err)
-	}
-	if n := countTables(); n != len(cteTables) {
-		t.Errorf("CT-e tables after up = %d, want %d", n, len(cteTables))
-	}
-
-	insertDocument := `
-		INSERT INTO cte_documents (id, chave_acesso, tp_amb, modelo, tipo_documento, serie, numero, cfop, nat_op,
-			issue_date, competence, protocolo, tp_cte, tp_serv, modal,
-			mun_ini_codigo, mun_ini_nome, uf_ini, mun_fim_codigo, mun_fim_nome, uf_fim,
-			emitente_cnpj, emitente_name, emitente_ie, emitente_uf, remetente_cnpj, remetente_name,
-			destinatario_cnpj, destinatario_name, expedidor_cnpj, expedidor_name, recebedor_cnpj, recebedor_name,
-			tomador_indicador, tomador_cnpj, tomador_name, tomador_ie, tomador_uf,
-			produto_predominante, situacao, layout_version, raw_hash, created_at, updated_at)
-		VALUES (?, ?, '1', '57', 'cte', '1', '101', '6353', '', ?, '2026-09', '', '0', '0', '01',
-			'', '', 'SP', '', '', 'RJ', '12345678000195', 'Transportadora', '', 'SP', '', '', '', '', '', '', '', '',
-			'3', '70860312000150', 'Company', '', 'RJ', '', ?, '4.00', ?, ?, ?)
-	`
-	mustExec(t, db, insertDocument, "doc-1", "35260912345678000195570010000001011123456784", now, "autorizada", "hash-1", now, now)
-	if _, err := db.ExecContext(ctx, insertDocument, "doc-2", "35260912345678000195570010000001021234567891", now, "autorizado", "hash-2", now, now); err == nil {
-		t.Error("cte_documents accepted situacao 'autorizado', want a CHECK failure")
-	}
-	mustExec(t, db, `
-		INSERT INTO company_cte_documents (relation_id, company_id, cte_document_id, company_role, papeis,
-			visibility_reason, first_synced_at, last_synced_at)
-		VALUES ('rel-1', 'comp-1', 'doc-1', 'tomador', 'tomador,destinatario', 'exact_tomador', ?, ?)
-	`, now, now)
-	var autorizados, nfeChaves string
-	var maskedKeys int
-	err = db.QueryRowContext(ctx, `SELECT autorizados_cnpj, nfe_chaves, masked_keys FROM cte_documents WHERE id = 'doc-1'`).
-		Scan(&autorizados, &nfeChaves, &maskedKeys)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if autorizados != "" || nfeChaves != "" || maskedKeys != 0 {
-		t.Errorf("default (autorizados_cnpj, nfe_chaves, masked_keys) = (%q, %q, %d), want empty", autorizados, nfeChaves, maskedKeys)
-	}
-
-	if _, err := provider.DownTo(ctx, 14); err != nil {
-		t.Fatalf("migrate down to version 14: %v", err)
-	}
-	if n := countTables(); n != 0 {
-		t.Errorf("CT-e tables after down = %d, want 0", n)
-	}
-	var companies int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM companies`).Scan(&companies); err != nil {
-		t.Fatal(err)
-	}
-	if companies != 1 {
-		t.Errorf("companies after down = %d, want 1", companies)
-	}
-}
-
 func TestMigration020StripsTheNFSPrefixOfNFSeChaves(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	migrations, err := store.Migrations()
-	if err != nil {
-		t.Fatal(err)
-	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := provider.UpTo(ctx, 19); err != nil {
-		t.Fatalf("migrate to version 19: %v", err)
-	}
+	db, provider := migrateTo(t, 19)
 
 	const now = "2026-09-01T10:00:00Z"
 	const chaveX = "35503082245852546000109000000000000126060000000011"
@@ -1112,5 +881,35 @@ func TestMigration020StripsTheNFSPrefixOfNFSeChaves(t *testing.T) {
 	}
 	if chave, _ := docChaveAndStatus("doc-a"); chave != chaveX {
 		t.Errorf("doc-a chave after down = %q, want the 50 digits kept", chave)
+	}
+}
+
+func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, version); err != nil {
+		t.Fatalf("migrate to version %d: %v", version, err)
+	}
+	return db, provider
+}
+
+func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {
+		t.Fatalf("exec %q: %v", query, err)
 	}
 }
