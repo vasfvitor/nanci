@@ -1,8 +1,6 @@
 <template>
-  <!-- container: the page scrolls inside the layout, not the window. The
-       root scrollbar of the window swallows mouse events, so the Wails
-       runtime never saw the right edge and the frameless window could not be
-       resized sideways. -->
+  <!-- container: the page scrolls inside the layout, so its scrollbar is an
+       element inside the viewport and the resize edge below can cover it. -->
   <q-layout view="hHh Lpr lFf" container style="height: 100vh">
     <q-header bordered class="bg-app-header text-white">
       <AppTitleBar
@@ -19,6 +17,13 @@
       <router-view />
     </q-page-container>
   </q-layout>
+
+  <!-- The Wails runtime resizes the frameless window from the 6px inside each
+       edge, where it watches the mouse. A mousedown on a native scrollbar
+       makes the webview capture the mouse, and the resize the runtime asks
+       for then fails, so this strip keeps the pointer off the page scrollbar
+       at the right edge. -->
+  <div class="app-resize-edge" aria-hidden="true" />
 </template>
 
 <script setup lang="ts">
@@ -61,3 +66,14 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.app-resize-edge {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 3000;
+}
+</style>
