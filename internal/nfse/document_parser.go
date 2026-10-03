@@ -172,7 +172,7 @@ func ParseDocumentXML(data []byte) (Document, []string, error) {
 		if infNFSeID != "" {
 			// The Id is "NFS" + the 50 digits of the chave. An Id that does
 			// not follow that form is kept as it came.
-			if key, err := ParseAccessKey(strings.TrimPrefix(infNFSeID, InfNFSeIDPrefix)); err == nil {
+			if key, err := ParseInfNFSeID(infNFSeID); err == nil {
 				doc.ChaveAcesso = key
 			} else {
 				doc.ChaveAcesso = AccessKey(infNFSeID)

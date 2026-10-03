@@ -71,7 +71,7 @@ func parseAccessKeys(raw []string) ([]string, error) {
 func parseNFSeAccessKeys(raw []string) ([]string, error) {
 	return parseKeys(raw, func(r string) (string, error) {
 		trimmed := strings.TrimSpace(r)
-		if _, err := nfse.ParseAccessKey(strings.TrimPrefix(trimmed, nfse.InfNFSeIDPrefix)); err != nil {
+		if _, err := nfse.ParseInfNFSeID(trimmed); err != nil {
 			return "", err
 		}
 		return trimmed, nil

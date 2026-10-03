@@ -28,6 +28,12 @@ func ParseAccessKey(key string) (AccessKey, error) {
 	return AccessKey(key), nil
 }
 
+// ParseInfNFSeID parses the chave in an infNFSe Id, "NFS" followed by the 50
+// digits. The prefix is optional, so a bare chave parses too.
+func ParseInfNFSeID(id string) (AccessKey, error) {
+	return ParseAccessKey(strings.TrimPrefix(id, InfNFSeIDPrefix))
+}
+
 type (
 	DocumentID   string
 	CredentialID string
