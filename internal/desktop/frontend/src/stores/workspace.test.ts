@@ -2,24 +2,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceStore } from './workspace'
 import { desktopClient } from '@/platform/wails/client'
+import { company, deferred } from '@/test/fixtures'
 import type { CompanySummary } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: { listCompanies: vi.fn() },
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
 }))
-
-function company(cnpj: string, name: string) {
-  return { CNPJ: cnpj, Name: name, Environment: 'producao' } as CompanySummary
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
 
 const um = company('11111111000111', 'Empresa Um')
 const dois = company('22222222000122', 'Empresa Dois')

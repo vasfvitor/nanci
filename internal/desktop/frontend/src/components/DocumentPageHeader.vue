@@ -56,13 +56,14 @@ import { badgeProps } from '@/utils/sefazDisplay'
 
 // DocumentPageHeader is the top of a document page: the title with the
 // ambiente badge, the sync and reset buttons, the workspace company and
-// competência, the status line and the banner that explains a blocked sync. ambiente is null until the company is known;
-// resetTitle explains what the reset does.
+// competência, the status line and the banner that explains a blocked sync.
+// ambiente is null until the company is known; contextLine is '' while no
+// company is selected; resetTitle explains what the reset does.
 withDefaults(
   defineProps<{
     title: string
     ambiente: { label: string; color: string } | null
-    contextLine?: string
+    contextLine: string
     statusLine?: string
     blockedText?: string
     syncing: boolean
@@ -72,7 +73,6 @@ withDefaults(
     resetDisabled: boolean
   }>(),
   {
-    contextLine: '',
     statusLine: '',
     blockedText: '',
   }

@@ -29,6 +29,7 @@ function mountHeader(props: Partial<HeaderProps> = {}) {
     props: {
       title: 'NF-e',
       ambiente: null,
+      contextLine: '',
       syncing: false,
       syncDisabled: false,
       resetTitle: 'Remove as NF-e da empresa',

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentEventsDialog from './DocumentEventsDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
 import type { DocumentEvent } from '@/types/desktop'
+import { deferred } from '@/test/fixtures'
 
 const notify = vi.fn()
 
@@ -25,14 +26,6 @@ function documentEvent(id: string): DocumentEvent {
     Description: `event ${id}`,
     RawXMLPath: `C:\\xml\\${id}.xml`,
   }
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
 }
 
 function mountDialog() {

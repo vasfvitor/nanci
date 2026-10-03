@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppLeftDrawer from './AppLeftDrawer.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { CompanySummary } from '@/types/desktop'
+import { company } from '@/test/fixtures'
 
 const listCompanies = vi.fn()
 
@@ -13,24 +13,6 @@ vi.mock('@/platform/wails/client', () => ({
   },
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
 }))
-
-function company(CNPJ: string, Name: string): CompanySummary {
-  return {
-    ID: CNPJ,
-    CNPJ,
-    CNPJRoot: CNPJ.slice(0, 8),
-    Name,
-    CredentialID: '',
-    CredentialLabel: '',
-    CredentialCertPath: '',
-    Environment: 'producao',
-    UF: 'SP',
-    LastFoundNSU: null,
-    SyncStartPolicy: 'all',
-    LastRunStatus: '',
-    LastRunStopReason: '',
-  }
-}
 
 const acme = company('11222333000181', 'ACME Comércio')
 const wayne = company('44555666000199', 'Wayne Empreendimentos')

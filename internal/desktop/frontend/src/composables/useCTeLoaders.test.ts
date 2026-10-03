@@ -5,6 +5,7 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult } from '@/types/desktop'
+import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -15,14 +16,6 @@ vi.mock('@/platform/wails/client', () => ({
 
 const row = { ChaveAcesso: 'a' } as CTeRow
 const statusResult = { CNPJ: '123' } as CTeStatusResult
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
 
 describe('useCTeLoaders', () => {
   beforeEach(() => {

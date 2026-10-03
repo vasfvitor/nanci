@@ -1,14 +1,7 @@
 import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { useExportGuard } from './useExportGuard'
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
+import { deferred } from '@/test/fixtures'
 
 describe('useExportGuard', () => {
   it('runs the export for the company and clears the flag', async () => {

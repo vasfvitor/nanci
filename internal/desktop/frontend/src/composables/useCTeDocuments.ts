@@ -19,7 +19,7 @@ export function useCTeDocuments() {
   const workspace = useWorkspaceStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useCTeLoaders()
-  const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
+  const { cnpj, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
     listError,
@@ -159,9 +159,6 @@ export function useCTeDocuments() {
     scopeRows,
     unviewedChaves,
     badgesByChave,
-    cnpj,
-    competence,
-    selectedCompany,
     companyName,
     ambiente,
     documentCount,

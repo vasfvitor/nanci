@@ -19,7 +19,7 @@ export function useNFeDocuments() {
   const workspace = useWorkspaceStore()
   const syncStore = useCompanySyncStore()
   const { search, loadStatus, refresh } = useNFeLoaders()
-  const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
+  const { cnpj, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
     rows,
@@ -157,9 +157,6 @@ export function useNFeDocuments() {
     scopeRows,
     unviewedChaves,
     badgesByChave,
-    cnpj,
-    competence,
-    selectedCompany,
     companyName,
     ambiente,
     pendingCount,

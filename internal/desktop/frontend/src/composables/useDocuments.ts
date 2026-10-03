@@ -26,7 +26,7 @@ export function useDocuments() {
   const { isSelected, search } = useDocumentLoaders(store, (input) =>
     desktopClient.listDocuments(input)
   )
-  const { cnpj, competence, selectedCompany } = storeToRefs(workspace)
+  const { cnpj, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
     rows,
@@ -193,8 +193,6 @@ export function useDocuments() {
     scopeRows,
     unviewedChaves,
     badgesByChave,
-    cnpj,
-    competence,
     selectedCompany,
     ambiente,
     statusLine,

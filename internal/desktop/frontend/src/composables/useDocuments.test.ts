@@ -7,6 +7,7 @@ import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, DocumentRow, ExportResult, PullResult } from '@/types/desktop'
+import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/platform/wails/client')>()),
@@ -46,14 +47,6 @@ function company(fields: Partial<CompanySummary> = {}): CompanySummary {
   } as CompanySummary
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
-
 describe('useDocuments', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -65,8 +58,8 @@ describe('useDocuments', () => {
 
   it('searches with the store list input', async () => {
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
-    nfse.competence.value = '2026-06'
+    useWorkspaceStore().cnpj = '123'
+    useWorkspaceStore().competence = '2026-06'
     nfse.filter.value.Direction = 'tomada'
 
     await nfse.search()
@@ -97,7 +90,7 @@ describe('useDocuments', () => {
     const pull = deferred<PullResult>()
     vi.mocked(desktopClient.pull).mockReturnValue(pull.promise)
     const firstPage = useDocuments()
-    firstPage.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     const syncing = firstPage.syncNFSe()
     const remountedPage = useDocuments()
@@ -122,7 +115,7 @@ describe('useDocuments', () => {
   it('clears the sync marker and still refreshes when the pull fails', async () => {
     vi.mocked(desktopClient.pull).mockRejectedValue(new Error('boom'))
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     await expect(nfse.syncNFSe()).rejects.toThrow('boom')
     expect(nfse.isSyncing.value).toBe(false)
@@ -133,7 +126,7 @@ describe('useDocuments', () => {
     const reset = deferred<undefined>()
     vi.mocked(desktopClient.resetSyncState).mockReturnValue(reset.promise)
     const firstPage = useDocuments()
-    firstPage.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     const resetting = firstPage.resetSync()
     const remountedPage = useDocuments()
@@ -153,8 +146,8 @@ describe('useDocuments', () => {
 
   it('exports exactly the given chaves, incremental when asked', async () => {
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
-    nfse.competence.value = '2026-06'
+    useWorkspaceStore().cnpj = '123'
+    useWorkspaceStore().competence = '2026-06'
     nfse.filter.value.Direction = 'tomada'
 
     await nfse.exportDocuments('csv', ['a', 'b'], { incremental: false })
@@ -180,7 +173,7 @@ describe('useDocuments', () => {
 
   it('does not export an empty list of chaves', async () => {
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     await expect(nfse.exportDocuments('zip', [], { incremental: false })).resolves.toBeNull()
     await expect(nfse.exportDANFSeZIP([], { incremental: false })).resolves.toBeNull()
@@ -190,7 +183,7 @@ describe('useDocuments', () => {
 
   it('exports one XML or DANFSe of the listed company', async () => {
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     await nfse.exportXML('chave-1')
     await nfse.exportDANFSe('chave-1')
@@ -203,7 +196,7 @@ describe('useDocuments', () => {
     const exported = deferred<ExportResult | null>()
     vi.mocked(desktopClient.exportDocuments).mockReturnValue(exported.promise)
     const firstPage = useDocuments()
-    firstPage.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     const pending = firstPage.exportDocuments('xlsx', ['a'], { incremental: false })
     const remountedPage = useDocuments()
@@ -221,7 +214,7 @@ describe('useDocuments', () => {
   it('clears the export marker when the export fails', async () => {
     vi.mocked(desktopClient.exportXML).mockRejectedValue(new Error('boom'))
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     await expect(nfse.exportXML('a')).rejects.toThrow('boom')
     expect(nfse.exporting.value).toBe(false)
@@ -264,11 +257,11 @@ describe('useDocuments', () => {
     vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(1)
     const store = useDocumentsStore()
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
     store.rows = [documentRow('a'), documentRow('b')]
     nfse.selected.value = [store.rows[0] as DocumentRow]
     // A filter edited after the search that filled the grid must not narrow the marking.
-    nfse.competence.value = '2026-06'
+    useWorkspaceStore().competence = '2026-06'
     nfse.filter.value.Direction = 'tomada'
 
     await expect(nfse.markViewed(['a'])).resolves.toBe(1)
@@ -284,7 +277,7 @@ describe('useDocuments', () => {
     vi.mocked(desktopClient.markDocumentsViewed).mockResolvedValue(1)
     const store = useDocumentsStore()
     const nfse = useDocuments()
-    nfse.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
     nfse.onlyUnviewed.value = true
     store.setRows([documentRow('a'), documentRow('b')])
 
@@ -299,7 +292,7 @@ describe('useDocuments', () => {
     const mark = deferred<number>()
     vi.mocked(desktopClient.markDocumentsViewed).mockReturnValue(mark.promise)
     const firstPage = useDocuments()
-    firstPage.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     const marking = firstPage.markViewed(['a'])
     const remountedPage = useDocuments()
@@ -316,7 +309,7 @@ describe('useDocuments', () => {
     const list = deferred<DocumentRow[]>()
     vi.mocked(desktopClient.listDocuments).mockReturnValue(list.promise)
     const firstPage = useDocuments()
-    firstPage.cnpj.value = '123'
+    useWorkspaceStore().cnpj = '123'
 
     const pending = firstPage.search()
     expect(useDocuments().loading.value).toBe(true)

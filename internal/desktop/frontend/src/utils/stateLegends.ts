@@ -18,7 +18,7 @@ import {
 import { ctePapel, cteSituacao, cteTipoDocumento } from './cteDisplay'
 import { type LegendItem, type LegendSection, VIEWED_BADGE } from './sefazDisplay'
 
-export type { LegendItem, LegendSection } from './sefazDisplay'
+export type { LegendSection } from './sefazDisplay'
 
 // deadlineItem builds the entry of a deadline chip with the label and color
 // the table gives days of kind.

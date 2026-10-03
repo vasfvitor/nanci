@@ -1,16 +1,9 @@
 import { ref, shallowRef } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { useMarkViewed } from './useMarkViewed'
+import { deferred } from '@/test/fixtures'
 
 type Row = { ChaveAcesso: string; ViewedAt?: Date }
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
 
 // setup builds the page state the way a store holds it, so two calls of
 // useMarkViewed over it stand for a page and its remount.

@@ -5,6 +5,7 @@ import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
+import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -17,14 +18,6 @@ vi.mock('@/platform/wails/client', () => ({
 const row = { ChaveAcesso: 'a' } as NFeRow
 const statusResult = { CNPJ: '123' } as NFeStatusResult
 const pendingRow = { ChaveAcesso: 'a', Kind: 'sem_ciencia' } as NFePendingRow
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
 
 describe('useNFeLoaders', () => {
   beforeEach(() => {

@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentsPage from './DocumentsPage.vue'
 import { desktopClient, mapDocumentRow } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { CompanySummary, DocumentRow, PullResult } from '@/types/desktop'
+import type { DocumentRow, PullResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
+import { company, deferred } from '@/test/fixtures'
 
 type OkHandler = (payload: unknown) => void
 
@@ -45,26 +46,10 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
   },
 }))
 
-function company(cnpj: string, name: string): CompanySummary {
-  return {
-    ID: `company-${cnpj}`,
-    CNPJ: cnpj,
-    CNPJRoot: cnpj.slice(0, 8),
-    Name: name,
-    CredentialID: '',
-    CredentialLabel: '',
-    CredentialCertPath: '',
-    Environment: 'producao',
-    UF: 'SP',
-    LastFoundNSU: 25,
-    SyncStartPolicy: 'from_now',
-    LastRunStatus: '',
-    LastRunStopReason: '',
-  }
-}
-
-const acme = company('12345678000100', 'ACME')
-const outra = company('98765432000199', 'Outra')
+// The sync fields feed the NFS-e status line.
+const syncFields = { LastFoundNSU: 25, SyncStartPolicy: 'from_now' } as const
+const acme = company('12345678000100', 'ACME', syncFields)
+const outra = company('98765432000199', 'Outra', syncFields)
 
 function documentRow(chave: string, fields: Partial<DocumentRow> = {}): DocumentRow {
   return mapDocumentRow({
@@ -175,14 +160,6 @@ function table(wrapper: Page) {
 async function select(wrapper: Page, rows: DocumentRow[]) {
   table(wrapper).vm.$emit('update:selected', rows)
   await flushPromises()
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
 }
 
 describe('DocumentsPage', () => {

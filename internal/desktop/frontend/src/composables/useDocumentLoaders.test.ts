@@ -3,18 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { useDocumentLoaders } from './useDocumentLoaders'
 import type { WorkspaceKey } from '@/stores/workspace'
 import { latestOnly } from '@/utils/latestOnly'
+import { deferred } from '@/test/fixtures'
 
 type Input = { CNPJ: string; Competence: string; Code: string }
 type Row = { ChaveAcesso: string }
 type Status = { LastNSU: number }
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
 
 // setup stands for a page store: the list request in listInput, whose CNPJ
 // is the selected company, and the rows, loading flag, search key and status
