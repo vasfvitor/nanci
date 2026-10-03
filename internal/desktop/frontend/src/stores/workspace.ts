@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { CompanySummary } from '@/types/desktop'
 import { isCompetence } from '@/utils/competence'
+import { latestOnly } from '@/utils/latestOnly'
 
 // WorkspaceKey is the company and competência a document list was loaded for.
 export type WorkspaceKey = { cnpj: string; competence: string }
@@ -50,15 +51,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     localStorage.setItem(competenceKey, value)
   })
 
-  // loadSeq numbers the loads; only the latest one fills the store.
-  let loadSeq = 0
+  // loadGate lets only the latest load fill the store.
+  const loadGate = latestOnly()
   // inFlight is the latest load while it runs.
   let inFlight: Promise<CompanySummary[]> | null = null
 
-  async function fetchCompanies(seq: number): Promise<CompanySummary[]> {
+  async function fetchCompanies(isLatest: () => boolean): Promise<CompanySummary[]> {
     try {
       const list = await desktopClient.listCompanies()
-      if (seq === loadSeq) {
+      if (isLatest()) {
         const exists = (value: string) => Boolean(value) && list.some((item) => item.CNPJ === value)
         // Set together, so a watcher of any of them runs once.
         companies.value = list
@@ -68,10 +69,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       return list
     } catch (error) {
-      if (seq === loadSeq) loadError.value = errorMessage(error)
+      if (isLatest()) loadError.value = errorMessage(error)
       throw error
     } finally {
-      if (seq === loadSeq) inFlight = null
+      if (isLatest()) inFlight = null
     }
   }
 
@@ -79,7 +80,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   // company: the current one, else the stored one, else the first. A load
   // that ends after a newer one started leaves the store as it is.
   function loadCompanies(): Promise<CompanySummary[]> {
-    const request = fetchCompanies(++loadSeq)
+    const request = fetchCompanies(loadGate.begin())
     inFlight = request
     return request
   }

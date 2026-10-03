@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useQueryStore } from '@/stores/query'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { latestOnly } from '@/utils/latestOnly'
 
 export function useQuery() {
   const queryStore = useQueryStore()
@@ -14,14 +15,14 @@ export function useQuery() {
   const allDocumentOptions = ref<{ label: string; value: string; description?: string }[]>([])
   const documentOptions = ref<{ label: string; value: string; description?: string }[]>([])
 
-  let latestDocumentRequest = 0
+  const documentGate = latestOnly()
 
   // The chave suggestions are the NFS-e of the workspace company. A fetch
   // that ends after the company changed again is dropped.
   watch(
     cnpj,
     async (newCnpj) => {
-      const requestID = ++latestDocumentRequest
+      const isLatest = documentGate.begin()
 
       if (!newCnpj) {
         allDocumentOptions.value = []
@@ -30,7 +31,7 @@ export function useQuery() {
       }
       try {
         const docs = await desktopClient.listDocuments({ CNPJ: newCnpj, Competence: '', Direction: '', OnlyUnread: false })
-        if (requestID !== latestDocumentRequest) return
+        if (!isLatest()) return
 
         allDocumentOptions.value = docs.map((d) => {
           const pureKey = d.ChaveAcesso.replace(/\D/g, '')

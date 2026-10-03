@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { useDocumentLoaders } from './useDocumentLoaders'
 import type { WorkspaceKey } from '@/stores/workspace'
+import { latestOnly } from '@/utils/latestOnly'
 
 type Input = { CNPJ: string; Competence: string; Code: string }
 type Row = { ChaveAcesso: string }
@@ -24,9 +25,9 @@ function setup(withStatus = true) {
     listError: '',
     loading: false,
     rowsFor: null as WorkspaceKey | null,
-    searchSeq: 0,
+    searchGate: latestOnly(),
     status: null as Status | null,
-    statusSeq: 0,
+    statusGate: latestOnly(),
     rows: [] as Row[],
     setRows(next: Row[]) {
       store.rows = next

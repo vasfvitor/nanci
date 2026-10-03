@@ -1,4 +1,5 @@
 import type { WorkspaceKey } from '@/stores/workspace'
+import { latestOnly, type LatestGate } from '@/utils/latestOnly'
 
 // LoaderStore is the part of a page store the loaders read and fill.
 export type LoaderStore<Input extends { CNPJ: string; Competence: string }, Row> = {
@@ -12,8 +13,8 @@ export type LoaderStore<Input extends { CNPJ: string; Competence: string }, Row>
   // rowsFor is the company and competência of the search that filled the
   // rows, or null.
   rowsFor: WorkspaceKey | null
-  // searchSeq numbers the searches; only the latest one fills the rows.
-  searchSeq: number
+  // searchGate lets only the latest search fill the rows.
+  readonly searchGate: LatestGate
   setRows: (rows: Row[]) => void
 }
 
@@ -21,8 +22,8 @@ export type LoaderStore<Input extends { CNPJ: string; Competence: string }, Row>
 // without one leaves both fields out.
 export type StatusStore<Status> = {
   status: Status | null
-  // statusSeq numbers the status loads; only the latest one fills status.
-  statusSeq: number
+  // statusGate lets only the latest status load fill status.
+  readonly statusGate: LatestGate
 }
 
 // useDocumentLoaders loads the document list of a page into its store and,
@@ -40,23 +41,26 @@ export function useDocumentLoaders<
   fetchStatus?: (cnpj: string) => Promise<Status>
 ) {
   const isSelected = (cnpj: string) => store.listInput.CNPJ === cnpj
+  // A store without a status has no statusGate; loadStatus then returns
+  // before using this one.
+  const statusGate = store.statusGate ?? latestOnly()
 
   async function search(): Promise<Row[]> {
     const input = store.listInput
     if (!input.CNPJ || store.listError) return []
     // Quick changes, such as stepping through competências, start searches
     // that may end out of order; the latest one owns the rows and loading.
-    const seq = ++store.searchSeq
+    const isLatest = store.searchGate.begin()
     store.loading = true
     try {
       const result = await list(input)
-      if (seq === store.searchSeq && isSelected(input.CNPJ)) {
+      if (isLatest() && isSelected(input.CNPJ)) {
         store.setRows(result)
         store.rowsFor = { cnpj: input.CNPJ, competence: input.Competence }
       }
       return result
     } finally {
-      if (seq === store.searchSeq) store.loading = false
+      if (isLatest()) store.loading = false
     }
   }
 
@@ -64,14 +68,13 @@ export function useDocumentLoaders<
     if (!fetchStatus) return null
     // A sync, a reset and a page visit may load the status of the same
     // company at once; the latest load owns it.
-    const seq = (store.statusSeq ?? 0) + 1
-    store.statusSeq = seq
+    const isLatest = statusGate.begin()
     if (!cnpj) {
       store.status = null
       return null
     }
     const result = await fetchStatus(cnpj)
-    if (seq === store.statusSeq && isSelected(cnpj)) store.status = result
+    if (isLatest() && isSelected(cnpj)) store.status = result
     return result
   }
 

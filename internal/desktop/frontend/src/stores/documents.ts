@@ -2,6 +2,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { DocumentRow, ListDocumentsInput } from '@/types/desktop'
 import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
+import { latestOnly } from '@/utils/latestOnly'
 import { pruneSelection } from '@/utils/selection'
 
 // The store holds NFS-e page state that outlives the page.
@@ -30,8 +31,9 @@ export const useDocumentsStore = defineStore('documents', () => {
   // rowsFor is the company and competência of the search that filled the
   // rows, or null when no search did.
   const rowsFor = shallowRef<WorkspaceKey | null>(null)
-  // searchSeq numbers the list searches; only the latest one fills the rows.
-  const searchSeq = shallowRef(0)
+  // searchGate lets only the latest list search fill the rows; it lives
+  // here so a remounted page still drops the reply of an earlier search.
+  const searchGate = latestOnly()
   // filterText narrows the listed rows on the page, without a new search.
   const filterText = ref('')
   const loading = shallowRef(false)
@@ -62,7 +64,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     documents,
     selected,
     rowsFor,
-    searchSeq,
+    searchGate,
     filterText,
     loading,
     exporting,

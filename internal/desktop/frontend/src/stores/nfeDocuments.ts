@@ -2,6 +2,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
 import { useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
+import { latestOnly } from '@/utils/latestOnly'
 import { pruneSelection } from '@/utils/selection'
 
 export type NFeTab = 'notas' | 'pendencias'
@@ -41,8 +42,9 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // rowsFor is the company and competência of the search that filled the
   // rows, or null when no search did.
   const rowsFor = shallowRef<WorkspaceKey | null>(null)
-  // searchSeq numbers the list searches; only the latest one fills the rows.
-  const searchSeq = shallowRef(0)
+  // searchGate lets only the latest list search fill the rows; it lives
+  // here so a remounted page still drops the reply of an earlier search.
+  const searchGate = latestOnly()
   // filterText narrows the listed rows on the page, without a new search.
   const filterText = ref('')
   const loading = shallowRef(false)
@@ -50,14 +52,13 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // markingViewed is true while a "Marcar vistos" request is in flight.
   const markingViewed = shallowRef(false)
   const status = shallowRef<NFeStatusResult | null>(null)
-  // statusSeq numbers the status loads; only the latest one fills status.
-  const statusSeq = shallowRef(0)
+  // statusGate lets only the latest status load fill status.
+  const statusGate = latestOnly()
   const activeTab = shallowRef<NFeTab>('notas')
   const pending = ref<NFePendingRow[]>([])
   const pendingLoading = shallowRef(false)
-  // pendingSeq numbers the pendências loads; only the latest one fills
-  // pending.
-  const pendingSeq = shallowRef(0)
+  // pendingGate lets only the latest pendências load fill pending.
+  const pendingGate = latestOnly()
   // planningCiencia is true while the backend plans a ciência.
   const planningCiencia = shallowRef(false)
   // cienciaInFlight holds the chaves of the ciência being sent, or null.
@@ -111,17 +112,17 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     rows,
     selected,
     rowsFor,
-    searchSeq,
+    searchGate,
     filterText,
     loading,
     exporting,
     markingViewed,
     status,
-    statusSeq,
+    statusGate,
     activeTab,
     pending,
     pendingLoading,
-    pendingSeq,
+    pendingGate,
     planningCiencia,
     cienciaInFlight,
     manifestacaoInFlight,

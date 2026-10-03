@@ -19,7 +19,7 @@ export function useNFeLoaders() {
   async function loadPending(cnpj: string = store.listInput.CNPJ) {
     // Loads may end out of order; the latest one owns pending and
     // pendingLoading.
-    const seq = ++store.pendingSeq
+    const isLatest = store.pendingGate.begin()
     if (!cnpj) {
       pending.value = []
       pendingLoading.value = false
@@ -28,10 +28,10 @@ export function useNFeLoaders() {
     pendingLoading.value = true
     try {
       const rows = await desktopClient.listNFePendingManifestacoes(cnpj)
-      if (seq === store.pendingSeq && isSelected(cnpj)) pending.value = rows
+      if (isLatest() && isSelected(cnpj)) pending.value = rows
       return rows
     } finally {
-      if (seq === store.pendingSeq) pendingLoading.value = false
+      if (isLatest()) pendingLoading.value = false
     }
   }
 
