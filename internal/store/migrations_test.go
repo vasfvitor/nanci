@@ -536,6 +536,10 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 		t.Error("companies.initial_sync_completed_at still exists after up")
 	}
 
+	// The repository query needs the latest schema.
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
 	companies, err := store.NewCompanyRepository(db).ListCompanies(ctx)
 	if err != nil {
 		t.Fatalf("list companies after up: %v", err)
@@ -802,6 +806,128 @@ func TestMigration018CountsExportedEvents(t *testing.T) {
 	}
 	if columns != 0 {
 		t.Errorf("exported_events columns after down = %d, want 0", columns)
+	}
+}
+
+func TestMigration019KeysSyncSourcesByEnvironment(t *testing.T) {
+	ctx := context.Background()
+	db, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "migrate.db"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migrations, err := store.Migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 18); err != nil {
+		t.Fatalf("migrate to version 18: %v", err)
+	}
+
+	const now = "2026-09-01T10:00:00Z"
+	const blockedUntil = "2026-09-01T11:00:00Z"
+	insertCompany := `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 'all', ?, ?)
+	`
+	mustExec(t, db, insertCompany, "comp-prod", "11222333000181", "11222333", "Produção", "producao", now, now)
+	mustExec(t, db, insertCompany, "comp-hom", "44555666000199", "44555666", "Homologação", "producao_restrita", now, now)
+	for _, companyID := range []string{"comp-prod", "comp-hom"} {
+		mustExec(t, db, `
+			INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, blocked_until, blocked_reason, updated_at)
+			VALUES (?, 'nfe', ?, ?, 'consumo_indevido', ?)
+		`, companyID, now, blockedUntil, now)
+		mustExec(t, db, `INSERT INTO sync_requests (company_id, source, requested_at) VALUES (?, 'nfe', ?)`, companyID, now)
+	}
+
+	// environments reads the environment of each company's rows in table.
+	environments := func(table string) map[string]string {
+		t.Helper()
+		rows, err := db.QueryContext(ctx, `SELECT company_id, environment FROM `+table) // #nosec G202 -- fixed table names.
+		if err != nil {
+			t.Fatalf("read %s: %v", table, err)
+		}
+		defer func() { _ = rows.Close() }()
+		got := map[string]string{}
+		for rows.Next() {
+			var companyID, environment string
+			if err := rows.Scan(&companyID, &environment); err != nil {
+				t.Fatal(err)
+			}
+			got[companyID] += environment
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	countRows := func(query string) int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, query).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 19); err != nil {
+		t.Fatalf("migrate to version 19: %v", err)
+	}
+	want := map[string]string{"comp-prod": "producao", "comp-hom": "producao_restrita"}
+	for _, table := range []string{"company_sync_sources", "sync_requests"} {
+		got := environments(table)
+		if len(got) != len(want) || got["comp-prod"] != want["comp-prod"] || got["comp-hom"] != want["comp-hom"] {
+			t.Errorf("%s environments after up = %v, want %v", table, got, want)
+		}
+	}
+	var until, reason string
+	if err := db.QueryRowContext(ctx, `SELECT blocked_until, blocked_reason FROM company_sync_sources WHERE company_id = 'comp-prod'`).Scan(&until, &reason); err != nil {
+		t.Fatal(err)
+	}
+	if until != blockedUntil || reason != "consumo_indevido" {
+		t.Errorf("comp-prod block after up = (%s, %s), want (%s, consumo_indevido)", until, reason, blockedUntil)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO sync_requests (company_id, source, environment, requested_at) VALUES ('comp-prod', 'nfe', 'bogus', ?)`, now); err == nil {
+		t.Error("sync_requests accepted environment 'bogus', want a CHECK failure")
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO company_sync_sources (company_id, source, environment, updated_at) VALUES ('comp-prod', 'cte', 'bogus', ?)`, now); err == nil {
+		t.Error("company_sync_sources accepted environment 'bogus', want a CHECK failure")
+	}
+	if n := countRows(`SELECT COUNT(*) FROM pragma_index_info('idx_sync_requests_window') WHERE name = 'environment'`); n != 1 {
+		t.Errorf("idx_sync_requests_window environment columns after up = %d, want 1", n)
+	}
+
+	// Rows of the environment the company is not in now are dropped by Down.
+	mustExec(t, db, `
+		INSERT INTO company_sync_sources (company_id, source, environment, blocked_until, blocked_reason, updated_at)
+		VALUES ('comp-prod', 'nfe', 'producao_restrita', ?, 'rate_budget', ?)
+	`, blockedUntil, now)
+	mustExec(t, db, `INSERT INTO sync_requests (company_id, source, environment, requested_at) VALUES ('comp-prod', 'nfe', 'producao_restrita', ?)`, now)
+
+	if _, err := provider.DownTo(ctx, 18); err != nil {
+		t.Fatalf("migrate down to version 18: %v", err)
+	}
+	for _, table := range []string{"company_sync_sources", "sync_requests"} {
+		if n := countRows(`SELECT COUNT(*) FROM pragma_table_info('` + table + `') WHERE name = 'environment'`); n != 0 {
+			t.Errorf("%s environment columns after down = %d, want 0", table, n)
+		}
+		if n := countRows(`SELECT COUNT(*) FROM ` + table); n != 2 { // #nosec G202 -- fixed table names.
+			t.Errorf("%s rows after down = %d, want 2", table, n)
+		}
+	}
+	if err := db.QueryRowContext(ctx, `SELECT blocked_reason FROM company_sync_sources WHERE company_id = 'comp-prod'`).Scan(&reason); err != nil {
+		t.Fatal(err)
+	}
+	if reason != "consumo_indevido" {
+		t.Errorf("comp-prod block reason after down = %s, want the produção one", reason)
+	}
+	if n := countRows(`SELECT COUNT(*) FROM pragma_index_info('idx_sync_requests_window')`); n != 3 {
+		t.Errorf("idx_sync_requests_window columns after down = %d, want 3", n)
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
@@ -240,7 +241,7 @@ func TestPullReturnsBlockedErrorBeforePasswordPrompt(t *testing.T) {
 	passwords := &countingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 	until := time.Now().Add(time.Hour)
-	if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, nfse.SyncSourceNFSe, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, nfse.SyncSourceNFSe, comp.Environment, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
@@ -254,6 +255,46 @@ func TestPullReturnsBlockedErrorBeforePasswordPrompt(t *testing.T) {
 	}
 	if got := passwords.callCount(); got != 0 {
 		t.Errorf("password prompts = %d, want 0", got)
+	}
+}
+
+func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	setCompany := func(column, value string) {
+		t.Helper()
+		if _, err := mgr.SyncRepo.db.ExecContext(ctx, `UPDATE companies SET `+column+` = ? WHERE id = ?`, value, string(comp.ID)); err != nil { // #nosec G202 -- fixed column names.
+			t.Fatal(err)
+		}
+	}
+	setCompany("uf", "SP")
+	mgr.NFeRepo = dbstore.NewNFeRepository(mgr.SyncRepo.db)
+	originalNewSEFAZClient := newSEFAZClient
+	t.Cleanup(func() { newSEFAZClient = originalNewSEFAZClient })
+	newSEFAZClient = func(sefaz.ClientConfig) (sefazFetcher, error) { return &scriptedFetcher{}, nil }
+	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
+		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+			return nil
+		}}
+	}
+
+	until := time.Now().Add(time.Hour)
+	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+		t.Fatal(err)
+	}
+
+	setCompany("environment", string(nfse.EnvironmentRestricted))
+	result, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe})
+	if err != nil {
+		t.Fatalf("Pull in produção restrita = %v, want no block from produção", err)
+	}
+	if result.NextAllowedAt != nil {
+		t.Errorf("NextAllowedAt in produção restrita = %v, want nil", result.NextAllowedAt)
+	}
+
+	setCompany("environment", string(nfse.EnvironmentProduction))
+	if _, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe}); !errors.Is(err, ErrSourceBlocked) {
+		t.Errorf("Pull back in produção = %v, want ErrSourceBlocked", err)
 	}
 }
 
@@ -314,7 +355,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.SyncRepo.MarkInitialSyncCompleted(ctx, comp.ID, nfse.SyncSourceNFSe); err != nil {
+	if err := mgr.SyncRepo.MarkInitialSyncCompleted(ctx, comp.ID, nfse.SyncSourceNFSe, comp.Environment); err != nil {
 		t.Fatal(err)
 	}
 
@@ -326,7 +367,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); !errors.Is(err, ErrSyncRunning) {
 		t.Fatalf("reset during an NFS-e pull = %v, want ErrSyncRunning", err)
 	}
-	state, err := mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe)
+	state, err := mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe, comp.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -344,7 +385,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); err != nil {
 		t.Fatalf("reset after the NFS-e pull ended: %v", err)
 	}
-	state, err = mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe)
+	state, err = mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe, comp.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}

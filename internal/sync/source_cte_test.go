@@ -187,7 +187,7 @@ func TestCTeSourceStoresEveryDocumentKindAndStopsWhenCaughtUp(t *testing.T) {
 		t.Errorf("stored blobs = %d, want 6", len(h.xml.stored))
 	}
 
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceCTe)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceCTe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestCTeSourceStoresEveryDocumentKindAndStopsWhenCaughtUp(t *testing.T) {
 	assertRecentWait(t, state, nfse.SyncStopReasonCaughtUp)
 
 	// The NF-e state of the company is untouched.
-	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +450,7 @@ func TestPullCTeStoresDocumentsReportsLimitsAndBlocks(t *testing.T) {
 	}
 
 	// The NF-e budget and block are counted apart.
-	nfeLimits, err := mgr.SourceLimits(ctx, comp.ID, nfse.SyncSourceNFe)
+	nfeLimits, err := mgr.SourceLimits(ctx, comp, nfse.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

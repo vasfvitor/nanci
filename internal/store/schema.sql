@@ -148,21 +148,23 @@ CREATE TABLE sync_state (
 CREATE TABLE company_sync_sources (
     company_id TEXT NOT NULL REFERENCES companies(id),
     source TEXT NOT NULL CHECK (source IN ('nfse', 'nfe', 'cte')),
+    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     initial_sync_completed_at TEXT,
     blocked_until TEXT,
     blocked_reason TEXT,
     updated_at TEXT NOT NULL,
-    PRIMARY KEY (company_id, source)
+    PRIMARY KEY (company_id, source, environment)
 );
 
 CREATE TABLE sync_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id TEXT NOT NULL REFERENCES companies(id),
     source TEXT NOT NULL CHECK (source IN ('nfse', 'nfe', 'cte')),
+    environment TEXT NOT NULL CHECK (environment IN ('producao', 'producao_restrita')),
     requested_at TEXT NOT NULL
 );
 
-CREATE INDEX idx_sync_requests_window ON sync_requests(company_id, source, requested_at);
+CREATE INDEX idx_sync_requests_window ON sync_requests(company_id, source, environment, requested_at);
 
 CREATE TABLE nfe_documents (
     id TEXT PRIMARY KEY,

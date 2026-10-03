@@ -95,6 +95,7 @@ type CompanyNfeExportMark struct {
 type CompanySyncSource struct {
 	CompanyID              string
 	Source                 string
+	Environment            string
 	InitialSyncCompletedAt sql.NullString
 	BlockedUntil           sql.NullString
 	BlockedReason          sql.NullString
@@ -328,6 +329,7 @@ type SyncRequest struct {
 	ID          int64
 	CompanyID   string
 	Source      string
+	Environment string
 	RequestedAt string
 }
 

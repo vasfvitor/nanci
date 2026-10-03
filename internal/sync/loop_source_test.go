@@ -140,7 +140,7 @@ func TestSourceLoopCaughtUpMarksInitialSyncOnlyForThatSource(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestSourceLoopWaitUntilBlocksNextSyncWithoutRun(t *testing.T) {
 	}
 	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonConsumoIndevido)
 
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,9 +198,16 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 		},
 	}
 	src.onFetch = func(int64) {
-		// The request is recorded before it is sent.
-		if got := h.countRows(`SELECT COUNT(*) FROM sync_requests WHERE source = 'nfe'`); got != len(src.cursors) {
+		// The request is recorded before it is sent, in the company's environment.
+		got := h.countRows(`SELECT COUNT(*) FROM sync_requests WHERE source = 'nfe' AND environment = ?`, string(h.company.Environment))
+		if got != len(src.cursors) {
 			t.Errorf("sync_requests during fetch %d = %d, want %d", len(src.cursors), got, len(src.cursors))
+		}
+	}
+	// Requests of the other environment do not spend this one's budget.
+	for range 2 {
+		if err := h.store.RecordRequest(context.Background(), h.company.ID, nfse.SyncSourceNFe, nfse.EnvironmentRestricted, time.Now()); err != nil {
+			t.Fatal(err)
 		}
 	}
 
@@ -218,14 +225,14 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 
 	// The budget and the block survive a new Store on the same database.
 	reopened := NewStore(h.db)
-	count, oldest, err := reopened.RequestsSince(context.Background(), h.company.ID, nfse.SyncSourceNFe, time.Now().Add(-time.Hour))
+	count, oldest, err := reopened.RequestsSince(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment, time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if count != 2 || oldest == nil {
 		t.Fatalf("RequestsSince = %d, %v; want 2 and the oldest time", count, oldest)
 	}
-	state, err := reopened.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	state, err := reopened.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}

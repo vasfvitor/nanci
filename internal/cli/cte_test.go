@@ -246,7 +246,7 @@ func TestCTeStatus_PrintsTotals(t *testing.T) {
 func TestCTePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 	env := newCTeTestRoot(t)
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, nfse.SyncSourceCTe, until, nfse.SyncStopReasonCaughtUp); err != nil {
+	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, nfse.SyncSourceCTe, env.company.Environment, until, nfse.SyncStopReasonCaughtUp); err != nil {
 		t.Fatal(err)
 	}
 

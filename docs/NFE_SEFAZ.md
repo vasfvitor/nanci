@@ -41,7 +41,7 @@ As chamadas são SOAP 1.2 sobre HTTPS com o certificado A1 da empresa.
 
 O ambiente segue o da empresa: `producao` usa produção (`tpAmb` 1) e `producao_restrita` usa homologação (`tpAmb` 2). Para trocar, use `nanci company update --cnpj <CNPJ> --env producao`. As URLs estão em `internal/sefaz/endpoints.go` e só podem ser substituídas pelo código (`sefaz.ClientConfig.Endpoints`, usado nos testes); não existe flag nem variável de ambiente para isso.
 
-Cada NF-e e cada evento guardam o seu `tpAmb`: o do XML (`ide/tpAmb` na `procNFe`, `infEvento/tpAmb` no `procEventoNFe`) ou, nos resumos (`resNFe` e `resEvento`, que não trazem o campo), o do ambiente consultado. Um XML de um ambiente diferente do consultado é guardado com o `tpAmb` dele e recebe um aviso de leitura. A lista de notas, o `nfe status`, as pendências de manifestação, a ciência em lote e a exportação mostram só as notas do ambiente atual da empresa. Por isso o ambiente pode ser trocado a qualquer momento, também depois da primeira sincronização: as notas do outro ambiente deixam de aparecer e voltam quando a empresa retorna a ele. O cursor de sincronização já é separado por ambiente, na NF-e e na NFS-e. O bloqueio da SEFAZ (`company_sync_sources.blocked_until`) e o orçamento por hora, não: valem para a empresa e a origem, em qualquer ambiente, então um bloqueio recebido em produção também adia o próximo pull em homologação.
+Cada NF-e e cada evento guardam o seu `tpAmb`: o do XML (`ide/tpAmb` na `procNFe`, `infEvento/tpAmb` no `procEventoNFe`) ou, nos resumos (`resNFe` e `resEvento`, que não trazem o campo), o do ambiente consultado. Um XML de um ambiente diferente do consultado é guardado com o `tpAmb` dele e recebe um aviso de leitura. A lista de notas, o `nfe status`, as pendências de manifestação, a ciência em lote e a exportação mostram só as notas do ambiente atual da empresa. Por isso o ambiente pode ser trocado a qualquer momento, também depois da primeira sincronização: as notas do outro ambiente deixam de aparecer e voltam quando a empresa retorna a ele. O cursor de sincronização é separado por ambiente, na NF-e e na NFS-e, e o bloqueio da SEFAZ (`company_sync_sources.blocked_until`), a data da carga inicial e o orçamento por hora (`sync_requests`) também são: um bloqueio recebido em produção não adia o pull em homologação, e as consultas de um ambiente não gastam o orçamento do outro. Um bloqueio em vigor continua valendo quando a empresa volta ao ambiente em que foi recebido.
 
 Para apagar as NF-e da empresa, use `nanci nfe reset --cnpj <CNPJ>` (sem `--confirmar` só mostra o que seria removido) ou o botão "Redefinir NF-e" do aplicativo. A redefinição remove as notas da empresa nos dois ambientes, seus eventos e marcas de exportação, e volta o cursor ao NSU 0. Notas que outra empresa cadastrada também vê continuam para ela. O histórico das manifestações enviadas (`nfe_manifestacoes`, com o `tpAmb` de cada envio) é mantido, e as manifestações registradas na SEFAZ não são afetadas. Um bloqueio da SEFAZ em vigor continua valendo, e os XMLs baixados ficam no armazenamento de blobs.
 
@@ -61,7 +61,7 @@ A SEFAZ bloqueia o CNPJ que consulta demais com a rejeição **656 (consumo inde
 
 | Regra | Comportamento |
 |---|---|
-| 20 consultas por hora | Orçamento por empresa e origem, em janela móvel de 1 hora (`sync_requests`). Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
+| 20 consultas por hora | Orçamento por empresa, origem e ambiente, em janela móvel de 1 hora (`sync_requests`). Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
 | Fila em dia | Com `cStat` 137 (nenhum documento) ou `ultNSU` igual a `maxNSU`, o pull para com `caught_up` e a próxima consulta só é permitida 1 hora depois. |
 | `cStat` 656 | O pull para com `consumo_indevido` e espera 1 hora. O `ultNSU` devolvido só é adotado se avançar o cursor. |
 | Intervalo entre páginas | 2 segundos entre requisições do mesmo pull. |
@@ -161,7 +161,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `016` em `internal/store/migrations_v2/`:
+Migrações `007` a `019` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -174,6 +174,8 @@ Migrações `007` a `016` em `internal/store/migrations_v2/`:
 - `015`: cria as tabelas de CT-e, descritas em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
 - `016`: adiciona `tp_amb` (`1`, `2` ou vazio) a `nfe_documents` e `nfe_events`. As notas existentes recebem o ambiente da empresa que as vê, que até então não podia mudar depois da primeira sincronização de NF-e; os eventos recebem o da nota de mesma chave. Notas que nenhuma empresa vê e eventos sem nota ficam vazios.
 - `017`: adiciona `viewed_at` a `company_cte_documents`, descrita em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados).
+- `018`: adiciona `exported_events` a `company_nfe_export_marks` e `company_cte_export_marks`, a quantidade de eventos do documento na última exportação. As marcas existentes contam os eventos gravados antes delas.
+- `019`: recria `company_sync_sources` e `sync_requests` com a coluna `environment`, que entra na chave de `company_sync_sources` e no índice `idx_sync_requests_window`. As linhas existentes recebem o ambiente atual da empresa.
 
 Tabelas de NF-e:
 

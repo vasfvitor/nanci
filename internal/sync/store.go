@@ -556,22 +556,23 @@ func (r *Store) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams
 	return true, nil
 }
 
-// SourceState holds the per (company, source) facts that outlive a single run.
+// SourceState holds the per (company, source, environment) facts that
+// outlive a single run.
 type SourceState struct {
 	InitialSyncDoneAt *time.Time
 	BlockedUntil      *time.Time
 	BlockedReason     nfse.SyncStopReason
 }
 
-// SourceState returns the company's facts for the source. A company that
-// never synced the source gets the zero SourceState.
-func (r *Store) SourceState(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) (SourceState, error) {
+// SourceState returns the company's facts for the source in env. A company
+// that never synced the source in env gets the zero SourceState.
+func (r *Store) SourceState(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment) (SourceState, error) {
 	var initialSyncDoneAt, blockedUntil, blockedReason sql.NullString
 	err := r.db.QueryRowContext(ctx, `
 		SELECT initial_sync_completed_at, blocked_until, blocked_reason
 		FROM company_sync_sources
-		WHERE company_id = ? AND source = ?
-	`, string(companyID), string(source)).Scan(&initialSyncDoneAt, &blockedUntil, &blockedReason)
+		WHERE company_id = ? AND source = ? AND environment = ?
+	`, string(companyID), string(source), string(env)).Scan(&initialSyncDoneAt, &blockedUntil, &blockedReason)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SourceState{}, nil
 	}
@@ -587,31 +588,31 @@ func (r *Store) SourceState(ctx context.Context, companyID dfe.CompanyID, source
 }
 
 // MarkInitialSyncCompleted records the first time the source caught up for
-// the company.
-func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) error {
+// the company in env.
+func (r *Store) MarkInitialSyncCompleted(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT (company_id, source) DO UPDATE SET
+		INSERT INTO company_sync_sources (company_id, source, environment, initial_sync_completed_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (company_id, source, environment) DO UPDATE SET
 			initial_sync_completed_at = COALESCE(initial_sync_completed_at, excluded.initial_sync_completed_at),
 			updated_at = excluded.updated_at
-	`, string(companyID), string(source), now, now)
+	`, string(companyID), string(source), string(env), now, now)
 	return err
 }
 
 // SetBlockedUntil records that the source must not be queried for the
-// company before until, and why.
-func (r *Store) SetBlockedUntil(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, until time.Time, reason nfse.SyncStopReason) error {
+// company in env before until, and why.
+func (r *Store) SetBlockedUntil(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, until time.Time, reason nfse.SyncStopReason) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO company_sync_sources (company_id, source, blocked_until, blocked_reason, updated_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (company_id, source) DO UPDATE SET
+		INSERT INTO company_sync_sources (company_id, source, environment, blocked_until, blocked_reason, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT (company_id, source, environment) DO UPDATE SET
 			blocked_until = excluded.blocked_until,
 			blocked_reason = excluded.blocked_reason,
 			updated_at = excluded.updated_at
-	`, string(companyID), string(source), until.UTC().Format(time.RFC3339), string(reason), now)
+	`, string(companyID), string(source), string(env), until.UTC().Format(time.RFC3339), string(reason), now)
 	return err
 }
 
@@ -619,9 +620,10 @@ func (r *Store) SetBlockedUntil(ctx context.Context, companyID dfe.CompanyID, so
 // cover the widest budget window.
 const requestRetention = 24 * time.Hour
 
-// RecordRequest logs one outbound distribution request for the source's
-// rolling budget and prunes rows older than requestRetention.
-func (r *Store) RecordRequest(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, at time.Time) error {
+// RecordRequest logs one outbound distribution request for the rolling
+// budget of the source in env. It also prunes the rows older than
+// requestRetention of every company, source and environment.
+func (r *Store) RecordRequest(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, at time.Time) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -629,8 +631,8 @@ func (r *Store) RecordRequest(ctx context.Context, companyID dfe.CompanyID, sour
 	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO sync_requests (company_id, source, requested_at) VALUES (?, ?, ?)`,
-		string(companyID), string(source), at.UTC().Format(time.RFC3339),
+		`INSERT INTO sync_requests (company_id, source, environment, requested_at) VALUES (?, ?, ?, ?)`,
+		string(companyID), string(source), string(env), at.UTC().Format(time.RFC3339),
 	); err != nil {
 		return err
 	}
@@ -644,16 +646,16 @@ func (r *Store) RecordRequest(ctx context.Context, companyID dfe.CompanyID, sour
 	return tx.Commit()
 }
 
-// RequestsSince counts the source's requests for the company at or after
-// since, and returns the oldest of them (nil when there are none).
-func (r *Store) RequestsSince(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, since time.Time) (int, *time.Time, error) {
+// RequestsSince counts the source's requests for the company in env at or
+// after since, and returns the oldest of them (nil when there are none).
+func (r *Store) RequestsSince(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, since time.Time) (int, *time.Time, error) {
 	var count int
 	var oldest sql.NullString
 	err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*), MIN(requested_at)
 		FROM sync_requests
-		WHERE company_id = ? AND source = ? AND requested_at >= ?
-	`, string(companyID), string(source), since.UTC().Format(time.RFC3339)).Scan(&count, &oldest)
+		WHERE company_id = ? AND source = ? AND environment = ? AND requested_at >= ?
+	`, string(companyID), string(source), string(env), since.UTC().Format(time.RFC3339)).Scan(&count, &oldest)
 	if err != nil {
 		return 0, nil, err
 	}

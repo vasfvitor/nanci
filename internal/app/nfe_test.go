@@ -341,7 +341,7 @@ func TestNFeStatusCounts(t *testing.T) {
 	ctx := context.Background()
 
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := env.app.NFe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, nfse.SyncSourceNFe, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := env.app.NFe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, nfse.SyncSourceNFe, env.company.Environment, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 

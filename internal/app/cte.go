@@ -144,12 +144,12 @@ func (s *CTeService) Status(ctx context.Context, cnpj string) (CTeStatusResult, 
 		}
 	}
 
-	sourceState, err := s.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceCTe)
+	sourceState, err := s.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceCTe, comp.Environment)
 	if err != nil {
 		return CTeStatusResult{}, fmt.Errorf("carregar estado da origem: %w", err)
 	}
 	result.InitialSyncDoneAt = sourceState.InitialSyncDoneAt
-	limits, err := s.SyncManager.SourceLimits(ctx, comp.ID, nfse.SyncSourceCTe)
+	limits, err := s.SyncManager.SourceLimits(ctx, comp, nfse.SyncSourceCTe)
 	if err != nil {
 		return CTeStatusResult{}, err
 	}

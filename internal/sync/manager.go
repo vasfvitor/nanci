@@ -162,7 +162,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err := m.checkSource(company, source); err != nil {
 		return PullResult{}, err
 	}
-	sourceState, err := m.SyncRepo.SourceState(ctx, company.ID, source)
+	sourceState, err := m.SyncRepo.SourceState(ctx, company.ID, source, company.Environment)
 	if err != nil {
 		return PullResult{}, fmt.Errorf("carregar estado da origem: %w", err)
 	}
@@ -247,7 +247,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if result.DocumentsSaved == 0 {
 		result.DocumentsSaved = result.DocumentsFound
 	}
-	limits, err := m.SourceLimits(ctx, company.ID, source)
+	limits, err := m.SourceLimits(ctx, company, source)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -300,10 +300,11 @@ type SourceLimits struct {
 	RequestBudget    int // requests allowed per hour; 0 means unlimited
 }
 
-// SourceLimits reports the request limits of the company's source now.
-func (m *Manager) SourceLimits(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource) (SourceLimits, error) {
+// SourceLimits reports the request limits of the company's source now, in
+// the company's current environment.
+func (m *Manager) SourceLimits(ctx context.Context, company *nfse.Company, source nfse.SyncSource) (SourceLimits, error) {
 	now := time.Now().UTC()
-	state, err := m.SyncRepo.SourceState(ctx, companyID, source)
+	state, err := m.SyncRepo.SourceState(ctx, company.ID, source, company.Environment)
 	if err != nil {
 		return SourceLimits{}, fmt.Errorf("carregar estado da origem: %w", err)
 	}
@@ -312,7 +313,7 @@ func (m *Manager) SourceLimits(ctx context.Context, companyID dfe.CompanyID, sou
 		limits.NextAllowedAt = state.BlockedUntil
 		limits.BlockedReason = state.BlockedReason
 	}
-	count, _, err := m.SyncRepo.RequestsSince(ctx, companyID, source, now.Add(-time.Hour))
+	count, _, err := m.SyncRepo.RequestsSince(ctx, company.ID, source, company.Environment, now.Add(-time.Hour))
 	if err != nil {
 		return SourceLimits{}, fmt.Errorf("contar consultas da última hora: %w", err)
 	}

@@ -160,14 +160,18 @@ func TestStoreReadsNFSeInitialSyncFromCompanySyncSources(t *testing.T) {
 	}
 
 	const doneAt = "2026-06-01T10:00:00Z"
-	insertSource := `INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at) VALUES (?, ?, ?, ?)`
-	if _, err := db.ExecContext(ctx, insertSource, string(synced.ID), "nfse", doneAt, doneAt); err != nil {
+	insertSource := `INSERT INTO company_sync_sources (company_id, source, environment, initial_sync_completed_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+	if _, err := db.ExecContext(ctx, insertSource, string(synced.ID), "nfse", "producao_restrita", doneAt, doneAt); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, insertSource, string(synced.ID), "nfe", "2026-07-01T10:00:00Z", doneAt); err != nil {
+	if _, err := db.ExecContext(ctx, insertSource, string(synced.ID), "nfe", "producao_restrita", "2026-07-01T10:00:00Z", doneAt); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, insertSource, string(nfeOnly.ID), "nfe", doneAt, doneAt); err != nil {
+	if _, err := db.ExecContext(ctx, insertSource, string(nfeOnly.ID), "nfe", "producao_restrita", doneAt, doneAt); err != nil {
+		t.Fatal(err)
+	}
+	// An NFS-e initial sync of the other environment does not count.
+	if _, err := db.ExecContext(ctx, insertSource, string(nfeOnly.ID), "nfse", "producao", doneAt, doneAt); err != nil {
 		t.Fatal(err)
 	}
 
@@ -195,7 +199,7 @@ func TestStoreReadsNFSeInitialSyncFromCompanySyncSources(t *testing.T) {
 			}
 		case nfeOnly.ID:
 			if c.InitialSyncDoneAt != nil {
-				t.Errorf("%s InitialSyncDoneAt = %v, want nil: only its NF-e initial sync is done", c.ID, c.InitialSyncDoneAt)
+				t.Errorf("%s InitialSyncDoneAt = %v, want nil: only its NF-e and another environment's NFS-e initial syncs are done", c.ID, c.InitialSyncDoneAt)
 			}
 		}
 	}

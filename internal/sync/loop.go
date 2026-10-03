@@ -48,7 +48,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	if err != nil {
 		return fmt.Errorf("failed to load sync state: %w", err)
 	}
-	sourceState, err := s.store.SourceState(ctx, company.ID, kind)
+	sourceState, err := s.store.SourceState(ctx, company.ID, kind, company.Environment)
 	if err != nil {
 		return fmt.Errorf("failed to load source state: %w", err)
 	}
@@ -241,7 +241,7 @@ func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (
 	kind := s.source.Kind()
 
 	now := time.Now().UTC()
-	count, oldest, err := s.store.RequestsSince(ctx, company.ID, kind, now.Add(-time.Hour))
+	count, oldest, err := s.store.RequestsSince(ctx, company.ID, kind, company.Environment, now.Add(-time.Hour))
 	if err != nil {
 		return false, persistFailure(fmt.Errorf("failed to read request budget: %w", err))
 	}
@@ -250,7 +250,7 @@ func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (
 		if oldest != nil {
 			until = oldest.Add(time.Hour)
 		}
-		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, until, nfse.SyncStopReasonRateBudget); err != nil {
+		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, company.Environment, until, nfse.SyncStopReasonRateBudget); err != nil {
 			return false, persistFailure(fmt.Errorf("failed to block source after request budget: %w", err))
 		}
 		s.log.WarnContext(ctx, "Limite de consultas por hora atingido",
@@ -261,7 +261,7 @@ func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (
 		return false, nil
 	}
 
-	if err := s.store.RecordRequest(ctx, company.ID, kind, now); err != nil {
+	if err := s.store.RecordRequest(ctx, company.ID, kind, company.Environment, now); err != nil {
 		return false, persistFailure(fmt.Errorf("failed to record request: %w", err))
 	}
 	return true, nil
@@ -345,14 +345,14 @@ func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, c
 	}
 
 	if batch.WaitUntil != nil {
-		if err := s.store.SetBlockedUntil(ctx, company.ID, s.source.Kind(), *batch.WaitUntil, batch.StopReason); err != nil {
+		if err := s.store.SetBlockedUntil(ctx, company.ID, s.source.Kind(), company.Environment, *batch.WaitUntil, batch.StopReason); err != nil {
 			return Batch{}, persistFailure(fmt.Errorf("failed to record source wait: %w", err))
 		}
 	}
 
 	if batch.Done && runState.source.InitialSyncDoneAt == nil &&
 		(batch.StopReason == nfse.SyncStopReasonEmptyLimit || batch.StopReason == nfse.SyncStopReasonCaughtUp) {
-		if err := s.store.MarkInitialSyncCompleted(ctx, company.ID, s.source.Kind()); err != nil {
+		if err := s.store.MarkInitialSyncCompleted(ctx, company.ID, s.source.Kind(), company.Environment); err != nil {
 			return Batch{}, persistFailure(fmt.Errorf("failed to mark initial sync completed: %w", err))
 		}
 		now := time.Now().UTC()

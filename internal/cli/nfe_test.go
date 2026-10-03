@@ -410,7 +410,7 @@ func TestNFeOutcomesError(t *testing.T) {
 func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 	env := newNFeTestRoot(t)
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, nfse.SyncSourceNFe, until, nfse.SyncStopReasonCaughtUp); err != nil {
+	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, nfse.SyncSourceNFe, env.company.Environment, until, nfse.SyncStopReasonCaughtUp); err != nil {
 		t.Fatal(err)
 	}
 

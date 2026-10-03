@@ -91,6 +91,7 @@ SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, compan
 FROM companies
 LEFT JOIN company_sync_sources
     ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
+    AND company_sync_sources.environment = companies.environment
 WHERE companies.cnpj = ? LIMIT 1
 `
 
@@ -99,8 +100,8 @@ type GetCompanyByCNPJRow struct {
 	NfseInitialSyncCompletedAt sql.NullString
 }
 
-// The NFS-e initial sync comes from company_sync_sources; it is NULL for a
-// company that never finished one.
+// The NFS-e initial sync comes from company_sync_sources, in the company's
+// current environment; it is NULL for a company that never finished one there.
 func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (GetCompanyByCNPJRow, error) {
 	row := q.db.QueryRowContext(ctx, getCompanyByCNPJ, cnpj)
 	var i GetCompanyByCNPJRow
@@ -128,6 +129,7 @@ SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, compan
 FROM companies
 LEFT JOIN company_sync_sources
     ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
+    AND company_sync_sources.environment = companies.environment
 ORDER BY companies.name ASC
 `
 

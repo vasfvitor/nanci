@@ -22,8 +22,8 @@ func TestNFeReset(t *testing.T) {
 	for _, stmt := range []string{
 		`INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, created_at, updated_at)
 		 VALUES ('comp-1', 'nfe', 'producao', '` + nfeTestCNPJ + `', 4, '` + now + `', '` + now + `')`,
-		`INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, blocked_until, blocked_reason, updated_at)
-		 VALUES ('comp-1', 'nfe', '` + now + `', '` + blockedUntil + `', 'consumo_indevido', '` + now + `')`,
+		`INSERT INTO company_sync_sources (company_id, source, environment, initial_sync_completed_at, blocked_until, blocked_reason, updated_at)
+		 VALUES ('comp-1', 'nfe', 'producao', '` + now + `', '` + blockedUntil + `', 'consumo_indevido', '` + now + `')`,
 	} {
 		if _, err := env.db.ExecContext(ctx, stmt); err != nil {
 			t.Fatal(err)

@@ -170,12 +170,12 @@ func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, 
 		}
 	}
 
-	sourceState, err := s.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFe)
+	sourceState, err := s.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFe, comp.Environment)
 	if err != nil {
 		return NFeStatusResult{}, fmt.Errorf("carregar estado da origem: %w", err)
 	}
 	result.InitialSyncDoneAt = sourceState.InitialSyncDoneAt
-	limits, err := s.SyncManager.SourceLimits(ctx, comp.ID, nfse.SyncSourceNFe)
+	limits, err := s.SyncManager.SourceLimits(ctx, comp, nfse.SyncSourceNFe)
 	if err != nil {
 		return NFeStatusResult{}, err
 	}

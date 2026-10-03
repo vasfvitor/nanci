@@ -216,7 +216,7 @@ func TestNFeSourceStoresMixedBatchesAndStopsWhenCaughtUp(t *testing.T) {
 		t.Errorf("stored blobs = %d, want 4", len(h.xml.stored))
 	}
 
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestNFeSourceStoresMixedBatchesAndStopsWhenCaughtUp(t *testing.T) {
 	if got := h.countRows(`SELECT COUNT(*) FROM sync_state WHERE source = 'nfse'`); got != 0 {
 		t.Errorf("nfse sync_state rows = %d, want 0", got)
 	}
-	nfseState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFSe)
+	nfseState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFSe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +429,7 @@ func TestNFeSourceNenhumDocumentoNeverMovesCursorBack(t *testing.T) {
 		t.Errorf("cursor = %d, want 10", cursor)
 	}
 	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -451,7 +451,7 @@ func TestNFeSourceConsumoIndevidoKeepsCursorAndBlocks(t *testing.T) {
 		t.Errorf("cursor = %d, want 10 (a lower ultNSU from 656 is ignored)", cursor)
 	}
 	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonConsumoIndevido)
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}

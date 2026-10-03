@@ -1,10 +1,11 @@
 -- name: GetCompanyByCNPJ :one
--- The NFS-e initial sync comes from company_sync_sources; it is NULL for a
--- company that never finished one.
+-- The NFS-e initial sync comes from company_sync_sources, in the company's
+-- current environment; it is NULL for a company that never finished one there.
 SELECT sqlc.embed(companies), company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
 FROM companies
 LEFT JOIN company_sync_sources
     ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
+    AND company_sync_sources.environment = companies.environment
 WHERE companies.cnpj = ? LIMIT 1;
 
 -- name: ListCompanies :many
@@ -13,6 +14,7 @@ SELECT sqlc.embed(companies), company_sync_sources.initial_sync_completed_at AS 
 FROM companies
 LEFT JOIN company_sync_sources
     ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
+    AND company_sync_sources.environment = companies.environment
 ORDER BY companies.name ASC;
 
 -- name: CreateCompany :exec

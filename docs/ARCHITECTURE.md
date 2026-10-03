@@ -39,11 +39,11 @@ Cada serviço de distribuição por NSU é uma implementação da interface `Sou
 
 O loop (`internal/sync/loop.go`) é o mesmo para todas as origens. Ele desconta o orçamento antes de cada requisição, grava o bloqueio pedido pela origem e pula, como não suportado, um item que falha ao ser interpretado três vezes seguidas no mesmo NSU. O `Manager` recusa o pull de uma origem bloqueada antes de pedir a senha, e não deixa dois pulls da mesma empresa e origem rodarem ao mesmo tempo.
 
-O estado é separado por empresa e origem:
+O estado é separado por empresa, origem e ambiente:
 
-- `sync_state` e `sync_runs`: cursor, checkpoint e histórico de execuções, com a coluna `source`.
-- `company_sync_sources`: data em que a sincronização inicial terminou e `blocked_until`/`blocked_reason`. Zerar o estado local limpa a sincronização inicial, mas mantém o bloqueio.
-- `sync_requests`: uma linha por requisição enviada, para a janela móvel de 1 hora do orçamento.
+- `sync_state` e `sync_runs`: cursor, checkpoint e histórico de execuções, com as colunas `source` e `environment`.
+- `company_sync_sources`: data em que a sincronização inicial terminou e `blocked_until`/`blocked_reason`, por empresa, origem e ambiente. Zerar o estado local limpa a sincronização inicial em todos os ambientes, mas mantém o bloqueio.
+- `sync_requests`: uma linha por requisição enviada, com a origem e o ambiente, para a janela móvel de 1 hora do orçamento.
 
 Uma nova origem precisa de um `Source`, tabelas e tela próprias; o loop, o orçamento, o `httpclient` e o `CertificateLoader` servem sem mudança, como aconteceu com o CT-e. Os detalhes da NF-e estão em [NFE_SEFAZ.md](NFE_SEFAZ.md) e os do CT-e em [CTE_SEFAZ.md](CTE_SEFAZ.md).
 

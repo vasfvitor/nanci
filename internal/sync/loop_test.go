@@ -256,7 +256,7 @@ func (h *testHelper) getAppliedNSUOrder() []int64 {
 
 func (h *testHelper) assertInitialSyncCompleted(wantCompleted bool) {
 	h.t.Helper()
-	sourceState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFSe)
+	sourceState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFSe, h.company.Environment)
 	if err != nil {
 		h.t.Fatalf("failed to load nfse source state: %v", err)
 	}
@@ -268,9 +268,9 @@ func (h *testHelper) assertInitialSyncCompleted(wantCompleted bool) {
 func (h *testHelper) markInitialSyncDone(t *testing.T, doneAt time.Time) {
 	h.t.Helper()
 	_, err := h.db.ExecContext(context.Background(), `
-		INSERT INTO company_sync_sources (company_id, source, initial_sync_completed_at, updated_at)
-		VALUES (?, 'nfse', ?, ?)
-	`, string(h.company.ID), doneAt.Format(time.RFC3339), doneAt.Format(time.RFC3339))
+		INSERT INTO company_sync_sources (company_id, source, environment, initial_sync_completed_at, updated_at)
+		VALUES (?, 'nfse', ?, ?, ?)
+	`, string(h.company.ID), string(h.company.Environment), doneAt.Format(time.RFC3339), doneAt.Format(time.RFC3339))
 	if err != nil {
 		h.t.Fatalf("failed to mark nfse source initial sync done: %v", err)
 	}

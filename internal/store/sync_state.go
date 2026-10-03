@@ -9,8 +9,9 @@ import (
 )
 
 // ResetSyncStateTx deletes the source's sync cursor and clears its
-// initial-sync flag inside tx. It keeps blocked_until: a local reset does not
-// lift a wait imposed by the tax authority.
+// initial-sync flag inside tx, in every environment of the company. It keeps
+// blocked_until: a local reset does not lift a wait imposed by the tax
+// authority.
 func ResetSyncStateTx(ctx context.Context, tx *sql.Tx, params nfse.ResetSyncStateParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := tx.ExecContext(ctx,

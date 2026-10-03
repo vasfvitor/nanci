@@ -265,7 +265,7 @@ func TestCTeStatusCountsByRole(t *testing.T) {
 	ctx := context.Background()
 
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := env.app.CTe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, nfse.SyncSourceCTe, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := env.app.CTe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, nfse.SyncSourceCTe, env.company.Environment, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
