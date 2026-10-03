@@ -21,6 +21,9 @@
       clearable
       mask="####-##"
       :disable="disable"
+      :error="error"
+      :error-message="errorMessage"
+      hide-bottom-space
     >
       <template #append>
         <q-icon name="event" class="cursor-pointer">
@@ -63,11 +66,14 @@ import { ref } from 'vue'
 import { competenceOf, shiftCompetence } from '@/utils/competence'
 
 // CompetencePicker edits a YYYY-MM competence: typed, picked from a month
-// calendar, or stepped a month at a time.
+// calendar, or stepped a month at a time. error and errorMessage flag the
+// field, as for a month typed only in part.
 const model = defineModel<string>({ required: true })
 
 defineProps<{
   disable?: boolean
+  error?: boolean
+  errorMessage?: string
 }>()
 
 const datePopup = ref<{ hide: () => void } | null>(null)

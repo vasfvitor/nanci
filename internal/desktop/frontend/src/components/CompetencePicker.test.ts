@@ -4,9 +4,9 @@ import CompetencePicker from './CompetencePicker.vue'
 
 const hide = vi.fn()
 
-function mountPicker(modelValue: string, disable = false) {
+function mountPicker(modelValue: string, disable = false, errorMessage = '') {
   return shallowMount(CompetencePicker, {
-    props: { modelValue, disable },
+    props: { modelValue, disable, error: Boolean(errorMessage), errorMessage },
     global: {
       renderStubDefaultSlot: true,
       stubs: {
@@ -18,7 +18,7 @@ function mountPicker(modelValue: string, disable = false) {
         },
         QInput: {
           name: 'QInput',
-          props: ['modelValue', 'disable'],
+          props: ['modelValue', 'disable', 'error', 'errorMessage'],
           template: '<div><slot name="append" /></div>',
         },
         QPopupProxy: {
@@ -50,6 +50,15 @@ describe('CompetencePicker', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('passes an error to the field', () => {
+    const input = (wrapper: ReturnType<typeof mountPicker>) => wrapper.getComponent({ name: 'QInput' })
+
+    expect(input(mountPicker('2026-01')).props('error')).toBe(false)
+    const flagged = input(mountPicker('2026-0', false, 'Mês incompleto'))
+    expect(flagged.props('error')).toBe(true)
+    expect(flagged.props('errorMessage')).toBe('Mês incompleto')
   })
 
   it('steps the competence a month at a time', async () => {

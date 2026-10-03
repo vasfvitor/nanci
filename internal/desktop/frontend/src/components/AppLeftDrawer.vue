@@ -40,7 +40,7 @@
         </template>
       </q-select>
 
-      <CompetencePicker v-model="draft" />
+      <CompetencePicker v-model="draft" :error="Boolean(draftError)" :error-message="draftError" />
     </section>
 
     <q-separator />
@@ -161,6 +161,14 @@ watch(
     if (value !== (draft.value || '')) draft.value = value
   }
 )
+
+// draftError says why the draft has not reached the workspace, or is '',
+// since the lists stay on the previous competência meanwhile.
+const draftError = computed(() => {
+  const value = draft.value
+  if (!value || isCompetence(value)) return ''
+  return value.length < 'AAAA-MM'.length ? 'Mês incompleto' : 'Mês inválido'
+})
 
 // retryCompanies lists the companies again. A failure shows in loadError.
 function retryCompanies() {
