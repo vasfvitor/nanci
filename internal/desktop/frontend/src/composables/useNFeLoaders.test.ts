@@ -72,6 +72,29 @@ describe('useNFeLoaders', () => {
     expect(store.status).toBeNull()
   })
 
+  it('drops a pendências reply from an earlier load', async () => {
+    const store = useNFeDocumentsStore()
+    const earlier = deferred<NFePendingRow[]>()
+    const later = deferred<NFePendingRow[]>()
+    vi.mocked(desktopClient.listNFePendingManifestacoes)
+      .mockReturnValueOnce(earlier.promise)
+      .mockReturnValueOnce(later.promise)
+    const newer = { ChaveAcesso: 'b', Kind: 'sem_ciencia' } as NFePendingRow
+
+    const first = useNFeLoaders().loadPending()
+    // A remounted page loads through a new instance of the loaders.
+    const second = useNFeLoaders().loadPending()
+    earlier.resolve([pendingRow])
+    await first
+    expect(store.pending).toEqual([])
+    expect(store.pendingLoading).toBe(true)
+
+    later.resolve([newer])
+    await second
+    expect(store.pending).toEqual([newer])
+    expect(store.pendingLoading).toBe(false)
+  })
+
   it('drops a note reload that arrives after the company changed', async () => {
     const store = useNFeDocumentsStore()
     await useNFeLoaders().search()

@@ -5,7 +5,7 @@ import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 
 // useNFeLoaders loads NF-e notes, status and pendências into the
 // nfeDocuments store. A result that arrives after the user picked another
-// company is dropped.
+// company is dropped, and so is one from a load that a newer one replaced.
 export function useNFeLoaders() {
   const store = useNFeDocumentsStore()
   const { pending, pendingLoading } = storeToRefs(store)
@@ -17,17 +17,21 @@ export function useNFeLoaders() {
   )
 
   async function loadPending(cnpj: string = store.listInput.CNPJ) {
+    // Loads may end out of order; the latest one owns pending and
+    // pendingLoading.
+    const seq = ++store.pendingSeq
     if (!cnpj) {
       pending.value = []
+      pendingLoading.value = false
       return []
     }
     pendingLoading.value = true
     try {
       const rows = await desktopClient.listNFePendingManifestacoes(cnpj)
-      if (isSelected(cnpj)) pending.value = rows
+      if (seq === store.pendingSeq && isSelected(cnpj)) pending.value = rows
       return rows
     } finally {
-      pendingLoading.value = false
+      if (seq === store.pendingSeq) pendingLoading.value = false
     }
   }
 

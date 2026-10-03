@@ -17,16 +17,25 @@ export type LoaderStore<Input extends { CNPJ: string; Competence: string }, Row>
   setRows: (rows: Row[]) => void
 }
 
+// StatusStore is the part of a page store that holds a sync status. A page
+// without one leaves both fields out.
+export type StatusStore<Status> = {
+  status: Status | null
+  // statusSeq numbers the status loads; only the latest one fills status.
+  statusSeq: number
+}
+
 // useDocumentLoaders loads the document list of a page into its store and,
 // when the source has a sync status (fetchStatus), the status into
 // store.status. A result that arrives after the user picked another company
-// is dropped, and so is a list from a search that a newer one replaced.
+// is dropped, and so is a list or a status from a load that a newer one
+// replaced.
 export function useDocumentLoaders<
   Input extends { CNPJ: string; Competence: string },
   Row,
   Status = never,
 >(
-  store: LoaderStore<Input, Row> & { status?: Status | null },
+  store: LoaderStore<Input, Row> & Partial<StatusStore<Status>>,
   list: (input: Input) => Promise<Row[]>,
   fetchStatus?: (cnpj: string) => Promise<Status>
 ) {
@@ -53,12 +62,16 @@ export function useDocumentLoaders<
 
   async function loadStatus(cnpj: string = store.listInput.CNPJ): Promise<Status | null> {
     if (!fetchStatus) return null
+    // A sync, a reset and a page visit may load the status of the same
+    // company at once; the latest load owns it.
+    const seq = (store.statusSeq ?? 0) + 1
+    store.statusSeq = seq
     if (!cnpj) {
       store.status = null
       return null
     }
     const result = await fetchStatus(cnpj)
-    if (isSelected(cnpj)) store.status = result
+    if (seq === store.statusSeq && isSelected(cnpj)) store.status = result
     return result
   }
 

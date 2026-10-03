@@ -50,9 +50,14 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   // markingViewed is true while a "Marcar vistos" request is in flight.
   const markingViewed = shallowRef(false)
   const status = shallowRef<NFeStatusResult | null>(null)
+  // statusSeq numbers the status loads; only the latest one fills status.
+  const statusSeq = shallowRef(0)
   const activeTab = shallowRef<NFeTab>('notas')
   const pending = ref<NFePendingRow[]>([])
   const pendingLoading = shallowRef(false)
+  // pendingSeq numbers the pendências loads; only the latest one fills
+  // pending.
+  const pendingSeq = shallowRef(0)
   // planningCiencia is true while the backend plans a ciência.
   const planningCiencia = shallowRef(false)
   // cienciaInFlight holds the chaves of the ciência being sent, or null.
@@ -112,9 +117,11 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     exporting,
     markingViewed,
     status,
+    statusSeq,
     activeTab,
     pending,
     pendingLoading,
+    pendingSeq,
     planningCiencia,
     cienciaInFlight,
     manifestacaoInFlight,

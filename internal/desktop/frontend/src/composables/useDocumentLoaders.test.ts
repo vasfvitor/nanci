@@ -26,6 +26,7 @@ function setup(withStatus = true) {
     rowsFor: null as WorkspaceKey | null,
     searchSeq: 0,
     status: null as Status | null,
+    statusSeq: 0,
     rows: [] as Row[],
     setRows(next: Row[]) {
       store.rows = next
@@ -154,6 +155,23 @@ describe('useDocumentLoaders', () => {
     call.resolve({ LastNSU: 9 })
     await loading
     expect(store.status).toEqual({ LastNSU: 7 })
+  })
+
+  it('drops a status reply from an earlier load of the same company', async () => {
+    const { store, list, fetch, loaders } = setup()
+    const earlier = deferred<Status>()
+    const later = deferred<Status>()
+    fetch.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(later.promise)
+
+    const first = loaders.loadStatus()
+    // A remounted page loads through its own instance of the loaders.
+    const second = useDocumentLoaders(store, list, fetch).loadStatus()
+    later.resolve({ LastNSU: 9 })
+    await second
+    earlier.resolve({ LastNSU: 8 })
+
+    await expect(first).resolves.toEqual({ LastNSU: 8 })
+    expect(store.status).toEqual({ LastNSU: 9 })
   })
 
   it('clears the status without a company', async () => {

@@ -70,6 +70,8 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   // markingViewed is true while a "Marcar vistos" request is in flight.
   const markingViewed = shallowRef(false)
   const status = shallowRef<CTeStatusResult | null>(null)
+  // statusSeq numbers the status loads; only the latest one fills status.
+  const statusSeq = shallowRef(0)
   // resettingCNPJ is the company whose CT-e reset is in flight, or ''.
   const resettingCNPJ = shallowRef('')
 
@@ -101,6 +103,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     exporting,
     markingViewed,
     status,
+    statusSeq,
     resettingCNPJ,
     setRows,
     clearRows,
