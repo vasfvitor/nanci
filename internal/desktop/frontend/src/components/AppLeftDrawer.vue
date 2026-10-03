@@ -1,5 +1,50 @@
 <template>
   <q-drawer v-model="model" show-if-above bordered>
+    <!-- The workspace: the company and competência every document page lists. -->
+    <section
+      aria-label="Empresa e competência"
+      :title="competenceHelp"
+      class="q-px-md q-pt-md q-pb-sm column q-gutter-sm"
+    >
+      <div v-if="loadError" class="column items-start">
+        <div class="text-body2">Não foi possível carregar as empresas.</div>
+        <div class="text-caption text-app-muted">{{ loadError }}</div>
+        <q-btn flat dense color="primary" label="Tentar de novo" @click="retryCompanies" />
+      </div>
+
+      <div v-if="noCompanies" class="column items-start">
+        <div class="text-body2">Nenhuma empresa cadastrada.</div>
+        <q-btn flat dense color="primary" label="Cadastrar empresa" to="/" />
+      </div>
+      <q-select
+        v-else-if="companies.length > 0 || !loadError"
+        v-model="cnpj"
+        :options="companyOptions"
+        label="Empresa"
+        :display-value="selectedCompany?.Name ?? ''"
+        :hint="formatCpfCnpj(cnpj)"
+        :loading="!loaded && !loadError"
+        dense
+        outlined
+        options-dense
+        emit-value
+        map-options
+      >
+        <template #option="scope">
+          <q-item v-bind="scope.itemProps">
+            <q-item-section>
+              <q-item-label>{{ scope.opt.name }}</q-item-label>
+              <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+
+      <CompetencePicker v-model="draft" />
+    </section>
+
+    <q-separator />
+
     <q-list class="q-py-md">
       <q-item v-ripple clickable to="/" exact dense active-class="text-primary">
         <q-item-section avatar>
@@ -72,5 +117,53 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import CompetencePicker from './CompetencePicker.vue'
+import { companyOption } from '@/composables/useCompanies'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { isCompetence } from '@/utils/competence'
+import { formatCpfCnpj } from '@/utils/formatters'
+
+// AppLeftDrawer is the app navigation, topped by the workspace company and
+// competência. Changing either makes the mounted document page search.
 const model = defineModel<boolean>({ default: false })
+
+const workspace = useWorkspaceStore()
+const { cnpj, companies, loaded, loadError, selectedCompany } = storeToRefs(workspace)
+
+const competenceHelp =
+  'Competência: na NFS-e é a competência da nota (compNFSe); na NF-e e no CT-e, o mês de emissão. Vazia, lista todos os meses.'
+
+// companyOptions are the workspace companies, with the name and the
+// formatted CNPJ the option list shows.
+const companyOptions = computed(() =>
+  companies.value.map((company) => ({
+    ...companyOption(company),
+    name: company.Name,
+    caption: formatCpfCnpj(company.CNPJ),
+  }))
+)
+
+// noCompanies is true once a list arrived empty.
+const noCompanies = computed(() => loaded.value && !loadError.value && companies.value.length === 0)
+
+// draft is the competência as typed. It reaches the workspace only when
+// complete or cleared, so a partial "2026-0" never searches nor is saved.
+const draft = ref<string>(workspace.competence)
+watch(draft, (value) => {
+  if (!value) workspace.competence = ''
+  else if (isCompetence(value)) workspace.competence = value
+})
+watch(
+  () => workspace.competence,
+  (value) => {
+    if (value !== (draft.value || '')) draft.value = value
+  }
+)
+
+// retryCompanies lists the companies again. A failure shows in loadError.
+function retryCompanies() {
+  workspace.loadCompanies().catch(() => {})
+}
 </script>

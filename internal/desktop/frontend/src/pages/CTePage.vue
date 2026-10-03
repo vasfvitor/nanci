@@ -15,14 +15,11 @@
     />
 
     <DocumentFilterBar
-      v-model:cnpj="cnpj"
-      v-model:competence="competence"
       v-model:only-unviewed="onlyUnviewed"
-      :company-options="companyOptions"
       :loading="loading"
       :exporting="exporting"
       :export-disabled="scopeRows.length === 0"
-      :search-disabled="Boolean(listError)"
+      :search-disabled="!cnpj || Boolean(listError)"
       :mark-viewed-count="unviewedChaves.length"
       @search="search"
       @mark-viewed="confirmMarkViewed"
@@ -172,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
@@ -191,12 +188,10 @@ import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
-import { companyOption } from '@/composables/useCompanies'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { copyChave, useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeResetResult, CTeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {
@@ -219,7 +214,6 @@ import { CTE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const cte = useCTeDocuments()
-const workspace = useWorkspaceStore()
 const { notifyError, notifySuccess, notifyWarning, notifyExported, notifySyncError } = useNotify()
 
 const {
@@ -237,7 +231,6 @@ const {
   status,
   companyName,
   ambiente,
-  competence,
   statusLine,
   listError,
   isSyncing,
@@ -300,9 +293,6 @@ function valoresItems(row: CTeRow): DetailItem[] {
     { label: 'Produto', value: row.ProdutoPredominante },
   ]
 }
-
-// The filter bar picks from the workspace companies until the drawer does.
-const companyOptions = computed(() => workspace.companies.map(companyOption))
 
 // The page lists the workspace company and competência. A new company also
 // reloads the status; a new competência only the list.

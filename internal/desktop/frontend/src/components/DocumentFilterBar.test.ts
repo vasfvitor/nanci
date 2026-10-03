@@ -3,18 +3,6 @@ import { describe, expect, it } from 'vitest'
 import DocumentFilterBar from './DocumentFilterBar.vue'
 
 const stubs = {
-  QSelect: {
-    name: 'QSelect',
-    props: ['modelValue', 'options', 'disable'],
-    emits: ['update:modelValue'],
-    template: '<div class="select" />',
-  },
-  CompetencePicker: {
-    name: 'CompetencePicker',
-    props: ['modelValue', 'disable'],
-    emits: ['update:modelValue'],
-    template: '<input class="competence" />',
-  },
   QToggle: {
     name: 'QToggle',
     props: ['modelValue', 'label', 'disable'],
@@ -32,25 +20,15 @@ const stubs = {
 
 type BarProps = InstanceType<typeof DocumentFilterBar>['$props']
 
-const companyOptions = [
-  { label: 'Empresa Um (1)', value: '1' },
-  { label: 'Empresa Dois (2)', value: '2' },
-]
-
 function mountBar(props: Partial<BarProps> = {}, calls: string[] = []) {
   return mount(DocumentFilterBar, {
     props: {
-      cnpj: '1',
-      competence: '',
-      companyOptions,
       loading: false,
       exporting: false,
       exportDisabled: false,
       onlyUnviewed: false,
       markViewedCount: 0,
-      'onUpdate:cnpj': (value: string) => calls.push(`update:cnpj ${value}`),
       'onUpdate:onlyUnviewed': (value: boolean) => calls.push(`update:onlyUnviewed ${value}`),
-      onCompanyChange: () => calls.push('companyChange'),
       onSearch: () => calls.push('search'),
       ...props,
     },
@@ -76,11 +54,9 @@ describe('DocumentFilterBar', () => {
     const wrapper = mountBar({ onlyUnviewed: false, markViewedCount: 3 })
 
     const order = wrapper
-      .findAll('.select, .competence, .source-filter, .toggle, .space, button')
+      .findAll('.source-filter, .toggle, .space, button')
       .map((el) => el.classes()[0] ?? el.text())
     expect(order).toEqual([
-      'select',
-      'competence',
       'source-filter',
       'toggle',
       'space',
@@ -89,15 +65,6 @@ describe('DocumentFilterBar', () => {
       'Marcar vistos (3)',
       'Exportar',
     ])
-  })
-
-  it('updates the company, then asks for a company change', () => {
-    const calls: string[] = []
-    const wrapper = mountBar({}, calls)
-
-    wrapper.getComponent({ name: 'QSelect' }).vm.$emit('update:modelValue', '2')
-
-    expect(calls).toEqual(['update:cnpj 2', 'companyChange'])
   })
 
   it('updates the toggle, then searches', () => {
@@ -119,22 +86,20 @@ describe('DocumentFilterBar', () => {
     expect(wrapper.emitted('markViewed')).toHaveLength(1)
   })
 
-  it('searches on Enter in the competência and in the fields that bind search', async () => {
+  it('searches on Enter in the fields that bind search', async () => {
     const calls: string[] = []
     const wrapper = mountBar({}, calls)
 
-    await wrapper.find('.competence').trigger('keyup', { key: 'Enter' })
     await wrapper.find('.source-filter').trigger('keyup', { key: 'Enter' })
-    expect(calls).toEqual(['search', 'search'])
+    expect(calls).toEqual(['search'])
 
-    // Another key does not search, and neither does Enter on the company select.
+    // Another key does not search.
     await wrapper.find('.source-filter').trigger('keyup', { key: 'a' })
-    await wrapper.find('.select').trigger('keyup', { key: 'Enter' })
-    expect(calls).toEqual(['search', 'search'])
+    expect(calls).toEqual(['search'])
   })
 
-  it('does not search without a company, while loading or when told not to', async () => {
-    for (const props of [{ cnpj: '' }, { loading: true }, { searchDisabled: true }]) {
+  it('does not search while loading or when told not to', async () => {
+    for (const props of [{ loading: true }, { searchDisabled: true }]) {
       const calls: string[] = []
       const wrapper = mountBar(props, calls)
 
@@ -160,10 +125,5 @@ describe('DocumentFilterBar', () => {
     expect(button(mountBar({ exportDisabled: true }), 'Exportar').attributes('disabled')).toBeDefined()
     expect(button(mountBar({ exporting: true }), 'Exportar').attributes('disabled')).toBeDefined()
     expect(button(mountBar({ loading: true }), 'Exportar').attributes('disabled')).toBeDefined()
-  })
-
-  it('titles the competência with its explanation', () => {
-    const picker = mountBar().getComponent({ name: 'CompetencePicker' })
-    expect(picker.element.parentElement?.getAttribute('title')).toBe('Competência pelo mês de emissão')
   })
 })

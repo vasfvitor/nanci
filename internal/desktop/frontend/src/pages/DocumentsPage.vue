@@ -14,13 +14,11 @@
     />
 
     <DocumentFilterBar
-      v-model:cnpj="cnpj"
-      v-model:competence="competence"
       v-model:only-unviewed="onlyUnviewed"
-      :company-options="companyOptions"
       :loading="loading"
       :exporting="exporting"
       :export-disabled="scopeRows.length === 0"
+      :search-disabled="!cnpj"
       :mark-viewed-count="unviewedChaves.length"
       @search="search"
       @mark-viewed="confirmMarkViewed"
@@ -122,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
@@ -140,12 +138,10 @@ import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
-import { companyOption } from '@/composables/useCompanies'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
-import { useWorkspaceStore } from '@/stores/workspace'
 import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
@@ -154,7 +150,6 @@ import { NFSE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const nfse = useDocuments()
-const workspace = useWorkspaceStore()
 const { notifyError, notifySuccess, notifyExported, notifySyncError } = useNotify()
 
 const {
@@ -169,7 +164,6 @@ const {
   unviewedChaves,
   badgesByChave,
   onlyUnviewed,
-  competence,
   selectedCompany,
   ambiente,
   statusLine,
@@ -236,9 +230,6 @@ function retencoesItems(row: DocumentRow): DetailItem[] {
     { label: 'Total das retenções', value: formatCurrencyCents(row.TotalRetentions), mono: true },
   ]
 }
-
-// The filter bar picks from the workspace companies until the drawer does.
-const companyOptions = computed(() => workspace.companies.map(companyOption))
 
 // The page lists the workspace company and competência, and searches again
 // when either changes.

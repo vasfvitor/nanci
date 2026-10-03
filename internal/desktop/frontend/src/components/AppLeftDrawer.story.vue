@@ -1,8 +1,38 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppLeftDrawer from './AppLeftDrawer.vue'
+import { useWorkspaceStore } from '@/stores/workspace'
+import type { CompanySummary } from '@/types/desktop'
 
 const open = ref(true)
+
+function company(CNPJ: string, Name: string): CompanySummary {
+  return {
+    ID: CNPJ,
+    CNPJ,
+    CNPJRoot: CNPJ.slice(0, 8),
+    Name,
+    CredentialID: '',
+    CredentialLabel: '',
+    CredentialCertPath: '',
+    Environment: 'producao',
+    UF: 'SP',
+    LastFoundNSU: null,
+    SyncStartPolicy: 'all',
+    LastRunStatus: '',
+    LastRunStopReason: '',
+  }
+}
+
+// Histoire has Pinia but no Wails, so the story fills the workspace itself.
+const workspace = useWorkspaceStore()
+workspace.companies = [
+  company('11222333000181', 'ACME Comércio Ltda.'),
+  company('44555666000199', 'Wayne Empreendimentos S.A.'),
+]
+workspace.cnpj = '11222333000181'
+workspace.competence = '2026-09'
+workspace.loaded = true
 </script>
 
 <template>
