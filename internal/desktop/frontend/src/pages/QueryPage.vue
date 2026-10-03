@@ -6,7 +6,7 @@
     </div>
 
     <q-banner
-      v-if="workspace.loaded && !cnpj"
+      v-if="loaded && !cnpj"
       dense
       rounded
       class="q-mb-md"
@@ -105,21 +105,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { storeToRefs } from 'pinia'
 import { errorMessage } from '@/platform/wails/client'
+import { companyOption } from '@/composables/useCompanies'
 import { useQuery } from '@/composables/useQuery'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { formatCpfCnpj } from '@/utils/formatters'
 
 const $q = useQuasar()
 const query = useQuery()
-const workspace = useWorkspaceStore()
-const { form, result, loading, cnpj, selectedCompany, documentOptions } = query
+const { form, result, loading, documentOptions } = query
+// The query authenticates as the workspace company.
+const { cnpj, selectedCompany, loaded } = storeToRefs(useWorkspaceStore())
 
 // companyLabel names the workspace company the query authenticates as.
-const companyLabel = computed(() => {
-  const company = selectedCompany.value
-  return company ? `${company.Name} (${formatCpfCnpj(company.CNPJ)})` : ''
-})
+const companyLabel = computed(() =>
+  selectedCompany.value ? companyOption(selectedCompany.value).label : ''
+)
 
 function createValue(val: string, done: (item: unknown, mode: 'add' | 'add-unique' | 'toggle') => void) {
   if (val.length > 0) {

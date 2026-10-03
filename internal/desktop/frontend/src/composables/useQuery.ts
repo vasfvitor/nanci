@@ -10,7 +10,7 @@ export function useQuery() {
   const { form, result, type, loading } = storeToRefs(queryStore)
   // The query authenticates as the workspace company.
   const workspace = useWorkspaceStore()
-  const { cnpj, selectedCompany } = storeToRefs(workspace)
+  const { cnpj } = storeToRefs(workspace)
 
   const allDocumentOptions = ref<{ label: string; value: string; description?: string }[]>([])
   const documentOptions = ref<{ label: string; value: string; description?: string }[]>([])
@@ -93,8 +93,6 @@ export function useQuery() {
     result,
     type,
     loading,
-    cnpj,
-    selectedCompany,
     documentOptions,
     filterDocuments,
     runQuery,

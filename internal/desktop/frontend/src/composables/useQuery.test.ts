@@ -35,8 +35,7 @@ describe('useQuery', () => {
     await workspace.loadCompanies()
     await flushPromises()
 
-    expect(query.cnpj.value).toBe('111')
-    expect(query.selectedCompany.value?.Name).toBe('Alpha')
+    expect(workspace.cnpj).toBe('111')
     expect(desktopClient.listDocuments).toHaveBeenCalledWith({
       CNPJ: '111',
       Competence: '',

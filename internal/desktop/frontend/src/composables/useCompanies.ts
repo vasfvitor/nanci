@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, CredentialSummary } from '@/types/desktop'
+import { formatCpfCnpj } from '@/utils/formatters'
 
 export function useCompanies() {
   const workspace = useWorkspaceStore()
@@ -34,17 +35,6 @@ export function useCompanies() {
     return trackLoad(() => workspace.loadCompanies())
   }
 
-  // ensureCompanies returns the workspace list and shares a load in flight,
-  // such as the one the layout starts when the app opens, so a page that
-  // opens lists the companies once.
-  async function ensureCompanies() {
-    return trackLoad(() => workspace.ensureCompanies())
-  }
-
-  async function reloadData() {
-    await Promise.all([loadCredentials(), loadCompanies()])
-  }
-
   async function assignCredential(companyCNPJ: string, credentialID: string) {
     await desktopClient.assignCredential({
       CompanyCNPJ: companyCNPJ,
@@ -58,17 +48,16 @@ export function useCompanies() {
     credentials,
     loading,
     loadCompanies,
-    ensureCompanies,
     loadCredentials,
-    reloadData,
     assignCredential,
   }
 }
 
-// companyOption is a company as a q-select option keyed by CNPJ.
+// companyOption is a company as a q-select option keyed by CNPJ, labeled
+// "Name (12.345.678/0001-00)".
 export function companyOption(company: CompanySummary) {
   return {
-    label: `${company.Name} (${company.CNPJ})`,
+    label: `${company.Name} (${formatCpfCnpj(company.CNPJ)})`,
     value: company.CNPJ,
   }
 }

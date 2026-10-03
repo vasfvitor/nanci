@@ -132,8 +132,8 @@ describe('SettingsPage', () => {
     if (!select) throw new Error('no Empresa select')
     expect(select.props('modelValue')).toBe(dois.CNPJ)
     expect(select.props('options')).toEqual([
-      { label: 'Empresa Um (11111111000111)', value: um.CNPJ },
-      { label: 'Empresa Dois (22222222000122)', value: dois.CNPJ },
+      { label: 'Empresa Um (11.111.111/0001-11)', value: um.CNPJ },
+      { label: 'Empresa Dois (22.222.222/0001-22)', value: dois.CNPJ },
     ])
     expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
 
@@ -141,5 +141,35 @@ describe('SettingsPage', () => {
     await flushPromises()
     expect(select.props('modelValue')).toBe(um.CNPJ)
     expect(workspace.cnpj).toBe(dois.CNPJ)
+  })
+
+  it('starts the connection test at a company listed after it opens', async () => {
+    const um = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([um])
+
+    const wrapper = shallowMount(SettingsPage, {
+      global: {
+        stubs: {
+          'q-select': {
+            name: 'QSelect',
+            props: ['modelValue', 'label', 'loading'],
+            template: '<div />',
+          },
+        },
+        directives: { ripple: {} },
+      },
+    })
+    await flushPromises()
+    const select = () =>
+      wrapper.findAllComponents({ name: 'QSelect' }).find((item) => item.props('label') === 'Empresa')
+    expect(select()?.props('loading')).toBe(true)
+    expect(desktopClient.listCompanies).not.toHaveBeenCalled()
+
+    // The layout loads the list.
+    await useWorkspaceStore().loadCompanies()
+    await flushPromises()
+
+    expect(select()?.props('loading')).toBe(false)
+    expect(select()?.props('modelValue')).toBe(um.CNPJ)
   })
 })

@@ -56,6 +56,7 @@
           class="col-12 col-md-5"
           :options="companyOptions"
           label="Empresa"
+          :loading="!workspace.loaded && !workspace.loadError"
           emit-value
           map-options
           outlined
@@ -172,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
@@ -204,9 +205,17 @@ const darkMode = computed({
 
 const buildInfo = ref<BuildInfo>({ version: '...', commit: '...', date: '...' })
 const dataDir = ref('')
-// selectedCompany starts at the workspace company and then stays apart from
-// it, so any company can be tested without switching the document pages.
-const selectedCompany = ref(workspace.cnpj)
+// selectedCompany starts at the workspace company once one is listed and
+// then stays apart from it, so any company can be tested without switching
+// the document pages. The layout loads the list and notifies a failure.
+const selectedCompany = ref('')
+watch(
+  () => workspace.cnpj,
+  (cnpj) => {
+    if (!selectedCompany.value) selectedCompany.value = cnpj
+  },
+  { immediate: true }
+)
 const companyOptions = computed(() => workspace.companies.map(companyOption))
 
 const darkModeOptions = [
@@ -215,20 +224,10 @@ const darkModeOptions = [
   { label: 'Sempre Escuro', value: true }
 ]
 
-async function loadCompanies() {
-  try {
-    await workspace.ensureCompanies()
-    if (!selectedCompany.value) selectedCompany.value = workspace.cnpj
-  } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + errorMessage(err) })
-  }
-}
-
 onMounted(async () => {
   try {
     buildInfo.value = await desktopClient.getBuildInfo()
     dataDir.value = await desktopClient.getDataDirectory()
-    await loadCompanies()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar dados de sistema: ' + errorMessage(err) })
   }

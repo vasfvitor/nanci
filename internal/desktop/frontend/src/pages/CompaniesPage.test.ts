@@ -80,6 +80,12 @@ function mountPage(tableTemplate = credentialCellTable) {
   })
 }
 
+// layoutLoad stands for the company list the layout loads when the app
+// opens; the page takes the companies from the workspace store.
+function layoutLoad() {
+  return useWorkspaceStore().ensureCompanies()
+}
+
 describe('CompaniesPage credential assignment', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -98,12 +104,14 @@ describe('CompaniesPage credential assignment', () => {
     )
 
     const wrapper = mountPage()
+    const loading = layoutLoad()
     await flushPromises()
 
     const table = wrapper.getComponent({ name: 'QTable' })
     expect(table.props('loading')).toBe(true)
 
     resolveList([])
+    await loading
     await flushPromises()
 
     expect(table.props('loading')).toBe(false)
@@ -111,6 +119,7 @@ describe('CompaniesPage credential assignment', () => {
 
   it('rolls the select back to the stored credential when assignment fails', async () => {
     vi.mocked(desktopClient.assignCredential).mockRejectedValue(new Error('boom'))
+    await layoutLoad()
 
     const wrapper = mountPage()
     await flushPromises()
@@ -133,6 +142,7 @@ describe('CompaniesPage credential assignment', () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([
       { ...company, CredentialID: 'cred-2' },
     ])
+    await layoutLoad()
 
     const wrapper = mountPage()
     await flushPromises()
@@ -157,29 +167,32 @@ describe('CompaniesPage initial load', () => {
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
   })
 
-  it('lists the companies once with the layout load', async () => {
+  it('takes the companies from the layout load and lists only the credentials', async () => {
     const wrapper = mountPage()
-    // The layout mounts after the page and asks for the list too.
-    const layoutLoad = useWorkspaceStore().ensureCompanies()
+    // The layout mounts after the page and loads the list.
+    await layoutLoad()
     await flushPromises()
-    await layoutLoad
 
     expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
+    expect(desktopClient.listCredentials).toHaveBeenCalledTimes(1)
     expect(wrapper.getComponent({ name: 'QSelect' }).props('modelValue')).toBe('cred-1')
   })
 
   it('leaves a failed company list to the layout', async () => {
     vi.mocked(desktopClient.listCompanies).mockRejectedValue(new Error('boom'))
 
-    mountPage()
+    const wrapper = mountPage()
+    await expect(layoutLoad()).rejects.toThrow('boom')
     await flushPromises()
 
     expect(notify).not.toHaveBeenCalled()
     expect(useWorkspaceStore().loadError).toBe('boom')
+    expect(wrapper.getComponent({ name: 'QTable' }).props('loading')).toBe(false)
   })
 
   it('notifies a failed credentials load once', async () => {
     vi.mocked(desktopClient.listCredentials).mockRejectedValue(new Error('boom'))
+    await layoutLoad()
 
     const wrapper = mountPage()
     await flushPromises()
@@ -204,6 +217,7 @@ describe('CompaniesPage actions', () => {
   it('Ver documentos sets the workspace company and opens /documents', async () => {
     const outra = { ...company, ID: 'company-2', CNPJ: '98765432000188', Name: 'Empresa Dois' }
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
+    await layoutLoad()
     const wrapper = mountPage(actionsCellTable)
     await flushPromises()
     const workspace = useWorkspaceStore()
@@ -220,6 +234,7 @@ describe('CompaniesPage actions', () => {
     // Not even with debug logs on: the NFS-e page owns sync and reset.
     localStorage.setItem('nanci:logLevel', 'debug')
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    await layoutLoad()
     const wrapper = mountPage(actionsCellTable)
     await flushPromises()
 

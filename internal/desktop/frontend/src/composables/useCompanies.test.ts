@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, vi } from 'vitest'
-import { useCompanies } from './useCompanies'
+import { companyOption, useCompanies } from './useCompanies'
 import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary } from '@/types/desktop'
@@ -51,24 +51,7 @@ describe('useCompanies', () => {
     expect(companies.companies.value).toEqual([company])
   })
 
-  it('initial load reuses the workspace list', async () => {
-    const company = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
-    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
-    const workspace = useWorkspaceStore()
-    const companies = useCompanies()
-
-    // The layout and the page start their loads together, then again once
-    // the list is loaded.
-    const layoutLoad = workspace.ensureCompanies()
-    await expect(companies.ensureCompanies()).resolves.toEqual([company])
-    await layoutLoad
-    await expect(companies.ensureCompanies()).resolves.toEqual([company])
-
-    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
-    expect(companies.loading.value).toBe(false)
-  })
-
-  it('stays loading until the outer reload finishes, not the first inner load', async () => {
+  it('stays loading until both loads finish, not the first one', async () => {
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
 
     let resolveCompanies!: (value: never[]) => void
@@ -79,7 +62,7 @@ describe('useCompanies', () => {
     )
 
     const companies = useCompanies()
-    const pending = companies.reloadData()
+    const pending = Promise.all([companies.loadCredentials(), companies.loadCompanies()])
 
     // Credentials resolve first; the slower companies load must keep it true.
     await Promise.resolve()
@@ -89,5 +72,16 @@ describe('useCompanies', () => {
     resolveCompanies([])
     await pending
     expect(companies.loading.value).toBe(false)
+  })
+})
+
+describe('companyOption', () => {
+  it('labels a company with its name and formatted CNPJ', () => {
+    const company = { CNPJ: '12345678000199', Name: 'Empresa Um' } as CompanySummary
+
+    expect(companyOption(company)).toEqual({
+      label: 'Empresa Um (12.345.678/0001-99)',
+      value: '12345678000199',
+    })
   })
 })

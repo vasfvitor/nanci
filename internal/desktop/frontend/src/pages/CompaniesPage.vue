@@ -8,7 +8,7 @@
       flat
       bordered
       dense
-      :loading="loading"
+      :loading="tableLoading"
       no-data-label="Nenhuma empresa cadastrada."
     >
       <template #top-right>
@@ -109,26 +109,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useQuasar, type QTableColumn } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
+import { type QTableColumn } from 'quasar'
 import { useRouter } from 'vue-router'
-import { errorMessage } from '@/platform/wails/client'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useCompanies } from '@/composables/useCompanies'
+import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
 import type { CompanySummary } from '@/types/desktop'
 
-const $q = useQuasar()
 const router = useRouter()
 const workspace = useWorkspaceStore()
 const companiesApi = useCompanies()
 const { companies, credentials, loading } = companiesApi
+const { notifyError, notifySuccess } = useNotify()
 const showAddDialog = ref(false)
 const selectedCredentials = ref<Record<string, string>>({})
 const showEditDialog = ref(false)
 const selectedCompanyToEdit = ref<CompanySummary | null>(null)
+
+// tableLoading also covers the workspace company list until it arrives; the
+// layout loads it when the app opens, and notifies a failure.
+const tableLoading = computed(
+  () => loading.value || (!workspace.loaded && !workspace.loadError)
+)
 
 const credentialOptions = computed(() =>
   credentials.value.map((credential) => ({
@@ -173,40 +179,31 @@ function syncStartLabel(company: CompanySummary) {
   }
 }
 
-function setSelectedCredentials(list: CompanySummary[]) {
+// The credential selects start at each company's stored credential, and
+// start over whenever the workspace lists the companies again.
+function seedSelectedCredentials(list: CompanySummary[]) {
   selectedCredentials.value = Object.fromEntries(
     list.map((company) => [company.CNPJ, company.CredentialID])
   )
 }
 
-async function loadCompanies() {
-  setSelectedCredentials(await companiesApi.loadCompanies())
-}
+watch(companies, seedSelectedCredentials, { immediate: true })
 
-// loadInitial fills the page when it opens. The company list comes from the
-// workspace load the layout also waits for, so it is listed once. The layout
-// notifies a failure of that load and the drawer keeps showing it, so the
-// page only notifies a failed credentials load.
-async function loadInitial() {
-  const [credentialsResult, companiesResult] = await Promise.allSettled([
-    companiesApi.loadCredentials(),
-    companiesApi.ensureCompanies(),
-  ])
-  if (companiesResult.status === 'fulfilled') setSelectedCredentials(companiesResult.value)
-  if (credentialsResult.status === 'rejected') {
-    $q.notify({
-      type: 'negative',
-      message: 'Erro ao carregar credenciais: ' + errorMessage(credentialsResult.reason),
-    })
+async function loadCredentials() {
+  try {
+    await companiesApi.loadCredentials()
+  } catch (e) {
+    notifyError('Erro ao carregar credenciais', e)
   }
 }
 
+// reloadData lists the credentials and the companies again after a company
+// was added or edited.
 async function reloadData() {
   try {
-    await companiesApi.loadCredentials()
-    await loadCompanies()
-  } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar empresas: ' + errorMessage(err) })
+    await Promise.all([companiesApi.loadCredentials(), companiesApi.loadCompanies()])
+  } catch (e) {
+    notifyError('Erro ao carregar empresas', e)
   }
 }
 
@@ -216,18 +213,18 @@ async function assignCredential(cnpj: string) {
 
   const previousCredId = companies.value.find((company) => company.CNPJ === cnpj)?.CredentialID ?? ''
 
+  // assignCredential lists the companies again, which seeds the selects.
   try {
     await companiesApi.assignCredential(cnpj, credId)
-    $q.notify({ type: 'positive', message: 'Credencial atribuída com sucesso.' })
-    await loadCompanies()
-  } catch (err) {
+    notifySuccess('Credencial atribuída com sucesso.')
+  } catch (e) {
     selectedCredentials.value[cnpj] = previousCredId
-    $q.notify({ type: 'negative', message: 'Erro ao atribuir credencial: ' + errorMessage(err) })
+    notifyError('Erro ao atribuir credencial', e)
   }
 }
 
 onMounted(() => {
-  void loadInitial()
+  void loadCredentials()
 })
 
 </script>
