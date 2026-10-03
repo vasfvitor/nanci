@@ -108,6 +108,20 @@ export function formatCompetence(value: string | null | undefined): string {
   return match ? `${match[2]}/${match[1]}` : (value ?? '')
 }
 
+// workspaceContextLine names the workspace company and competência a
+// document page lists, as "Empresa · CNPJ · Competência MM/YYYY". It is ''
+// without a company, and an empty competência reads "Todas as competências".
+export function workspaceContextLine(
+  company: { Name: string; CNPJ: string } | null,
+  competence: string
+): string {
+  if (!company) return ''
+  const period = competence
+    ? `Competência ${formatCompetence(competence)}`
+    : 'Todas as competências'
+  return `${company.Name} · ${formatCpfCnpj(company.CNPJ)} · ${period}`
+}
+
 // formatTime prints a local HH:MM time, or fallback for empty/invalid values.
 export function formatTime(value: string | Date | null | undefined, fallback = '') {
   return parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? fallback

@@ -105,6 +105,16 @@ describe('useWorkspaceList', () => {
     expect(reload).toHaveBeenCalledWith({ company: true })
   })
 
+  it('names the workspace company and competência', async () => {
+    const { list } = mount()
+    expect(list.contextLine.value).toBe('Empresa Um · 11.111.111/0001-11 · Todas as competências')
+
+    useWorkspaceStore().cnpj = dois.CNPJ
+    useWorkspaceStore().competence = '2026-05'
+    await nextTick()
+    expect(list.contextLine.value).toBe('Empresa Dois · 22.222.222/0001-22 · Competência 05/2026')
+  })
+
   it('does not reload without a company', async () => {
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
     await useWorkspaceStore().loadCompanies()
@@ -113,6 +123,7 @@ describe('useWorkspaceList', () => {
 
     expect(reload).not.toHaveBeenCalled()
     expect(list.noCompanyLabel.value).toBe('Nenhuma empresa cadastrada. Cadastre uma em Empresas.')
+    expect(list.contextLine.value).toBe('')
   })
 
   it('says why there is no company', async () => {

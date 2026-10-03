@@ -79,6 +79,20 @@ describe('DocumentPageHeader', () => {
     expect(button(wrapper, 'Redefinir NF-e').attributes('disabled')).toBeDefined()
   })
 
+  it('names the workspace under the title when given', () => {
+    const wrapper = mountHeader({ contextLine: 'ACME · 12.345.678/0001-00 · Competência 09/2026' })
+
+    expect(wrapper.find('.text-body2').text()).toBe(
+      'ACME · 12.345.678/0001-00 · Competência 09/2026'
+    )
+  })
+
+  it('leaves the workspace line out when it is empty', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.find('.text-body2').exists()).toBe(false)
+  })
+
   it('shows the status line and the block banner', () => {
     const wrapper = mountHeader({
       statusLine: 'Última sincronização: nunca · NSU 0',

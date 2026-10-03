@@ -1,6 +1,7 @@
 import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { sameWorkspaceKey, useWorkspaceStore, type WorkspaceKey } from '@/stores/workspace'
+import { workspaceContextLine } from '@/utils/formatters'
 
 export type WorkspaceChange = {
   // company is true when the company changed since the rows were loaded, or
@@ -52,5 +53,10 @@ export function useWorkspaceList(options: WorkspaceListOptions) {
     return 'Nenhuma empresa cadastrada. Cadastre uma em Empresas.'
   })
 
-  return { cnpj, loaded, noCompanyLabel }
+  // contextLine names the company and competência under the page title.
+  const contextLine = computed(() =>
+    workspaceContextLine(workspace.selectedCompany, workspace.competence)
+  )
+
+  return { cnpj, loaded, noCompanyLabel, contextLine }
 }

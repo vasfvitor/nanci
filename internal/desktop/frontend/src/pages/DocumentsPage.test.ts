@@ -213,6 +213,9 @@ describe('DocumentsPage', () => {
       label: 'Produção',
       color: 'negative',
     })
+    expect(wrapper.getComponent({ name: 'DocumentPageHeader' }).props('contextLine')).toBe(
+      'ACME · 12.345.678/0001-00 · Todas as competências'
+    )
     expect(wrapper.text()).toContain('Última sincronização: nunca · NSU 25')
   })
 

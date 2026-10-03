@@ -12,6 +12,7 @@ import {
   normalizeText,
   parseDate,
   withViewed,
+  workspaceContextLine,
 } from './formatters'
 
 describe('formatters', () => {
@@ -108,6 +109,17 @@ describe('formatters', () => {
     expect(formatCompetence('')).toBe('')
     expect(formatCompetence(null)).toBe('')
     expect(formatCompetence('2026')).toBe('2026')
+  })
+
+  it('names the workspace company and competência', () => {
+    const company = { Name: 'Empresa Mock', CNPJ: '70860312000150' }
+    expect(workspaceContextLine(company, '2026-09')).toBe(
+      'Empresa Mock · 70.860.312/0001-50 · Competência 09/2026'
+    )
+    expect(workspaceContextLine(company, '')).toBe(
+      'Empresa Mock · 70.860.312/0001-50 · Todas as competências'
+    )
+    expect(workspaceContextLine(null, '2026-09')).toBe('')
   })
 
   it('formats local HH:MM times', () => {

@@ -3,6 +3,7 @@
     <DocumentPageHeader
       title="NF-e"
       :ambiente="ambiente"
+      :context-line="contextLine"
       :status-line="statusLine"
       :blocked-text="blockedText"
       :syncing="isSyncing"
@@ -383,7 +384,7 @@ function valoresItems(row: NFeRow): DetailItem[] {
 
 // The page lists the workspace company and competência. A new company also
 // reloads the status; a new competência only the list.
-const { cnpj, noCompanyLabel } = useWorkspaceList({
+const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   rowsFor: () => nfe.rowsFor.value,
   clear: ({ company }) => {
     nfe.clearRows()

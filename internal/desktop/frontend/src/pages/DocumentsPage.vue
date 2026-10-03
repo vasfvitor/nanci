@@ -3,6 +3,7 @@
     <DocumentPageHeader
       title="NFS-e"
       :ambiente="ambiente"
+      :context-line="contextLine"
       :status-line="statusLine"
       :syncing="isSyncing"
       :sync-disabled="!cnpj || isResetting"
@@ -233,7 +234,7 @@ function retencoesItems(row: DocumentRow): DetailItem[] {
 
 // The page lists the workspace company and competência, and searches again
 // when either changes.
-const { cnpj, noCompanyLabel } = useWorkspaceList({
+const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   rowsFor: () => nfse.rowsFor.value,
   clear: () => nfse.clearRows(),
   reload: () => search(),

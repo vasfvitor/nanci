@@ -29,6 +29,10 @@
       />
     </div>
 
+    <!-- The workspace is picked in the left drawer, which Quasar hides below
+         the md breakpoint, so the page always names it here. -->
+    <div v-if="contextLine" class="text-body2 q-mb-xs">{{ contextLine }}</div>
+
     <div v-if="statusLine" class="text-caption text-app-muted q-mb-sm">{{ statusLine }}</div>
 
     <q-banner
@@ -51,13 +55,14 @@ import { useQuasar } from 'quasar'
 import { badgeProps } from '@/utils/sefazDisplay'
 
 // DocumentPageHeader is the top of a document page: the title with the
-// ambiente badge, the sync and reset buttons, the status line and the banner
-// that explains a blocked sync. ambiente is null until the company is known;
+// ambiente badge, the sync and reset buttons, the workspace company and
+// competência, the status line and the banner that explains a blocked sync. ambiente is null until the company is known;
 // resetTitle explains what the reset does.
 withDefaults(
   defineProps<{
     title: string
     ambiente: { label: string; color: string } | null
+    contextLine?: string
     statusLine?: string
     blockedText?: string
     syncing: boolean
@@ -67,6 +72,7 @@ withDefaults(
     resetDisabled: boolean
   }>(),
   {
+    contextLine: '',
     statusLine: '',
     blockedText: '',
   }

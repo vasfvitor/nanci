@@ -165,7 +165,7 @@ nanci.exe cte reset --cnpj 12345678000199 --confirmar
 
 ## Aplicativo desktop
 
-O menu lateral ganha a entrada "CT-e", logo abaixo de "NF-e". A página lista a empresa e a competência escolhidas no menu lateral, numa única tabela, sem aba de pendências, com filtros de papel, modelo, situação, tomador e chave de NF-e, e os botões "Sincronizar CT-e", "Exportar" e "Redefinir CT-e"; este pede confirmação e faz o mesmo que `cte reset --confirmar`. Os eventos de cada documento abrem num diálogo. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade "Sincronização CT-e", o que separa os pedidos quando NFS-e, NF-e e CT-e sincronizam ao mesmo tempo.
+O menu lateral ganha a entrada "CT-e", logo abaixo de "NF-e". A página lista a empresa e a competência escolhidas no menu lateral, numa única tabela, sem aba de pendências, com filtros de papel, modelo, situação, tomador e chave de NF-e, e os botões "Sincronizar CT-e", "Exportar" e "Redefinir CT-e"; este pede confirmação e faz o mesmo que `cte reset --confirmar`. Sob o título, uma linha mostra a empresa, o CNPJ e a competência escolhidos no menu lateral, ou "Todas as competências", e continua visível quando a janela estreita esconde o menu. Os eventos de cada documento abrem num diálogo. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade "Sincronização CT-e", o que separa os pedidos quando NFS-e, NF-e e CT-e sincronizam ao mesmo tempo.
 
 ## Modelo de dados
 
