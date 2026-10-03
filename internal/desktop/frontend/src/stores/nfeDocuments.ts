@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
+import type { WorkspaceKey } from '@/stores/workspace'
 import { pruneSelection } from '@/utils/selection'
 
 export type NFeTab = 'notas' | 'pendencias'
@@ -34,6 +35,11 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
 
   const rows = ref<NFeRow[]>([])
   const selected = ref<NFeRow[]>([])
+  // rowsFor is the company and competência of the search that filled the
+  // rows, or null when no search did.
+  const rowsFor = shallowRef<WorkspaceKey | null>(null)
+  // searchSeq numbers the list searches; only the latest one fills the rows.
+  const searchSeq = shallowRef(0)
   // filterText narrows the listed rows on the page, without a new search.
   const filterText = ref('')
   const loading = shallowRef(false)
@@ -59,6 +65,14 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   function setRows(next: NFeRow[]) {
     rows.value = next
     selected.value = pruneSelection(next, selected.value)
+  }
+
+  // clearRows empties the result set and the selection, for a page that
+  // must not show rows of another company or competência.
+  function clearRows() {
+    rows.value = []
+    selected.value = []
+    rowsFor.value = null
   }
 
   // patchRow swaps the note with chave for its fresh row, or drops it when
@@ -88,6 +102,8 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     listInput,
     rows,
     selected,
+    rowsFor,
+    searchSeq,
     filterText,
     loading,
     exporting,
@@ -101,6 +117,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     manifestacaoInFlight,
     resettingCNPJ,
     setRows,
+    clearRows,
     patchRow,
     isChaveBusy,
   }

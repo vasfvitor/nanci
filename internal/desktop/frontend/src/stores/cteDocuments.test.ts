@@ -62,6 +62,19 @@ describe('cteDocuments store', () => {
     expect(store.selected).toEqual([freshB])
   })
 
+  it('clears the rows, the selection and their search key', () => {
+    const store = useCTeDocumentsStore()
+    store.setRows([cteRow('a')])
+    store.selected = [cteRow('a')]
+    store.rowsFor = { cnpj: '123', competence: '2026-05' }
+
+    store.clearRows()
+
+    expect(store.rows).toEqual([])
+    expect(store.selected).toEqual([])
+    expect(store.rowsFor).toBeNull()
+  })
+
   it('starts with an empty text filter and selection', () => {
     const store = useCTeDocumentsStore()
     expect(store.filterText).toBe('')

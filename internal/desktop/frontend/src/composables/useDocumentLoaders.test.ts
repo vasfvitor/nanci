@@ -1,8 +1,9 @@
 import { reactive } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { useDocumentLoaders } from './useDocumentLoaders'
+import type { WorkspaceKey } from '@/stores/workspace'
 
-type Input = { CNPJ: string; Code: string }
+type Input = { CNPJ: string; Competence: string; Code: string }
 type Row = { ChaveAcesso: string }
 type Status = { LastNSU: number }
 
@@ -15,13 +16,16 @@ function deferred<T>() {
 }
 
 // setup stands for a page store: the selected company in filter, the list
-// request in listInput and the rows, loading flag and status the loaders fill.
+// request in listInput and the rows, loading flag, search key and status the
+// loaders fill.
 function setup(withStatus = true) {
   const store = reactive({
     filter: { CNPJ: '123' },
-    listInput: { CNPJ: '123', Code: '' } as Input,
+    listInput: { CNPJ: '123', Competence: '2026-05', Code: '' } as Input,
     listError: '',
     loading: false,
+    rowsFor: null as WorkspaceKey | null,
+    searchSeq: 0,
     status: null as Status | null,
     rows: [] as Row[],
     setRows(next: Row[]) {
@@ -43,7 +47,7 @@ describe('useDocumentLoaders', () => {
     const { store, list, loaders } = setup()
 
     await expect(loaders.search()).resolves.toEqual([{ ChaveAcesso: 'a' }])
-    expect(list).toHaveBeenCalledWith({ CNPJ: '123', Code: '' })
+    expect(list).toHaveBeenCalledWith({ CNPJ: '123', Competence: '2026-05', Code: '' })
     expect(store.rows).toEqual([{ ChaveAcesso: 'a' }])
     expect(store.loading).toBe(false)
   })
@@ -54,7 +58,7 @@ describe('useDocumentLoaders', () => {
     store.listError = 'código inválido'
     await expect(loaders.search()).resolves.toEqual([])
     store.listError = ''
-    store.listInput = { CNPJ: '', Code: '' }
+    store.listInput = { CNPJ: '', Competence: '', Code: '' }
     await expect(loaders.search()).resolves.toEqual([])
 
     expect(list).not.toHaveBeenCalled()
@@ -73,6 +77,60 @@ describe('useDocumentLoaders', () => {
     await expect(searching).resolves.toEqual([{ ChaveAcesso: 'late' }])
     expect(store.rows).toEqual([])
     expect(store.loading).toBe(false)
+  })
+
+  it('drops a list from an earlier search of the same company', async () => {
+    const { store, list, loaders } = setup()
+    const earlier = deferred<Row[]>()
+    const later = deferred<Row[]>()
+    list.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(later.promise)
+
+    const first = loaders.search()
+    store.listInput = { CNPJ: '123', Competence: '2026-06', Code: '' }
+    const second = loaders.search()
+    later.resolve([{ ChaveAcesso: 'june' }])
+    await second
+    earlier.resolve([{ ChaveAcesso: 'may' }])
+
+    await expect(first).resolves.toEqual([{ ChaveAcesso: 'may' }])
+    expect(store.rows).toEqual([{ ChaveAcesso: 'june' }])
+    expect(store.rowsFor).toEqual({ cnpj: '123', competence: '2026-06' })
+  })
+
+  it('keeps loading until the latest search ends', async () => {
+    const { store, list, loaders } = setup()
+    const earlier = deferred<Row[]>()
+    const later = deferred<Row[]>()
+    list.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(later.promise)
+
+    const first = loaders.search()
+    const second = loaders.search()
+    earlier.resolve([{ ChaveAcesso: 'old' }])
+    await first
+    expect(store.loading).toBe(true)
+    expect(store.rows).toEqual([])
+
+    later.resolve([{ ChaveAcesso: 'new' }])
+    await second
+    expect(store.loading).toBe(false)
+    expect(store.rows).toEqual([{ ChaveAcesso: 'new' }])
+  })
+
+  it('records rowsFor', async () => {
+    const { store, list, loaders } = setup()
+    expect(store.rowsFor).toBeNull()
+
+    await loaders.search()
+    expect(store.rowsFor).toEqual({ cnpj: '123', competence: '2026-05' })
+
+    list.mockRejectedValue(new Error('boom'))
+    store.listInput = { CNPJ: '123', Competence: '', Code: '' }
+    await expect(loaders.search()).rejects.toThrow('boom')
+    expect(store.rowsFor).toEqual({ cnpj: '123', competence: '2026-05' })
+
+    list.mockResolvedValue([])
+    await loaders.search()
+    expect(store.rowsFor).toEqual({ cnpj: '123', competence: '' })
   })
 
   it('clears the loading flag when the list fails', async () => {

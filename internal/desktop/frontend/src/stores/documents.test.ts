@@ -67,6 +67,19 @@ describe('documents store', () => {
     expect(store.selected).toEqual([freshA])
   })
 
+  it('clears the rows, the selection and their search key', () => {
+    const store = useDocumentsStore()
+    store.setRows([documentRow('a')])
+    store.selected = [documentRow('a')]
+    store.rowsFor = { cnpj: '123', competence: '2026-05' }
+
+    store.clearRows()
+
+    expect(store.documents).toEqual([])
+    expect(store.selected).toEqual([])
+    expect(store.rowsFor).toBeNull()
+  })
+
   it('starts with an empty text filter and no action in flight', () => {
     const store = useDocumentsStore()
     expect(store.filterText).toBe('')

@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
+import type { WorkspaceKey } from '@/stores/workspace'
 import { pruneSelection } from '@/utils/selection'
 
 // compactCode keeps the letters and digits of a typed CNPJ or access key,
@@ -54,6 +55,11 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
 
   const rows = ref<CTeRow[]>([])
   const selected = ref<CTeRow[]>([])
+  // rowsFor is the company and competência of the search that filled the
+  // rows, or null when no search did.
+  const rowsFor = shallowRef<WorkspaceKey | null>(null)
+  // searchSeq numbers the list searches; only the latest one fills the rows.
+  const searchSeq = shallowRef(0)
   // filterText narrows the listed rows on the page, without a new search.
   const filterText = ref('')
   const loading = shallowRef(false)
@@ -71,12 +77,22 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     selected.value = pruneSelection(next, selected.value)
   }
 
+  // clearRows empties the result set and the selection, for a page that
+  // must not show rows of another company or competência.
+  function clearRows() {
+    rows.value = []
+    selected.value = []
+    rowsFor.value = null
+  }
+
   return {
     filter,
     listInput,
     listError,
     rows,
     selected,
+    rowsFor,
+    searchSeq,
     filterText,
     loading,
     exporting,
@@ -84,5 +100,6 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     status,
     resettingCNPJ,
     setRows,
+    clearRows,
   }
 })
