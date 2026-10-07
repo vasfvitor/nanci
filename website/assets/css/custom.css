@@ -214,6 +214,9 @@ nav a[href$="/nanci/"] span {
    the cell borders, so wrapped rows on narrow screens stay ruled. */
 .nc-chave {
   margin: 5rem 0 0;
+  opacity: 0.28;
+  user-select: none;
+  pointer-events: none;
 }
 
 .nc-chave-fields {
@@ -258,13 +261,6 @@ nav a[href$="/nanci/"] span {
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.nc-chave figcaption {
-  max-width: 44rem;
-  margin-top: 1rem;
-  font-size: 1rem;
-  line-height: 1.6;
 }
 
 /* Document boxes: one form, three adjacent fields sharing rules. */
@@ -372,4 +368,102 @@ nav a[href$="/nanci/"] span {
 .dark .highlight .chroma,
 .dark .hextra-code-block pre {
   background-color: #08111f;
+}
+
+/* The empty DANFE behind the hero. It sits under the content, fades out
+   toward the bottom and the sides, and runs into the chave row, so the
+   chave reads as the last line of the same form. */
+.nc-top {
+  position: relative;
+  isolation: isolate;
+}
+
+.nc-top > .nc-hero,
+.nc-top > .nc-chave {
+  position: relative;
+  z-index: 1;
+}
+
+.nc-sheet {
+  position: absolute;
+  z-index: 0;
+  inset: -1.5rem 0 0;
+  overflow: hidden;
+  opacity: 0.55;
+  user-select: none;
+  pointer-events: none;
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, #000 10%, #000 62%, transparent 92%),
+    linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0, #000 10%, #000 62%, transparent 92%),
+    linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%);
+  mask-composite: intersect;
+}
+
+@media (min-width: 1280px) {
+  .nc-sheet {
+    left: -6rem;
+    right: -6rem;
+  }
+}
+
+.nc-sheet-row {
+  display: flex;
+  height: 2.75rem;
+  border-top: 1px solid var(--nc-rule);
+}
+
+.nc-sheet-row span {
+  flex-basis: 0;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border-left: 1px solid var(--nc-rule);
+  overflow: hidden;
+  color: color-mix(in srgb, var(--nc-caption) 45%, transparent);
+  font-size: 0.625rem;
+  font-stretch: 75%;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.nc-sheet-row span:first-child {
+  border-left: 0;
+}
+
+.nc-sheet-title {
+  padding: 1rem 0 0.25rem;
+  color: color-mix(in srgb, var(--nc-caption) 60%, transparent);
+  font-size: 0.6875rem;
+  font-stretch: 75%;
+  font-weight: 700;
+}
+
+/* Text over the sheet gets a halo in the page color, as if written in a
+   cleared field, so captions behind it never compete. */
+.nc-top .nc-display,
+.nc-top .nc-lede,
+.nc-top .nc-fineprint {
+  text-shadow:
+    0 0 2px var(--nc-paper),
+    0 0 6px var(--nc-paper),
+    0 0 12px var(--nc-paper);
+}
+
+.nc-top .nc-btn {
+  background-color: var(--nc-paper);
+}
+
+.nc-top .nc-btn-primary {
+  background-color: var(--nc-blue);
+}
+
+/* On phones the hero text covers most of the sheet; keep only the rules. */
+@media (max-width: 639px) {
+  .nc-sheet-row span,
+  .nc-sheet-title {
+    color: transparent;
+  }
 }

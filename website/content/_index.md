@@ -5,6 +5,8 @@ toc: false
 ---
 
 <div class="nc-home">
+<div class="nc-top">
+{{< danfe-sheet >}}
 <section class="nc-hero">
 <h1 class="nc-display">Documentos fiscais direto do governo para o seu computador.</h1>
 <div>
@@ -19,8 +21,8 @@ toc: false
 {{< theme-image light="/img/screenshots/nfe-light.png" dark="/img/screenshots/nfe-dark.png" alt="Página de NF-e do Nanci, com a lista de notas recebidas" width="1280" height="800" >}}
 </div>
 </section>
-<figure class="nc-chave">
-<ol class="nc-chave-fields" aria-label="Chave de acesso de exemplo, campo por campo">
+<figure class="nc-chave" aria-hidden="true">
+<ol class="nc-chave-fields">
 <li><span class="nc-digits">35</span><span class="nc-cap">UF</span></li>
 <li><span class="nc-digits">2609</span><span class="nc-cap">Ano e mês</span></li>
 <li><span class="nc-digits">12345678000195</span><span class="nc-cap">CNPJ do emitente</span></li>
@@ -31,8 +33,8 @@ toc: false
 <li><span class="nc-digits">10000123</span><span class="nc-cap">Código numérico</span></li>
 <li><span class="nc-digits">7</span><span class="nc-cap">DV</span></li>
 </ol>
-<figcaption>Toda NF-e e todo CT-e têm uma chave de acesso de 44 dígitos; a da NFS-e tem 50. O Nanci guarda cada documento pela chave, com o XML original como o governo entregou, e é por ela que você busca, liga um CT-e às notas que ele transporta e exporta.</figcaption>
 </figure>
+</div>
 <section class="nc-docs" aria-label="Documentos que o Nanci baixa">
 <article class="nc-box">
 <h2 class="nc-box-title"><a href="docs/nfse/">NFS-e</a></h2>

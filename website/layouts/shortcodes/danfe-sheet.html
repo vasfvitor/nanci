@@ -1,0 +1,36 @@
+{{- /*
+  An empty DANFE, used as the home page background: ruled boxes and field
+  captions, no values. Each row lists its cells as "caption|width".
+*/ -}}
+{{- $sheet := slice
+  (dict "rows" (slice
+    (slice "Natureza da operação|6" "Protocolo de autorização de uso|4")
+    (slice "Inscrição estadual|3" "Inscrição estadual do substituto tributário|4" "CNPJ|3")
+  ))
+  (dict "title" "Destinatário / remetente" "rows" (slice
+    (slice "Nome / razão social|6" "CNPJ / CPF|3" "Data da emissão|2")
+    (slice "Endereço|5" "Bairro / distrito|3" "CEP|2" "Data da saída / entrada|2")
+    (slice "Município|4" "UF|1" "Fone / fax|2" "Inscrição estadual|3" "Hora da saída|2")
+  ))
+  (dict "title" "Cálculo do imposto" "rows" (slice
+    (slice "Base de cálculo do ICMS|2" "Valor do ICMS|2" "Base de cálculo do ICMS ST|2" "Valor do ICMS ST|2" "Valor total dos produtos|2")
+    (slice "Valor do frete|2" "Valor do seguro|2" "Desconto|2" "Outras despesas|2" "Valor do IPI|2" "Valor total da nota|2")
+  ))
+  (dict "title" "Transportador / volumes transportados" "rows" (slice
+    (slice "Razão social|5" "Frete por conta|2" "Código ANTT|2" "Placa do veículo|2" "UF|1" "CNPJ / CPF|3")
+    (slice "Quantidade|2" "Espécie|2" "Marca|2" "Numeração|2" "Peso bruto|2" "Peso líquido|2")
+  ))
+-}}
+<div class="nc-sheet" aria-hidden="true">
+  {{- range $sheet }}
+    {{- with .title }}<div class="nc-sheet-title">{{ . }}</div>{{ end }}
+    {{- range .rows }}
+      <div class="nc-sheet-row">
+        {{- range . }}
+          {{- $parts := split . "|" }}
+          <span style="flex-grow: {{ index $parts 1 }}">{{ index $parts 0 }}</span>
+        {{- end }}
+      </div>
+    {{- end }}
+  {{- end }}
+</div>
