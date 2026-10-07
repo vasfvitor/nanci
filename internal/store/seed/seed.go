@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -20,7 +21,7 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 		Environment:  dfe.EnvironmentRestricted,
 	}
 
-	credential := nfse.Credential{
+	credential := credential.Credential{
 		ID:                "dev-credential-70860312000150",
 		Label:             "Certificado Mock 70860312000150",
 		CertPath:          "devdata/certs/cert_a1_mock_70860312000150.pfx",
@@ -40,7 +41,7 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func UpsertCredential(ctx context.Context, db *sql.DB, c nfse.Credential) error {
+func UpsertCredential(ctx context.Context, db *sql.DB, c credential.Credential) error {
 	query := `
 		INSERT INTO credentials (
 			id, label, cert_path, owner_cnpj, owner_cnpj_root,

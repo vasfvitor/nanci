@@ -237,7 +237,7 @@ func applyEvent(t *testing.T, repo *sync.Store, event nfse.Event, companyID dfe.
 	}
 }
 
-func assertCompanyCredential(t *testing.T, company *company.Company, credential *nfse.Credential, expectedEnv dfe.Environment) {
+func assertCompanyCredential(t *testing.T, company *company.Company, credential *credential.Credential, expectedEnv dfe.Environment) {
 	t.Helper()
 	if company.CredentialID != credential.ID ||
 		company.CredentialLabel != credential.Label ||

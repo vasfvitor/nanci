@@ -24,7 +24,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
@@ -71,7 +70,7 @@ func newNFeTestEnv(t *testing.T) *nfeTestEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cred := &nfse.Credential{ID: "cred-1", Label: "Mock A1", CertPath: certPath}
+	cred := &credential.Credential{ID: "cred-1", Label: "Mock A1", CertPath: certPath}
 	if err := credential.NewStore(db).CreateCredential(ctx, cred); err != nil {
 		t.Fatal(err)
 	}

@@ -29,7 +29,7 @@ type testHelper struct {
 	db         *sql.DB
 	store      *Store
 	company    *company.Company
-	credential *nfse.Credential
+	credential *credential.Credential
 }
 
 func newTestHelper(t *testing.T) *testHelper {

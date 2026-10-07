@@ -1,4 +1,4 @@
-package nfse
+package credential
 
 import (
 	"time"

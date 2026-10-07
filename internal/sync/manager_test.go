@@ -17,7 +17,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
@@ -42,10 +41,10 @@ func (s *captureXMLStore) Store(hash string, data []byte) error {
 func (s *captureXMLStore) Get(string) ([]byte, error) { return nil, nil }
 
 type syncRunnerStub struct {
-	sync func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error
+	sync func(context.Context, *company.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error
 }
 
-func (s syncRunnerStub) Sync(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
+func (s syncRunnerStub) Sync(ctx context.Context, company *company.Company, credential *credential.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 	return s.sync(ctx, company, credential, consultationBasis, mode, progress)
 }
 
@@ -71,7 +70,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cred := &nfse.Credential{
+	cred := &credential.Credential{
 		ID:       "credential-1",
 		Label:    "Credential",
 		CertPath: certPath,
@@ -127,7 +126,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		receivedStore = nfseSrc.xml
 		store := nfseSrc.xml
 		return syncRunnerStub{
-			sync: func(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
+			sync: func(ctx context.Context, company *company.Company, credential *credential.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 				if progress != nil {
 					progress(syncstate.ProgressEvent{DocsFound: 1})
 				}
@@ -203,7 +202,7 @@ func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *
 	if err := os.WriteFile(certPath, []byte("stub"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := credentialStore.CreateCredential(context.Background(), &nfse.Credential{ID: "credential-1", Label: "Credential", CertPath: certPath}); err != nil {
+	if err := credentialStore.CreateCredential(context.Background(), &credential.Credential{ID: "credential-1", Label: "Credential", CertPath: certPath}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -275,7 +274,7 @@ func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
 	t.Cleanup(func() { newSEFAZClient = originalNewSEFAZClient })
 	newSEFAZClient = func(sefaz.ClientConfig) (sefazFetcher, error) { return &scriptedFetcher{}, nil }
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *company.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}
@@ -308,7 +307,7 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 	release := make(chan struct{})
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
 		return syncRunnerStub{
-			sync: func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+			sync: func(context.Context, *company.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 				close(started)
 				<-release
 				return nil
@@ -337,7 +336,7 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 
 	// Once the first pull ends, the pair is free again.
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *company.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}

@@ -7,29 +7,28 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 type mockStore struct {
 	createErr    error
-	listCreds    []nfse.Credential
+	listCreds    []Credential
 	listErr      error
-	credByID     *nfse.Credential
+	credByID     *Credential
 	credByIDErr  error
 	updateErr    error
-	createdCreds []*nfse.Credential
+	createdCreds []*Credential
 }
 
-func (m *mockStore) CreateCredential(ctx context.Context, c *nfse.Credential) error {
+func (m *mockStore) CreateCredential(ctx context.Context, c *Credential) error {
 	m.createdCreds = append(m.createdCreds, c)
 	return m.createErr
 }
 
-func (m *mockStore) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
+func (m *mockStore) ListCredentials(ctx context.Context) ([]Credential, error) {
 	return m.listCreds, m.listErr
 }
 
-func (m *mockStore) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error) {
+func (m *mockStore) CredentialByID(ctx context.Context, id dfe.CredentialID) (*Credential, error) {
 	if m.credByIDErr != nil {
 		return nil, m.credByIDErr
 	}
@@ -39,7 +38,7 @@ func (m *mockStore) CredentialByID(ctx context.Context, id dfe.CredentialID) (*n
 	return m.credByID, nil
 }
 
-func (m *mockStore) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
+func (m *mockStore) UpdateCredential(ctx context.Context, c *Credential) error {
 	return m.updateErr
 }
 
@@ -86,7 +85,7 @@ func TestManager_UpdateCredentialPath(t *testing.T) {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
 
-	cred := &nfse.Credential{
+	cred := &Credential{
 		ID:       "cred-123",
 		Label:    "Test",
 		CertPath: "/old/path",
@@ -112,7 +111,7 @@ func TestManager_UpdateCredentialPath(t *testing.T) {
 }
 
 func TestManager_UpdateCredentialData(t *testing.T) {
-	cred := &nfse.Credential{
+	cred := &Credential{
 		ID:    "cred-123",
 		Label: "Old Label",
 	}
@@ -138,7 +137,7 @@ func TestManager_UpdateCredentialData(t *testing.T) {
 
 func TestManager_ListCredentials(t *testing.T) {
 	mock := &mockStore{
-		listCreds: []nfse.Credential{{ID: "1"}, {ID: "2"}},
+		listCreds: []Credential{{ID: "1"}, {ID: "2"}},
 	}
 	m := NewManager(mock)
 

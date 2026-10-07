@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
 
@@ -25,7 +24,7 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func (r *Store) CreateCredential(ctx context.Context, c *nfse.Credential) error {
+func (r *Store) CreateCredential(ctx context.Context, c *Credential) error {
 	now := time.Now().UTC()
 	nowRFC3339 := now.Format(time.RFC3339)
 
@@ -52,7 +51,7 @@ func (r *Store) CreateCredential(ctx context.Context, c *nfse.Credential) error 
 	return nil
 }
 
-func (r *Store) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error) {
+func (r *Store) CredentialByID(ctx context.Context, id dfe.CredentialID) (*Credential, error) {
 	row, err := r.queries.GetCredential(ctx, string(id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -61,7 +60,7 @@ func (r *Store) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.
 		return nil, err
 	}
 
-	c := &nfse.Credential{
+	c := &Credential{
 		ID:                dfe.CredentialID(row.ID),
 		Label:             row.Label,
 		CertPath:          row.CertPath,
@@ -79,15 +78,15 @@ func (r *Store) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.
 	return c, nil
 }
 
-func (r *Store) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
+func (r *Store) ListCredentials(ctx context.Context) ([]Credential, error) {
 	rows, err := r.queries.ListCredentials(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	creds := make([]nfse.Credential, 0, len(rows))
+	creds := make([]Credential, 0, len(rows))
 	for _, row := range rows {
-		c := nfse.Credential{
+		c := Credential{
 			ID:                dfe.CredentialID(row.ID),
 			Label:             row.Label,
 			CertPath:          row.CertPath,
@@ -111,7 +110,7 @@ func (r *Store) DeleteCredential(ctx context.Context, id dfe.CredentialID) error
 	return r.queries.DeleteCredential(ctx, string(id))
 }
 
-func (r *Store) UpdateCredential(ctx context.Context, c *nfse.Credential) error {
+func (r *Store) UpdateCredential(ctx context.Context, c *Credential) error {
 	now := time.Now().UTC()
 	err := r.queries.UpdateCredential(ctx, sqlgen.UpdateCredentialParams{
 		ID:                string(c.ID),

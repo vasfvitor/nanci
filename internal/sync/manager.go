@@ -11,12 +11,12 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/uf"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -64,8 +64,8 @@ type companyProvider interface {
 }
 
 type credentialProvider interface {
-	CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error)
-	UpdateCredential(ctx context.Context, c *nfse.Credential) error
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*credential.Credential, error)
+	UpdateCredential(ctx context.Context, c *credential.Credential) error
 }
 
 type documentProvider interface {
@@ -78,7 +78,7 @@ type xmlStore interface {
 }
 
 type syncRunner interface {
-	Sync(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error
+	Sync(ctx context.Context, company *company.Company, credential *credential.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error
 }
 
 var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {

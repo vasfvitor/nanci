@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 )
 
@@ -27,8 +27,8 @@ func OpenTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func TestCredential(id string) *nfse.Credential {
-	return &nfse.Credential{
+func TestCredential(id string) *credential.Credential {
+	return &credential.Credential{
 		ID:            dfe.CredentialID(id),
 		Label:         "Certificate",
 		CertPath:      `C:\certs\company.pfx`,
@@ -37,7 +37,7 @@ func TestCredential(id string) *nfse.Credential {
 	}
 }
 
-func TestCompany(id, cnpj string, env dfe.Environment, credential *nfse.Credential) *company.Company {
+func TestCompany(id, cnpj string, env dfe.Environment, credential *credential.Credential) *company.Company {
 	return &company.Company{
 		ID:                 dfe.CompanyID(id),
 		CNPJ:               cnpj,

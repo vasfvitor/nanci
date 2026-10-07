@@ -9,17 +9,17 @@ import (
 	"time"
 
 	companypkg "github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // LoadedCredential is a company's certificate, loaded and checked against
 // the company it consults for.
 type LoadedCredential struct {
-	Credential *nfse.Credential
+	Credential *credential.Credential
 	TLS        tls.Certificate // PrivateKey is a crypto.Signer (RSA for ICP-Brasil A1)
 	Basis      syncstate.ConsultationBasis
 }
@@ -105,7 +105,7 @@ func validateCertificatePath(path string) error {
 	return nil
 }
 
-func validateConsultationCompatibility(company *companypkg.Company, credential *nfse.Credential) (syncstate.ConsultationBasis, error) {
+func validateConsultationCompatibility(company *companypkg.Company, credential *credential.Credential) (syncstate.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
 		return "", companypkg.ErrCredentialNoOwner
 	}

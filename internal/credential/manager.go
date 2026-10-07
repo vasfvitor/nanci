@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // AddCredentialInput carries the data required to register a reusable credential.
@@ -29,10 +28,10 @@ type UpdateCredentialDataInput struct {
 
 // storeInterface defines the DB operations required by the Manager.
 type storeInterface interface {
-	CreateCredential(ctx context.Context, c *nfse.Credential) error
-	ListCredentials(ctx context.Context) ([]nfse.Credential, error)
-	CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error)
-	UpdateCredential(ctx context.Context, c *nfse.Credential) error
+	CreateCredential(ctx context.Context, c *Credential) error
+	ListCredentials(ctx context.Context) ([]Credential, error)
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*Credential, error)
+	UpdateCredential(ctx context.Context, c *Credential) error
 }
 
 // Manager owns the credential use cases.
@@ -51,7 +50,7 @@ func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) e
 	if err := validateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
-	credential := &nfse.Credential{
+	credential := &Credential{
 		ID:       dfe.CredentialID(dfe.GenerateID()),
 		Label:    input.Label,
 		CertPath: input.CertPath,
@@ -67,7 +66,7 @@ func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) e
 }
 
 // ListCredentials returns all reusable credentials.
-func (m *Manager) ListCredentials(ctx context.Context) ([]nfse.Credential, error) {
+func (m *Manager) ListCredentials(ctx context.Context) ([]Credential, error) {
 	credentials, err := m.store.ListCredentials(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar credenciais: %w", err)

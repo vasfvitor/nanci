@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -35,7 +35,7 @@ func NewSyncService(syncRepo *Store, source Source, log *slog.Logger) *SyncServi
 }
 
 // Sync starts the synchronization process for a specific company.
-func (s *SyncService) Sync(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
+func (s *SyncService) Sync(ctx context.Context, company *company.Company, credential *credential.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 	if mode == "" {
 		mode = syncstate.SyncModeNormal
 	}

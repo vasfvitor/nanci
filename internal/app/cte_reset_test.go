@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -20,7 +20,7 @@ func TestCTeReset(t *testing.T) {
 	ctx := context.Background()
 
 	// A second company, the remetente of procte.xml, sees it too.
-	other := storetest.TestCompany("comp-2", cteRemetenteCNPJ, dfe.EnvironmentProduction, &nfse.Credential{ID: "cred-1"})
+	other := storetest.TestCompany("comp-2", cteRemetenteCNPJ, dfe.EnvironmentProduction, &credential.Credential{ID: "cred-1"})
 	other.Name = "Remetente"
 	if err := company.NewStore(env.db).CreateCompany(ctx, other); err != nil {
 		t.Fatal(err)

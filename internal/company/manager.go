@@ -12,7 +12,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/uf"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -31,8 +30,8 @@ type storeInterface interface {
 }
 
 type credentialProvider interface {
-	CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error)
-	CreateCredential(ctx context.Context, cred *nfse.Credential) error
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*credential.Credential, error)
+	CreateCredential(ctx context.Context, cred *credential.Credential) error
 }
 
 type syncProvider interface {
@@ -173,7 +172,7 @@ func (m *Manager) AssignCredentialToCompany(ctx context.Context, input AssignCre
 // resolveCredentialForCompany resolves the credential that should be
 // associated with a new company, either by ID or by creating a fresh
 // one from the cert path.
-func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
+func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*credential.Credential, error) {
 	if input.CredentialID != "" {
 		return lookupCredentialByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
 	}
@@ -182,7 +181,7 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 		return nil, err
 	}
 
-	credential := &nfse.Credential{
+	credential := &credential.Credential{
 		ID:       dfe.CredentialID(dfe.GenerateID()),
 		Label:    input.CredentialLabel,
 		CertPath: input.CertPath,
@@ -327,7 +326,7 @@ func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (
 	return company, nil
 }
 
-func lookupCredentialByID(ctx context.Context, repo credentialProvider, id dfe.CredentialID) (*nfse.Credential, error) {
+func lookupCredentialByID(ctx context.Context, repo credentialProvider, id dfe.CredentialID) (*credential.Credential, error) {
 	cred, err := repo.CredentialByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, credential.ErrCredentialNotFound) {

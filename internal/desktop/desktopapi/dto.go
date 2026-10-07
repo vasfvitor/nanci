@@ -5,6 +5,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -264,7 +265,7 @@ func CompanySummaries(companies []company.Company) []CompanySummary {
 	return out
 }
 
-func CredentialSummaries(credentials []nfse.Credential) []CredentialSummary {
+func CredentialSummaries(credentials []credential.Credential) []CredentialSummary {
 	out := make([]CredentialSummary, len(credentials))
 	for i, credential := range credentials {
 		out[i] = CredentialSummary{

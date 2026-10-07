@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
@@ -17,7 +16,7 @@ func TestStore(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now().UTC()
-	cred := &nfse.Credential{
+	cred := &credential.Credential{
 		ID:                "cred-1",
 		Label:             "My Credential",
 		CertPath:          "/path/to/cert",

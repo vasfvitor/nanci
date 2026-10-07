@@ -8,8 +8,8 @@ import (
 	"time"
 
 	companypkg "github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -83,7 +83,7 @@ func TestPullAsksPasswordForSourceSync(t *testing.T) {
 	passwords := &recordingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *companypkg.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *companypkg.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -36,10 +36,12 @@ func (f *fakeStore) AssignCredential(ctx context.Context, companyID dfe.CompanyI
 
 type fakeCred struct{}
 
-func (f *fakeCred) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error) {
-	return &nfse.Credential{ID: id}, nil
+func (f *fakeCred) CredentialByID(ctx context.Context, id dfe.CredentialID) (*credential.Credential, error) {
+	return &credential.Credential{ID: id}, nil
 }
-func (f *fakeCred) CreateCredential(ctx context.Context, cred *nfse.Credential) error { return nil }
+func (f *fakeCred) CreateCredential(ctx context.Context, cred *credential.Credential) error {
+	return nil
+}
 
 // fakeSync reports a sync cursor for the sources in cursors; an empty
 // source asks for any cursor.
