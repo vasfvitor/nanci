@@ -18,7 +18,9 @@
 
         <q-select
           v-model="form.Environment"
-          :options="['producao', 'producao_restrita']"
+          :options="environmentOptions"
+          emit-value
+          map-options
           label="Ambiente"
           outlined
           dense
@@ -81,6 +83,7 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { CompanySummary, SyncStartPolicy } from '@/types/desktop'
+import { environmentOptions } from '@/utils/nfseDisplay'
 import { UF_SIGLAS } from '@/utils/uf'
 
 const props = defineProps<{

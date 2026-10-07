@@ -166,7 +166,9 @@ func TestCompanyUF_AddUpdateList(t *testing.T) {
 	if got := listedUF(); got != "RJ" {
 		t.Errorf("UF after update = %q, want RJ", got)
 	}
-	if !strings.Contains(out.String(), "Acme") || !strings.Contains(out.String(), "producao_restrita") {
+	// company add without --env defaults to producao.
+	if !strings.Contains(out.String(), "Acme") || !strings.Contains(out.String(), "producao") ||
+		strings.Contains(out.String(), "producao_restrita") {
 		t.Errorf("update changed fields it was not asked to: %q", out.String())
 	}
 

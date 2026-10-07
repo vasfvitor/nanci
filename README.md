@@ -37,7 +37,7 @@
 
 1. Baixe `nanci-desktop-windows-amd64-<versão>-installer.exe` da [última versão](https://github.com/vasfvitor/nanci/releases/latest).
 2. Execute. O instalador é por usuário e não pede administrador.
-3. Em **Empresas → Adicionar**, informe o CNPJ, o certificado, a UF e escolha o ambiente `producao`.
+3. Em **Empresas → Adicionar**, informe o CNPJ, o certificado e a UF.
 
 O executável não tem assinatura de código; confira o SHA-256 com o `nanci-checksums.txt` da versão. Passo a passo em [Instalação e primeiro uso](https://vasfvitor.github.io/nanci/docs/instalacao/).
 
@@ -46,7 +46,7 @@ O executável não tem assinatura de código; confira o SHA-256 com o `nanci-che
 O instalador traz só o desktop. O CLI é compilado a partir do código (`go build -o nanci.exe ./cmd/nanci`) e usa o mesmo banco.
 
 ```bash
-nanci company add --cnpj 12345678000199 --name "Minha Empresa" --cert empresa.pfx --env producao --uf SP
+nanci company add --cnpj 12345678000199 --name "Minha Empresa" --cert empresa.pfx --uf SP
 
 nanci pull --cnpj 12345678000199          # NFS-e
 nanci nfe pull --cnpj 12345678000199      # NF-e

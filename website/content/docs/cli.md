@@ -21,8 +21,8 @@ Todos os comandos têm ajuda: `nanci --help`, `nanci nfe --help`, `nanci nfe lis
 ## Primeiros passos
 
 ```bash
-# Cadastrar a empresa em produção, com o certificado
-nanci company add --cnpj 12345678000199 --name "Minha Empresa" --cert C:\certs\empresa.pfx --env producao --uf SP
+# Cadastrar a empresa com o certificado
+nanci company add --cnpj 12345678000199 --name "Minha Empresa" --cert C:\certs\empresa.pfx --uf SP
 
 # Baixar NFS-e, NF-e e CT-e
 nanci pull --cnpj 12345678000199
@@ -33,9 +33,7 @@ nanci cte pull --cnpj 12345678000199
 nanci export xlsx --cnpj 12345678000199 --competencia 2026-09 --out setembro.xlsx
 ```
 
-{{< callout type="warning" >}}
-Sem `--env producao`, a empresa é cadastrada em `producao_restrita`, o ambiente de testes do governo, e nenhuma nota real aparece. Para trocar depois: `nanci company update --cnpj 12345678000199 --env producao`.
-{{< /callout >}}
+A empresa é cadastrada em `producao`. Para usar o ambiente de testes do governo, passe `--env producao_restrita` ou troque depois com `nanci company update --cnpj 12345678000199 --env producao_restrita`.
 
 ## Senha do certificado
 
@@ -60,7 +58,7 @@ Uma credencial é um certificado `.pfx`/`.p12` cadastrado; várias empresas pode
 
 | Comando | O que faz |
 |---|---|
-| `company add` | Cadastra uma empresa. Obrigatórios: `--cnpj`/`-c` e `--name`/`-n`. Certificado: `--cert`/`-p` (cria uma credencial, com rótulo opcional em `--credential-label`) ou `--credential-id` (usa uma existente). `--env`/`-e`: `producao` ou `producao_restrita` (padrão). `--uf`: UF, exigida para NF-e e CT-e. |
+| `company add` | Cadastra uma empresa. Obrigatórios: `--cnpj`/`-c` e `--name`/`-n`. Certificado: `--cert`/`-p` (cria uma credencial, com rótulo opcional em `--credential-label`) ou `--credential-id` (usa uma existente). `--env`/`-e`: `producao` (padrão) ou `producao_restrita` (testes). `--uf`: UF, exigida para NF-e e CT-e. |
 | `company update` | Muda `--name`, `--env` ou `--uf` (vazio remove) da empresa `--cnpj`. |
 | `company list` | Lista as empresas. |
 | `company assign-credential` | Liga a credencial `--credential-id` à empresa `--cnpj`. |

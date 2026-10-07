@@ -28,7 +28,7 @@ Veja também [Solução de problemas](../troubleshooting/#aviso-do-smartscreen-o
 1. Abra o Nanci. A tela inicial é **Empresas**.
 2. Clique em **Adicionar** e preencha o CNPJ e o nome.
 3. Na parte da credencial, escolha **Criar nova credencial**, dê um rótulo e informe o caminho do arquivo `.pfx` ou `.p12`. Se você já cadastrou o certificado na tela **Credenciais**, escolha **Usar credencial existente**.
-4. Em **Ambiente da Empresa**, escolha `producao` para baixar documentos reais. O padrão é `producao_restrita`, o ambiente de testes do governo, onde notas reais não aparecem.
+4. Em **Ambiente da Empresa**, deixe **Produção** para baixar documentos reais. **Produção restrita** é o ambiente de testes do governo, onde notas reais não aparecem.
 5. Informe a **UF** da empresa se for baixar NF-e ou CT-e. A SEFAZ exige a UF na consulta.
 6. Escolha a política de importação inicial da NFS-e: a partir de hoje, últimos 12 meses, últimos 5 anos, a partir de uma data ou todo o histórico. NF-e e CT-e ignoram essa escolha, porque a SEFAZ só guarda os documentos por cerca de 3 meses.
 

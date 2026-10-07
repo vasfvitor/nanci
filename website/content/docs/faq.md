@@ -37,7 +37,7 @@ A SEFAZ permite poucas consultas e bloqueia por uma hora quem consulta demais. O
 - **Produção** (`producao`): o ambiente oficial. Os documentos têm validade fiscal.
 - **Produção Restrita** (`producao_restrita`): o ambiente de testes do governo (homologação). Os documentos não têm valor fiscal.
 
-Empresas novas são cadastradas em Produção Restrita. Para baixar documentos reais, mude para Produção em **Empresas → Editar**.
+Empresas novas são cadastradas em Produção. O ambiente pode ser trocado em **Empresas → Editar**.
 
 ## Posso usar certificado A3 (token ou cartão)?
 

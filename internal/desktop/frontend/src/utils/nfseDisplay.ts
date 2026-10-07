@@ -102,6 +102,12 @@ export function nfseStateBadges(
   ]
 }
 
+// environmentOptions feeds the company ambiente select.
+export const environmentOptions = [
+  { label: 'Produção', value: 'producao' },
+  { label: 'Produção restrita (testes)', value: 'producao_restrita' },
+]
+
 // nfseAmbiente is the ambiente badge of a company: produção takes the color
 // of SEFAZ tpAmb 1, produção restrita the color of tpAmb 2.
 export function nfseAmbiente(environment: string) {

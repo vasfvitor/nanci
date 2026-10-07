@@ -16,7 +16,9 @@
         <q-input v-model="form.Name" label="Nome / Razão Social" outlined dense />
         <q-select
           v-model="form.Environment"
-          :options="['producao', 'producao_restrita']"
+          :options="environmentOptions"
+          emit-value
+          map-options
           label="Ambiente da Empresa"
           outlined
           dense
@@ -105,6 +107,7 @@ import { computed, ref, watch } from 'vue'
 import { date, useQuasar } from 'quasar'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
+import { environmentOptions } from '@/utils/nfseDisplay'
 import { UF_SIGLAS } from '@/utils/uf'
 
 const props = defineProps<{
@@ -131,7 +134,7 @@ const form = ref({
   CredentialID: '',
   CredentialLabel: '',
   CertPath: '',
-  Environment: 'producao_restrita',
+  Environment: 'producao',
   // q-select sets null when cleared.
   UF: '' as string | null,
 })
@@ -239,7 +242,7 @@ function resetForm() {
     CredentialID: credentialOptions.value[0]?.value || '',
     CredentialLabel: '',
     CertPath: '',
-    Environment: 'producao_restrita',
+    Environment: 'producao',
     UF: '',
   }
   syncStartChoice.value = 'from_now'

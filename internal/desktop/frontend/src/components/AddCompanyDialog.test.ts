@@ -145,6 +145,32 @@ describe('AddCompanyDialog', () => {
     expect(desktopClient.addCompany).toHaveBeenLastCalledWith(expect.objectContaining({ UF: '' }))
   })
 
+  it('defaults a new company to producao', async () => {
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
+      { ID: 'cred-1', Label: 'Certificado A' },
+    ] as never)
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    const envSelect = wrapper
+      .findAllComponents({ name: 'QSelect' })
+      .find((select) => select.props('label') === 'Ambiente da Empresa')
+    expect(envSelect?.props('modelValue')).toBe('producao')
+
+    const inputs = wrapper.findAllComponents({ name: 'QInput' })
+    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
+    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
+    await wrapper
+      .findAllComponents({ name: 'QBtn' })
+      .find((button) => button.props('label') === 'Salvar')
+      ?.trigger('click')
+    await flushPromises()
+    expect(desktopClient.addCompany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ Environment: 'producao' }),
+    )
+  })
+
   it('clears an abandoned form when reopened after cancelling', async () => {
     const wrapper = mountDialog()
 

@@ -85,7 +85,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 	cmd.Flags().StringVarP(&cert, "cert", "p", "", "Caminho para o certificado .pfx/.p12")
 	cmd.Flags().StringVar(&credentialID, "credential-id", "", "ID de uma credencial existente")
 	cmd.Flags().StringVar(&credentialLabel, "credential-label", "", "Rótulo da nova credencial quando criada inline")
-	cmd.Flags().StringVarP(&envName, "env", "e", "producao_restrita", "Ambiente: producao ou producao_restrita")
+	cmd.Flags().StringVarP(&envName, "env", "e", "producao", "Ambiente: producao ou producao_restrita (testes)")
 	cmd.Flags().StringVar(&uf, "uf", "", "Sigla da UF da empresa (ex.: SP), usada na distribuição de NF-e")
 	cmd.Flags().StringVar(&syncStartPolicy, "sync-start-policy", "from_now", "Política inicial: all, since_date ou from_now")
 	cmd.Flags().StringVar(&syncStartDate, "sync-start-date", "", "Data de corte inicial YYYY-MM-DD para since_date")

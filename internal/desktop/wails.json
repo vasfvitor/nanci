@@ -11,7 +11,7 @@
     "productName": "Nanci Desktop",
     "productVersion": "0.0.0-dev",
     "copyright": "© 2026 Contribuidores do Nanci",
-    "comments": "Ferramenta Desktop para sincronização NFSe."
+    "comments": "Baixa NFS-e, NF-e e CT-e com certificado A1."
   },
   "author": {
     "name": "Ayres Vitor",
