@@ -490,3 +490,9 @@ nav a[href$="/nanci/"] span {
 .content .nc-faq-a > p {
   margin: 0.375rem 0 0;
 }
+
+/* Hextra fades the sticky sidebar footer and the TOC footer with a shadow
+   hardcoded to its old dark background (#111). Use the page color. */
+.dark [class*="shadow-[0_-12px_16px_#111]"] {
+  box-shadow: 0 -12px 16px var(--hx-color-dark);
+}
