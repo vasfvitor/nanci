@@ -163,6 +163,9 @@ jobs:
         run: |
           # Staging runs the .gitattributes normalization, so a CRLF written by
           # the generator on Linux is not drift; a changed or new file still is.
+          # The generator also writes the files as 0755 on Linux: modes are not
+          # drift either.
+          git config core.fileMode false
           git add -A -- internal/desktop/frontend/wailsjs
           if ! git diff --cached --exit-code --stat -- internal/desktop/frontend/wailsjs; then
             git diff --cached -- internal/desktop/frontend/wailsjs
