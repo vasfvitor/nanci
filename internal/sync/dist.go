@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // distWaitAfterStop is how long SEFAZ wants us to wait after catching up
@@ -28,8 +28,8 @@ const DistIdleWarningDays = 45
 // that reaches DistIdleWarningDays. Only the NF-e and CT-e distributions
 // have the 60-day rule, and a source never queried (lastQueryAt nil) is not
 // idle.
-func DistIdle(source nfse.SyncSource, lastQueryAt *time.Time, now time.Time) (days int, warn bool) {
-	if lastQueryAt == nil || (source != nfse.SyncSourceNFe && source != nfse.SyncSourceCTe) {
+func DistIdle(source syncstate.SyncSource, lastQueryAt *time.Time, now time.Time) (days int, warn bool) {
+	if lastQueryAt == nil || (source != syncstate.SyncSourceNFe && source != syncstate.SyncSourceCTe) {
 		return 0, false
 	}
 	days = max(int(now.Sub(*lastQueryAt)/(24*time.Hour)), 0)
@@ -38,13 +38,13 @@ func DistIdle(source nfse.SyncSource, lastQueryAt *time.Time, now time.Time) (da
 
 // requestsPerHour is the hourly request budget per CNPJ of source; 0 means
 // unlimited.
-func requestsPerHour(source nfse.SyncSource) int {
+func requestsPerHour(source syncstate.SyncSource) int {
 	switch source {
-	case nfse.SyncSourceNFe:
+	case syncstate.SyncSourceNFe:
 		// The SEFAZ limit; going over it gets cStat 656 and an hour of
 		// blocking.
 		return 20
-	case nfse.SyncSourceCTe:
+	case syncstate.SyncSourceCTe:
 		// The CT-e technical note does not publish a limit; this follows the
 		// NF-e one.
 		return 20
@@ -84,16 +84,16 @@ func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cur
 		}
 		if resp.UltNSU >= resp.MaxNSU {
 			batch.Done = true
-			batch.StopReason = nfse.SyncStopReasonCaughtUp
+			batch.StopReason = syncstate.SyncStopReasonCaughtUp
 			batch.WaitUntil = &waitUntil
 		}
 	case sefaz.CStatNenhumDocumento:
 		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonCaughtUp
+		batch.StopReason = syncstate.SyncStopReasonCaughtUp
 		batch.WaitUntil = &waitUntil
 	case sefaz.CStatConsumoIndevido:
 		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonConsumoIndevido
+		batch.StopReason = syncstate.SyncStopReasonConsumoIndevido
 		batch.WaitUntil = &waitUntil
 		log.WarnContext(ctx, "SEFAZ bloqueou a consulta de "+label+" por consumo indevido",
 			slog.Int64("ult_nsu", resp.UltNSU),

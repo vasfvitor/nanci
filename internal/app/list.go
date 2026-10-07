@@ -8,6 +8,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // ListInput defines the filters for listing documents.
@@ -44,7 +45,7 @@ func (s *DocumentService) buildFilter(ctx context.Context, input ListInput) (dfe
 		Direction:  input.Direction,
 		OnlyUnread: input.OnlyUnread,
 	}
-	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != syncstate.SyncStartPolicyAll && company.SyncStartDate != nil {
 		filter.IssueDateGTE = company.SyncStartDate
 	}
 	return company.ID, filter, nil

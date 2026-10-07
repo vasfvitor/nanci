@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Company represents a company that syncs documents.
@@ -19,11 +20,11 @@ type Company struct {
 	UF                 string          // optional state sigla, e.g. "SP"; empty when unknown
 	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
-	SyncStartPolicy    SyncStartPolicy
+	SyncStartPolicy    syncstate.SyncStartPolicy
 	SyncStartDate      *time.Time
 	InitialSyncDoneAt  *time.Time // NFS-e source; read from company_sync_sources
-	LastRunStatus      SyncStatus
-	LastRunStopReason  SyncStopReason
+	LastRunStatus      syncstate.SyncStatus
+	LastRunStopReason  syncstate.SyncStopReason
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

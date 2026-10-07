@@ -11,6 +11,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestStore_CreateCompany(t *testing.T) {
@@ -22,7 +23,7 @@ func TestStore_CreateCompany(t *testing.T) {
 		CNPJ:            "11222333000181",
 		Name:            "Test Company",
 		Environment:     dfe.EnvironmentRestricted,
-		SyncStartPolicy: nfse.SyncStartPolicyFromNow,
+		SyncStartPolicy: syncstate.SyncStartPolicyFromNow,
 	}
 
 	err := s.CreateCompany(context.Background(), c)
@@ -69,7 +70,7 @@ func TestCompanyStore(t *testing.T) {
 		t.Errorf("Expected name %s, got %s", comp.Name, fetched.Name)
 	}
 
-	if fetched.SyncStartPolicy != nfse.SyncStartPolicyFromNow {
+	if fetched.SyncStartPolicy != syncstate.SyncStartPolicyFromNow {
 		t.Errorf("Expected SyncStartPolicyFromNow, got %s", fetched.SyncStartPolicy)
 	}
 	if fetched.SyncStartDate == nil {

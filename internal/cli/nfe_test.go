@@ -28,6 +28,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Fixtures of internal/nfe/testdata. The company is their destinatário.
@@ -410,7 +411,7 @@ func TestNFeOutcomesError(t *testing.T) {
 func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 	env := newNFeTestRoot(t)
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, nfse.SyncSourceNFe, env.company.Environment, until, nfse.SyncStopReasonCaughtUp); err != nil {
+	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, syncstate.SyncSourceNFe, env.company.Environment, until, syncstate.SyncStopReasonCaughtUp); err != nil {
 		t.Fatal(err)
 	}
 
@@ -429,7 +430,7 @@ func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 
 // setLastQuery stores the source's sync_state as if the SEFAZ last answered
 // a distNSU at at.
-func (e *nfeTestRoot) setLastQuery(source nfse.SyncSource, at time.Time) {
+func (e *nfeTestRoot) setLastQuery(source syncstate.SyncSource, at time.Time) {
 	e.t.Helper()
 	ts := at.UTC().Format(time.RFC3339)
 	_, err := e.db.ExecContext(context.Background(), `
@@ -443,7 +444,7 @@ func (e *nfeTestRoot) setLastQuery(source nfse.SyncSource, at time.Time) {
 }
 
 func TestSefazStatus_WarnsWhenDistributionIdle(t *testing.T) {
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFe, nfse.SyncSourceCTe} {
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
 		t.Run(string(source), func(t *testing.T) {
 			env := newNFeTestRoot(t)
 			status := func() string {

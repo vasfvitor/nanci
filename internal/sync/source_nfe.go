@@ -15,6 +15,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // nfeRequestDelay is the pause between NFeDistribuicaoDFe requests. It is a
@@ -48,12 +49,12 @@ func NewNFeSource(client nfeFetcher, repo *store.NFeRepository, xml files.XMLSto
 	}
 }
 
-func (s *nfeSource) Kind() nfse.SyncSource {
-	return nfse.SyncSourceNFe
+func (s *nfeSource) Kind() syncstate.SyncSource {
+	return syncstate.SyncSourceNFe
 }
 
 func (s *nfeSource) Policy() SourcePolicy {
-	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: requestsPerHour(nfse.SyncSourceNFe)}
+	return SourcePolicy{RequestDelay: nfeRequestDelay, RequestsPerHour: requestsPerHour(syncstate.SyncSourceNFe)}
 }
 
 // Fetch asks for the documents after cursor; distBatch applies the stop

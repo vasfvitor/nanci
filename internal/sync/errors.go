@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // ErrSourceBlocked matches every *BlockedError through errors.Is.
@@ -18,9 +18,9 @@ var ErrSyncRunning = errors.New("sincronização já em andamento para esta empr
 // BlockedError says the source must not be queried for the company before
 // Until. Reason is the stop reason that set the wait.
 type BlockedError struct {
-	Source nfse.SyncSource
+	Source syncstate.SyncSource
 	Until  time.Time
-	Reason nfse.SyncStopReason
+	Reason syncstate.SyncStopReason
 }
 
 func (e *BlockedError) Error() string {
@@ -33,20 +33,20 @@ func (e *BlockedError) Is(target error) bool {
 }
 
 // checkBlocked returns a *BlockedError when the source state forbids a query at now.
-func checkBlocked(source nfse.SyncSource, state SourceState, now time.Time) error {
+func checkBlocked(source syncstate.SyncSource, state SourceState, now time.Time) error {
 	if state.BlockedUntil == nil || !now.Before(*state.BlockedUntil) {
 		return nil
 	}
 	return &BlockedError{Source: source, Until: *state.BlockedUntil, Reason: state.BlockedReason}
 }
 
-func sourceLabel(source nfse.SyncSource) string {
+func sourceLabel(source syncstate.SyncSource) string {
 	switch source {
-	case nfse.SyncSourceNFSe:
+	case syncstate.SyncSourceNFSe:
 		return "NFS-e"
-	case nfse.SyncSourceNFe:
+	case syncstate.SyncSourceNFe:
 		return "NF-e"
-	case nfse.SyncSourceCTe:
+	case syncstate.SyncSourceCTe:
 		return "CT-e"
 	default:
 		return string(source)

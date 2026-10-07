@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // setLastQuery stores a sync_state row whose last distNSU answer was at.
-func (e *nfeTestEnv) setLastQuery(source nfse.SyncSource, env dfe.Environment, at time.Time) {
+func (e *nfeTestEnv) setLastQuery(source syncstate.SyncSource, env dfe.Environment, at time.Time) {
 	e.t.Helper()
 	ts := at.UTC().Format(time.RFC3339)
 	_, err := e.db.ExecContext(context.Background(), `
@@ -25,9 +25,9 @@ func (e *nfeTestEnv) setLastQuery(source nfse.SyncSource, env dfe.Environment, a
 
 func TestSefazStatusWarnsWhenDistributionIdle(t *testing.T) {
 	ctx := context.Background()
-	status := func(env *nfeTestEnv, source nfse.SyncSource) SefazSourceStatus {
+	status := func(env *nfeTestEnv, source syncstate.SyncSource) SefazSourceStatus {
 		t.Helper()
-		if source == nfse.SyncSourceNFe {
+		if source == syncstate.SyncSourceNFe {
 			res, err := env.app.NFe.Status(ctx, nfeTestCNPJ)
 			if err != nil {
 				t.Fatal(err)
@@ -41,7 +41,7 @@ func TestSefazStatusWarnsWhenDistributionIdle(t *testing.T) {
 		return res.SefazSourceStatus
 	}
 
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFe, nfse.SyncSourceCTe} {
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
 		t.Run(string(source), func(t *testing.T) {
 			env := newNFeTestEnv(t)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/redact"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Item is one distributed document or event, still base64+gzip encoded.
@@ -30,10 +31,10 @@ type Batch struct {
 	Items      []Item
 	UltNSU     int64
 	MaxNSU     int64
-	NextCursor int64               // cursor for the next request (NFS-e: max item NSU; NF-e: ultNSU)
-	Done       bool                // the source says: stop fetching for now
-	StopReason nfse.SyncStopReason // meaningful when Done
-	WaitUntil  *time.Time          // earliest next query the source allows
+	NextCursor int64                    // cursor for the next request (NFS-e: max item NSU; NF-e: ultNSU)
+	Done       bool                     // the source says: stop fetching for now
+	StopReason syncstate.SyncStopReason // meaningful when Done
+	WaitUntil  *time.Time               // earliest next query the source allows
 }
 
 // ItemOutcome tells the loop how one item ended.
@@ -70,7 +71,7 @@ type SourcePolicy struct {
 
 // Source is one distribution service the pull loop can walk by NSU.
 type Source interface {
-	Kind() nfse.SyncSource
+	Kind() syncstate.SyncSource
 	Policy() SourcePolicy
 	Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error)
 	// ProcessItem decodes, parses and stores the raw XML outside any
@@ -114,7 +115,7 @@ func shouldSkipDocumentByInitialPolicy(company *nfse.Company, src SourceState, i
 	if src.InitialSyncDoneAt != nil {
 		return false
 	}
-	if company.SyncStartPolicy == "" || company.SyncStartPolicy == nfse.SyncStartPolicyAll {
+	if company.SyncStartPolicy == "" || company.SyncStartPolicy == syncstate.SyncStartPolicyAll {
 		return false
 	}
 	if company.SyncStartDate == nil {

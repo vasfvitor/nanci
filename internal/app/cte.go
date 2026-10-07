@@ -14,6 +14,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // CTeService owns the CT-e use cases: pull, status, list, events, export,
@@ -63,7 +64,7 @@ type CTePullResult struct {
 // Pull walks the company's CT-e distribution queue. A blocked source fails
 // with ErrSourceBlocked before any password prompt.
 func (s *CTeService) Pull(ctx context.Context, cnpj string) (CTePullResult, error) {
-	res, err := s.SyncManager.Pull(ctx, sync.PullInput{CNPJ: cnpj, Source: nfse.SyncSourceCTe})
+	res, err := s.SyncManager.Pull(ctx, sync.PullInput{CNPJ: cnpj, Source: syncstate.SyncSourceCTe})
 	if err != nil {
 		return CTePullResult{}, err
 	}
@@ -97,7 +98,7 @@ type CTeStatusResult struct {
 // Status reports the company's CT-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *CTeService) Status(ctx context.Context, cnpj string) (CTeStatusResult, error) {
-	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceCTe, time.Now())
+	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, syncstate.SyncSourceCTe, time.Now())
 	if err != nil {
 		return CTeStatusResult{}, err
 	}

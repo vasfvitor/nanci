@@ -10,6 +10,7 @@ import (
 	companypkg "github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // recordingProvider keeps the request and the password slice it handed out.
@@ -45,7 +46,7 @@ func TestLoadForCompanyPersistsInspectionAndZeroesPassword(t *testing.T) {
 			t.Fatalf("password not zeroed: %q", passwords.password)
 		}
 	}
-	if loaded.Basis != nfse.ConsultationBasisExactCertificateCNPJ {
+	if loaded.Basis != syncstate.ConsultationBasisExactCertificateCNPJ {
 		t.Errorf("Basis = %q, want exact certificate CNPJ", loaded.Basis)
 	}
 
@@ -82,7 +83,7 @@ func TestPullAsksPasswordForSourceSync(t *testing.T) {
 	passwords := &recordingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}

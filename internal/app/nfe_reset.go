@@ -7,6 +7,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // NFeResetResult is what an NF-e reset removed, or would remove, for one
@@ -41,7 +42,7 @@ func (s *NFeService) Reset(ctx context.Context, cnpj string) (NFeResetResult, er
 	if err != nil {
 		return NFeResetResult{}, err
 	}
-	release, err := s.SyncManager.ReserveSource(comp.ID, nfse.SyncSourceNFe)
+	release, err := s.SyncManager.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		return NFeResetResult{}, err
 	}

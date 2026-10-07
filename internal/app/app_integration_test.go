@@ -13,9 +13,9 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 type credentialProviderStub struct{}
@@ -88,7 +88,7 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 		Name:            "Empresa Teste",
 		Environment:     dfe.EnvironmentRestricted,
 		CredentialID:    string(credID),
-		SyncStartPolicy: nfse.SyncStartPolicyAll,
+		SyncStartPolicy: syncstate.SyncStartPolicyAll,
 	}
 	err = application.Companies.AddCompany(ctx, compInput)
 	if err != nil {
@@ -147,7 +147,7 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 
 	// Assert
 	comps, _ := application.Companies.ListCompanies(ctx)
-	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyFromNow {
+	if comps[0].SyncStartPolicy != syncstate.SyncStartPolicyFromNow {
 		t.Errorf("esperava politica from_now, obteve %s", comps[0].SyncStartPolicy)
 	}
 	if comps[0].SyncStartDate == nil {
@@ -170,7 +170,7 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	}
 	comps, _ = application.Companies.ListCompanies(ctx)
 
-	if comps[0].SyncStartPolicy != nfse.SyncStartPolicyAll {
+	if comps[0].SyncStartPolicy != syncstate.SyncStartPolicyAll {
 		t.Errorf("esperava politica all, obteve %s", comps[0].SyncStartPolicy)
 	}
 	if comps[0].SyncStartDate != nil {

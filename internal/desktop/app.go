@@ -27,9 +27,9 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	nsync "github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction.
@@ -324,7 +324,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 	if err != nil {
 		return err
 	}
-	policy := nfse.SyncStartPolicyFromNow
+	policy := syncstate.SyncStartPolicyFromNow
 	var date *time.Time
 	if input.SyncStartPolicy != "" {
 		policy, date, err = company.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
@@ -362,7 +362,7 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 	res, err := a.core.SyncManager.Pull(a.ctx, nsync.PullInput{
 		CNPJ:   input.CNPJ,
 		Mode:   input.Mode,
-		Source: nfse.SyncSourceNFSe,
+		Source: syncstate.SyncSourceNFSe,
 	})
 	if err != nil {
 		return desktopapi.PullResult{}, err
@@ -392,7 +392,7 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
 	return a.core.SyncManager.ResetSyncState(a.ctx, nsync.ResetSyncInput{
 		CNPJ:   input.CompanyCNPJ,
-		Source: nfse.SyncSourceNFSe,
+		Source: syncstate.SyncSourceNFSe,
 	})
 }
 

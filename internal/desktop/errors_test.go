@@ -10,13 +10,13 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	nsync "github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestFormatError(t *testing.T) {
 	until := time.Date(2026, 9, 23, 14, 32, 0, 0, time.Local)
-	blocked := &nsync.BlockedError{Source: nfse.SyncSourceNFe, Until: until, Reason: nfse.SyncStopReasonConsumoIndevido}
+	blocked := &nsync.BlockedError{Source: syncstate.SyncSourceNFe, Until: until, Reason: syncstate.SyncStopReasonConsumoIndevido}
 
 	tests := []struct {
 		name     string

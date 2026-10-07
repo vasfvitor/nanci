@@ -64,6 +64,7 @@ linters:
             - "**/internal/nfe/**/*.go"
             - "**/internal/dfe/**/*.go"
             - "**/internal/cte/**/*.go"
+            - "**/internal/syncstate/**/*.go"
             - "!**/*_test.go"
           deny:
             - pkg: "github.com/vasfvitor/nanci/internal/app"

@@ -9,6 +9,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 type CompanyRepository struct {
@@ -27,10 +28,10 @@ func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) 
 	now := time.Now().UTC()
 	syncStartPolicy := c.SyncStartPolicy
 	if syncStartPolicy == "" {
-		syncStartPolicy = nfse.SyncStartPolicyFromNow
+		syncStartPolicy = syncstate.SyncStartPolicyFromNow
 		c.SyncStartPolicy = syncStartPolicy
 	}
-	if syncStartPolicy == nfse.SyncStartPolicyFromNow && c.SyncStartDate == nil {
+	if syncStartPolicy == syncstate.SyncStartPolicyFromNow && c.SyncStartDate == nil {
 		today, _ := time.Parse(dateOnlyLayout, time.Now().Format(dateOnlyLayout))
 		c.SyncStartDate = &today
 	}
@@ -97,7 +98,7 @@ func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *n
 		CredentialCertPath: row.CredentialCertPath.String,
 		Environment:        dfe.Environment(row.Environment),
 		UF:                 row.Uf,
-		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
+		SyncStartPolicy:    syncstate.SyncStartPolicy(row.SyncStartPolicy),
 		SyncStartDate:      parseNullableDate(row.SyncStartDate),
 		InitialSyncDoneAt:  ParseNullableTime(nfseInitialSyncDoneAt),
 	}

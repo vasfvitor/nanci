@@ -18,6 +18,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 var (
@@ -76,7 +77,7 @@ type xmlStore interface {
 }
 
 type syncRunner interface {
-	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error
+	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error
 }
 
 var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
@@ -108,11 +109,11 @@ type PullInput struct {
 	CNPJ string
 	Mode string
 	// Source is the distribution service to pull from. Empty means NFS-e.
-	Source nfse.SyncSource
+	Source syncstate.SyncSource
 }
 
 type PullResult struct {
-	Source                   nfse.SyncSource
+	Source                   syncstate.SyncSource
 	CompanyName              string
 	CNPJ                     string
 	CredentialLabel          string
@@ -195,7 +196,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	result.CredentialCNPJ = credential.OwnerCNPJ
 	result.ConsultationBasis = string(loaded.Basis)
 
-	progress := func(event nfse.ProgressEvent) {
+	progress := func(event syncstate.ProgressEvent) {
 		if event.Errors > result.Errors {
 			result.Errors = event.Errors
 		}
@@ -271,7 +272,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 // pulls out. A second reservation of the same pair gets ErrSyncRunning
 // instead of interrupting the first. This does not guard against another
 // process; StartRun cleans up after a crashed one.
-func (m *Manager) ReserveSource(companyID dfe.CompanyID, source nfse.SyncSource) (func(), error) {
+func (m *Manager) ReserveSource(companyID dfe.CompanyID, source syncstate.SyncSource) (func(), error) {
 	key := string(companyID) + ":" + string(source)
 
 	m.runningMu.Lock()
@@ -294,15 +295,15 @@ func (m *Manager) ReserveSource(companyID dfe.CompanyID, source nfse.SyncSource)
 // SourceLimits is when a source may be queried again and how much of its
 // hourly request budget is spent.
 type SourceLimits struct {
-	NextAllowedAt    *time.Time          // set while the source must not be queried
-	BlockedReason    nfse.SyncStopReason // why NextAllowedAt is set
+	NextAllowedAt    *time.Time               // set while the source must not be queried
+	BlockedReason    syncstate.SyncStopReason // why NextAllowedAt is set
 	RequestsLastHour int
 	RequestBudget    int // requests allowed per hour; 0 means unlimited
 }
 
 // SourceLimits reports the request limits of the company's source now, in
 // the company's current environment.
-func (m *Manager) SourceLimits(ctx context.Context, company *nfse.Company, source nfse.SyncSource) (SourceLimits, error) {
+func (m *Manager) SourceLimits(ctx context.Context, company *nfse.Company, source syncstate.SyncSource) (SourceLimits, error) {
 	now := time.Now().UTC()
 	state, err := m.SyncRepo.SourceState(ctx, company.ID, source, company.Environment)
 	if err != nil {
@@ -324,12 +325,12 @@ func (m *Manager) SourceLimits(ctx context.Context, company *nfse.Company, sourc
 
 // checkSource fails, before any password prompt, when the company cannot be
 // pulled from source.
-func (m *Manager) checkSource(company *nfse.Company, source nfse.SyncSource) error {
+func (m *Manager) checkSource(company *nfse.Company, source syncstate.SyncSource) error {
 	switch source {
-	case nfse.SyncSourceNFSe:
+	case syncstate.SyncSourceNFSe:
 		return nil
-	case nfse.SyncSourceNFe, nfse.SyncSourceCTe:
-		if (source == nfse.SyncSourceNFe && m.NFeRepo == nil) || (source == nfse.SyncSourceCTe && m.CTeRepo == nil) {
+	case syncstate.SyncSourceNFe, syncstate.SyncSourceCTe:
+		if (source == syncstate.SyncSourceNFe && m.NFeRepo == nil) || (source == syncstate.SyncSourceCTe && m.CTeRepo == nil) {
 			return fmt.Errorf("repositório de %s não configurado", sourceLabel(source))
 		}
 		_, err := companyUFCode(company)
@@ -341,9 +342,9 @@ func (m *Manager) checkSource(company *nfse.Company, source nfse.SyncSource) err
 
 // newSource builds the Source of one pull once the certificate is loaded.
 // checkSource must have accepted company and source.
-func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCert tls.Certificate) (Source, error) {
+func (m *Manager) newSource(company *nfse.Company, source syncstate.SyncSource, tlsCert tls.Certificate) (Source, error) {
 	switch source {
-	case nfse.SyncSourceNFSe:
+	case syncstate.SyncSourceNFSe:
 		apiClient, err := newADNClient(adn.ClientConfig{
 			BaseURL:     ResolveEnvironmentURL(company.Environment),
 			Certificate: &tlsCert,
@@ -353,7 +354,7 @@ func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCe
 			return nil, fmt.Errorf("configurar cliente ADN: %w", err)
 		}
 		return NewNFSeSource(apiClient, m.SyncRepo, m.XMLStore, m.Log), nil
-	case nfse.SyncSourceNFe, nfse.SyncSourceCTe:
+	case syncstate.SyncSourceNFe, syncstate.SyncSourceCTe:
 		cUFAutor, err := companyUFCode(company)
 		if err != nil {
 			return nil, err
@@ -367,7 +368,7 @@ func (m *Manager) newSource(company *nfse.Company, source nfse.SyncSource, tlsCe
 		if err != nil {
 			return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)
 		}
-		if source == nfse.SyncSourceNFe {
+		if source == syncstate.SyncSourceNFe {
 			return NewNFeSource(client, m.NFeRepo, m.XMLStore, m.Log, cUFAutor), nil
 		}
 		return NewCTeSource(client, m.CTeRepo, m.XMLStore, m.Log, cUFAutor), nil
@@ -391,18 +392,18 @@ func companyUFCode(company *nfse.Company) (int, error) {
 
 // resolveSyncSource defaults an empty source to NFS-e, the source every
 // caller used before sources existed.
-func resolveSyncSource(source nfse.SyncSource) (nfse.SyncSource, error) {
+func resolveSyncSource(source syncstate.SyncSource) (syncstate.SyncSource, error) {
 	if source == "" {
-		return nfse.SyncSourceNFSe, nil
+		return syncstate.SyncSourceNFSe, nil
 	}
-	return nfse.ParseSyncSource(string(source))
+	return syncstate.ParseSyncSource(string(source))
 }
 
-func parsePullMode(raw string) (nfse.SyncMode, error) {
+func parsePullMode(raw string) (syncstate.SyncMode, error) {
 	if raw == "" {
-		return nfse.SyncModeNormal, nil
+		return syncstate.SyncModeNormal, nil
 	}
-	return nfse.ParseSyncMode(raw)
+	return syncstate.ParseSyncMode(raw)
 }
 
 func ResolveEnvironmentURL(env dfe.Environment) string {
@@ -445,7 +446,7 @@ func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, err
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}
-	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, nfse.SyncSourceNFSe, company.Environment, company.CNPJ)
+	snapshot, err := m.SyncRepo.LatestSyncSnapshot(ctx, company.ID, syncstate.SyncSourceNFSe, company.Environment, company.CNPJ)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("carregar snapshot de sincronização: %w", err)
 	}
@@ -492,7 +493,7 @@ func normalizeCNPJ(raw string) (string, error) {
 type ResetSyncInput struct {
 	CNPJ string
 	// Source is the distribution service whose cursor is reset. Empty means NFS-e.
-	Source nfse.SyncSource
+	Source syncstate.SyncSource
 }
 
 // ResetSyncState deletes the source's sync cursor so the next pull starts
@@ -517,7 +518,7 @@ func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) erro
 	}
 	defer release()
 
-	if err := m.SyncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{
+	if err := m.SyncRepo.ResetSyncState(ctx, syncstate.ResetSyncStateParams{
 		CompanyID: company.ID,
 		Source:    source,
 	}); err != nil {

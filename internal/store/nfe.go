@@ -12,8 +12,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // NFeRepository stores NF-e documents, their events, each company's view of
@@ -906,7 +906,7 @@ func (r *NFeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 	if !apply {
 		return counts, nil
 	}
-	if err := ResetSyncStateTx(ctx, tx, nfse.ResetSyncStateParams{CompanyID: companyID, Source: nfse.SyncSourceNFe}); err != nil {
+	if err := ResetSyncStateTx(ctx, tx, syncstate.ResetSyncStateParams{CompanyID: companyID, Source: syncstate.SyncSourceNFe}); err != nil {
 		return nfe.ResetCounts{}, fmt.Errorf("reset nfe sync state: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

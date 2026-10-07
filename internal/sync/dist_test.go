@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestDistBatch(t *testing.T) {
@@ -20,14 +20,14 @@ func TestDistBatch(t *testing.T) {
 		resp       sefaz.DistResult
 		wantCursor int64
 		wantItems  int
-		wantReason nfse.SyncStopReason // "" means not done
+		wantReason syncstate.SyncStopReason // "" means not done
 	}{
 		{"138 with more to fetch", sefaz.DistResult{CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 12, MaxNSU: 20, Docs: docs}, 12, 2, ""},
-		{"138 caught up", sefaz.DistResult{CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 12, MaxNSU: 12, Docs: docs}, 12, 2, nfse.SyncStopReasonCaughtUp},
-		{"137 moves forward", sefaz.DistResult{CStat: sefaz.CStatNenhumDocumento, UltNSU: 15, MaxNSU: 15}, 15, 0, nfse.SyncStopReasonCaughtUp},
-		{"137 never moves back", sefaz.DistResult{CStat: sefaz.CStatNenhumDocumento, UltNSU: 8, MaxNSU: 8}, 10, 0, nfse.SyncStopReasonCaughtUp},
-		{"656 never moves back", sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 4}, 10, 0, nfse.SyncStopReasonConsumoIndevido},
-		{"656 moves forward", sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 12}, 12, 0, nfse.SyncStopReasonConsumoIndevido},
+		{"138 caught up", sefaz.DistResult{CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 12, MaxNSU: 12, Docs: docs}, 12, 2, syncstate.SyncStopReasonCaughtUp},
+		{"137 moves forward", sefaz.DistResult{CStat: sefaz.CStatNenhumDocumento, UltNSU: 15, MaxNSU: 15}, 15, 0, syncstate.SyncStopReasonCaughtUp},
+		{"137 never moves back", sefaz.DistResult{CStat: sefaz.CStatNenhumDocumento, UltNSU: 8, MaxNSU: 8}, 10, 0, syncstate.SyncStopReasonCaughtUp},
+		{"656 never moves back", sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 4}, 10, 0, syncstate.SyncStopReasonConsumoIndevido},
+		{"656 moves forward", sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 12}, 12, 0, syncstate.SyncStopReasonConsumoIndevido},
 	}
 	isEvent := func(schema string) bool { return schema == "event" }
 	for _, tt := range tests {
@@ -77,20 +77,20 @@ func TestDistIdle(t *testing.T) {
 	almost45 := now.Add(-45*24*time.Hour + time.Minute)
 	tests := []struct {
 		name     string
-		source   nfse.SyncSource
+		source   syncstate.SyncSource
 		last     *time.Time
 		wantDays int
 		wantWarn bool
 	}{
-		{"NF-e 44 days", nfse.SyncSourceNFe, daysAgo(44), 44, false},
-		{"NF-e a minute short of 45 days", nfse.SyncSourceNFe, &almost45, 44, false},
-		{"NF-e 45 days", nfse.SyncSourceNFe, daysAgo(45), 45, true},
-		{"CT-e 44 days", nfse.SyncSourceCTe, daysAgo(44), 44, false},
-		{"CT-e 45 days", nfse.SyncSourceCTe, daysAgo(45), 45, true},
-		{"CT-e 90 days", nfse.SyncSourceCTe, daysAgo(90), 90, true},
-		{"never synced", nfse.SyncSourceNFe, nil, 0, false},
-		{"NFS-e has no 60-day rule", nfse.SyncSourceNFSe, daysAgo(90), 0, false},
-		{"clock behind the last query", nfse.SyncSourceNFe, daysAgo(-1), 0, false},
+		{"NF-e 44 days", syncstate.SyncSourceNFe, daysAgo(44), 44, false},
+		{"NF-e a minute short of 45 days", syncstate.SyncSourceNFe, &almost45, 44, false},
+		{"NF-e 45 days", syncstate.SyncSourceNFe, daysAgo(45), 45, true},
+		{"CT-e 44 days", syncstate.SyncSourceCTe, daysAgo(44), 44, false},
+		{"CT-e 45 days", syncstate.SyncSourceCTe, daysAgo(45), 45, true},
+		{"CT-e 90 days", syncstate.SyncSourceCTe, daysAgo(90), 90, true},
+		{"never synced", syncstate.SyncSourceNFe, nil, 0, false},
+		{"NFS-e has no 60-day rule", syncstate.SyncSourceNFSe, daysAgo(90), 0, false},
+		{"clock behind the last query", syncstate.SyncSourceNFe, daysAgo(-1), 0, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -103,10 +103,10 @@ func TestDistIdle(t *testing.T) {
 }
 
 func TestRequestsPerHour(t *testing.T) {
-	for source, want := range map[nfse.SyncSource]int{
-		nfse.SyncSourceNFe:  20,
-		nfse.SyncSourceCTe:  20,
-		nfse.SyncSourceNFSe: 0,
+	for source, want := range map[syncstate.SyncSource]int{
+		syncstate.SyncSourceNFe:  20,
+		syncstate.SyncSourceCTe:  20,
+		syncstate.SyncSourceNFSe: 0,
 	} {
 		if got := requestsPerHour(source); got != want {
 			t.Errorf("requestsPerHour(%s) = %d, want %d", source, got, want)

@@ -21,6 +21,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 type providerStub struct{}
@@ -41,10 +42,10 @@ func (s *captureXMLStore) Store(hash string, data []byte) error {
 func (s *captureXMLStore) Get(string) ([]byte, error) { return nil, nil }
 
 type syncRunnerStub struct {
-	sync func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error
+	sync func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error
 }
 
-func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
+func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 	return s.sync(ctx, company, credential, consultationBasis, mode, progress)
 }
 
@@ -126,9 +127,9 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		receivedStore = nfseSrc.xml
 		store := nfseSrc.xml
 		return syncRunnerStub{
-			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
+			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 				if progress != nil {
-					progress(nfse.ProgressEvent{DocsFound: 1})
+					progress(syncstate.ProgressEvent{DocsFound: 1})
 				}
 				return store.Store("hash-1", []byte("<NFSe/>"))
 			},
@@ -242,7 +243,7 @@ func TestPullReturnsBlockedErrorBeforePasswordPrompt(t *testing.T) {
 	passwords := &countingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 	until := time.Now().Add(time.Hour)
-	if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, nfse.SyncSourceNFSe, comp.Environment, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, syncstate.SyncSourceNFSe, comp.Environment, until, syncstate.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
@@ -251,7 +252,7 @@ func TestPullReturnsBlockedErrorBeforePasswordPrompt(t *testing.T) {
 	if !errors.As(err, &blocked) || !errors.Is(err, ErrSourceBlocked) {
 		t.Fatalf("Pull error = %v, want *BlockedError", err)
 	}
-	if blocked.Reason != nfse.SyncStopReasonConsumoIndevido {
+	if blocked.Reason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Errorf("Reason = %q, want consumo_indevido", blocked.Reason)
 	}
 	if got := passwords.callCount(); got != 0 {
@@ -274,18 +275,18 @@ func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
 	t.Cleanup(func() { newSEFAZClient = originalNewSEFAZClient })
 	newSEFAZClient = func(sefaz.ClientConfig) (sefazFetcher, error) { return &scriptedFetcher{}, nil }
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}
 
 	until := time.Now().Add(time.Hour)
-	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction, until, syncstate.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
 	setCompany("environment", string(dfe.EnvironmentRestricted))
-	result, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe})
+	result, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
 	if err != nil {
 		t.Fatalf("Pull in produção restrita = %v, want no block from produção", err)
 	}
@@ -294,7 +295,7 @@ func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
 	}
 
 	setCompany("environment", string(dfe.EnvironmentProduction))
-	if _, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe}); !errors.Is(err, ErrSourceBlocked) {
+	if _, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe}); !errors.Is(err, ErrSourceBlocked) {
 		t.Errorf("Pull back in produção = %v, want ErrSourceBlocked", err)
 	}
 }
@@ -307,7 +308,7 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 	release := make(chan struct{})
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
 		return syncRunnerStub{
-			sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+			sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 				close(started)
 				<-release
 				return nil
@@ -336,7 +337,7 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 
 	// Once the first pull ends, the pair is free again.
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, nfse.SyncMode, nfse.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}
@@ -348,27 +349,27 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	mgr, comp := newPullTestManager(t, &countingProvider{})
 	ctx := context.Background()
-	if _, err := mgr.SyncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+	if _, err := mgr.SyncRepo.GetOrCreateState(ctx, syncstate.GetOrCreateSyncStateParams{
 		CompanyID:        comp.ID,
-		Source:           nfse.SyncSourceNFSe,
+		Source:           syncstate.SyncSourceNFSe,
 		Environment:      comp.Environment,
 		ConsultationCNPJ: comp.CNPJ,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.SyncRepo.MarkInitialSyncCompleted(ctx, comp.ID, nfse.SyncSourceNFSe, comp.Environment); err != nil {
+	if err := mgr.SyncRepo.MarkInitialSyncCompleted(ctx, comp.ID, syncstate.SyncSourceNFSe, comp.Environment); err != nil {
 		t.Fatal(err)
 	}
 
 	// An NFS-e pull holds the reservation for its whole run.
-	release, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFSe)
+	release, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFSe)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); !errors.Is(err, ErrSyncRunning) {
+	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFSe}); !errors.Is(err, ErrSyncRunning) {
 		t.Fatalf("reset during an NFS-e pull = %v, want ErrSyncRunning", err)
 	}
-	state, err := mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe, comp.Environment)
+	state, err := mgr.SyncRepo.SourceState(ctx, comp.ID, syncstate.SyncSourceNFSe, comp.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,15 +379,15 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	release()
 
 	// An NF-e pull does not hold the NFS-e cursor.
-	releaseNFe, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFe)
+	releaseNFe, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer releaseNFe()
-	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFSe}); err != nil {
+	if err := mgr.ResetSyncState(ctx, ResetSyncInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFSe}); err != nil {
 		t.Fatalf("reset after the NFS-e pull ended: %v", err)
 	}
-	state, err = mgr.SyncRepo.SourceState(ctx, comp.ID, nfse.SyncSourceNFSe, comp.Environment)
+	state, err = mgr.SyncRepo.SourceState(ctx, comp.ID, syncstate.SyncSourceNFSe, comp.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +396,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	}
 
 	// The reset gives the reservation back.
-	releaseAgain, err := mgr.ReserveSource(comp.ID, nfse.SyncSourceNFSe)
+	releaseAgain, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFSe)
 	if err != nil {
 		t.Fatalf("reserve after reset: %v", err)
 	}
@@ -407,7 +408,7 @@ func TestPullRejectsUnconfiguredSources(t *testing.T) {
 	mgr, comp := newPullTestManager(t, passwords)
 
 	// newPullTestManager configures no NF-e or CT-e repository.
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFe, nfse.SyncSourceCTe, "mdfe", "bogus"} {
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe, "mdfe", "bogus"} {
 		if _, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: source}); err == nil {
 			t.Errorf("Pull with source %q succeeded, want an error", source)
 		}

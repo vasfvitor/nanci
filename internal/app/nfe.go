@@ -17,6 +17,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // sefazClient is the part of *sefaz.Client the NF-e and CT-e use cases call.
@@ -85,7 +86,7 @@ type NFePullResult struct {
 // Pull walks the company's NF-e distribution queue. A blocked source fails
 // with ErrSourceBlocked before any password prompt.
 func (s *NFeService) Pull(ctx context.Context, cnpj string) (NFePullResult, error) {
-	res, err := s.SyncManager.Pull(ctx, sync.PullInput{CNPJ: cnpj, Source: nfse.SyncSourceNFe})
+	res, err := s.SyncManager.Pull(ctx, sync.PullInput{CNPJ: cnpj, Source: syncstate.SyncSourceNFe})
 	if err != nil {
 		return NFePullResult{}, err
 	}
@@ -123,7 +124,7 @@ type NFeStatusResult struct {
 // Status reports the company's NF-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, error) {
-	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceNFe, s.now())
+	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, syncstate.SyncSourceNFe, s.now())
 	if err != nil {
 		return NFeStatusResult{}, err
 	}

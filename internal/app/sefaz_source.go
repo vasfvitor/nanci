@@ -11,6 +11,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // SefazSourceStatus is the part of the NF-e and CT-e status that comes from
@@ -42,7 +43,7 @@ type SefazSourceStatus struct {
 // loadSefazSourceStatus reads the company's cursor, last run, initial sync
 // and request limits for one SEFAZ source, and returns them with the
 // company. now dates the idle warning. It never contacts SEFAZ.
-func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source nfse.SyncSource, now time.Time) (SefazSourceStatus, *nfse.Company, error) {
+func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source syncstate.SyncSource, now time.Time) (SefazSourceStatus, *nfse.Company, error) {
 	comp, err := lookupCompanyByCNPJ(ctx, companies, cnpj)
 	if err != nil {
 		return SefazSourceStatus{}, nil, err

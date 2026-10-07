@@ -1,29 +1,29 @@
-package nfse_test
+package syncstate_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestSyncRun_Instantiation(t *testing.T) {
 	now := time.Now()
-	run := nfse.SyncRun{
+	run := syncstate.SyncRun{
 		ID:               "run123",
 		CompanyID:        "comp1",
 		Environment:      dfe.EnvironmentProduction,
 		ConsultationCNPJ: "11111111000111",
-		Mode:             nfse.SyncModeNormal,
-		Status:           nfse.SyncStatusRunning,
+		Mode:             syncstate.SyncModeNormal,
+		Status:           syncstate.SyncStatusRunning,
 		StartedAt:        now,
 	}
 
 	if run.ID != "run123" {
 		t.Errorf("Expected run123, got %s", run.ID)
 	}
-	if run.Status != nfse.SyncStatusRunning {
+	if run.Status != syncstate.SyncStatusRunning {
 		t.Errorf("Expected status running, got %s", run.Status)
 	}
 }
@@ -31,19 +31,19 @@ func TestSyncRun_Instantiation(t *testing.T) {
 func TestSyncStatus(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected nfse.SyncStatus
+		expected syncstate.SyncStatus
 		valid    bool
 	}{
-		{"running", nfse.SyncStatusRunning, true},
-		{"completed", nfse.SyncStatusCompleted, true},
-		{"failed", nfse.SyncStatusFailed, true},
-		{"interrupted", nfse.SyncStatusInterrupted, true},
+		{"running", syncstate.SyncStatusRunning, true},
+		{"completed", syncstate.SyncStatusCompleted, true},
+		{"failed", syncstate.SyncStatusFailed, true},
+		{"interrupted", syncstate.SyncStatusInterrupted, true},
 		{"invalid", "", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			status, err := nfse.ParseSyncStatus(tt.input)
+			status, err := syncstate.ParseSyncStatus(tt.input)
 			if tt.valid {
 				if err != nil {
 					t.Errorf("Expected no error, got %v", err)
@@ -61,17 +61,17 @@ func TestSyncStatus(t *testing.T) {
 func TestSyncMode(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected nfse.SyncMode
+		expected syncstate.SyncMode
 		valid    bool
 	}{
-		{"normal", nfse.SyncModeNormal, true},
-		{"first_setup", nfse.SyncModeFirstSetup, true},
+		{"normal", syncstate.SyncModeNormal, true},
+		{"first_setup", syncstate.SyncModeFirstSetup, true},
 		{"invalid", "", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			mode, err := nfse.ParseSyncMode(tt.input)
+			mode, err := syncstate.ParseSyncMode(tt.input)
 			if tt.valid {
 				if err != nil {
 					t.Errorf("Expected no error, got %v", err)
@@ -89,19 +89,19 @@ func TestSyncMode(t *testing.T) {
 func TestSyncSource(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected nfse.SyncSource
+		expected syncstate.SyncSource
 		valid    bool
 	}{
-		{"nfse", nfse.SyncSourceNFSe, true},
-		{"nfe", nfse.SyncSourceNFe, true},
-		{"cte", nfse.SyncSourceCTe, true},
+		{"nfse", syncstate.SyncSourceNFSe, true},
+		{"nfe", syncstate.SyncSourceNFe, true},
+		{"cte", syncstate.SyncSourceCTe, true},
 		{"mdfe", "", false},
 		{"", "", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			source, err := nfse.ParseSyncSource(tt.input)
+			source, err := syncstate.ParseSyncSource(tt.input)
 			if tt.valid {
 				if err != nil {
 					t.Errorf("Expected no error, got %v", err)

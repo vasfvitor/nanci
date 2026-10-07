@@ -17,6 +17,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Access keys of the fixtures in internal/cte/testdata. The mock company is a
@@ -53,7 +54,7 @@ func newCTeTestHelper(t *testing.T) *cteTestHelper {
 	}
 	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, dfe.EnvironmentProduction, cred)
 	company.UF = "SP"
-	company.SyncStartPolicy = nfse.SyncStartPolicyFromNow
+	company.SyncStartPolicy = syncstate.SyncStartPolicyFromNow
 	company.SyncStartDate = new(time.Now().UTC())
 	if err := dbstore.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
@@ -75,11 +76,11 @@ func (h *cteTestHelper) source(fetcher cteFetcher) Source {
 }
 
 // run syncs the CT-e source and returns the last progress event.
-func (h *cteTestHelper) run(fetcher cteFetcher) (nfse.ProgressEvent, error) {
+func (h *cteTestHelper) run(fetcher cteFetcher) (syncstate.ProgressEvent, error) {
 	h.t.Helper()
-	var last nfse.ProgressEvent
+	var last syncstate.ProgressEvent
 	svc := NewSyncService(h.store, h.source(fetcher), discardLogger())
-	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, func(e nfse.ProgressEvent) {
+	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, func(e syncstate.ProgressEvent) {
 		last = e
 	})
 	return last, err
@@ -148,11 +149,11 @@ func TestCTeSourceStoresEveryDocumentKindAndStopsWhenCaughtUp(t *testing.T) {
 	if fetcher.cUFAutors[0] != 35 || fetcher.cnpjs[0] != nfeCompanyCNPJ {
 		t.Errorf("DistCTeNSU got cUFAutor %d, CNPJ %s", fetcher.cUFAutors[0], fetcher.cnpjs[0])
 	}
-	cursor, maxNSU := h.sourceCursor(nfse.SyncSourceCTe)
+	cursor, maxNSU := h.sourceCursor(syncstate.SyncSourceCTe)
 	if cursor != 6 || !maxNSU.Valid || maxNSU.Int64 != 6 {
 		t.Errorf("cursor = %d, max_nsu = %v, want 6 and 6", cursor, maxNSU)
 	}
-	h.assertSourceRun(nfse.SyncSourceCTe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceCTe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 
 	docs := h.documents()
 	if len(docs) != 5 {
@@ -188,17 +189,17 @@ func TestCTeSourceStoresEveryDocumentKindAndStopsWhenCaughtUp(t *testing.T) {
 		t.Errorf("stored blobs = %d, want 6", len(h.xml.stored))
 	}
 
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceCTe, h.company.Environment)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceCTe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if state.InitialSyncDoneAt == nil {
 		t.Error("cte initial sync not marked after caught_up")
 	}
-	assertRecentWait(t, state, nfse.SyncStopReasonCaughtUp)
+	assertRecentWait(t, state, syncstate.SyncStopReasonCaughtUp)
 
 	// The NF-e state of the company is untouched.
-	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +293,7 @@ func TestCTeSourceKeepsOnlyOwnEventsWithoutLocalDocument(t *testing.T) {
 	if got := len(h.documents()); got != 0 {
 		t.Errorf("documents = %d, want 0", got)
 	}
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceCTe); cursor != 2 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceCTe); cursor != 2 {
 		t.Errorf("cursor = %d, want 2", cursor)
 	}
 }
@@ -310,7 +311,7 @@ func TestCTeSourceSkipsUnknownSchemaAndAdvances(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceCTe); cursor != 1 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceCTe); cursor != 1 {
 		t.Errorf("cursor = %d, want 1", cursor)
 	}
 	if got := len(h.documents()); got != 0 {
@@ -322,7 +323,7 @@ func TestCTeSourceSkipsUnknownSchemaAndAdvances(t *testing.T) {
 	if progress.CompletasSaved != 0 {
 		t.Errorf("completas = %d, want 0 for an unsupported item", progress.CompletasSaved)
 	}
-	h.assertSourceRun(nfse.SyncSourceCTe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceCTe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 }
 
 // A document that keeps failing to parse is retried on each pull, then kept
@@ -342,7 +343,7 @@ func TestCTeSourceSkipsDocumentAfterRepeatedParseFailures(t *testing.T) {
 		if !errors.As(err, &parseErr) {
 			t.Fatalf("attempt %d: error = %v, want a ProcessingError", attempt, err)
 		}
-		if cursor, _ := h.sourceCursor(nfse.SyncSourceCTe); cursor != 0 {
+		if cursor, _ := h.sourceCursor(syncstate.SyncSourceCTe); cursor != 0 {
 			t.Fatalf("attempt %d: cursor = %d, want 0 while retrying", attempt, cursor)
 		}
 	}
@@ -350,7 +351,7 @@ func TestCTeSourceSkipsDocumentAfterRepeatedParseFailures(t *testing.T) {
 		t.Fatalf("attempt %d: %v", maxItemAttempts, err)
 	}
 
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceCTe); cursor != 1 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceCTe); cursor != 1 {
 		t.Errorf("cursor = %d, want 1 after the item is skipped", cursor)
 	}
 	if got := len(h.documents()); got != 0 {
@@ -401,11 +402,11 @@ func TestPullCTeStoresDocumentsReportsLimitsAndBlocks(t *testing.T) {
 	mgr, comp := newCTePullTestManager(t, passwords, fetcher)
 	ctx := context.Background()
 
-	result, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceCTe})
+	result, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceCTe})
 	if err != nil {
 		t.Fatalf("Pull: %v", err)
 	}
-	if result.Source != nfse.SyncSourceCTe || result.Status != string(nfse.SyncStatusCompleted) || result.StopReason != string(nfse.SyncStopReasonConsumoIndevido) {
+	if result.Source != syncstate.SyncSourceCTe || result.Status != string(syncstate.SyncStatusCompleted) || result.StopReason != string(syncstate.SyncStopReasonConsumoIndevido) {
 		t.Errorf("result source/status/reason = %s/%s/%s", result.Source, result.Status, result.StopReason)
 	}
 	if result.LastProcessedNSU != 1 || result.MaxNSU == nil || *result.MaxNSU != 3 {
@@ -414,8 +415,8 @@ func TestPullCTeStoresDocumentsReportsLimitsAndBlocks(t *testing.T) {
 	if result.CompletasSaved != 1 || result.ResumosSaved != 0 {
 		t.Errorf("completas/resumos = %d/%d, want 1/0", result.CompletasSaved, result.ResumosSaved)
 	}
-	if result.RequestsLastHour != 2 || result.RequestBudget != requestsPerHour(nfse.SyncSourceCTe) {
-		t.Errorf("requests = %d of %d, want 2 of %d", result.RequestsLastHour, result.RequestBudget, requestsPerHour(nfse.SyncSourceCTe))
+	if result.RequestsLastHour != 2 || result.RequestBudget != requestsPerHour(syncstate.SyncSourceCTe) {
+		t.Errorf("requests = %d of %d, want 2 of %d", result.RequestsLastHour, result.RequestBudget, requestsPerHour(syncstate.SyncSourceCTe))
 	}
 	if !slices.Equal(fetcher.services, []string{"cte", "cte"}) {
 		t.Errorf("SEFAZ services = %v, want only the CT-e distribution", fetcher.services)
@@ -435,9 +436,9 @@ func TestPullCTeStoresDocumentsReportsLimitsAndBlocks(t *testing.T) {
 		t.Fatalf("documents = %+v, want procte.xml with the company as remetente", docs)
 	}
 
-	_, err = mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceCTe})
+	_, err = mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceCTe})
 	var blocked *BlockedError
-	if !errors.As(err, &blocked) || blocked.Reason != nfse.SyncStopReasonConsumoIndevido || blocked.Source != nfse.SyncSourceCTe {
+	if !errors.As(err, &blocked) || blocked.Reason != syncstate.SyncStopReasonConsumoIndevido || blocked.Source != syncstate.SyncSourceCTe {
 		t.Fatalf("second Pull error = %v, want *BlockedError for CT-e consumo_indevido", err)
 	}
 	if !strings.Contains(err.Error(), "CT-e") {
@@ -451,7 +452,7 @@ func TestPullCTeStoresDocumentsReportsLimitsAndBlocks(t *testing.T) {
 	}
 
 	// The NF-e budget and block are counted apart.
-	nfeLimits, err := mgr.SourceLimits(ctx, comp, nfse.SyncSourceNFe)
+	nfeLimits, err := mgr.SourceLimits(ctx, comp, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -467,13 +468,13 @@ func TestPullCTeRequiresCompanyUFAndRepoBeforePasswordPrompt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceCTe})
+	_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceCTe})
 	if err == nil || !strings.Contains(err.Error(), "UF") {
 		t.Fatalf("Pull error = %v, want the missing UF", err)
 	}
 
 	mgr.CTeRepo = nil
-	_, err = mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceCTe})
+	_, err = mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceCTe})
 	if err == nil || !strings.Contains(err.Error(), "CT-e") {
 		t.Fatalf("Pull error = %v, want the missing CT-e repository", err)
 	}

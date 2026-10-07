@@ -29,6 +29,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Fixtures of internal/nfe/testdata. The company is their destinatário.
@@ -341,7 +342,7 @@ func TestNFeStatusCounts(t *testing.T) {
 	ctx := context.Background()
 
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := env.app.NFe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, nfse.SyncSourceNFe, env.company.Environment, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := env.app.NFe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, syncstate.SyncSourceNFe, env.company.Environment, until, syncstate.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
@@ -356,7 +357,7 @@ func TestNFeStatusCounts(t *testing.T) {
 			UF:            "SP",
 			TpAmb:         "1",
 			NextAllowedAt: &until,
-			BlockedReason: string(nfse.SyncStopReasonConsumoIndevido),
+			BlockedReason: string(syncstate.SyncStopReasonConsumoIndevido),
 			RequestBudget: 20,
 		},
 		TotalDestinatario: 4,

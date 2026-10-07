@@ -23,9 +23,9 @@ import (
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Fixtures of internal/cte/testdata. The mock company (nfeTestCNPJ) is a
@@ -195,7 +195,7 @@ func TestCTePullEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Pull: %v", err)
 	}
-	if result.Status != string(nfse.SyncStatusCompleted) || result.StopReason != string(nfse.SyncStopReasonCaughtUp) {
+	if result.Status != string(syncstate.SyncStatusCompleted) || result.StopReason != string(syncstate.SyncStopReasonCaughtUp) {
 		t.Errorf("status/reason = %s/%s, want completed/caught_up", result.Status, result.StopReason)
 	}
 	if result.DocumentsSaved != 1 || result.EventsSaved != 1 || result.LastNSU != 2 || result.MaxNSU == nil || *result.MaxNSU != 2 {
@@ -237,7 +237,7 @@ func TestCTePullEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status.LastNSU != 2 || status.TotalTomador != 1 || status.InitialSyncDoneAt == nil || status.BlockedReason != string(nfse.SyncStopReasonCaughtUp) {
+	if status.LastNSU != 2 || status.TotalTomador != 1 || status.InitialSyncDoneAt == nil || status.BlockedReason != string(syncstate.SyncStopReasonCaughtUp) {
 		t.Errorf("status = %+v, want NSU 2, 1 tomador, initial sync done and the caught_up wait", status)
 	}
 
@@ -265,7 +265,7 @@ func TestCTeStatusCountsByRole(t *testing.T) {
 	ctx := context.Background()
 
 	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
-	if err := env.app.CTe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, nfse.SyncSourceCTe, env.company.Environment, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := env.app.CTe.SyncRepo.SetBlockedUntil(ctx, env.company.ID, syncstate.SyncSourceCTe, env.company.Environment, until, syncstate.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
@@ -280,7 +280,7 @@ func TestCTeStatusCountsByRole(t *testing.T) {
 			UF:            "SP",
 			TpAmb:         "1",
 			NextAllowedAt: &until,
-			BlockedReason: string(nfse.SyncStopReasonConsumoIndevido),
+			BlockedReason: string(syncstate.SyncStopReasonConsumoIndevido),
 			RequestBudget: 20,
 		},
 		TotalTomador: 4, // procte, OS, GTV-e and Simplificado; the homologação one is not counted

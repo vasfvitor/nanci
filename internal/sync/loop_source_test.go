@@ -11,12 +11,13 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // fakeSource replays scripted batches keyed by the requested cursor. A cursor
 // without a script gets an empty batch that is Done with caught_up.
 type fakeSource struct {
-	kind     nfse.SyncSource
+	kind     syncstate.SyncSource
 	policy   SourcePolicy
 	batches  map[int64]Batch
 	outcomes map[int64]ItemOutcome // per NSU; missing means a plain insert
@@ -25,7 +26,7 @@ type fakeSource struct {
 	cursors  []int64
 }
 
-func (f *fakeSource) Kind() nfse.SyncSource { return f.kind }
+func (f *fakeSource) Kind() syncstate.SyncSource { return f.kind }
 
 func (f *fakeSource) Policy() SourcePolicy { return f.policy }
 
@@ -37,7 +38,7 @@ func (f *fakeSource) Fetch(_ context.Context, _ *nfse.Company, cursor int64) (Ba
 	if batch, ok := f.batches[cursor]; ok {
 		return batch, nil
 	}
-	return Batch{NextCursor: cursor, Done: true, StopReason: nfse.SyncStopReasonCaughtUp}, nil
+	return Batch{NextCursor: cursor, Done: true, StopReason: syncstate.SyncStopReasonCaughtUp}, nil
 }
 
 func (f *fakeSource) ProcessItem(ctx context.Context, _ *nfse.Company, _ SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
@@ -63,11 +64,11 @@ func items(nsus ...int64) []Item {
 
 func (h *testHelper) runSource(src Source) error {
 	h.t.Helper()
-	return NewSyncService(h.store, src, discardLogger()).Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
+	return NewSyncService(h.store, src, discardLogger()).Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
 }
 
 // sourceCursor returns last_checked_nsu and max_nsu of the source's sync_state.
-func (h *testHelper) sourceCursor(source nfse.SyncSource) (int64, sql.NullInt64) {
+func (h *testHelper) sourceCursor(source syncstate.SyncSource) (int64, sql.NullInt64) {
 	h.t.Helper()
 	var cursor int64
 	var maxNSU sql.NullInt64
@@ -89,7 +90,7 @@ func (h *testHelper) countRows(query string, args ...any) int {
 	return count
 }
 
-func (h *testHelper) assertSourceRun(source nfse.SyncSource, wantStatus nfse.SyncStatus, wantReason nfse.SyncStopReason) {
+func (h *testHelper) assertSourceRun(source syncstate.SyncSource, wantStatus syncstate.SyncStatus, wantReason syncstate.SyncStopReason) {
 	h.t.Helper()
 	var status string
 	var reason sql.NullString
@@ -101,7 +102,7 @@ func (h *testHelper) assertSourceRun(source nfse.SyncSource, wantStatus nfse.Syn
 	if err != nil {
 		h.t.Fatalf("failed to query %s run: %v", source, err)
 	}
-	if nfse.SyncStatus(status) != wantStatus || nfse.SyncStopReason(reason.String) != wantReason {
+	if syncstate.SyncStatus(status) != wantStatus || syncstate.SyncStopReason(reason.String) != wantReason {
 		h.t.Errorf("%s run = %s/%s, want %s/%s", source, status, reason.String, wantStatus, wantReason)
 	}
 }
@@ -109,10 +110,10 @@ func (h *testHelper) assertSourceRun(source nfse.SyncSource, wantStatus nfse.Syn
 func TestSourceLoopCursorFollowsNextCursorPastLastItem(t *testing.T) {
 	h := newTestHelper(t)
 	src := &fakeSource{
-		kind: nfse.SyncSourceNFe,
+		kind: syncstate.SyncSourceNFe,
 		batches: map[int64]Batch{
 			0:  {Items: items(1, 2), UltNSU: 10, MaxNSU: 20, NextCursor: 10},
-			10: {Items: items(15), UltNSU: 20, MaxNSU: 20, NextCursor: 20, Done: true, StopReason: nfse.SyncStopReasonCaughtUp},
+			10: {Items: items(15), UltNSU: 20, MaxNSU: 20, NextCursor: 20, Done: true, StopReason: syncstate.SyncStopReasonCaughtUp},
 		},
 	}
 
@@ -123,25 +124,25 @@ func TestSourceLoopCursorFollowsNextCursorPastLastItem(t *testing.T) {
 	if len(src.cursors) != 2 || src.cursors[0] != 0 || src.cursors[1] != 10 {
 		t.Fatalf("fetch cursors = %v, want [0 10]", src.cursors)
 	}
-	cursor, maxNSU := h.sourceCursor(nfse.SyncSourceNFe)
+	cursor, maxNSU := h.sourceCursor(syncstate.SyncSourceNFe)
 	if cursor != 20 {
 		t.Errorf("last_checked_nsu = %d, want 20", cursor)
 	}
 	if !maxNSU.Valid || maxNSU.Int64 != 20 {
 		t.Errorf("max_nsu = %v, want 20", maxNSU)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 }
 
 func TestSourceLoopCaughtUpMarksInitialSyncOnlyForThatSource(t *testing.T) {
 	h := newTestHelper(t)
-	src := &fakeSource{kind: nfse.SyncSourceNFe}
+	src := &fakeSource{kind: syncstate.SyncSourceNFe}
 
 	if err := h.runSource(src); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	nfeState, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,34 +156,34 @@ func TestSourceLoopWaitUntilBlocksNextSyncWithoutRun(t *testing.T) {
 	h := newTestHelper(t)
 	waitUntil := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
 	src := &fakeSource{
-		kind: nfse.SyncSourceNFe,
+		kind: syncstate.SyncSourceNFe,
 		batches: map[int64]Batch{
-			0: {NextCursor: 0, Done: true, StopReason: nfse.SyncStopReasonConsumoIndevido, WaitUntil: &waitUntil},
+			0: {NextCursor: 0, Done: true, StopReason: syncstate.SyncStopReasonConsumoIndevido, WaitUntil: &waitUntil},
 		},
 	}
 
 	if err := h.runSource(src); err != nil {
 		t.Fatalf("first Sync: %v", err)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonConsumoIndevido)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonConsumoIndevido)
 
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if state.BlockedUntil == nil || !state.BlockedUntil.Equal(waitUntil) {
 		t.Fatalf("blocked_until = %v, want %v", state.BlockedUntil, waitUntil)
 	}
-	if state.BlockedReason != nfse.SyncStopReasonConsumoIndevido {
+	if state.BlockedReason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Errorf("blocked_reason = %q, want consumo_indevido", state.BlockedReason)
 	}
 
-	err = checkBlocked(nfse.SyncSourceNFe, state, time.Now())
+	err = checkBlocked(syncstate.SyncSourceNFe, state, time.Now())
 	var blocked *BlockedError
 	if !errors.As(err, &blocked) || !errors.Is(err, ErrSourceBlocked) {
 		t.Fatalf("checkBlocked = %v, want *BlockedError", err)
 	}
-	if blocked.Source != nfse.SyncSourceNFe || !blocked.Until.Equal(waitUntil) || blocked.Reason != nfse.SyncStopReasonConsumoIndevido {
+	if blocked.Source != syncstate.SyncSourceNFe || !blocked.Until.Equal(waitUntil) || blocked.Reason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Errorf("BlockedError = %+v", blocked)
 	}
 }
@@ -190,7 +191,7 @@ func TestSourceLoopWaitUntilBlocksNextSyncWithoutRun(t *testing.T) {
 func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 	h := newTestHelper(t)
 	src := &fakeSource{
-		kind:   nfse.SyncSourceNFe,
+		kind:   syncstate.SyncSourceNFe,
 		policy: SourcePolicy{RequestsPerHour: 2},
 		batches: map[int64]Batch{
 			0: {Items: items(1), NextCursor: 1},
@@ -207,7 +208,7 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 	}
 	// Requests of the other environment do not spend this one's budget.
 	for range 2 {
-		if err := h.store.RecordRequest(context.Background(), h.company.ID, nfse.SyncSourceNFe, dfe.EnvironmentRestricted, time.Now()); err != nil {
+		if err := h.store.RecordRequest(context.Background(), h.company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentRestricted, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -219,29 +220,29 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 	if len(src.cursors) != 2 {
 		t.Fatalf("fetch cursors = %v, want 2 fetches", src.cursors)
 	}
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 2 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 2 {
 		t.Errorf("last_checked_nsu = %d, want 2", cursor)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonRateBudget)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonRateBudget)
 
 	// The budget and the block survive a new Store on the same database.
 	reopened := NewStore(h.db)
-	count, oldest, err := reopened.RequestsSince(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment, time.Now().Add(-time.Hour))
+	count, oldest, err := reopened.RequestsSince(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment, time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if count != 2 || oldest == nil {
 		t.Fatalf("RequestsSince = %d, %v; want 2 and the oldest time", count, oldest)
 	}
-	state, err := reopened.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	state, err := reopened.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state.BlockedUntil == nil || !state.BlockedUntil.Equal(oldest.Add(time.Hour)) || state.BlockedReason != nfse.SyncStopReasonRateBudget {
+	if state.BlockedUntil == nil || !state.BlockedUntil.Equal(oldest.Add(time.Hour)) || state.BlockedReason != syncstate.SyncStopReasonRateBudget {
 		t.Fatalf("source state = %+v, want blocked until %v for rate_budget", state, oldest.Add(time.Hour))
 	}
 
-	if err := checkBlocked(nfse.SyncSourceNFe, state, time.Now()); !errors.Is(err, ErrSourceBlocked) {
+	if err := checkBlocked(syncstate.SyncSourceNFe, state, time.Now()); !errors.Is(err, ErrSourceBlocked) {
 		t.Fatalf("checkBlocked after the budget = %v, want ErrSourceBlocked", err)
 	}
 }
@@ -249,9 +250,9 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 func TestSourceLoopUnsupportedItemAdvancesCheckpoint(t *testing.T) {
 	h := newTestHelper(t)
 	src := &fakeSource{
-		kind: nfse.SyncSourceNFe,
+		kind: syncstate.SyncSourceNFe,
 		batches: map[int64]Batch{
-			0: {Items: items(4, 5), NextCursor: 5, Done: true, StopReason: nfse.SyncStopReasonCaughtUp},
+			0: {Items: items(4, 5), NextCursor: 5, Done: true, StopReason: syncstate.SyncStopReasonCaughtUp},
 		},
 		outcomes: map[int64]ItemOutcome{5: {Unsupported: true}},
 	}
@@ -260,21 +261,21 @@ func TestSourceLoopUnsupportedItemAdvancesCheckpoint(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 5 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 5 {
 		t.Errorf("last_checked_nsu = %d, want 5", cursor)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 }
 
 func TestSourceLoopRunsOfDifferentSourcesDoNotInterruptEachOther(t *testing.T) {
 	h := newTestHelper(t)
 	nfseSrc := &fakeSource{
-		kind:    nfse.SyncSourceNFSe,
-		batches: map[int64]Batch{0: {Items: items(1), NextCursor: 1, Done: true, StopReason: nfse.SyncStopReasonEmptyLimit}},
+		kind:    syncstate.SyncSourceNFSe,
+		batches: map[int64]Batch{0: {Items: items(1), NextCursor: 1, Done: true, StopReason: syncstate.SyncStopReasonEmptyLimit}},
 	}
 	nfeSrc := &fakeSource{
-		kind:    nfse.SyncSourceNFe,
-		batches: map[int64]Batch{0: {Items: items(7), NextCursor: 7, Done: true, StopReason: nfse.SyncStopReasonCaughtUp}},
+		kind:    syncstate.SyncSourceNFe,
+		batches: map[int64]Batch{0: {Items: items(7), NextCursor: 7, Done: true, StopReason: syncstate.SyncStopReasonCaughtUp}},
 	}
 	nfeSrc.onFetch = func(int64) {
 		// The NF-e run is in flight: a whole NFS-e run happens meanwhile.
@@ -287,12 +288,12 @@ func TestSourceLoopRunsOfDifferentSourcesDoNotInterruptEachOther(t *testing.T) {
 		t.Fatalf("nfe Sync: %v", err)
 	}
 
-	h.assertSourceRun(nfse.SyncSourceNFSe, nfse.SyncStatusCompleted, nfse.SyncStopReasonEmptyLimit)
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFSe); cursor != 1 {
+	h.assertSourceRun(syncstate.SyncSourceNFSe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonEmptyLimit)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFSe); cursor != 1 {
 		t.Errorf("nfse cursor = %d, want 1", cursor)
 	}
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 7 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 7 {
 		t.Errorf("nfe cursor = %d, want 7", cursor)
 	}
 }
@@ -300,7 +301,7 @@ func TestSourceLoopRunsOfDifferentSourcesDoNotInterruptEachOther(t *testing.T) {
 func TestSourceLoopSkipsPoisonItemAfterThreeFailedRuns(t *testing.T) {
 	h := newTestHelper(t)
 	src := &fakeSource{
-		kind: nfse.SyncSourceNFe,
+		kind: syncstate.SyncSourceNFe,
 		batches: map[int64]Batch{
 			0: {Items: items(1, 2), NextCursor: 2},
 			1: {Items: items(2), NextCursor: 2},
@@ -314,25 +315,25 @@ func TestSourceLoopSkipsPoisonItemAfterThreeFailedRuns(t *testing.T) {
 		if !errors.As(err, &parseErr) {
 			t.Fatalf("run %d error = %v, want the ProcessingError", run, err)
 		}
-		if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 1 {
+		if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 1 {
 			t.Fatalf("run %d cursor = %d, want 1", run, cursor)
 		}
-		h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError)
+		h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusFailed, syncstate.SyncStopReasonProcessError)
 	}
 
 	if err := h.runSource(src); err != nil {
 		t.Fatalf("run %d: %v", maxItemAttempts, err)
 	}
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 2 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 2 {
 		t.Errorf("cursor after giving up = %d, want 2", cursor)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 }
 
 func TestSourceLoopDoesNotSkipItemAfterNonParseFailures(t *testing.T) {
 	h := newTestHelper(t)
 	src := &fakeSource{
-		kind:     nfse.SyncSourceNFe,
+		kind:     syncstate.SyncSourceNFe,
 		batches:  map[int64]Batch{0: {Items: items(1), NextCursor: 1}},
 		failures: map[int64]error{1: errors.New("disk full")},
 	}
@@ -342,7 +343,7 @@ func TestSourceLoopDoesNotSkipItemAfterNonParseFailures(t *testing.T) {
 			t.Fatalf("run %d succeeded, want the storage error", run)
 		}
 	}
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 0 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 0 {
 		t.Errorf("cursor = %d, want 0", cursor)
 	}
 }
@@ -370,11 +371,11 @@ func TestNFSeSourceSkipsUnparseableDocumentAfterThreeRunsAndKeepsXML(t *testing.
 	xmlStore := &mockXMLStore{}
 	svc := h.newNFSeService(fetcher, xmlStore)
 	for run := 1; run < maxItemAttempts; run++ {
-		if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err == nil {
+		if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil); err == nil {
 			t.Fatalf("run %d succeeded, want a parse failure", run)
 		}
 	}
-	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil); err != nil {
+	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil); err != nil {
 		t.Fatalf("run %d: %v", maxItemAttempts, err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // CTeResetResult is what a CT-e reset removed, or would remove, for one
@@ -41,7 +42,7 @@ func (s *CTeService) Reset(ctx context.Context, cnpj string) (CTeResetResult, er
 	if err != nil {
 		return CTeResetResult{}, err
 	}
-	release, err := s.SyncManager.ReserveSource(comp.ID, nfse.SyncSourceCTe)
+	release, err := s.SyncManager.ReserveSource(comp.ID, syncstate.SyncSourceCTe)
 	if err != nil {
 		return CTeResetResult{}, err
 	}

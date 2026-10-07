@@ -17,6 +17,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 const requestDelay = 500 * time.Millisecond
@@ -46,8 +47,8 @@ func NewNFSeSource(fetcher documentFetcher, store *Store, xml files.XMLStore, lo
 	}
 }
 
-func (s *nfseSource) Kind() nfse.SyncSource {
-	return nfse.SyncSourceNFSe
+func (s *nfseSource) Kind() syncstate.SyncSource {
+	return syncstate.SyncSourceNFSe
 }
 
 func (s *nfseSource) Policy() SourcePolicy {
@@ -94,7 +95,7 @@ func (s *nfseSource) Fetch(ctx context.Context, company *nfse.Company, cursor in
 
 	if len(batch.Items) == 0 {
 		batch.Done = true
-		batch.StopReason = nfse.SyncStopReasonEmptyLimit
+		batch.StopReason = syncstate.SyncStopReasonEmptyLimit
 	}
 	return batch, nil
 }

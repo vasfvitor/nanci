@@ -13,6 +13,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // LoadedCredential is a company's certificate, loaded and checked against
@@ -20,7 +21,7 @@ import (
 type LoadedCredential struct {
 	Credential *nfse.Credential
 	TLS        tls.Certificate // PrivateKey is a crypto.Signer (RSA for ICP-Brasil A1)
-	Basis      nfse.ConsultationBasis
+	Basis      syncstate.ConsultationBasis
 }
 
 // CertificateLoader loads the certificate a company consults with. Pull,
@@ -104,7 +105,7 @@ func validateCertificatePath(path string) error {
 	return nil
 }
 
-func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (nfse.ConsultationBasis, error) {
+func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (syncstate.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
 		return "", companypkg.ErrCredentialNoOwner
 	}
@@ -115,7 +116,7 @@ func validateConsultationCompatibility(company *nfse.Company, credential *nfse.C
 		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", companypkg.ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
 	}
 	if company.CNPJ == credential.OwnerCNPJ {
-		return nfse.ConsultationBasisExactCertificateCNPJ, nil
+		return syncstate.ConsultationBasisExactCertificateCNPJ, nil
 	}
-	return nfse.ConsultationBasisSameRootCertificate, nil
+	return syncstate.ConsultationBasisSameRootCertificate, nil
 }

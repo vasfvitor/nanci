@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // The NF-e and CT-e distributions treat a query whose ultNSU is not the one
@@ -25,7 +25,7 @@ func ultNSUJumpScript(doc sefaz.DocZip) map[int64]sefaz.DistResult {
 	}
 }
 
-func assertStoredCursor(t *testing.T, h *testHelper, source nfse.SyncSource, want int64, when string) {
+func assertStoredCursor(t *testing.T, h *testHelper, source syncstate.SyncSource, want int64, when string) {
 	t.Helper()
 	if got, _ := h.sourceCursor(source); got != want {
 		t.Errorf("%s: stored cursor = %d, want the returned ultNSU %d", when, got, want)
@@ -34,7 +34,7 @@ func assertStoredCursor(t *testing.T, h *testHelper, source nfse.SyncSource, wan
 
 // assertReturnedUltNSUFollowed runs three pulls through the jump script and
 // checks the stored cursor after each one and the ultNSU of every request.
-func assertReturnedUltNSUFollowed(t *testing.T, h *testHelper, source nfse.SyncSource, fetcher *scriptedFetcher, run func() error) {
+func assertReturnedUltNSUFollowed(t *testing.T, h *testHelper, source syncstate.SyncSource, fetcher *scriptedFetcher, run func() error) {
 	t.Helper()
 	steps := []struct {
 		when string
@@ -59,7 +59,7 @@ func TestNFeSourceStoresReturnedUltNSUAfterEveryResponse(t *testing.T) {
 	h := newNFeTestHelper(t)
 	fetcher := &scriptedFetcher{responses: ultNSUJumpScript(docZip(t, 1, "resNFe_v1.01.xsd", "resnfe.xml"))}
 
-	assertReturnedUltNSUFollowed(t, h.testHelper, nfse.SyncSourceNFe, fetcher, func() error {
+	assertReturnedUltNSUFollowed(t, h.testHelper, syncstate.SyncSourceNFe, fetcher, func() error {
 		_, err := h.run(fetcher)
 		return err
 	})
@@ -72,7 +72,7 @@ func TestCTeSourceStoresReturnedUltNSUAfterEveryResponse(t *testing.T) {
 	h := newCTeTestHelper(t)
 	fetcher := newScriptedCTeFetcher(ultNSUJumpScript(cteDocZip(t, 1, "procCTe_v4.00.xsd", "procte.xml")))
 
-	assertReturnedUltNSUFollowed(t, h.testHelper, nfse.SyncSourceCTe, fetcher, func() error {
+	assertReturnedUltNSUFollowed(t, h.testHelper, syncstate.SyncSourceCTe, fetcher, func() error {
 		_, err := h.run(fetcher)
 		return err
 	})

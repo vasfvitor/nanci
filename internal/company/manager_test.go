@@ -8,6 +8,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Fake store implementing company.store interface
@@ -43,13 +44,13 @@ func (f *fakeCred) CreateCredential(ctx context.Context, cred *nfse.Credential) 
 // fakeSync reports a sync cursor for the sources in cursors; an empty
 // source asks for any cursor.
 type fakeSync struct {
-	cursors []nfse.SyncSource
+	cursors []syncstate.SyncSource
 }
 
-func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env dfe.Environment, cnpj string) (nfse.SyncSnapshot, error) {
-	return nfse.SyncSnapshot{}, nil
+func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, cnpj string) (syncstate.SyncSnapshot, error) {
+	return syncstate.SyncSnapshot{}, nil
 }
-func (f *fakeSync) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
+func (f *fakeSync) HasSyncState(ctx context.Context, params syncstate.HasSyncStateParams) (bool, error) {
 	if params.Source == "" {
 		return len(f.cursors) > 0, nil
 	}
@@ -139,12 +140,12 @@ func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name    string
-		cursors []nfse.SyncSource
+		cursors []syncstate.SyncSource
 		wantErr bool
 	}{
 		{"no cursor", nil, false},
-		{"only an NF-e cursor", []nfse.SyncSource{nfse.SyncSourceNFe}, false},
-		{"NFS-e cursor", []nfse.SyncSource{nfse.SyncSourceNFSe}, true},
+		{"only an NF-e cursor", []syncstate.SyncSource{syncstate.SyncSourceNFe}, false},
+		{"NFS-e cursor", []syncstate.SyncSource{syncstate.SyncSourceNFSe}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -155,7 +156,7 @@ func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
 				Name:            "Test",
 				Environment:     dfe.EnvironmentProduction,
 				CredentialID:    "cred-123",
-				SyncStartPolicy: nfse.SyncStartPolicyFromNow,
+				SyncStartPolicy: syncstate.SyncStartPolicyFromNow,
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -165,14 +166,14 @@ func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
 				CNPJ:            stored.CNPJ,
 				Name:            stored.Name,
 				Environment:     stored.Environment,
-				SyncStartPolicy: nfse.SyncStartPolicyAll,
+				SyncStartPolicy: syncstate.SyncStartPolicyAll,
 			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("UpdateCompany error = %v, wantErr %t", err, tt.wantErr)
 			}
-			want := nfse.SyncStartPolicyAll
+			want := syncstate.SyncStartPolicyAll
 			if tt.wantErr {
-				want = nfse.SyncStartPolicyFromNow
+				want = syncstate.SyncStartPolicyFromNow
 			}
 			if got := s.companies[0].SyncStartPolicy; got != want {
 				t.Errorf("SyncStartPolicy = %s, want %s", got, want)
@@ -188,12 +189,12 @@ func TestManager_UpdateCompanyEnvironmentAfterSync(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name    string
-		cursors []nfse.SyncSource
+		cursors []syncstate.SyncSource
 	}{
 		{"no cursor", nil},
-		{"NFS-e cursor", []nfse.SyncSource{nfse.SyncSourceNFSe}},
-		{"NF-e cursor", []nfse.SyncSource{nfse.SyncSourceNFe}},
-		{"NF-e and NFS-e cursors", []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe}},
+		{"NFS-e cursor", []syncstate.SyncSource{syncstate.SyncSourceNFSe}},
+		{"NF-e cursor", []syncstate.SyncSource{syncstate.SyncSourceNFe}},
+		{"NF-e and NFS-e cursors", []syncstate.SyncSource{syncstate.SyncSourceNFSe, syncstate.SyncSourceNFe}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -204,7 +205,7 @@ func TestManager_UpdateCompanyEnvironmentAfterSync(t *testing.T) {
 				Name:            "Test",
 				Environment:     dfe.EnvironmentRestricted,
 				CredentialID:    "cred-123",
-				SyncStartPolicy: nfse.SyncStartPolicyFromNow,
+				SyncStartPolicy: syncstate.SyncStartPolicyFromNow,
 			})
 			if err != nil {
 				t.Fatal(err)

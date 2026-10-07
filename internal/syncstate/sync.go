@@ -1,4 +1,9 @@
-package nfse
+// Package syncstate holds the estado da sincronização por empresa e origem,
+// sem o loop: the sync sources, the run and cursor records with their status,
+// mode and stop-reason enums, and the parameters the store takes to persist
+// them. The loop lives in internal/sync, which imports store; store needs
+// these types, so they sit in this leaf package.
+package syncstate
 
 import (
 	"fmt"

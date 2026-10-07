@@ -13,6 +13,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // ExportInput is shared by all export formats.
@@ -152,7 +153,7 @@ func (s *ExportService) bulkExport(ctx context.Context, input ExportInput, kind 
 		ChavesAcesso: input.ChavesAcesso,
 	}
 
-	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != syncstate.SyncStartPolicyAll && company.SyncStartDate != nil {
 		filter.IssueDateGTE = company.SyncStartDate
 	}
 
@@ -288,7 +289,7 @@ func (s *ExportService) CountPendingExportDocuments(ctx context.Context, input E
 		Direction:  input.Direction,
 	}
 
-	if company.SyncStartPolicy != "" && company.SyncStartPolicy != nfse.SyncStartPolicyAll && company.SyncStartDate != nil {
+	if company.SyncStartPolicy != "" && company.SyncStartPolicy != syncstate.SyncStartPolicyAll && company.SyncStartDate != nil {
 		filter.IssueDateGTE = company.SyncStartDate
 	}
 	return s.DocumentRepo.CountPendingExportDocuments(ctx, company.ID, filter, kind)

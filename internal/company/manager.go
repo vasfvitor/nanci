@@ -13,6 +13,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/uf"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 var (
@@ -35,8 +36,8 @@ type credentialProvider interface {
 }
 
 type syncProvider interface {
-	LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env dfe.Environment, cnpj string) (nfse.SyncSnapshot, error)
-	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
+	LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, cnpj string) (syncstate.SyncSnapshot, error)
+	HasSyncState(ctx context.Context, params syncstate.HasSyncStateParams) (bool, error)
 }
 
 // AddCompanyInput carries the data required to register a new company.
@@ -48,7 +49,7 @@ type AddCompanyInput struct {
 	CertPath        string
 	Environment     dfe.Environment
 	UF              string // optional state sigla, e.g. "SP"
-	SyncStartPolicy nfse.SyncStartPolicy
+	SyncStartPolicy syncstate.SyncStartPolicy
 	SyncStartDate   *time.Time
 }
 
@@ -58,7 +59,7 @@ type UpdateCompanyInput struct {
 	Name            string
 	Environment     dfe.Environment
 	UF              string // optional state sigla, e.g. "SP"
-	SyncStartPolicy nfse.SyncStartPolicy
+	SyncStartPolicy syncstate.SyncStartPolicy
 	SyncStartDate   *time.Time
 }
 
@@ -128,7 +129,7 @@ func (m *Manager) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 		return nil, fmt.Errorf("listar empresas: %w", err)
 	}
 	for i := range companies {
-		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, nfse.SyncSourceNFSe, companies[i].Environment, companies[i].CNPJ)
+		snapshot, snapErr := m.syncs.LatestSyncSnapshot(ctx, companies[i].ID, syncstate.SyncSourceNFSe, companies[i].Environment, companies[i].CNPJ)
 		if snapErr != nil {
 			return nil, fmt.Errorf("carregar snapshot da empresa %s: %w", companies[i].Name, snapErr)
 		}
@@ -221,7 +222,7 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 
 	// The start policy only applies to NFS-e; an NF-e cursor does not lock it.
 	if input.SyncStartPolicy != company.SyncStartPolicy || !sameDate(input.SyncStartDate, company.SyncStartDate) {
-		hasState, err := m.syncs.HasSyncState(ctx, nfse.HasSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe})
+		hasState, err := m.syncs.HasSyncState(ctx, syncstate.HasSyncStateParams{CompanyID: company.ID, Source: syncstate.SyncSourceNFSe})
 		if err != nil {
 			return fmt.Errorf("verificar estado de sincronização: %w", err)
 		}
@@ -243,22 +244,22 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 	return nil
 }
 
-func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy, *time.Time, error) {
+func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (syncstate.SyncStartPolicy, *time.Time, error) {
 	if rawPolicy == "" {
-		rawPolicy = string(nfse.SyncStartPolicyFromNow)
+		rawPolicy = string(syncstate.SyncStartPolicyFromNow)
 	}
-	policy, err := nfse.ParseSyncStartPolicy(rawPolicy)
+	policy, err := syncstate.ParseSyncStartPolicy(rawPolicy)
 	if err != nil {
 		return "", nil, err
 	}
 
 	switch policy {
-	case nfse.SyncStartPolicyAll:
+	case syncstate.SyncStartPolicyAll:
 		if rawDate != "" {
 			return "", nil, fmt.Errorf("sync_start_date deve ficar vazio para política all")
 		}
 		return policy, nil, nil
-	case nfse.SyncStartPolicySinceDate:
+	case syncstate.SyncStartPolicySinceDate:
 		if rawDate == "" {
 			return "", nil, fmt.Errorf("sync_start_date é obrigatório para política since_date")
 		}
@@ -267,7 +268,7 @@ func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (nfse.SyncStartPolicy,
 			return "", nil, fmt.Errorf("sync_start_date inválido: use YYYY-MM-DD")
 		}
 		return policy, &parsed, nil
-	case nfse.SyncStartPolicyFromNow:
+	case syncstate.SyncStartPolicyFromNow:
 		if rawDate == "" {
 			now := time.Now()
 			parsed, err := time.Parse("2006-01-02", now.Format("2006-01-02"))

@@ -11,8 +11,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestNFeReset(t *testing.T) {
@@ -45,7 +45,7 @@ func TestNFeReset(t *testing.T) {
 		t.Fatalf("documents after the preview = %d, %v; want 3", len(docs), err)
 	}
 
-	release, err := env.app.NFe.SyncManager.ReserveSource(env.company.ID, nfse.SyncSourceNFe)
+	release, err := env.app.NFe.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

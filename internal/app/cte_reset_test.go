@@ -12,6 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestCTeReset(t *testing.T) {
@@ -57,7 +58,7 @@ func TestCTeReset(t *testing.T) {
 		t.Fatalf("documents after the preview = %d, %v; want 3", len(docs), err)
 	}
 
-	release, err := env.app.CTe.SyncManager.ReserveSource(env.company.ID, nfse.SyncSourceCTe)
+	release, err := env.app.CTe.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceCTe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,7 @@ func TestCTeReset(t *testing.T) {
 	release()
 
 	// An NF-e pull does not hold the CT-e source.
-	releaseNFe, err := env.app.CTe.SyncManager.ReserveSource(env.company.ID, nfse.SyncSourceNFe)
+	releaseNFe, err := env.app.CTe.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

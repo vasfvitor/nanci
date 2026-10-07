@@ -18,6 +18,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // Access keys of the fixtures in internal/nfe/testdata.
@@ -75,7 +76,7 @@ func newNFeTestHelper(t *testing.T) *nfeTestHelper {
 	}
 	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, dfe.EnvironmentProduction, cred)
 	company.UF = "SP"
-	company.SyncStartPolicy = nfse.SyncStartPolicyFromNow
+	company.SyncStartPolicy = syncstate.SyncStartPolicyFromNow
 	company.SyncStartDate = new(time.Now().UTC())
 	if err := dbstore.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
@@ -97,11 +98,11 @@ func (h *nfeTestHelper) source(fetcher nfeFetcher) Source {
 }
 
 // run syncs the NF-e source and returns the last progress event.
-func (h *nfeTestHelper) run(fetcher nfeFetcher) (nfse.ProgressEvent, error) {
+func (h *nfeTestHelper) run(fetcher nfeFetcher) (syncstate.ProgressEvent, error) {
 	h.t.Helper()
-	var last nfse.ProgressEvent
+	var last syncstate.ProgressEvent
 	svc := NewSyncService(h.store, h.source(fetcher), discardLogger())
-	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, func(e nfse.ProgressEvent) {
+	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, func(e syncstate.ProgressEvent) {
 		last = e
 	})
 	return last, err
@@ -151,7 +152,7 @@ func docZip(t *testing.T, nsu int64, schema, fixture string) sefaz.DocZip {
 	return sefaz.DocZip{NSU: nsu, Schema: schema, Content: mustEncodeGzipBase64(t, string(data))}
 }
 
-func assertRecentWait(t *testing.T, state SourceState, wantReason nfse.SyncStopReason) {
+func assertRecentWait(t *testing.T, state SourceState, wantReason syncstate.SyncStopReason) {
 	t.Helper()
 	if state.BlockedUntil == nil {
 		t.Fatalf("blocked_until not set, want about an hour from now (%s)", wantReason)
@@ -188,11 +189,11 @@ func TestNFeSourceStoresMixedBatchesAndStopsWhenCaughtUp(t *testing.T) {
 	if fetcher.cUFAutors[0] != 35 || fetcher.cnpjs[0] != nfeCompanyCNPJ {
 		t.Errorf("DistNSU got cUFAutor %d, CNPJ %s", fetcher.cUFAutors[0], fetcher.cnpjs[0])
 	}
-	cursor, maxNSU := h.sourceCursor(nfse.SyncSourceNFe)
+	cursor, maxNSU := h.sourceCursor(syncstate.SyncSourceNFe)
 	if cursor != 5 || !maxNSU.Valid || maxNSU.Int64 != 5 {
 		t.Errorf("cursor = %d, max_nsu = %v, want 5 and 5", cursor, maxNSU)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 
 	docs := h.documents()
 	if len(docs) != 3 {
@@ -217,21 +218,21 @@ func TestNFeSourceStoresMixedBatchesAndStopsWhenCaughtUp(t *testing.T) {
 		t.Errorf("stored blobs = %d, want 4", len(h.xml.stored))
 	}
 
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if state.InitialSyncDoneAt == nil {
 		t.Error("nfe initial sync not marked after caught_up")
 	}
-	assertRecentWait(t, state, nfse.SyncStopReasonCaughtUp)
+	assertRecentWait(t, state, syncstate.SyncStopReasonCaughtUp)
 
 	// The NFS-e state of the company is untouched.
 	h.assertInitialSyncCompleted(false)
 	if got := h.countRows(`SELECT COUNT(*) FROM sync_state WHERE source = 'nfse'`); got != 0 {
 		t.Errorf("nfse sync_state rows = %d, want 0", got)
 	}
-	nfseState, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFSe, h.company.Environment)
+	nfseState, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFSe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +334,7 @@ func TestNFeSourceKeepsOnlyOwnEventsWithoutLocalDocument(t *testing.T) {
 	if progress.EventsSkippedByPolicy != 1 || progress.EventsSaved != 1 {
 		t.Errorf("events skipped/saved = %d/%d, want 1/1", progress.EventsSkippedByPolicy, progress.EventsSaved)
 	}
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 2 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 2 {
 		t.Errorf("cursor = %d, want 2", cursor)
 	}
 }
@@ -350,7 +351,7 @@ func TestNFeSourceSkipsUnknownSchemaAndAdvances(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 1 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 1 {
 		t.Errorf("cursor = %d, want 1", cursor)
 	}
 	if got := len(h.documents()); got != 0 {
@@ -359,7 +360,7 @@ func TestNFeSourceSkipsUnknownSchemaAndAdvances(t *testing.T) {
 	if len(h.xml.stored) != 1 {
 		t.Errorf("stored blobs = %d, want the unknown payload kept", len(h.xml.stored))
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
 }
 
 // A document that fails to parse is reported with an XML preview; the
@@ -383,7 +384,7 @@ func TestNFeSourceParseFailureRedactsXMLPreview(t *testing.T) {
 	svc := NewSyncService(h.store, NewNFeSource(fetcher, h.repo, h.xml, log, 35), log)
 	// The item is skipped, and the failure logged, on the last attempt.
 	for attempt := 1; attempt <= maxItemAttempts; attempt++ {
-		err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", nfse.SyncModeNormal, nil)
+		err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
 		if attempt < maxItemAttempts {
 			var parseErr *ProcessingError
 			if !errors.As(err, &parseErr) {
@@ -426,15 +427,15 @@ func TestNFeSourceNenhumDocumentoNeverMovesCursorBack(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 10 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 10 {
 		t.Errorf("cursor = %d, want 10", cursor)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonCaughtUp)
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertRecentWait(t, state, nfse.SyncStopReasonCaughtUp)
+	assertRecentWait(t, state, syncstate.SyncStopReasonCaughtUp)
 }
 
 func TestNFeSourceConsumoIndevidoKeepsCursorAndBlocks(t *testing.T) {
@@ -448,15 +449,15 @@ func TestNFeSourceConsumoIndevidoKeepsCursorAndBlocks(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	if cursor, _ := h.sourceCursor(nfse.SyncSourceNFe); cursor != 10 {
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 10 {
 		t.Errorf("cursor = %d, want 10 (a lower ultNSU from 656 is ignored)", cursor)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusCompleted, nfse.SyncStopReasonConsumoIndevido)
-	state, err := h.store.SourceState(context.Background(), h.company.ID, nfse.SyncSourceNFe, h.company.Environment)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonConsumoIndevido)
+	state, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertRecentWait(t, state, nfse.SyncStopReasonConsumoIndevido)
+	assertRecentWait(t, state, syncstate.SyncStopReasonConsumoIndevido)
 	if state.InitialSyncDoneAt != nil {
 		t.Error("656 must not mark the initial sync")
 	}
@@ -473,7 +474,7 @@ func TestNFeSourceRejectionFailsRunAsFetchError(t *testing.T) {
 	if !errors.As(err, &rejection) || rejection.CStat != 593 {
 		t.Fatalf("Sync error = %v, want the 593 rejection", err)
 	}
-	h.assertSourceRun(nfse.SyncSourceNFe, nfse.SyncStatusFailed, nfse.SyncStopReasonFetchError)
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusFailed, syncstate.SyncStopReasonFetchError)
 }
 
 // newNFePullTestManager is newPullTestManager with the company given a UF,
@@ -512,11 +513,11 @@ func TestPullNFeReportsLimitsAndBlocksAfterConsumoIndevido(t *testing.T) {
 	}}
 	mgr, comp := newNFePullTestManager(t, passwords, fetcher)
 
-	result, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe})
+	result, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
 	if err != nil {
 		t.Fatalf("Pull: %v", err)
 	}
-	if result.Source != nfse.SyncSourceNFe || result.Status != string(nfse.SyncStatusCompleted) || result.StopReason != string(nfse.SyncStopReasonConsumoIndevido) {
+	if result.Source != syncstate.SyncSourceNFe || result.Status != string(syncstate.SyncStatusCompleted) || result.StopReason != string(syncstate.SyncStopReasonConsumoIndevido) {
 		t.Errorf("result source/status/reason = %s/%s/%s", result.Source, result.Status, result.StopReason)
 	}
 	if result.LastProcessedNSU != 1 || result.MaxNSU == nil || *result.MaxNSU != 3 {
@@ -532,9 +533,9 @@ func TestPullNFeReportsLimitsAndBlocksAfterConsumoIndevido(t *testing.T) {
 		t.Errorf("NextAllowedAt = %v, want about an hour from now", result.NextAllowedAt)
 	}
 
-	_, err = mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe})
+	_, err = mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
 	var blocked *BlockedError
-	if !errors.As(err, &blocked) || blocked.Reason != nfse.SyncStopReasonConsumoIndevido {
+	if !errors.As(err, &blocked) || blocked.Reason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Fatalf("second Pull error = %v, want *BlockedError for consumo_indevido", err)
 	}
 	if got := passwords.callCount(); got != 1 {
@@ -552,7 +553,7 @@ func TestPullNFeRequiresCompanyUFBeforePasswordPrompt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe})
+	_, err := mgr.Pull(context.Background(), PullInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
 	if err == nil || !strings.Contains(err.Error(), "UF") {
 		t.Fatalf("Pull error = %v, want the missing UF", err)
 	}

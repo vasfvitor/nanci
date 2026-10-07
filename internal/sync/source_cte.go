@@ -15,6 +15,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // cteRequestDelay is the pause between CTeDistribuicaoDFe requests. It is a
@@ -48,12 +49,12 @@ func NewCTeSource(client cteFetcher, repo *store.CTeRepository, xml files.XMLSto
 	}
 }
 
-func (s *cteSource) Kind() nfse.SyncSource {
-	return nfse.SyncSourceCTe
+func (s *cteSource) Kind() syncstate.SyncSource {
+	return syncstate.SyncSourceCTe
 }
 
 func (s *cteSource) Policy() SourcePolicy {
-	return SourcePolicy{RequestDelay: cteRequestDelay, RequestsPerHour: requestsPerHour(nfse.SyncSourceCTe)}
+	return SourcePolicy{RequestDelay: cteRequestDelay, RequestsPerHour: requestsPerHour(syncstate.SyncSourceCTe)}
 }
 
 // Fetch asks for the documents after cursor; distBatch applies the stop

@@ -12,6 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
@@ -264,9 +265,9 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	company := seedCompany(t, db, "company-1", "11222333000181")
 
 	// Initialize the sync state first so the UPDATE statement has a row to update.
-	_, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
+	_, err := syncRepo.GetOrCreateState(context.Background(), syncstate.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
-		Source:           nfse.SyncSourceNFSe,
+		Source:           syncstate.SyncSourceNFSe,
 		Environment:      dfe.EnvironmentRestricted,
 		ConsultationCNPJ: "11222333000181",
 	})
@@ -286,9 +287,9 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 			CompanyID: company.ID,
 			NSU:       10,
 		},
-		ProgressParams: nfse.PersistSyncProgressParams{
+		ProgressParams: syncstate.PersistSyncProgressParams{
 			CompanyID:        company.ID,
-			Source:           nfse.SyncSourceNFSe,
+			Source:           syncstate.SyncSourceNFSe,
 			Environment:      dfe.EnvironmentRestricted,
 			ConsultationCNPJ: "11222333000181",
 			LastProcessedNSU: 10,
@@ -323,9 +324,9 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	}
 
 	// Verify atomicity (Progress was saved and transaction succeeded)
-	state, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
+	state, err := syncRepo.GetOrCreateState(context.Background(), syncstate.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
-		Source:           nfse.SyncSourceNFSe,
+		Source:           syncstate.SyncSourceNFSe,
 		Environment:      dfe.EnvironmentRestricted,
 		ConsultationCNPJ: "11222333000181",
 	})
@@ -352,8 +353,8 @@ func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 	syncRepo := sync.NewStore(db)
 	company := seedCompany(t, db, "company-1", "11222333000181")
 
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe} {
-		state, err := syncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFSe, syncstate.SyncSourceNFe} {
+		state, err := syncRepo.GetOrCreateState(ctx, syncstate.GetOrCreateSyncStateParams{
 			CompanyID:        company.ID,
 			Source:           source,
 			Environment:      company.Environment,
@@ -367,24 +368,24 @@ func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 		}
 	}
 
-	startRun := func(source nfse.SyncSource) nfse.SyncRun {
+	startRun := func(source syncstate.SyncSource) syncstate.SyncRun {
 		t.Helper()
-		run, err := syncRepo.StartRun(ctx, nfse.StartRunParams{
+		run, err := syncRepo.StartRun(ctx, syncstate.StartRunParams{
 			CompanyID:         company.ID,
 			Source:            source,
 			CredentialID:      company.CredentialID,
 			Environment:       company.Environment,
 			CredentialCNPJ:    company.CNPJ,
 			ConsultationCNPJ:  company.CNPJ,
-			ConsultationBasis: nfse.ConsultationBasisExactCertificateCNPJ,
-			Mode:              nfse.SyncModeNormal,
+			ConsultationBasis: syncstate.ConsultationBasisExactCertificateCNPJ,
+			Mode:              syncstate.SyncModeNormal,
 		})
 		if err != nil {
 			t.Fatalf("StartRun(%s): %v", source, err)
 		}
 		return run
 	}
-	runStatus := func(id nfse.SyncRunID) string {
+	runStatus := func(id syncstate.SyncRunID) string {
 		t.Helper()
 		var status string
 		if err := db.QueryRowContext(ctx, `SELECT status FROM sync_runs WHERE id = ?`, string(id)).Scan(&status); err != nil {
@@ -393,12 +394,12 @@ func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 		return status
 	}
 
-	firstNFSe := startRun(nfse.SyncSourceNFSe)
-	nfeRun := startRun(nfse.SyncSourceNFe)
+	firstNFSe := startRun(syncstate.SyncSourceNFSe)
+	nfeRun := startRun(syncstate.SyncSourceNFe)
 	if got := runStatus(firstNFSe.ID); got != "running" {
 		t.Errorf("nfse run status after starting an nfe run = %s, want running", got)
 	}
-	startRun(nfse.SyncSourceNFSe)
+	startRun(syncstate.SyncSourceNFSe)
 	if got := runStatus(firstNFSe.ID); got != "interrupted" {
 		t.Errorf("first nfse run status after starting another nfse run = %s, want interrupted", got)
 	}
@@ -406,14 +407,14 @@ func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 		t.Errorf("nfe run status after starting another nfse run = %s, want running", got)
 	}
 
-	snapshot, err := syncRepo.LatestSyncSnapshot(ctx, company.ID, nfse.SyncSourceNFe, company.Environment, company.CNPJ)
+	snapshot, err := syncRepo.LatestSyncSnapshot(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment, company.CNPJ)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.State == nil || snapshot.State.Source != nfse.SyncSourceNFe {
+	if snapshot.State == nil || snapshot.State.Source != syncstate.SyncSourceNFe {
 		t.Errorf("nfe snapshot state = %+v, want an nfe state", snapshot.State)
 	}
-	if snapshot.Run == nil || snapshot.Run.ID != nfeRun.ID || snapshot.Run.Source != nfse.SyncSourceNFe {
+	if snapshot.Run == nil || snapshot.Run.ID != nfeRun.ID || snapshot.Run.Source != syncstate.SyncSourceNFe {
 		t.Errorf("nfe snapshot run = %+v, want run %s", snapshot.Run, nfeRun.ID)
 	}
 }
@@ -426,8 +427,8 @@ func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
 	syncRepo := sync.NewStore(db)
 	company := seedCompany(t, db, "company-1", "11222333000181")
 
-	for _, source := range []nfse.SyncSource{nfse.SyncSourceNFSe, nfse.SyncSourceNFe} {
-		if _, err := syncRepo.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFSe, syncstate.SyncSourceNFe} {
+		if _, err := syncRepo.GetOrCreateState(ctx, syncstate.GetOrCreateSyncStateParams{
 			CompanyID:        company.ID,
 			Source:           source,
 			Environment:      company.Environment,
@@ -440,45 +441,45 @@ func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
 		}
 	}
 	blockedUntil := time.Date(2026, 6, 1, 11, 0, 0, 0, time.UTC)
-	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, company.Environment, blockedUntil, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := syncRepo.SetBlockedUntil(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment, blockedUntil, syncstate.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := syncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFe}); err != nil {
+	if err := syncRepo.ResetSyncState(ctx, syncstate.ResetSyncStateParams{CompanyID: company.ID, Source: syncstate.SyncSourceNFe}); err != nil {
 		t.Fatal(err)
 	}
 
-	nfeState, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, company.Environment)
+	nfeState, err := syncRepo.SourceState(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if nfeState.InitialSyncDoneAt != nil {
 		t.Errorf("nfe initial sync after reset = %v, want nil", nfeState.InitialSyncDoneAt)
 	}
-	if nfeState.BlockedUntil == nil || !nfeState.BlockedUntil.Equal(blockedUntil) || nfeState.BlockedReason != nfse.SyncStopReasonConsumoIndevido {
+	if nfeState.BlockedUntil == nil || !nfeState.BlockedUntil.Equal(blockedUntil) || nfeState.BlockedReason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Errorf("nfe block after reset = (%v, %q), want (%v, consumo_indevido)", nfeState.BlockedUntil, nfeState.BlockedReason, blockedUntil)
 	}
-	nfseState, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFSe, company.Environment)
+	nfseState, err := syncRepo.SourceState(ctx, company.ID, syncstate.SyncSourceNFSe, company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if nfseState.InitialSyncDoneAt == nil {
 		t.Error("nfse initial sync was cleared by an nfe reset")
 	}
-	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFe, false)
-	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, true)
+	assertHasSyncState(t, syncRepo, company.ID, syncstate.SyncSourceNFe, false)
+	assertHasSyncState(t, syncRepo, company.ID, syncstate.SyncSourceNFSe, true)
 
-	if err := syncRepo.ResetSyncState(ctx, nfse.ResetSyncStateParams{CompanyID: company.ID, Source: nfse.SyncSourceNFSe}); err != nil {
+	if err := syncRepo.ResetSyncState(ctx, syncstate.ResetSyncStateParams{CompanyID: company.ID, Source: syncstate.SyncSourceNFSe}); err != nil {
 		t.Fatal(err)
 	}
-	nfseState, err = syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFSe, company.Environment)
+	nfseState, err = syncRepo.SourceState(ctx, company.ID, syncstate.SyncSourceNFSe, company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if nfseState.InitialSyncDoneAt != nil {
 		t.Errorf("nfse initial sync after an nfse reset = %v, want nil", nfseState.InitialSyncDoneAt)
 	}
-	assertHasSyncState(t, syncRepo, company.ID, nfse.SyncSourceNFSe, false)
+	assertHasSyncState(t, syncRepo, company.ID, syncstate.SyncSourceNFSe, false)
 }
 
 func TestSourceStateIsKeyedByEnvironment(t *testing.T) {
@@ -490,21 +491,21 @@ func TestSourceStateIsKeyedByEnvironment(t *testing.T) {
 	company := seedCompany(t, db, "company-1", "11222333000181")
 
 	blockedUntil := time.Date(2026, 6, 1, 11, 0, 0, 0, time.UTC)
-	if err := syncRepo.MarkInitialSyncCompleted(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction); err != nil {
+	if err := syncRepo.MarkInitialSyncCompleted(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction); err != nil {
 		t.Fatal(err)
 	}
-	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, blockedUntil, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := syncRepo.SetBlockedUntil(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction, blockedUntil, syncstate.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
-	production, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction)
+	production, err := syncRepo.SourceState(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if production.InitialSyncDoneAt == nil || production.BlockedUntil == nil || !production.BlockedUntil.Equal(blockedUntil) {
 		t.Errorf("produção state = %+v, want the initial sync and the block", production)
 	}
-	restricted, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentRestricted)
+	restricted, err := syncRepo.SourceState(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentRestricted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -514,14 +515,14 @@ func TestSourceStateIsKeyedByEnvironment(t *testing.T) {
 
 	// A block in the other environment does not overwrite the first one.
 	otherUntil := blockedUntil.Add(time.Hour)
-	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentRestricted, otherUntil, nfse.SyncStopReasonRateBudget); err != nil {
+	if err := syncRepo.SetBlockedUntil(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentRestricted, otherUntil, syncstate.SyncStopReasonRateBudget); err != nil {
 		t.Fatal(err)
 	}
-	production, err = syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction)
+	production, err = syncRepo.SourceState(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if production.BlockedUntil == nil || !production.BlockedUntil.Equal(blockedUntil) || production.BlockedReason != nfse.SyncStopReasonConsumoIndevido {
+	if production.BlockedUntil == nil || !production.BlockedUntil.Equal(blockedUntil) || production.BlockedReason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Errorf("produção block = (%v, %q), want (%v, consumo_indevido)", production.BlockedUntil, production.BlockedReason, blockedUntil)
 	}
 }
@@ -542,19 +543,19 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 		now.Add(-10 * time.Minute),
 		now,
 	} {
-		if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFe, company.Environment, at); err != nil {
+		if err := syncRepo.RecordRequest(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment, at); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFSe, company.Environment, now); err != nil {
+	if err := syncRepo.RecordRequest(ctx, company.ID, syncstate.SyncSourceNFSe, company.Environment, now); err != nil {
 		t.Fatal(err)
 	}
 	// A request in the other environment counts only there.
-	if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, now); err != nil {
+	if err := syncRepo.RecordRequest(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction, now); err != nil {
 		t.Fatal(err)
 	}
 
-	count, oldest, err := syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSourceNFe, company.Environment, now.Add(-time.Hour))
+	count, oldest, err := syncRepo.RequestsSince(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment, now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -563,7 +564,7 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 		t.Errorf("RequestsSince = (%d, %v), want (3, %v)", count, oldest, wantOldest)
 	}
 
-	count, _, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, now.Add(-time.Hour))
+	count, _, err = syncRepo.RequestsSince(ctx, company.ID, syncstate.SyncSourceNFe, dfe.EnvironmentProduction, now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -579,7 +580,7 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 		t.Errorf("nfe sync_requests rows = %d, want 5 after pruning the 25h-old one", rows)
 	}
 
-	count, oldest, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSource("cte"), company.Environment, now.Add(-time.Hour))
+	count, oldest, err = syncRepo.RequestsSince(ctx, company.ID, syncstate.SyncSource("cte"), company.Environment, now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,9 +589,9 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 	}
 }
 
-func assertHasSyncState(t *testing.T, syncRepo *sync.Store, companyID dfe.CompanyID, source nfse.SyncSource, want bool) {
+func assertHasSyncState(t *testing.T, syncRepo *sync.Store, companyID dfe.CompanyID, source syncstate.SyncSource, want bool) {
 	t.Helper()
-	got, err := syncRepo.HasSyncState(context.Background(), nfse.HasSyncStateParams{CompanyID: companyID, Source: source})
+	got, err := syncRepo.HasSyncState(context.Background(), syncstate.HasSyncStateParams{CompanyID: companyID, Source: source})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,9 +8,9 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func TestCompanyRepository(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCompanyRepository(t *testing.T) {
 		t.Errorf("Expected name %s, got %s", company.Name, fetched.Name)
 	}
 
-	if fetched.SyncStartPolicy != nfse.SyncStartPolicyFromNow {
+	if fetched.SyncStartPolicy != syncstate.SyncStartPolicyFromNow {
 		t.Errorf("Expected SyncStartPolicyFromNow, got %s", fetched.SyncStartPolicy)
 	}
 	if fetched.SyncStartDate == nil {

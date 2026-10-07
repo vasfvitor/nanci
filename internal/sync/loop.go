@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // maxItemAttempts is how many runs in a row may fail to decode or parse the
@@ -33,13 +34,13 @@ func NewSyncService(syncRepo *Store, source Source, log *slog.Logger) *SyncServi
 }
 
 // Sync starts the synchronization process for a specific company.
-func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode nfse.SyncMode, progress nfse.ProgressFunc) error {
+func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 	if mode == "" {
-		mode = nfse.SyncModeNormal
+		mode = syncstate.SyncModeNormal
 	}
 	kind := s.source.Kind()
 
-	state, err := s.store.GetOrCreateState(ctx, nfse.GetOrCreateSyncStateParams{
+	state, err := s.store.GetOrCreateState(ctx, syncstate.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
 		Source:           kind,
 		Environment:      company.Environment,
@@ -58,14 +59,14 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		slog.String("mode", string(mode)),
 		slog.Int64("from_nsu", state.LastProcessedNSU))
 
-	syncRun, err := s.store.StartRun(ctx, nfse.StartRunParams{
+	syncRun, err := s.store.StartRun(ctx, syncstate.StartRunParams{
 		CompanyID:         company.ID,
 		Source:            kind,
 		CredentialID:      credential.ID,
 		Environment:       company.Environment,
 		CredentialCNPJ:    credential.OwnerCNPJ,
 		ConsultationCNPJ:  company.CNPJ,
-		ConsultationBasis: nfse.ConsultationBasis(consultationBasis),
+		ConsultationBasis: syncstate.ConsultationBasis(consultationBasis),
 		Mode:              mode,
 		FromNSU:           state.LastProcessedNSU,
 		ToNSU:             state.LastProcessedNSU,
@@ -80,13 +81,13 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		lastFoundNSU:     state.LastFoundNSU,
 		source:           sourceState,
 	}
-	finalStatus := nfse.SyncStatusCompleted
-	stopReason := nfse.SyncStopReasonEmptyLimit
+	finalStatus := syncstate.SyncStatusCompleted
+	stopReason := syncstate.SyncStopReasonEmptyLimit
 	errorCode := ""
 	errorMsg := ""
 
 	defer func() {
-		_ = s.finishRun(ctx, nfse.FinishRunParams{
+		_ = s.finishRun(ctx, syncstate.FinishRunParams{
 			RunID:                 syncRun.ID,
 			Status:                finalStatus,
 			StopReason:            stopReason,
@@ -102,15 +103,15 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 	}()
 
 	cursor := state.LastProcessedNSU
-	if mode == nfse.SyncModeFirstSetup {
+	if mode == syncstate.SyncModeFirstSetup {
 		cursor = 0
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			finalStatus = nfse.SyncStatusInterrupted
-			stopReason = nfse.SyncStopReasonContextCanceled
+			finalStatus = syncstate.SyncStatusInterrupted
+			stopReason = syncstate.SyncStopReasonContextCanceled
 			return ctx.Err()
 		default:
 		}
@@ -121,7 +122,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 			return err
 		}
 		if !budgetLeft {
-			stopReason = nfse.SyncStopReasonRateBudget
+			stopReason = syncstate.SyncStopReasonRateBudget
 			break
 		}
 
@@ -148,8 +149,8 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 		}
 
 		if err := waitRequestDelay(ctx, s.source.Policy().RequestDelay); err != nil {
-			finalStatus = nfse.SyncStatusInterrupted
-			stopReason = nfse.SyncStopReasonContextCanceled
+			finalStatus = syncstate.SyncStatusInterrupted
+			stopReason = syncstate.SyncStopReasonContextCanceled
 			return err
 		}
 
@@ -172,7 +173,7 @@ func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credentia
 }
 
 type syncRuntimeState struct {
-	runID                  nfse.SyncRunID
+	runID                  syncstate.SyncRunID
 	lastProcessedNSU       int64
 	lastFoundNSU           *int64
 	maxNSU                 *int64
@@ -195,8 +196,8 @@ type syncRuntimeState struct {
 
 type syncFailure struct {
 	err        error
-	status     nfse.SyncStatus
-	stopReason nfse.SyncStopReason
+	status     syncstate.SyncStatus
+	stopReason syncstate.SyncStopReason
 	code       string
 }
 
@@ -208,23 +209,23 @@ func (e *syncFailure) Unwrap() error {
 	return e.err
 }
 
-func classifySyncError(err error) (nfse.SyncStatus, nfse.SyncStopReason, string, string) {
+func classifySyncError(err error) (syncstate.SyncStatus, syncstate.SyncStopReason, string, string) {
 	var syncErr *syncFailure
 	if errors.As(err, &syncErr) {
 		return syncErr.status, syncErr.stopReason, syncErr.code, syncErr.err.Error()
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return nfse.SyncStatusInterrupted, nfse.SyncStopReasonContextCanceled, "context_canceled", err.Error()
+		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
 	}
-	return nfse.SyncStatusFailed, nfse.SyncStopReasonProcessError, "process_error", err.Error()
+	return syncstate.SyncStatusFailed, syncstate.SyncStopReasonProcessError, "process_error", err.Error()
 }
 
 // persistFailure marks a failed checkpoint write as a failed run.
 func persistFailure(err error) *syncFailure {
 	return &syncFailure{
 		err:        err,
-		status:     nfse.SyncStatusFailed,
-		stopReason: nfse.SyncStopReasonProcessError,
+		status:     syncstate.SyncStatusFailed,
+		stopReason: syncstate.SyncStopReasonProcessError,
 		code:       "persist_error",
 	}
 }
@@ -250,7 +251,7 @@ func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (
 		if oldest != nil {
 			until = oldest.Add(time.Hour)
 		}
-		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, company.Environment, until, nfse.SyncStopReasonRateBudget); err != nil {
+		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, company.Environment, until, syncstate.SyncStopReasonRateBudget); err != nil {
 			return false, persistFailure(fmt.Errorf("failed to block source after request budget: %w", err))
 		}
 		s.log.WarnContext(ctx, "Limite de consultas por hora atingido",
@@ -268,8 +269,8 @@ func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (
 }
 
 // progressParams is the run checkpoint as it stands in runState.
-func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntimeState) nfse.PersistSyncProgressParams {
-	return nfse.PersistSyncProgressParams{
+func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntimeState) syncstate.PersistSyncProgressParams {
+	return syncstate.PersistSyncProgressParams{
 		CompanyID:             company.ID,
 		Source:                s.source.Kind(),
 		RunID:                 runState.runID,
@@ -290,7 +291,7 @@ func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntim
 
 // processBatch fetches one batch after cursor, processes its fresh items in
 // NSU order and checkpoints the run.
-func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, cursor int64, runState *syncRuntimeState, progress nfse.ProgressFunc) (Batch, error) {
+func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, cursor int64, runState *syncRuntimeState, progress syncstate.ProgressFunc) (Batch, error) {
 	batch, err := s.source.Fetch(ctx, company, cursor)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
@@ -298,8 +299,8 @@ func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, c
 		}
 		return Batch{}, &syncFailure{
 			err:        fmt.Errorf("failed to fetch documents at NSU %d: %w", cursor, err),
-			status:     nfse.SyncStatusFailed,
-			stopReason: nfse.SyncStopReasonFetchError,
+			status:     syncstate.SyncStatusFailed,
+			stopReason: syncstate.SyncStopReasonFetchError,
 			code:       "fetch_error",
 		}
 	}
@@ -351,7 +352,7 @@ func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, c
 	}
 
 	if batch.Done && runState.source.InitialSyncDoneAt == nil &&
-		(batch.StopReason == nfse.SyncStopReasonEmptyLimit || batch.StopReason == nfse.SyncStopReasonCaughtUp) {
+		(batch.StopReason == syncstate.SyncStopReasonEmptyLimit || batch.StopReason == syncstate.SyncStopReasonCaughtUp) {
 		if err := s.store.MarkInitialSyncCompleted(ctx, company.ID, s.source.Kind(), company.Environment); err != nil {
 			return Batch{}, persistFailure(fmt.Errorf("failed to mark initial sync completed: %w", err))
 		}
@@ -405,15 +406,15 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 		if persistErr := s.store.PersistProgress(ctx, failed); persistErr != nil {
 			return &syncFailure{
 				err:        fmt.Errorf("failed to persist checkpoint after processing error: %w", persistErr),
-				status:     nfse.SyncStatusFailed,
-				stopReason: nfse.SyncStopReasonProcessError,
+				status:     syncstate.SyncStatusFailed,
+				stopReason: syncstate.SyncStopReasonProcessError,
 				code:       "process_error",
 			}
 		}
 		return &syncFailure{
 			err:        fmt.Errorf("failed to process NSU %d: %w", item.NSU, err),
-			status:     nfse.SyncStatusFailed,
-			stopReason: nfse.SyncStopReasonProcessError,
+			status:     syncstate.SyncStatusFailed,
+			stopReason: syncstate.SyncStopReasonProcessError,
 			code:       "process_error",
 		}
 	}
@@ -454,7 +455,7 @@ func (s *SyncService) skipPoisonItem(ctx context.Context, company *nfse.Company,
 		return ItemOutcome{}, processErr
 	}
 
-	attempts, err := s.store.RecordItemFailure(ctx, nfse.GetOrCreateSyncStateParams{
+	attempts, err := s.store.RecordItemFailure(ctx, syncstate.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
 		Source:           s.source.Kind(),
 		Environment:      company.Environment,
@@ -482,12 +483,12 @@ func (s *SyncService) skipPoisonItem(ctx context.Context, company *nfse.Company,
 	return outcome, nil
 }
 
-func (s *SyncService) reportProgress(progress nfse.ProgressFunc, runState *syncRuntimeState, cursor int64, batch Batch) {
+func (s *SyncService) reportProgress(progress syncstate.ProgressFunc, runState *syncRuntimeState, cursor int64, batch Batch) {
 	if progress == nil {
 		return
 	}
 	docsInBatch := len(batch.Items)
-	progress(nfse.ProgressEvent{
+	progress(syncstate.ProgressEvent{
 		Source:                   s.source.Kind(),
 		CurrentNSU:               cursor,
 		MaxNSU:                   batch.MaxNSU,
@@ -519,7 +520,7 @@ func waitRequestDelay(ctx context.Context, delay time.Duration) error {
 	}
 }
 
-func (s *SyncService) finishRun(ctx context.Context, params nfse.FinishRunParams) error {
+func (s *SyncService) finishRun(ctx context.Context, params syncstate.FinishRunParams) error {
 	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	return s.store.FinishRun(finishCtx, params)

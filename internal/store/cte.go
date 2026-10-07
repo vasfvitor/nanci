@@ -12,8 +12,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // CTeRepository stores CT-e documents (CT-e, CT-e OS, GTV-e and CT-e
@@ -385,7 +385,7 @@ func (r *CTeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 	if !apply {
 		return counts, nil
 	}
-	if err := ResetSyncStateTx(ctx, tx, nfse.ResetSyncStateParams{CompanyID: companyID, Source: nfse.SyncSourceCTe}); err != nil {
+	if err := ResetSyncStateTx(ctx, tx, syncstate.ResetSyncStateParams{CompanyID: companyID, Source: syncstate.SyncSourceCTe}); err != nil {
 		return cte.ResetCounts{}, fmt.Errorf("reset cte sync state: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
