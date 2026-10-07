@@ -14,7 +14,7 @@ Em `%LOCALAPPDATA%\nanci`. **Configurações → Abrir Pasta de Dados** abre a p
 |---|---|
 | `nanci-v1.db` | Banco SQLite com empresas, notas e histórico. |
 | `blobs/` | Os XMLs originais. Não apague: as exportações saem daqui. |
-| `logs/` | Logs do aplicativo. |
+| `logs/` | Logs do aplicativo. Guardam o CNPJ das empresas em claro, para diagnóstico local; só o pacote gerado por **Exportar Pacote de Diagnóstico** mascara CNPJ e chaves de acesso. |
 
 As senhas ficam no Gerenciador de Credenciais do Windows. O banco e os XMLs não são criptografados; use o BitLocker se o computador for compartilhado.
 
