@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/vasfvitor/nanci/internal/app"
@@ -21,19 +20,16 @@ import (
 // database, wires the repositories, the blob store, the keyring-based
 // credential provider (with a terminal fallback), and the DANFSe renderer.
 //
-// verbose and trace route into the logger. stdin/stderr are *os.File
-// because TerminalCredentialProvider passes them to golang.org/x/term,
-// which requires Fd(); stdout is an io.Writer for general-purpose routing.
-func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Writer) AppFactory {
+// The terminal password prompt reads env.In and writes to env.Out (stderr),
+// so stdout stays clean for piping.
+func prodAppFactory(env CommandEnv) AppFactory {
 	return func(ctx context.Context) (*app.App, func(), error) {
 		if err := app.LoadRuntimeEnv(); err != nil {
 			return nil, nil, fmt.Errorf("falha ao carregar runtime: %w", err)
 		}
 
-		if os.Getenv("NANCI_TRACE") == "1" {
-			trace = true
-		}
-		log := logger.New(verbose, trace)
+		trace := os.Getenv("NANCI_TRACE") == "1"
+		log := logger.New(false, trace)
 
 		dataDir, err := app.ResolveRuntimeDataDir("")
 		if err != nil {
@@ -66,7 +62,7 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 			XMLStore: files.NewBlobStore(dataDir),
 			DataDir:  dataDir,
 			CredentialProvider: app.KeyringCredentialProvider{
-				Fallback: TerminalCredentialProvider{In: stdin, Out: stderr},
+				Fallback: terminalPasswords(env),
 				Log:      log,
 			},
 			DANFSeRenderer: godanfsev2.New(),
@@ -77,4 +73,10 @@ func prodAppFactory(verbose, trace bool, stdin, stderr *os.File, stdout io.Write
 		}
 		return application, cleanup, nil
 	}
+}
+
+// terminalPasswords builds the password prompt from the env's streams: it
+// reads from In and writes the prompt to Out, which is stderr in production.
+func terminalPasswords(env CommandEnv) TerminalCredentialProvider {
+	return TerminalCredentialProvider{In: env.In, Out: env.Out}
 }

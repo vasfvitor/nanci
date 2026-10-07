@@ -31,18 +31,18 @@ type CommandEnv struct {
 // RunE via defer, regardless of how many times AppFactory is called.
 type AppFactory func(ctx context.Context) (*app.App, func(), error)
 
-// prodEnv builds a CommandEnv wired to the production factory and the
-// process's real IO. The current implementation does not need ctx
-// (the AppFactory is built eagerly and captures stdin/stdout/stderr),
-// but the signature is kept for callers that flow context through.
+// prodEnv builds a CommandEnv wired to the process's real IO and the
+// production factory. The factory takes the env itself, so the streams
+// reach it by field name and cannot be passed in the wrong order.
 func prodEnv() CommandEnv {
 	v, tr := false, false
-	return CommandEnv{
-		In:         os.Stdin,
-		Out:        os.Stderr,
-		Stdout:     os.Stdout,
-		AppFactory: prodAppFactory(false, false, os.Stdin, os.Stdout, os.Stderr),
-		Verbose:    &v,
-		Trace:      &tr,
+	env := CommandEnv{
+		In:      os.Stdin,
+		Out:     os.Stderr,
+		Stdout:  os.Stdout,
+		Verbose: &v,
+		Trace:   &tr,
 	}
+	env.AppFactory = prodAppFactory(env)
+	return env
 }
