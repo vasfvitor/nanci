@@ -432,6 +432,10 @@ export type NFeStatusResult = {
   BlockedReason: NFeBlockedReason | ''
   RequestsLastHour: number
   RequestBudget: number
+  // IdleDays is how many whole days passed since SEFAZ last answered a
+  // distNSU; NSUEmRisco is set when that nears the 60-day NSU rule.
+  IdleDays: number
+  NSUEmRisco: boolean
   TotalDestinatario: number
   TotalEmitente: number
   TotalOutros: number
@@ -640,6 +644,10 @@ export type CTeStatusResult = {
   BlockedReason: CTeBlockedReason | ''
   RequestsLastHour: number
   RequestBudget: number
+  // IdleDays is how many whole days passed since SEFAZ last answered a
+  // distNSU; NSUEmRisco is set when that nears the 60-day NSU rule.
+  IdleDays: number
+  NSUEmRisco: boolean
   TotalTomador: number
   TotalDestinatario: number
   TotalRemetente: number

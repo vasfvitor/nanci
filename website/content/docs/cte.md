@@ -8,7 +8,7 @@ fonte:
 referencia: "docs/CTE_SEFAZ.md"
 ---
 
-O Nanci baixa os CT-e (modelos 57, 64 e 67) em que a empresa é parte, com os eventos. Precisa de UF cadastrada, como a [NF-e](../nfe/), e tem o mesmo [limite de consultas](../nfe/#limite-de-consultas), contado à parte.
+O Nanci baixa os CT-e (modelos 57, 64 e 67) em que a empresa é parte, com os eventos. Precisa de UF cadastrada, como a [NF-e](../nfe/), e tem o mesmo [limite de consultas](../nfe/#limite-de-consultas), contado à parte. O aviso **Sem consulta há N dias**, depois de 45 dias sem sincronizar, também vale para o CT-e.
 
 {{< theme-image light="/img/screenshots/cte-light.png" dark="/img/screenshots/cte-dark.png" alt="Página de CT-e" >}}
 

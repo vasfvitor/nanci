@@ -15,6 +15,27 @@ import (
 // distributions.
 const distWaitAfterStop = time.Hour
 
+// DistIdleWarningDays is how many days an NF-e or CT-e distribution may go
+// without a distNSU before the status warns. The Ambiente Nacional only
+// generates NSUs for CNPJ roots that called distNSU in the last 60 days
+// (NT 2014.002 v1.10, known only from third-party reports), and the
+// documents of a longer pause never reach the queue; 45 days leaves two
+// weeks to run a pull.
+const DistIdleWarningDays = 45
+
+// DistIdle reports how many whole days have passed between lastQueryAt, the
+// last time the SEFAZ answered a distNSU of source, and now, and whether
+// that reaches DistIdleWarningDays. Only the NF-e and CT-e distributions
+// have the 60-day rule, and a source never queried (lastQueryAt nil) is not
+// idle.
+func DistIdle(source nfse.SyncSource, lastQueryAt *time.Time, now time.Time) (days int, warn bool) {
+	if lastQueryAt == nil || (source != nfse.SyncSourceNFe && source != nfse.SyncSourceCTe) {
+		return 0, false
+	}
+	days = max(int(now.Sub(*lastQueryAt)/(24*time.Hour)), 0)
+	return days, days >= DistIdleWarningDays
+}
+
 // requestsPerHour is the hourly request budget per CNPJ of source; 0 means
 // unlimited.
 func requestsPerHour(source nfse.SyncSource) int {

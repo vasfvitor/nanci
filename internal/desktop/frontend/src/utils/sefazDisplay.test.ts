@@ -6,6 +6,7 @@ import {
   badgeProps,
   blockedMessage,
   displayTable,
+  idleWarning,
 } from './sefazDisplay'
 
 describe('sefazDisplay', () => {
@@ -112,5 +113,11 @@ describe('sefazDisplay', () => {
     expect(blockedMessage({ ...info, BlockedReason: '' }, '14:32')).toBe(
       'Próxima consulta permitida a partir de 14:32'
     )
+  })
+
+  it('warns only when the distribution is at risk of losing NSUs', () => {
+    expect(idleWarning(null)).toBe('')
+    expect(idleWarning({ IdleDays: 44, NSUEmRisco: false })).toBe('')
+    expect(idleWarning({ IdleDays: 45, NSUEmRisco: true })).toBe('Sem consulta há 45 dias')
   })
 })

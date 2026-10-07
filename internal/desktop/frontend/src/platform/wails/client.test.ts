@@ -482,6 +482,8 @@ describe('NF-e mappers', () => {
       BlockedReason: 'caught_up',
       PendingCiencia: 4,
       PendingConclusiva: 2,
+      IdleDays: 47,
+      NSUEmRisco: true,
     })
     expect(status).toMatchObject({
       TpAmb: '2',
@@ -491,8 +493,11 @@ describe('NF-e mappers', () => {
       BlockedReason: 'caught_up',
       PendingCiencia: 4,
       PendingConclusiva: 2,
+      IdleDays: 47,
+      NSUEmRisco: true,
     })
     expect(mapNFeStatus({ MaxNSU: 99 }).MaxNSU).toBe(99)
+    expect(mapNFeStatus({})).toMatchObject({ IdleDays: 0, NSUEmRisco: false })
 
     expect(
       mapPullNFeResult({ LastNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
@@ -778,6 +783,8 @@ describe('CT-e mappers', () => {
         TotalDestinatario: 3,
         TotalRemetente: 2,
         TotalOutros: 1,
+        IdleDays: 45,
+        NSUEmRisco: true,
       })
     ).toMatchObject({
       TpAmb: '1',
@@ -790,6 +797,8 @@ describe('CT-e mappers', () => {
       TotalDestinatario: 3,
       TotalRemetente: 2,
       TotalOutros: 1,
+      IdleDays: 45,
+      NSUEmRisco: true,
     })
 
     expect(mapPullCTeResult({ LastNSU: 5, MaxNSU: 9, DocumentsSaved: 3, EventsSaved: 1 })).toMatchObject({

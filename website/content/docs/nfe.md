@@ -18,6 +18,8 @@ A SEFAZ guarda as notas por 90 dias; o que saiu da fila não volta. Como destina
 
 A SEFAZ bloqueia por uma hora quem consulta demais ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)). O Nanci faz no máximo 20 consultas por hora e, quando a fila está em dia, espera uma hora antes de consultar de novo. Enquanto isso, o botão de sincronizar mostra quando volta a funcionar.
 
+Não deixe a empresa mais de 60 dias sem sincronizar. A SEFAZ só gera NSU para quem consultou nesse prazo, e as notas do período parado não chegam mais (regra da NT 2014.002 v1.10, conhecida por relatos de terceiros). Depois de 45 dias sem consulta, a página mostra o aviso **Sem consulta há N dias**; sincronizar reinicia a contagem.
+
 ## Manifestação do Destinatário
 
 {{< callout type="warning" >}}

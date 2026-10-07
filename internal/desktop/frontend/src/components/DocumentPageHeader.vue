@@ -35,6 +35,16 @@
 
     <div v-if="statusLine" class="text-caption text-app-muted q-mb-sm">{{ statusLine }}</div>
 
+    <div v-if="idleWarning" class="q-mb-sm">
+      <q-badge
+        v-bind="badgeProps('warning', $q.dark.isActive)"
+        :label="idleWarning"
+        class="idle-warning cursor-help"
+      >
+        <q-tooltip max-width="22rem">{{ IDLE_WARNING_TOOLTIP }}</q-tooltip>
+      </q-badge>
+    </div>
+
     <q-banner
       v-if="blockedText"
       dense
@@ -52,19 +62,21 @@
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
-import { badgeProps } from '@/utils/sefazDisplay'
+import { badgeProps, IDLE_WARNING_TOOLTIP } from '@/utils/sefazDisplay'
 
 // DocumentPageHeader is the top of a document page: the title with the
 // ambiente badge, the sync and reset buttons, the workspace company and
-// competência, the status line and the banner that explains a blocked sync.
-// ambiente is null until the company is known; contextLine is '' while no
-// company is selected; resetTitle explains what the reset does.
+// competência, the status line, the badge that warns of a distribution idle
+// for too long and the banner that explains a blocked sync. ambiente is null
+// until the company is known; contextLine is '' while no company is
+// selected; resetTitle explains what the reset does.
 withDefaults(
   defineProps<{
     title: string
     ambiente: { label: string; color: string } | null
     contextLine: string
     statusLine?: string
+    idleWarning?: string
     blockedText?: string
     syncing: boolean
     syncDisabled: boolean
@@ -74,6 +86,7 @@ withDefaults(
   }>(),
   {
     statusLine: '',
+    idleWarning: '',
     blockedText: '',
   }
 )

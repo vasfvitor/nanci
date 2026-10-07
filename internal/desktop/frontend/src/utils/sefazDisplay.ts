@@ -143,3 +143,21 @@ export function blockedMessage(info: SefazBlockInfo, time: string) {
       return `Próxima consulta permitida a partir de ${time}`
   }
 }
+
+export type SefazIdleInfo = { IdleDays: number; NSUEmRisco: boolean }
+
+// IDLE_WARNING_TOOLTIP explains the idle warning of a SEFAZ distribution:
+// the Ambiente Nacional only generates NSUs for CNPJs that queried it in the
+// last 60 days.
+export const IDLE_WARNING_TOOLTIP =
+  'A SEFAZ só gera NSU para o CNPJ que consultou a distribuição nos últimos 60 dias. ' +
+  'Passado esse prazo, os documentos do período parado não chegam mais por aqui. ' +
+  'Sincronizar agora reinicia a contagem. Consultas de outro programa com o mesmo CNPJ ' +
+  'também contam, mas o nanci não as vê.'
+
+// idleWarning is the badge text of a distribution not queried for a long
+// time, or '' when it is not at risk of losing NSUs.
+export function idleWarning(info: SefazIdleInfo | null) {
+  if (!info?.NSUEmRisco) return ''
+  return `Sem consulta há ${info.IdleDays} dias`
+}

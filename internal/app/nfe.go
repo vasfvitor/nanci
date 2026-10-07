@@ -123,7 +123,7 @@ type NFeStatusResult struct {
 // Status reports the company's NF-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *NFeService) Status(ctx context.Context, cnpj string) (NFeStatusResult, error) {
-	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceNFe)
+	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceNFe, s.now())
 	if err != nil {
 		return NFeStatusResult{}, err
 	}

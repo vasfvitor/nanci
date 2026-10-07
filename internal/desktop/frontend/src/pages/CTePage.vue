@@ -5,6 +5,7 @@
       :ambiente="ambiente"
       :context-line="contextLine"
       :status-line="statusLine"
+      :idle-warning="idleWarning"
       :blocked-text="blockedText"
       :syncing="isSyncing"
       :sync-disabled="!cnpj || isResetting || Boolean(syncBlockedUntil)"
@@ -233,6 +234,7 @@ const {
   companyName,
   ambiente,
   statusLine,
+  idleWarning,
   listError,
   isSyncing,
   isResetting,

@@ -68,6 +68,40 @@ func TestDistBatch(t *testing.T) {
 	}
 }
 
+func TestDistIdle(t *testing.T) {
+	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	daysAgo := func(days int) *time.Time {
+		at := now.Add(-time.Duration(days) * 24 * time.Hour)
+		return &at
+	}
+	almost45 := now.Add(-45*24*time.Hour + time.Minute)
+	tests := []struct {
+		name     string
+		source   nfse.SyncSource
+		last     *time.Time
+		wantDays int
+		wantWarn bool
+	}{
+		{"NF-e 44 days", nfse.SyncSourceNFe, daysAgo(44), 44, false},
+		{"NF-e a minute short of 45 days", nfse.SyncSourceNFe, &almost45, 44, false},
+		{"NF-e 45 days", nfse.SyncSourceNFe, daysAgo(45), 45, true},
+		{"CT-e 44 days", nfse.SyncSourceCTe, daysAgo(44), 44, false},
+		{"CT-e 45 days", nfse.SyncSourceCTe, daysAgo(45), 45, true},
+		{"CT-e 90 days", nfse.SyncSourceCTe, daysAgo(90), 90, true},
+		{"never synced", nfse.SyncSourceNFe, nil, 0, false},
+		{"NFS-e has no 60-day rule", nfse.SyncSourceNFSe, daysAgo(90), 0, false},
+		{"clock behind the last query", nfse.SyncSourceNFe, daysAgo(-1), 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			days, warn := DistIdle(tt.source, tt.last, now)
+			if days != tt.wantDays || warn != tt.wantWarn {
+				t.Errorf("DistIdle = (%d, %v), want (%d, %v)", days, warn, tt.wantDays, tt.wantWarn)
+			}
+		})
+	}
+}
+
 func TestRequestsPerHour(t *testing.T) {
 	for source, want := range map[nfse.SyncSource]int{
 		nfse.SyncSourceNFe:  20,

@@ -12,7 +12,7 @@ import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { cteDocumentCount, cteStateBadges, cteStatusLine } from '@/utils/cteDisplay'
-import { sefazAmbiente } from '@/utils/sefazDisplay'
+import { idleWarning as idleWarningText, sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
@@ -68,6 +68,7 @@ export function useCTeDocuments() {
   const ambiente = computed(() => (status.value ? sefazAmbiente(status.value.TpAmb) : null))
   const documentCount = computed(() => cteDocumentCount(status.value))
   const statusLine = computed(() => (status.value ? cteStatusLine(status.value) : ''))
+  const idleWarning = computed(() => idleWarningText(status.value))
 
   const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'cte'))
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
@@ -163,6 +164,7 @@ export function useCTeDocuments() {
     ambiente,
     documentCount,
     statusLine,
+    idleWarning,
     isSyncing,
     isResetting,
     syncBlockedUntil,

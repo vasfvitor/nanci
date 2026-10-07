@@ -30,12 +30,19 @@ type SefazSourceStatus struct {
 	BlockedReason     string     // caught_up | consumo_indevido | rate_budget; empty when not blocked
 	RequestsLastHour  int
 	RequestBudget     int
+	// IdleDays is how many whole days have passed since the SEFAZ last
+	// answered a distNSU of this source in this environment; 0 when never.
+	IdleDays int
+	// NSUEmRisco is set when IdleDays reached sync.DistIdleWarningDays: the
+	// Ambiente Nacional stops generating NSUs for the CNPJ root after 60 days
+	// without a distNSU, and a pull resets the count.
+	NSUEmRisco bool
 }
 
 // loadSefazSourceStatus reads the company's cursor, last run, initial sync
 // and request limits for one SEFAZ source, and returns them with the
-// company. It never contacts SEFAZ.
-func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source nfse.SyncSource) (SefazSourceStatus, *nfse.Company, error) {
+// company. now dates the idle warning. It never contacts SEFAZ.
+func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source nfse.SyncSource, now time.Time) (SefazSourceStatus, *nfse.Company, error) {
 	comp, err := lookupCompanyByCNPJ(ctx, companies, cnpj)
 	if err != nil {
 		return SefazSourceStatus{}, nil, err
@@ -59,6 +66,7 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 		status.LastNSU = snapshot.State.LastProcessedNSU
 		status.MaxNSU = snapshot.State.MaxNSU
 		status.LastSyncAt = snapshot.State.LastSuccessAt
+		status.IdleDays, status.NSUEmRisco = sync.DistIdle(source, snapshot.State.LastSuccessAt, now)
 	}
 	if snapshot.Run != nil {
 		status.LastRunStatus = string(snapshot.Run.Status)

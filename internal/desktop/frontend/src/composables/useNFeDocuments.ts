@@ -12,7 +12,7 @@ import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { nfeNoteCount, nfePendingCount, nfeStateBadges, nfeStatusLine } from '@/utils/nfeDisplay'
-import { sefazAmbiente } from '@/utils/sefazDisplay'
+import { idleWarning as idleWarningText, sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
@@ -69,6 +69,7 @@ export function useNFeDocuments() {
   const pendingCount = computed(() => nfePendingCount(status.value))
   const noteCount = computed(() => nfeNoteCount(status.value))
   const statusLine = computed(() => (status.value ? nfeStatusLine(status.value) : ''))
+  const idleWarning = computed(() => idleWarningText(status.value))
 
   const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'nfe'))
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
@@ -162,6 +163,7 @@ export function useNFeDocuments() {
     pendingCount,
     noteCount,
     statusLine,
+    idleWarning,
     isSyncing,
     isResetting,
     syncBlockedUntil,

@@ -50,6 +50,7 @@ func newNFeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if result.NextAllowedAt != nil {
 				_, _ = fmt.Fprintf(out, "  Próxima consulta permitida após: %s (%s)\n", formatDateTime(*result.NextAllowedAt), result.BlockedReason)
 			}
+			printIdleWarning(out, result.SefazSourceStatus, "nanci nfe pull --cnpj "+result.CNPJ)
 
 			_, _ = fmt.Fprintln(out, "\nDocumentos:")
 			_, _ = fmt.Fprintf(out, "  Como destinatária: %d\n", result.TotalDestinatario)

@@ -9,8 +9,10 @@ vi.mock('quasar', () => ({ useQuasar: () => quasar }))
 const stubs = {
   QBadge: {
     props: ['label', 'color', 'textColor'],
-    template: '<span class="badge" :data-color="color" :data-text-color="textColor">{{ label }}</span>',
+    template:
+      '<span class="badge" :data-color="color" :data-text-color="textColor">{{ label }}<slot /></span>',
   },
+  QTooltip: { template: '<span class="tooltip"><slot /></span>' },
   QBtn: {
     name: 'QBtn',
     props: ['label', 'loading', 'disable', 'title'],
@@ -103,6 +105,19 @@ describe('DocumentPageHeader', () => {
     expect(wrapper.find('.text-caption').text()).toBe('Última sincronização: nunca · NSU 0')
     expect(wrapper.find('.banner').text()).toContain('cStat 656')
     expect(wrapper.find('.banner').classes()).toContain('bg-orange-1')
+  })
+
+  it('warns of an idle distribution with a badge that explains the 60-day rule', () => {
+    expect(mountHeader().find('.idle-warning').exists()).toBe(false)
+
+    const wrapper = mountHeader({ idleWarning: 'Sem consulta há 45 dias' })
+    const badge = wrapper.find('.idle-warning')
+    expect(badge.exists()).toBe(true)
+    expect(badge.attributes('data-color')).toBe('warning')
+    expect(badge.text()).toContain('Sem consulta há 45 dias')
+    const tooltip = badge.find('.tooltip').text()
+    expect(tooltip).toContain('últimos 60 dias')
+    expect(tooltip).toContain('Sincronizar agora reinicia a contagem')
   })
 
   it('colors the ambiente badge and the banner for the theme', () => {

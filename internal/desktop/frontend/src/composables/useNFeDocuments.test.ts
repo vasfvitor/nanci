@@ -46,6 +46,8 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     BlockedReason: '',
     RequestsLastHour: 0,
     RequestBudget: 20,
+    IdleDays: 0,
+    NSUEmRisco: false,
     TotalDestinatario: 0,
     TotalEmitente: 0,
     TotalOutros: 0,
@@ -409,6 +411,11 @@ describe('useNFeDocuments', () => {
     expect(nfe.pendingCount.value).toBe(3)
     expect(nfe.noteCount.value).toBe(4)
     expect(nfe.statusLine.value).toContain('NSU 5/9 · Pendências: 3')
+    expect(nfe.idleWarning.value).toBe('')
+
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ IdleDays: 46, NSUEmRisco: true }))
+    await nfe.loadStatus()
+    expect(nfe.idleWarning.value).toBe('Sem consulta há 46 dias')
   })
 
   it('builds the state badges once per result set', () => {

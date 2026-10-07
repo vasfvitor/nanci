@@ -97,7 +97,7 @@ type CTeStatusResult struct {
 // Status reports the company's CT-e sync state and totals. It never
 // contacts SEFAZ.
 func (s *CTeService) Status(ctx context.Context, cnpj string) (CTeStatusResult, error) {
-	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceCTe)
+	src, comp, err := loadSefazSourceStatus(ctx, s.CompanyStore, s.SyncRepo, s.SyncManager, cnpj, nfse.SyncSourceCTe, time.Now())
 	if err != nil {
 		return CTeStatusResult{}, err
 	}

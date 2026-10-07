@@ -89,6 +89,8 @@ A SEFAZ bloqueia o CNPJ que consulta demais com a rejeição **656 (consumo inde
 
 A NT 2015.002 não publica um limite de consultas por hora para o CT-e; o Nanci usa o da NF-e por prudência. Se a SEFAZ contar as consultas de NF-e e de CT-e juntas por CNPJ, um pull de CT-e logo depois de um de NF-e pode receber 656. O bloqueio é gravado e respeitado, então o efeito é uma hora de espera.
 
+**Regra dos 60 dias.** Na NF-e, o Ambiente Nacional só gera NSU para a raiz de CNPJ que consultou a distribuição nos últimos 60 dias, e uma pausa maior perde de vez os documentos do período (NT 2014.002 v1.10, conhecida só por relatos de terceiros; ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)). Não foi encontrada fonte que confirme a mesma regra na distribuição de CT-e (NT 2015.002); o Nanci a aplica ao CT-e por prudência, como faz com o limite por hora. Quando a última consulta respondida pela SEFAZ (`sync_state.last_success_at` da origem `cte` no ambiente atual) passa de **45 dias**, o `cte status` e a página de CT-e mostram um aviso. Uma empresa que nunca sincronizou CT-e não recebe o aviso, e um `cte pull` reinicia a contagem.
+
 O bloqueio aparece como "Próxima consulta permitida após" no `cte pull` e no `cte status`. Um pull dentro desse intervalo é recusado antes de pedir a senha. A distribuição nunca é reenviada automaticamente, e um documento que falha ao ser decodificado ou interpretado três vezes seguidas no mesmo NSU tem o XML guardado, é marcado como não suportado e o cursor avança.
 
 ## Eventos distribuídos
