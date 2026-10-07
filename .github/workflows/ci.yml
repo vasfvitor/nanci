@@ -161,9 +161,11 @@ jobs:
       # git status also catches files the generator adds, which git diff misses.
       - name: Check for drift
         run: |
-          if [ -n "$(git status --porcelain -- internal/desktop/frontend/wailsjs)" ]; then
-            git status --short -- internal/desktop/frontend/wailsjs
-            git diff -- internal/desktop/frontend/wailsjs
+          # Staging runs the .gitattributes normalization, so a CRLF written by
+          # the generator on Linux is not drift; a changed or new file still is.
+          git add -A -- internal/desktop/frontend/wailsjs
+          if ! git diff --cached --exit-code --stat -- internal/desktop/frontend/wailsjs; then
+            git diff --cached -- internal/desktop/frontend/wailsjs
             echo "::error::Wails bindings are stale. Run 'wails generate module' in internal/desktop, then commit frontend/wailsjs."
             exit 1
           fi
