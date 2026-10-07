@@ -1,12 +1,12 @@
-{{- $font := "fonts/archivo-variable.woff2" | relURL -}}
+{{- $font := "fonts/saira-variable.woff2" | relURL -}}
 <link rel="preload" href="{{ $font }}" as="font" type="font/woff2" crossorigin />
 <style>
   @font-face {
-    font-family: "Archivo";
+    font-family: "Saira";
     font-style: normal;
     font-display: swap;
     font-weight: 100 900;
-    font-stretch: 62% 125%;
+    font-stretch: 50% 125%;
     src: url("{{ $font }}") format("woff2-variations"), url("{{ $font }}") format("woff2");
   }
 </style>

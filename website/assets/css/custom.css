@@ -1,12 +1,12 @@
 /*
  * Nanci docs: the visual language of the DANFE.
- * Thin ruled boxes, small captions naming each field, and Archivo's width
+ * Thin ruled boxes, small captions naming each field, and Saira's width
  * axis doing the work: expanded for headings, normal for text, condensed
  * for captions.
  */
 
 :root {
-  --hx-font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --hx-font-sans: "Saira", ui-sans-serif, system-ui, sans-serif;
 
   /* Nanci blue, from the logo (#0055bf). */
   --primary-hue: 213deg;
