@@ -1,7 +1,6 @@
 ---
 title: "NF-e"
 description: "NF-e recebidas pela SEFAZ e Manifestação do Destinatário."
-summary: "NF-e recebidas pela SEFAZ e Manifestação do Destinatário."
 weight: 31
 ---
 

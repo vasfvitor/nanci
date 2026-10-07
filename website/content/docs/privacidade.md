@@ -1,7 +1,6 @@
 ---
 title: "Privacidade e backup"
 description: "Onde ficam os dados e como fazer backup."
-summary: "Onde ficam os dados e como fazer backup."
 weight: 60
 ---
 

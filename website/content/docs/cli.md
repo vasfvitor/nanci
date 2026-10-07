@@ -1,7 +1,6 @@
 ---
 title: "Linha de comando"
 description: "Os comandos do Nanci para terminal e rotinas agendadas."
-summary: "Os comandos do Nanci para terminal e rotinas agendadas."
 weight: 40
 ---
 

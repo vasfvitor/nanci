@@ -469,3 +469,24 @@ nav a[href$="/nanci/"] span {
     color: transparent;
   }
 }
+
+/* FAQ: question and answer pairs, ruled like the rows of a form. */
+.nc-faq {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--nc-rule);
+}
+
+.nc-faq:last-child {
+  border-bottom: 1px solid var(--nc-rule);
+}
+
+.content .nc-faq-q {
+  margin: 0;
+  color: var(--nc-ink);
+  font-weight: 650;
+  font-size: 1.0625rem;
+}
+
+.content .nc-faq-a > p {
+  margin: 0.375rem 0 0;
+}

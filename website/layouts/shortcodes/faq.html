@@ -1,0 +1,6 @@
+{{- /* One question and its answer. Usage: {{< faq "Pergunta?" >}}Resposta em Markdown.{{< /faq >}} */ -}}
+{{- $q := .Get 0 -}}
+<div class="nc-faq" id="{{ $q | anchorize }}">
+<p class="nc-faq-q">{{ $q }}</p>
+<div class="nc-faq-a">{{ .Inner | strings.TrimSpace | .Page.RenderString (dict "display" "block") }}</div>
+</div>

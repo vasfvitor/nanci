@@ -1,7 +1,6 @@
 ---
 title: "Instalação e primeiro uso"
 description: "Instalar o Nanci no Windows e fazer a primeira sincronização."
-summary: "Instalar o Nanci no Windows e fazer a primeira sincronização."
 weight: 20
 ---
 

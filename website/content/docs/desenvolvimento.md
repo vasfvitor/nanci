@@ -1,7 +1,6 @@
 ---
 title: "Desenvolvimento"
 description: "Código-fonte e documentação para desenvolvedores."
-summary: "Código-fonte e documentação para desenvolvedores."
 weight: 90
 ---
 
