@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
@@ -59,7 +60,7 @@ type CredentialProvider interface {
 }
 
 type companyProvider interface {
-	CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error)
+	CompanyByCNPJ(ctx context.Context, cnpj string) (*company.Company, error)
 }
 
 type credentialProvider interface {
@@ -77,7 +78,7 @@ type xmlStore interface {
 }
 
 type syncRunner interface {
-	Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error
+	Sync(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error
 }
 
 var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
@@ -303,7 +304,7 @@ type SourceLimits struct {
 
 // SourceLimits reports the request limits of the company's source now, in
 // the company's current environment.
-func (m *Manager) SourceLimits(ctx context.Context, company *nfse.Company, source syncstate.SyncSource) (SourceLimits, error) {
+func (m *Manager) SourceLimits(ctx context.Context, company *company.Company, source syncstate.SyncSource) (SourceLimits, error) {
 	now := time.Now().UTC()
 	state, err := m.SyncRepo.SourceState(ctx, company.ID, source, company.Environment)
 	if err != nil {
@@ -325,7 +326,7 @@ func (m *Manager) SourceLimits(ctx context.Context, company *nfse.Company, sourc
 
 // checkSource fails, before any password prompt, when the company cannot be
 // pulled from source.
-func (m *Manager) checkSource(company *nfse.Company, source syncstate.SyncSource) error {
+func (m *Manager) checkSource(company *company.Company, source syncstate.SyncSource) error {
 	switch source {
 	case syncstate.SyncSourceNFSe:
 		return nil
@@ -342,7 +343,7 @@ func (m *Manager) checkSource(company *nfse.Company, source syncstate.SyncSource
 
 // newSource builds the Source of one pull once the certificate is loaded.
 // checkSource must have accepted company and source.
-func (m *Manager) newSource(company *nfse.Company, source syncstate.SyncSource, tlsCert tls.Certificate) (Source, error) {
+func (m *Manager) newSource(company *company.Company, source syncstate.SyncSource, tlsCert tls.Certificate) (Source, error) {
 	switch source {
 	case syncstate.SyncSourceNFSe:
 		apiClient, err := newADNClient(adn.ClientConfig{
@@ -379,7 +380,7 @@ func (m *Manager) newSource(company *nfse.Company, source syncstate.SyncSource, 
 
 // companyUFCode returns the IBGE code of the company's UF, which the NF-e
 // and CT-e distributions require as cUFAutor.
-func companyUFCode(company *nfse.Company) (int, error) {
+func companyUFCode(company *company.Company) (int, error) {
 	if company.UF == "" {
 		return 0, errors.New("empresa sem UF cadastrada; use company update --uf")
 	}

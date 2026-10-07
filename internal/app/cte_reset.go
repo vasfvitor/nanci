@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -55,7 +55,7 @@ func (s *CTeService) Reset(ctx context.Context, cnpj string) (CTeResetResult, er
 	return cteResetResult(comp, counts), nil
 }
 
-func cteResetResult(comp *nfse.Company, counts cte.ResetCounts) CTeResetResult {
+func cteResetResult(comp *company.Company, counts cte.ResetCounts) CTeResetResult {
 	return CTeResetResult{
 		CompanyName: comp.Name,
 		CNPJ:        comp.CNPJ,

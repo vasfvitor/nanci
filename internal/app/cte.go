@@ -11,7 +11,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -208,7 +207,7 @@ func (s *CTeService) TestConnection(ctx context.Context, cnpj string) (Connectio
 
 // cteFilter validates the list filters and pins them to the company's
 // current environment.
-func cteFilter(comp *nfse.Company, in ListCTeInput) (cte.DocumentFilter, error) {
+func cteFilter(comp *company.Company, in ListCTeInput) (cte.DocumentFilter, error) {
 	tpAmb, err := environmentTpAmb(comp)
 	if err != nil {
 		return cte.DocumentFilter{}, err
@@ -254,7 +253,7 @@ func cteFilter(comp *nfse.Company, in ListCTeInput) (cte.DocumentFilter, error) 
 
 // companyDocument returns the company's row for the chave in its current
 // environment, or an error matching cte.ErrDocumentNotFound.
-func (s *CTeService) companyDocument(ctx context.Context, comp *nfse.Company, rawChave string) (cte.CompanyDocument, error) {
+func (s *CTeService) companyDocument(ctx context.Context, comp *company.Company, rawChave string) (cte.CompanyDocument, error) {
 	chave, err := dfe.ParseAccessKey(rawChave)
 	if err != nil {
 		return cte.CompanyDocument{}, fmt.Errorf("chave de acesso inválida: %w", err)

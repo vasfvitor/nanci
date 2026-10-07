@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -36,8 +37,8 @@ func TestCredential(id string) *nfse.Credential {
 	}
 }
 
-func TestCompany(id, cnpj string, env dfe.Environment, credential *nfse.Credential) *nfse.Company {
-	return &nfse.Company{
+func TestCompany(id, cnpj string, env dfe.Environment, credential *nfse.Credential) *company.Company {
+	return &company.Company{
 		ID:                 dfe.CompanyID(id),
 		CNPJ:               cnpj,
 		CNPJRoot:           cnpj[:8],

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -26,7 +25,7 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func (r *Store) CreateCompany(ctx context.Context, c *nfse.Company) error {
+func (r *Store) CreateCompany(ctx context.Context, c *Company) error {
 	now := time.Now().UTC()
 	syncStartPolicy := c.SyncStartPolicy
 	if syncStartPolicy == "" {
@@ -61,7 +60,7 @@ func (r *Store) CreateCompany(ctx context.Context, c *nfse.Company) error {
 	return nil
 }
 
-func (r *Store) CompanyByCNPJ(ctx context.Context, cnpjVal string) (*nfse.Company, error) {
+func (r *Store) CompanyByCNPJ(ctx context.Context, cnpjVal string) (*Company, error) {
 	row, err := r.queries.GetCompanyByCNPJ(ctx, cnpjVal)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -73,13 +72,13 @@ func (r *Store) CompanyByCNPJ(ctx context.Context, cnpjVal string) (*nfse.Compan
 	return companyFromRow(row.Company, row.NfseInitialSyncCompletedAt), nil
 }
 
-func (r *Store) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+func (r *Store) ListCompanies(ctx context.Context) ([]Company, error) {
 	rows, err := r.queries.ListCompanies(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	companies := make([]nfse.Company, 0, len(rows))
+	companies := make([]Company, 0, len(rows))
 	for _, row := range rows {
 		companies = append(companies, *companyFromRow(row.Company, row.NfseInitialSyncCompletedAt))
 	}
@@ -89,8 +88,8 @@ func (r *Store) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
 
 // companyFromRow maps a companies row plus the NFS-e initial sync timestamp,
 // read from company_sync_sources.
-func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *nfse.Company {
-	c := &nfse.Company{
+func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *Company {
+	c := &Company{
 		ID:                 dfe.CompanyID(row.ID),
 		CNPJ:               row.Cnpj,
 		CNPJRoot:           row.CnpjRoot,
@@ -126,7 +125,7 @@ func (r *Store) AssignCredential(ctx context.Context, companyID dfe.CompanyID, c
 	return nil
 }
 
-func (r *Store) UpdateCompany(ctx context.Context, c *nfse.Company) error {
+func (r *Store) UpdateCompany(ctx context.Context, c *Company) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	err := r.queries.UpdateCompany(ctx, sqlgen.UpdateCompanyParams{
 		Name:            c.Name,

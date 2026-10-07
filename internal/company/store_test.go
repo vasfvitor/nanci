@@ -9,7 +9,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -18,7 +17,7 @@ func TestStore_CreateCompany(t *testing.T) {
 	db := storetest.OpenTestDB(t)
 	s := company.NewStore(db)
 
-	c := &nfse.Company{
+	c := &company.Company{
 		ID:              dfe.CompanyID("comp_12345"),
 		CNPJ:            "11222333000181",
 		Name:            "Test Company",
@@ -154,7 +153,7 @@ func TestStoreReadsNFSeInitialSyncFromCompanySyncSources(t *testing.T) {
 	}
 	synced := storetest.TestCompany("comp-1", "11222333000181", dfe.EnvironmentRestricted, cred)
 	nfeOnly := storetest.TestCompany("comp-2", "11222333000262", dfe.EnvironmentRestricted, cred)
-	for _, c := range []*nfse.Company{synced, nfeOnly} {
+	for _, c := range []*company.Company{synced, nfeOnly} {
 		if err := repo.CreateCompany(ctx, c); err != nil {
 			t.Fatal(err)
 		}

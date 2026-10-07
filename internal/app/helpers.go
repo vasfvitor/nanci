@@ -22,7 +22,7 @@ func normalizeCNPJ(raw string) (string, error) {
 	return cnpj.Clean(raw), nil
 }
 
-func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (*nfse.Company, error) {
+func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (*company.Company, error) {
 	cleanedCNPJ, err := normalizeCNPJ(raw)
 	if err != nil {
 		return nil, err

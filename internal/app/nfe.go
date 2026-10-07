@@ -13,7 +13,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -353,7 +352,7 @@ func (s *NFeService) TestConnection(ctx context.Context, cnpj string) (Connectio
 }
 
 // buildFilter resolves the company and validates the list filters.
-func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Company, nfe.DocumentFilter, error) {
+func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*company.Company, nfe.DocumentFilter, error) {
 	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, nfe.DocumentFilter{}, err
@@ -399,7 +398,7 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*nfse.Co
 
 // companyDocument returns the company's row for the chave in its current
 // environment.
-func (s *NFeService) companyDocument(ctx context.Context, comp *nfse.Company, rawChave string) (nfe.CompanyDocument, error) {
+func (s *NFeService) companyDocument(ctx context.Context, comp *company.Company, rawChave string) (nfe.CompanyDocument, error) {
 	chave, err := dfe.ParseAccessKey(rawChave)
 	if err != nil {
 		return nfe.CompanyDocument{}, fmt.Errorf("chave de acesso inválida: %w", err)
@@ -421,7 +420,7 @@ func (s *NFeService) companyDocument(ctx context.Context, comp *nfse.Company, ra
 // environmentTpAmb is the tpAmb of the company's current environment. NF-e
 // listings, counts and exports show only the documents of this tpAmb; the
 // other environment's come back when the company switches back to it.
-func environmentTpAmb(comp *nfse.Company) (string, error) {
+func environmentTpAmb(comp *company.Company) (string, error) {
 	tpAmb, err := sefaz.TpAmb(comp.Environment)
 	if err != nil {
 		return "", fmt.Errorf("ambiente da empresa: %w", err)

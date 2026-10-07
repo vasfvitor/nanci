@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/redact"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -73,13 +73,13 @@ type SourcePolicy struct {
 type Source interface {
 	Kind() syncstate.SyncSource
 	Policy() SourcePolicy
-	Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error)
+	Fetch(ctx context.Context, company *company.Company, cursor int64) (Batch, error)
 	// ProcessItem decodes, parses and stores the raw XML outside any
 	// transaction, then calls commit exactly once, also for policy skips, so
 	// the checkpoint advances. The *sql.Tx that commit hands to write is the
 	// per-item transaction described on CommitFunc. Decode and parse failures are returned as
 	// *ProcessingError.
-	ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error)
+	ProcessItem(ctx context.Context, company *company.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error)
 }
 
 // commitSkip commits an item skipped by policy so the checkpoint moves past it.
@@ -111,7 +111,7 @@ func keepUnparsedXML(ctx context.Context, xml files.XMLStore, log *slog.Logger, 
 // shouldSkipDocumentByInitialPolicy reports whether a document issued at
 // issueDate falls before the company start date while the source has not
 // finished its initial sync yet.
-func shouldSkipDocumentByInitialPolicy(company *nfse.Company, src SourceState, issueDate time.Time) bool {
+func shouldSkipDocumentByInitialPolicy(company *company.Company, src SourceState, issueDate time.Time) bool {
 	if src.InitialSyncDoneAt != nil {
 		return false
 	}

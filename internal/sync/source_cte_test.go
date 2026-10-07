@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
@@ -367,7 +367,7 @@ func TestCTeSourceSkipsDocumentAfterRepeatedParseFailures(t *testing.T) {
 
 // newCTePullTestManager is newPullTestManager with the company given a UF, a
 // CT-e repository and a scripted SEFAZ client.
-func newCTePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *scriptedFetcher) (*Manager, *nfse.Company) {
+func newCTePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *scriptedFetcher) (*Manager, *company.Company) {
 	t.Helper()
 	mgr, comp := newPullTestManager(t, passwords)
 	if _, err := mgr.SyncRepo.db.ExecContext(context.Background(), `UPDATE companies SET uf = 'SP' WHERE id = ?`, string(comp.ID)); err != nil {

@@ -13,20 +13,20 @@ import (
 
 // Fake store implementing company.store interface
 type fakeStore struct {
-	companies []nfse.Company
+	companies []company.Company
 }
 
-func (f *fakeStore) CreateCompany(ctx context.Context, c *nfse.Company) error {
+func (f *fakeStore) CreateCompany(ctx context.Context, c *company.Company) error {
 	f.companies = append(f.companies, *c)
 	return nil
 }
-func (f *fakeStore) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+func (f *fakeStore) ListCompanies(ctx context.Context) ([]company.Company, error) {
 	return f.companies, nil
 }
-func (f *fakeStore) CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error) {
+func (f *fakeStore) CompanyByCNPJ(ctx context.Context, cnpj string) (*company.Company, error) {
 	return &f.companies[0], nil
 }
-func (f *fakeStore) UpdateCompany(ctx context.Context, c *nfse.Company) error {
+func (f *fakeStore) UpdateCompany(ctx context.Context, c *company.Company) error {
 	f.companies[0] = *c
 	return nil
 }

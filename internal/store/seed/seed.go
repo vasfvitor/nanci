@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func SeedDevelopment(ctx context.Context, db *sql.DB) error {
-	company := nfse.Company{ // #nosec G101 -- mock dev company; CredentialID is an ID, not a secret.
+	company := company.Company{ // #nosec G101 -- mock dev company; CredentialID is an ID, not a secret.
 		ID:           "dev-company-70860312000150",
 		CNPJ:         "70860312000150",
 		CNPJRoot:     "70860312",
@@ -66,7 +67,7 @@ func UpsertCredential(ctx context.Context, db *sql.DB, c nfse.Credential) error 
 	return err
 }
 
-func UpsertCompany(ctx context.Context, db *sql.DB, c nfse.Company) error {
+func UpsertCompany(ctx context.Context, db *sql.DB, c company.Company) error {
 	query := `
 		INSERT INTO companies (
 			id, cnpj, cnpj_root, name, credential_id, environment,

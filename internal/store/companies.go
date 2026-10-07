@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -24,7 +24,7 @@ func NewCompanyRepository(db *sql.DB) *CompanyRepository {
 	}
 }
 
-func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) error {
+func (r *CompanyRepository) CreateCompany(ctx context.Context, c *company.Company) error {
 	now := time.Now().UTC()
 	syncStartPolicy := c.SyncStartPolicy
 	if syncStartPolicy == "" {
@@ -59,7 +59,7 @@ func (r *CompanyRepository) CreateCompany(ctx context.Context, c *nfse.Company) 
 	return nil
 }
 
-func (r *CompanyRepository) CompanyByCNPJ(ctx context.Context, cnpjVal string) (*nfse.Company, error) {
+func (r *CompanyRepository) CompanyByCNPJ(ctx context.Context, cnpjVal string) (*company.Company, error) {
 	row, err := r.queries.GetCompanyByCNPJ(ctx, cnpjVal)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -71,13 +71,13 @@ func (r *CompanyRepository) CompanyByCNPJ(ctx context.Context, cnpjVal string) (
 	return companyFromRow(row.Company, row.NfseInitialSyncCompletedAt), nil
 }
 
-func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]company.Company, error) {
 	rows, err := r.queries.ListCompanies(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	companies := make([]nfse.Company, 0, len(rows))
+	companies := make([]company.Company, 0, len(rows))
 	for _, row := range rows {
 		companies = append(companies, *companyFromRow(row.Company, row.NfseInitialSyncCompletedAt))
 	}
@@ -87,8 +87,8 @@ func (r *CompanyRepository) ListCompanies(ctx context.Context) ([]nfse.Company, 
 
 // companyFromRow maps a companies row plus the NFS-e initial sync timestamp,
 // read from company_sync_sources.
-func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *nfse.Company {
-	c := &nfse.Company{
+func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *company.Company {
+	c := &company.Company{
 		ID:                 dfe.CompanyID(row.ID),
 		CNPJ:               row.Cnpj,
 		CNPJRoot:           row.CnpjRoot,
@@ -124,7 +124,7 @@ func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID dfe.
 	return nil
 }
 
-func (r *CompanyRepository) UpdateCompany(ctx context.Context, c *nfse.Company) error {
+func (r *CompanyRepository) UpdateCompany(ctx context.Context, c *company.Company) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	err := r.queries.UpdateCompany(ctx, sqlgen.UpdateCompanyParams{
 		Name:            c.Name,

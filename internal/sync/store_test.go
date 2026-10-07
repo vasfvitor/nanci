@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -175,7 +176,7 @@ func TestEventsUpdateStatusAndLinkWhenDocumentArrives(t *testing.T) {
 	}
 }
 
-func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *nfse.Company {
+func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *company.Company {
 	t.Helper()
 
 	cred := storetest.TestCredential("credential-" + id)
@@ -236,7 +237,7 @@ func applyEvent(t *testing.T, repo *sync.Store, event nfse.Event, companyID dfe.
 	}
 }
 
-func assertCompanyCredential(t *testing.T, company *nfse.Company, credential *nfse.Credential, expectedEnv dfe.Environment) {
+func assertCompanyCredential(t *testing.T, company *company.Company, credential *nfse.Credential, expectedEnv dfe.Environment) {
 	t.Helper()
 	if company.CredentialID != credential.ID ||
 		company.CredentialLabel != credential.Label ||

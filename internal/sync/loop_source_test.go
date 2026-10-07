@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -30,7 +30,7 @@ func (f *fakeSource) Kind() syncstate.SyncSource { return f.kind }
 
 func (f *fakeSource) Policy() SourcePolicy { return f.policy }
 
-func (f *fakeSource) Fetch(_ context.Context, _ *nfse.Company, cursor int64) (Batch, error) {
+func (f *fakeSource) Fetch(_ context.Context, _ *company.Company, cursor int64) (Batch, error) {
 	f.cursors = append(f.cursors, cursor)
 	if f.onFetch != nil {
 		f.onFetch(cursor)
@@ -41,7 +41,7 @@ func (f *fakeSource) Fetch(_ context.Context, _ *nfse.Company, cursor int64) (Ba
 	return Batch{NextCursor: cursor, Done: true, StopReason: syncstate.SyncStopReasonCaughtUp}, nil
 }
 
-func (f *fakeSource) ProcessItem(ctx context.Context, _ *nfse.Company, _ SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
+func (f *fakeSource) ProcessItem(ctx context.Context, _ *company.Company, _ SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
 	if err := f.failures[item.NSU]; err != nil {
 		return ItemOutcome{}, err
 	}

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/report"
 )
 
@@ -126,7 +126,7 @@ func (s *NFeService) ExportXML(ctx context.Context, in NFeExportXMLInput) error 
 
 // exportDocuments lists the documents to export and how many resumos were
 // left out because in.IncludeResumos is false.
-func (s *NFeService) exportDocuments(ctx context.Context, comp *nfse.Company, in NFeExportInput) ([]nfe.CompanyDocument, int, error) {
+func (s *NFeService) exportDocuments(ctx context.Context, comp *company.Company, in NFeExportInput) ([]nfe.CompanyDocument, int, error) {
 	tpAmb, err := environmentTpAmb(comp)
 	if err != nil {
 		return nil, 0, err

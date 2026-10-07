@@ -23,10 +23,10 @@ var (
 )
 
 type storeInterface interface {
-	CreateCompany(ctx context.Context, c *nfse.Company) error
-	ListCompanies(ctx context.Context) ([]nfse.Company, error)
-	CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error)
-	UpdateCompany(ctx context.Context, c *nfse.Company) error
+	CreateCompany(ctx context.Context, c *Company) error
+	ListCompanies(ctx context.Context) ([]Company, error)
+	CompanyByCNPJ(ctx context.Context, cnpj string) (*Company, error)
+	UpdateCompany(ctx context.Context, c *Company) error
 	AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID dfe.CredentialID) error
 }
 
@@ -101,7 +101,7 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 		return err
 	}
 
-	company := &nfse.Company{
+	company := &Company{
 		ID:                 dfe.CompanyID(dfe.GenerateID()),
 		CNPJ:               cleanedCNPJ,
 		CNPJRoot:           root,
@@ -123,7 +123,7 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 }
 
 // ListCompanies returns all registered companies.
-func (m *Manager) ListCompanies(ctx context.Context) ([]nfse.Company, error) {
+func (m *Manager) ListCompanies(ctx context.Context) ([]Company, error) {
 	companies, err := m.store.ListCompanies(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar empresas: %w", err)
@@ -202,7 +202,7 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 }
 
 // CompanyByCNPJ returns one registered company.
-func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*nfse.Company, error) {
+func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*Company, error) {
 	return lookupCompanyByCNPJ(ctx, m.store, rawCNPJ)
 }
 
@@ -311,7 +311,7 @@ func normalizeUF(raw string) (string, error) {
 	return sigla, nil
 }
 
-func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*nfse.Company, error) {
+func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*Company, error) {
 	cleanedCNPJ, err := normalizeCNPJ(raw)
 	if err != nil {
 		return nil, err

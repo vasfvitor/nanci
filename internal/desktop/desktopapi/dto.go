@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -236,7 +237,7 @@ type ExportResult struct {
 	ExportedCount int
 }
 
-func CompanySummaries(companies []nfse.Company) []CompanySummary {
+func CompanySummaries(companies []company.Company) []CompanySummary {
 	out := make([]CompanySummary, len(companies))
 	for i, company := range companies {
 		out[i] = CompanySummary{

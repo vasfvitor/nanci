@@ -1,12 +1,12 @@
 package fixtures
 
 import (
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-func Company() nfse.Company {
-	return nfse.Company{ // #nosec G101 -- mock company; CredentialID is an ID, not a secret.
+func Company() company.Company {
+	return company.Company{ // #nosec G101 -- mock company; CredentialID is an ID, not a secret.
 		ID:           "dev-company-70860312000150",
 		CNPJ:         "70860312000150",
 		CNPJRoot:     "70860312",

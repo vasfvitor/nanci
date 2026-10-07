@@ -36,7 +36,7 @@ type CertificateLoader struct {
 // (purpose tells the user why), loads the PKCS#12, persists the certificate
 // inspection and checks that the certificate may consult for the company.
 // The password is zeroed before returning.
-func (l *CertificateLoader) LoadForCompany(ctx context.Context, company *nfse.Company, purpose string) (LoadedCredential, error) {
+func (l *CertificateLoader) LoadForCompany(ctx context.Context, company *companypkg.Company, purpose string) (LoadedCredential, error) {
 	credential, err := l.Credentials.CredentialByID(ctx, company.CredentialID)
 	if err != nil {
 		return LoadedCredential{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
@@ -105,7 +105,7 @@ func validateCertificatePath(path string) error {
 	return nil
 }
 
-func validateConsultationCompatibility(company *nfse.Company, credential *nfse.Credential) (syncstate.ConsultationBasis, error) {
+func validateConsultationCompatibility(company *companypkg.Company, credential *nfse.Credential) (syncstate.ConsultationBasis, error) {
 	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
 		return "", companypkg.ErrCredentialNoOwner
 	}

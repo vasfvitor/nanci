@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -34,7 +35,7 @@ func NewSyncService(syncRepo *Store, source Source, log *slog.Logger) *SyncServi
 }
 
 // Sync starts the synchronization process for a specific company.
-func (s *SyncService) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
+func (s *SyncService) Sync(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 	if mode == "" {
 		mode = syncstate.SyncModeNormal
 	}
@@ -234,7 +235,7 @@ func persistFailure(err error) *syncFailure {
 // It records the request before it is sent, so failed attempts count too.
 // It returns false, and blocks the source until the oldest request in the
 // window expires, when the budget is exhausted.
-func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (bool, error) {
+func (s *SyncService) spendRequest(ctx context.Context, company *company.Company) (bool, error) {
 	limit := s.source.Policy().RequestsPerHour
 	if limit <= 0 {
 		return true, nil
@@ -269,7 +270,7 @@ func (s *SyncService) spendRequest(ctx context.Context, company *nfse.Company) (
 }
 
 // progressParams is the run checkpoint as it stands in runState.
-func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntimeState) syncstate.PersistSyncProgressParams {
+func (s *SyncService) progressParams(company *company.Company, runState *syncRuntimeState) syncstate.PersistSyncProgressParams {
 	return syncstate.PersistSyncProgressParams{
 		CompanyID:             company.ID,
 		Source:                s.source.Kind(),
@@ -291,7 +292,7 @@ func (s *SyncService) progressParams(company *nfse.Company, runState *syncRuntim
 
 // processBatch fetches one batch after cursor, processes its fresh items in
 // NSU order and checkpoints the run.
-func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, cursor int64, runState *syncRuntimeState, progress syncstate.ProgressFunc) (Batch, error) {
+func (s *SyncService) processBatch(ctx context.Context, company *company.Company, cursor int64, runState *syncRuntimeState, progress syncstate.ProgressFunc) (Batch, error) {
 	batch, err := s.source.Fetch(ctx, company, cursor)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
@@ -379,7 +380,7 @@ func (s *SyncService) processBatch(ctx context.Context, company *nfse.Company, c
 
 // processItem hands one fresh item to the source and counts the outcome. On
 // failure it checkpoints the error without moving the cursor.
-func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, item Item, runState *syncRuntimeState) error {
+func (s *SyncService) processItem(ctx context.Context, company *company.Company, item Item, runState *syncRuntimeState) error {
 	nextLastFoundNSU := runState.lastFoundNSU
 	if runState.lastFoundNSU == nil || item.NSU > *runState.lastFoundNSU {
 		nsu := item.NSU
@@ -449,7 +450,7 @@ func (s *SyncService) processItem(ctx context.Context, company *nfse.Company, it
 // maxItemAttempts runs in a row: it commits the item as unsupported so one
 // bad document cannot stall the source. Any other failure, or an earlier
 // attempt, is returned unchanged.
-func (s *SyncService) skipPoisonItem(ctx context.Context, company *nfse.Company, item Item, processErr error, commit CommitFunc) (ItemOutcome, error) {
+func (s *SyncService) skipPoisonItem(ctx context.Context, company *company.Company, item Item, processErr error, commit CommitFunc) (ItemOutcome, error) {
 	var parseErr *ProcessingError
 	if !errors.As(processErr, &parseErr) {
 		return ItemOutcome{}, processErr

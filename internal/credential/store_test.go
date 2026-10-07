@@ -1,4 +1,4 @@
-package credential
+package credential_test
 
 import (
 	"context"
@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
 func TestStore(t *testing.T) {
 	db := storetest.OpenTestDB(t)
-	repo := NewStore(db)
+	repo := credential.NewStore(db)
 	ctx := context.Background()
 
 	now := time.Now().UTC()
@@ -51,7 +52,7 @@ func TestStore(t *testing.T) {
 
 	// Not Found
 	_, err = repo.CredentialByID(ctx, "non-existent")
-	if !errors.Is(err, ErrCredentialNotFound) {
+	if !errors.Is(err, credential.ErrCredentialNotFound) {
 		t.Errorf("Expected ErrCredentialNotFound, got %v", err)
 	}
 
@@ -86,7 +87,7 @@ func TestStore(t *testing.T) {
 	}
 
 	_, err = repo.CredentialByID(ctx, cred.ID)
-	if !errors.Is(err, ErrCredentialNotFound) {
+	if !errors.Is(err, credential.ErrCredentialNotFound) {
 		t.Errorf("Expected ErrCredentialNotFound, got %v", err)
 	}
 }

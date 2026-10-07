@@ -58,7 +58,7 @@ type nfeTestRoot struct {
 	db        *sql.DB
 	repo      *store.NFeRepository
 	xml       files.XMLStore
-	company   *nfse.Company
+	company   *company.Company
 	passwords *refusingPasswords
 }
 

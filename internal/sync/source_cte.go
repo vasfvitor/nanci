@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -59,7 +59,7 @@ func (s *cteSource) Policy() SourcePolicy {
 
 // Fetch asks for the documents after cursor; distBatch applies the stop
 // rules, the same as for the NF-e distribution.
-func (s *cteSource) Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error) {
+func (s *cteSource) Fetch(ctx context.Context, company *company.Company, cursor int64) (Batch, error) {
 	resp, err := s.client.DistCTeNSU(ctx, company.CNPJ, s.cUFAutor, cursor)
 	if err != nil {
 		return Batch{}, err
@@ -71,7 +71,7 @@ func isCTeEvent(schema string) bool {
 	return cte.ClassifySchema(schema) == cte.SchemaProcEventoCTe
 }
 
-func (s *cteSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
+func (s *cteSource) ProcessItem(ctx context.Context, company *company.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
 	s.log.Log(ctx, logger.LevelTrace, "Processando documento CT-e", slog.Int64("nsu", item.NSU), slog.String("schema", item.Schema))
 
 	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
@@ -94,7 +94,7 @@ func (s *cteSource) ProcessItem(ctx context.Context, company *nfse.Company, src 
 	}
 }
 
-func (s *cteSource) processDocument(ctx context.Context, company *nfse.Company, tpAmb string, item Item, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *cteSource) processDocument(ctx context.Context, company *company.Company, tpAmb string, item Item, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	doc, err := cte.ParseProcCTe(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse document", item, payload, err)
@@ -127,7 +127,7 @@ func (s *cteSource) processDocument(ctx context.Context, company *nfse.Company, 
 // kept and linked when the document arrives. In practice this drops the
 // MDF-e events the emitente receives about its own CT-e, which the
 // distribution never delivers to it.
-func (s *cteSource) processEvent(ctx context.Context, company *nfse.Company, tpAmb string, item Item, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *cteSource) processEvent(ctx context.Context, company *company.Company, tpAmb string, item Item, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	ev, err := cte.ParseProcEventoCTe(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse event", item, payload, err)

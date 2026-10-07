@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
@@ -57,7 +58,7 @@ func (s *nfseSource) Policy() SourcePolicy {
 
 // Fetch asks the ADN for the documents after cursor. The ADN has no "caught
 // up" signal besides an empty batch, so an empty batch ends the run.
-func (s *nfseSource) Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error) {
+func (s *nfseSource) Fetch(ctx context.Context, company *company.Company, cursor int64) (Batch, error) {
 	resp, err := s.fetcher.FetchDocuments(ctx, adn.DistributionRequest{
 		LastNSU:          cursor,
 		ConsultationCNPJ: company.CNPJ,
@@ -100,7 +101,7 @@ func (s *nfseSource) Fetch(ctx context.Context, company *nfse.Company, cursor in
 	return batch, nil
 }
 
-func (s *nfseSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfseSource) ProcessItem(ctx context.Context, company *company.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
 	if item.IsEvent {
 		return s.processEvent(ctx, company, item, commit)
 	}
@@ -108,7 +109,7 @@ func (s *nfseSource) ProcessItem(ctx context.Context, company *nfse.Company, src
 }
 
 // processDocument decodes, parses and saves a single document.
-func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfseSource) processDocument(ctx context.Context, company *company.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
 	s.log.Log(ctx, logger.LevelTrace, "Processando documento", slog.Int64("nsu", item.NSU))
 
 	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
@@ -166,7 +167,7 @@ func (s *nfseSource) processDocument(ctx context.Context, company *nfse.Company,
 
 // processEvent decodes and saves an event. Events whose document is not
 // stored for the company are skipped by policy.
-func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, item Item, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfseSource) processEvent(ctx context.Context, company *company.Company, item Item, commit CommitFunc) (ItemOutcome, error) {
 	s.log.Log(ctx, logger.LevelTrace, "Processando evento", slog.Int64("nsu", item.NSU))
 
 	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)

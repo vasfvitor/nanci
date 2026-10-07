@@ -83,7 +83,7 @@ func TestPullAsksPasswordForSourceSync(t *testing.T) {
 	passwords := &recordingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *companypkg.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}

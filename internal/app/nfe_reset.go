@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -55,7 +55,7 @@ func (s *NFeService) Reset(ctx context.Context, cnpj string) (NFeResetResult, er
 	return resetResult(comp, counts), nil
 }
 
-func resetResult(comp *nfse.Company, counts nfe.ResetCounts) NFeResetResult {
+func resetResult(comp *company.Company, counts nfe.ResetCounts) NFeResetResult {
 	return NFeResetResult{
 		CompanyName: comp.Name,
 		CNPJ:        comp.CNPJ,

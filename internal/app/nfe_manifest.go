@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 )
 
@@ -192,7 +192,7 @@ func (s *NFeService) RegisterManifestacao(ctx context.Context, in NFeManifestaca
 
 // planManifestacao validates the input, resolves the company and the NF-e
 // and says whether the manifestação can be sent.
-func (s *NFeService) planManifestacao(ctx context.Context, in NFeManifestacaoInput) (*nfse.Company, NFeManifestacaoPlan, error) {
+func (s *NFeService) planManifestacao(ctx context.Context, in NFeManifestacaoInput) (*company.Company, NFeManifestacaoPlan, error) {
 	tipo, err := parseConclusiveManifestacao(in.Tipo)
 	if err != nil {
 		return nil, NFeManifestacaoPlan{}, err
@@ -240,7 +240,7 @@ func daysLeft(due, now time.Time) int {
 
 // planCiencia resolves the company and splits the requested chaves into
 // eligible and skipped.
-func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*nfse.Company, NFeCienciaPlan, error) {
+func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*company.Company, NFeCienciaPlan, error) {
 	switch {
 	case in.AllResumos && len(in.ChavesAcesso) > 0:
 		return nil, NFeCienciaPlan{}, errors.New("informe as chaves ou todas as pendentes, não ambos")
@@ -371,7 +371,7 @@ func parseConclusiveManifestacao(raw string) (nfe.TipoManifestacao, error) {
 	return tipo, nil
 }
 
-func (s *NFeService) evento(comp *nfse.Company, chave string, tipo nfe.TipoManifestacao, xJust string) sefaz.Evento {
+func (s *NFeService) evento(comp *company.Company, chave string, tipo nfe.TipoManifestacao, xJust string) sefaz.Evento {
 	return sefaz.Evento{
 		ChaveAcesso: chave,
 		CNPJ:        comp.CNPJ,
@@ -387,7 +387,7 @@ func (s *NFeService) evento(comp *nfse.Company, chave string, tipo nfe.TipoManif
 // records every answer.
 type eventSender struct {
 	service *NFeService
-	company *nfse.Company
+	company *company.Company
 	client  sefazClient
 	signer  *sefaz.Signer
 	tpAmb   string
@@ -395,7 +395,7 @@ type eventSender struct {
 
 // newSender loads the company certificate once, asking for its password
 // with purpose.
-func (s *NFeService) newSender(ctx context.Context, comp *nfse.Company, purpose string) (*eventSender, error) {
+func (s *NFeService) newSender(ctx context.Context, comp *company.Company, purpose string) (*eventSender, error) {
 	tpAmb, err := sefaz.TpAmb(comp.Environment)
 	if err != nil {
 		return nil, err

@@ -56,7 +56,7 @@ type nfeTestEnv struct {
 	app       *App
 	repo      *store.NFeRepository
 	xml       files.XMLStore
-	company   *nfse.Company
+	company   *company.Company
 	passwords *nfePasswordStub
 }
 

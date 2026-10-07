@@ -42,10 +42,10 @@ func (s *captureXMLStore) Store(hash string, data []byte) error {
 func (s *captureXMLStore) Get(string) ([]byte, error) { return nil, nil }
 
 type syncRunnerStub struct {
-	sync func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error
+	sync func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error
 }
 
-func (s syncRunnerStub) Sync(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
+func (s syncRunnerStub) Sync(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 	return s.sync(ctx, company, credential, consultationBasis, mode, progress)
 }
 
@@ -54,7 +54,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	companyStore := company.NewStore(db)
 	credentialStore := credential.NewStore(db)
 
-	comp := &nfse.Company{ //nolint:gosec
+	comp := &company.Company{ //nolint:gosec
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",
@@ -127,7 +127,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		receivedStore = nfseSrc.xml
 		store := nfseSrc.xml
 		return syncRunnerStub{
-			sync: func(ctx context.Context, company *nfse.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
+			sync: func(ctx context.Context, company *company.Company, credential *nfse.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error {
 				if progress != nil {
 					progress(syncstate.ProgressEvent{DocsFound: 1})
 				}
@@ -182,13 +182,13 @@ func (p *countingProvider) callCount() int {
 
 // newPullTestManager returns a Manager over a real database whose certificate
 // loading and ADN client are stubbed, plus its only company.
-func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *nfse.Company) {
+func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *company.Company) {
 	t.Helper()
 	db := storetest.OpenTestDB(t)
 	companyStore := company.NewStore(db)
 	credentialStore := credential.NewStore(db)
 
-	comp := &nfse.Company{ //nolint:gosec
+	comp := &company.Company{ //nolint:gosec
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",
@@ -275,7 +275,7 @@ func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
 	t.Cleanup(func() { newSEFAZClient = originalNewSEFAZClient })
 	newSEFAZClient = func(sefaz.ClientConfig) (sefazFetcher, error) { return &scriptedFetcher{}, nil }
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}
@@ -308,7 +308,7 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 	release := make(chan struct{})
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
 		return syncRunnerStub{
-			sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+			sync: func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 				close(started)
 				<-release
 				return nil
@@ -337,7 +337,7 @@ func TestPullRefusesSecondPullOfSameCompanyAndSource(t *testing.T) {
 
 	// Once the first pull ends, the pair is free again.
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *nfse.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *company.Company, *nfse.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}

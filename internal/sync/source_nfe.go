@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -59,7 +59,7 @@ func (s *nfeSource) Policy() SourcePolicy {
 
 // Fetch asks for the documents after cursor; distBatch applies the stop
 // rules.
-func (s *nfeSource) Fetch(ctx context.Context, company *nfse.Company, cursor int64) (Batch, error) {
+func (s *nfeSource) Fetch(ctx context.Context, company *company.Company, cursor int64) (Batch, error) {
 	resp, err := s.client.DistNSU(ctx, company.CNPJ, s.cUFAutor, cursor)
 	if err != nil {
 		return Batch{}, err
@@ -72,7 +72,7 @@ func isNFeEvent(schema string) bool {
 	return kind == nfe.SchemaResEvento || kind == nfe.SchemaProcEventoNFe
 }
 
-func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) ProcessItem(ctx context.Context, company *company.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
 	s.log.Log(ctx, logger.LevelTrace, "Processando documento NF-e", slog.Int64("nsu", item.NSU), slog.String("schema", item.Schema))
 
 	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
@@ -99,7 +99,7 @@ func (s *nfeSource) ProcessItem(ctx context.Context, company *nfse.Company, src 
 	}
 }
 
-func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, tpAmb string, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) processDocument(ctx context.Context, company *company.Company, tpAmb string, item Item, parse func([]byte) (nfe.Document, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	doc, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse document", item, payload, err)
@@ -130,7 +130,7 @@ func (s *nfeSource) processDocument(ctx context.Context, company *nfse.Company, 
 // processEvent stores an event. An event for a chave the company does not
 // see yet is skipped by policy, unless the company authored it (its own
 // manifestação): that one is kept and linked when the document arrives.
-func (s *nfeSource) processEvent(ctx context.Context, company *nfse.Company, tpAmb string, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
+func (s *nfeSource) processEvent(ctx context.Context, company *company.Company, tpAmb string, item Item, parse func([]byte) (nfe.Event, error), payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	ev, err := parse(payload.XML)
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse event", item, payload, err)

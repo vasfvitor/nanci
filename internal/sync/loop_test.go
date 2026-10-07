@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
@@ -27,7 +28,7 @@ type testHelper struct {
 	t          *testing.T
 	db         *sql.DB
 	store      *Store
-	company    *nfse.Company
+	company    *company.Company
 	credential *nfse.Credential
 }
 
