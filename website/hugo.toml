@@ -17,7 +17,7 @@ timeZone = "America/Sao_Paulo"
   name = "Ayres Vitor"
 
 [params]
-  description = "App desktop e CLI para baixar NFS-e da NFS-e Nacional"
+  description = "App desktop e CLI para baixar NFS-e do ADN e NF-e e CT-e da SEFAZ com certificado A1"
 
 [params.navbar]
   displayTitle = true

@@ -1,50 +1,41 @@
 # Certificados Digitais A1
 
-Como gerenciar senhas e o uso de certificados digitais e-CNPJ no formato A1 no Nanci.
+Como o Nanci carrega o certificado, guarda a senha e o usa com o ADN e a SEFAZ. O guia de uso está no site: [Certificado A1](https://vasfvitor.github.io/nanci/docs/certificados/).
 
----
+## Carregamento
 
-O Nanci suporta certificados digitais e-CNPJ tipo A1 nos formatos `.pfx` e `.p12`.
+- Formatos `.pfx` e `.p12` (PKCS#12). A leitura usa o fork em `third_party/go-pkcs12`, que aceita a codificação BER de certificados emitidos por algumas ACs.
+- O arquivo não é copiado. A tabela `credentials` guarda o caminho (`cert_path`), conferido com `os.Stat` antes do uso (`internal/credential`). `credential update-path` e a tela Credenciais trocam o caminho.
+- Uma credencial pode servir a várias empresas (`company assign-credential`).
 
-## Gerenciamento da Senha do Certificado
+## Senha
 
-Por padrão, a senha do certificado é solicitada via interface gráfica no momento do uso (ao cadastrar a credencial ou ao sincronizar caso não tenha sido salva localmente).
+A senha nunca vai para o SQLite. A ordem de busca (`internal/app/keyring.go`):
 
-Para uso automatizado via linha de comando (CLI), a senha pode ser injetada via variável de ambiente:
+1. Cofre do sistema operacional, via `github.com/zalando/go-keyring`, serviço `nanci_certs`, chave = ID da credencial. A senha guardada é testada contra o arquivo; se não abrir mais o certificado, segue para o passo 2.
+2. Fallback do chamador: no CLI, `NANCI_CERT_PASSWORD` e depois o prompt no terminal (`internal/cli/credential.go`); no desktop, o diálogo de senha (`PasswordPromptDialog`). O desktop não lê `NANCI_CERT_PASSWORD`.
+3. Uma senha que abre o certificado é gravada no cofre.
 
-```bash
-export NANCI_CERT_PASSWORD="sua-senha-aqui"
-```
+O pedido de senha leva a finalidade ("Sincronização NF-e", "Assinatura: Ciência da Operação (12 notas)"), mostrada no diálogo do desktop. A senha é pedida uma vez por operação: na Ciência da Operação em lote, uma senha assina todos os lotes.
 
-## Arquivo de Configuração `.env.local`
+### `.env.local`
 
-Para desenvolvimento ou uso avançado em automações recorrentes, o Nanci carrega variáveis de ambiente de um arquivo `.env.local`. O app busca por este arquivo nos seguintes caminhos, por ordem de prioridade:
+`internal/foundation/envfile` carrega `.env.local` da pasta atual, da pasta do executável e da pasta de dados (`%LOCALAPPDATA%\nanci`, ou `os.UserConfigDir()/nanci` fora do Windows), nessa ordem. Variáveis já definidas no processo prevalecem.
 
-1. No diretório de trabalho atual (onde o comando foi invocado).
-2. No diretório onde o executável do Nanci está localizado.
-3. Na pasta de dados do usuário: `%LOCALAPPDATA%\nanci\.env.local` (Windows) ou `~/.nanci/.env.local` (Linux/macOS).
+## Uso com a SEFAZ (NF-e e CT-e)
 
-**Exemplo de conteúdo para o `.env.local`:**
+O mesmo certificado serve à NFS-e, à distribuição de NF-e e CT-e e à Manifestação do Destinatário. Hosts do Ambiente Nacional: `www1.nfe.fazenda.gov.br`, `www.nfe.fazenda.gov.br` e `hom1.nfe.fazenda.gov.br` (NF-e); `www1.cte.fazenda.gov.br` e `hom1.cte.fazenda.gov.br` (CT-e).
 
-```dotenv
-NANCI_CERT_PASSWORD=senha-super-secreta
-```
+- **Renegociação TLS**: os servidores da SEFAZ só pedem o certificado do cliente renegociando a conexão depois do primeiro handshake. O transporte comum (`internal/foundation/httpclient`) permite renegociação, fica em TLS 1.2 e HTTP/1.1.
+- **Cadeias públicas**: os certificados dos servidores são emitidos por cadeias públicas já confiáveis no sistema. O Nanci não embute raízes ICP-Brasil e nunca desliga a verificação do servidor.
+- **Raiz do CNPJ**: a empresa precisa ter a mesma raiz (8 primeiros dígitos) do certificado. O Nanci confere antes de enviar; a SEFAZ recusa a consulta (`cStat` 593) ou o evento (`cStat` 631) quando a raiz difere. O certificado da matriz serve para as filiais.
+- **Assinatura de eventos**: as manifestações são assinadas com a chave privada do certificado, que precisa ser RSA (como nos A1 ICP-Brasil). Detalhes em [NFE_SEFAZ.md](NFE_SEFAZ.md#assinatura).
 
-## Uso do Certificado com a SEFAZ (NF-e e CT-e)
+`nanci nfe testar-conexao` e `nanci cte testar-conexao` carregam o certificado e fazem só o handshake TLS com o host de distribuição, sem consumir consultas. Veja [NFE_SEFAZ.md](NFE_SEFAZ.md) e [CTE_SEFAZ.md](CTE_SEFAZ.md).
 
-O mesmo certificado A1 cadastrado para a NFS-e é usado na distribuição de NF-e, na Manifestação do Destinatário e na distribuição de CT-e. Não é preciso outro certificado nem outra configuração. Os hosts do Ambiente Nacional são `www1.nfe.fazenda.gov.br`, `www.nfe.fazenda.gov.br` e `hom1.nfe.fazenda.gov.br` para a NF-e, e `www1.cte.fazenda.gov.br` (produção) e `hom1.cte.fazenda.gov.br` (homologação) para o CT-e. Pontos específicos do Ambiente Nacional da SEFAZ:
+## Testes
 
-- **Renegociação TLS**: os servidores da SEFAZ só pedem o certificado do cliente depois do primeiro handshake, renegociando a conexão. O Nanci permite essa renegociação (TLS 1.2, HTTP/1.1); nada precisa ser configurado.
-- **Cadeias públicas**: os certificados dos servidores da SEFAZ são emitidos por autoridades públicas já confiáveis no sistema operacional. Não é preciso instalar raízes ICP-Brasil, e a verificação do servidor nunca é desligada.
-- **Raiz do CNPJ**: a empresa consultada precisa ter a mesma raiz de CNPJ (8 primeiros caracteres) do certificado. O Nanci confere isso antes de qualquer envio; a SEFAZ também recusa a consulta (`cStat` 593) ou o evento (`cStat` 631) quando a raiz difere. O certificado da matriz serve para as filiais.
-- **Assinatura de eventos**: as manifestações são assinadas com a chave privada do certificado, que precisa ser RSA (como nos A1 ICP-Brasil).
-- **Senha por operação**: a senha é pedida uma vez por operação. Na Ciência da Operação em lote, uma única senha assina todos os lotes. O pedido informa a finalidade, por exemplo "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)"; no desktop ela aparece no diálogo de senha. `NANCI_CERT_PASSWORD` também vale para esses comandos.
-
-Os comandos `nanci nfe testar-conexao --cnpj <CNPJ>` e `nanci cte testar-conexao --cnpj <CNPJ>` carregam o certificado e testam o TLS com o host de distribuição de cada serviço sem consumir consultas. Veja [NFE_SEFAZ.md](NFE_SEFAZ.md) e [CTE_SEFAZ.md](CTE_SEFAZ.md).
-
-## Cuidados Importantes de Segurança
+O certificado mock fica em `internal/foundation/cert/testdata/` (senha `mockdata`, CNPJ `70860312000150`) e é recriado com `make mockcert`. Os testes de compatibilidade PKCS#12/BER podem validar também um certificado real mantido fora do repositório.
 
 > [!CAUTION]
-> **NUNCA** adicione seus arquivos de certificado digital `.pfx` / `.p12` ou suas respectivas senhas no repositório Git ou em issues públicas. 
-> 
-> O Nanci processa as credenciais de forma local-first para garantir que as chaves privadas nunca transitem por servidores de terceiros.
+> Nunca adicione certificados `.pfx`/`.p12` ou senhas ao repositório ou a issues. O `.gitignore` ignora `*.pfx` e `*.p12` (exceto o mock), mas confira antes de commitar.

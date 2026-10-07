@@ -1,118 +1,32 @@
 ---
-title: "Desenvolvimento e Contribuição"
-description: "Como configurar o ambiente local, rodar e compilar o Nanci a partir do código-fonte."
+title: "Desenvolvimento"
+description: "Como compilar o Nanci a partir do código-fonte e contribuir."
 weight: 90
-icon: "code"
-toc: true
 ---
 
-O Nanci é composto por duas frentes principais:
-1. **CLI (`cmd/nanci`)**: Aplicação terminal compilada puramente em Go.
-2. **Desktop (`internal/desktop`)**: Aplicação visual construída com [Wails](https://wails.io/), Go (Backend) e Vue 3 (Frontend).
+O Nanci é código aberto, sob a licença [GPL-3.0](https://github.com/vasfvitor/nanci/blob/main/LICENSE). O código é Go; o aplicativo desktop usa [Wails](https://wails.io/) com Vue 3 e Quasar.
 
----
+A documentação para desenvolvedores fica no repositório, junto do código:
 
-## Requisitos
+| Documento | Conteúdo |
+|---|---|
+| [DEVELOPMENT.md](https://github.com/vasfvitor/nanci/blob/main/docs/DEVELOPMENT.md) | Requisitos, ambiente local, rodar o desktop em modo de desenvolvimento, gerar o instalador e as capturas de tela. |
+| [CONTRIBUTING.md](https://github.com/vasfvitor/nanci/blob/main/CONTRIBUTING.md) | Estrutura do projeto, certificado de teste, padrões de código, commits e testes. |
+| [ARCHITECTURE.md](https://github.com/vasfvitor/nanci/blob/main/docs/ARCHITECTURE.md) | Pacotes, fluxo de dados e o loop de sincronização comum às três fontes. |
+| [NFSE_ADN.md](https://github.com/vasfvitor/nanci/blob/main/docs/NFSE_ADN.md), [NFE_SEFAZ.md](https://github.com/vasfvitor/nanci/blob/main/docs/NFE_SEFAZ.md), [CTE_SEFAZ.md](https://github.com/vasfvitor/nanci/blob/main/docs/CTE_SEFAZ.md) | Detalhes de cada integração: endpoints, regras, limites e modelo de dados. |
 
-Para desenvolver ou compilar o projeto localmente, você precisará de:
+## Compilar em poucos passos
 
-- Go 1.23+
-- Node.js 24+
-- pnpm (gerenciador de pacotes do Node)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation/)
-- Compilador C/C++ (como `mingw-w64` ou `gcc`) para compilar as partes Cgo do Wails e SQLite.
+Com Go, Node.js, pnpm e o Wails CLI instalados (versões em [DEVELOPMENT.md](https://github.com/vasfvitor/nanci/blob/main/docs/DEVELOPMENT.md#requisitos)):
 
-Instale o Wails CLI:
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
+git clone https://github.com/vasfvitor/nanci
+cd nanci
 
----
-
-## Ambiente Local (Go Workspace)
-
-Para facilitar a resolução de pacotes (como o módulo interno `internal/desktop` e pacotes em `third_party`), recomendamos criar um arquivo `go.work` na raiz do projeto (ele já é ignorado pelo `.gitignore`):
-
-```go
-go 1.26.3
-
-use (
-	.
-	./internal/desktop
-	./third_party/go-pkcs12
-)
-```
-
-Isso resolve problemas de IDE (como VSCode/GoLand) ao navegar no código.
-
----
-
-## Ambiente Local (Dev Data)
-
-Para evitar sujar o seu diretório pessoal com dados de teste, o projeto possui um script para provisionar um banco de dados temporário e injetar certificados falsos de teste.
-
-Rode o script na raiz do projeto:
-```bash
-make seeddev
-```
-*Ou `go run ./cmd/seeddev` se não tiver o utilitário Make instalado.*
-
-Isso criará a pasta `devdata/` contendo:
-- `nanci-dev.db` (banco SQLite com tabelas criadas).
-- `certs/` (certificados de mock).
-
-Você pode gerar novos certificados de mock a qualquer momento com:
-```bash
-make mockcert
-```
-*(Requer OpenSSL instalado na máquina).*
-
----
-
-## Rodando a Aplicação
-
-### CLI
-Para compilar e rodar o CLI:
-```bash
+# Linha de comando
 go build -o nanci.exe ./cmd/nanci
-./nanci.exe --help
-```
 
-### Desktop App (Wails)
-Para desenvolver com hot-reload (Live Reload do Vue e re-compilação rápida do Go):
-```bash
+# Desktop com recarga automática
 cd internal/desktop
 wails dev
 ```
-O servidor frontend irá iniciar, e uma janela nativa aparecerá. Salvar arquivos em `frontend/src` atualizará a tela automaticamente.
-
----
-
-## Compilando para Produção
-
-Para gerar o instalador do Windows:
-```bash
-cd internal/desktop
-wails build -platform windows/amd64 -nsis -m
-```
-O instalador final estará localizado em `internal/desktop/build/bin/`.
-
----
-
-## Captura Automatizada de Telas (Screenshots)
-
-Para manter a documentação e o `README.md` atualizados com as telas mais recentes do aplicativo sem precisar inserir dados reais manualmente, o projeto possui um gerador automatizado de capturas de tela. Ele utiliza o **Vite** e o **Playwright** para simular o backend e renderizar o frontend com dados fictícios estruturados, gerando capturas em alta resolução.
-
-Para executar o gerador a partir da raiz do projeto, use:
-
-```bash
-make screenshots
-```
-
-Ou no Windows (PowerShell):
-
-```powershell
-.\make.ps1 screenshots
-```
-
-Os arquivos gerados são salvos em `docs/screenshots/` nos temas claro e escuro.

@@ -1,103 +1,117 @@
 # Desenvolvimento
 
-O Nanci é composto por duas frentes principais:
-1. **CLI (`cmd/nanci`)**: Aplicação terminal compilada puramente em Go.
-2. **Desktop (`internal/desktop`)**: Aplicação visual construída com [Wails](https://wails.io/), Go (Backend) e Vue 3 (Frontend).
+O Nanci tem duas frentes que compartilham o mesmo núcleo em Go (`internal/app`, `internal/store`, `internal/sync`):
+
+1. **CLI** (`cmd/nanci`): Go puro.
+2. **Desktop** (`internal/desktop`): [Wails v2](https://wails.io/) com Go no backend e Vue 3 + Quasar no frontend (`internal/desktop/frontend`). É um módulo Go separado.
+
+Estrutura de pacotes e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md); padrões de código, commits e testes em [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Requisitos
 
-- Go 1.23+
-- Node.js 24+
-- pnpm (gerenciador de pacotes do Node)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation/)
-- Compilador C/C++ (como `mingw-w64` ou `gcc`) para compilar as partes Cgo do Wails e SQLite.
+| Ferramenta | Versão | Para quê |
+|---|---|---|
+| Go | a do `go.mod` (hoje 1.26) | tudo |
+| Node.js | 24 (`internal/desktop/frontend/.node-version`; mínimo 22) | frontend |
+| pnpm | 10 | frontend |
+| Wails CLI | v2.16.0, a mesma do `internal/desktop/go.mod` | desktop |
+| NSIS | 3 | só para gerar o instalador |
+| OpenSSL | qualquer | só para recriar o certificado mock |
 
-Instale o Wails CLI:
+No Windows não é preciso compilador C: o SQLite é `modernc.org/sqlite` (Go puro) e o Wails v2 não usa Cgo no Windows. O release roda em Linux e usa `mingw-w64` só para a compilação cruzada.
+
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+wails doctor
 ```
 
-## Ambiente Local (Go Workspace)
+Ferramentas usadas pelo `make check`: `goimports`, `golangci-lint`, `govulncheck`, `gosec` e `gitleaks`.
 
-Para facilitar a resolução de pacotes (como o módulo interno `internal/desktop` e pacotes em `third_party`), recomendamos criar um arquivo `go.work` na raiz do projeto (ele já é ignorado pelo `.gitignore`):
+## Go workspace
 
-```go
-go 1.26.3
+O desktop e o `third_party/go-pkcs12` são módulos separados. Para o editor e o `go build` resolverem os três juntos, crie um `go.work` na raiz (ele é ignorado pelo Git):
 
-use (
-	.
-	./internal/desktop
-	./third_party/go-pkcs12
-)
-```
-
-Isso resolve problemas de IDE (como VSCode/GoLand) ao navegar no código.
-
-## Ambiente Local (Dev Data)
-
-Para evitar sujar o seu diretório pessoal com dados de teste, o projeto possui um script para provisionar um banco de dados temporário e injetar certificados falsos.
-
-Rode o script na raiz do projeto:
 ```bash
-make seeddev
+go work init . ./internal/desktop ./third_party/go-pkcs12
 ```
-*Ou `go run ./cmd/seeddev` se não tiver o make.*
 
-Isso criará a pasta `devdata/` contendo:
-- `nanci-dev.db` (banco SQLite com tabelas criadas).
-- `certs/` (certificados mock).
+## Dados de desenvolvimento
 
-Você pode gerar novos certificados mock a qualquer momento com:
+Para não misturar dados de teste com os seus dados reais, crie o ambiente em `devdata/`:
+
 ```bash
-make mockcert
+make seeddev        # ou: go run ./cmd/seeddev
 ```
-*(Requer OpenSSL instalado na máquina).*
 
-## Rodando a Aplicação
+O comando é idempotente. Ele cria `devdata/nanci-dev.db` com as migrações aplicadas, copia o certificado mock para `devdata/certs/` e cadastra uma empresa e uma credencial de teste. O certificado mock fica em `internal/foundation/cert/testdata/` (senha `mockdata`, CNPJ `70860312000150`) e só serve até a primeira chamada a um serviço real. Para recriá-lo: `make mockcert` (requer OpenSSL).
+
+Para rodar o CLI ou o desktop contra outra pasta de dados, defina `NANCI_DATA_DIR`. `NANCI_TRACE=1` liga o log de rastreamento, que inclui o corpo das respostas com identificadores mascarados.
+
+## Rodar
 
 ### CLI
-Para compilar e rodar o CLI:
+
 ```bash
 go build -o nanci.exe ./cmd/nanci
 ./nanci.exe --help
 ```
 
-### Desktop App (Wails)
-Para desenvolver com hot-reload (Live Reload do Vue e re-compilação rápida do Go):
+### Desktop
+
 ```bash
 cd internal/desktop
 wails dev
 ```
-O servidor frontend irá iniciar, e uma janela nativa aparecerá. Salvar arquivos em `frontend/src` atualizará a tela automaticamente.
 
-## Compilando para Produção
+O Wails roda `pnpm install` e o Vite. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. Depois de mudar um método exposto ao frontend, os bindings em `frontend/wailsjs/` são regenerados pelo `wails dev`; o resto do frontend usa só `src/platform/wails/` (veja [AGENTS.md](../AGENTS.md)).
 
-Para gerar o instalador do Windows:
+Comandos do frontend, em `internal/desktop/frontend`:
+
+```bash
+pnpm run lint:check
+pnpm run test:unit
+pnpm run build
+```
+
+## Verificar antes do PR
+
+```bash
+make check    # fmt, vuln, lint, test e security
+```
+
+`make test` roda só `go test ./...`. Para mudanças no frontend, rode também os três comandos acima.
+
+## Gerar o instalador
+
 ```bash
 cd internal/desktop
 wails build -platform windows/amd64 -nsis -m
 ```
-O instalador estará localizado em `internal/desktop/build/bin/`.
 
-## Testes de Certificados
+O instalador sai em `internal/desktop/build/bin/nanci-desktop-amd64-installer.exe`. Os releases são gerados pelo workflow `.github/workflows/release.yml` a partir de uma tag `vX.Y.Z`, com a versão gravada em `internal/foundation/buildinfo` e as notas tiradas da mensagem do commit da tag.
 
-Os testes de compatibilidade PKCS#12/BER incluem a validação opcional de um certificado real mantido fora do repositório.
+## Testes de certificado
 
-## Captura Automatizada de Telas (Screenshots)
+Os testes de compatibilidade PKCS#12/BER (`third_party/go-pkcs12`, `internal/foundation/cert`) incluem a validação opcional de um certificado real, mantido fora do repositório. Sem ele, esses casos são pulados.
 
-Para manter a documentação e o `README.md` atualizados com as telas mais recentes do aplicativo sem precisar inserir dados reais manualmente, o projeto possui um gerador automatizado de capturas de tela. Ele utiliza o **Vite** e o **Playwright** para simular o backend e renderizar o frontend com dados fictícios estruturados, gerando capturas em alta resolução.
+## Capturas de tela
 
-Para executar o gerador a partir da raiz do projeto, use:
+As imagens de `docs/screenshots/` (usadas no README e no site) são geradas com dados fictícios: o Vite sobe o frontend com o backend simulado e o Playwright captura cada tela nos temas claro e escuro.
 
 ```bash
-make screenshots
+make screenshots    # ou, em internal/desktop/frontend: pnpm run screenshots
 ```
 
-Ou no Windows (PowerShell):
+## Site de documentação
 
-```powershell
-.\make.ps1 screenshots
+O site em [vasfvitor.github.io/nanci](https://vasfvitor.github.io/nanci/) é gerado com [Hugo](https://gohugo.io/) (extended) e o tema [Hextra](https://imfing.github.io/hextra/), a partir de `website/`. Ele é publicado pelo workflow `.github/workflows/website.yml` a cada push em `main` que mude `website/` ou `docs/screenshots/`.
+
+Para ver localmente:
+
+```bash
+bash website/scripts/copy-screenshots.sh
+cd website
+hugo server
 ```
 
-Os arquivos gerados são salvos em `docs/screenshots/` nos temas claro e escuro.
-
+O site é a documentação de uso. Detalhes técnicos ficam em `docs/` e o site aponta para eles; não copie o conteúdo de um para o outro.

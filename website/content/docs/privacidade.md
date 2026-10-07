@@ -1,53 +1,59 @@
 ---
-title: "Privacidade e Segurança"
-description: "Onde seus dados ficam armazenados e como o Nanci lida com as suas informações."
-weight: 30
-icon: "shield"
-toc: true
+title: "Privacidade e backup"
+description: "Onde o Nanci guarda os dados, com quem ele se comunica e como fazer backup ou apagar tudo."
+weight: 60
 ---
 
-O **Nanci** foi concebido desde o princípio como uma aplicação *Local-First*. Isso significa que nós não hospedamos seus dados, não criamos uma cópia na nuvem, e não processamos seus documentos fiscais em nossos servidores.
+O Nanci não tem servidor. Não há conta, telemetria nem cópia na nuvem: os documentos, o banco de dados e as senhas ficam no seu computador.
 
-Toda a extração, conexão com o certificado digital e armazenamento ocorre localmente na sua máquina.
+## Com quem o Nanci se comunica
 
-## Onde o app é instalado?
+Só com os serviços oficiais, por HTTPS com o certificado da empresa (mTLS):
 
-No Windows, o instalador desktop padrão coloca o executável em:
+| Serviço | Endereços |
+|---|---|
+| ADN Contribuintes (NFS-e) | `adn.nfse.gov.br`, `adn.producaorestrita.nfse.gov.br` |
+| Ambiente Nacional da NF-e | `www1.nfe.fazenda.gov.br`, `www.nfe.fazenda.gov.br`, `hom1.nfe.fazenda.gov.br` |
+| Ambiente Nacional do CT-e | `www1.cte.fazenda.gov.br`, `hom1.cte.fazenda.gov.br` |
 
-- `%LOCALAPPDATA%\Programs\Nanci Desktop`
+## Onde ficam os arquivos
 
-## Onde os dados ficam salvos?
+O instalador coloca o programa em `%LOCALAPPDATA%\Programs\Nanci Desktop`. Os dados ficam em outra pasta:
 
-O Nanci armazena seus dados e configurações em uma pasta específica do seu usuário:
+- **Windows**: `%LOCALAPPDATA%\nanci` (por exemplo, `C:\Users\Maria\AppData\Local\nanci`).
+- Linux e macOS (só linha de comando): `~/.config/nanci` e `~/Library/Application Support/nanci`.
 
-- **Windows:** `C:\Users\SeuUsuario\AppData\Local\nanci`
+A variável de ambiente `NANCI_DATA_DIR` troca essa pasta por outra.
 
-### O que é salvo nessa pasta?
+No desktop, **Configurações → Abrir Pasta de Dados** abre a pasta no Explorer.
 
-1. `nanci-v1.db`: O banco de dados SQLite principal, onde ficam salvas as configurações das empresas (CNPJs cadastrados) e os metadados das notas fiscais extraídos.
-2. `blobs/`: Pasta contendo os arquivos originais temporários `.xml` das NFS-es baixadas da base de dados do governo. Não é um backup e o app pode limpar essa pasta periodicamente para economizar espaço. 
-3. `.env.local`: Arquivo opcional para variáveis de ambiente locais, como `NANCI_CERT_PASSWORD`.
-4. `logs/`: Pasta com os arquivos `nanci-desktop.log` e `wails.log` de diagnóstico da aplicação.
+### O que tem na pasta
 
-## O que NÃO é enviado para lugar nenhum
+| Item | Conteúdo |
+|---|---|
+| `nanci-v1.db` | Banco SQLite: empresas, credenciais (o caminho do certificado, não a senha), dados das notas, estado da sincronização e histórico de manifestações. |
+| `blobs/` | Os XMLs originais de todas as notas e eventos, como o governo entregou, um arquivo por documento. As exportações de XML e DANFSe saem daqui. **Não apague**. |
+| `logs/` | `nanci-desktop.log` (com até 3 arquivos antigos) e `wails.log`, do aplicativo desktop. A linha de comando não grava log em arquivo. |
+| `.env.local` | Opcional. Variáveis como `NANCI_CERT_PASSWORD`. |
 
-- Os arquivos `.xml` da pasta `blobs/`.
-- O seu certificado digital e a senha dele (que reside apenas na sua máquina e/ou no gerenciador de credenciais seguro do seu Sistema Operacional).
-- O banco de dados SQLite.
-- A lista dos CNPJs que você está pesquisando.
+Fora dessa pasta ficam o próprio certificado (onde você o deixou) e as senhas, no cofre de senhas do sistema operacional.
 
-A única comunicação de rede externa feita pela aplicação é HTTPS (com mTLS usando o certificado digital do respectivo CNPJ) diretamente para os endereços (URLs) oficiais do Ambiente de Dados Nacional (ADN) e RFB.
+{{< callout type="warning" >}}
+O banco SQLite e os XMLs não são criptografados pelo Nanci. Use a criptografia de disco do sistema (BitLocker) e uma conta de usuário própria. Em computadores compartilhados, qualquer pessoa com acesso ao seu perfil pode ler esses arquivos.
+{{< /callout >}}
 
-## Como fazer backup?
+## Backup
 
-Como a arquitetura é local, o backup é simples: copie o arquivo `nanci-v1.db` e as demais pastas mencionadas acima para o seu sistema de armazenamento seguro preferido.
+1. Feche o Nanci.
+2. Copie a pasta `%LOCALAPPDATA%\nanci` inteira, incluindo `blobs/`.
+3. Guarde também o arquivo do certificado e a senha num lugar seguro.
 
-Se precisar reinstalar o Nanci em outra máquina, basta copiar esses dados para o caminho correspondente no novo sistema antes de abrir a aplicação, e ela lerá todos os dados como você os deixou.
+Para restaurar em outro computador, instale o Nanci, copie a pasta para o mesmo caminho antes de abrir o aplicativo e, se o certificado estiver em outro lugar, atualize o caminho na tela **Credenciais**. A senha será pedida de novo na primeira sincronização.
 
-## Como apagar meus dados?
+## Apagar tudo
 
-Para remover todos os seus dados capturados e rastros locais da aplicação, basta:
+Desinstalar o Nanci remove só o programa; os dados continuam na pasta. Para apagar tudo:
 
-1. Fechar o Nanci.
-2. Deletar completamente a pasta do caminho informado na seção "Onde os dados ficam salvos?".
-3. Remover a senha do certificado do chaveiro/gerenciador de credenciais do sistema operacional (se salva).
+1. Feche o Nanci e desinstale-o pelo Windows, se quiser.
+2. Apague a pasta `%LOCALAPPDATA%\nanci`.
+3. No Gerenciador de Credenciais do Windows, remova as entradas que começam com `nanci_certs`.

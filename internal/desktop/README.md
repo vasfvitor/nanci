@@ -1,19 +1,27 @@
-# README
+# Nanci Desktop
 
-## About
+Aplicativo desktop do Nanci, em [Wails v2](https://wails.io/). É um módulo Go separado (`github.com/vasfvitor/nanci/internal/desktop`) que usa o mesmo núcleo do CLI (`internal/app`).
 
-This is the official Wails Vue-TS template.
+- **Backend** (arquivos `.go` desta pasta): `App` expõe os métodos chamados pelo frontend e devolve DTOs de `desktopapi/`, nunca structs de domínio.
+- **Frontend** (`frontend/`): Vue 3, Quasar, Pinia e TypeScript. Os bindings gerados ficam em `frontend/wailsjs/` e só são importados por `frontend/src/platform/wails/`.
+- **Build** (`build/`): ícones, manifesto do Windows e o script NSIS do instalador (`build/windows/installer/project.nsi`).
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+## Rodar
 
-## Live Development
+```bash
+wails dev
+```
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+Roda `pnpm install`, sobe o Vite e abre a janela com recarga automática. Requisitos e o resto do fluxo em [docs/DEVELOPMENT.md](../../docs/DEVELOPMENT.md).
 
-## Building
+## Gerar o instalador
 
-To build a redistributable, production mode package, use `wails build`.
+```bash
+wails build -platform windows/amd64 -nsis -m
+```
+
+Saída em `build/bin/nanci-desktop-amd64-installer.exe`.
+
+## Regras do frontend
+
+Páginas, stores, composables e diálogos seguem a seção "Desktop Frontend Architecture" do [AGENTS.md](../../AGENTS.md).

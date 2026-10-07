@@ -1,14 +1,14 @@
 # Reportando uma Vulnerabilidade
 
-O Nanci é uma aplicação **local-first**. Dados fiscais e certificados digitais são processados localmente e nunca são enviados a servidores de terceiros, exceto os webservices oficiais da Secretaria da Fazenda e Ambiente de Dados Nacional.
+O Nanci é uma aplicação **local-first**. Dados fiscais e certificados digitais são processados localmente e nunca são enviados a servidores de terceiros, exceto os webservices oficiais do Ambiente de Dados Nacional (NFS-e) e do Ambiente Nacional da SEFAZ (NF-e e CT-e).
 
 ## Considerações de Segurança
 
 O Nanci usa um banco SQLite local. Por padrão, esse banco **não é criptografado em repouso**, então os dados ficam salvos em texto simples no arquivo da máquina.
 
-As senhas dos certificados digitais **não são armazenadas no banco de dados do Nanci**. Elas podem ser solicitadas no uso via CLI, Desktop ou variável de ambiente `NANCI_CERT_PASSWORD`.
+As senhas dos certificados digitais **não são armazenadas no banco de dados do Nanci**. Elas são pedidas no uso, pelo diálogo do desktop ou pelo terminal no CLI, que também aceita a variável de ambiente `NANCI_CERT_PASSWORD`.
 
-Quando uma senha é informada com sucesso, o Nanci pode salvá-la no **keyring nativo do sistema operacional** para evitar que o usuário precise digitá-la novamente nas próximas operações.
+Quando uma senha abre o certificado, o Nanci a salva no **cofre de senhas do sistema operacional** (no Windows, o Gerenciador de Credenciais) para não pedi-la de novo nas próximas operações.
 
 Durante o uso, a senha também pode existir temporariamente em memória. Há [planos para melhorar esse aspecto](https://github.com/vasfvitor/nanci/issues/10), mas não é garantido a remoção de todas as cópias temporárias criadas por bibliotecas, pelo sistema operacional ou pelo próprio runtime.
 

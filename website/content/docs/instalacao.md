@@ -1,31 +1,55 @@
 ---
-title: "Instalação e Uso"
-description: "Como instalar o Nanci no Windows e configurar o primeiro uso com certificado A1."
+title: "Instalação e primeiro uso"
+description: "Como instalar o Nanci no Windows, cadastrar a primeira empresa e fazer a primeira sincronização."
 weight: 20
-icon: "download"
-toc: true
 ---
 
-## Download
+## Requisitos
 
-O Nanci está disponível para Windows. Você não precisa instalar linguagens de programação ou dependências complexas.
+- Windows 10 ou 11, 64 bits.
+- Certificado digital e-CNPJ tipo A1 (arquivo `.pfx` ou `.p12`) e a senha dele. Certificados A3 (token ou cartão) não são suportados.
 
-1. Acesse a página de [Releases no GitHub](https://github.com/vasfvitor/nanci/releases/latest).
-2. Baixe o arquivo `nanci-desktop-windows-amd64-installer.exe` mais recente.
-3. Execute o instalador no seu computador.
+## Instalar
 
-Por padrão, o executável desktop é instalado em `%LOCALAPPDATA%\Programs\Nanci Desktop`.
+1. Abra a [última versão no GitHub](https://github.com/vasfvitor/nanci/releases/latest).
+2. Baixe o arquivo `nanci-desktop-windows-amd64-<versão>-installer.exe`.
+3. Execute o instalador. Ele instala só para o seu usuário, em `%LOCALAPPDATA%\Programs\Nanci Desktop`, e não pede permissão de administrador.
 
-O banco de dados, os logs e as configurações ficam na sua pasta de usuário em `%LOCALAPPDATA%\nanci`. Nada é enviado para a nuvem.
+O executável não tem assinatura de código, então o Windows SmartScreen pode avisar na primeira execução. Para conferir o download, compare o SHA-256 do instalador com o arquivo `nanci-checksums.txt` publicado na mesma versão:
 
-## Primeiro Uso (Desktop)
+```powershell
+Get-FileHash .\nanci-desktop-windows-amd64-v0.5.1-installer.exe -Algorithm SHA256
+```
 
-Ao abrir o Nanci pela primeira vez:
+Veja também [Solução de problemas](../troubleshooting/#aviso-do-smartscreen-ou-do-antivírus).
 
-1. Vá na aba **Credenciais** na barra lateral.
-2. Adicione uma credencial informando o arquivo do seu certificado `.pfx` (A1).
-3. Vá na aba **Empresas**.
-4. Clique em **Adicionar Empresa**, insira o CNPJ e vincule a credencial que você acabou de adicionar.
-5. Pronto! Escolha a empresa no menu lateral, abra **NFS-e** e clique em **Sincronizar NFS-e** para começar a baixar as notas.
+## Cadastrar a primeira empresa
 
-Dependendo do volume de notas da sua empresa, a primeira sincronização pode demorar um pouco. As próximas serão incrementais (apenas o que for novo).
+1. Abra o Nanci. A tela inicial é **Empresas**.
+2. Clique em **Adicionar** e preencha o CNPJ e o nome.
+3. Na parte da credencial, escolha **Criar nova credencial**, dê um rótulo e informe o caminho do arquivo `.pfx` ou `.p12`. Se você já cadastrou o certificado na tela **Credenciais**, escolha **Usar credencial existente**.
+4. Em **Ambiente da Empresa**, escolha `producao` para baixar documentos reais. O padrão é `producao_restrita`, o ambiente de testes do governo, onde notas reais não aparecem.
+5. Informe a **UF** da empresa se for baixar NF-e ou CT-e. A SEFAZ exige a UF na consulta.
+6. Escolha a política de importação inicial da NFS-e: a partir de hoje, últimos 12 meses, últimos 5 anos, a partir de uma data ou todo o histórico. NF-e e CT-e ignoram essa escolha, porque a SEFAZ só guarda os documentos por cerca de 3 meses.
+
+{{< theme-image light="/img/screenshots/dialogo-adicionar-empresa-light.png" dark="/img/screenshots/dialogo-adicionar-empresa-dark.png" alt="Diálogo de adicionar empresa" >}}
+
+O certificado não é copiado: o Nanci guarda o caminho do arquivo. Se você mover o `.pfx`, atualize o caminho na tela **Credenciais**.
+
+## Sincronizar
+
+Escolha a empresa no seletor do menu lateral e abra a página do documento que quer baixar:
+
+- **NFS-e**: clique em **Sincronizar NFS-e**.
+- **NF-e**: clique em **Sincronizar NF-e**. Use **Testar Conexão** antes para conferir o certificado sem gastar consultas.
+- **CT-e**: clique em **Sincronizar CT-e**.
+
+Na primeira vez, o Nanci pede a senha do certificado. Se ela estiver correta, fica guardada no Gerenciador de Credenciais do Windows e não é pedida de novo.
+
+A primeira sincronização pode demorar, dependendo do volume. As seguintes são incrementais: o Nanci guarda até onde leu (o NSU) e continua dali. A NF-e e o CT-e têm limite de 20 consultas por hora; veja [NF-e](../nfe/#limite-de-consultas).
+
+## Próximos passos
+
+- [NFS-e](../nfse/), [NF-e](../nfe/) e [CT-e](../cte/): o que cada fonte entrega e como usar cada página.
+- [Privacidade e backup](../privacidade/): onde os dados ficam e como copiá-los.
+- [Linha de comando](../cli/): automatizar a sincronização e a exportação.

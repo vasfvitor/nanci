@@ -1,30 +1,56 @@
 ---
-title: "Perguntas Frequentes (FAQ)"
-description: "Dúvidas comuns sobre certificados, XMLs, sincronização e ambiente."
-weight: 40
-icon: "help-circle"
-toc: true
+title: "Perguntas frequentes"
+description: "Dúvidas comuns sobre documentos que não chegam, ambientes, certificados e privacidade."
+weight: 70
 ---
 
-## Eu emito NFS-e todo mês, mas o Nanci não baixou nada. Por quê?
+## Emito NFS-e todo mês, mas o Nanci não baixou nada
 
-A consulta por NSU no Ambiente de Dados Nacional (ADN) Contribuintes **não deve ser tratada como uma lista absoluta e exaustiva** das notas emitidas pela própria empresa.
+A fila do ADN **não é uma lista completa** das notas emitidas pela empresa. Dependendo do município e de como ele se integrou ao padrão nacional, notas em que a empresa é prestadora podem não chegar por essa fila.
 
-Dependendo da regra de distribuição e da maturidade da integração do município com o Padrão Nacional, notas emitidas pelo próprio CNPJ (na condição de prestador) podem não aparecer na fila de distribuição desse endpoint via NSU.
+Para saber se o problema é a fila ou a configuração:
 
-Para validar se sua integração está de fato funcionando (e se seu certificado/senha estão corretos), teste também com uma NFS-e em que seu CNPJ seja **tomador/interessado**, ou consulte uma chave de acesso específica diretamente no portal web oficial. 
+1. Confira se a empresa está em **Produção** (`producao`). Em Produção Restrita só aparecem notas de teste.
+2. Teste com uma nota em que a empresa seja **tomadora**.
+3. Consulte uma chave conhecida na página **Consulta Direta API**.
 
-Lembre-se: O Nanci reflete o que o Governo entrega na API. Se a API retornar "sem documentos", o problema não está no Nanci, mas sim na forma como as notas foram distribuídas no banco de dados nacional.
+Se a fila responder sem documentos, o Nanci não tem o que baixar.
+
+## Por que não aparecem as NF-e que a empresa emitiu?
+
+A distribuição da SEFAZ não devolve ao emitente as notas que ele mesmo emitiu, nem na NF-e nem no CT-e. O Nanci só baixa o que a SEFAZ entrega. Para guardar as notas emitidas, use o XML gerado pelo seu sistema emissor.
+
+## Por que a NF-e aparece só como resumo?
+
+Para o destinatário, a SEFAZ entrega primeiro um resumo. O XML completo só é liberado depois da **Ciência da Operação** (ou de uma manifestação conclusiva). Registre a ciência e sincronize de novo. Veja [Manifestação do Destinatário](../nfe/#manifestação-do-destinatário).
+
+## Consigo baixar NF-e de mais de 3 meses atrás?
+
+Não por aqui. A SEFAZ guarda os documentos da distribuição por cerca de 90 dias (CT-e: cerca de 3 meses). O que já saiu da fila não volta. Por isso vale sincronizar com frequência.
+
+## Por que o botão de sincronizar NF-e ou CT-e está desabilitado?
+
+A SEFAZ permite poucas consultas e bloqueia por uma hora quem consulta demais. O Nanci respeita esse limite: depois de 20 consultas na última hora, ou quando a fila está em dia, ele espera e mostra o horário da próxima consulta permitida. Veja [Limite de consultas](../nfe/#limite-de-consultas).
 
 ## Qual a diferença entre Produção e Produção Restrita?
-- **Produção:** É o ambiente oficial da Receita Federal. Notas baixadas aqui têm validade jurídica.
-- **Produção Restrita:** É o ambiente de homologação (testes) do Governo. As notas emitidas e consultadas aqui não têm valor fiscal. Se você está desenvolvendo ou testando uma integração e emitindo notas "falsas", deve usar o ambiente de Produção Restrita.
+
+- **Produção** (`producao`): o ambiente oficial. Os documentos têm validade fiscal.
+- **Produção Restrita** (`producao_restrita`): o ambiente de testes do governo (homologação). Os documentos não têm valor fiscal.
+
+Empresas novas são cadastradas em Produção Restrita. Para baixar documentos reais, mude para Produção em **Empresas → Editar**.
+
+## Posso usar certificado A3 (token ou cartão)?
+
+Não. Só certificados A1 (`.pfx` ou `.p12`).
+
+## Funciona no macOS ou Linux?
+
+O aplicativo desktop só é distribuído para Windows. A linha de comando pode ser compilada para outros sistemas a partir do código-fonte, mas só é testada no Windows.
+
+## O Nanci envia meus dados para alguém?
+
+Não. O Nanci não tem servidor. A conexão vai do seu computador direto para o ADN e para a SEFAZ, e os XMLs, o banco e as senhas ficam na sua máquina. O código é aberto e pode ser conferido. Veja [Privacidade e backup](../privacidade/).
 
 ## Onde ficam meus XMLs e como faço backup?
-Tudo fica no seu computador. Leia nossa página sobre [Privacidade e Backup de Dados](privacidade).
 
-## O Nanci pode usar um certificado A3 (Token/Smartcard)?
-Atualmente, suportamos apenas **Certificados A1** (`.pfx` ou `.p12`). O uso de certificados A3 requer integração com drivers criptográficos e leitura de porta USB/Smartcard, o que atualmente está fora do escopo da nossa sincronização automatizada sem interface em background.
-
-## O Nanci manda meus dados para vocês?
-**Não.** O código é aberto (Open Source), o banco de dados é gerado localmente em SQLite, e a conexão HTTPS (mTLS) ocorre diretamente entre sua máquina (seu IP) e os servidores do governo (SERPRO/Receita). Nós nunca recebemos cópias dos seus XMLs ou da sua chave privada.
+Em `%LOCALAPPDATA%\nanci`. Veja [Privacidade e backup](../privacidade/#backup).
