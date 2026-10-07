@@ -6,7 +6,7 @@ weight: 40
 
 O `nanci` faz pelo terminal o mesmo que o aplicativo e usa o mesmo banco. O instalador não traz o CLI; compile com [Go](https://go.dev/dl/):
 
-```bash
+```powershell
 git clone https://github.com/vasfvitor/nanci
 cd nanci
 go build -o nanci.exe ./cmd/nanci
