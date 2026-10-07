@@ -12,6 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 // call is one call a fake service received: the method name and the
@@ -134,6 +135,45 @@ func (f *fakeDocuments) ListEventsForDocument(_ context.Context, documentID stri
 func (f *fakeDocuments) MarkDocumentsViewed(_ context.Context, cnpj string, chaves []string) (int, error) {
 	f.record("MarkDocumentsViewed", cnpj, chaves)
 	return f.viewed, f.err
+}
+
+type fakeQuery struct {
+	recorder
+	events     string
+	connection app.ConnectionTestResult
+	err        error
+}
+
+func (f *fakeQuery) QueryNFSeEvents(_ context.Context, in app.QueryNFSeInput) (string, error) {
+	f.record("QueryNFSeEvents", in)
+	return f.events, f.err
+}
+
+func (f *fakeQuery) TestConnection(_ context.Context, cnpj string) (app.ConnectionTestResult, error) {
+	f.record("TestConnection", cnpj)
+	return f.connection, f.err
+}
+
+type fakeSync struct {
+	recorder
+	pull   nsync.PullResult
+	status nsync.StatusResult
+	err    error
+}
+
+func (f *fakeSync) Pull(_ context.Context, in nsync.PullInput) (nsync.PullResult, error) {
+	f.record("Pull", in)
+	return f.pull, f.err
+}
+
+func (f *fakeSync) Status(_ context.Context, cnpj string) (nsync.StatusResult, error) {
+	f.record("Status", cnpj)
+	return f.status, f.err
+}
+
+func (f *fakeSync) ResetSyncState(_ context.Context, in nsync.ResetSyncInput) error {
+	f.record("ResetSyncState", in)
+	return f.err
 }
 
 type fakeExports struct {
