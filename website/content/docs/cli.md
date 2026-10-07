@@ -45,7 +45,7 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `nfe reset`, `cte reset` | Apaga as notas da empresa e recomeça a sincronização. |
 
 {{< callout type="warning" >}}
-`nfe ciencia`, `nfe manifestar` e os `reset` só simulam. Para executar, repita com `--confirmar`. Uma manifestação enviada não pode ser desfeita.
+`nfe ciencia`, `nfe manifestar` e os `reset` só simulam. Para executar, repita com `--confirmar`. Uma manifestação enviada não pode ser cancelada.
 {{< /callout >}}
 
 ## Rotina agendada

@@ -10,7 +10,7 @@ A fila do ADN não traz necessariamente as notas que a empresa emitiu; depende d
 {{< /faq >}}
 
 {{< faq "Por que não aparecem as NF-e que a empresa emitiu?" >}}
-A SEFAZ não distribui ao emitente as notas que ele mesmo emitiu. O mesmo vale para o CT-e.
+A SEFAZ não distribui ao emitente as notas que ele mesmo emitiu ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)). O mesmo vale para o CT-e.
 {{< /faq >}}
 
 {{< faq "Por que a NF-e aparece só como resumo?" >}}
@@ -18,7 +18,7 @@ Falta a [Ciência da Operação](../nfe/#manifestação-do-destinatário). Depoi
 {{< /faq >}}
 
 {{< faq "Consigo baixar notas antigas?" >}}
-NF-e e CT-e, só dos últimos 3 meses mais ou menos: é o que a SEFAZ guarda. Para NFS-e, escolha o período ao cadastrar a empresa.
+NF-e e CT-e, só dos últimos 3 meses: é o que a SEFAZ guarda ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=), [NT 2015.002](https://www.cte.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=LLSQYxGtwv0=)). Para NFS-e, escolha o período ao cadastrar a empresa.
 {{< /faq >}}
 
 {{< faq "Por que o botão de sincronizar está desabilitado?" >}}
@@ -26,7 +26,7 @@ A SEFAZ limita as consultas. Veja [Limite de consultas](../nfe/#limite-de-consul
 {{< /faq >}}
 
 {{< faq "Produção ou Produção restrita?" >}}
-Produção é o ambiente real. Produção restrita é o ambiente de testes do governo, sem valor fiscal. Para trocar, use **Empresas → Editar**.
+Produção é o ambiente real. Produção restrita é o ambiente de testes do governo, sem valor fiscal ([Portal NFS-e](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/apis-prod-restrita-e-producao)). Para trocar, use **Empresas → Editar**.
 {{< /faq >}}
 
 {{< faq "Funciona com certificado A3, macOS ou Linux?" >}}

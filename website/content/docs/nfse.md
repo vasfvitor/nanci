@@ -10,7 +10,7 @@ aliases:
   - /docs/nfse-adn/
 ---
 
-As NFS-e vêm do ADN Contribuintes, a API nacional da Receita Federal: notas tomadas, prestadas e intermediadas, com cancelamentos e substituições.
+As NFS-e vêm do ADN Contribuintes, a API nacional da Receita Federal ([manual da API](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/manual-contribuintes-apis-adn-sistema-nacional-nfse.pdf)): notas tomadas, prestadas e intermediadas, com cancelamentos e substituições.
 
 {{< theme-image light="/img/screenshots/documentos-light.png" dark="/img/screenshots/documentos-dark.png" alt="Página de NFS-e" >}}
 

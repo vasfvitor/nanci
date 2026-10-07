@@ -12,7 +12,7 @@ O Nanci baixa os CT-e (modelos 57, 64 e 67) em que a empresa é parte, com os ev
 
 {{< theme-image light="/img/screenshots/cte-light.png" dark="/img/screenshots/cte-dark.png" alt="Página de CT-e" >}}
 
-A SEFAZ guarda os CT-e por cerca de 3 meses. O XML completo chega direto, sem resumo nem manifestação.
+A SEFAZ guarda os CT-e por 3 meses ([NT 2015.002](https://www.cte.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=LLSQYxGtwv0=)). O XML completo chega direto, sem resumo nem manifestação.
 
 ## Achar o frete de uma NF-e
 
