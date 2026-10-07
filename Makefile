@@ -1,20 +1,17 @@
-.PHONY: fmt lint vuln test security check
+.PHONY: fmt lint vuln test security check seeddev mockcert screenshots
 
-# Executables with fallback logic
-GOIMPORTS ?= goimports
+# `go install` puts tools in GOBIN, or GOPATH/bin when GOBIN is unset, and that
+# directory is not always on PATH. go_tool returns the installed copy when it
+# exists and the bare name otherwise, which the shell then looks up on PATH.
+GO_BIN_DIR := $(subst \,/,$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin))
+GOEXE := $(shell go env GOEXE)
+go_tool = $(or $(wildcard $(GO_BIN_DIR)/$(1)$(GOEXE)),$(1))
+
+GOIMPORTS ?= $(call go_tool,goimports)
 GOLANGCI_LINT ?= golangci-lint
 GOVULNCHECK ?= govulncheck
 GOSEC ?= gosec
 GITLEAKS ?= gitleaks
-
-# If goimports is not in PATH, look in GOPATH/bin/goimports
-ifeq (, $(shell where $(GOIMPORTS) 2>NUL))
-	GOIMPORTS_PATH = $(shell go env GOPATH)/bin/goimports.exe
-	# Use fallback if file exists
-	ifneq (, $(wildcard $(GOIMPORTS_PATH)))
-		GOIMPORTS = $(GOIMPORTS_PATH)
-	endif
-endif
 
 fmt:
 	$(GOIMPORTS) -local github.com/vasfvitor/nanci -w .
