@@ -96,6 +96,9 @@ func (c *Client) DistNSU(ctx context.Context, cnpjValue string, cUFAutor int, ul
 
 // ConsNSU asks for the single document with the given NSU (consNSU), to fill
 // a gap in the queue.
+//
+// It has no caller yet: it is kept for the planned NSU gap recovery (ROADMAP,
+// Fase 2). A call spends the same 20 per hour NF-e budget as DistNSU.
 func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, nsu int64) (DistResult, error) {
 	query, err := nsuQuery("consNSU", "NSU", nsu)
 	if err != nil {
@@ -105,6 +108,10 @@ func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, ns
 }
 
 // ConsChNFe asks for the NF-e with the given access key (consChNFe).
+//
+// It has no caller yet: it is kept for the planned XML import and fetch by
+// key (ROADMAP, Fase 2). A call spends the same 20 per hour NF-e budget as
+// DistNSU.
 func (c *Client) ConsChNFe(ctx context.Context, cnpjValue string, cUFAutor int, chave string) (DistResult, error) {
 	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {
