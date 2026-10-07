@@ -4,7 +4,7 @@ description: "Onde ficam os dados e como fazer backup."
 weight: 60
 ---
 
-O Nanci não tem servidor nem telemetria. Ele só se comunica com o ADN (`adn.nfse.gov.br`) e com a SEFAZ (`*.nfe.fazenda.gov.br`, `*.cte.fazenda.gov.br`), usando o certificado da empresa.
+O Nanci não tem servidor nem telemetria. Ele só se comunica com o ADN (`adn.nfse.gov.br`) e com a SEFAZ (`*.nfe.fazenda.gov.br`, `*.cte.fazenda.gov.br`), usando o certificado da empresa; numa empresa em Produção restrita, com os hosts de teste (`adn.producaorestrita.nfse.gov.br`, `hom1.nfe.fazenda.gov.br` e `hom1.cte.fazenda.gov.br`).
 
 ## Onde ficam os dados
 

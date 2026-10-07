@@ -32,7 +32,9 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 
 | Comando | O que faz |
 |---|---|
+| `init` | Cria ou atualiza o banco e a pasta de dados. |
 | `company add`, `update`, `list` | Cadastra, altera e lista empresas. |
+| `company assign-credential --cnpj <cnpj> --credential-id <id>` | Liga a empresa a um certificado já cadastrado. O ID sai em `credential list`. |
 | `credential add`, `list`, `update-path` | Cadastra certificados e atualiza o caminho do arquivo. |
 | `pull`, `status`, `list` | Sincroniza, mostra a situação e lista as NFS-e. |
 | `export xlsx`, `csv`, `zip`, `danfse`, `danfse-zip` | Exporta as NFS-e. |

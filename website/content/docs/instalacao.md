@@ -21,7 +21,7 @@ Get-FileHash .\nanci-desktop-windows-amd64-v0.5.1-installer.exe -Algorithm SHA25
 Em **Empresas**, clique em **Adicionar** e informe CNPJ, nome e certificado. Preencha também:
 
 - **UF**, se for baixar NF-e ou CT-e.
-- **O que importar no primeiro sync** da NFS-e. NF-e e CT-e trazem o que a SEFAZ ainda tiver, cerca de 3 meses.
+- **O que deseja importar no primeiro sync?**: vale só para a NFS-e. NF-e e CT-e trazem o que a SEFAZ ainda tiver, cerca de 3 meses.
 
 {{< theme-image light="/img/screenshots/dialogo-adicionar-empresa-light.png" dark="/img/screenshots/dialogo-adicionar-empresa-dark.png" alt="Diálogo de adicionar empresa" >}}
 

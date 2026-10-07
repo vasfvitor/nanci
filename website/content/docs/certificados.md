@@ -16,4 +16,4 @@ A senha não vai para o banco do Nanci. Depois do primeiro uso ela fica no Geren
 
 Na linha de comando, a senha também pode vir da variável `NANCI_CERT_PASSWORD`, definida no ambiente ou num arquivo `.env.local` na pasta onde o comando roda, na pasta do executável ou em `%LOCALAPPDATA%\nanci`.
 
-**Testar Conexão**, na página NF-e, confere o certificado e a rede sem gastar consultas.
+Em **Configurações**, **Testar Conexão** confere o certificado e a conexão com o ADN da NFS-e. A SEFAZ (NF-e e CT-e) fica de fora.
