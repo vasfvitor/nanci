@@ -43,7 +43,7 @@ Para não misturar dados de teste com os seus dados reais, crie o ambiente em `d
 make seeddev        # ou: go run ./cmd/seeddev
 ```
 
-O comando é idempotente. Ele cria `devdata/nanci-dev.db` com as migrações aplicadas, copia o certificado mock para `devdata/certs/` e cadastra uma empresa e uma credencial de teste. O certificado mock fica em `internal/foundation/cert/testdata/` (senha `mockdata`, CNPJ `70860312000150`) e só serve até a primeira chamada a um serviço real. Para recriá-lo: `make mockcert` (requer OpenSSL).
+O comando é idempotente. Ele cria `devdata/nanci-v1.db` com as migrações aplicadas, copia o certificado mock para `devdata/certs/` e cadastra uma empresa e uma credencial de teste. O certificado mock fica em `internal/foundation/cert/testdata/` (senha `mockdata`, CNPJ `70860312000150`) e só serve até a primeira chamada a um serviço real. Para recriá-lo: `make mockcert` (requer OpenSSL).
 
 Para rodar o CLI ou o desktop contra outra pasta de dados, defina `NANCI_DATA_DIR`. `NANCI_TRACE=1` liga o log de rastreamento, que inclui o corpo das respostas com identificadores mascarados.
 
