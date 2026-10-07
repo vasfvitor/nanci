@@ -119,7 +119,7 @@ func (p *WailsCredentialProvider) CancelPassword(reqID string) {
 // App struct
 type App struct {
 	ctx       context.Context
-	core      *app.App
+	svc       services
 	cleanup   func()
 	cred      *WailsCredentialProvider
 	logLevel  *slog.LevelVar
@@ -207,7 +207,7 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	a.core = coreApp
+	a.svc = servicesFrom(coreApp)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -277,7 +277,7 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 		return err
 	}
 
-	return a.core.Companies.AddCompany(a.ctx, company.AddCompanyInput{
+	return a.svc.companies.AddCompany(a.ctx, company.AddCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		CredentialID:    input.CredentialID,
@@ -291,14 +291,14 @@ func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
 }
 
 func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
-	return a.core.Credentials.AddCredential(a.ctx, credential.AddCredentialInput{
+	return a.svc.credentials.AddCredential(a.ctx, credential.AddCredentialInput{
 		Label:    input.Label,
 		CertPath: input.CertPath,
 	})
 }
 
 func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
-	credentials, err := a.core.Credentials.ListCredentials(a.ctx)
+	credentials, err := a.svc.credentials.ListCredentials(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -306,14 +306,14 @@ func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
 }
 
 func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) error {
-	return a.core.Credentials.UpdateCredentialPath(a.ctx, credential.UpdateCredentialPathInput{
+	return a.svc.credentials.UpdateCredentialPath(a.ctx, credential.UpdateCredentialPathInput{
 		CredentialID: input.CredentialID,
 		CertPath:     input.CertPath,
 	})
 }
 
 func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {
-	return a.core.Credentials.UpdateCredentialData(a.ctx, credential.UpdateCredentialDataInput{
+	return a.svc.credentials.UpdateCredentialData(a.ctx, credential.UpdateCredentialDataInput{
 		CredentialID: input.CredentialID,
 		Label:        input.Label,
 	})
@@ -333,7 +333,7 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 		}
 	}
 
-	return a.core.Companies.UpdateCompany(a.ctx, company.UpdateCompanyInput{
+	return a.svc.companies.UpdateCompany(a.ctx, company.UpdateCompanyInput{
 		CNPJ:            input.CNPJ,
 		Name:            input.Name,
 		Environment:     environment,
@@ -344,14 +344,14 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 }
 
 func (a *App) AssignCredentialToCompany(input desktopapi.AssignCredentialInput) error {
-	return a.core.Companies.AssignCredentialToCompany(a.ctx, company.AssignCredentialInput{
+	return a.svc.companies.AssignCredentialToCompany(a.ctx, company.AssignCredentialInput{
 		CompanyCNPJ:  input.CompanyCNPJ,
 		CredentialID: input.CredentialID,
 	})
 }
 
 func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
-	companies, err := a.core.Companies.ListCompanies(a.ctx)
+	companies, err := a.svc.companies.ListCompanies(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 }
 
 func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
-	res, err := a.core.SyncManager.Pull(a.ctx, nsync.PullInput{
+	res, err := a.svc.sync.Pull(a.ctx, nsync.PullInput{
 		CNPJ:   input.CNPJ,
 		Mode:   input.Mode,
 		Source: syncstate.SyncSourceNFSe,
@@ -390,21 +390,21 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
-	return a.core.SyncManager.ResetSyncState(a.ctx, nsync.ResetSyncInput{
+	return a.svc.sync.ResetSyncState(a.ctx, nsync.ResetSyncInput{
 		CNPJ:   input.CompanyCNPJ,
 		Source: syncstate.SyncSourceNFSe,
 	})
 }
 
 func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
-	return a.core.Query.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
+	return a.svc.query.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
 		CNPJ:        input.CompanyCNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 	})
 }
 
 func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRow, error) {
-	documents, err := a.core.Documents.ListDocuments(a.ctx, app.ListInput{
+	documents, err := a.svc.documents.ListDocuments(a.ctx, app.ListInput{
 		CNPJ:       input.CNPJ,
 		Competence: input.Competence,
 		Direction:  input.Direction,
@@ -417,7 +417,7 @@ func (a *App) ListDocuments(input desktopapi.ListInput) ([]desktopapi.DocumentRo
 }
 
 func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEvent, error) {
-	events, err := a.core.Documents.ListEventsForDocument(a.ctx, documentID)
+	events, err := a.svc.documents.ListEventsForDocument(a.ctx, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +425,7 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 }
 
 func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
-	res, err := a.core.SyncManager.Status(a.ctx, cnpj)
+	res, err := a.svc.sync.Status(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.StatusResult{}, err
 	}
@@ -451,7 +451,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.Exports.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
+	err := a.svc.exports.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -467,7 +467,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.Exports.ExportXML(a.ctx, app.ExportXMLInput{
+	err := a.svc.exports.ExportXML(a.ctx, app.ExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -492,7 +492,7 @@ func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi
 		ChavesAcesso: input.ChavesAcesso,
 	}
 
-	res, err := a.core.Exports.ExportDANFSeZIP(a.ctx, exportInput)
+	res, err := a.svc.exports.ExportDANFSeZIP(a.ctx, exportInput)
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
@@ -518,11 +518,11 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	var err error
 	switch format {
 	case "csv":
-		res, err = a.core.Exports.ExportCSV(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportCSV(a.ctx, exportInput)
 	case "xlsx":
-		res, err = a.core.Exports.ExportXLSX(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportXLSX(a.ctx, exportInput)
 	case "zip":
-		res, err = a.core.Exports.ExportZIP(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportZIP(a.ctx, exportInput)
 	default:
 		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}
@@ -548,13 +548,13 @@ func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, e
 		Competence: input.Competence,
 		Direction:  input.Direction,
 	}
-	return a.core.Exports.CountPendingExportDocuments(a.ctx, exportInput, format)
+	return a.svc.exports.CountPendingExportDocuments(a.ctx, exportInput, format)
 }
 
 // MarkDocumentsViewed marks the company's NFS-e with the given chaves as
 // viewed and returns how many were new.
 func (a *App) MarkDocumentsViewed(input desktopapi.MarkViewedInput) (int, error) {
-	return a.core.Documents.MarkDocumentsViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
+	return a.svc.documents.MarkDocumentsViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
 }
 
 func formatExportError(err error) error {
@@ -689,7 +689,7 @@ func (a *App) OpenLogsDirectory() error {
 }
 
 func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResult, error) {
-	res, err := a.core.Query.TestConnection(a.ctx, companyCNPJ)
+	res, err := a.svc.query.TestConnection(a.ctx, companyCNPJ)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
 	}
@@ -708,7 +708,7 @@ func (a *App) TestConnection(companyCNPJ string) (desktopapi.ConnectionTestResul
 // --- NF-e ---
 
 func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
-	res, err := a.core.NFe.Pull(a.ctx, input.CNPJ)
+	res, err := a.svc.nfe.Pull(a.ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullNFeResult{}, err
 	}
@@ -731,7 +731,7 @@ func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, 
 }
 
 func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
-	res, err := a.core.NFe.Status(a.ctx, cnpj)
+	res, err := a.svc.nfe.Status(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.NFeStatusResult{}, err
 	}
@@ -764,7 +764,7 @@ func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 }
 
 func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error) {
-	documents, err := a.core.NFe.ListDocuments(a.ctx, app.NFeListInput{
+	documents, err := a.svc.nfe.ListDocuments(a.ctx, app.NFeListInput{
 		CNPJ:         input.CNPJ,
 		Competence:   input.Competence,
 		Situacao:     input.Situacao,
@@ -784,11 +784,11 @@ func (a *App) ListNFe(input desktopapi.ListNFeInput) ([]desktopapi.NFeRow, error
 // MarkNFeViewed marks the company's NF-e with the given chaves as viewed and
 // returns how many were new.
 func (a *App) MarkNFeViewed(input desktopapi.MarkViewedInput) (int, error) {
-	return a.core.NFe.MarkViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
+	return a.svc.nfe.MarkViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
 }
 
 func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent, error) {
-	events, err := a.core.NFe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
+	events, err := a.svc.nfe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
 	if err != nil {
 		return nil, err
 	}
@@ -796,7 +796,7 @@ func (a *App) ListNFeEvents(input desktopapi.NFeKeyInput) ([]desktopapi.NFeEvent
 }
 
 func (a *App) ListNFePendingManifestacoes(input desktopapi.NFePendingInput) ([]desktopapi.NFePendingRow, error) {
-	pending, err := a.core.NFe.ListPendingManifestacoes(a.ctx, app.NFePendingInput{
+	pending, err := a.svc.nfe.ListPendingManifestacoes(a.ctx, app.NFePendingInput{
 		CNPJ:          input.CNPJ,
 		DueWithinDays: input.DueWithinDays,
 	})
@@ -809,7 +809,7 @@ func (a *App) ListNFePendingManifestacoes(input desktopapi.NFePendingInput) ([]d
 // PlanNFeCiencia lists which NF-e RegisterNFeCiencia would send and which it would
 // skip. It sends nothing and asks for no password.
 func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeCienciaPlan, error) {
-	plan, err := a.core.NFe.PlanCiencia(a.ctx, app.NFeCienciaInput{
+	plan, err := a.svc.nfe.PlanCiencia(a.ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
 	})
@@ -822,7 +822,7 @@ func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopa
 // RegisterNFeCiencia sends Ciência da Operação for the eligible NF-e. Failures
 // after sending started are reported per chave in the result, not as an error.
 func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeEventBatchResult, error) {
-	summary, err := a.core.NFe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
+	summary, err := a.svc.nfe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
 	})
@@ -833,7 +833,7 @@ func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desk
 }
 
 func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoInput) (desktopapi.NFeEventResult, error) {
-	outcome, err := a.core.NFe.RegisterManifestacao(a.ctx, app.NFeManifestacaoInput{
+	outcome, err := a.svc.nfe.RegisterManifestacao(a.ctx, app.NFeManifestacaoInput{
 		CNPJ:          input.CNPJ,
 		ChaveAcesso:   input.ChaveAcesso,
 		Tipo:          input.Tipo,
@@ -850,7 +850,7 @@ func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.Expor
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.NFe.ExportXML(a.ctx, app.NFeExportXMLInput{
+	err := a.svc.nfe.ExportXML(a.ctx, app.NFeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -866,7 +866,7 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	res, err := a.core.NFe.ExportXMLZip(a.ctx, app.NFeExportInput{
+	res, err := a.svc.nfe.ExportXMLZip(a.ctx, app.NFeExportInput{
 		CNPJ:           input.CNPJ,
 		Competence:     input.Competence,
 		Role:           input.Role,
@@ -887,7 +887,7 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 // ResetNFe removes the company's NF-e and resets its NF-e sync, which lets the
 // company environment change again.
 func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
-	res, err := a.core.NFe.Reset(a.ctx, cnpj)
+	res, err := a.svc.nfe.Reset(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.NFeResetResult{}, err
 	}
@@ -905,7 +905,7 @@ func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
 // --- CT-e ---
 
 func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, error) {
-	res, err := a.core.CTe.Pull(a.ctx, input.CNPJ)
+	res, err := a.svc.cte.Pull(a.ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullCTeResult{}, err
 	}
@@ -927,7 +927,7 @@ func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, 
 }
 
 func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
-	res, err := a.core.CTe.Status(a.ctx, cnpj)
+	res, err := a.svc.cte.Status(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeStatusResult{}, err
 	}
@@ -956,7 +956,7 @@ func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
 }
 
 func (a *App) ListCTe(input desktopapi.ListCTeInput) ([]desktopapi.CTeRow, error) {
-	documents, err := a.core.CTe.ListDocuments(a.ctx, app.ListCTeInput{
+	documents, err := a.svc.cte.ListDocuments(a.ctx, app.ListCTeInput{
 		CNPJ:         input.CNPJ,
 		Competence:   input.Competence,
 		Situacao:     input.Situacao,
@@ -978,11 +978,11 @@ func (a *App) ListCTe(input desktopapi.ListCTeInput) ([]desktopapi.CTeRow, error
 // MarkCTeViewed marks the company's CT-e with the given chaves as viewed and
 // returns how many were new.
 func (a *App) MarkCTeViewed(input desktopapi.MarkViewedInput) (int, error) {
-	return a.core.CTe.MarkViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
+	return a.svc.cte.MarkViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
 }
 
 func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent, error) {
-	events, err := a.core.CTe.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
+	events, err := a.svc.cte.ListEvents(a.ctx, input.CNPJ, input.ChaveAcesso)
 	if err != nil {
 		return nil, err
 	}
@@ -992,7 +992,7 @@ func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent
 // TestCTeConnection opens a TLS connection to the CT-e distribution host. It
 // sends no query, so it does not use the hourly budget.
 func (a *App) TestCTeConnection(cnpj string) (desktopapi.ConnectionTestResult, error) {
-	res, err := a.core.CTe.TestConnection(a.ctx, cnpj)
+	res, err := a.svc.cte.TestConnection(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
 	}
@@ -1013,7 +1013,7 @@ func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.Expor
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.core.CTe.ExportXML(a.ctx, app.CTeExportXMLInput{
+	err := a.svc.cte.ExportXML(a.ctx, app.CTeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -1029,7 +1029,7 @@ func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.Expor
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	res, err := a.core.CTe.ExportXMLZip(a.ctx, app.CTeExportInput{
+	res, err := a.svc.cte.ExportXMLZip(a.ctx, app.CTeExportInput{
 		CNPJ:         input.CNPJ,
 		Competence:   input.Competence,
 		Role:         input.Role,
@@ -1045,7 +1045,7 @@ func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.Expor
 
 // PreviewResetCTe returns what ResetCTe would remove, changing nothing.
 func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
-	res, err := a.core.CTe.PreviewReset(a.ctx, cnpj)
+	res, err := a.svc.cte.PreviewReset(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
@@ -1055,7 +1055,7 @@ func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
 // ResetCTe removes the company's CT-e and resets its CT-e sync, so the next
 // pull starts over from NSU 0.
 func (a *App) ResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
-	res, err := a.core.CTe.Reset(a.ctx, cnpj)
+	res, err := a.svc.cte.Reset(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
