@@ -53,7 +53,7 @@ const (
 	CStatDhEventoPosterior           = 578 // dhEvento after SEFAZ time: fix the clock
 	CStatDhEventoAntesAutorizacao    = 579
 	CStatForaDoPrazo                 = 596
-	CStatCNPJBaseDiverge             = 631 // CNPJ-Base differs from the certificate
+	CStatCNPJBaseDiverge             = 213 // author's CNPJ-Base differs from the certificate (NT 2020.001)
 	CStatCienciaNFeCancelada         = 650
 	CStatDesconhecimentoNFeCancelada = 651
 	CStatCienciaAposManifestacao     = 655 // ciência after a conclusive manifestação
