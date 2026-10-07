@@ -36,3 +36,9 @@ eventos/
 devdata/
 /.gocache-review
 .env.local
+
+# Taskfile cache
+internal/desktop/.task/
+
+# Local Claude Code folder
+.claude/
