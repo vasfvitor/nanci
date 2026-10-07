@@ -85,7 +85,7 @@ func TestLoadPKCS12_InvalidData(t *testing.T) {
 func TestLoadPKCS12_ValidMockCert(t *testing.T) {
 	mockPfxPath := filepath.Join("testdata", "cert_a1_mock_70860312000150.pfx")
 	if _, err := os.Stat(mockPfxPath); os.IsNotExist(err) {
-		t.Skip("Mock cert not found, skipping. Run 'go run gen/mock_cert.go' to generate it.")
+		t.Skip("Mock cert not found, skipping. Run 'make mockcert' to generate it.")
 	}
 
 	loaded, err := LoadPKCS12(mockPfxPath, []byte("mockdata"))
@@ -134,7 +134,7 @@ func TestZeroBytes(t *testing.T) {
 func TestLoadPKCS12_DoesNotModifyPassword(t *testing.T) {
 	mockPfxPath := filepath.Join("testdata", "cert_a1_mock_70860312000150.pfx")
 	if _, err := os.Stat(mockPfxPath); os.IsNotExist(err) {
-		t.Skip("Mock cert not found, skipping. Run 'go run gen/mock_cert.go' to generate it.")
+		t.Skip("Mock cert not found, skipping. Run 'make mockcert' to generate it.")
 	}
 
 	password := []byte("mockdata")

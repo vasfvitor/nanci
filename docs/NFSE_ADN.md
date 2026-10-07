@@ -19,11 +19,15 @@ O parâmetro `LastNSU` representa o cursor de sincronização. A resposta do gov
 ### Consulta Direta
 
 ```text
-GET NFSe/{ChaveAcesso}
 GET NFSe/{ChaveAcesso}/Eventos
 ```
 
 - `{ChaveAcesso}` deve possuir exatamente 50 dígitos numéricos correspondentes à chave de acesso da nota.
+- O ADN também oferece `GET NFSe/{ChaveAcesso}`, que devolve a nota; o Nanci não o chama hoje.
+
+## DANFSe
+
+A NT SE/CGNFS-e 008/2026 desligou a API de geração de DANFSe do ADN (prazo final 03/08/2026). O Nanci não usa essa API: gera o DANFSe localmente a partir do XML, com a biblioteca `go-danfse-v2` (`internal/danfse`), então não foi afetado.
 
 ## Ambientes de Execução
 

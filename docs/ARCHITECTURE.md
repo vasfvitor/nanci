@@ -3,12 +3,19 @@
 ## Estrutura de Diretórios
 
 - `cmd/nanci`: Ponto de entrada (main) do CLI.
+- `cmd/mockcert`: Gera com o OpenSSL o certificado A1 de teste em `internal/foundation/cert/testdata/` (`make mockcert`).
+- `cmd/seeddev`: Cria um banco de desenvolvimento em `devdata/` com uma empresa, o certificado de teste e algumas NFS-e de exemplo (`make seeddev`).
 - `internal/cli`: Adaptadores e configuração dos comandos Cobra (ex: `nanci pull`, `nanci export`, `nanci nfe`, `nanci cte`).
 - `internal/desktop`: O aplicativo Wails completo. Contém o código Go que faz ponte com o frontend, e dentro dele, `frontend/` com o código Vue 3 / TypeScript.
 - `internal/app`: Casos de uso centrais. Responsável por inicializar as dependências e amarrar repositórios com serviços. Os casos de uso de NF-e ficam em `NFeService` (`internal/app/nfe*.go`) e os de CT-e em `CTeService` (`internal/app/cte*.go`).
 - `internal/sync`: Loop de sincronização por NSU, genérico por origem (NFS-e, NF-e e CT-e), com orçamento de consultas, bloqueios e carregamento do certificado (`CertificateLoader`).
+- `internal/company`: Cadastro das empresas (`Store` e `Manager`): validação de CNPJ e UF, política inicial de sincronização e vínculo com a credencial, que precisa ter a mesma raiz de CNPJ.
+- `internal/credential`: Cadastro das credenciais (certificados A1 reutilizáveis entre empresas): caminho do arquivo e rótulo. A senha fica no keyring do sistema, a cargo de `internal/app`.
 - `internal/store`: Camada de persistência. Contém as queries (frequentemente geradas via sqlc), conexões SQLite e a pasta `migrations_v2/` com o schema do banco.
+- `internal/store/sqlgen`: Código gerado pelo sqlc a partir de `internal/store/queries` (configuração em `sqlc.yaml`). Não editar à mão.
+- `internal/files`: Armazenamento dos XMLs brutos em `blobs/`, um arquivo por hash SHA-256 (`BlobStore`).
 - `internal/nfse` e `internal/adn`: Modelos da Nota Fiscal de Serviço Eletrônica e cliente da API do Ambiente de Dados Nacional.
+- `internal/danfse`: Interface `Renderer` (XML da NFS-e entra, PDF do DANFSe sai) e a implementação em `godanfsev2/`, com a biblioteca `go-danfse-v2`. O DANFSe é gerado localmente, sem chamar a API do ADN.
 - `internal/dfe`: Vocabulário comum dos documentos fiscais eletrônicos da SEFAZ (NF-e, CT-e): chave de acesso de 44 caracteres, valores monetários (`Money`), `CompanyID` e `ErrInvalidEnum`. Sem código de rede ou banco.
 - `internal/nfe`: Modelos da NF-e (modelo 55): leitura de `resNFe`, `procNFe` e eventos, papel da empresa na nota, regras de mesclagem resumo/completa, estado e prazos da manifestação.
 - `internal/cte`: Modelos do CT-e (modelos 57 e 67, GTV-e modelo 64 e CT-e Simplificado): leitura de `procCTe`, `procCTeOS`, `procGTVe`, `procCTeSimp` e `procEventoCTe`, resolução do tomador, papéis da empresa no documento e regras de mesclagem e situação.
