@@ -27,7 +27,7 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
 - **#14** (links do site): rodar um verificador de links no HTML do Hugo e fechar ou corrigir.
 - **#4** (fork do go-pkcs12): upstream está em v0.7.3; verificar se ganhou suporte a BER indefinido (`third_party/go-pkcs12/README.nanci.md`). O fork também carrega `DecodeChainBytes` (#10), então voltar ao upstream exige levar isso para o chamador. [M]
 - **#15** (assinatura Windows): depende de aprovação externa (SignPath). Abrir o pedido; o passo no workflow é pequeno. [M]
-- **#12** (criptografia em repouso): `modernc.org/sqlite` não tem SEE/SQLCipher e os blobs são arquivos simples. Decisão proposta: **não fazer** enquanto o driver for esse; registrar no `PENDENCIAS.md` como "não fazer" com a razão e fechar a issue apontando para a nota. Reabrir só se o driver mudar.
+- **#12** (criptografia em repouso): `modernc.org/sqlite` não tem SEE/SQLCipher e os blobs são arquivos simples. **Estacionado** (decisão de 07/10/2026): fica aberto, sem plano, até o driver mudar ou surgir um pedido concreto. Comentar na issue.
 
 ### Dependências [M]
 
@@ -38,17 +38,21 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
 
 ### Comportamentos do Ambiente Nacional que o app ainda não trata [M]
 
-- **Regra dos 60 dias.** A SEFAZ só gera NSU para raízes de CNPJ que consultaram o `distNSU` nos últimos 60 dias; uma empresa parada por mais tempo perde o intervalo para sempre (NT 2014.002 v1.10, em produção desde 10/11/2021; confirmado só por relatos de terceiros, conferir o texto da NT). Como todo software que usa o mesmo CNPJ compartilha a mesma sequência de NSU, o ERP do contador e o nanci também podem colidir no 656. O app não avisa. Mostrar aviso na Empresa e no `company status` quando o último sync de NF-e/CT-e passar de 45 dias, e explicar na doc.
+- **Regra dos 60 dias.** A SEFAZ só gera NSU para raízes de CNPJ que consultaram o `distNSU` nos últimos 60 dias; uma empresa parada por mais tempo perde o intervalo para sempre (NT 2014.002 v1.10, em produção desde 10/11/2021; confirmado só por relatos de terceiros, conferir o texto da NT). Como todo software que usa o mesmo CNPJ compartilha a mesma sequência de NSU, o ERP do contador e o nanci também podem colidir no 656. O app não avisa. Mostrar aviso na Empresa e no `company status` quando o último sync de NF-e/CT-e passar de **45 dias** (limiar aceito em 07/10/2026), e explicar na doc.
 - **Reuso do `ultNSU`.** Conferir em `internal/sync/source_nfe.go` e `source_cte.go` que o cursor gravado é sempre o `ultNSU` devolvido, mesmo em lote vazio.
 - **CNPJ alfanumérico em produção desde 10/08/2026** (NT 009 NFS-e). O dígito verificador já está feito; conferir o que ainda assume só dígitos: `ParseAccessKey` em `internal/nfse` e a regex da Consulta Direta.
 - **DANFSe nacional.** A NT 008/2026 desliga a API de geração de DANFSe do ADN (prazo 03/08/2026). O app renderiza localmente com `go-danfse-v2`, então não é afetado; registrar na doc para ninguém propor usar a API.
 
 ## Fase 1: dívida estrutural (1 a 2 meses)
 
-- **Vocabulário compartilhado fora de `internal/nfse`** [G]: `Company`, `Credential`, `Environment`, `SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy` têm 576 referências em 66 arquivos fora do pacote (`sync` 148, `company` 49, `credential` 24, `app` 24, `store` 19, `sefaz` 6). PR só de movimento, sem mudança de comportamento. Proposta de destino: `Company` e `Credential` para `internal/company` (que já abriga o `Store`); `Environment` e os enums de sync para `internal/dfe` (vocabulário sem rede nem banco). Decidir o nome antes de abrir o PR.
+- **Vocabulário compartilhado fora de `internal/nfse`** [G]: `Company`, `Credential`, `Environment`, `SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy`, `SyncRun`, `SyncState` e `SyncSnapshot` têm 576 referências em 66 arquivos fora do pacote (`sync` 148, `company` 49, `credential` 24, `app` 24, `store` 19, `sefaz` 6). PR só de movimento, sem mudança de comportamento. Destino decidido em 07/10/2026:
+  - `Company` → `internal/company`, que já é o pacote da empresa cadastrada (`Store` e `Manager`); passa a ter também o tipo. Idem `Credential` → `internal/credential`.
+  - `Environment` (produção/homologação, o `tpAmb`) → `internal/dfe`, que é o vocabulário DF-e sem rede nem banco.
+  - Os enums e registros de sincronização (`SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy`, `SyncRun`, `SyncState`, `SyncSnapshot`) → novo pacote folha `internal/syncstate`. Não podem ir para `internal/sync` porque `sync` importa `store` e `store` precisa deles (ciclo). O nome diz o que é: o estado da sincronização, sem o loop.
+  - Depois do movimento, `internal/nfse` fica só com a NFS-e, como `nfe` e `cte`.
 - **Testes do módulo desktop** [M]: `internal/desktop` está em 24% de cobertura; os métodos de `App` não têm teste. Introduzir um `core` falso (interface pequena por serviço) e testar validação de entrada, mapeamento de DTO e erros. Isso também é pré-requisito para a paridade de exportação.
 - **Frontend sem teste** [P/M]: `composables/useCredentials.ts`, `composables/useSefazBlock.ts`, `stores/query.ts`, `platform/wails/runtime.ts`.
-- **Logs em disco com CNPJ em claro** (`internal/desktop/app.go:632`) enquanto o ZIP exportado mascara. Decidir se o disco também mascara; se sim, reaproveitar `logsanitize`.
+- **Logs em disco com CNPJ em claro** (`internal/desktop/app.go:632`) enquanto o ZIP exportado mascara. Decidido em 07/10/2026: **mantém em claro**; só o pacote exportado mascara. Registrar na doc de privacidade.
 - **Docs**: atualizar `ARCHITECTURE.md` e `AGENTS.md` depois do movimento de pacotes; `docs/specs/` tem um único spec de 06/2026, decidir se a pasta fica.
 
 ## Fase 2: funcionalidades já pendentes
@@ -73,8 +77,8 @@ Universo levantado em 07/10/2026 (fontes oficiais quando existem; itens marcados
 | 4 | NFS-e São Paulo `ConsultaNFeRecebidas` | notas tomadas em SP, 50 por página | A1 + XMLDSig SHA-1 | grátis | médio | depende: *verificar primeiro* se SP já aparece no ADN pelo compartilhamento (LC 214 art. 62; *3P* diz que sim) |
 | 5 | `CadConsultaCadastro4` | cadastro de IE do fornecedor por CNPJ | A1; BA, GO, MS, MT, PE, PR, RS, SP e SVRS; SP/ES podem recusar certificado de outra UF | grátis | fácil | baixo a médio (validar contraparte) |
 | 6 | CNPJ público (`minhareceita.org`, BrasilAPI) | razão social, UF, situação | sem certificado | grátis, limites por IP | fácil | médio (preencher cadastro da empresa) |
-| 7 | **eSocial** download de eventos | XML dos eventos já enviados, inclusive por contador | A1 da empresa; 10 chamadas/dia, 50 eventos por chamada, nada nos dias 1 a 7 | grátis | médio | alto para quem tem folha, mas é RH, não fiscal: *decidir escopo* |
-| 8 | Serpro Integra Contador | DCTFWeb, Simples/PGDAS, caixa postal, parcelamentos, pagamentos, DARF (Sicalc), CND | e-CNPJ mTLS + OAuth2; a própria empresa não precisa de procuração | pago por chamada: consulta R$0,24 a 0,06; sem faixa grátis | médio | alto para contador; incompatível com ferramenta grátis salvo "traga suas credenciais" |
+| 7 | **eSocial** download de eventos | XML dos eventos já enviados, inclusive por contador | A1 da empresa; 10 chamadas/dia, 50 eventos por chamada, nada nos dias 1 a 7 | grátis | médio | alto para quem tem folha, mas é folha/RH, não documento fiscal: **fora do escopo por ora** (07/10/2026) |
+| 8 | Serpro Integra Contador | DCTFWeb, Simples/PGDAS, caixa postal, parcelamentos, pagamentos, DARF (Sicalc), CND | e-CNPJ mTLS + OAuth2; a própria empresa não precisa de procuração | pago por chamada: consulta R$0,24 a 0,06; sem faixa grátis | médio | alto para contador. **Sem plano agora** (07/10/2026); fica em aberto como módulo opcional "traga suas credenciais". Nada barato a preparar hoje: o mTLS do `httpclient` já serve, e o resto (OAuth2, envelope JSON) só faz sentido com o módulo |
 | 9 | CBS apuração (`api.receitafederal.gov.br/apuracao-cbs/v2`) | débitos e créditos de CBS | OAuth gov.br (não é A1) + **webhook HTTPS público** | grátis, 4/dia | difícil para desktop | alto a partir de 2027; acompanhar |
 | 10 | EFD-Reinf consulta de recibos | só recibo, id e status | A1 | grátis | fácil | baixo |
 | 11 | GNRE lote | emissão de guia | e-CNPJ + cadastro no portal | grátis | médio | baixo (emissão, não coleta) |
@@ -97,13 +101,13 @@ Fatos do ecossistema que mudam prioridades:
 - Módulo de Apuração Nacional (ISS, guia DNA) em produção restrita desde 14/04/2026, sem spec de API.
 - Nenhuma biblioteca Go para DistDFe, CT-e, MDF-e, GNRE ou Integra Contador; referências MIT/Apache existem em Dart, Python e TypeScript.
 
-Sequência proposta: **1 → 3 → 6** são pequenas e cabem na Fase 2. **2 (MDF-e)** é a quarta origem e é o gatilho que o `PENDENCIAS.md` já previa para reconsiderar um `DocumentTable` e um store comum; fazer depois da paridade de exportação, para não carregar quatro páginas de exportação diferente. **4, 5, 7, 8** dependem de decisão do dono (abaixo). **9** só quando houver um caminho sem webhook público ou um relay opcional.
+Sequência proposta: **1 → 3 → 6** são pequenas e cabem na Fase 2. **2 (MDF-e)** é a quarta origem e é o gatilho que o `PENDENCIAS.md` já previa para reconsiderar um `DocumentTable` e um store comum; fazer depois da paridade de exportação, para não carregar quatro páginas de exportação diferente. **4 e 5** quando houver um caso real (uma nota de SP que não apareça no ADN; um fornecedor a validar). **7 e 8** fora do plano por decisão (acima). **9** só quando houver um caminho sem webhook público ou um relay opcional.
 
-## Decisões em aberto
+## Decisões tomadas em 07/10/2026
 
-1. Nome do pacote de destino do vocabulário compartilhado (`internal/company` + `internal/dfe`, ou um novo).
-2. #12: aceitar "não fazer" criptografia em repouso com este driver.
-3. Política para APIs pagas: nunca, ou "traga suas credenciais Serpro" como integração opcional.
-4. eSocial entra no escopo do nanci (documentos fiscais) ou fica fora.
-5. Logs em disco: mascarar CNPJ como no ZIP exportado, ou manter em claro.
-6. Limiar do aviso dos 60 dias de NSU (proposta: 45).
+1. Vocabulário compartilhado: `Company` → `internal/company`, `Credential` → `internal/credential`, `Environment` → `internal/dfe`, estado de sync → novo `internal/syncstate`.
+2. #12 criptografia em repouso: estacionado, sem plano.
+3. APIs pagas (Serpro): sem plano agora; possível módulo opcional no futuro; nada a preparar hoje.
+4. eSocial: fora do escopo por ora (é folha/RH, não documento fiscal).
+5. Logs em disco: mantêm o CNPJ em claro; só o pacote exportado mascara.
+6. Aviso dos 60 dias de NSU: limiar de 45 dias.
