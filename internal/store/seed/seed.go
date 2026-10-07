@@ -141,31 +141,19 @@ func UpsertCompanyDocument(ctx context.Context, db *sql.DB, cd nfse.CompanyDocum
 	query := `
 		INSERT INTO company_documents (
 			relation_id, company_id, document_id, company_role, visibility_reason,
-			first_seen_nsu, last_seen_nsu, first_seen_nsu_valid, last_seen_nsu_valid,
+			first_seen_nsu, last_seen_nsu,
 			first_synced_at, last_synced_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+		) VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 		ON CONFLICT(relation_id) DO UPDATE SET
 			company_role = excluded.company_role,
 			visibility_reason = excluded.visibility_reason,
 			last_seen_nsu = excluded.last_seen_nsu,
-			last_seen_nsu_valid = excluded.last_seen_nsu_valid,
 			last_synced_at = excluded.last_synced_at;
 	`
-	var firstSeenValid, lastSeenValid int
-	var firstSeenNSU, lastSeenNSU int64
-	if cd.FirstSeenNSU != nil {
-		firstSeenValid = 1
-		firstSeenNSU = *cd.FirstSeenNSU
-	}
-	if cd.LastSeenNSU != nil {
-		lastSeenValid = 1
-		lastSeenNSU = *cd.LastSeenNSU
-	}
-
 	_, err := db.ExecContext(
 		ctx, query,
 		cd.RelationID, cd.CompanyID, cd.DocumentID, string(cd.CompanyRole), string(cd.VisibilityReason),
-		firstSeenNSU, lastSeenNSU, firstSeenValid, lastSeenValid,
+		cd.FirstSeenNSU, cd.LastSeenNSU,
 	)
 	return err
 }
