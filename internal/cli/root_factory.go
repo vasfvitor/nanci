@@ -30,7 +30,7 @@ distribuição DF-e da SEFAZ.`,
 	root.SetOut(env.Stdout)
 	root.SetErr(env.Out)
 	root.PersistentFlags().BoolVarP(env.Verbose, "verbose", "v", false, "Habilita log detalhado (debug)")
-	root.PersistentFlags().BoolVar(env.Trace, "trace", false, "Habilita log de rastreamento extremo (trace)")
+	root.PersistentFlags().BoolVar(env.Trace, "trace", false, "Habilita log de rastreamento extremo (trace); NANCI_TRACE=1 tem o mesmo efeito")
 
 	root.AddCommand(newInitCommand(env))
 	root.AddCommand(newCompanyCommand(env))

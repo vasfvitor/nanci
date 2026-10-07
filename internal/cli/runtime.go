@@ -28,8 +28,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 			return nil, nil, fmt.Errorf("falha ao carregar runtime: %w", err)
 		}
 
-		trace := os.Getenv("NANCI_TRACE") == "1"
-		log := logger.New(false, trace)
+		log := logger.New(logLevels(env))
 
 		dataDir, err := app.ResolveRuntimeDataDir("")
 		if err != nil {
@@ -73,6 +72,13 @@ func prodAppFactory(env CommandEnv) AppFactory {
 		}
 		return application, cleanup, nil
 	}
+}
+
+// logLevels reads the --verbose and --trace flags when the factory runs,
+// after Cobra has parsed them into env.Verbose and env.Trace. NANCI_TRACE=1
+// also turns trace on; either source is enough and neither turns it off.
+func logLevels(env CommandEnv) (verbose, trace bool) {
+	return *env.Verbose, *env.Trace || os.Getenv("NANCI_TRACE") == "1"
 }
 
 // terminalPasswords builds the password prompt from the env's streams: it
