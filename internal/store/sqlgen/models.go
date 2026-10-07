@@ -17,10 +17,10 @@ type Company struct {
 	CredentialLabel    sql.NullString
 	CredentialCertPath sql.NullString
 	Environment        string
-	SyncStartPolicy    string
-	SyncStartDate      sql.NullString
 	CreatedAt          string
 	UpdatedAt          string
+	SyncStartPolicy    string
+	SyncStartDate      sql.NullString
 	Uf                 string
 }
 
@@ -337,23 +337,23 @@ type SyncRun struct {
 	ID                    string
 	CompanyID             string
 	CredentialID          string
-	Environment           string
 	CredentialCnpj        string
 	ConsultationCnpj      string
 	ConsultationBasis     string
-	Mode                  string
 	StartedAt             string
 	FinishedAt            sql.NullString
 	FromNsu               int64
 	ToNsu                 int64
-	CheckedCount          int64
 	DocumentsFound        int64
+	ErrorsCount           int64
+	Status                string
+	Environment           string
+	Mode                  string
+	StopReason            sql.NullString
+	CheckedCount          int64
 	EmptyCount            int64
 	ConsecutiveEmptyCount int64
-	ErrorsCount           int64
 	LastFoundNsu          sql.NullInt64
-	Status                string
-	StopReason            sql.NullString
 	Source                string
 }
 

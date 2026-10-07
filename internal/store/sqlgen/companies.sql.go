@@ -87,7 +87,7 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) er
 }
 
 const getCompanyByCNPJ = `-- name: GetCompanyByCNPJ :one
-SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, companies.credential_id, companies.credential_label, companies.credential_cert_path, companies.environment, companies.sync_start_policy, companies.sync_start_date, companies.created_at, companies.updated_at, companies.uf, company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
+SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, companies.credential_id, companies.credential_label, companies.credential_cert_path, companies.environment, companies.created_at, companies.updated_at, companies.sync_start_policy, companies.sync_start_date, companies.uf, company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
 FROM companies
 LEFT JOIN company_sync_sources
     ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
@@ -114,10 +114,10 @@ func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (GetCompany
 		&i.Company.CredentialLabel,
 		&i.Company.CredentialCertPath,
 		&i.Company.Environment,
-		&i.Company.SyncStartPolicy,
-		&i.Company.SyncStartDate,
 		&i.Company.CreatedAt,
 		&i.Company.UpdatedAt,
+		&i.Company.SyncStartPolicy,
+		&i.Company.SyncStartDate,
 		&i.Company.Uf,
 		&i.NfseInitialSyncCompletedAt,
 	)
@@ -125,7 +125,7 @@ func (q *Queries) GetCompanyByCNPJ(ctx context.Context, cnpj string) (GetCompany
 }
 
 const listCompanies = `-- name: ListCompanies :many
-SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, companies.credential_id, companies.credential_label, companies.credential_cert_path, companies.environment, companies.sync_start_policy, companies.sync_start_date, companies.created_at, companies.updated_at, companies.uf, company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
+SELECT companies.id, companies.cnpj, companies.cnpj_root, companies.name, companies.credential_id, companies.credential_label, companies.credential_cert_path, companies.environment, companies.created_at, companies.updated_at, companies.sync_start_policy, companies.sync_start_date, companies.uf, company_sync_sources.initial_sync_completed_at AS nfse_initial_sync_completed_at
 FROM companies
 LEFT JOIN company_sync_sources
     ON company_sync_sources.company_id = companies.id AND company_sync_sources.source = 'nfse'
@@ -157,10 +157,10 @@ func (q *Queries) ListCompanies(ctx context.Context) ([]ListCompaniesRow, error)
 			&i.Company.CredentialLabel,
 			&i.Company.CredentialCertPath,
 			&i.Company.Environment,
-			&i.Company.SyncStartPolicy,
-			&i.Company.SyncStartDate,
 			&i.Company.CreatedAt,
 			&i.Company.UpdatedAt,
+			&i.Company.SyncStartPolicy,
+			&i.Company.SyncStartDate,
 			&i.Company.Uf,
 			&i.NfseInitialSyncCompletedAt,
 		); err != nil {
