@@ -55,6 +55,7 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
   - `Environment` (produção/homologação, o `tpAmb`) → `internal/dfe`, que é o vocabulário DF-e sem rede nem banco.
   - Os enums e registros de sincronização (`SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy`, `SyncRun`, `SyncState`, `SyncSnapshot`) → novo pacote folha `internal/syncstate`. Não podem ir para `internal/sync` porque `sync` importa `store` e `store` precisa deles (ciclo). O nome diz o que é: o estado da sincronização, sem o loop.
   - Depois do movimento, `internal/nfse` fica só com a NFS-e, como `nfe` e `cte`.
+  - **Feito em 07/10/2026**, em quatro commits de movimento; `CredentialID` e `GenerateID` foram para `internal/dfe` junto com `Environment`.
 - **Testes do módulo desktop** [M]: `internal/desktop` está em 24% de cobertura; os métodos de `App` não têm teste. Introduzir um `core` falso (interface pequena por serviço) e testar validação de entrada, mapeamento de DTO e erros. Isso também é pré-requisito para a paridade de exportação.
 - **Frontend sem teste** [P/M]: `composables/useCredentials.ts`, `composables/useSefazBlock.ts`, `stores/query.ts`, `platform/wails/runtime.ts`.
 - **Logs em disco com CNPJ em claro** (`internal/desktop/app.go:632`) enquanto o ZIP exportado mascara. Decidido em 07/10/2026: **mantém em claro**; só o pacote exportado mascara. Registrar na doc de privacidade.
