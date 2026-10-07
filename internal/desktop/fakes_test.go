@@ -11,6 +11,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/nfe"
+	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // call is one call a fake service received: the method name and the
@@ -110,6 +111,29 @@ func (f *fakeCredentials) UpdateCredentialPath(_ context.Context, in credential.
 func (f *fakeCredentials) UpdateCredentialData(_ context.Context, in credential.UpdateCredentialDataInput) error {
 	f.record("UpdateCredentialData", in)
 	return f.err
+}
+
+type fakeDocuments struct {
+	recorder
+	documents []nfse.CompanyDocument
+	events    []app.EventView
+	viewed    int
+	err       error
+}
+
+func (f *fakeDocuments) ListDocuments(_ context.Context, in app.ListInput) ([]nfse.CompanyDocument, error) {
+	f.record("ListDocuments", in)
+	return f.documents, f.err
+}
+
+func (f *fakeDocuments) ListEventsForDocument(_ context.Context, documentID string) ([]app.EventView, error) {
+	f.record("ListEventsForDocument", documentID)
+	return f.events, f.err
+}
+
+func (f *fakeDocuments) MarkDocumentsViewed(_ context.Context, cnpj string, chaves []string) (int, error) {
+	f.record("MarkDocumentsViewed", cnpj, chaves)
+	return f.viewed, f.err
 }
 
 type fakeExports struct {
