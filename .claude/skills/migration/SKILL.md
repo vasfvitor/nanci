@@ -36,7 +36,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 
 ## schema.sql and sqlc
 
-- `internal/store/schema.sql` is the current schema written as plain `CREATE TABLE`/`CREATE INDEX`, edited in place, never appended as ALTERs. It is the `schema:` input of `sqlc.yaml`; no code or test loads it, so drift is silent.
+- `internal/store/schema.sql` is the current schema written as plain `CREATE TABLE`/`CREATE INDEX`, edited in place, never appended as ALTERs. It is the `schema:` input of `sqlc.yaml`. `TestSchemaSQLMatchesMigrations` (`internal/store/schema_drift_test.go`) compares it against a migrated database, column order included: an added column goes last, where `ADD COLUMN` puts it.
 - Convention (commits `119dd2d` for 018, `641ce45` for 019): an added column goes last in its `CREATE TABLE`, where `ADD COLUMN` puts it; a rebuilt table copies the migration's new `CREATE TABLE`; indexes follow their table.
 - Regenerate from the repo root: `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` (on Windows with TDM-GCC prefix `CGO_ENABLED=0`, or the link fails). Commit `internal/store/sqlgen/` with it; never edit it by hand. `rename` in `sqlc.yaml` fixes inflections (`nfe_manifestaco` -> `NfeManifestacao`).
 - Queries live in `internal/store/queries/*.sql` (`companies`, `credentials`, `nfe`, `cte`, `sync`).
