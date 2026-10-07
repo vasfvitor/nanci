@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/nfe"
 )
@@ -46,6 +48,68 @@ func newTestApp(svc services) *App {
 		cred:     newWailsCredentialProvider(),
 		logLevel: new(slog.LevelVar),
 	}
+}
+
+// fakeEvents records what would be emitted to the frontend and signals each
+// emit on emitted.
+type fakeEvents struct {
+	emitted chan call
+}
+
+func (f *fakeEvents) Emit(_ context.Context, name string, data ...any) {
+	f.emitted <- call{method: name, args: data}
+}
+
+type fakeCompanies struct {
+	recorder
+	companies []company.Company
+	err       error
+}
+
+func (f *fakeCompanies) AddCompany(_ context.Context, in company.AddCompanyInput) error {
+	f.record("AddCompany", in)
+	return f.err
+}
+
+func (f *fakeCompanies) UpdateCompany(_ context.Context, in company.UpdateCompanyInput) error {
+	f.record("UpdateCompany", in)
+	return f.err
+}
+
+func (f *fakeCompanies) AssignCredentialToCompany(_ context.Context, in company.AssignCredentialInput) error {
+	f.record("AssignCredentialToCompany", in)
+	return f.err
+}
+
+func (f *fakeCompanies) ListCompanies(_ context.Context) ([]company.Company, error) {
+	f.record("ListCompanies")
+	return f.companies, f.err
+}
+
+type fakeCredentials struct {
+	recorder
+	credentials []credential.Credential
+	err         error
+}
+
+func (f *fakeCredentials) AddCredential(_ context.Context, in credential.AddCredentialInput) error {
+	f.record("AddCredential", in)
+	return f.err
+}
+
+func (f *fakeCredentials) ListCredentials(_ context.Context) ([]credential.Credential, error) {
+	f.record("ListCredentials")
+	return f.credentials, f.err
+}
+
+func (f *fakeCredentials) UpdateCredentialPath(_ context.Context, in credential.UpdateCredentialPathInput) error {
+	f.record("UpdateCredentialPath", in)
+	return f.err
+}
+
+func (f *fakeCredentials) UpdateCredentialData(_ context.Context, in credential.UpdateCredentialDataInput) error {
+	f.record("UpdateCredentialData", in)
+	return f.err
 }
 
 type fakeExports struct {

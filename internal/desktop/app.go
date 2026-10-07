@@ -36,12 +36,26 @@ import (
 // It owns the passwordChans map and its mutex; the App delegates Submit/Cancel calls to it.
 type WailsCredentialProvider struct {
 	ctx           context.Context
+	events        eventEmitter
 	passwordChans map[string]chan []byte
 	mu            sync.Mutex
 }
 
+// eventEmitter sends an event to the frontend. Tests replace wailsEvents so
+// GetCertPassword runs without the Wails runtime.
+type eventEmitter interface {
+	Emit(ctx context.Context, name string, data ...any)
+}
+
+type wailsEvents struct{}
+
+func (wailsEvents) Emit(ctx context.Context, name string, data ...any) {
+	runtime.EventsEmit(ctx, name, data...)
+}
+
 func newWailsCredentialProvider() *WailsCredentialProvider {
 	return &WailsCredentialProvider{
+		events:        wailsEvents{},
 		passwordChans: make(map[string]chan []byte),
 	}
 }
@@ -64,7 +78,7 @@ func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.C
 	}()
 
 	// Notify the frontend to show the password dialog
-	runtime.EventsEmit(p.ctx, "request-cert-password", req) //nolint:contextcheck // Wails runtime calls need the app context from startup; ctx only bounds the wait.
+	p.events.Emit(p.ctx, "request-cert-password", req) //nolint:contextcheck // Wails runtime calls need the app context from startup; ctx only bounds the wait.
 
 	// Block until the password is submitted by the frontend
 	select {
