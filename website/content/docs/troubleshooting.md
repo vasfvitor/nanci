@@ -1,6 +1,7 @@
 ---
 title: "Solução de problemas"
 description: "Erros comuns e como enviar logs."
+summary: "Erros comuns e como enviar logs."
 weight: 80
 ---
 

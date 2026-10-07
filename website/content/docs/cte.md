@@ -1,6 +1,7 @@
 ---
 title: "CT-e"
 description: "CT-e, CT-e OS, GTV-e e CT-e Simplificado pela SEFAZ."
+summary: "CT-e, CT-e OS, GTV-e e CT-e Simplificado pela SEFAZ."
 weight: 32
 ---
 

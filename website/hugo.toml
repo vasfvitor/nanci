@@ -69,3 +69,9 @@ timeZone = "America/Sao_Paulo"
 
 [markup.highlight]
   noClasses = false
+
+# llms.txt at the root and a Markdown copy of each docs page, for LLMs.
+[outputs]
+  home = ["html", "rss", "llms"]
+  section = ["html", "rss", "markdown"]
+  page = ["html", "markdown"]

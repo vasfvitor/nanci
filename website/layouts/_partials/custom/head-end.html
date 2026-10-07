@@ -10,3 +10,9 @@
     src: url("{{ $font }}") format("woff2-variations"), url("{{ $font }}") format("woff2");
   }
 </style>
+{{- with .OutputFormats.Get "markdown" }}
+<link rel="alternate" type="text/markdown" href="{{ .Permalink }}" />
+{{- end }}
+{{- if .IsHome }}
+<link rel="alternate" type="text/plain" title="llms.txt" href="{{ "llms.txt" | absURL }}" />
+{{- end }}

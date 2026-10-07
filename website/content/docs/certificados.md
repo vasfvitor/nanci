@@ -1,6 +1,7 @@
 ---
 title: "Certificado A1"
 description: "Certificados aceitos e como o Nanci guarda a senha."
+summary: "Certificados aceitos e como o Nanci guarda a senha."
 weight: 50
 ---
 
