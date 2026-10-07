@@ -36,5 +36,17 @@ For the desktop frontend, use Vitest with happy-dom, Vue Test Utils, and Pinia t
 ## Commit & Pull Request Guidelines
 Prefer scoped, imperative commit subjects in the form `scope: change`, for example `frontend: fix company dialog spacing`, `cli: validate --competencia input`, `frontend,cli: align export flow`, or `wails: wire new desktop command`. Use repo areas as scopes: `frontend`, `cli`, `app`, `store`, `sync`, `nfse`, `adn`, `nfe`, `sefaz`, `wails`, or a small combination when one change truly spans layers. Keep commits narrow and descriptive; add an issue reference when relevant. PRs should explain the behavioral change, list verification commands, and include screenshots for desktop/frontend UI changes. Note any schema, migration, or certificate-handling impact explicitly.
 
+## Working With Agents
+Implementation is delegated to subagents, one per lane, each in its own git worktree with disjoint files; the orchestrator integrates afterwards. The executable checklists live in `.claude/skills/lane` (how to brief a lane) and `.claude/skills/integrate` (how to land it). The rules they encode:
+
+- A worktree may start at a stale commit: reset to the base tip before any edit. `go.work` and `internal/desktop/frontend/dist` are gitignored; copy them in, never commit them.
+- Every file is LF. `.gitattributes` normalizes on commit, but scripts that write files on Windows must still write LF (Python: `newline='
+'`).
+- Commits are signed (`gpg.program` points at Gpg4win) and carry no attribution trailer. A history rewrite drops signatures: re-sign before handing off.
+- A change to Wails bindings regenerates `frontend/wailsjs` (`wails generate module`) and updates the `vi.mock` list in `src/platform/wails/client.test.ts` and the mocks in `scripts/generate-screenshots.ts` in the same commit. CI fails on stale bindings or a stale `go.mod`.
+- Exported `app` API changes must keep `internal/desktop` building; run its build and tests even when the lane did not touch it.
+- `docs/ROADMAP.md` and `docs/PENDENCIAS.md` are edited by the orchestrator only; a resolved item is deleted, not left behind. Facts about external systems go to `docs/pesquisa/` with source URL and date.
+- Maintenance lands on `main` as individual commits, no PR, no squash. Features that need review go through a PR. The push is the owner's step.
+
 ## Security & Configuration Tips
 Do not commit certificate files, passwords, SQLite data, or exported fiscal documents. Prefer `NANCI_CERT_PASSWORD` for local runs instead of hardcoding secrets. Review `make security` output before merging changes that touch networking, storage, or auth flows.
