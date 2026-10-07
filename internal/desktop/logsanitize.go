@@ -14,8 +14,9 @@ var (
 	nfeAccessKeyPattern = regexp.MustCompile(`\b\d{6}[0-9A-Z]{14}\d{24}\b`)
 	// NFS-e access key: cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13)
 	// AnoMes(4) cod(9) DV(1). Only the inscrição federal slot is masked; a
-	// CPF sits there padded with three leading zeros.
-	nfseAccessKeyPattern = regexp.MustCompile(`\b\d{50}\b`)
+	// CPF sits there padded with three leading zeros, and an alphanumeric
+	// CNPJ brings letters (TSIdNFSe in the NFS-e schemas of NT 009).
+	nfseAccessKeyPattern = regexp.MustCompile(`\b\d{9}[0-9A-Z]{14}\d{27}\b`)
 	// Raw matches are restricted to digits so hashes and hex IDs are untouched.
 	rawCNPJPattern = regexp.MustCompile(`\b\d{14}\b`)
 )

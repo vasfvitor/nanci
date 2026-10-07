@@ -6,6 +6,41 @@ import (
 	"time"
 )
 
+// An NFS-e issued by a prestador with an alphanumeric CNPJ carries letters in
+// the inscrição federal of its chave, both in chNFSe and in the infNFSe Id.
+func TestParseDocumentXML_AlphanumericCNPJ(t *testing.T) {
+	const chave = "355030812" + "12ABC34501DE35" + "0000000000123" + "2608" + "123456789" + "7"
+	body := func(chNFSe string) []byte {
+		return []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFS` + chave + `" versao="1.01">` + chNFSe + `
+    <nNFSe>123</nNFSe>
+    <dhEmi>2026-08-20T10:00:00-03:00</dhEmi>
+    <compNFSe>2026-08</compNFSe>
+    <prest><CNPJ>12ABC34501DE35</CNPJ><xNome>Prestador Alfa</xNome></prest>
+    <toma><CNPJ>98765432000199</CNPJ><xNome>Tomador</xNome></toma>
+    <valores><vServ>100.00</vServ></valores>
+  </infNFSe>
+</NFSe>`)
+	}
+
+	doc, _, err := ParseDocumentXML(body("\n    <chNFSe>" + chave + "</chNFSe>"))
+	if err != nil {
+		t.Fatalf("ParseDocumentXML with chNFSe: %v", err)
+	}
+	if doc.ChaveAcesso != chave || doc.PrestadorCNPJ != "12ABC34501DE35" {
+		t.Errorf("(chave, prestador) = (%q, %q), want (%q, 12ABC34501DE35)", doc.ChaveAcesso, doc.PrestadorCNPJ, chave)
+	}
+
+	doc, _, err = ParseDocumentXML(body(""))
+	if err != nil {
+		t.Fatalf("ParseDocumentXML from the Id: %v", err)
+	}
+	if doc.ChaveAcesso != chave {
+		t.Errorf("chave from the Id = %q, want %q without the NFS prefix", doc.ChaveAcesso, chave)
+	}
+}
+
 func TestParseDocumentXML_Valid(t *testing.T) {
 	xmlData := `<?xml version="1.0" encoding="UTF-8"?>
 <NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">

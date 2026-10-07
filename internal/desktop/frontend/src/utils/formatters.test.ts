@@ -9,6 +9,8 @@ import {
   formatNFeNumber,
   formatParty,
   formatTime,
+  isChaveNFSe,
+  normalizeChaveNFSe,
   normalizeText,
   parseDate,
   withViewed,
@@ -66,6 +68,19 @@ describe('formatters', () => {
   it('formats access keys for display', () => {
     expect(formatChaveAcesso('1234567890123')).toBe('...4567890123')
     expect(formatChaveAcesso('123')).toBe('123')
+  })
+
+  it('accepts NFS-e chaves with letters only in the inscrição federal', () => {
+    const digits = '1'.repeat(50)
+    const alpha = '355030812' + '12ABC34501DE35' + '000000000012326081234567897'
+    expect(isChaveNFSe(digits)).toBe(true)
+    expect(isChaveNFSe(alpha)).toBe(true)
+    expect(isChaveNFSe(` ${alpha.toLowerCase()} `)).toBe(true)
+    expect(normalizeChaveNFSe(` ${alpha.toLowerCase()} `)).toBe(alpha)
+    expect(isChaveNFSe(digits.slice(0, 8) + 'A' + digits.slice(9))).toBe(false)
+    expect(isChaveNFSe(digits.slice(0, 23) + 'A' + digits.slice(24))).toBe(false)
+    expect(isChaveNFSe(digits.slice(0, 49))).toBe(false)
+    expect(isChaveNFSe(null)).toBe(false)
   })
 
   it('groups a 44-character NF-e or CT-e access key in blocks of four', () => {

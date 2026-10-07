@@ -4,12 +4,14 @@ import { desktopClient } from '@/platform/wails/client'
 import { type ChaveOption, useQueryStore } from '@/stores/query'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { DocumentRow } from '@/types/desktop'
-import { formatCurrencyCents } from '@/utils/formatters'
+import { formatCurrencyCents, isChaveNFSe, normalizeChaveNFSe } from '@/utils/formatters'
 
-// chaveOption is an NFS-e as a chave suggestion: the 50 digits, and the
-// last digits, the other party and the value to recognize it by.
+// chaveOption is an NFS-e as a chave suggestion: the 50 characters, and the
+// last digits, the other party and the value to recognize it by. The
+// inscrição federal of the chave may carry the letters of an alphanumeric
+// CNPJ.
 function chaveOption(row: DocumentRow): ChaveOption {
-  const pureKey = row.ChaveAcesso.replace(/\D/g, '')
+  const pureKey = normalizeChaveNFSe(row.ChaveAcesso).replace(/^NFS/, '')
   const shortKey = pureKey.length >= 6 ? pureKey.slice(-6) : pureKey
   const name = row.CompanyRole === 'prestada' ? row.TomadorName : row.PrestadorName
   const shortName = name && name.length > 20 ? name.slice(0, 20) + '...' : name
@@ -78,12 +80,14 @@ export function useQuery() {
   async function runQuery() {
     if (loading.value) return result.value
     
-    const chaveVal = typeof form.value.chave === 'object' && form.value.chave !== null 
-      ? (form.value.chave as { value: string }).value 
-      : form.value.chave
+    const chaveVal = normalizeChaveNFSe(
+      typeof form.value.chave === 'object' && form.value.chave !== null
+        ? (form.value.chave as { value: string }).value
+        : form.value.chave
+    )
 
     const companyCNPJ = cnpj.value
-    if (!companyCNPJ || !/^\d{50}$/.test(chaveVal)) return ''
+    if (!companyCNPJ || !isChaveNFSe(chaveVal)) return ''
 
     loading.value = true
     queryStore.clearResult()

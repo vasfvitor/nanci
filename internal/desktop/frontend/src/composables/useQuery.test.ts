@@ -26,8 +26,10 @@ describe('useQuery', () => {
       { ID: '1', CNPJ: '111', Name: 'Alpha' },
       { ID: '2', CNPJ: '222', Name: 'Beta' },
     ] as never)
+    const alphaChave = '355030812' + '12ABC34501DE35' + '000000000012326081234567897'
     vi.mocked(desktopClient.listDocuments).mockResolvedValue([
       { ChaveAcesso: '3'.repeat(50), ServiceValue: 100, CompanyRole: 'prestada', TomadorName: 'Tomador' },
+      { ChaveAcesso: alphaChave, ServiceValue: 100, CompanyRole: 'tomada', PrestadorName: 'Alfa' },
     ] as never)
 
     const query = useQuery()
@@ -42,7 +44,11 @@ describe('useQuery', () => {
       Direction: '',
       OnlyUnread: false,
     })
-    expect(query.documentOptions.value.map((option) => option.value)).toEqual(['3'.repeat(50)])
+    // The letters of an alphanumeric CNPJ stay in the chave.
+    expect(query.documentOptions.value.map((option) => option.value)).toEqual([
+      '3'.repeat(50),
+      alphaChave,
+    ])
 
     // Another workspace company reloads the options and keeps the chave.
     query.form.value.chave = '3'.repeat(50)
@@ -105,6 +111,27 @@ describe('useQuery', () => {
       CompanyCNPJ: '123',
       ChaveAcesso: '2'.repeat(50),
     })
+  })
+
+  it('queries a chave with an alphanumeric CNPJ, upper-cased', async () => {
+    vi.mocked(desktopClient.queryNFSeEvents).mockResolvedValue('{}')
+    const chave = '355030812' + '12ABC34501DE35' + '000000000012326081234567897'
+
+    const query = useQuery()
+    useWorkspaceStore().cnpj = '123'
+    query.form.value = { chave: ` ${chave.toLowerCase()} ` }
+
+    await expect(query.runQuery()).resolves.toBe('{}')
+    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({ CompanyCNPJ: '123', ChaveAcesso: chave })
+  })
+
+  it('rejects letters outside the inscrição federal before calling Wails', async () => {
+    const query = useQuery()
+    useWorkspaceStore().cnpj = '123'
+    query.form.value = { chave: `${'1'.repeat(49)}A` }
+
+    await expect(query.runQuery()).resolves.toBe('')
+    expect(desktopClient.queryNFSeEvents).not.toHaveBeenCalled()
   })
 
   it('rejects non-digit access keys before calling Wails', async () => {

@@ -22,3 +22,16 @@ func TestQueryNFSeEventsRejectsInvalidAccessKeyBeforeClientSetup(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestValidateQueryAccessKeyAcceptsAlphanumericCNPJ(t *testing.T) {
+	t.Parallel()
+
+	const chave = "355030812" + "12ABC34501DE35" + "0000000000123" + "2608" + "123456789" + "7"
+	got, err := validateQueryAccessKey(" " + strings.ToLower(chave) + " ")
+	if err != nil {
+		t.Fatalf("validateQueryAccessKey: %v", err)
+	}
+	if string(got) != chave {
+		t.Errorf("validateQueryAccessKey = %q, want %q", got, chave)
+	}
+}

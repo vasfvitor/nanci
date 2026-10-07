@@ -75,6 +75,23 @@ export function formatChaveAcesso(chave: string) {
   return chave.length > 10 ? `...${chave.slice(-10)}` : chave
 }
 
+// The NFS-e chave has 50 characters: cMun(7) ambGer(1) tpInsc(1)
+// inscFed(14) nNFSe(13) AAMM(4) cNum(9) DV(1). Only the inscrição federal
+// takes letters, for the alphanumeric CNPJ (TSIdNFSe in the NFS-e schemas
+// of NT SE/CGNFS-e 009).
+const chaveNFSePattern = /^\d{9}[0-9A-Z]{14}\d{27}$/
+
+// normalizeChaveNFSe trims and upper-cases a typed NFS-e chave.
+export function normalizeChaveNFSe(value: string | null | undefined) {
+  return (value ?? '').trim().toUpperCase()
+}
+
+// isChaveNFSe tells whether value, once normalized, is a well-formed NFS-e
+// chave. The check digit is not verified.
+export function isChaveNFSe(value: string | null | undefined) {
+  return chaveNFSePattern.test(normalizeChaveNFSe(value))
+}
+
 // formatChaveDFe prints a 44-character NF-e or CT-e access key as the DANFE
 // and DACTE do: 11 groups of 4 separated by spaces. Anything else is returned
 // unchanged.

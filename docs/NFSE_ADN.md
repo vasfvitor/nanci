@@ -22,7 +22,7 @@ O parâmetro `LastNSU` representa o cursor de sincronização. A resposta do gov
 GET NFSe/{ChaveAcesso}/Eventos
 ```
 
-- `{ChaveAcesso}` deve possuir exatamente 50 dígitos numéricos correspondentes à chave de acesso da nota.
+- `{ChaveAcesso}` deve possuir exatamente 50 posições, a chave de acesso da nota: números, e letras maiúsculas só na inscrição federal quando o emitente tem CNPJ alfanumérico (ver [Chave de acesso](#chave-de-acesso)).
 - O ADN também oferece `GET NFSe/{ChaveAcesso}`, que devolve a nota; o Nanci não o chama hoje.
 
 ## DANFSe
@@ -39,6 +39,8 @@ A NT SE/CGNFS-e 008/2026 desligou a API de geração de DANFSe do ADN (prazo fin
 ## Chave de acesso
 
 A chave de acesso da NFS-e é guardada com os seus 50 dígitos. O parser lê o `chNFSe`; quando ele falta, usa o `Id` do `infNFSe`, que é `NFS` seguido dos 50 dígitos, sem o prefixo, e registra o aviso "document missing chNFSe; using infNFSe Id as fallback identifier". Um `Id` fora desse formato é guardado como veio.
+
+A chave é `cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13) AAMM(4) cNum(9) DV(1)`. Com o CNPJ alfanumérico (NT SE/CGNFS-e 009), a inscrição federal, nas posições 10 a 23, pode ter letras maiúsculas; o padrão `TSIdNFSe` dos esquemas de 27/07/2026 é `NFS[0-9]{9}[0-9A-Z]{14}[0-9]{27}`. `nfse.ParseAccessKey` e a Consulta Direta aceitam esse formato, convertem minúsculas para maiúsculas e não conferem o dígito verificador. O que ficou em aberto está em [NFE_SEFAZ.md](NFE_SEFAZ.md#cnpj-alfanumérico).
 
 Os eventos se ligam ao documento pelos 50 dígitos, e o status (`normal`, `cancelada`, `substituida`) é calculado a partir deles; uma substituição prevalece sobre um cancelamento. Ao marcar notas como vistas, uma chave com o prefixo `NFS` é aceita e usada como veio, para encontrar a linha que a migração `020` deixou com o prefixo (abaixo). Ao copiar a chave, o desktop remove o prefixo, porque o portal pede os 50 dígitos.
 

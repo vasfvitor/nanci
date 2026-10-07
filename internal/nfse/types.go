@@ -12,24 +12,41 @@ import (
 type AccessKey string
 
 // InfNFSeIDPrefix starts the Id attribute of infNFSe, followed by the 50
-// digits of the chave.
+// characters of the chave.
 const InfNFSeIDPrefix = "NFS"
 
+const (
+	accessKeyLength = 50
+	// The inscrição federal sits at positions 10-23 of the chave:
+	// cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13) AAMM(4) cNum(9) DV(1).
+	inscricaoStart = 9  // 0-based index of its first character
+	inscricaoEnd   = 23 // 0-based index after its last character
+)
+
+// ParseAccessKey trims and upper-cases key and checks the character set of
+// the 50-character NFS-e chave. Every position is a digit except the
+// inscrição federal, which also accepts uppercase letters for the
+// alphanumeric CNPJ, as the TSIdNFSe pattern NFS[0-9]{9}[0-9A-Z]{14}[0-9]{27}
+// of the NFS-e schemas of 27/07/2026 (NT SE/CGNFS-e 009) says. The check
+// digit is not verified: no NFS-e text defines it for a chave with letters.
 func ParseAccessKey(key string) (AccessKey, error) {
-	key = strings.TrimSpace(key)
-	if len(key) != 50 {
-		return "", fmt.Errorf("access key must be exactly 50 digits, got %d", len(key))
+	key = strings.ToUpper(strings.TrimSpace(key))
+	if len(key) != accessKeyLength {
+		return "", fmt.Errorf("access key must have exactly %d characters, got %d", accessKeyLength, len(key))
 	}
-	for _, r := range key {
-		if r < '0' || r > '9' {
-			return "", fmt.Errorf("access key contains non-digit character: %c", r)
+	for i := 0; i < len(key); i++ {
+		c := key[i]
+		inInscricao := i >= inscricaoStart && i < inscricaoEnd
+		if (c >= '0' && c <= '9') || (inInscricao && c >= 'A' && c <= 'Z') {
+			continue
 		}
+		return "", fmt.Errorf("access key has invalid character %q at position %d", c, i+1)
 	}
 	return AccessKey(key), nil
 }
 
 // ParseInfNFSeID parses the chave in an infNFSe Id, "NFS" followed by the 50
-// digits. The prefix is optional, so a bare chave parses too.
+// characters. The prefix is optional, so a bare chave parses too.
 func ParseInfNFSeID(id string) (AccessKey, error) {
 	return ParseAccessKey(strings.TrimPrefix(id, InfNFSeIDPrefix))
 }

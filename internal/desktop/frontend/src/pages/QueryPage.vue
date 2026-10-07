@@ -51,7 +51,7 @@
                 val => !!val || 'Chave é obrigatória',
                 val => {
                   const v = typeof val === 'object' && val !== null ? val.value : val;
-                  return /^\d{50}$/.test(v) || 'Chave deve ter 50 números';
+                  return isChaveNFSe(v) || 'Chave deve ter 50 posições; letras só no CNPJ do emitente';
                 }
               ]"
               @new-value="createValue"
@@ -110,6 +110,7 @@ import { errorMessage } from '@/platform/wails/client'
 import { companyOption } from '@/composables/useCompanies'
 import { useQuery } from '@/composables/useQuery'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { isChaveNFSe } from '@/utils/formatters'
 
 const $q = useQuasar()
 const query = useQuery()

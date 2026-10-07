@@ -190,6 +190,44 @@ Tabelas de NF-e:
 
 O estado da manifestação em `company_nfe_documents` é derivado dos eventos registrados de autoria da empresa: o evento conclusivo mais recente vence; sem conclusivo, uma ciência deixa a nota como `ciencia`. Os XMLs brutos ficam no mesmo armazenamento de blobs da NFS-e.
 
+## CNPJ alfanumérico
+
+Conferido em 07/10/2026 contra os textos oficiais. Vale para NF-e, CT-e e NFS-e; fica aqui porque a regra da chave nasce na NT da NF-e.
+
+O que os textos dizem:
+
+- **NT Conjunta 2025.001 v1.00** (ENCAT e RFB, 25/04/2025; homologação 06/04/2026, produção 06/07/2026), para NF-e, NFC-e, CT-e, CT-e OS, GTV-e, MDF-e, BP-e, NF3e e NFCom ([Portal da NF-e](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=5ZkvIZt10mQ%3D)):
+  - O CNPJ continua com 14 posições: as 12 primeiras aceitam letras maiúsculas e as 2 últimas, os dígitos verificadores, são numéricas (`[A-Z0-9]{12}[0-9]{2}`). O DV é o módulo 11 de sempre, com cada caractere valendo o código ASCII menos 48 (`A` = 17). Exemplo da NT: `12.ABC.345/01DE-35`.
+  - A chave de acesso continua com 44 posições e **não** é convertida em número: as letras do CNPJ vão na própria chave, que segue `[0-9]{6}[A-Z0-9]{12}[0-9]{26}` (letras só nas posições 7 a 18).
+  - O DV da chave troca cada um dos caracteres pelo código ASCII menos 48 e aplica o módulo 11 de sempre: pesos de 2 a 9 da direita para a esquerda, e o resultado 10 ou 11 vira 0 (rotina do Anexo II). Uma chave só com números mantém o DV de antes.
+  - A NT cita a possível exclusão das letras I, O, U, Q e F, mas diz que ela "precisa ser confirmada".
+  - O código de barras do DANFE e do DACTE passa a ser CODE-128 híbrido (C e A), porque o CODE-128C só codifica números.
+- **NT 2014.002 v1.40** (distribuição da NF-e, produção desde 08/07/2026) muda os campos de CNPJ de numérico para caractere ([cópia de terceiros](https://www.reformatributaria.com/wp-content/uploads/2026/07/NT2014.002_v1.40-WsNFeDistribuicaoDFe-CNPJ-alfa.pdf), ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`).
+- **NT SE/CGNFS-e 009** (v1.0 de 04/06/2026 e v1.01 de 01/10/2026, [portal da NFS-e](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc/nota-tecnica-009-se-cgnfs-e-v-1-01.pdf)) só muda o tipo de todos os campos CNPJ de N para C. Não fala da chave nem do DV dela. Os esquemas de produção restrita de 27/07/2026 (`esquemas-nfse-rtc-v1-01-20260727.zip`) trazem `TSCNPJ` `[0-9A-Z]{14}`, `TSIdNFSe` `NFS[0-9]{9}[0-9A-Z]{14}[0-9]{27}` (letras só na inscrição federal, posições 10 a 23 da chave), `TSIdDPS` com letras só quando o tipo de inscrição é 2 (CNPJ) e `TSChaveNFSe` `[0-9]{6}([0-9A-Z]{14})[0-9]{30}`. Os esquemas listados em "Documentação atual" (v1.01 de 09/02/2026) ainda são só numéricos.
+
+O que foi conferido no código:
+
+| Lugar | Situação |
+|---|---|
+| `internal/foundation/cnpj` | Já seguia a regra (ASCII menos 48, DV numérico), com teste do exemplo da NT. Sem mudança. |
+| `internal/dfe.ParseAccessKey` (NF-e e CT-e) | Já aceitava letras no CNPJ da chave e calcula o DV com ASCII menos 48; o DV das chaves de teste confere com a rotina do Anexo II. Um CNPJ com letras precisa ter DV válido, o que também barra letras nas posições 19 e 20, como no padrão da NT. Sem mudança. |
+| `internal/nfse.ParseAccessKey` | Aceitava só 50 dígitos, então uma NFS-e de prestador com CNPJ alfanumérico falhava na leitura e, depois de três tentativas, era marcada como não suportada. Passa a aceitar letras maiúsculas na inscrição federal, como o `TSIdNFSe`, e converte minúsculas. |
+| Consulta Direta (`useQuery.ts`, `QueryPage.vue`) | A regra `^\d{50}$` virou `isChaveNFSe` em `utils/formatters.ts`, com o mesmo padrão. As sugestões de chave não apagam mais as letras. |
+| Log exportado (`internal/desktop/logsanitize.go`) | A chave de NFS-e com letras passa a ter a inscrição federal mascarada. A de NF-e e CT-e já era. |
+| `internal/store/schema.sql` | Nenhuma `CHECK` de tamanho ou de dígitos em chave ou CNPJ; as colunas são `TEXT`. Sem mudança. |
+| `utils/formatters.ts` | `formatCpfCnpj` e `formatChaveDFe` já aceitavam letras. |
+| CLI | `--chave` da NF-e e do CT-e passa por `dfe.ParseAccessKey`, e `--cnpj` por `cnpj.Validate`. Sem mudança. |
+| `internal/sefaz`, certificado | O CNPJ vai como texto no `distDFeInt` e nos eventos, e o do certificado é lido sem descartar letras. Sem mudança. |
+
+Em aberto:
+
+- **DV da chave de NFS-e com letras.** Nenhum texto da NFS-e o define. O Nanci nunca conferiu o DV da chave de NFS-e e continua sem conferir.
+- **`TSChaveNFSe` contradiz `TSIdNFSe`.** O primeiro põe as letras nas posições 7 a 20; o segundo e a regra de formação, nas posições 10 a 23. O Nanci segue o `TSIdNFSe`. Rever quando os esquemas com CNPJ alfanumérico chegarem à "Documentação atual".
+- **Letras vedadas.** A NT 2025.001 v1.00 não confirma a exclusão de I, O, U, Q e F; o Nanci aceita qualquer letra de A a Z.
+- **CNPJ alfanumérico solto no log exportado.** Fora de uma chave e sem pontuação, continua sem máscara, para não mascarar identificadores hexadecimais (decisão do teste `raw alphanumeric untouched`).
+- **Código de barras.** O Nanci ainda não gera DANFE nem DACTE; o CODE-128 híbrido entra quando a exportação em PDF vier.
+- **Sem chave real nos testes.** Os testes usam o CNPJ do exemplo da NT; não há XML real de emitente com CNPJ alfanumérico.
+
 ## Fora do escopo
 
 - NFC-e (modelo 65), NFCom, NF3e e CF-e SAT.
