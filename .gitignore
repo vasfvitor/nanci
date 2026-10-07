@@ -40,5 +40,6 @@ devdata/
 # Taskfile cache
 internal/desktop/.task/
 
-# Local Claude Code folder
-.claude/
+# Local Claude Code folder, except the project skills
+.claude/*
+!.claude/skills/
