@@ -4,35 +4,76 @@ layout: "hextra-home"
 toc: false
 ---
 
-{{< hextra/feature-grid cols="2" style="align-items: center; margin-top: 2rem; margin-bottom: 4rem;" >}}
-<div class="hx:w-full">
-{{< hextra/hero-badge >}}
-NFS-e, NF-e e CT-e para Windows
-{{< /hextra/hero-badge >}}
-
-{{< hextra/hero-headline >}}
-Documentos fiscais direto do governo para o seu computador.
-{{< /hextra/hero-headline >}}
-
-{{< hextra/hero-subtitle >}}
-O Nanci usa o certificado A1 da empresa para baixar NFS-e do Ambiente de Dados Nacional e NF-e e CT-e da SEFAZ. XMLs, banco de dados e senhas ficam no seu computador.
-{{< /hextra/hero-subtitle >}}
-
-<div class="hx:mt-8 hx:flex hx:flex-wrap hx:gap-4">
-  {{< hextra/hero-button text="Baixar para Windows" link="https://github.com/vasfvitor/nanci/releases/latest" >}}
-  {{< hextra/hero-button text="Documentação" link="docs/" style="background: transparent; color: currentColor; box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.45);" >}}
+<div class="nc-home">
+<section class="nc-hero">
+<h1 class="nc-display">Documentos fiscais direto do governo para o seu computador.</h1>
+<div>
+<p class="nc-lede">O Nanci usa o certificado A1 da empresa para baixar NFS-e do Ambiente de Dados Nacional e NF-e e CT-e da SEFAZ. XMLs, banco de dados e senhas ficam com você.</p>
+<div class="nc-actions">
+<a class="nc-btn nc-btn-primary" href="https://github.com/vasfvitor/nanci/releases/latest">Baixar para Windows</a>
+<a class="nc-btn" href="docs/">Ler a documentação</a>
 </div>
+<p class="nc-fineprint">Windows 10 e 11. Gratuito e de código aberto, licença GPL-3.0.</p>
 </div>
-<div class="hx:mx-auto hx:w-full">
-{{< theme-image light="/img/screenshots/empresas-light.png" dark="/img/screenshots/empresas-dark.png" alt="Tela de empresas do Nanci" width="760" height="430" class="hx:rounded-3xl hx:shadow-2xl hx:ring-1 hx:ring-gray-900/10 hx:dark:ring-white/10 hx:w-full hx:max-w-3xl hx:h-auto" >}}
+<div class="nc-hero-shot">
+{{< theme-image light="/img/screenshots/nfe-light.png" dark="/img/screenshots/nfe-dark.png" alt="Página de NF-e do Nanci, com a lista de notas recebidas" width="1280" height="800" >}}
 </div>
-{{< /hextra/feature-grid >}}
-
-{{< hextra/feature-grid cols="3" >}}
-  {{< hextra/feature-card icon="document-text" title="NFS-e" subtitle="Notas de serviço tomadas, prestadas e intermediadas, com eventos, pela distribuição por NSU do ADN." link="docs/nfse/" >}}
-  {{< hextra/feature-card icon="document-duplicate" title="NF-e" subtitle="Notas recebidas pela empresa, com Ciência da Operação em lote e manifestações conclusivas." link="docs/nfe/" >}}
-  {{< hextra/feature-card icon="truck" title="CT-e" subtitle="CT-e, CT-e OS, GTV-e e CT-e Simplificado em que a empresa é tomadora, remetente ou destinatária." link="docs/cte/" >}}
-  {{< hextra/feature-card icon="briefcase" title="Várias empresas" subtitle="Cadastre vários CNPJs, cada um com o seu certificado, ambiente e histórico de sincronização." >}}
-  {{< hextra/feature-card icon="table" title="Exportação" subtitle="Planilha Excel ou CSV, ZIP com os XMLs originais e DANFSe em PDF." >}}
-  {{< hextra/feature-card icon="terminal" title="Linha de comando" subtitle="Os mesmos recursos pelo terminal, para rotinas agendadas e automações." link="docs/cli/" >}}
-{{< /hextra/feature-grid >}}
+</section>
+<figure class="nc-chave">
+<ol class="nc-chave-fields" aria-label="Chave de acesso de exemplo, campo por campo">
+<li><span class="nc-digits">35</span><span class="nc-cap">UF</span></li>
+<li><span class="nc-digits">2609</span><span class="nc-cap">Ano e mês</span></li>
+<li><span class="nc-digits">12345678000195</span><span class="nc-cap">CNPJ do emitente</span></li>
+<li><span class="nc-digits">55</span><span class="nc-cap">Modelo</span></li>
+<li><span class="nc-digits">001</span><span class="nc-cap">Série</span></li>
+<li><span class="nc-digits">000001234</span><span class="nc-cap">Número</span></li>
+<li><span class="nc-digits">1</span><span class="nc-cap">Forma de emissão</span></li>
+<li><span class="nc-digits">10000123</span><span class="nc-cap">Código numérico</span></li>
+<li><span class="nc-digits">7</span><span class="nc-cap">DV</span></li>
+</ol>
+<figcaption>Toda NF-e e todo CT-e têm uma chave de acesso de 44 dígitos; a da NFS-e tem 50. O Nanci guarda cada documento pela chave, com o XML original como o governo entregou, e é por ela que você busca, liga um CT-e às notas que ele transporta e exporta.</figcaption>
+</figure>
+<section class="nc-docs" aria-label="Documentos que o Nanci baixa">
+<article class="nc-box">
+<h2 class="nc-box-title"><a href="docs/nfse/">NFS-e</a></h2>
+<dl>
+<div><dt>Origem</dt><dd>Ambiente de Dados Nacional (ADN)</dd></div>
+<div><dt>O que chega</dt><dd>Notas de serviço tomadas, prestadas e intermediadas, com cancelamentos e substituições.</dd></div>
+<div><dt>Exportação</dt><dd>Excel, CSV, ZIP com os XMLs e DANFSe em PDF.</dd></div>
+</dl>
+<a class="nc-box-link" href="docs/nfse/">Como funciona a NFS-e</a>
+</article>
+<article class="nc-box">
+<h2 class="nc-box-title"><a href="docs/nfe/">NF-e</a></h2>
+<dl>
+<div><dt>Origem</dt><dd>Distribuição DF-e da SEFAZ, modelo 55</dd></div>
+<div><dt>O que chega</dt><dd>Notas recebidas pela empresa: o resumo primeiro, o XML completo depois da Ciência da Operação.</dd></div>
+<div><dt>Manifestação</dt><dd>Ciência em lote e manifestações conclusivas, com os prazos de cada nota.</dd></div>
+</dl>
+<a class="nc-box-link" href="docs/nfe/">Como funciona a NF-e</a>
+</article>
+<article class="nc-box">
+<h2 class="nc-box-title"><a href="docs/cte/">CT-e</a></h2>
+<dl>
+<div><dt>Origem</dt><dd>Distribuição DF-e da SEFAZ, modelos 57, 64 e 67</dd></div>
+<div><dt>O que chega</dt><dd>CT-e, CT-e OS, GTV-e e CT-e Simplificado em que a empresa é tomadora, remetente, destinatária ou outra parte.</dd></div>
+<div><dt>Ligação</dt><dd>Ache o CT-e do frete pela chave da NF-e transportada.</dd></div>
+</dl>
+<a class="nc-box-link" href="docs/cte/">Como funciona o CT-e</a>
+</article>
+</section>
+<section class="nc-extras">
+<div>
+<h3>Várias empresas</h3>
+<p>Cadastre quantos CNPJs precisar, cada um com o seu certificado, ambiente e histórico. O certificado da matriz serve para as filiais.</p>
+</div>
+<div>
+<h3>Nada sai do seu computador</h3>
+<p>Não há servidor do Nanci no meio. A conexão vai direto ao ADN e à SEFAZ, e a senha do certificado fica no cofre do Windows. <a href="docs/privacidade/">Onde ficam os dados</a>.</p>
+</div>
+<div>
+<h3>Também pelo terminal</h3>
+<p>A linha de comando faz o mesmo que o aplicativo e serve para rotinas agendadas. <a href="docs/cli/">Ver os comandos</a>.</p>
+</div>
+</section>
+</div>

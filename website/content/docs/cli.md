@@ -20,7 +20,7 @@ Todos os comandos têm ajuda: `nanci --help`, `nanci nfe --help`, `nanci nfe lis
 
 ## Primeiros passos
 
-```bash
+```powershell
 # Cadastrar a empresa com o certificado
 nanci company add --cnpj 12345678000199 --name "Minha Empresa" --cert C:\certs\empresa.pfx --uf SP
 
