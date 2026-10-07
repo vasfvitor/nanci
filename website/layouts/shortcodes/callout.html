@@ -1,0 +1,10 @@
+{{- /*
+  Replaces Hextra's callout with a ruled field: a caption naming the kind
+  of note, the text under it. Same usage: {{< callout type="warning" >}}…{{< /callout >}}
+*/ -}}
+{{- $type := .Get "type" | default "default" -}}
+{{- $captions := dict "warning" "Atenção" "error" "Cuidado" "important" "Importante" "info" "Nota" "default" "Nota" -}}
+<div class="nc-callout nc-callout-{{ $type }}" role="note">
+  <p class="nc-callout-cap">{{ index $captions $type | default "Nota" }}</p>
+  <div class="nc-callout-body">{{ .Inner | strings.TrimSpace | .Page.RenderString (dict "display" "block") }}</div>
+</div>

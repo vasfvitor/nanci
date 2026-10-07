@@ -496,3 +496,152 @@ nav a[href$="/nanci/"] span {
 .dark [class*="shadow-[0_-12px_16px_#111]"] {
   box-shadow: 0 -12px 16px var(--hx-color-dark);
 }
+
+/* ------------------------------------------------------------------ */
+/* Docs pages: the field-and-caption device in a few more places.       */
+/* ------------------------------------------------------------------ */
+
+/* Field strip under the title. */
+.content .nc-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin: 0.75rem 0 2rem;
+  padding: 0;
+  background: var(--nc-rule);
+  border: 1px solid var(--nc-rule);
+  border-radius: 4px;
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.content .nc-fields > div {
+  flex: 1 1 auto;
+  padding: 0.4rem 0.875rem 0.5rem;
+  background: var(--nc-paper);
+}
+
+.content .nc-fields dt {
+  margin: 0;
+  color: var(--nc-caption);
+  font-size: 0.6875rem;
+  font-stretch: 75%;
+  font-weight: 600;
+}
+
+.content .nc-fields dd {
+  margin: 0.125rem 0 0;
+  padding: 0;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.content .nc-fields a {
+  color: var(--nc-ink);
+  text-decoration: none;
+}
+
+.content .nc-fields a:hover {
+  color: var(--nc-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.content .nc-fields code {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 0.875rem;
+}
+
+/* Screenshots: ruled figure, alt text as the caption. */
+.content .nc-shot {
+  margin: 1.5rem 0;
+}
+
+.content .nc-shot img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--nc-rule);
+  border-radius: 4px;
+}
+
+.content .nc-shot figcaption {
+  margin-top: 0.375rem;
+  text-align: left;
+  color: var(--nc-caption);
+  font-size: 0.75rem;
+  font-stretch: 75%;
+  font-weight: 600;
+}
+
+/* Code blocks: the language as a field caption in the corner. */
+.hextra-code-block pre {
+  position: relative;
+}
+
+.hextra-code-block pre code[data-lang] {
+  display: block;
+  padding-top: 1.125rem;
+}
+
+.hextra-code-block pre code[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.5rem;
+  left: 1rem;
+  color: var(--nc-caption);
+  font-family: var(--hx-font-sans);
+  font-size: 0.6875rem;
+  font-stretch: 75%;
+  font-weight: 600;
+  user-select: none;
+}
+
+.hextra-code-block pre code[data-lang="powershell"]::before {
+  content: "PowerShell";
+}
+
+.hextra-code-block pre code[data-lang="dotenv"]::before {
+  content: ".env.local";
+}
+
+/* Callouts: a ruled field with a caption, an accent rule on the left. */
+.nc-callout {
+  margin: 1.5rem 0;
+  padding: 0.625rem 1rem 0.75rem;
+  border: 1px solid var(--nc-rule);
+  border-left: 3px solid var(--nc-caption);
+  border-radius: 4px;
+}
+
+.nc-callout-warning,
+.nc-callout-important {
+  border-left-color: #c98a12;
+}
+
+.nc-callout-error {
+  border-left-color: #c2410c;
+}
+
+.content .nc-callout-cap {
+  margin: 0;
+  color: var(--nc-caption);
+  font-size: 0.6875rem;
+  font-stretch: 75%;
+  font-weight: 700;
+}
+
+.content .nc-callout-body > p {
+  margin: 0.25rem 0 0;
+  color: var(--nc-ink);
+}
+
+/* Sidebar: the current page is marked by a rule, not a filled pill. */
+.hextra-sidebar-active-item {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: inset 2px 0 0 var(--nc-blue);
+  color: var(--nc-ink) !important;
+}

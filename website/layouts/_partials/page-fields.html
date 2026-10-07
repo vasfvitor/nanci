@@ -1,0 +1,28 @@
+{{- /*
+  A DANFE-style field strip under a docs page title. Every field carries
+  real data: when the page last changed (linked to its git history), and,
+  when set in front matter, the official source and the technical doc.
+    fonte:      { nome: "Portal Nacional da NF-e", url: "https://..." }
+    referencia: "docs/NFE_SEFAZ.md"
+*/ -}}
+{{- $repo := "https://github.com/vasfvitor/nanci" -}}
+<dl class="nc-fields">
+  {{- with .Lastmod }}
+  <div>
+    <dt>Atualizado em</dt>
+    <dd><a href="{{ $repo }}/commits/main/website/content/{{ path.Clean $.File.Path }}"><time datetime="{{ .Format "2006-01-02" }}">{{ .Format "02/01/2006" }}</time></a></dd>
+  </div>
+  {{- end }}
+  {{- with .Params.fonte }}
+  <div>
+    <dt>Fonte oficial</dt>
+    <dd><a href="{{ .url }}" rel="external">{{ .nome }}</a></dd>
+  </div>
+  {{- end }}
+  {{- with .Params.referencia }}
+  <div>
+    <dt>Referência técnica</dt>
+    <dd><a href="{{ $repo }}/blob/main/{{ . }}"><code>{{ path.Base . }}</code></a></dd>
+  </div>
+  {{- end }}
+</dl>

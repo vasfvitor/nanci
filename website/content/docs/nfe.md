@@ -2,6 +2,10 @@
 title: "NF-e"
 description: "NF-e recebidas pela SEFAZ e Manifestação do Destinatário."
 weight: 31
+fonte:
+  nome: "Portal Nacional da NF-e"
+  url: "https://www.nfe.fazenda.gov.br/portal/principal.aspx"
+referencia: "docs/NFE_SEFAZ.md"
 ---
 
 O Nanci baixa as NF-e em que a empresa aparece, pela distribuição DF-e da SEFAZ, e registra a Manifestação do Destinatário. A empresa precisa ter UF cadastrada.
@@ -32,5 +36,3 @@ A aba **Pendências** mostra as notas sem manifestação conclusiva e o prazo de
 ## Exportar
 
 **Exportar** gera um ZIP com os XMLs da lista. **Exportar XML** salva uma nota.
-
-Detalhes técnicos em [docs/NFE_SEFAZ.md](https://github.com/vasfvitor/nanci/blob/main/docs/NFE_SEFAZ.md).

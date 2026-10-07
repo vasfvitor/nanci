@@ -12,6 +12,9 @@
   {{- $dark = relURL (strings.TrimPrefix "/" $dark) -}}
 {{- end -}}
 
+{{- /* In the docs, a screenshot is a ruled figure captioned by its alt text. */ -}}
+{{- $figure := not .Page.IsHome -}}
+{{- if $figure }}<figure class="nc-shot">{{ end }}
 <img
   src="{{ $light }}"
   alt="{{ $alt }}"
@@ -28,3 +31,4 @@
   {{ with $height }}height="{{ . }}"{{ end }}
 />
 {{- end }}
+{{- if $figure }}<figcaption aria-hidden="true">{{ $alt }}</figcaption></figure>{{ end }}
