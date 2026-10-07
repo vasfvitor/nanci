@@ -1,7 +1,31 @@
 # Local go-pkcs12 fork
 
-This directory is based on `software.sslmate.com/src/go-pkcs12` v0.7.1.
+This directory is based on `software.sslmate.com/src/go-pkcs12` v0.7.1 plus
+the v0.7.2 and v0.7.3 security backports listed below.
 The upstream BSD license is preserved in `LICENSE`.
+
+## Security backports from v0.7.2 and v0.7.3
+
+The local `replace` hides this module from `govulncheck`, so upstream security
+fixes must be ported by hand. Ported so far, from
+https://github.com/SSLMate/go-pkcs12:
+
+- v0.7.2 (GO-2026-5052): `03c441f` "[Security fix] Reject PBMAC1 keys that
+  are too short", `be1f487` "Improve the too-short PBMAC1 key error message"
+  and the tests from `8d284f9` "Add tests for rejecting short PBMAC1 keys".
+  `doMac` rejects a PBMAC1 `KeyLength` below 20 octets, which otherwise
+  allows MAC forgery (same class as OpenSSL CVE-2026-34181).
+- v0.7.3: `c0472ed` "Reject files with invalid IV lengths or
+  excessively-long key lengths". `pbDecrypterFor` rejects a PBES2 IV whose
+  length is not the AES block size (it used to panic in
+  `cipher.NewCBCDecrypter`), and `doMac` rejects a PBMAC1 `KeyLength` above
+  64 octets.
+
+`mac.go` and `crypto.go` match v0.7.3 except for the fork's
+`Data() ([]byte, error)` change, which lets `encryptedContentInfo` return the
+constructed (BER) encrypted content it reassembles. `mac_test.go`, `crypto_test.go` and
+`testdata/pbmac1-short-key-bypass.txt` carry only the upstream tests for these
+fixes; `testDecryptable` follows the fork's `Data() ([]byte, error)` signature.
 
 Nanci needs to decode valid PKCS#12 files that use BER indefinite lengths,
 including BER inside the MAC-authenticated `AuthenticatedSafe`. Upstream uses
@@ -37,9 +61,13 @@ When updating upstream:
 
 1. Replace the upstream source files while retaining `ber.go`, `password-bytes.go`,
    their tests, this file, the `unmarshal` normalization call in `pkcs12.go`,
-   and the `DecodeChain`/`decodeChain` split.
+   the `Data() ([]byte, error)` change, and the `DecodeChain`/`decodeChain`
+   split. Once the new base includes v0.7.3, drop the backport section above.
 2. Review upstream changes to `unmarshal`, `getSafeContents`, `verifyMac`,
    `DecodeChain`, and `bmpString`. If `bmpString` changes, mirror the change in
    `bmpStringBytes` — `password-bytes_test.go` asserts the two agree.
 3. Run the root certificate tests, the fork tests, and the optional external
    certificate acceptance test.
+
+Because `govulncheck` cannot see this fork, check upstream releases and the
+Go vulnerability database for `software.sslmate.com/src/go-pkcs12` by hand.
