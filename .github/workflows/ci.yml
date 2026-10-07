@@ -73,6 +73,101 @@ jobs:
         working-directory: ./internal/desktop
         run: govulncheck ./...
 
+  tidy:
+    name: Go mod tidy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            internal/desktop/go.sum
+
+      - name: Create go.work
+        run: go work init . ./internal/desktop ./third_party/go-pkcs12
+
+      - name: Tidy root module
+        run: GOWORK=off go mod tidy
+
+      - name: Tidy desktop module
+        working-directory: ./internal/desktop
+        run: GOWORK=off go mod tidy
+
+      - name: Check for drift
+        run: |
+          if ! git diff --exit-code -- go.mod go.sum internal/desktop/go.mod internal/desktop/go.sum; then
+            echo "::error::go.mod or go.sum is stale. Run 'GOWORK=off go mod tidy' in the repo root and in internal/desktop, then commit the result."
+            exit 1
+          fi
+
+  bindings:
+    name: Wails bindings
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            internal/desktop/go.sum
+
+      - name: Cache Go Binaries
+        id: cache-go-bins
+        uses: actions/cache@v6
+        with:
+          path: ~/go/bin
+          key: ${{ runner.os }}-go-bins-wails-2.16.0
+
+      - name: Install Wails CLI
+        if: steps.cache-go-bins.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+
+      - name: Create go.work
+        run: go work init . ./internal/desktop ./third_party/go-pkcs12
+
+      # Satisfy Wails' go:embed frontend/dist.
+      - name: Stub frontend dist
+        run: |
+          mkdir -p internal/desktop/frontend/dist
+          echo '<div></div>' > internal/desktop/frontend/dist/index.html
+
+      # The bindings build tag leaves out Wails' Linux frontend, so no cgo or
+      # GTK headers are needed.
+      - name: Generate bindings
+        working-directory: ./internal/desktop
+        env:
+          CGO_ENABLED: '0'
+        run: wails generate module
+
+      # git status also catches files the generator adds, which git diff misses.
+      - name: Check for drift
+        run: |
+          if [ -n "$(git status --porcelain -- internal/desktop/frontend/wailsjs)" ]; then
+            git status --short -- internal/desktop/frontend/wailsjs
+            git diff -- internal/desktop/frontend/wailsjs
+            echo "::error::Wails bindings are stale. Run 'wails generate module' in internal/desktop, then commit frontend/wailsjs."
+            exit 1
+          fi
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest

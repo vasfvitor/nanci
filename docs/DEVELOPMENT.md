@@ -81,6 +81,8 @@ make check    # fmt, vuln, lint, test e security
 
 `make test` roda só `go test ./...`. Para mudanças no frontend, rode também os três comandos acima.
 
+O CI falha se `go.mod`/`go.sum` ou `internal/desktop/frontend/wailsjs` estiverem desatualizados. Para regenerar: `GOWORK=off go mod tidy` na raiz e em `internal/desktop`, e `wails generate module` em `internal/desktop`.
+
 ## Gerar o instalador
 
 ```bash
