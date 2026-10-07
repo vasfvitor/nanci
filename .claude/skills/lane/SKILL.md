@@ -38,7 +38,7 @@ looks like a pre-existing bug (do not fix it unless asked).
 - Desktop Go: `cd internal/desktop && go build ./... && go test ./...` after copying `dist`. Any change to an exported `app` API needs this even if the lane did not touch `internal/desktop`.
 - Bindings: `cd internal/desktop && wails generate module`, then `git diff frontend/wailsjs` shows only the expected methods, and the `vi.mock` list in `src/platform/wails/client.test.ts` plus the mocks in `scripts/generate-screenshots.ts` are updated in the same commit (the build does not type-check that script).
 - Frontend: `pnpm run lint:check && pnpm run test:unit && pnpm run build`; `pnpm run screenshots` when a page or Quasar changed.
-- Store: `go test ./internal/store -run Migration -v`; after `schema.sql` edits regenerate sqlc with `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` and commit `sqlgen`. Never edit an applied migration; add a new one.
+- Store: `go test ./internal/store -run Migration -v`; after `schema.sql` edits regenerate sqlc with `CGO_ENABLED=0 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` (the cgo link fails with TDM-GCC on this machine) and commit `sqlgen`. Never edit an applied migration; add a new one.
 - Docs: every factual claim about an external system carries its source URL and the date checked; third-party-only claims say so.
 
 ## Rules the agent must not relearn
