@@ -215,6 +215,7 @@ nav a[href$="/nanci/"] span {
 .nc-chave {
   margin: 5rem 0 0;
   opacity: 0.28;
+  filter: blur(1px);
   user-select: none;
   pointer-events: none;
 }
@@ -390,6 +391,7 @@ nav a[href$="/nanci/"] span {
   inset: -1.5rem 0 0;
   overflow: hidden;
   opacity: 0.55;
+  filter: blur(1.5px);
   user-select: none;
   pointer-events: none;
   -webkit-mask-image:
