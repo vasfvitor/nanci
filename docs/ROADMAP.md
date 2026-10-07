@@ -50,6 +50,8 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
 
 ## Fase 1: dívida estrutural (1 a 2 meses)
 
+**Estado em 07/10/2026: concluída em `main`.** Vocabulário movido (`internal/syncstate`, `dfe`, `company`, `credential`; `internal/nfse` só NFS-e); módulo desktop de 24% para 67% de cobertura com `App` falando com interfaces estreitas (`internal/desktop/services.go`) e fakes em teste; os quatro módulos do frontend sem teste cobertos (+25 testes); logs em disco documentados em `privacidade.md`; CI com checks de drift (`go mod tidy`, `wails generate module`); skills `lane` e `integrate` e seção "Working With Agents" no `AGENTS.md`. Achados dos testes do desktop que não foram corrigidos estão no `PENDENCIAS.md`.
+
 - **Vocabulário compartilhado fora de `internal/nfse`** [G]: `Company`, `Credential`, `Environment`, `SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy`, `SyncRun`, `SyncState` e `SyncSnapshot` têm 576 referências em 66 arquivos fora do pacote (`sync` 148, `company` 49, `credential` 24, `app` 24, `store` 19, `sefaz` 6). PR só de movimento, sem mudança de comportamento. Destino decidido em 07/10/2026:
   - `Company` → `internal/company`, que já é o pacote da empresa cadastrada (`Store` e `Manager`); passa a ter também o tipo. Idem `Credential` → `internal/credential`.
   - `Environment` (produção/homologação, o `tpAmb`) → `internal/dfe`, que é o vocabulário DF-e sem rede nem banco.
@@ -58,7 +60,7 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
   - **Feito em 07/10/2026**, em quatro commits de movimento; `CredentialID` e `GenerateID` foram para `internal/dfe` junto com `Environment`.
 - **Testes do módulo desktop** [M]: `internal/desktop` está em 24% de cobertura; os métodos de `App` não têm teste. Introduzir um `core` falso (interface pequena por serviço) e testar validação de entrada, mapeamento de DTO e erros. Isso também é pré-requisito para a paridade de exportação.
 - **Frontend sem teste** [P/M]: `composables/useCredentials.ts`, `composables/useSefazBlock.ts`, `stores/query.ts`, `platform/wails/runtime.ts`.
-- **Logs em disco com CNPJ em claro** (`internal/desktop/app.go:632`) enquanto o ZIP exportado mascara. Decidido em 07/10/2026: **mantém em claro**; só o pacote exportado mascara. Registrar na doc de privacidade.
+- **Logs em disco com CNPJ em claro**: mantém em claro (decisão de 07/10/2026), registrado em `website/content/docs/privacidade.md`.
 - **Docs**: atualizar `ARCHITECTURE.md` e `AGENTS.md` depois do movimento de pacotes; `docs/specs/` tem um único spec de 06/2026, decidir se a pasta fica.
 
 ## Fase 2: funcionalidades já pendentes
