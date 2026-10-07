@@ -79,8 +79,13 @@ jobs:
 
           echo "Validation passed: $tag is greater than $prev_tag."
 
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   build-desktop:
-    needs: prepare
+    needs:
+      - prepare
+      - checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

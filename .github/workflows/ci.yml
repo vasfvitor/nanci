@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Wails' Linux backend needs cgo and the GTK headers. The desktop app
+      # ships only for Windows, so build and test both modules without cgo.
+      CGO_ENABLED: '0'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            internal/desktop/go.sum
+
+      - name: Create go.work
+        run: go work init . ./internal/desktop ./third_party/go-pkcs12
+
+      # Satisfy Wails' go:embed frontend/dist. The frontend job builds the
+      # real bundle.
+      - name: Stub frontend dist
+        run: |
+          mkdir -p internal/desktop/frontend/dist
+          echo '<div></div>' > internal/desktop/frontend/dist/index.html
+
+      - name: Build
+        run: go build ./... ./internal/desktop/...
+
+      - name: Test
+        run: go test ./... ./internal/desktop/...
+
+      - name: Lint root module
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+
+      - name: Lint desktop module
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: internal/desktop
+          skip-save-cache: true
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+      - name: Vulnerability check root module
+        run: govulncheck ./...
+
+      - name: Vulnerability check desktop module
+        working-directory: ./internal/desktop
+        run: govulncheck ./...
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./internal/desktop/frontend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: '10.33.0'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: 'internal/desktop/frontend/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint:check
+
+      - name: Unit tests
+        run: pnpm run test:unit
+
+      - name: Build
+        run: pnpm run build
