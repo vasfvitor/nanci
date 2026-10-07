@@ -72,7 +72,7 @@ func newNFeTestRoot(t *testing.T) *nfeTestRoot {
 	if err := credential.NewStore(db).CreateCredential(ctx, cred); err != nil {
 		t.Fatal(err)
 	}
-	comp := storetest.TestCompany("comp-1", nfeTestCNPJ, nfse.EnvironmentProduction, cred)
+	comp := storetest.TestCompany("comp-1", nfeTestCNPJ, dfe.EnvironmentProduction, cred)
 	comp.Name = "Empresa Mock"
 	comp.UF = "SP"
 	if err := company.NewStore(db).CreateCompany(ctx, comp); err != nil {

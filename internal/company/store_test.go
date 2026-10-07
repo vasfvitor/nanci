@@ -21,7 +21,7 @@ func TestStore_CreateCompany(t *testing.T) {
 		ID:              dfe.CompanyID("comp_12345"),
 		CNPJ:            "11222333000181",
 		Name:            "Test Company",
-		Environment:     nfse.EnvironmentRestricted,
+		Environment:     dfe.EnvironmentRestricted,
 		SyncStartPolicy: nfse.SyncStartPolicyFromNow,
 	}
 
@@ -45,7 +45,7 @@ func TestCompanyStore(t *testing.T) {
 		t.Fatalf("failed to create credential: %v", err)
 	}
 
-	comp := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
+	comp := storetest.TestCompany("comp-1", "11222333000181", dfe.EnvironmentRestricted, cred)
 	comp.UF = "SP"
 
 	// Create
@@ -151,8 +151,8 @@ func TestStoreReadsNFSeInitialSyncFromCompanySyncSources(t *testing.T) {
 	if err := credRepo.CreateCredential(ctx, cred); err != nil {
 		t.Fatal(err)
 	}
-	synced := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
-	nfeOnly := storetest.TestCompany("comp-2", "11222333000262", nfse.EnvironmentRestricted, cred)
+	synced := storetest.TestCompany("comp-1", "11222333000181", dfe.EnvironmentRestricted, cred)
+	nfeOnly := storetest.TestCompany("comp-2", "11222333000262", dfe.EnvironmentRestricted, cred)
 	for _, c := range []*nfse.Company{synced, nfeOnly} {
 		if err := repo.CreateCompany(ctx, c); err != nil {
 			t.Fatal(err)

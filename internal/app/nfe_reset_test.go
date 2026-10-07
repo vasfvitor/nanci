@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -97,7 +98,7 @@ func TestNFeEnvironmentSwitchHidesAndShowsNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	switchTo := func(environment nfse.Environment) {
+	switchTo := func(environment dfe.Environment) {
 		t.Helper()
 		err := env.app.Companies.UpdateCompany(ctx, company.UpdateCompanyInput{
 			CNPJ:            env.company.CNPJ,
@@ -129,7 +130,7 @@ func TestNFeEnvironmentSwitchHidesAndShowsNotes(t *testing.T) {
 	}
 	producao := []string{nfeChaveDenegada, nfeChaveProc, nfeChaveCancelada}
 
-	switchTo(nfse.EnvironmentRestricted)
+	switchTo(dfe.EnvironmentRestricted)
 	if got := listed(); len(got) != 0 {
 		t.Errorf("homologação lists %v, want none", got)
 	}
@@ -153,7 +154,7 @@ func TestNFeEnvironmentSwitchHidesAndShowsNotes(t *testing.T) {
 		t.Errorf("homologação lists %v, want only its own note", got)
 	}
 
-	switchTo(nfse.EnvironmentProduction)
+	switchTo(dfe.EnvironmentProduction)
 	if got := listed(); !slices.Equal(got, producao) {
 		t.Errorf("back in produção lists %v, want %v", got, producao)
 	}

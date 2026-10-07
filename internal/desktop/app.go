@@ -21,6 +21,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
@@ -267,7 +268,7 @@ func (a *App) SetLogLevel(level string) {
 }
 
 func (a *App) AddCompany(input desktopapi.AddCompanyInput) error {
-	environment, err := nfse.ParseEnvironment(input.Environment)
+	environment, err := dfe.ParseEnvironment(input.Environment)
 	if err != nil {
 		return err
 	}
@@ -319,7 +320,7 @@ func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) e
 }
 
 func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
-	environment, err := nfse.ParseEnvironment(input.Environment)
+	environment, err := dfe.ParseEnvironment(input.Environment)
 	if err != nil {
 		return err
 	}

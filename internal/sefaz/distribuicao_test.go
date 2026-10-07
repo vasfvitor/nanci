@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const wantDistContentType = `application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse"`
@@ -47,13 +47,13 @@ func retDist(cStat int, xMotivo, ultNSU, maxNSU, lote string) string {
 func TestDistribuicao_RequestBytes(t *testing.T) {
 	tests := []struct {
 		name string
-		env  nfse.Environment
+		env  dfe.Environment
 		call func(*Client) error
 		want string
 	}{
 		{
 			name: "distNSU",
-			env:  nfse.EnvironmentProduction,
+			env:  dfe.EnvironmentProduction,
 			call: func(c *Client) error {
 				_, err := c.DistNSU(context.Background(), "70.860.312/0001-50", 35, 123)
 				return err
@@ -62,7 +62,7 @@ func TestDistribuicao_RequestBytes(t *testing.T) {
 		},
 		{
 			name: "consNSU in homologação",
-			env:  nfse.EnvironmentRestricted,
+			env:  dfe.EnvironmentRestricted,
 			call: func(c *Client) error {
 				_, err := c.ConsNSU(context.Background(), testCNPJ, 35, 999_999_999_999_999)
 				return err
@@ -71,7 +71,7 @@ func TestDistribuicao_RequestBytes(t *testing.T) {
 		},
 		{
 			name: "consChNFe",
-			env:  nfse.EnvironmentProduction,
+			env:  dfe.EnvironmentProduction,
 			call: func(c *Client) error {
 				_, err := c.ConsChNFe(context.Background(), testCNPJ, 35, "35260911222333000181550010000012341123456787")
 				return err

@@ -1,4 +1,4 @@
-package nfse
+package dfe
 
 import "github.com/google/uuid"
 

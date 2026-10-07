@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/foundation/redact"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const (
@@ -56,7 +56,7 @@ func (e *RejectionError) Error() string {
 
 // ClientConfig configures a Client. Environment and Certificate are required.
 type ClientConfig struct {
-	Environment nfse.Environment
+	Environment dfe.Environment
 	Certificate *tls.Certificate
 	// RootCAs verifies the SEFAZ servers; nil uses the platform roots, which
 	// already trust the public chains the Ambiente Nacional uses.

@@ -15,7 +15,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const soapFault12 = `<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body>` +
@@ -24,7 +23,7 @@ const soapFault12 = `<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:
 	`</soap:Fault></soap:Body></soap:Envelope>`
 
 func TestNewClient_Validation(t *testing.T) {
-	if _, err := NewClient(ClientConfig{Environment: nfse.EnvironmentProduction}); err == nil {
+	if _, err := NewClient(ClientConfig{Environment: dfe.EnvironmentProduction}); err == nil {
 		t.Error("expected error without a certificate")
 	}
 	if _, err := NewClient(ClientConfig{Environment: "local", Certificate: &tls.Certificate{}}); !errors.Is(err, dfe.ErrInvalidEnum) {
@@ -33,7 +32,7 @@ func TestNewClient_Validation(t *testing.T) {
 }
 
 func TestNewClient_DefaultsFromEnvironment(t *testing.T) {
-	client, err := NewClient(ClientConfig{Environment: nfse.EnvironmentRestricted, Certificate: &tls.Certificate{}})
+	client, err := NewClient(ClientConfig{Environment: dfe.EnvironmentRestricted, Certificate: &tls.Certificate{}})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -52,7 +51,7 @@ func TestNewClient_DefaultsFromEnvironment(t *testing.T) {
 // The Ambiente Nacional asks for the client certificate through a TLS
 // renegotiation, which Go refuses by default.
 func TestNewClient_TransportAllowsRenegotiation(t *testing.T) {
-	client, err := NewClient(ClientConfig{Environment: nfse.EnvironmentProduction, Certificate: &tls.Certificate{}})
+	client, err := NewClient(ClientConfig{Environment: dfe.EnvironmentProduction, Certificate: &tls.Certificate{}})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -148,7 +147,7 @@ func TestPost_TransportErrorRetries(t *testing.T) {
 	defer server.Close()
 
 	client, err := NewClient(ClientConfig{
-		Environment: nfse.EnvironmentProduction,
+		Environment: dfe.EnvironmentProduction,
 		Certificate: &tls.Certificate{},
 		Endpoints:   &Endpoints{Distribuicao: server.URL, RecepcaoEvento: server.URL},
 	})
@@ -183,7 +182,7 @@ func TestPost_OversizedResponse(t *testing.T) {
 	defer server.Close()
 
 	client, err := NewClient(ClientConfig{
-		Environment: nfse.EnvironmentProduction,
+		Environment: dfe.EnvironmentProduction,
 		Certificate: &tls.Certificate{},
 		Endpoints:   &Endpoints{Distribuicao: server.URL},
 	})

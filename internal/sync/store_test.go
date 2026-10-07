@@ -25,7 +25,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	if err := credentials.CreateCredential(context.Background(), first); err != nil {
 		t.Fatal(err)
 	}
-	company := storetest.TestCompany("company-1", "11222333000181", nfse.EnvironmentRestricted, first)
+	company := storetest.TestCompany("company-1", "11222333000181", dfe.EnvironmentRestricted, first)
 	if err := companies.CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertCompanyCredential(t, stored, first, nfse.EnvironmentRestricted)
+	assertCompanyCredential(t, stored, first, dfe.EnvironmentRestricted)
 
 	second := storetest.TestCredential("credential-2")
 	second.Label = "Production certificate"
@@ -50,7 +50,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertCompanyCredential(t, stored, second, nfse.EnvironmentRestricted)
+	assertCompanyCredential(t, stored, second, dfe.EnvironmentRestricted)
 }
 
 func TestDocumentUpsertUsesCanonicalIDAndListsRelations(t *testing.T) {
@@ -181,7 +181,7 @@ func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *nfse.Company {
 	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := storetest.TestCompany(id, cnpj, nfse.EnvironmentRestricted, cred)
+	company := storetest.TestCompany(id, cnpj, dfe.EnvironmentRestricted, cred)
 	if err := store.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func applyEvent(t *testing.T, repo *sync.Store, event nfse.Event, companyID dfe.
 	}
 }
 
-func assertCompanyCredential(t *testing.T, company *nfse.Company, credential *nfse.Credential, expectedEnv nfse.Environment) {
+func assertCompanyCredential(t *testing.T, company *nfse.Company, credential *nfse.Credential, expectedEnv dfe.Environment) {
 	t.Helper()
 	if company.CredentialID != credential.ID ||
 		company.CredentialLabel != credential.Label ||
@@ -267,7 +267,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	_, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
 		Source:           nfse.SyncSourceNFSe,
-		Environment:      nfse.EnvironmentRestricted,
+		Environment:      dfe.EnvironmentRestricted,
 		ConsultationCNPJ: "11222333000181",
 	})
 	if err != nil {
@@ -289,7 +289,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 		ProgressParams: nfse.PersistSyncProgressParams{
 			CompanyID:        company.ID,
 			Source:           nfse.SyncSourceNFSe,
-			Environment:      nfse.EnvironmentRestricted,
+			Environment:      dfe.EnvironmentRestricted,
 			ConsultationCNPJ: "11222333000181",
 			LastProcessedNSU: 10,
 			LastFoundNSU:     storetest.Int64Ptr(10),
@@ -326,7 +326,7 @@ func TestApplyDocumentAndProgressIdempotencyAndAtomicity(t *testing.T) {
 	state, err := syncRepo.GetOrCreateState(context.Background(), nfse.GetOrCreateSyncStateParams{
 		CompanyID:        company.ID,
 		Source:           nfse.SyncSourceNFSe,
-		Environment:      nfse.EnvironmentRestricted,
+		Environment:      dfe.EnvironmentRestricted,
 		ConsultationCNPJ: "11222333000181",
 	})
 	if err != nil {
@@ -490,21 +490,21 @@ func TestSourceStateIsKeyedByEnvironment(t *testing.T) {
 	company := seedCompany(t, db, "company-1", "11222333000181")
 
 	blockedUntil := time.Date(2026, 6, 1, 11, 0, 0, 0, time.UTC)
-	if err := syncRepo.MarkInitialSyncCompleted(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction); err != nil {
+	if err := syncRepo.MarkInitialSyncCompleted(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction); err != nil {
 		t.Fatal(err)
 	}
-	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction, blockedUntil, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, blockedUntil, nfse.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
-	production, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction)
+	production, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if production.InitialSyncDoneAt == nil || production.BlockedUntil == nil || !production.BlockedUntil.Equal(blockedUntil) {
 		t.Errorf("produção state = %+v, want the initial sync and the block", production)
 	}
-	restricted, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentRestricted)
+	restricted, err := syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentRestricted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -514,10 +514,10 @@ func TestSourceStateIsKeyedByEnvironment(t *testing.T) {
 
 	// A block in the other environment does not overwrite the first one.
 	otherUntil := blockedUntil.Add(time.Hour)
-	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentRestricted, otherUntil, nfse.SyncStopReasonRateBudget); err != nil {
+	if err := syncRepo.SetBlockedUntil(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentRestricted, otherUntil, nfse.SyncStopReasonRateBudget); err != nil {
 		t.Fatal(err)
 	}
-	production, err = syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction)
+	production, err = syncRepo.SourceState(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -550,7 +550,7 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A request in the other environment counts only there.
-	if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction, now); err != nil {
+	if err := syncRepo.RecordRequest(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, now); err != nil {
 		t.Fatal(err)
 	}
 
@@ -563,7 +563,7 @@ func TestRecordRequestCountsTheWindowAndPrunesOldRows(t *testing.T) {
 		t.Errorf("RequestsSince = (%d, %v), want (3, %v)", count, oldest, wantOldest)
 	}
 
-	count, _, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction, now.Add(-time.Hour))
+	count, _, err = syncRepo.RequestsSince(ctx, company.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}

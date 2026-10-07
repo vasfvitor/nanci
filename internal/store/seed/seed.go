@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -15,7 +16,7 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 		CNPJRoot:     "70860312",
 		Name:         "Empresa Mock Teste",
 		CredentialID: "dev-credential-70860312000150",
-		Environment:  nfse.EnvironmentRestricted,
+		Environment:  dfe.EnvironmentRestricted,
 	}
 
 	credential := nfse.Credential{

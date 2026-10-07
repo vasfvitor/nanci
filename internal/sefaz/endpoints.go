@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // Web service URLs of the Ambiente Nacional. Distribution only exists on
@@ -40,15 +39,15 @@ type Endpoints struct {
 
 // EndpointsFor returns the Ambiente Nacional URLs for env: producao uses the
 // production hosts and producao_restrita uses homologação.
-func EndpointsFor(env nfse.Environment) (Endpoints, error) {
+func EndpointsFor(env dfe.Environment) (Endpoints, error) {
 	switch env {
-	case nfse.EnvironmentProduction:
+	case dfe.EnvironmentProduction:
 		return Endpoints{
 			Distribuicao:    DistribuicaoProducao,
 			DistribuicaoCTe: DistribuicaoCTeProducao,
 			RecepcaoEvento:  RecepcaoEventoProducao,
 		}, nil
-	case nfse.EnvironmentRestricted:
+	case dfe.EnvironmentRestricted:
 		return Endpoints{
 			Distribuicao:    DistribuicaoHomologacao,
 			DistribuicaoCTe: DistribuicaoCTeHomologacao,
@@ -61,11 +60,11 @@ func EndpointsFor(env nfse.Environment) (Endpoints, error) {
 
 // TpAmb maps env to the tpAmb code: producao is 1, producao_restrita is 2
 // (homologação).
-func TpAmb(env nfse.Environment) (string, error) {
+func TpAmb(env dfe.Environment) (string, error) {
 	switch env {
-	case nfse.EnvironmentProduction:
+	case dfe.EnvironmentProduction:
 		return TpAmbProducao, nil
-	case nfse.EnvironmentRestricted:
+	case dfe.EnvironmentRestricted:
 		return TpAmbHomologacao, nil
 	default:
 		return "", fmt.Errorf("invalid environment %q: %w", env, dfe.ErrInvalidEnum)

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -12,7 +13,7 @@ func TestSyncRun_Instantiation(t *testing.T) {
 	run := nfse.SyncRun{
 		ID:               "run123",
 		CompanyID:        "comp1",
-		Environment:      nfse.EnvironmentProduction,
+		Environment:      dfe.EnvironmentProduction,
 		ConsultationCNPJ: "11111111000111",
 		Mode:             nfse.SyncModeNormal,
 		Status:           nfse.SyncStatusRunning,

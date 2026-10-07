@@ -61,7 +61,7 @@ func (r *CTeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		if doc.ID == "" {
-			doc.ID = nfse.GenerateID()
+			doc.ID = dfe.GenerateID()
 		}
 	case err != nil:
 		return false, fmt.Errorf("read cte document %s: %w", chave, err)
@@ -92,7 +92,7 @@ func (r *CTeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 
 	participation := cte.ClassifyParticipation(&doc, p.CompanyCNPJ)
 	err = q.UpsertCompanyCTeDocument(ctx, sqlgen.UpsertCompanyCTeDocumentParams{
-		RelationID:       nfse.GenerateID(),
+		RelationID:       dfe.GenerateID(),
 		CompanyID:        string(p.CompanyID),
 		CteDocumentID:    documentID,
 		CompanyRole:      string(participation.CompanyRole),
@@ -472,7 +472,7 @@ func refreshCTeChave(ctx context.Context, q *sqlgen.Queries, chave, now string) 
 func upsertCTeEvent(ctx context.Context, q *sqlgen.Queries, e cte.Event, now string) error {
 	id := e.ID
 	if id == "" {
-		id = nfse.GenerateID()
+		id = dfe.GenerateID()
 	}
 	warnings, err := encodeWarnings(e.ParseWarnings)
 	if err != nil {

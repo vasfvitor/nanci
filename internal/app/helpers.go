@@ -78,7 +78,7 @@ func parseNFSeAccessKeys(raw []string) ([]string, error) {
 	})
 }
 
-func lookupCredentialByID(ctx context.Context, repo *credential.Store, id nfse.CredentialID) (*nfse.Credential, error) {
+func lookupCredentialByID(ctx context.Context, repo *credential.Store, id dfe.CredentialID) (*nfse.Credential, error) {
 	cred, err := repo.CredentialByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, credential.ErrCredentialNotFound) {

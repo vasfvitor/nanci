@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 func TestCheckTLS(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCheckTLS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			newClient := func(roots *x509.CertPool) *Client {
 				client, err := NewClient(ClientConfig{
-					Environment: nfse.EnvironmentProduction,
+					Environment: dfe.EnvironmentProduction,
 					Certificate: &tls.Certificate{},
 					RootCAs:     roots,
 					Endpoints:   &tt.endpoints,
@@ -70,7 +70,7 @@ func TestCheckTLS(t *testing.T) {
 
 func TestCheckTLS_EmptyURL(t *testing.T) {
 	client, err := NewClient(ClientConfig{
-		Environment: nfse.EnvironmentProduction,
+		Environment: dfe.EnvironmentProduction,
 		Certificate: &tls.Certificate{},
 		Endpoints:   &Endpoints{},
 	})

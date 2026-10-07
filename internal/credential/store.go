@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/sqlgen"
 )
@@ -51,7 +52,7 @@ func (r *Store) CreateCredential(ctx context.Context, c *nfse.Credential) error 
 	return nil
 }
 
-func (r *Store) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
+func (r *Store) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error) {
 	row, err := r.queries.GetCredential(ctx, string(id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -61,7 +62,7 @@ func (r *Store) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse
 	}
 
 	c := &nfse.Credential{
-		ID:                nfse.CredentialID(row.ID),
+		ID:                dfe.CredentialID(row.ID),
 		Label:             row.Label,
 		CertPath:          row.CertPath,
 		OwnerCNPJ:         row.OwnerCnpj,
@@ -87,7 +88,7 @@ func (r *Store) ListCredentials(ctx context.Context) ([]nfse.Credential, error) 
 	creds := make([]nfse.Credential, 0, len(rows))
 	for _, row := range rows {
 		c := nfse.Credential{
-			ID:                nfse.CredentialID(row.ID),
+			ID:                dfe.CredentialID(row.ID),
 			Label:             row.Label,
 			CertPath:          row.CertPath,
 			OwnerCNPJ:         row.OwnerCnpj,
@@ -106,7 +107,7 @@ func (r *Store) ListCredentials(ctx context.Context) ([]nfse.Credential, error) 
 	return creds, nil
 }
 
-func (r *Store) DeleteCredential(ctx context.Context, id nfse.CredentialID) error {
+func (r *Store) DeleteCredential(ctx context.Context, id dfe.CredentialID) error {
 	return r.queries.DeleteCredential(ctx, string(id))
 }
 

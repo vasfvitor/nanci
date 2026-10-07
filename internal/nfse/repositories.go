@@ -27,8 +27,8 @@ type DocumentExportMark struct {
 type StartRunParams struct {
 	CompanyID         dfe.CompanyID
 	Source            SyncSource
-	CredentialID      CredentialID
-	Environment       Environment
+	CredentialID      dfe.CredentialID
+	Environment       dfe.Environment
 	CredentialCNPJ    string
 	ConsultationCNPJ  string
 	ConsultationBasis ConsultationBasis
@@ -40,7 +40,7 @@ type StartRunParams struct {
 type GetOrCreateSyncStateParams struct {
 	CompanyID        dfe.CompanyID
 	Source           SyncSource
-	Environment      Environment
+	Environment      dfe.Environment
 	ConsultationCNPJ string
 }
 
@@ -70,7 +70,7 @@ type PersistSyncProgressParams struct {
 	CompanyID             dfe.CompanyID
 	Source                SyncSource
 	RunID                 SyncRunID
-	Environment           Environment
+	Environment           dfe.Environment
 	ConsultationCNPJ      string
 	LastProcessedNSU      int64
 	LastFoundNSU          *int64

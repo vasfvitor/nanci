@@ -10,7 +10,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 func TestAppIntegration_ListDocuments(t *testing.T) {
@@ -30,7 +30,7 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 	if err := application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Listagem",
-		Environment:     nfse.EnvironmentRestricted,
+		Environment:     dfe.EnvironmentRestricted,
 		CredentialID:    string(creds[0].ID),
 		SyncStartPolicy: policyFromNow,
 		SyncStartDate:   dateFromNow,

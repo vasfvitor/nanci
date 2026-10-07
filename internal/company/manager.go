@@ -26,16 +26,16 @@ type storeInterface interface {
 	ListCompanies(ctx context.Context) ([]nfse.Company, error)
 	CompanyByCNPJ(ctx context.Context, cnpj string) (*nfse.Company, error)
 	UpdateCompany(ctx context.Context, c *nfse.Company) error
-	AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID nfse.CredentialID) error
+	AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID dfe.CredentialID) error
 }
 
 type credentialProvider interface {
-	CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error)
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error)
 	CreateCredential(ctx context.Context, cred *nfse.Credential) error
 }
 
 type syncProvider interface {
-	LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error)
+	LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env dfe.Environment, cnpj string) (nfse.SyncSnapshot, error)
 	HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error)
 }
 
@@ -46,7 +46,7 @@ type AddCompanyInput struct {
 	CredentialID    string
 	CredentialLabel string
 	CertPath        string
-	Environment     nfse.Environment
+	Environment     dfe.Environment
 	UF              string // optional state sigla, e.g. "SP"
 	SyncStartPolicy nfse.SyncStartPolicy
 	SyncStartDate   *time.Time
@@ -56,7 +56,7 @@ type AddCompanyInput struct {
 type UpdateCompanyInput struct {
 	CNPJ            string
 	Name            string
-	Environment     nfse.Environment
+	Environment     dfe.Environment
 	UF              string // optional state sigla, e.g. "SP"
 	SyncStartPolicy nfse.SyncStartPolicy
 	SyncStartDate   *time.Time
@@ -101,7 +101,7 @@ func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
 	}
 
 	company := &nfse.Company{
-		ID:                 dfe.CompanyID(nfse.GenerateID()),
+		ID:                 dfe.CompanyID(dfe.GenerateID()),
 		CNPJ:               cleanedCNPJ,
 		CNPJRoot:           root,
 		Name:               input.Name,
@@ -154,7 +154,7 @@ func (m *Manager) AssignCredentialToCompany(ctx context.Context, input AssignCre
 		return err
 	}
 
-	credential, err := lookupCredentialByID(ctx, m.credentials, nfse.CredentialID(input.CredentialID))
+	credential, err := lookupCredentialByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (m *Manager) AssignCredentialToCompany(ctx context.Context, input AssignCre
 // one from the cert path.
 func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*nfse.Credential, error) {
 	if input.CredentialID != "" {
-		return lookupCredentialByID(ctx, m.credentials, nfse.CredentialID(input.CredentialID))
+		return lookupCredentialByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
 	}
 
 	if err := validateCertificatePath(input.CertPath); err != nil {
@@ -182,7 +182,7 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 	}
 
 	credential := &nfse.Credential{
-		ID:       nfse.CredentialID(nfse.GenerateID()),
+		ID:       dfe.CredentialID(dfe.GenerateID()),
 		Label:    input.CredentialLabel,
 		CertPath: input.CertPath,
 	}
@@ -326,7 +326,7 @@ func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (
 	return company, nil
 }
 
-func lookupCredentialByID(ctx context.Context, repo credentialProvider, id nfse.CredentialID) (*nfse.Credential, error) {
+func lookupCredentialByID(ctx context.Context, repo credentialProvider, id dfe.CredentialID) (*nfse.Credential, error) {
 	cred, err := repo.CredentialByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, credential.ErrCredentialNotFound) {

@@ -61,7 +61,7 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		if doc.ID == "" {
-			doc.ID = nfse.GenerateID()
+			doc.ID = dfe.GenerateID()
 		}
 	case err != nil:
 		return false, fmt.Errorf("read nfe document %s: %w", chave, err)
@@ -92,7 +92,7 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 
 	participation := nfe.ClassifyParticipation(&doc, p.CompanyCNPJ)
 	err = q.UpsertCompanyNFeDocument(ctx, sqlgen.UpsertCompanyNFeDocumentParams{
-		RelationID:       nfse.GenerateID(),
+		RelationID:       dfe.GenerateID(),
 		CompanyID:        string(p.CompanyID),
 		NfeDocumentID:    documentID,
 		CompanyRole:      string(participation.CompanyRole),
@@ -328,7 +328,7 @@ func (r *NFeRepository) RecordManifestacoes(ctx context.Context, items []nfe.Man
 	now := time.Now().UTC().Format(time.RFC3339)
 	for _, item := range items {
 		err := q.InsertNFeManifestacao(ctx, sqlgen.InsertNFeManifestacaoParams{
-			ID:              nfse.GenerateID(),
+			ID:              dfe.GenerateID(),
 			CompanyID:       string(item.CompanyID),
 			ChaveAcesso:     item.ChaveAcesso,
 			TpEvento:        item.TpEvento,
@@ -475,7 +475,7 @@ func eventExists(ctx context.Context, q *sqlgen.Queries, e nfe.Event) (bool, err
 func upsertEvent(ctx context.Context, q *sqlgen.Queries, e nfe.Event, now string) error {
 	id := e.ID
 	if id == "" {
-		id = nfse.GenerateID()
+		id = dfe.GenerateID()
 	}
 	warnings, err := encodeWarnings(e.ParseWarnings)
 	if err != nil {

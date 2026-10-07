@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 )
 
@@ -91,7 +91,7 @@ func useFakeSEFAZ(t *testing.T) *fakeSEFAZ {
 	original := newSEFAZClient
 	t.Cleanup(func() { newSEFAZClient = original })
 	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazClient, error) {
-		if cfg.Certificate == nil || cfg.Environment != nfse.EnvironmentProduction {
+		if cfg.Certificate == nil || cfg.Environment != dfe.EnvironmentProduction {
 			t.Errorf("client config = %+v", cfg)
 		}
 		fake.clients++

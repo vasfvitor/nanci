@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/vasfvitor/nanci/internal/cte"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -13,7 +14,7 @@ import (
 type CTeResetResult struct {
 	CompanyName string
 	CNPJ        string
-	Environment nfse.Environment
+	Environment dfe.Environment
 	cte.ResetCounts
 }
 

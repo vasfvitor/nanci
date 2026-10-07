@@ -14,6 +14,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -58,7 +59,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 		CNPJRoot:     "11222333",
 		Name:         "Company",
 		CredentialID: "credential-1",
-		Environment:  nfse.EnvironmentProduction,
+		Environment:  dfe.EnvironmentProduction,
 	}
 	if err := companyStore.CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
@@ -192,7 +193,7 @@ func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *
 		CNPJRoot:     "11222333",
 		Name:         "Company",
 		CredentialID: "credential-1",
-		Environment:  nfse.EnvironmentProduction,
+		Environment:  dfe.EnvironmentProduction,
 	}
 	if err := companyStore.CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
@@ -279,11 +280,11 @@ func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
 	}
 
 	until := time.Now().Add(time.Hour)
-	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, nfse.SyncSourceNFe, nfse.EnvironmentProduction, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
+	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, nfse.SyncSourceNFe, dfe.EnvironmentProduction, until, nfse.SyncStopReasonConsumoIndevido); err != nil {
 		t.Fatal(err)
 	}
 
-	setCompany("environment", string(nfse.EnvironmentRestricted))
+	setCompany("environment", string(dfe.EnvironmentRestricted))
 	result, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe})
 	if err != nil {
 		t.Fatalf("Pull in produção restrita = %v, want no block from produção", err)
@@ -292,7 +293,7 @@ func TestPullAfterEnvironmentSwitchIgnoresTheOtherBlock(t *testing.T) {
 		t.Errorf("NextAllowedAt in produção restrita = %v, want nil", result.NextAllowedAt)
 	}
 
-	setCompany("environment", string(nfse.EnvironmentProduction))
+	setCompany("environment", string(dfe.EnvironmentProduction))
 	if _, err := mgr.Pull(ctx, PullInput{CNPJ: comp.CNPJ, Source: nfse.SyncSourceNFe}); !errors.Is(err, ErrSourceBlocked) {
 		t.Errorf("Pull back in produção = %v, want ErrSourceBlocked", err)
 	}

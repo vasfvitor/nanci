@@ -29,13 +29,13 @@ func (f *fakeStore) UpdateCompany(ctx context.Context, c *nfse.Company) error {
 	f.companies[0] = *c
 	return nil
 }
-func (f *fakeStore) AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID nfse.CredentialID) error {
+func (f *fakeStore) AssignCredential(ctx context.Context, companyID dfe.CompanyID, credentialID dfe.CredentialID) error {
 	return nil
 }
 
 type fakeCred struct{}
 
-func (f *fakeCred) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
+func (f *fakeCred) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error) {
 	return &nfse.Credential{ID: id}, nil
 }
 func (f *fakeCred) CreateCredential(ctx context.Context, cred *nfse.Credential) error { return nil }
@@ -46,7 +46,7 @@ type fakeSync struct {
 	cursors []nfse.SyncSource
 }
 
-func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env nfse.Environment, cnpj string) (nfse.SyncSnapshot, error) {
+func (f *fakeSync) LatestSyncSnapshot(ctx context.Context, companyID dfe.CompanyID, source nfse.SyncSource, env dfe.Environment, cnpj string) (nfse.SyncSnapshot, error) {
 	return nfse.SyncSnapshot{}, nil
 }
 func (f *fakeSync) HasSyncState(ctx context.Context, params nfse.HasSyncStateParams) (bool, error) {
@@ -63,7 +63,7 @@ func TestManager_AddCompany(t *testing.T) {
 	err := m.AddCompany(context.Background(), company.AddCompanyInput{
 		CNPJ:         "00.000.000/0001-91",
 		Name:         "Test",
-		Environment:  nfse.EnvironmentProduction,
+		Environment:  dfe.EnvironmentProduction,
 		CredentialID: "cred-123",
 	})
 	if err != nil {
@@ -81,7 +81,7 @@ func TestManager_CompanyUF(t *testing.T) {
 		return m.AddCompany(ctx, company.AddCompanyInput{
 			CNPJ:         "00.000.000/0001-91",
 			Name:         "Test",
-			Environment:  nfse.EnvironmentProduction,
+			Environment:  dfe.EnvironmentProduction,
 			CredentialID: "cred-123",
 			UF:           rawUF,
 		})
@@ -153,7 +153,7 @@ func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
 			err := m.AddCompany(ctx, company.AddCompanyInput{
 				CNPJ:            "00.000.000/0001-91",
 				Name:            "Test",
-				Environment:     nfse.EnvironmentProduction,
+				Environment:     dfe.EnvironmentProduction,
 				CredentialID:    "cred-123",
 				SyncStartPolicy: nfse.SyncStartPolicyFromNow,
 			})
@@ -202,7 +202,7 @@ func TestManager_UpdateCompanyEnvironmentAfterSync(t *testing.T) {
 			err := m.AddCompany(ctx, company.AddCompanyInput{
 				CNPJ:            "00.000.000/0001-91",
 				Name:            "Test",
-				Environment:     nfse.EnvironmentRestricted,
+				Environment:     dfe.EnvironmentRestricted,
 				CredentialID:    "cred-123",
 				SyncStartPolicy: nfse.SyncStartPolicyFromNow,
 			})
@@ -213,14 +213,14 @@ func TestManager_UpdateCompanyEnvironmentAfterSync(t *testing.T) {
 			err = m.UpdateCompany(ctx, company.UpdateCompanyInput{
 				CNPJ:            stored.CNPJ,
 				Name:            "Renamed",
-				Environment:     nfse.EnvironmentProduction,
+				Environment:     dfe.EnvironmentProduction,
 				SyncStartPolicy: stored.SyncStartPolicy,
 				SyncStartDate:   stored.SyncStartDate,
 			})
 			if err != nil {
 				t.Fatalf("UpdateCompany: %v", err)
 			}
-			if got := s.companies[0]; got.Environment != nfse.EnvironmentProduction || got.Name != "Renamed" {
+			if got := s.companies[0]; got.Environment != dfe.EnvironmentProduction || got.Name != "Renamed" {
 				t.Errorf("company = (%s, %s), want (producao, Renamed)", got.Environment, got.Name)
 			}
 		})

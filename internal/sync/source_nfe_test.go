@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
@@ -72,7 +73,7 @@ func newNFeTestHelper(t *testing.T) *nfeTestHelper {
 	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, nfse.EnvironmentProduction, cred)
+	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, dfe.EnvironmentProduction, cred)
 	company.UF = "SP"
 	company.SyncStartPolicy = nfse.SyncStartPolicyFromNow
 	company.SyncStartDate = new(time.Now().UTC())
@@ -493,7 +494,7 @@ func newNFePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *
 	})
 	nfeRequestDelay = 0
 	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
-		if cfg.Environment != nfse.EnvironmentProduction || cfg.Certificate == nil {
+		if cfg.Environment != dfe.EnvironmentProduction || cfg.Certificate == nil {
 			t.Errorf("SEFAZ client config = %+v", cfg)
 		}
 		return fetcher, nil

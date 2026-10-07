@@ -12,11 +12,11 @@ type Company struct {
 	CNPJ               string // stored as a 14-char identifier; current input policy accepts validated numeric CNPJ only
 	CNPJRoot           string // first 8 chars - groups branches
 	Name               string
-	CredentialID       CredentialID
+	CredentialID       dfe.CredentialID
 	CredentialLabel    string
 	CredentialCertPath string
-	Environment        Environment // derived from the assigned credential
-	UF                 string      // optional state sigla, e.g. "SP"; empty when unknown
+	Environment        dfe.Environment // derived from the assigned credential
+	UF                 string          // optional state sigla, e.g. "SP"; empty when unknown
 	LastFoundNSU       *int64
 	LastSyncAt         *time.Time
 	SyncStartPolicy    SyncStartPolicy
@@ -30,7 +30,7 @@ type Company struct {
 
 // Credential represents a reusable mTLS credential that can be assigned to multiple companies.
 type Credential struct {
-	ID                CredentialID
+	ID                dfe.CredentialID
 	Label             string
 	CertPath          string
 	OwnerCNPJ         string

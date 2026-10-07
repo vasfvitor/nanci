@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 const (
@@ -58,13 +58,13 @@ func readFixture(t *testing.T, name string) string {
 func TestCTeDistribuicao_RequestBytes(t *testing.T) {
 	tests := []struct {
 		name string
-		env  nfse.Environment
+		env  dfe.Environment
 		call func(*Client) error
 		want string
 	}{
 		{
 			name: "distNSU",
-			env:  nfse.EnvironmentProduction,
+			env:  dfe.EnvironmentProduction,
 			call: func(c *Client) error {
 				_, err := c.DistCTeNSU(context.Background(), "70.860.312/0001-50", 35, 123)
 				return err
@@ -73,7 +73,7 @@ func TestCTeDistribuicao_RequestBytes(t *testing.T) {
 		},
 		{
 			name: "consNSU in homologação",
-			env:  nfse.EnvironmentRestricted,
+			env:  dfe.EnvironmentRestricted,
 			call: func(c *Client) error {
 				_, err := c.ConsCTeNSU(context.Background(), testCNPJ, 35, 42)
 				return err
@@ -133,7 +133,7 @@ func TestCTeDistribuicao_InvalidInputSendsNothing(t *testing.T) {
 // anywhere else.
 func TestDistCTeNSU_WithoutEndpoint(t *testing.T) {
 	client, err := NewClient(ClientConfig{
-		Environment: nfse.EnvironmentProduction,
+		Environment: dfe.EnvironmentProduction,
 		Certificate: &tls.Certificate{},
 		Endpoints:   &Endpoints{Distribuicao: "https://127.0.0.1:1/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx"},
 	})

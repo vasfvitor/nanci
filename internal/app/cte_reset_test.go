@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -18,7 +19,7 @@ func TestCTeReset(t *testing.T) {
 	ctx := context.Background()
 
 	// A second company, the remetente of procte.xml, sees it too.
-	other := storetest.TestCompany("comp-2", cteRemetenteCNPJ, nfse.EnvironmentProduction, &nfse.Credential{ID: "cred-1"})
+	other := storetest.TestCompany("comp-2", cteRemetenteCNPJ, dfe.EnvironmentProduction, &nfse.Credential{ID: "cred-1"})
 	other.Name = "Remetente"
 	if err := company.NewStore(env.db).CreateCompany(ctx, other); err != nil {
 		t.Fatal(err)
@@ -49,7 +50,7 @@ func TestCTeReset(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantCounts := cte.ResetCounts{CompanyDocuments: 3, Documents: 2, Events: 1}
-	if preview.ResetCounts != wantCounts || preview.CompanyName != "Empresa Mock" || preview.Environment != nfse.EnvironmentProduction {
+	if preview.ResetCounts != wantCounts || preview.CompanyName != "Empresa Mock" || preview.Environment != dfe.EnvironmentProduction {
 		t.Errorf("PreviewReset = %+v, want %+v (procte stays for the remetente)", preview, wantCounts)
 	}
 	if docs, err := env.app.CTe.ListDocuments(ctx, ListCTeInput{CNPJ: nfeTestCNPJ}); err != nil || len(docs) != 3 {

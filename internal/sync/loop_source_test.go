@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
@@ -206,7 +207,7 @@ func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {
 	}
 	// Requests of the other environment do not spend this one's budget.
 	for range 2 {
-		if err := h.store.RecordRequest(context.Background(), h.company.ID, nfse.SyncSourceNFe, nfse.EnvironmentRestricted, time.Now()); err != nil {
+		if err := h.store.RecordRequest(context.Background(), h.company.ID, nfse.SyncSourceNFe, dfe.EnvironmentRestricted, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}

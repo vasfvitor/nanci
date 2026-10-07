@@ -11,6 +11,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -85,7 +86,7 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 	compInput := company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Teste",
-		Environment:     nfse.EnvironmentRestricted,
+		Environment:     dfe.EnvironmentRestricted,
 		CredentialID:    string(credID),
 		SyncStartPolicy: nfse.SyncStartPolicyAll,
 	}
@@ -123,7 +124,7 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	if err := application.Companies.AddCompany(ctx, company.AddCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Sync",
-		Environment:     nfse.EnvironmentRestricted,
+		Environment:     dfe.EnvironmentRestricted,
 		CredentialID:    string(creds[0].ID),
 		SyncStartPolicy: "all",
 	}); err != nil {
@@ -135,7 +136,7 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	updateInput := company.UpdateCompanyInput{
 		CNPJ:            "45852546000109",
 		Name:            "Empresa Sync",
-		Environment:     nfse.EnvironmentRestricted,
+		Environment:     dfe.EnvironmentRestricted,
 		SyncStartPolicy: policyFromNow,
 		SyncStartDate:   dateFromNow,
 	}

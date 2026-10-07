@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	cnpjpkg "github.com/vasfvitor/nanci/internal/foundation/cnpj"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 // newCompanyCommand builds the `company` subcommand tree from the given env.
@@ -51,7 +51,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			environment, err := nfse.ParseEnvironment(envName)
+			environment, err := dfe.ParseEnvironment(envName)
 			if err != nil {
 				return fmt.Errorf("erro no ambiente: %w", err)
 			}
@@ -131,7 +131,7 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 				input.Name = name
 			}
 			if cmd.Flags().Changed("env") {
-				input.Environment, err = nfse.ParseEnvironment(envName)
+				input.Environment, err = dfe.ParseEnvironment(envName)
 				if err != nil {
 					return fmt.Errorf("erro no ambiente: %w", err)
 				}

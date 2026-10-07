@@ -92,10 +92,10 @@ func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *n
 		CNPJ:               row.Cnpj,
 		CNPJRoot:           row.CnpjRoot,
 		Name:               row.Name,
-		CredentialID:       nfse.CredentialID(row.CredentialID.String),
+		CredentialID:       dfe.CredentialID(row.CredentialID.String),
 		CredentialLabel:    row.CredentialLabel.String,
 		CredentialCertPath: row.CredentialCertPath.String,
-		Environment:        nfse.Environment(row.Environment),
+		Environment:        dfe.Environment(row.Environment),
 		UF:                 row.Uf,
 		SyncStartPolicy:    nfse.SyncStartPolicy(row.SyncStartPolicy),
 		SyncStartDate:      parseNullableDate(row.SyncStartDate),
@@ -107,7 +107,7 @@ func companyFromRow(row sqlgen.Company, nfseInitialSyncDoneAt sql.NullString) *n
 	return c
 }
 
-func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID dfe.CompanyID, credID nfse.CredentialID) error {
+func (r *CompanyRepository) AssignCredential(ctx context.Context, companyID dfe.CompanyID, credID dfe.CredentialID) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	affected, err := r.queries.AssignCredentialToCompany(ctx, sqlgen.AssignCredentialToCompanyParams{
 		CredentialID: sql.NullString{String: string(credID), Valid: credID != ""},

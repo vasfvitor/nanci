@@ -5,17 +5,16 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func TestEndpointsFor(t *testing.T) {
 	tests := []struct {
-		env   nfse.Environment
+		env   dfe.Environment
 		want  Endpoints
 		tpAmb string
 	}{
 		{
-			env: nfse.EnvironmentProduction,
+			env: dfe.EnvironmentProduction,
 			want: Endpoints{
 				Distribuicao:    "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
 				DistribuicaoCTe: "https://www1.cte.fazenda.gov.br/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx",
@@ -24,7 +23,7 @@ func TestEndpointsFor(t *testing.T) {
 			tpAmb: "1",
 		},
 		{
-			env: nfse.EnvironmentRestricted,
+			env: dfe.EnvironmentRestricted,
 			want: Endpoints{
 				Distribuicao:    "https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
 				DistribuicaoCTe: "https://hom1.cte.fazenda.gov.br/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx",

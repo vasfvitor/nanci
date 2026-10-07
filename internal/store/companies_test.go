@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
@@ -23,7 +24,7 @@ func TestCompanyRepository(t *testing.T) {
 		t.Fatalf("failed to create credential: %v", err)
 	}
 
-	company := storetest.TestCompany("comp-1", "11222333000181", nfse.EnvironmentRestricted, cred)
+	company := storetest.TestCompany("comp-1", "11222333000181", dfe.EnvironmentRestricted, cred)
 
 	// Create
 	err := repo.CreateCompany(ctx, company)

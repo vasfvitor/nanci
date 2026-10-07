@@ -454,7 +454,7 @@ func TestCTeEnvironmentSwitchHidesAndShowsDocuments(t *testing.T) {
 	env.seedCTeFixtures()
 	ctx := context.Background()
 
-	switchTo := func(environment nfse.Environment) {
+	switchTo := func(environment dfe.Environment) {
 		t.Helper()
 		err := env.app.Companies.UpdateCompany(ctx, company.UpdateCompanyInput{
 			CNPJ:            env.company.CNPJ,
@@ -477,7 +477,7 @@ func TestCTeEnvironmentSwitchHidesAndShowsDocuments(t *testing.T) {
 		return cteChavesOf(docs)
 	}
 
-	switchTo(nfse.EnvironmentRestricted)
+	switchTo(dfe.EnvironmentRestricted)
 	if got := listed(); !slices.Equal(got, []string{cteChaveV200}) {
 		t.Errorf("homologação lists %v, want only the homologação CT-e", got)
 	}
@@ -496,7 +496,7 @@ func TestCTeEnvironmentSwitchHidesAndShowsDocuments(t *testing.T) {
 		t.Errorf("homologação export = %d, %v; want the homologação CT-e only", export.ExportedCount, err)
 	}
 
-	switchTo(nfse.EnvironmentProduction)
+	switchTo(dfe.EnvironmentProduction)
 	if got := listed(); len(got) != 5 || slices.Contains(got, cteChaveV200) {
 		t.Errorf("back in produção lists %v, want the 5 produção CT-e", got)
 	}

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
 // testCNPJ is the owner of the mock certificate in foundation/cert/testdata.
@@ -60,7 +60,7 @@ func newFakeClient(t *testing.T, status int, body string, cfg ClientConfig) (*Cl
 	t.Cleanup(server.Close)
 
 	if cfg.Environment == "" {
-		cfg.Environment = nfse.EnvironmentProduction
+		cfg.Environment = dfe.EnvironmentProduction
 	}
 	if cfg.Certificate == nil {
 		cfg.Certificate = &tls.Certificate{}

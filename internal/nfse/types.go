@@ -52,37 +52,11 @@ func ParseInfNFSeID(id string) (AccessKey, error) {
 }
 
 type (
-	DocumentID   string
-	CredentialID string
-	SyncRunID    string
+	DocumentID string
+	SyncRunID  string
 )
 
 // --- Enums ---
-
-type Environment string
-
-const (
-	EnvironmentProduction Environment = "producao"
-	EnvironmentRestricted Environment = "producao_restrita"
-)
-
-func ParseEnvironment(val string) (Environment, error) {
-	switch Environment(val) {
-	case EnvironmentProduction, EnvironmentRestricted:
-		return Environment(val), nil
-	default:
-		return "", fmt.Errorf("invalid environment %q: %w", val, dfe.ErrInvalidEnum)
-	}
-}
-
-func (e Environment) Valid() bool {
-	_, err := ParseEnvironment(string(e))
-	return err == nil
-}
-
-func (e Environment) String() string {
-	return string(e)
-}
 
 type (
 	DocumentStatus    string

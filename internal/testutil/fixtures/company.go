@@ -1,6 +1,9 @@
 package fixtures
 
-import "github.com/vasfvitor/nanci/internal/nfse"
+import (
+	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/nfse"
+)
 
 func Company() nfse.Company {
 	return nfse.Company{ // #nosec G101 -- mock company; CredentialID is an ID, not a secret.
@@ -9,6 +12,6 @@ func Company() nfse.Company {
 		CNPJRoot:     "70860312",
 		Name:         "Empresa Mock Teste",
 		CredentialID: "dev-credential-70860312000150",
-		Environment:  nfse.EnvironmentRestricted,
+		Environment:  dfe.EnvironmentRestricted,
 	}
 }

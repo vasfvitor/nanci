@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
@@ -13,7 +14,7 @@ import (
 type NFeResetResult struct {
 	CompanyName string
 	CNPJ        string
-	Environment nfse.Environment
+	Environment dfe.Environment
 	nfe.ResetCounts
 }
 

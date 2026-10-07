@@ -12,6 +12,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	dbstore "github.com/vasfvitor/nanci/internal/store"
@@ -50,7 +51,7 @@ func newCTeTestHelper(t *testing.T) *cteTestHelper {
 	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, nfse.EnvironmentProduction, cred)
+	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, dfe.EnvironmentProduction, cred)
 	company.UF = "SP"
 	company.SyncStartPolicy = nfse.SyncStartPolicyFromNow
 	company.SyncStartDate = new(time.Now().UTC())
@@ -381,7 +382,7 @@ func newCTePullTestManager(t *testing.T, passwords CredentialProvider, fetcher *
 	})
 	cteRequestDelay = 0
 	newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazFetcher, error) {
-		if cfg.Environment != nfse.EnvironmentProduction || cfg.Certificate == nil {
+		if cfg.Environment != dfe.EnvironmentProduction || cfg.Certificate == nil {
 			t.Errorf("SEFAZ client config = %+v", cfg)
 		}
 		return fetcher, nil

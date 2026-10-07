@@ -62,7 +62,7 @@ type companyProvider interface {
 }
 
 type credentialProvider interface {
-	CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error)
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error)
 	UpdateCredential(ctx context.Context, c *nfse.Credential) error
 }
 
@@ -405,11 +405,11 @@ func parsePullMode(raw string) (nfse.SyncMode, error) {
 	return nfse.ParseSyncMode(raw)
 }
 
-func ResolveEnvironmentURL(env nfse.Environment) string {
+func ResolveEnvironmentURL(env dfe.Environment) string {
 	switch env {
-	case nfse.EnvironmentProduction:
+	case dfe.EnvironmentProduction:
 		return adn.BaseURLProduction
-	case nfse.EnvironmentRestricted:
+	case dfe.EnvironmentRestricted:
 		return adn.BaseURLRestrictedProduction
 	default:
 		return ""

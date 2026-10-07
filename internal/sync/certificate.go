@@ -9,6 +9,7 @@ import (
 	"time"
 
 	companypkg "github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -44,7 +45,7 @@ func (l *CertificateLoader) LoadForCompany(ctx context.Context, company *nfse.Co
 	}
 
 	pass, err := l.Passwords.GetCertPassword(ctx, CertPasswordRequest{
-		RequestID:       nfse.GenerateID(),
+		RequestID:       dfe.GenerateID(),
 		CompanyID:       string(company.ID),
 		CompanyName:     company.Name,
 		TargetCNPJ:      company.CNPJ,

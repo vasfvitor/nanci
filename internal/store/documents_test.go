@@ -30,7 +30,7 @@ func newNFSeFixture(t *testing.T) *store.DocumentRepository {
 	}
 	companies := store.NewCompanyRepository(db)
 	for id, cnpj := range map[string]string{"comp-a": "45852546000109", "comp-b": "11222333000181"} {
-		if err := companies.CreateCompany(ctx, storetest.TestCompany(id, cnpj, nfse.EnvironmentProduction, cred)); err != nil {
+		if err := companies.CreateCompany(ctx, storetest.TestCompany(id, cnpj, dfe.EnvironmentProduction, cred)); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -30,7 +31,7 @@ type UpdateCredentialDataInput struct {
 type storeInterface interface {
 	CreateCredential(ctx context.Context, c *nfse.Credential) error
 	ListCredentials(ctx context.Context) ([]nfse.Credential, error)
-	CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error)
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error)
 	UpdateCredential(ctx context.Context, c *nfse.Credential) error
 }
 
@@ -51,7 +52,7 @@ func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) e
 		return err
 	}
 	credential := &nfse.Credential{
-		ID:       nfse.CredentialID(nfse.GenerateID()),
+		ID:       dfe.CredentialID(dfe.GenerateID()),
 		Label:    input.Label,
 		CertPath: input.CertPath,
 	}
@@ -79,7 +80,7 @@ func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredenti
 	if err := validateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
-	cred, err := m.store.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	cred, err := m.store.CredentialByID(ctx, dfe.CredentialID(input.CredentialID))
 	if err != nil {
 		return fmt.Errorf("credencial não encontrada: %w", err)
 	}
@@ -92,7 +93,7 @@ func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredenti
 
 // UpdateCredentialData updates the label of an existing credential.
 func (m *Manager) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
-	cred, err := m.store.CredentialByID(ctx, nfse.CredentialID(input.CredentialID))
+	cred, err := m.store.CredentialByID(ctx, dfe.CredentialID(input.CredentialID))
 	if err != nil {
 		return fmt.Errorf("credencial não encontrada: %w", err)
 	}

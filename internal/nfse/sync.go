@@ -45,8 +45,8 @@ type SyncRun struct {
 	ID                    SyncRunID
 	CompanyID             dfe.CompanyID
 	Source                SyncSource
-	CredentialID          CredentialID
-	Environment           Environment
+	CredentialID          dfe.CredentialID
+	Environment           dfe.Environment
 	CredentialCNPJ        string
 	ConsultationCNPJ      string
 	ConsultationBasis     ConsultationBasis // "exact_certificate_cnpj" | "same_root_certificate"
@@ -69,7 +69,7 @@ type SyncRun struct {
 type SyncState struct {
 	CompanyID        dfe.CompanyID
 	Source           SyncSource
-	Environment      Environment
+	Environment      dfe.Environment
 	ConsultationCNPJ string
 	LastProcessedNSU int64
 	LastFoundNSU     *int64

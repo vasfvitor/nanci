@@ -28,7 +28,7 @@ func OpenTestDB(t *testing.T) *sql.DB {
 
 func TestCredential(id string) *nfse.Credential {
 	return &nfse.Credential{
-		ID:            nfse.CredentialID(id),
+		ID:            dfe.CredentialID(id),
 		Label:         "Certificate",
 		CertPath:      `C:\certs\company.pfx`,
 		OwnerCNPJ:     "11222333000181",
@@ -36,7 +36,7 @@ func TestCredential(id string) *nfse.Credential {
 	}
 }
 
-func TestCompany(id, cnpj string, env nfse.Environment, credential *nfse.Credential) *nfse.Company {
+func TestCompany(id, cnpj string, env dfe.Environment, credential *nfse.Credential) *nfse.Company {
 	return &nfse.Company{
 		ID:                 dfe.CompanyID(id),
 		CNPJ:               cnpj,

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vasfvitor/nanci/internal/adn"
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
@@ -200,7 +201,7 @@ func (s *nfseSource) processEvent(ctx context.Context, company *nfse.Company, it
 		return outcome, nil
 	}
 
-	ev.ID = nfse.GenerateID()
+	ev.ID = dfe.GenerateID()
 	ev.RawHash = payload.SHA256
 
 	if err := s.xml.Store(ev.RawHash, payload.XML); err != nil {

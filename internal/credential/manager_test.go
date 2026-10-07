@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
@@ -28,7 +29,7 @@ func (m *mockStore) ListCredentials(ctx context.Context) ([]nfse.Credential, err
 	return m.listCreds, m.listErr
 }
 
-func (m *mockStore) CredentialByID(ctx context.Context, id nfse.CredentialID) (*nfse.Credential, error) {
+func (m *mockStore) CredentialByID(ctx context.Context, id dfe.CredentialID) (*nfse.Credential, error) {
 	if m.credByIDErr != nil {
 		return nil, m.credByIDErr
 	}
