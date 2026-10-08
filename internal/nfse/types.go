@@ -34,13 +34,8 @@ func ParseAccessKey(key string) (AccessKey, error) {
 	if len(key) != accessKeyLength {
 		return "", fmt.Errorf("access key must have exactly %d characters, got %d", accessKeyLength, len(key))
 	}
-	for i := 0; i < len(key); i++ {
-		c := key[i]
-		inInscricao := i >= inscricaoStart && i < inscricaoEnd
-		if (c >= '0' && c <= '9') || (inInscricao && c >= 'A' && c <= 'Z') {
-			continue
-		}
-		return "", fmt.Errorf("access key has invalid character %q at position %d", c, i+1)
+	if i := dfe.IndexInvalidKeyChar(key, inscricaoStart, inscricaoEnd); i >= 0 {
+		return "", fmt.Errorf("access key has invalid character %q at position %d", key[i], i+1)
 	}
 	return AccessKey(key), nil
 }

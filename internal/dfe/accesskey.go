@@ -47,13 +47,8 @@ func ParseAccessKey(raw string) (AccessKey, error) {
 	if len(key) != accessKeyLength {
 		return "", fmt.Errorf("%w: must have %d characters, got %d", ErrInvalidAccessKey, accessKeyLength, len(key))
 	}
-	for i := 0; i < len(key); i++ {
-		c := key[i]
-		inCNPJSlot := i >= cnpjSlotStart && i < cnpjSlotEnd
-		if isDigit(c) || (inCNPJSlot && isLetter(rune(c))) {
-			continue
-		}
-		return "", fmt.Errorf("%w: invalid character %q at position %d", ErrInvalidAccessKey, c, i+1)
+	if i := IndexInvalidKeyChar(key, cnpjSlotStart, cnpjSlotEnd); i >= 0 {
+		return "", fmt.Errorf("%w: invalid character %q at position %d", ErrInvalidAccessKey, key[i], i+1)
 	}
 	slot := key[cnpjSlotStart:cnpjSlotEnd]
 	if strings.ContainsFunc(slot, isLetter) {
@@ -65,6 +60,22 @@ func ParseAccessKey(raw string) (AccessKey, error) {
 		return "", fmt.Errorf("%w: check digit should be %d", ErrInvalidAccessKey, want)
 	}
 	return AccessKey(key), nil
+}
+
+// IndexInvalidKeyChar returns the index of the first character of key that
+// is not a digit, or -1 when there is none. Indexes slotStart to slotEnd-1,
+// where a chave carries the issuer's CNPJ, also accept uppercase letters for
+// the alphanumeric CNPJ.
+func IndexInvalidKeyChar(key string, slotStart, slotEnd int) int {
+	for i := 0; i < len(key); i++ {
+		c := key[i]
+		inSlot := i >= slotStart && i < slotEnd
+		if isDigit(c) || (inSlot && isLetter(rune(c))) {
+			continue
+		}
+		return i
+	}
+	return -1
 }
 
 // accessKeyCheckDigit applies the mod-11 rule with weights 2..9 repeating

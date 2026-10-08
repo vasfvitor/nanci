@@ -49,6 +49,25 @@ func TestParseAccessKey(t *testing.T) {
 	}
 }
 
+func TestIndexInvalidKeyChar(t *testing.T) {
+	tests := []struct {
+		key  string
+		want int
+	}{
+		{key: "0123456789", want: -1},
+		{key: "01AB56", want: -1},
+		{key: "A1234567", want: 0},
+		{key: "0123AB", want: 4},
+		{key: "01ab56", want: 2},
+		{key: "01-B56", want: 2},
+	}
+	for _, tt := range tests {
+		if got := IndexInvalidKeyChar(tt.key, 2, 4); got != tt.want {
+			t.Errorf("IndexInvalidKeyChar(%q, 2, 4) = %d, want %d", tt.key, got, tt.want)
+		}
+	}
+}
+
 func TestAccessKeyAccessors(t *testing.T) {
 	key, err := ParseAccessKey("41260912ABC34501DE35550020000000771456789019")
 	if err != nil {
