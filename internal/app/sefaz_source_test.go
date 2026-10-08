@@ -6,22 +6,9 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
-
-// setLastQuery stores a sync_state row whose last distNSU answer was at.
-func (e *nfeTestEnv) setLastQuery(source syncstate.SyncSource, env dfe.Environment, at time.Time) {
-	e.t.Helper()
-	ts := at.UTC().Format(time.RFC3339)
-	_, err := e.db.ExecContext(context.Background(), `
-		INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, last_success_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 10, ?, ?, ?)
-		ON CONFLICT (company_id, source, environment, consultation_cnpj) DO UPDATE SET last_success_at = excluded.last_success_at
-	`, string(e.company.ID), string(source), string(env), e.company.CNPJ, ts, ts, ts)
-	if err != nil {
-		e.t.Fatalf("set last query: %v", err)
-	}
-}
 
 func TestSefazStatusWarnsWhenDistributionIdle(t *testing.T) {
 	ctx := context.Background()
@@ -50,17 +37,17 @@ func TestSefazStatusWarnsWhenDistributionIdle(t *testing.T) {
 			}
 
 			// A stale query in the other environment does not count.
-			env.setLastQuery(source, dfe.EnvironmentRestricted, time.Now().Add(-90*24*time.Hour))
+			storetest.SetSyncStateLastSuccess(t, env.db, env.company.ID, source, dfe.EnvironmentRestricted, env.company.CNPJ, time.Now().Add(-90*24*time.Hour))
 			if got := status(env, source); got.IdleDays > 0 {
 				t.Error("an idle homologação cursor warns for produção")
 			}
 
-			env.setLastQuery(source, dfe.EnvironmentProduction, time.Now().Add(-44*24*time.Hour))
+			storetest.SetSyncStateLastSuccess(t, env.db, env.company.ID, source, dfe.EnvironmentProduction, env.company.CNPJ, time.Now().Add(-44*24*time.Hour))
 			if got := status(env, source); got.IdleDays != 0 {
 				t.Errorf("44 days: IdleDays = %d, want 0", got.IdleDays)
 			}
 
-			env.setLastQuery(source, dfe.EnvironmentProduction, time.Now().Add(-45*24*time.Hour))
+			storetest.SetSyncStateLastSuccess(t, env.db, env.company.ID, source, dfe.EnvironmentProduction, env.company.CNPJ, time.Now().Add(-45*24*time.Hour))
 			if got := status(env, source); got.IdleDays != 45 {
 				t.Errorf("45 days: IdleDays = %d, want 45", got.IdleDays)
 			}

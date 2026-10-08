@@ -427,21 +427,6 @@ func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 	}
 }
 
-// setLastQuery stores the source's sync_state as if the SEFAZ last answered
-// a distNSU at at.
-func (e *nfeTestRoot) setLastQuery(source syncstate.SyncSource, at time.Time) {
-	e.t.Helper()
-	ts := at.UTC().Format(time.RFC3339)
-	_, err := e.db.ExecContext(context.Background(), `
-		INSERT INTO sync_state (company_id, source, environment, consultation_cnpj, last_checked_nsu, last_success_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 10, ?, ?, ?)
-		ON CONFLICT (company_id, source, environment, consultation_cnpj) DO UPDATE SET last_success_at = excluded.last_success_at
-	`, string(e.company.ID), string(source), string(e.company.Environment), e.company.CNPJ, ts, ts, ts)
-	if err != nil {
-		e.t.Fatalf("set last query: %v", err)
-	}
-}
-
 func TestSefazStatus_WarnsWhenDistributionIdle(t *testing.T) {
 	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
 		t.Run(string(source), func(t *testing.T) {
@@ -454,12 +439,12 @@ func TestSefazStatus_WarnsWhenDistributionIdle(t *testing.T) {
 				return env.out.String()
 			}
 
-			env.setLastQuery(source, time.Now().Add(-44*24*time.Hour))
+			storetest.SetSyncStateLastSuccess(t, env.db, env.company.ID, source, env.company.Environment, env.company.CNPJ, time.Now().Add(-44*24*time.Hour))
 			if got := status(); strings.Contains(got, "Aviso:") {
 				t.Errorf("44 days idle prints a warning:\n%s", got)
 			}
 
-			env.setLastQuery(source, time.Now().Add(-50*24*time.Hour))
+			storetest.SetSyncStateLastSuccess(t, env.db, env.company.ID, source, env.company.Environment, env.company.CNPJ, time.Now().Add(-50*24*time.Hour))
 			want := "  Aviso: 50 dias sem consultar a distribuição. O Ambiente Nacional só gera NSU para quem consultou nos últimos 60 dias; " +
 				"os documentos de uma pausa maior não chegam mais por ela. Rode `nanci " + string(source) + " pull --cnpj " + nfeTestCNPJ + "` para reiniciar a contagem.\n"
 			if got := status(); !strings.Contains(got, want) {
