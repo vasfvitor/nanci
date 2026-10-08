@@ -23,7 +23,6 @@ Obrigado pelo interesse. Para preparar o ambiente, rodar e compilar o projeto, v
 | `internal/files` | Armazenamento dos XMLs originais em `blobs/`. |
 | `internal/foundation` | Utilitários: CNPJ, caminhos, certificado, cliente HTTP mTLS, mascaramento de logs. |
 | `internal/desktop` | App Wails: backend Go na raiz, frontend Vue 3 em `frontend/`. |
-| `internal/testutil/fixtures` | Factories e helpers de teste. |
 | `website` | Site de documentação (Hugo). |
 | `docs` | Documentação técnica. |
 
@@ -40,7 +39,7 @@ As regras completas, inclusive as do frontend, estão em [AGENTS.md](AGENTS.md).
 
 ## Testes
 
-- Testes ficam ao lado do código (`*_test.go`). Use `testdata/` para arquivos de um pacote e `internal/testutil/fixtures` para helpers reutilizáveis.
+- Testes ficam ao lado do código (`*_test.go`). Use `testdata/` para arquivos de um pacote e `internal/store/storetest` para o banco de teste migrado e as fábricas de empresa e credencial.
 - Quando o teste precisar gravar arquivos ou criar banco, use `t.TempDir()`.
 - Mudanças em parser, armazenamento ou caminhos de arquivo pedem teste de regressão.
 - Rode `make check` antes do PR. Para rodar só os testes com o detector de corrida: `go test -race ./...`.
