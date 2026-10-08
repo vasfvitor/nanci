@@ -214,7 +214,7 @@ O que foi conferido no código:
 | `internal/nfse.ParseAccessKey` | Aceitava só 50 dígitos, então uma NFS-e de prestador com CNPJ alfanumérico falhava na leitura e, depois de três tentativas, era marcada como não suportada. Passa a aceitar letras maiúsculas na inscrição federal, como o `TSIdNFSe`, e converte minúsculas. |
 | Consulta Direta (`useQuery.ts`, `QueryPage.vue`) | A regra `^\d{50}$` virou `isChaveNFSe` em `utils/formatters.ts`, com o mesmo padrão. As sugestões de chave não apagam mais as letras. |
 | Log exportado (`internal/desktop/logsanitize.go`) | A chave de NFS-e com letras passa a ter a inscrição federal mascarada. A de NF-e e CT-e já era. |
-| `internal/store/schema.sql` | Nenhuma `CHECK` de tamanho ou de dígitos em chave ou CNPJ; as colunas são `TEXT`. Sem mudança. |
+| `internal/store/migrations_v2` | Nenhuma `CHECK` de tamanho ou de dígitos em chave ou CNPJ; as colunas são `TEXT`. Sem mudança. |
 | `utils/formatters.ts` | `formatCpfCnpj` e `formatChaveDFe` já aceitavam letras. |
 | CLI | `--chave` da NF-e e do CT-e passa por `dfe.ParseAccessKey`, e `--cnpj` por `cnpj.Validate`. Sem mudança. |
 | `internal/sefaz`, certificado | O CNPJ vai como texto no `distDFeInt` e nos eventos, e o do certificado é lido sem descartar letras. Sem mudança. |

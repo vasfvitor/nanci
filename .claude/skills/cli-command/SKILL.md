@@ -10,7 +10,7 @@ The CLI is a thin Cobra adapter over `internal/app`. A command parses flags, val
 ## Registration
 
 - `NewRootCommand(env CommandEnv)` in `internal/cli/root_factory.go` builds a fresh tree per call and adds each top-level command (`newNFeCommand(env)`, `newCTeCommand(env)`, ...). A new top-level command goes there; a new subcommand goes in its group constructor (`newNFeCommand` in `nfe.go`, `newCTeCommand` in `cte.go`, `newExportCommand` in `export.go`).
-- `CommandEnv` (`env.go`) carries `In`/`Out` (`*os.File`, `Out` is stderr for the password prompt), `Stdout io.Writer`, `AppFactory`, `Verbose`, `Trace`. Never read package globals; take everything from `env`.
+- `CommandEnv` (`env.go`) carries `Stdin`/`Stderr` (`*os.File`, for the password prompt), `Stdout io.Writer`, `AppFactory`, `Verbose`, `Trace`. Never read package globals; take everything from `env`.
 - `AppFactory func(ctx) (*app.App, func(), error)`: production is `prodAppFactory` in `runtime.go` (opens SQLite, wires stores, keyring credential provider with `TerminalCredentialProvider` fallback). Every `RunE` does:
   ```go
   application, cleanup, err := env.AppFactory(cmd.Context())

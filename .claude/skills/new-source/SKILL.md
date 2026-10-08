@@ -11,7 +11,7 @@ CT-e (PR #20, `6f4f1ad`) is the template: it reused the loop, the budget, `httpc
 
 Run these before and after; every hit needs the new source.
 
-- `rg "'nfse', 'nfe', 'cte'"`: the `source` CHECK of `sync_runs`, `sync_state`, `company_sync_sources`, `sync_requests` (`internal/store/schema.sql`; a CHECK change is a table rebuild, see the `migration` skill) and `documentTables` in `frontend/src/stores/preferences.ts`.
+- `rg "'nfse', 'nfe', 'cte'"`: the `source` CHECK of `sync_runs`, `sync_state`, `company_sync_sources`, `sync_requests` (in the migrations under `internal/store/migrations_v2`; a CHECK change is a table rebuild, see the `migration` skill) and `documentTables` in `frontend/src/stores/preferences.ts`.
 - `rg "case syncstate.SyncSource"`: `sourceLabel` (`internal/sync/errors.go`), `requestsPerHour` (`internal/sync/dist.go`), `checkSource` and `newSource` (`internal/sync/manager.go`).
 - `rg "SyncSourceCTe"`: also `SyncSource.Valid()` (`internal/syncstate/sync.go`) and the `DistIdle` condition in `dist.go`.
 - `rg -F "'nfse' | 'nfe' | 'cte'" internal/desktop/frontend/src`: `SyncSource` (`types/desktop.ts`), `DocumentSource` (`utils/documentSources.ts`, plus its `DOCUMENT_SOURCES` noun, gender and article), `DocumentTable` (`stores/preferences.ts`).
@@ -33,7 +33,7 @@ Sync identity:
 7. `syncstate.SyncSource<X>` and every hit of the greps above; a migration that rebuilds the four sync tables with the new CHECK value.
 
 Store:
-8. Migration `0NN_<x>.sql` (copy `015_cte.sql` and `017_cte_viewed_at.sql`): `<x>_documents` (one row per chave, `tp_amb`, `raw_hash`, `parse_warnings`), `company_<x>_documents` (role, visibility, `viewed_at`), `<x>_events`, `company_<x>_export_marks` with `exported_events` (as `018`). Mirror in `schema.sql`; test in `migrations_test.go`.
+8. Migration `0NN_<x>.sql` (copy `015_cte.sql` and `017_cte_viewed_at.sql`): `<x>_documents` (one row per chave, `tp_amb`, `raw_hash`, `parse_warnings`), `company_<x>_documents` (role, visibility, `viewed_at`), `<x>_events`, `company_<x>_export_marks` with `exported_events` (as `018`). Regenerate sqlc; test in `migrations_test.go`.
 9. `internal/store/queries/<x>.sql` (copy `cte.sql`: `Upsert*`, `HasCompany<X>Document`, `Has<X>Event`, `Link<X>EventsToDocument`, `Mark<X>Exported`), regenerate `sqlgen`.
 10. `internal/store/<x>.go` (copy `store/cte.go`): `ApplyDocumentTx`/`ApplyEventTx` on the loop's `*sql.Tx`, `CompanyDocumentExists`, hand-written `listCompanyDocuments` + `build<X>FilterSQL` (pending export = no mark, hash changed, or event count changed), `MarkViewed`, `MarkExported`, `CountSummary`, `ResetCompany`/`PreviewResetCompany` (calls `ResetSyncStateTx`). Tests in `store/<x>_test.go` with `storetest.OpenTestDB`.
 

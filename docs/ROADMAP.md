@@ -63,6 +63,8 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
 - **Logs em disco com CNPJ em claro**: mantém em claro (decisão de 07/10/2026), registrado em `website/content/docs/privacidade.md`.
 - **Docs**: atualizar `ARCHITECTURE.md` e `AGENTS.md` depois do movimento de pacotes; `docs/specs/` tem um único spec de 06/2026, decidir se a pasta fica.
 
+**Lote pré-Fase 2 (07/10/2026, em `main`):** passe de simplificação sobre a Fase 0 e 1 (15 commits: cache do CI, cópias mortas de store e fixtures, `credential.ValidateCertificatePath`, `cnpj.Normalize`, lookups exportados, charset de chave único em `dfe`, `IdleDays` como campo único, fakes do desktop num construtor) e as pendências de código (13 commits): desktop recusa chamadas após `startup` falho em vez de entrar em pânico, política vazia no editar mantém a guardada, mock da lista completo; `TestConnection` e `credential.Manager` com erro de banco distinto de "não encontrada"; `company add|update` valida antes de abrir o banco; `CommandEnv{Stdin, Stderr, Stdout}`; testes de `nfe export zip|xml`; ADN mascara corpos e a chave no path como o `sefaz`; três fatos corrigidos nos docs (20/h é `consNSU`+`consChNFe`, 45 dias é relato de terceiros); sqlc lê as migrations goose direto (`schema.sql` e o teste de drift apagados); seeder escreve pelos stores; globs do `depguard` corrigidos (nunca casavam, em nenhum SO). O que ficou está no `PENDENCIAS.md`.
+
 ## Fase 2: funcionalidades já pendentes
 
 Ordem por valor para quem usa, não por facilidade.
