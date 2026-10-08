@@ -59,12 +59,14 @@ linters:
     depguard:
       rules:
         domain:
+          # Not "dir/**/*.go": an empty ** keeps both slashes around it, so
+          # that form only matched files in subdirectories and never fired.
           files:
-            - "**/internal/nfse/**/*.go"
-            - "**/internal/nfe/**/*.go"
-            - "**/internal/dfe/**/*.go"
-            - "**/internal/cte/**/*.go"
-            - "**/internal/syncstate/**/*.go"
+            - "**/internal/nfse/**"
+            - "**/internal/nfe/**"
+            - "**/internal/dfe/**"
+            - "**/internal/cte/**"
+            - "**/internal/syncstate/**"
             - "!**/*_test.go"
           deny:
             - pkg: "github.com/vasfvitor/nanci/internal/app"
