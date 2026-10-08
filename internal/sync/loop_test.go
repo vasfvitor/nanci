@@ -19,7 +19,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
-	dbstore "github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -42,10 +41,10 @@ func newTestHelper(t *testing.T) *testHelper {
 		t.Fatal(err)
 	}
 
-	company := storetest.TestCompany("comp-1", "12345678901234", dfe.EnvironmentProduction, cred)
-	company.SyncStartPolicy = syncstate.SyncStartPolicyAll
-	company.SyncStartDate = nil
-	if err := dbstore.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
+	comp := storetest.TestCompany("comp-1", "12345678901234", dfe.EnvironmentProduction, cred)
+	comp.SyncStartPolicy = syncstate.SyncStartPolicyAll
+	comp.SyncStartDate = nil
+	if err := company.NewStore(db).CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
 	}
 
@@ -53,7 +52,7 @@ func newTestHelper(t *testing.T) *testHelper {
 		t:          t,
 		db:         db,
 		store:      store,
-		company:    company,
+		company:    comp,
 		credential: cred,
 	}
 }

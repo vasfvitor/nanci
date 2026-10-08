@@ -29,3 +29,10 @@ func ParseNullableTime(value sql.NullString) *time.Time {
 	}
 	return &t
 }
+
+func nullableTime(t *time.Time, layout string) sql.NullString {
+	if t == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: t.Format(layout), Valid: true}
+}

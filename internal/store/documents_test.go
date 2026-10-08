@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
@@ -28,7 +29,7 @@ func newNFSeFixture(t *testing.T) *store.DocumentRepository {
 	if err := credential.NewStore(db).CreateCredential(ctx, cred); err != nil {
 		t.Fatal(err)
 	}
-	companies := store.NewCompanyRepository(db)
+	companies := company.NewStore(db)
 	for id, cnpj := range map[string]string{"comp-a": "45852546000109", "comp-b": "11222333000181"} {
 		if err := companies.CreateCompany(ctx, storetest.TestCompany(id, cnpj, dfe.EnvironmentProduction, cred)); err != nil {
 			t.Fatal(err)

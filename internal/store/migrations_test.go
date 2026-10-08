@@ -9,6 +9,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/store"
 )
@@ -412,7 +413,7 @@ func TestMigration014DropsTheCompaniesInitialSyncMirror(t *testing.T) {
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	companies, err := store.NewCompanyRepository(db).ListCompanies(ctx)
+	companies, err := company.NewStore(db).ListCompanies(ctx)
 	if err != nil {
 		t.Fatalf("list companies after up: %v", err)
 	}

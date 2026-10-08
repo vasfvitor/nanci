@@ -74,11 +74,11 @@ func newNFeTestHelper(t *testing.T) *nfeTestHelper {
 	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := storetest.TestCompany("comp-1", nfeCompanyCNPJ, dfe.EnvironmentProduction, cred)
-	company.UF = "SP"
-	company.SyncStartPolicy = syncstate.SyncStartPolicyFromNow
-	company.SyncStartDate = new(time.Now().UTC())
-	if err := dbstore.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
+	comp := storetest.TestCompany("comp-1", nfeCompanyCNPJ, dfe.EnvironmentProduction, cred)
+	comp.UF = "SP"
+	comp.SyncStartPolicy = syncstate.SyncStartPolicyFromNow
+	comp.SyncStartDate = new(time.Now().UTC())
+	if err := company.NewStore(db).CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
 	}
 
@@ -87,7 +87,7 @@ func newNFeTestHelper(t *testing.T) *nfeTestHelper {
 	t.Cleanup(func() { nfeRequestDelay = originalDelay })
 
 	return &nfeTestHelper{
-		testHelper: &testHelper{t: t, db: db, store: NewStore(db), company: company, credential: cred},
+		testHelper: &testHelper{t: t, db: db, store: NewStore(db), company: comp, credential: cred},
 		repo:       dbstore.NewNFeRepository(db),
 		xml:        &mockXMLStore{},
 	}

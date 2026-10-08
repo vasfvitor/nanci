@@ -21,7 +21,7 @@ func TestCompanyCredentialPersistenceAndAssignment(t *testing.T) {
 
 	db := storetest.OpenTestDB(t)
 	credentials := credential.NewStore(db)
-	companies := store.NewCompanyRepository(db)
+	companies := company.NewStore(db)
 
 	first := storetest.TestCredential("credential-1")
 	if err := credentials.CreateCredential(context.Background(), first); err != nil {
@@ -183,11 +183,11 @@ func seedCompany(t *testing.T, db *sql.DB, id, cnpj string) *company.Company {
 	if err := credential.NewStore(db).CreateCredential(context.Background(), cred); err != nil {
 		t.Fatal(err)
 	}
-	company := storetest.TestCompany(id, cnpj, dfe.EnvironmentRestricted, cred)
-	if err := store.NewCompanyRepository(db).CreateCompany(context.Background(), company); err != nil {
+	comp := storetest.TestCompany(id, cnpj, dfe.EnvironmentRestricted, cred)
+	if err := company.NewStore(db).CreateCompany(context.Background(), comp); err != nil {
 		t.Fatal(err)
 	}
-	return company
+	return comp
 }
 
 func testDocument(id, accessKey, hash string) nfse.Document {
