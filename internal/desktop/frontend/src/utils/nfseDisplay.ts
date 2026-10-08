@@ -1,6 +1,11 @@
 import type { CompanySummary, DocumentRow, PullResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
-import { ambienteColor, displayTable, type StateBadge } from '@/utils/sefazDisplay'
+import {
+  ambienteColor,
+  displayTable,
+  type FilterOption,
+  type StateBadge,
+} from '@/utils/sefazDisplay'
 
 const nfseStatusEntries = {
   normal: { label: 'Normal', color: 'positive', abbr: 'N', description: 'Nota válida.' },
@@ -102,18 +107,26 @@ export function nfseStateBadges(
   ]
 }
 
+// environmentLabels names each company environment.
+const environmentLabels = {
+  producao: 'Produção',
+  producao_restrita: 'Produção restrita',
+}
+
 // environmentOptions feeds the company ambiente select.
-export const environmentOptions = [
-  { label: 'Produção', value: 'producao' },
-  { label: 'Produção restrita (testes)', value: 'producao_restrita' },
+export const environmentOptions: FilterOption[] = [
+  { label: environmentLabels.producao, value: 'producao' },
+  { label: `${environmentLabels.producao_restrita} (testes)`, value: 'producao_restrita' },
 ]
 
 // nfseAmbiente is the ambiente badge of a company: produção takes the color
 // of SEFAZ tpAmb 1, produção restrita the color of tpAmb 2.
 export function nfseAmbiente(environment: string) {
-  if (environment === 'producao') return { label: 'Produção', color: ambienteColor('1') }
+  if (environment === 'producao') {
+    return { label: environmentLabels.producao, color: ambienteColor('1') }
+  }
   if (environment === 'producao_restrita') {
-    return { label: 'Produção restrita', color: ambienteColor('2') }
+    return { label: environmentLabels.producao_restrita, color: ambienteColor('2') }
   }
   return { label: 'Ambiente desconhecido', color: 'grey' }
 }
