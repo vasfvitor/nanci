@@ -73,13 +73,13 @@ func enabledLevel(log *slog.Logger) slog.Level {
 func TestProdEnv_PasswordPromptGoesToStderr(t *testing.T) {
 	env := prodEnv()
 
-	if env.Out != os.Stderr {
-		t.Errorf("env.Out = %s, want os.Stderr", env.Out.Name())
+	if env.Stderr != os.Stderr {
+		t.Errorf("env.Stderr = %s, want os.Stderr", env.Stderr.Name())
 	}
 	if env.Stdout != os.Stdout {
 		t.Errorf("env.Stdout is not os.Stdout")
 	}
-	if env.In != os.Stdin {
-		t.Errorf("env.In = %s, want os.Stdin", env.In.Name())
+	if env.Stdin != os.Stdin {
+		t.Errorf("env.Stdin = %s, want os.Stdin", env.Stdin.Name())
 	}
 }

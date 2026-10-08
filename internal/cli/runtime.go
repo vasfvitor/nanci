@@ -19,9 +19,6 @@ import (
 // prodAppFactory returns the production AppFactory: it opens a real SQLite
 // database, wires the repositories, the blob store, the keyring-based
 // credential provider (with a terminal fallback), and the DANFSe renderer.
-//
-// The terminal password prompt reads env.In and writes to env.Out (stderr),
-// so stdout stays clean for piping.
 func prodAppFactory(env CommandEnv) AppFactory {
 	return func(ctx context.Context) (*app.App, func(), error) {
 		if err := app.LoadRuntimeEnv(); err != nil {
@@ -61,7 +58,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 			XMLStore: files.NewBlobStore(dataDir),
 			DataDir:  dataDir,
 			CredentialProvider: app.KeyringCredentialProvider{
-				Fallback: TerminalCredentialProvider{In: env.In, Out: env.Out},
+				Fallback: TerminalCredentialProvider{In: env.Stdin, Out: env.Stderr},
 				Log:      log,
 			},
 			DANFSeRenderer: godanfsev2.New(),

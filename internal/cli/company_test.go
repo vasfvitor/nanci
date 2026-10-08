@@ -68,8 +68,8 @@ func newTestRootForApp(application *app.App) (*cobra.Command, *bytes.Buffer) {
 	out := &bytes.Buffer{}
 	v, tr := false, false
 	root := NewRootCommand(CommandEnv{
-		In:         os.Stdin,
-		Out:        os.Stderr,
+		Stdin:      os.Stdin,
+		Stderr:     os.Stderr,
 		Stdout:     out,
 		AppFactory: factory,
 		Verbose:    &v,
@@ -217,8 +217,8 @@ func TestCompany_InvalidFlagsFailBeforeAppFactory(t *testing.T) {
 			// flag values stick to a command tree
 			v, tr := false, false
 			root := NewRootCommand(CommandEnv{
-				In:     os.Stdin,
-				Out:    os.Stderr,
+				Stdin:  os.Stdin,
+				Stderr: os.Stderr,
 				Stdout: &bytes.Buffer{},
 				AppFactory: func(context.Context) (*app.App, func(), error) {
 					return nil, nil, errors.New(factoryErr)

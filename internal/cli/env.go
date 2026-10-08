@@ -12,13 +12,11 @@ import (
 // Every subcommand and the root command are built from a CommandEnv; the
 // package no longer relies on package-global state for runtime wiring.
 //
-// In/Out are *os.File because TerminalCredentialProvider passes them to
-// golang.org/x/term, which requires an Fd(). Stdout is an io.Writer so
-// the fresh root's cmd.SetOut can route through anything (e.g. a test
-// bytes.Buffer).
+// Stdin and Stderr are *os.File because TerminalCredentialProvider passes them
+// to golang.org/x/term, which requires an Fd().
 type CommandEnv struct {
-	In         *os.File
-	Out        *os.File // stderr, for the password prompt
+	Stdin      *os.File
+	Stderr     *os.File
 	Stdout     io.Writer
 	AppFactory AppFactory
 	Verbose    *bool
@@ -37,8 +35,8 @@ type AppFactory func(ctx context.Context) (*app.App, func(), error)
 func prodEnv() CommandEnv {
 	v, tr := false, false
 	env := CommandEnv{
-		In:      os.Stdin,
-		Out:     os.Stderr,
+		Stdin:   os.Stdin,
+		Stderr:  os.Stderr,
 		Stdout:  os.Stdout,
 		Verbose: &v,
 		Trace:   &tr,
