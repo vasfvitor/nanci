@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
 )
 
@@ -21,13 +23,13 @@ func TestSchemaSQLMatchesMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := sql.Open("sqlite", ":memory:")
+	ctx := context.Background()
+	fresh, err := store.OpenDB(ctx, filepath.Join(t.TempDir(), "schema.db"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = fresh.Close() })
-	fresh.SetMaxOpenConns(1)
-	if _, err := fresh.ExecContext(context.Background(), string(schema)); err != nil {
+	if _, err := fresh.ExecContext(ctx, string(schema)); err != nil {
 		t.Fatalf("execute schema.sql: %v", err)
 	}
 	declared := schemaObjects(t, fresh)
