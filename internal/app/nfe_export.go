@@ -51,7 +51,7 @@ func (s *NFeService) ExportXMLZip(ctx context.Context, in NFeExportInput) (NFeEx
 		return res, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return res, err
 	}
@@ -99,7 +99,7 @@ func (s *NFeService) ExportXML(ctx context.Context, in NFeExportXMLInput) error 
 	if in.OutPath == "" {
 		return fmt.Errorf("caminho de saída não especificado")
 	}
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return err
 	}

@@ -75,7 +75,7 @@ func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path strin
 // buildClient loads the company certificate, asking for its password with
 // purpose, and returns an ADN client that consults with it.
 func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose string) (*adn.Client, error) {
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, companyCNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, companyCNPJ)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +112,12 @@ type ConnectionTestResult struct {
 func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (ConnectionTestResult, error) {
 	result := ConnectionTestResult{}
 
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, companyCNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, companyCNPJ)
 	if err != nil {
 		return result, fmt.Errorf("empresa não encontrada: %w", err)
 	}
 
-	credential, err := lookupCredentialByID(ctx, s.CredentialStore, company.CredentialID)
+	credential, err := credential.LookupByID(ctx, s.CredentialStore, company.CredentialID)
 	if err != nil {
 		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
 		return result, nil //nolint:nilerr // intentional: return diagnostic error info in result

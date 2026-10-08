@@ -145,7 +145,7 @@ type ListCTeInput struct {
 // ListDocuments returns the company's CT-e of its current environment,
 // newest issue date first.
 func (s *CTeService) ListDocuments(ctx context.Context, in ListCTeInput) ([]cte.CompanyDocument, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (s *CTeService) MarkViewed(ctx context.Context, cnpj string, chaves []strin
 	if err != nil {
 		return 0, err
 	}
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return 0, err
 	}
@@ -181,7 +181,7 @@ func (s *CTeService) MarkViewed(ctx context.Context, cnpj string, chaves []strin
 // ListEvents returns the events nanci holds for one of the company's CT-e,
 // oldest first.
 func (s *CTeService) ListEvents(ctx context.Context, cnpj, chave string) ([]cte.Event, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return nil, err
 	}

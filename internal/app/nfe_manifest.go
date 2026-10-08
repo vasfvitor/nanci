@@ -201,7 +201,7 @@ func (s *NFeService) planManifestacao(ctx context.Context, in NFeManifestacaoInp
 	if err != nil {
 		return nil, NFeManifestacaoPlan{}, err
 	}
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, NFeManifestacaoPlan{}, err
 	}
@@ -247,7 +247,7 @@ func (s *NFeService) planCiencia(ctx context.Context, in NFeCienciaInput) (*comp
 	case !in.AllResumos && len(in.ChavesAcesso) == 0:
 		return nil, NFeCienciaPlan{}, errors.New("informe ao menos uma chave de acesso")
 	}
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, NFeCienciaPlan{}, err
 	}

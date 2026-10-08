@@ -6,16 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vasfvitor/nanci/internal/company"
-	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
-)
-
-// The app services call the shared lookups by these names.
-var (
-	lookupCompanyByCNPJ  = company.LookupByCNPJ
-	lookupCredentialByID = credential.LookupByID
 )
 
 // parseKeys validates and normalizes the chaves a user typed with parse. An

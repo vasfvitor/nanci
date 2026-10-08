@@ -248,7 +248,7 @@ func (s *NFeService) MarkViewed(ctx context.Context, cnpj string, chaves []strin
 	if err != nil {
 		return 0, err
 	}
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return 0, err
 	}
@@ -262,7 +262,7 @@ func (s *NFeService) MarkViewed(ctx context.Context, cnpj string, chaves []strin
 // ListEvents returns the events nanci holds for one of the company's NF-e,
 // oldest first.
 func (s *NFeService) ListEvents(ctx context.Context, cnpj, chave string) ([]nfe.Event, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ type NFePendingManifestacao struct {
 // ListPendingManifestacoes returns the company's pending manifestações,
 // nearest conclusive deadline first.
 func (s *NFeService) ListPendingManifestacoes(ctx context.Context, in NFePendingInput) ([]NFePendingManifestacao, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func (s *NFeService) TestConnection(ctx context.Context, cnpj string) (Connectio
 
 // buildFilter resolves the company and validates the list filters.
 func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*company.Company, nfe.DocumentFilter, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return nil, nfe.DocumentFilter{}, err
 	}

@@ -21,7 +21,7 @@ type CTeResetResult struct {
 
 // PreviewReset returns what Reset would remove, changing nothing.
 func (s *CTeService) PreviewReset(ctx context.Context, cnpj string) (CTeResetResult, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return CTeResetResult{}, err
 	}
@@ -38,7 +38,7 @@ func (s *CTeService) PreviewReset(ctx context.Context, cnpj string) (CTeResetRes
 // a SEFAZ block stays in place. No CT-e pull of the company may run
 // meanwhile: it fails with ErrSyncRunning.
 func (s *CTeService) Reset(ctx context.Context, cnpj string) (CTeResetResult, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return CTeResetResult{}, err
 	}

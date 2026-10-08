@@ -142,7 +142,7 @@ func (s *ExportService) bulkExport(ctx context.Context, input ExportInput, kind 
 		return res, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return res, err
 	}
@@ -205,7 +205,7 @@ func (s *ExportService) ExportDANFSe(ctx context.Context, input ExportDANFSeInpu
 		return fmt.Errorf("chave de acesso não especificada")
 	}
 
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func (s *ExportService) ExportXML(ctx context.Context, input ExportXMLInput) err
 		return fmt.Errorf("chave de acesso não especificada")
 	}
 
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func (s *ExportService) ExportXML(ctx context.Context, input ExportXMLInput) err
 
 // CountPendingExportDocuments counts the documents that are pending export for the given format.
 func (s *ExportService) CountPendingExportDocuments(ctx context.Context, input ExportInput, kind string) (int, error) {
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return 0, err
 	}

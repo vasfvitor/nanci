@@ -21,7 +21,7 @@ type NFeResetResult struct {
 
 // PreviewReset returns what Reset would remove, changing nothing.
 func (s *NFeService) PreviewReset(ctx context.Context, cnpj string) (NFeResetResult, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return NFeResetResult{}, err
 	}
@@ -38,7 +38,7 @@ func (s *NFeService) PreviewReset(ctx context.Context, cnpj string) (NFeResetRes
 // trail, and a SEFAZ block stays in place. No NF-e pull of the company may
 // run meanwhile.
 func (s *NFeService) Reset(ctx context.Context, cnpj string) (NFeResetResult, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return NFeResetResult{}, err
 	}

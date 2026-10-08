@@ -41,7 +41,7 @@ type SefazSourceStatus struct {
 // and request limits for one SEFAZ source, and returns them with the
 // company. now dates the idle warning. It never contacts SEFAZ.
 func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRepo *sync.Store, manager *sync.Manager, cnpj string, source syncstate.SyncSource, now time.Time) (SefazSourceStatus, *company.Company, error) {
-	comp, err := lookupCompanyByCNPJ(ctx, companies, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, companies, cnpj)
 	if err != nil {
 		return SefazSourceStatus{}, nil, err
 	}
@@ -103,7 +103,7 @@ type sefazConnection struct {
 // checks the client certificate on a real query.
 func testSefazConnection(ctx context.Context, log *slog.Logger, companies *company.Store, certs *sync.CertificateLoader, cnpj string, conn sefazConnection) (ConnectionTestResult, error) {
 	var result ConnectionTestResult
-	comp, err := lookupCompanyByCNPJ(ctx, companies, cnpj)
+	comp, err := company.LookupByCNPJ(ctx, companies, cnpj)
 	if err != nil {
 		return result, err
 	}

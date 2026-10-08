@@ -36,7 +36,7 @@ func NewDocumentService(d Dependencies) *DocumentService {
 // buildFilter resolves a ListInput into an nfse.DocumentFilter, applying
 // the company's sync-start policy as a date floor.
 func (s *DocumentService) buildFilter(ctx context.Context, input ListInput) (dfe.CompanyID, nfse.DocumentFilter, error) {
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, input.CNPJ)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, input.CNPJ)
 	if err != nil {
 		return "", nfse.DocumentFilter{}, err
 	}
@@ -71,7 +71,7 @@ func (s *DocumentService) MarkDocumentsViewed(ctx context.Context, cnpj string, 
 	if err != nil {
 		return 0, err
 	}
-	company, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, cnpj)
+	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, cnpj)
 	if err != nil {
 		return 0, err
 	}

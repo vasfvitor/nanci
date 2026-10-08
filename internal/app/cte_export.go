@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/report"
 )
@@ -43,7 +44,7 @@ func (s *CTeService) ExportXMLZip(ctx context.Context, in CTeExportInput) (Expor
 		return res, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return res, err
 	}
@@ -99,7 +100,7 @@ func (s *CTeService) ExportXML(ctx context.Context, in CTeExportXMLInput) error 
 	if in.OutPath == "" {
 		return fmt.Errorf("caminho de saída não especificado")
 	}
-	comp, err := lookupCompanyByCNPJ(ctx, s.CompanyStore, in.CNPJ)
+	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
 		return err
 	}
