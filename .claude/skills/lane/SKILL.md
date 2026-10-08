@@ -34,7 +34,7 @@ looks like a pre-existing bug (do not fix it unless asked).
 
 ## Verification blocks
 
-- Go root: `go build ./... && go vet ./... && go test ./...`; `golangci-lint run --allow-parallel-runners ./...`; `govulncheck ./...` when `go.mod` changed; `GOWORK=off go mod tidy` with no diff.
+- Go root: `go build ./... && go vet ./... && go test ./...`; `golangci-lint run --allow-parallel-runners ./...` with a private `GOLANGCI_LINT_CACHE` (the shared cache reports findings from other worktrees with foreign paths); `govulncheck ./...` when `go.mod` changed; `GOWORK=off go mod tidy` with no diff.
 - Desktop Go: `cd internal/desktop && go build ./... && go test ./...` after copying `dist`. Any change to an exported `app` API needs this even if the lane did not touch `internal/desktop`.
 - Bindings: `cd internal/desktop && wails generate module`, then `git diff frontend/wailsjs` shows only the expected methods, and the `vi.mock` list in `src/platform/wails/client.test.ts` plus the mocks in `scripts/generate-screenshots.ts` are updated in the same commit (the build does not type-check that script).
 - Frontend: `pnpm run lint:check && pnpm run test:unit && pnpm run build`; `pnpm run screenshots` when a page or Quasar changed.
