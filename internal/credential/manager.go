@@ -47,7 +47,7 @@ func NewManager(store storeInterface) *Manager {
 
 // AddCredential registers a reusable credential record.
 func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) error {
-	if err := validateCertificatePath(input.CertPath); err != nil {
+	if err := ValidateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
 	credential := &Credential{
@@ -76,7 +76,7 @@ func (m *Manager) ListCredentials(ctx context.Context) ([]Credential, error) {
 
 // UpdateCredentialPath updates the PKCS#12 path of an existing credential.
 func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPathInput) error {
-	if err := validateCertificatePath(input.CertPath); err != nil {
+	if err := ValidateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
 	cred, err := m.store.CredentialByID(ctx, dfe.CredentialID(input.CredentialID))
@@ -105,7 +105,9 @@ func (m *Manager) UpdateCredentialData(ctx context.Context, input UpdateCredenti
 	return nil
 }
 
-func validateCertificatePath(path string) error {
+// ValidateCertificatePath checks that path names an existing file and not a
+// directory.
+func ValidateCertificatePath(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -5,10 +5,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
-	companypkg "github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
@@ -36,23 +35,23 @@ type CertificateLoader struct {
 // (purpose tells the user why), loads the PKCS#12, persists the certificate
 // inspection and checks that the certificate may consult for the company.
 // The password is zeroed before returning.
-func (l *CertificateLoader) LoadForCompany(ctx context.Context, company *companypkg.Company, purpose string) (LoadedCredential, error) {
-	credential, err := l.Credentials.CredentialByID(ctx, company.CredentialID)
+func (l *CertificateLoader) LoadForCompany(ctx context.Context, comp *company.Company, purpose string) (LoadedCredential, error) {
+	cred, err := l.Credentials.CredentialByID(ctx, comp.CredentialID)
 	if err != nil {
-		return LoadedCredential{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
+		return LoadedCredential{}, fmt.Errorf("resolver credencial da empresa %s: %w", comp.Name, err)
 	}
-	if err := validateCertificatePath(credential.CertPath); err != nil {
+	if err := credential.ValidateCertificatePath(cred.CertPath); err != nil {
 		return LoadedCredential{}, err
 	}
 
 	pass, err := l.Passwords.GetCertPassword(ctx, CertPasswordRequest{
 		RequestID:       dfe.GenerateID(),
-		CompanyID:       string(company.ID),
-		CompanyName:     company.Name,
-		TargetCNPJ:      company.CNPJ,
-		CredentialID:    string(credential.ID),
-		CredentialLabel: credential.Label,
-		CertPath:        credential.CertPath,
+		CompanyID:       string(comp.ID),
+		CompanyName:     comp.Name,
+		TargetCNPJ:      comp.CNPJ,
+		CredentialID:    string(cred.ID),
+		CredentialLabel: cred.Label,
+		CertPath:        cred.CertPath,
 		Purpose:         purpose,
 	})
 	if err != nil {
@@ -60,62 +59,48 @@ func (l *CertificateLoader) LoadForCompany(ctx context.Context, company *company
 	}
 	defer cert.ZeroBytes(pass)
 
-	l.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", credential.CertPath))
-	loaded, err := loadPKCS12(credential.CertPath, pass)
+	l.Log.DebugContext(ctx, "Carregando certificado TLS", slog.String("cert_path", cred.CertPath))
+	loaded, err := loadPKCS12(cred.CertPath, pass)
 	if err != nil {
 		return LoadedCredential{}, fmt.Errorf("carregar certificado: %w", err)
 	}
 
 	inspection := loaded.Inspection
-	credential.OwnerCNPJ = inspection.OwnerCNPJ
-	credential.OwnerCNPJRoot = inspection.OwnerCNPJRoot
-	credential.FingerprintSHA256 = inspection.FingerprintSHA256
-	credential.SubjectName = inspection.SubjectName
-	credential.NotBefore = &inspection.NotBefore
-	credential.NotAfter = &inspection.NotAfter
+	cred.OwnerCNPJ = inspection.OwnerCNPJ
+	cred.OwnerCNPJRoot = inspection.OwnerCNPJRoot
+	cred.FingerprintSHA256 = inspection.FingerprintSHA256
+	cred.SubjectName = inspection.SubjectName
+	cred.NotBefore = &inspection.NotBefore
+	cred.NotAfter = &inspection.NotAfter
 	now := time.Now().UTC()
-	credential.InspectedAt = &now
-	if err := l.Credentials.UpdateCredential(ctx, credential); err != nil {
+	cred.InspectedAt = &now
+	if err := l.Credentials.UpdateCredential(ctx, cred); err != nil {
 		return LoadedCredential{}, fmt.Errorf("persistir inspeção da credencial: %w", err)
 	}
 
-	basis, err := validateConsultationCompatibility(company, credential)
+	basis, err := validateConsultationCompatibility(comp, cred)
 	if err != nil {
 		return LoadedCredential{}, err
 	}
 
 	return LoadedCredential{
-		Credential: credential,
+		Credential: cred,
 		TLS:        loaded.TLS,
 		Basis:      basis,
 	}, nil
 }
 
-func validateCertificatePath(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("arquivo de certificado não encontrado: %s", path)
-		}
-		return fmt.Errorf("verificar certificado: %w", err)
+func validateConsultationCompatibility(comp *company.Company, cred *credential.Credential) (syncstate.ConsultationBasis, error) {
+	if cred.OwnerCNPJ == "" || cred.OwnerCNPJRoot == "" {
+		return "", company.ErrCredentialNoOwner
 	}
-	if info.IsDir() {
-		return fmt.Errorf("caminho do certificado aponta para um diretório: %s", path)
+	if comp.Environment == "" {
+		return "", company.ErrCompanyNoEnvironment
 	}
-	return nil
-}
-
-func validateConsultationCompatibility(company *companypkg.Company, credential *credential.Credential) (syncstate.ConsultationBasis, error) {
-	if credential.OwnerCNPJ == "" || credential.OwnerCNPJRoot == "" {
-		return "", companypkg.ErrCredentialNoOwner
+	if comp.CNPJRoot != cred.OwnerCNPJRoot {
+		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", company.ErrCredentialMismatch, cred.OwnerCNPJRoot, cnpj.Format(comp.CNPJ))
 	}
-	if company.Environment == "" {
-		return "", companypkg.ErrCompanyNoEnvironment
-	}
-	if company.CNPJRoot != credential.OwnerCNPJRoot {
-		return "", fmt.Errorf("%w: credencial (raiz %s) vs empresa (%s)", companypkg.ErrCredentialMismatch, credential.OwnerCNPJRoot, cnpj.Format(company.CNPJ))
-	}
-	if company.CNPJ == credential.OwnerCNPJ {
+	if comp.CNPJ == cred.OwnerCNPJ {
 		return syncstate.ConsultationBasisExactCertificateCNPJ, nil
 	}
 	return syncstate.ConsultationBasisSameRootCertificate, nil

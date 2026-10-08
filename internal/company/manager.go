@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -177,7 +176,7 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 		return lookupCredentialByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
 	}
 
-	if err := validateCertificatePath(input.CertPath); err != nil {
+	if err := credential.ValidateCertificatePath(input.CertPath); err != nil {
 		return nil, err
 	}
 
@@ -335,18 +334,4 @@ func lookupCredentialByID(ctx context.Context, repo credentialProvider, id dfe.C
 		return nil, fmt.Errorf("buscar credencial: %w", err)
 	}
 	return cred, nil
-}
-
-func validateCertificatePath(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("arquivo de certificado não encontrado: %s", path)
-		}
-		return fmt.Errorf("verificar certificado: %w", err)
-	}
-	if info.IsDir() {
-		return fmt.Errorf("caminho do certificado aponta para um diretório: %s", path)
-	}
-	return nil
 }

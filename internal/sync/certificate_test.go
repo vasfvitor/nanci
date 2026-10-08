@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	companypkg "github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -74,7 +74,7 @@ func TestLoadForCompanyRejectsCertificateOfAnotherRoot(t *testing.T) {
 	loader := CertificateLoader{Log: mgr.Log, Credentials: mgr.CredentialProvider, Passwords: passwords}
 
 	_, err := loader.LoadForCompany(context.Background(), comp, "Consulta direta")
-	if !errors.Is(err, companypkg.ErrCredentialMismatch) {
+	if !errors.Is(err, company.ErrCredentialMismatch) {
 		t.Fatalf("LoadForCompany error = %v, want ErrCredentialMismatch", err)
 	}
 }
@@ -83,7 +83,7 @@ func TestPullAsksPasswordForSourceSync(t *testing.T) {
 	passwords := &recordingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
 	newSyncRunner = func(*Store, Source, *slog.Logger) syncRunner {
-		return syncRunnerStub{sync: func(context.Context, *companypkg.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
+		return syncRunnerStub{sync: func(context.Context, *company.Company, *credential.Credential, string, syncstate.SyncMode, syncstate.ProgressFunc) error {
 			return nil
 		}}
 	}
