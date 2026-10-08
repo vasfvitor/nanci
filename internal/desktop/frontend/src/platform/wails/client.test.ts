@@ -937,6 +937,7 @@ describe('Wails error codes', () => {
     [{ code: 'canceled', message: 'operação cancelada' }, 'canceled', 'operação cancelada'],
     [{ code: 'sefaz_blocked', message: 'consultas bloqueadas até 15:00' }, 'sefaz_blocked', 'consultas bloqueadas até 15:00'],
     [{ code: 'sync_running', message: 'sincronização em andamento' }, 'sync_running', 'sincronização em andamento'],
+    [{ code: 'startup_failed', message: 'o nanci não iniciou: abrir banco de dados' }, 'startup_failed', 'o nanci não iniciou: abrir banco de dados'],
     [{ code: '', message: 'empresa não encontrada' }, '', 'empresa não encontrada'],
     [{ code: 'unknown', message: 'algo' }, '', 'algo'],
     ['error parsing arguments: boom', '', 'error parsing arguments: boom'],

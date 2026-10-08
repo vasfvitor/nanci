@@ -28,6 +28,8 @@ func TestFormatError(t *testing.T) {
 		{"blocked", fmt.Errorf("pull: %w", blocked), "sefaz_blocked", "bloqueada até 23/09/2026 14:32"},
 		{"blocked sentinel", app.ErrSourceBlocked, "sefaz_blocked", "bloqueada"},
 		{"sync running", fmt.Errorf("%w (NF-e)", app.ErrSyncRunning), "sync_running", "já em andamento"},
+		{"startup failed", fmt.Errorf("%w: %w", errNotStarted, errors.New("abrir banco de dados: disco cheio")), "startup_failed", "o nanci não iniciou: abrir banco de dados"},
+		{"not started", errNotStarted, "startup_failed", "não iniciou"},
 		{"plain", errors.New("empresa não encontrada"), "", "empresa não encontrada"},
 	}
 	for _, tt := range tests {

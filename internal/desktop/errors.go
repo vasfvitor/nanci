@@ -20,6 +20,8 @@ func formatError(err error) any {
 		payload.Code = "sefaz_blocked"
 	case errors.Is(err, app.ErrSyncRunning):
 		payload.Code = "sync_running"
+	case errors.Is(err, errNotStarted):
+		payload.Code = "startup_failed"
 	}
 	return payload
 }

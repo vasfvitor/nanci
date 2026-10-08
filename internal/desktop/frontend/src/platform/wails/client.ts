@@ -117,12 +117,13 @@ import type {
 
 type RawRecord = Record<string, unknown>
 
-// WailsErrorCode names the backend errors the UI branches on. The desktop
+// WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go. The desktop
 // ErrorFormatter rejects bound-method promises with {code, message}.
-export type WailsErrorCode = 'canceled' | 'sefaz_blocked' | 'sync_running' | ''
+const wailsErrorCodes = ['canceled', 'sefaz_blocked', 'sync_running', 'startup_failed'] as const
+export type WailsErrorCode = (typeof wailsErrorCodes)[number] | ''
 
 function asErrorCode(value: unknown): WailsErrorCode {
-  return value === 'canceled' || value === 'sefaz_blocked' || value === 'sync_running' ? value : ''
+  return asEnum(value, wailsErrorCodes)
 }
 
 export class WailsClientError extends Error {
