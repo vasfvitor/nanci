@@ -45,12 +45,6 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 		Use:   "add",
 		Short: "Adiciona uma nova empresa",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			application, cleanup, err := env.AppFactory(cmd.Context())
-			if err != nil {
-				return fmt.Errorf("inicializar: %w", err)
-			}
-			defer cleanup()
-
 			environment, err := dfe.ParseEnvironment(envName)
 			if err != nil {
 				return fmt.Errorf("erro no ambiente: %w", err)
@@ -60,6 +54,12 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("erro na politica de sincronização: %w", err)
 			}
+
+			application, cleanup, err := env.AppFactory(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("inicializar: %w", err)
+			}
+			defer cleanup()
 
 			if err := application.Companies.AddCompany(cmd.Context(), company.AddCompanyInput{
 				CNPJ:            cnpj,
@@ -109,6 +109,15 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 		Use:   "update",
 		Short: "Atualiza nome, ambiente ou UF de uma empresa",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var environment dfe.Environment
+			if cmd.Flags().Changed("env") {
+				parsed, err := dfe.ParseEnvironment(envName)
+				if err != nil {
+					return fmt.Errorf("erro no ambiente: %w", err)
+				}
+				environment = parsed
+			}
+
 			application, cleanup, err := env.AppFactory(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("inicializar: %w", err)
@@ -131,10 +140,7 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 				input.Name = name
 			}
 			if cmd.Flags().Changed("env") {
-				input.Environment, err = dfe.ParseEnvironment(envName)
-				if err != nil {
-					return fmt.Errorf("erro no ambiente: %w", err)
-				}
+				input.Environment = environment
 			}
 			if cmd.Flags().Changed("uf") {
 				input.UF = uf

@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -178,6 +179,65 @@ func TestCompanyUF_AddUpdateList(t *testing.T) {
 	}
 	if errOut.Len() != 0 {
 		t.Errorf("stderr not empty: %q", errOut.String())
+	}
+}
+
+// TestCompany_InvalidFlagsFailBeforeAppFactory asserts that company add and
+// update reject a bad --env or sync start policy without opening the database.
+func TestCompany_InvalidFlagsFailBeforeAppFactory(t *testing.T) {
+	const factoryErr = "AppFactory não deveria rodar"
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "add with unknown env",
+			args: []string{"company", "add", "--cnpj", "11222333000181", "--name", "Acme", "--env", "homologacao"},
+			want: "erro no ambiente",
+		},
+		{
+			name: "add with unknown sync start policy",
+			args: []string{"company", "add", "--cnpj", "11222333000181", "--name", "Acme", "--sync-start-policy", "sometimes"},
+			want: "invalid sync start policy",
+		},
+		{
+			name: "add with since_date and no date",
+			args: []string{"company", "add", "--cnpj", "11222333000181", "--name", "Acme", "--sync-start-policy", "since_date"},
+			want: "sync_start_date é obrigatório",
+		},
+		{
+			name: "update with unknown env",
+			args: []string{"company", "update", "--cnpj", "11222333000181", "--env", "homologacao"},
+			want: "erro no ambiente",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// flag values stick to a command tree
+			v, tr := false, false
+			root := NewRootCommand(CommandEnv{
+				In:     os.Stdin,
+				Out:    os.Stderr,
+				Stdout: &bytes.Buffer{},
+				AppFactory: func(context.Context) (*app.App, func(), error) {
+					return nil, nil, errors.New(factoryErr)
+				},
+				Verbose: &v,
+				Trace:   &tr,
+			})
+			root.SetArgs(tc.args)
+			err := root.ExecuteContext(context.Background())
+			if err == nil {
+				t.Fatal("Execute returned nil, want a flag error")
+			}
+			if strings.Contains(err.Error(), factoryErr) {
+				t.Fatalf("error = %q, flags must be validated before AppFactory", err)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error = %q, want it to mention %q", err, tc.want)
+			}
+		})
 	}
 }
 
