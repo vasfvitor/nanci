@@ -97,9 +97,10 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 			Initial:    cfg.Retry.Initial,
 			MaxDelay:   cfg.Retry.MaxDelay,
 		},
-		Log:       cfg.Log,
-		LogLabel:  "ADN API",
-		RedactURL: sanitizeURL,
+		Log:        cfg.Log,
+		LogLabel:   "ADN API",
+		RedactURL:  sanitizeURL,
+		RedactBody: redact.MaskXMLIdentifiers,
 	})
 	if err != nil {
 		return nil, err
@@ -160,7 +161,7 @@ func (c *Client) notFound(ctx context.Context, method, path, u string, body []by
 	}
 
 	if c.log != nil {
-		c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.Int("status", http.StatusNotFound), slog.String("body", httpclient.TruncateForLog(body, httpclient.MaxErrorLogBodyBytes)))
+		c.log.ErrorContext(ctx, "ADN API Error Response", slog.String("method", method), slog.String("path", sanitizeURL(path)), slog.Int("status", http.StatusNotFound), slog.String("body", httpclient.TruncateForLog(redact.MaskXMLIdentifiers(body), httpclient.MaxErrorLogBodyBytes)))
 	}
 	return c.httpClient.NewStatusError(method, u, http.StatusNotFound, body)
 }
@@ -205,20 +206,43 @@ func classifyUnexpected404Body(body []byte) string {
 	return fmt.Sprintf("unexpected 404 from ADN route: payload does not match ADN envelope: %s", trimmed)
 }
 
-// sanitizeURL masks the cnpjConsulta query parameter so log records do not
-// carry the consulted CNPJ in clear. Other parts of the URL are unchanged.
+// sanitizeURL masks the cnpjConsulta query parameter and the access key in
+// an NFSe/{chave}/... path so log records do not carry them in clear. Other
+// parts of the URL are unchanged.
 func sanitizeURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return raw
 	}
+	changed := false
+
+	segments := strings.Split(u.EscapedPath(), "/")
+	for i := 0; i+1 < len(segments); i++ {
+		if segments[i] == "NFSe" && segments[i+1] != "" {
+			segments[i+1] = redact.MaskIdentifier(segments[i+1])
+			changed = true
+		}
+	}
+	if changed {
+		escaped := strings.Join(segments, "/")
+		path, err := url.PathUnescape(escaped)
+		if err != nil {
+			return raw
+		}
+		// RawPath keeps the '*' of the mask unescaped in u.String().
+		u.Path, u.RawPath = path, escaped
+	}
+
 	q := u.Query()
-	v := q.Get("cnpjConsulta")
-	if v == "" {
+	if v := q.Get("cnpjConsulta"); v != "" {
+		q.Set("cnpjConsulta", redact.MaskIdentifier(v))
+		// Encode percent-escapes '*'; keep the mask readable in log output.
+		u.RawQuery = strings.ReplaceAll(q.Encode(), "%2A", "*")
+		changed = true
+	}
+
+	if !changed {
 		return raw
 	}
-	q.Set("cnpjConsulta", redact.MaskIdentifier(v))
-	// Encode percent-escapes '*'; keep the mask readable in log output.
-	u.RawQuery = strings.ReplaceAll(q.Encode(), "%2A", "*")
 	return u.String()
 }
