@@ -142,7 +142,7 @@ type PullResult struct {
 }
 
 func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error) {
-	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	cleanedCNPJ, err := cnpj.Normalize(input.CNPJ)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -435,7 +435,7 @@ type StatusResult struct {
 }
 
 func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
-	cleanedCNPJ, err := normalizeCNPJ(rawCNPJ)
+	cleanedCNPJ, err := cnpj.Normalize(rawCNPJ)
 	if err != nil {
 		return StatusResult{}, err
 	}
@@ -484,13 +484,6 @@ func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, err
 	return result, nil
 }
 
-func normalizeCNPJ(raw string) (string, error) {
-	if err := cnpj.Validate(raw); err != nil {
-		return "", fmt.Errorf("CNPJ inválido: %w", err)
-	}
-	return cnpj.Clean(raw), nil
-}
-
 type ResetSyncInput struct {
 	CNPJ string
 	// Source is the distribution service whose cursor is reset. Empty means NFS-e.
@@ -501,7 +494,7 @@ type ResetSyncInput struct {
 // over. It is refused with ErrSyncRunning while a pull of the same company and
 // source runs in this process.
 func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) error {
-	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	cleanedCNPJ, err := cnpj.Normalize(input.CNPJ)
 	if err != nil {
 		return err
 	}

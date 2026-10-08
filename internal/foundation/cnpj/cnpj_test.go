@@ -89,6 +89,24 @@ func TestValidate(t *testing.T) {
 //	424 % 11 = 6 (11*38 = 418); 6 >= 2, então DV2 = 11 - 6 = 5.
 //
 // Logo o CNPJ completo é 12.ABC.345/01DE-35.
+func TestNormalize(t *testing.T) {
+	got, err := Normalize(" 12.abc.345/01de-35 ")
+	if err != nil {
+		t.Fatalf("Normalize(valid) error = %v", err)
+	}
+	if got != "12ABC34501DE35" {
+		t.Errorf("Normalize(valid) = %q, want 12ABC34501DE35", got)
+	}
+
+	_, err = Normalize("12.345.678/0001-99")
+	if !errors.Is(err, ErrInvalidCheckDigits) {
+		t.Fatalf("Normalize(invalid) error = %v, want ErrInvalidCheckDigits", err)
+	}
+	if want := "CNPJ inválido: " + ErrInvalidCheckDigits.Error(); err.Error() != want {
+		t.Errorf("Normalize(invalid) error = %q, want %q", err.Error(), want)
+	}
+}
+
 func TestCheckDigitsForAlphanumericExample(t *testing.T) {
 	const base = "12ABC34501DE"
 

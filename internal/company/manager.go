@@ -84,7 +84,7 @@ func NewManager(s storeInterface, creds credentialProvider, syncs syncProvider) 
 
 // AddCompany registers a new company in the store.
 func (m *Manager) AddCompany(ctx context.Context, input AddCompanyInput) error {
-	cleanedCNPJ, err := normalizeCNPJ(input.CNPJ)
+	cleanedCNPJ, err := cnpj.Normalize(input.CNPJ)
 	if err != nil {
 		return err
 	}
@@ -292,13 +292,6 @@ func sameDate(a, b *time.Time) bool {
 	return a.Format("2006-01-02") == b.Format("2006-01-02")
 }
 
-func normalizeCNPJ(raw string) (string, error) {
-	if err := cnpj.Validate(raw); err != nil {
-		return "", fmt.Errorf("CNPJ inválido: %w", err)
-	}
-	return cnpj.Clean(raw), nil
-}
-
 // normalizeUF trims and upper-cases a state sigla. Empty is allowed and
 // means the UF is unknown.
 func normalizeUF(raw string) (string, error) {
@@ -310,7 +303,7 @@ func normalizeUF(raw string) (string, error) {
 }
 
 func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*Company, error) {
-	cleanedCNPJ, err := normalizeCNPJ(raw)
+	cleanedCNPJ, err := cnpj.Normalize(raw)
 	if err != nil {
 		return nil, err
 	}

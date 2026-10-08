@@ -2,6 +2,7 @@ package cnpj
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,6 +43,15 @@ func Validate(cnpj string) error {
 		return ErrInvalidCheckDigits
 	}
 	return nil
+}
+
+// Normalize validates raw and returns it cleaned. The error reads
+// "CNPJ inválido: ..." and wraps the Validate error.
+func Normalize(raw string) (string, error) {
+	if err := Validate(raw); err != nil {
+		return "", fmt.Errorf("CNPJ inválido: %w", err)
+	}
+	return Clean(raw), nil
 }
 
 // Root extracts the first 8 characters from a syntactically valid CNPJ token.

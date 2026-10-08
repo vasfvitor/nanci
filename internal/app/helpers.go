@@ -15,15 +15,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-func normalizeCNPJ(raw string) (string, error) {
-	if err := cnpj.Validate(raw); err != nil {
-		return "", fmt.Errorf("CNPJ inválido: %w", err)
-	}
-	return cnpj.Clean(raw), nil
-}
-
 func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (*company.Company, error) {
-	cleanedCNPJ, err := normalizeCNPJ(raw)
+	cleanedCNPJ, err := cnpj.Normalize(raw)
 	if err != nil {
 		return nil, err
 	}
