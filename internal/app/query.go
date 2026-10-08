@@ -114,7 +114,7 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 
 	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, companyCNPJ)
 	if err != nil {
-		return result, fmt.Errorf("empresa não encontrada: %w", err)
+		return result, err
 	}
 
 	credential, err := credential.LookupByID(ctx, s.CredentialStore, company.CredentialID)

@@ -35,3 +35,16 @@ func TestValidateQueryAccessKeyAcceptsAlphanumericCNPJ(t *testing.T) {
 		t.Errorf("validateQueryAccessKey = %q, want %q", got, chave)
 	}
 }
+
+func TestTestConnectionReportsUnknownCompanyOnce(t *testing.T) {
+	t.Parallel()
+	env := newNFeTestEnv(t)
+
+	_, err := env.app.Query.TestConnection(context.Background(), "11222333000181")
+	if err == nil {
+		t.Fatal("expected error for an unregistered CNPJ")
+	}
+	if got := strings.Count(err.Error(), "empresa não encontrada"); got != 1 {
+		t.Fatalf("error mentions %q %d times, want 1: %v", "empresa não encontrada", got, err)
+	}
+}
