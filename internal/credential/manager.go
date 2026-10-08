@@ -2,6 +2,7 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -103,6 +104,21 @@ func (m *Manager) UpdateCredentialData(ctx context.Context, input UpdateCredenti
 		return fmt.Errorf("atualizar credencial: %w", err)
 	}
 	return nil
+}
+
+// LookupByID returns the credential with id. A missing credential fails with
+// "credencial não encontrada".
+func LookupByID(ctx context.Context, repo interface {
+	CredentialByID(ctx context.Context, id dfe.CredentialID) (*Credential, error)
+}, id dfe.CredentialID) (*Credential, error) {
+	cred, err := repo.CredentialByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, ErrCredentialNotFound) {
+			return nil, fmt.Errorf("credencial não encontrada")
+		}
+		return nil, fmt.Errorf("buscar credencial: %w", err)
+	}
+	return cred, nil
 }
 
 // ValidateCertificatePath checks that path names an existing file and not a

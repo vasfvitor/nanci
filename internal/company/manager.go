@@ -148,21 +148,21 @@ func (m *Manager) ListCompanies(ctx context.Context) ([]Company, error) {
 
 // AssignCredentialToCompany changes the active credential for an existing company.
 func (m *Manager) AssignCredentialToCompany(ctx context.Context, input AssignCredentialInput) error {
-	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CompanyCNPJ)
+	company, err := LookupByCNPJ(ctx, m.store, input.CompanyCNPJ)
 	if err != nil {
 		return err
 	}
 
-	credential, err := lookupCredentialByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
+	cred, err := credential.LookupByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
 	if err != nil {
 		return err
 	}
 
-	if company.CNPJRoot != "" && credential.OwnerCNPJRoot != "" && company.CNPJRoot != credential.OwnerCNPJRoot {
+	if company.CNPJRoot != "" && cred.OwnerCNPJRoot != "" && company.CNPJRoot != cred.OwnerCNPJRoot {
 		return ErrCredentialMismatch
 	}
 
-	if err := m.store.AssignCredential(ctx, company.ID, credential.ID); err != nil {
+	if err := m.store.AssignCredential(ctx, company.ID, cred.ID); err != nil {
 		return fmt.Errorf("atribuir credencial: %w", err)
 	}
 	return nil
@@ -173,7 +173,7 @@ func (m *Manager) AssignCredentialToCompany(ctx context.Context, input AssignCre
 // one from the cert path.
 func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddCompanyInput) (*credential.Credential, error) {
 	if input.CredentialID != "" {
-		return lookupCredentialByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
+		return credential.LookupByID(ctx, m.credentials, dfe.CredentialID(input.CredentialID))
 	}
 
 	if err := credential.ValidateCertificatePath(input.CertPath); err != nil {
@@ -201,7 +201,7 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 
 // CompanyByCNPJ returns one registered company.
 func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*Company, error) {
-	return lookupCompanyByCNPJ(ctx, m.store, rawCNPJ)
+	return LookupByCNPJ(ctx, m.store, rawCNPJ)
 }
 
 // UpdateCompany replaces the editable fields of an existing company: name,
@@ -209,7 +209,7 @@ func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*Company, 
 // policy. The environment stays editable because sync state is kept per
 // environment and every NF-e records its tpAmb.
 func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) error {
-	company, err := lookupCompanyByCNPJ(ctx, m.store, input.CNPJ)
+	company, err := LookupByCNPJ(ctx, m.store, input.CNPJ)
 	if err != nil {
 		return err
 	}
@@ -302,7 +302,11 @@ func normalizeUF(raw string) (string, error) {
 	return sigla, nil
 }
 
-func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (*Company, error) {
+// LookupByCNPJ validates raw and returns the company registered under it.
+// A missing company fails with "empresa não encontrada para o CNPJ ...".
+func LookupByCNPJ(ctx context.Context, repo interface {
+	CompanyByCNPJ(ctx context.Context, cnpj string) (*Company, error)
+}, raw string) (*Company, error) {
 	cleanedCNPJ, err := cnpj.Normalize(raw)
 	if err != nil {
 		return nil, err
@@ -316,15 +320,4 @@ func lookupCompanyByCNPJ(ctx context.Context, repo storeInterface, raw string) (
 		return nil, fmt.Errorf("buscar empresa: %w", err)
 	}
 	return company, nil
-}
-
-func lookupCredentialByID(ctx context.Context, repo credentialProvider, id dfe.CredentialID) (*credential.Credential, error) {
-	cred, err := repo.CredentialByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, credential.ErrCredentialNotFound) {
-			return nil, fmt.Errorf("credencial não encontrada")
-		}
-		return nil, fmt.Errorf("buscar credencial: %w", err)
-	}
-	return cred, nil
 }

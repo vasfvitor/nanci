@@ -1,8 +1,6 @@
 package app
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,25 +9,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-func lookupCompanyByCNPJ(ctx context.Context, repo *company.Store, raw string) (*company.Company, error) {
-	cleanedCNPJ, err := cnpj.Normalize(raw)
-	if err != nil {
-		return nil, err
-	}
-
-	comp, err := repo.CompanyByCNPJ(ctx, cleanedCNPJ)
-	if err != nil {
-		if errors.Is(err, company.ErrCompanyNotFound) {
-			return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
-		}
-		return nil, fmt.Errorf("buscar empresa: %w", err)
-	}
-	return comp, nil
-}
+// The app services call the shared lookups by these names.
+var (
+	lookupCompanyByCNPJ  = company.LookupByCNPJ
+	lookupCredentialByID = credential.LookupByID
+)
 
 // parseKeys validates and normalizes the chaves a user typed with parse. An
 // invalid one fails the whole call.
@@ -69,17 +56,6 @@ func parseNFSeAccessKeys(raw []string) ([]string, error) {
 		}
 		return trimmed, nil
 	})
-}
-
-func lookupCredentialByID(ctx context.Context, repo *credential.Store, id dfe.CredentialID) (*credential.Credential, error) {
-	cred, err := repo.CredentialByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, credential.ErrCredentialNotFound) {
-			return nil, fmt.Errorf("credencial não encontrada")
-		}
-		return nil, fmt.Errorf("buscar credencial: %w", err)
-	}
-	return cred, nil
 }
 
 // tempPathFor names the file an export is written to before it replaces
