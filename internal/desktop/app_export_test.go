@@ -17,29 +17,6 @@ const (
 	testOut   = "C:/exports/saida"
 )
 
-// exportFakes are the three services the export methods reach.
-type exportFakes struct {
-	exports *fakeExports
-	nfe     *fakeNFe
-	cte     *fakeCTe
-}
-
-func newExportApp(err error) (exportFakes, *App) {
-	f := exportFakes{
-		exports: &fakeExports{err: err},
-		nfe:     &fakeNFe{err: err},
-		cte:     &fakeCTe{err: err},
-	}
-	return f, newTestApp(services{exports: f.exports, nfe: f.nfe, cte: f.cte})
-}
-
-func (f exportFakes) assertNoCalls(t *testing.T) {
-	t.Helper()
-	assertCalls(t, &f.exports.recorder)
-	assertCalls(t, &f.nfe.recorder)
-	assertCalls(t, &f.cte.recorder)
-}
-
 func TestExportDocumentsFormats(t *testing.T) {
 	tests := []struct {
 		format string
@@ -52,7 +29,7 @@ func TestExportDocumentsFormats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
-			f, a := newExportApp(nil)
+			f, a := newFakeApp(nil)
 			f.exports.result = app.ExportResult{OutPath: testOut + ".csv", Format: "csv", Incremental: true, ExportedCount: 3}
 
 			got, err := a.ExportDocuments(desktopapi.ExportDocumentsInput{
@@ -99,7 +76,7 @@ func TestExportDocumentsRejectsBeforeCore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, a := newExportApp(nil)
+			f, a := newFakeApp(nil)
 
 			got, err := a.ExportDocuments(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
 			if err == nil || err.Error() != tt.wantErr {
@@ -120,7 +97,7 @@ func TestSingleDocumentExports(t *testing.T) {
 	tests := []struct {
 		name     string
 		run      func(a *App) (desktopapi.ExportResult, error)
-		recorder func(f exportFakes) *recorder
+		recorder func(f fakeSet) *recorder
 		want     call
 		result   desktopapi.ExportResult
 	}{
@@ -129,7 +106,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			run: func(a *App) (desktopapi.ExportResult, error) {
 				return a.ExportDANFSe(desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
 			},
-			recorder: func(f exportFakes) *recorder { return &f.exports.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.exports.recorder },
 			want:     call{"ExportDANFSe", []any{app.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
 			result:   desktopapi.ExportResult{OutPath: testOut + ".pdf", Format: "danfse"},
 		},
@@ -138,7 +115,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			run: func(a *App) (desktopapi.ExportResult, error) {
 				return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
 			},
-			recorder: func(f exportFakes) *recorder { return &f.exports.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.exports.recorder },
 			want:     call{"ExportXML", []any{app.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
 			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml"},
 		},
@@ -147,7 +124,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			run: func(a *App) (desktopapi.ExportResult, error) {
 				return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
 			},
-			recorder: func(f exportFakes) *recorder { return &f.nfe.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.nfe.recorder },
 			want:     call{"ExportXML", []any{app.NFeExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
 			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml"},
 		},
@@ -156,14 +133,14 @@ func TestSingleDocumentExports(t *testing.T) {
 			run: func(a *App) (desktopapi.ExportResult, error) {
 				return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
 			},
-			recorder: func(f exportFakes) *recorder { return &f.cte.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.cte.recorder },
 			want:     call{"ExportXML", []any{app.CTeExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
 			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, a := newExportApp(nil)
+			f, a := newFakeApp(nil)
 
 			got, err := tt.run(a)
 			if err != nil {
@@ -178,7 +155,7 @@ func TestSingleDocumentExports(t *testing.T) {
 }
 
 func TestExportDANFSeZIP(t *testing.T) {
-	f, a := newExportApp(nil)
+	f, a := newFakeApp(nil)
 	f.exports.result = app.ExportResult{OutPath: testOut + ".zip", Format: "danfse", Incremental: true, ExportedCount: 7}
 
 	got, err := a.ExportDANFSeZIP(desktopapi.ExportDocumentsInput{
@@ -209,7 +186,7 @@ func TestExportDANFSeZIP(t *testing.T) {
 }
 
 func TestExportNFeZIP(t *testing.T) {
-	f, a := newExportApp(nil)
+	f, a := newFakeApp(nil)
 	f.nfe.zip = app.NFeExportResult{
 		ExportResult:   app.ExportResult{OutPath: testOut + ".zip", Format: "xml", Incremental: true, ExportedCount: 4},
 		SkippedResumos: 2,
@@ -247,7 +224,7 @@ func TestExportNFeZIP(t *testing.T) {
 }
 
 func TestExportCTeZIP(t *testing.T) {
-	f, a := newExportApp(nil)
+	f, a := newFakeApp(nil)
 	f.cte.zip = app.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}
 
 	got, err := a.ExportCTeZIP(desktopapi.ExportCTeZIPInput{
@@ -307,7 +284,7 @@ func exportRuns(outPath string) map[string]func(a *App) (any, error) {
 func TestExportsRequireOutPath(t *testing.T) {
 	for name, run := range exportRuns("") {
 		t.Run(name, func(t *testing.T) {
-			f, a := newExportApp(nil)
+			f, a := newFakeApp(nil)
 
 			got, err := run(a)
 			if err == nil || err.Error() != "caminho de saída não especificado" {
@@ -324,7 +301,7 @@ func TestExportsRequireOutPath(t *testing.T) {
 func TestExportsPassCoreErrors(t *testing.T) {
 	for name, run := range exportRuns(testOut) {
 		t.Run(name, func(t *testing.T) {
-			_, a := newExportApp(errCore)
+			_, a := newFakeApp(errCore)
 
 			got, err := run(a)
 			if !errors.Is(err, errCore) {
@@ -351,7 +328,7 @@ func TestCountPendingExports(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
-			f, a := newExportApp(nil)
+			f, a := newFakeApp(nil)
 			f.exports.count = 9
 
 			got, err := a.CountPendingExports(desktopapi.ExportDocumentsInput{
@@ -380,7 +357,7 @@ func TestCountPendingExports(t *testing.T) {
 }
 
 func TestCountPendingExportsPassesCoreError(t *testing.T) {
-	_, a := newExportApp(errCore)
+	_, a := newFakeApp(errCore)
 
 	if _, err := a.CountPendingExports(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "zip"}); !errors.Is(err, errCore) {
 		t.Fatalf("err = %v, want %v", err, errCore)

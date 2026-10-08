@@ -17,26 +17,8 @@ import (
 // hardcoded credential.
 var certLabel = "Certificado A1"
 
-// syncFakes are the services behind sync, status and direct query.
-type syncFakes struct {
-	query *fakeQuery
-	sync  *fakeSync
-	nfe   *fakeNFe
-	cte   *fakeCTe
-}
-
-func newSyncApp(err error) (syncFakes, *App) {
-	f := syncFakes{
-		query: &fakeQuery{err: err},
-		sync:  &fakeSync{err: err},
-		nfe:   &fakeNFe{err: err},
-		cte:   &fakeCTe{err: err},
-	}
-	return f, newTestApp(services{query: f.query, sync: f.sync, nfe: f.nfe, cte: f.cte})
-}
-
 func TestQueryNFSeEvents(t *testing.T) {
-	f, a := newSyncApp(nil)
+	f, a := newFakeApp(nil)
 	f.query.events = `{"eventos":[]}`
 
 	got, err := a.QueryNFSeEvents(desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ, ChaveAcesso: testChave})
@@ -74,16 +56,16 @@ func TestConnectionTests(t *testing.T) {
 	tests := []struct {
 		name     string
 		run      func(a *App) (desktopapi.ConnectionTestResult, error)
-		recorder func(f syncFakes) *recorder
+		recorder func(f fakeSet) *recorder
 	}{
 		{"TestConnection", func(a *App) (desktopapi.ConnectionTestResult, error) { return a.TestConnection(testCNPJ) },
-			func(f syncFakes) *recorder { return &f.query.recorder }},
+			func(f fakeSet) *recorder { return &f.query.recorder }},
 		{"TestCTeConnection", func(a *App) (desktopapi.ConnectionTestResult, error) { return a.TestCTeConnection(testCNPJ) },
-			func(f syncFakes) *recorder { return &f.cte.recorder }},
+			func(f fakeSet) *recorder { return &f.cte.recorder }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, a := newSyncApp(nil)
+			f, a := newFakeApp(nil)
 			f.query.connection = connection
 			f.cte.connection = connection
 
@@ -100,7 +82,7 @@ func TestConnectionTests(t *testing.T) {
 }
 
 func TestPullNFSe(t *testing.T) {
-	f, a := newSyncApp(nil)
+	f, a := newFakeApp(nil)
 	lastFound := int64(120)
 	f.sync.pull = nsync.PullResult{
 		Source:                   syncstate.SyncSourceNFSe,
@@ -155,7 +137,7 @@ func TestPullNFSe(t *testing.T) {
 }
 
 func TestResetSyncStateResetsNFSe(t *testing.T) {
-	f, a := newSyncApp(nil)
+	f, a := newFakeApp(nil)
 
 	if err := a.ResetSyncState(desktopapi.ResetSyncInput{CompanyCNPJ: testCNPJ}); err != nil {
 		t.Fatalf("ResetSyncState: %v", err)
@@ -165,7 +147,7 @@ func TestResetSyncStateResetsNFSe(t *testing.T) {
 }
 
 func TestStatusNFSe(t *testing.T) {
-	f, a := newSyncApp(nil)
+	f, a := newFakeApp(nil)
 	notAfter := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
 	lastSync := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 	lastFound := int64(77)
@@ -212,7 +194,7 @@ func TestStatusNFSe(t *testing.T) {
 }
 
 func TestPullNFe(t *testing.T) {
-	f, a := newSyncApp(nil)
+	f, a := newFakeApp(nil)
 	maxNSU := int64(500)
 	next := time.Date(2026, 9, 1, 11, 0, 0, 0, time.UTC)
 	f.nfe.pull = app.NFePullResult{
@@ -260,7 +242,7 @@ func TestPullNFe(t *testing.T) {
 }
 
 func TestPullCTe(t *testing.T) {
-	f, a := newSyncApp(nil)
+	f, a := newFakeApp(nil)
 	maxNSU := int64(60)
 	f.cte.pull = app.CTePullResult{
 		CompanyName:      "Empresa Teste",
@@ -332,7 +314,7 @@ func TestSyncErrorsReachFormatError(t *testing.T) {
 	for name, run := range runs {
 		for _, e := range errs {
 			t.Run(name+"/"+e.code, func(t *testing.T) {
-				_, a := newSyncApp(e.err)
+				_, a := newFakeApp(e.err)
 
 				got, err := run(a)
 				if !errors.Is(err, e.err) {

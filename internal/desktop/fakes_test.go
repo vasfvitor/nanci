@@ -52,6 +52,56 @@ func newTestApp(svc services) *App {
 	}
 }
 
+// fakeSet is a fake of every core service App calls.
+type fakeSet struct {
+	companies   *fakeCompanies
+	credentials *fakeCredentials
+	documents   *fakeDocuments
+	exports     *fakeExports
+	query       *fakeQuery
+	sync        *fakeSync
+	nfe         *fakeNFe
+	cte         *fakeCTe
+}
+
+// newFakeApp returns an App wired to a fresh fakeSet whose services all
+// return err.
+func newFakeApp(err error) (fakeSet, *App) {
+	f := fakeSet{
+		companies:   &fakeCompanies{err: err},
+		credentials: &fakeCredentials{err: err},
+		documents:   &fakeDocuments{err: err},
+		exports:     &fakeExports{err: err},
+		query:       &fakeQuery{err: err},
+		sync:        &fakeSync{err: err},
+		nfe:         &fakeNFe{err: err},
+		cte:         &fakeCTe{err: err},
+	}
+	return f, newTestApp(services{
+		companies:   f.companies,
+		credentials: f.credentials,
+		documents:   f.documents,
+		exports:     f.exports,
+		query:       f.query,
+		sync:        f.sync,
+		nfe:         f.nfe,
+		cte:         f.cte,
+	})
+}
+
+// assertNoCalls fails if any service of the set was called.
+func (f fakeSet) assertNoCalls(t *testing.T) {
+	t.Helper()
+	assertCalls(t, &f.companies.recorder)
+	assertCalls(t, &f.credentials.recorder)
+	assertCalls(t, &f.documents.recorder)
+	assertCalls(t, &f.exports.recorder)
+	assertCalls(t, &f.query.recorder)
+	assertCalls(t, &f.sync.recorder)
+	assertCalls(t, &f.nfe.recorder)
+	assertCalls(t, &f.cte.recorder)
+}
+
 // fakeEvents records what would be emitted to the frontend and signals each
 // emit on emitted.
 type fakeEvents struct {

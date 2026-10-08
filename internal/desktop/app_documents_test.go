@@ -14,22 +14,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-// documentFakes are the services behind the NFS-e, NF-e and CT-e pages.
-type documentFakes struct {
-	documents *fakeDocuments
-	nfe       *fakeNFe
-	cte       *fakeCTe
-}
-
-func newDocumentApp(err error) (documentFakes, *App) {
-	f := documentFakes{
-		documents: &fakeDocuments{err: err},
-		nfe:       &fakeNFe{err: err},
-		cte:       &fakeCTe{err: err},
-	}
-	return f, newTestApp(services{documents: f.documents, nfe: f.nfe, cte: f.cte})
-}
-
 func nfeDocument(chave string) app.NFeDocument {
 	var d app.NFeDocument
 	d.ChaveAcesso = dfe.AccessKey(chave)
@@ -37,7 +21,7 @@ func nfeDocument(chave string) app.NFeDocument {
 }
 
 func TestListNFeMapsFilters(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	f.nfe.documents = []app.NFeDocument{nfeDocument(testChave)}
 
 	got, err := a.ListNFe(desktopapi.ListNFeInput{
@@ -72,7 +56,7 @@ func TestListNFeMapsFilters(t *testing.T) {
 }
 
 func TestListCTeMapsFilters(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	var doc cte.CompanyDocument
 	doc.ChaveAcesso = testChave
 	f.cte.documents = []cte.CompanyDocument{doc}
@@ -113,7 +97,7 @@ func TestListCTeMapsFilters(t *testing.T) {
 }
 
 func TestListDocumentsMapsFilters(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	var doc nfse.CompanyDocument
 	doc.ChaveAcesso = testChave
 	f.documents.documents = []nfse.CompanyDocument{doc}
@@ -132,7 +116,7 @@ func TestListDocumentsMapsFilters(t *testing.T) {
 }
 
 func TestListEvents(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	f.documents.events = []app.EventView{{ID: "ev-nfse", Type: "cancelamento"}}
 	f.nfe.events = []nfe.Event{{ID: "ev-nfe", TpEvento: "210210"}}
 	f.cte.events = []cte.Event{{ID: "ev-cte", TpEvento: "110111"}}
@@ -160,7 +144,7 @@ func TestMarkViewed(t *testing.T) {
 	tests := []struct {
 		name     string
 		run      func(a *App) (int, error)
-		recorder func(f documentFakes) *recorder
+		recorder func(f fakeSet) *recorder
 		method   string
 	}{
 		{
@@ -168,7 +152,7 @@ func TestMarkViewed(t *testing.T) {
 			run: func(a *App) (int, error) {
 				return a.MarkDocumentsViewed(desktopapi.MarkViewedInput{CNPJ: testCNPJ, ChavesAcesso: chaves})
 			},
-			recorder: func(f documentFakes) *recorder { return &f.documents.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.documents.recorder },
 			method:   "MarkDocumentsViewed",
 		},
 		{
@@ -176,7 +160,7 @@ func TestMarkViewed(t *testing.T) {
 			run: func(a *App) (int, error) {
 				return a.MarkNFeViewed(desktopapi.MarkViewedInput{CNPJ: testCNPJ, ChavesAcesso: chaves})
 			},
-			recorder: func(f documentFakes) *recorder { return &f.nfe.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.nfe.recorder },
 			method:   "MarkViewed",
 		},
 		{
@@ -184,13 +168,13 @@ func TestMarkViewed(t *testing.T) {
 			run: func(a *App) (int, error) {
 				return a.MarkCTeViewed(desktopapi.MarkViewedInput{CNPJ: testCNPJ, ChavesAcesso: chaves})
 			},
-			recorder: func(f documentFakes) *recorder { return &f.cte.recorder },
+			recorder: func(f fakeSet) *recorder { return &f.cte.recorder },
 			method:   "MarkViewed",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, a := newDocumentApp(nil)
+			f, a := newFakeApp(nil)
 			f.documents.viewed, f.nfe.viewed, f.cte.viewed = 2, 2, 2
 
 			got, err := tt.run(a)
@@ -206,7 +190,7 @@ func TestMarkViewed(t *testing.T) {
 }
 
 func TestStatusNFeMapsEveryField(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	maxNSU := int64(900)
 	lastSync := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 	initial := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
@@ -276,7 +260,7 @@ func TestStatusNFeMapsEveryField(t *testing.T) {
 }
 
 func TestStatusCTeMapsEveryField(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	maxNSU := int64(40)
 	lastSync := time.Date(2026, 9, 2, 10, 0, 0, 0, time.UTC)
 	f.cte.status = app.CTeStatusResult{
@@ -330,7 +314,7 @@ func TestStatusCTeMapsEveryField(t *testing.T) {
 }
 
 func TestListNFePendingManifestacoes(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	f.nfe.pending = []app.NFePendingManifestacao{{NFeDocument: nfeDocument(testChave), Kind: "sem_ciencia", CienciaOverdue: true}}
 
 	got, err := a.ListNFePendingManifestacoes(desktopapi.NFePendingInput{CNPJ: testCNPJ, DueWithinDays: 5})
@@ -347,7 +331,7 @@ func TestListNFePendingManifestacoes(t *testing.T) {
 // TestPlanNFeCienciaSendsNothing: the plan feeds the confirmation dialog, so
 // it must reach only PlanCiencia, never RegisterCiencia.
 func TestPlanNFeCienciaSendsNothing(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	f.nfe.plan = app.NFeCienciaPlan{
 		Eligible: []app.NFeDocument{nfeDocument(testChave)},
 		Skipped:  []app.NFeSkipped{{ChaveAcesso: "outra-chave", Reason: "já tem ciência"}},
@@ -380,7 +364,7 @@ func TestRegisterNFeCienciaSendsOnlyTheSelection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, a := newDocumentApp(nil)
+			f, a := newFakeApp(nil)
 			f.nfe.summary = app.NFeManifestacaoSummary{
 				Outcomes:    []app.NFeEventOutcome{{ChaveAcesso: testChave, TpEvento: "210210", Status: "registrada", CStat: "135", XMotivo: "Evento registrado", Protocolo: "p-1", RegisteredAt: &registeredAt}},
 				Skipped:     []app.NFeSkipped{{ChaveAcesso: "outra-chave", Reason: "cancelada"}},
@@ -406,7 +390,7 @@ func TestRegisterNFeCienciaSendsOnlyTheSelection(t *testing.T) {
 }
 
 func TestRegisterNFeManifestacao(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	f.nfe.outcome = app.NFeEventOutcome{ChaveAcesso: testChave, TpEvento: "210240", Status: "rejeitada", CStat: "573", XMotivo: "Duplicidade de evento"}
 
 	got, err := a.RegisterNFeManifestacao(desktopapi.RegisterNFeManifestacaoInput{
@@ -432,7 +416,7 @@ func TestRegisterNFeManifestacao(t *testing.T) {
 }
 
 func TestResetNFe(t *testing.T) {
-	f, a := newDocumentApp(nil)
+	f, a := newFakeApp(nil)
 	f.nfe.reset = app.NFeResetResult{
 		CompanyName: "Empresa Teste",
 		CNPJ:        testCNPJ,
@@ -468,7 +452,7 @@ func TestResetCTe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.method, func(t *testing.T) {
-			f, a := newDocumentApp(nil)
+			f, a := newFakeApp(nil)
 			f.cte.reset = reset
 
 			got, err := tt.run(a)
@@ -514,7 +498,7 @@ func TestDocumentMethodsPassCoreErrors(t *testing.T) {
 	}
 	for name, run := range runs {
 		t.Run(name, func(t *testing.T) {
-			f, a := newDocumentApp(errCore)
+			f, a := newFakeApp(errCore)
 			// Canned results that must not leak out next to an error.
 			f.nfe.status.CNPJ = testCNPJ
 			f.nfe.outcome.ChaveAcesso = testChave

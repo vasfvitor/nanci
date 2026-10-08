@@ -13,12 +13,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
-func newCompanyApp(err error) (*fakeCompanies, *fakeCredentials, *App) {
-	companies := &fakeCompanies{err: err}
-	credentials := &fakeCredentials{err: err}
-	return companies, credentials, newTestApp(services{companies: companies, credentials: credentials})
-}
-
 func date(t *testing.T, s string) *time.Time {
 	t.Helper()
 	d, err := time.Parse("2006-01-02", s)
@@ -42,7 +36,7 @@ func TestAddCompanyMapsInput(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			companies, _, a := newCompanyApp(nil)
+			f, a := newFakeApp(nil)
 
 			err := a.AddCompany(desktopapi.AddCompanyInput{
 				CNPJ:            testCNPJ,
@@ -72,25 +66,25 @@ func TestAddCompanyMapsInput(t *testing.T) {
 			if tt.wantDate != "" {
 				want.SyncStartDate = date(t, tt.wantDate)
 			}
-			assertCalls(t, &companies.recorder, call{"AddCompany", []any{want}})
+			assertCalls(t, &f.companies.recorder, call{"AddCompany", []any{want}})
 		})
 	}
 }
 
 // An empty policy means from_now starting today.
 func TestAddCompanyDefaultsToFromNow(t *testing.T) {
-	companies, _, a := newCompanyApp(nil)
+	f, a := newFakeApp(nil)
 
 	if err := a.AddCompany(desktopapi.AddCompanyInput{CNPJ: testCNPJ, Environment: "producao"}); err != nil {
 		t.Fatalf("AddCompany: %v", err)
 	}
 
-	if len(companies.calls) != 1 {
-		t.Fatalf("calls = %d, want 1", len(companies.calls))
+	if len(f.companies.calls) != 1 {
+		t.Fatalf("calls = %d, want 1", len(f.companies.calls))
 	}
-	got, ok := companies.calls[0].args[0].(company.AddCompanyInput)
+	got, ok := f.companies.calls[0].args[0].(company.AddCompanyInput)
 	if !ok {
-		t.Fatalf("argument is %T", companies.calls[0].args[0])
+		t.Fatalf("argument is %T", f.companies.calls[0].args[0])
 	}
 	if got.SyncStartPolicy != syncstate.SyncStartPolicyFromNow || got.Environment != dfe.EnvironmentProduction {
 		t.Errorf("policy, environment = %q, %q; want from_now, producao", got.SyncStartPolicy, got.Environment)
@@ -115,18 +109,18 @@ func TestAddCompanyRejectsBeforeCore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			companies, _, a := newCompanyApp(nil)
+			f, a := newFakeApp(nil)
 
 			if err := a.AddCompany(tt.input); err == nil {
 				t.Fatal("AddCompany succeeded, want an error")
 			}
-			assertCalls(t, &companies.recorder)
+			assertCalls(t, &f.companies.recorder)
 		})
 	}
 }
 
 func TestUpdateCompanyMapsInput(t *testing.T) {
-	companies, _, a := newCompanyApp(nil)
+	f, a := newFakeApp(nil)
 
 	err := a.UpdateCompany(desktopapi.UpdateCompanyInput{
 		CNPJ:            testCNPJ,
@@ -140,7 +134,7 @@ func TestUpdateCompanyMapsInput(t *testing.T) {
 		t.Fatalf("UpdateCompany: %v", err)
 	}
 
-	assertCalls(t, &companies.recorder, call{"UpdateCompany", []any{company.UpdateCompanyInput{
+	assertCalls(t, &f.companies.recorder, call{"UpdateCompany", []any{company.UpdateCompanyInput{
 		CNPJ:            testCNPJ,
 		Name:            "Nome Novo",
 		Environment:     dfe.EnvironmentProduction,
@@ -153,13 +147,13 @@ func TestUpdateCompanyMapsInput(t *testing.T) {
 // TestUpdateCompanyWithoutPolicy pins the current mapping of an empty policy:
 // from_now with no date, unlike AddCompany, which also sets today's date.
 func TestUpdateCompanyWithoutPolicy(t *testing.T) {
-	companies, _, a := newCompanyApp(nil)
+	f, a := newFakeApp(nil)
 
 	if err := a.UpdateCompany(desktopapi.UpdateCompanyInput{CNPJ: testCNPJ, Name: "Nome", Environment: "producao"}); err != nil {
 		t.Fatalf("UpdateCompany: %v", err)
 	}
 
-	assertCalls(t, &companies.recorder, call{"UpdateCompany", []any{company.UpdateCompanyInput{
+	assertCalls(t, &f.companies.recorder, call{"UpdateCompany", []any{company.UpdateCompanyInput{
 		CNPJ:            testCNPJ,
 		Name:            "Nome",
 		Environment:     dfe.EnvironmentProduction,
@@ -178,12 +172,12 @@ func TestUpdateCompanyRejectsBeforeCore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			companies, _, a := newCompanyApp(nil)
+			f, a := newFakeApp(nil)
 
 			if err := a.UpdateCompany(tt.input); err == nil {
 				t.Fatal("UpdateCompany succeeded, want an error")
 			}
-			assertCalls(t, &companies.recorder)
+			assertCalls(t, &f.companies.recorder)
 		})
 	}
 }
@@ -230,17 +224,17 @@ func TestCompanyAndCredentialWritesMapInput(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			companies, credentials, a := newCompanyApp(nil)
+			f, a := newFakeApp(nil)
 
 			if err := tt.run(a); err != nil {
 				t.Fatalf("%s: %v", tt.name, err)
 			}
 			if tt.credential {
-				assertCalls(t, &credentials.recorder, tt.want)
-				assertCalls(t, &companies.recorder)
+				assertCalls(t, &f.credentials.recorder, tt.want)
+				assertCalls(t, &f.companies.recorder)
 			} else {
-				assertCalls(t, &companies.recorder, tt.want)
-				assertCalls(t, &credentials.recorder)
+				assertCalls(t, &f.companies.recorder, tt.want)
+				assertCalls(t, &f.credentials.recorder)
 			}
 		})
 	}
@@ -271,7 +265,7 @@ func TestCompanyAndCredentialMethodsPassCoreErrors(t *testing.T) {
 	}
 	for name, run := range runs {
 		t.Run(name, func(t *testing.T) {
-			_, _, a := newCompanyApp(errCore)
+			_, a := newFakeApp(errCore)
 
 			got, err := run(a)
 			if !errors.Is(err, errCore) {
@@ -285,8 +279,8 @@ func TestCompanyAndCredentialMethodsPassCoreErrors(t *testing.T) {
 }
 
 func TestListCompanies(t *testing.T) {
-	companies, _, a := newCompanyApp(nil)
-	companies.companies = []company.Company{{
+	f, a := newFakeApp(nil)
+	f.companies.companies = []company.Company{{
 		ID:              "company-1",
 		CNPJ:            testCNPJ,
 		Name:            "Empresa Teste",
@@ -301,7 +295,7 @@ func TestListCompanies(t *testing.T) {
 		t.Fatalf("ListCompanies: %v", err)
 	}
 
-	assertCalls(t, &companies.recorder, call{"ListCompanies", nil})
+	assertCalls(t, &f.companies.recorder, call{"ListCompanies", nil})
 	want := []desktopapi.CompanySummary{{
 		ID:              "company-1",
 		CNPJ:            testCNPJ,
@@ -317,8 +311,8 @@ func TestListCompanies(t *testing.T) {
 }
 
 func TestListCredentials(t *testing.T) {
-	_, credentials, a := newCompanyApp(nil)
-	credentials.credentials = []credential.Credential{{
+	f, a := newFakeApp(nil)
+	f.credentials.credentials = []credential.Credential{{
 		ID:        "cred-1",
 		Label:     "Certificado A1",
 		CertPath:  "C:/certs/a1.pfx",
@@ -330,7 +324,7 @@ func TestListCredentials(t *testing.T) {
 		t.Fatalf("ListCredentials: %v", err)
 	}
 
-	assertCalls(t, &credentials.recorder, call{"ListCredentials", nil})
+	assertCalls(t, &f.credentials.recorder, call{"ListCredentials", nil})
 	want := []desktopapi.CredentialSummary{{
 		ID:        "cred-1",
 		Label:     "Certificado A1",
