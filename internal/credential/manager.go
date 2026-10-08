@@ -80,9 +80,9 @@ func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredenti
 	if err := ValidateCertificatePath(input.CertPath); err != nil {
 		return err
 	}
-	cred, err := m.store.CredentialByID(ctx, dfe.CredentialID(input.CredentialID))
+	cred, err := LookupByID(ctx, m.store, dfe.CredentialID(input.CredentialID))
 	if err != nil {
-		return fmt.Errorf("credencial não encontrada: %w", err)
+		return err
 	}
 	cred.CertPath = input.CertPath
 	if err := m.store.UpdateCredential(ctx, cred); err != nil {
@@ -93,9 +93,9 @@ func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredenti
 
 // UpdateCredentialData updates the label of an existing credential.
 func (m *Manager) UpdateCredentialData(ctx context.Context, input UpdateCredentialDataInput) error {
-	cred, err := m.store.CredentialByID(ctx, dfe.CredentialID(input.CredentialID))
+	cred, err := LookupByID(ctx, m.store, dfe.CredentialID(input.CredentialID))
 	if err != nil {
-		return fmt.Errorf("credencial não encontrada: %w", err)
+		return err
 	}
 
 	cred.Label = input.Label

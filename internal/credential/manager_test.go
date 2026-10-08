@@ -2,8 +2,10 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/dfe"
@@ -148,5 +150,64 @@ func TestManager_ListCredentials(t *testing.T) {
 
 	if len(creds) != 2 {
 		t.Errorf("Expected 2 credentials, got %d", len(creds))
+	}
+}
+
+func TestManager_UpdateCredentialLookupErrors(t *testing.T) {
+	certPath := filepath.Join(t.TempDir(), "test.pfx")
+	if err := os.WriteFile(certPath, []byte("dummy cert data"), 0o600); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	updates := []struct {
+		name string
+		run  func(m *Manager) error
+	}{
+		{"UpdateCredentialPath", func(m *Manager) error {
+			return m.UpdateCredentialPath(context.Background(), UpdateCredentialPathInput{CredentialID: "cred-123", CertPath: certPath})
+		}},
+		{"UpdateCredentialData", func(m *Manager) error {
+			return m.UpdateCredentialData(context.Background(), UpdateCredentialDataInput{CredentialID: "cred-123", Label: "New Label"})
+		}},
+	}
+	cases := []struct {
+		name  string
+		store *mockStore
+		check func(t *testing.T, err error)
+	}{
+		{
+			name:  "database error",
+			store: &mockStore{credByIDErr: errors.New("disk I/O error")},
+			check: func(t *testing.T, err error) {
+				t.Helper()
+				if !strings.Contains(err.Error(), "buscar credencial") {
+					t.Errorf("error = %q, want it to mention %q", err, "buscar credencial")
+				}
+				if strings.Contains(err.Error(), "não encontrada") {
+					t.Errorf("error = %q, a database error must not read as not found", err)
+				}
+			},
+		},
+		{
+			name:  "missing credential",
+			store: &mockStore{},
+			check: func(t *testing.T, err error) {
+				t.Helper()
+				if err.Error() != "credencial não encontrada" {
+					t.Errorf("error = %q, want %q", err, "credencial não encontrada")
+				}
+			},
+		},
+	}
+	for _, u := range updates {
+		for _, tc := range cases {
+			t.Run(u.name+"/"+tc.name, func(t *testing.T) {
+				err := u.run(NewManager(tc.store))
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				tc.check(t, err)
+			})
+		}
 	}
 }
