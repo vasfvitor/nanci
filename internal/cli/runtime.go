@@ -61,7 +61,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 			XMLStore: files.NewBlobStore(dataDir),
 			DataDir:  dataDir,
 			CredentialProvider: app.KeyringCredentialProvider{
-				Fallback: terminalPasswords(env),
+				Fallback: TerminalCredentialProvider{In: env.In, Out: env.Out},
 				Log:      log,
 			},
 			DANFSeRenderer: godanfsev2.New(),
@@ -79,10 +79,4 @@ func prodAppFactory(env CommandEnv) AppFactory {
 // also turns trace on; either source is enough and neither turns it off.
 func logLevels(env CommandEnv) (verbose, trace bool) {
 	return *env.Verbose, *env.Trace || os.Getenv("NANCI_TRACE") == "1"
-}
-
-// terminalPasswords builds the password prompt from the env's streams: it
-// reads from In and writes the prompt to Out, which is stderr in production.
-func terminalPasswords(env CommandEnv) TerminalCredentialProvider {
-	return TerminalCredentialProvider{In: env.In, Out: env.Out}
 }
