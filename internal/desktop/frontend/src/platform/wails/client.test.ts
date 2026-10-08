@@ -53,7 +53,6 @@ import {
   SelectSaveFile,
   StatusCTe,
   StatusNFe,
-  TestCTeConnection,
 } from '../../../wailsjs/go/main/App'
 
 vi.mock('../../../wailsjs/go/main/App', () => ({
@@ -61,13 +60,18 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
   CancelCertPassword: vi.fn(),
+  CountPendingExports: vi.fn(),
   ExportCTeXML: vi.fn(),
   ExportCTeZIP: vi.fn(),
   ExportDANFSe: vi.fn(),
   ExportDANFSeZIP: vi.fn(),
   ExportDocuments: vi.fn(),
+  ExportLogs: vi.fn(),
   ExportNFeXML: vi.fn(),
   ExportNFeZIP: vi.fn(),
+  ExportXML: vi.fn(),
+  GetBuildInfo: vi.fn(),
+  GetDataDirectory: vi.fn(),
   ListCTe: vi.fn(),
   ListCTeEvents: vi.fn(),
   ListCompanies: vi.fn(),
@@ -80,6 +84,8 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   MarkCTeViewed: vi.fn(),
   MarkDocumentsViewed: vi.fn(),
   MarkNFeViewed: vi.fn(),
+  OpenDataDirectory: vi.fn(),
+  OpenLogsDirectory: vi.fn(),
   PlanNFeCiencia: vi.fn(),
   PreviewResetCTe: vi.fn(),
   Pull: vi.fn(),
@@ -95,10 +101,12 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   SelectExportDirectory: vi.fn(),
   SelectSaveFile: vi.fn(),
   SetLogLevel: vi.fn(),
+  Status: vi.fn(),
   StatusCTe: vi.fn(),
   StatusNFe: vi.fn(),
   SubmitCertPassword: vi.fn(),
   TestCTeConnection: vi.fn(),
+  TestConnection: vi.fn(),
   UpdateCompany: vi.fn(),
   UpdateCredentialData: vi.fn(),
   UpdateCredentialPath: vi.fn(),
@@ -829,7 +837,6 @@ describe('CT-e client calls', () => {
     vi.mocked(StatusCTe).mockResolvedValue({ CNPJ: '123', TotalTomador: 1 } as never)
     vi.mocked(ListCTe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
     vi.mocked(ListCTeEvents).mockResolvedValue(null as never)
-    vi.mocked(TestCTeConnection).mockResolvedValue({ certLoaded: true, endpointReached: true } as never)
     vi.mocked(PreviewResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
     vi.mocked(ResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
     vi.mocked(MarkCTeViewed).mockResolvedValue(2 as never)
@@ -853,11 +860,6 @@ describe('CT-e client calls', () => {
     await desktopClient.listCTe({ ...listInput, ChavesAcesso: [cteChave], Limit: 1, OnlyUnread: true })
     await expect(desktopClient.markCTeViewed('123', [cteChave])).resolves.toBe(2)
     await expect(desktopClient.listCTeEvents('123', cteChave)).resolves.toEqual([])
-    await expect(desktopClient.testCTeConnection('123')).resolves.toMatchObject({
-      certLoaded: true,
-      endpointReached: true,
-      mtlsAccepted: false,
-    })
     await expect(desktopClient.previewResetCTe('123')).resolves.toMatchObject({ CompanyDocuments: 3 })
     await expect(desktopClient.resetCTe('123')).resolves.toMatchObject({ CompanyDocuments: 3 })
 
@@ -872,7 +874,6 @@ describe('CT-e client calls', () => {
     })
     expect(MarkCTeViewed).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [cteChave] })
     expect(ListCTeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave })
-    expect(TestCTeConnection).toHaveBeenCalledWith('123')
     expect(PreviewResetCTe).toHaveBeenCalledWith('123')
     expect(ResetCTe).toHaveBeenCalledWith('123')
   })

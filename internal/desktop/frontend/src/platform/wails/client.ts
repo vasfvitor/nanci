@@ -47,7 +47,6 @@ import {
   StatusCTe,
   StatusNFe,
   SubmitCertPassword,
-  TestCTeConnection,
   TestConnection,
   UpdateCompany,
   UpdateCredentialData,
@@ -983,12 +982,6 @@ export const desktopClient = {
   async listCTeEvents(cnpj: string, chaveAcesso: string): Promise<CTeEvent[]> {
     const res = await callWails(() => ListCTeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
     return (res || []).map(mapCTeEvent)
-  },
-  // testCTeConnection opens a TLS connection to the CT-e host without
-  // sending a query, so it does not use the hourly budget.
-  async testCTeConnection(cnpj: string): Promise<ConnectionTestResult> {
-    const res = await callWails(() => TestCTeConnection(cnpj))
-    return mapConnectionTestResult(res)
   },
   // previewResetCTe counts what resetCTe would remove, changing nothing.
   async previewResetCTe(cnpj: string): Promise<CTeResetResult> {
