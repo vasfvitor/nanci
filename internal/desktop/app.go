@@ -377,9 +377,16 @@ func (a *App) UpdateCompany(input desktopapi.UpdateCompanyInput) error {
 	if err != nil {
 		return err
 	}
-	policy := syncstate.SyncStartPolicyFromNow
+	// An empty policy keeps the stored one, as `nanci company update` does.
+	var policy syncstate.SyncStartPolicy
 	var date *time.Time
-	if input.SyncStartPolicy != "" {
+	if input.SyncStartPolicy == "" {
+		current, err := a.svc.companies.CompanyByCNPJ(a.ctx, input.CNPJ)
+		if err != nil {
+			return err
+		}
+		policy, date = current.SyncStartPolicy, current.SyncStartDate
+	} else {
 		policy, date, err = company.ParseSyncStartPolicyInput(input.SyncStartPolicy, input.SyncStartDate)
 		if err != nil {
 			return err

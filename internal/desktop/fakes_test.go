@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"reflect"
 	"testing"
@@ -102,6 +103,10 @@ func (f fakeSet) assertNoCalls(t *testing.T) {
 	assertCalls(t, &f.cte.recorder)
 }
 
+// errCompanyNotFound is what fakeCompanies.CompanyByCNPJ returns for an
+// unknown CNPJ.
+var errCompanyNotFound = errors.New("empresa não encontrada")
+
 // fakeEvents records what would be emitted to the frontend and signals each
 // emit on emitted.
 type fakeEvents struct {
@@ -126,6 +131,20 @@ func (f *fakeCompanies) AddCompany(_ context.Context, in company.AddCompanyInput
 func (f *fakeCompanies) UpdateCompany(_ context.Context, in company.UpdateCompanyInput) error {
 	f.record("UpdateCompany", in)
 	return f.err
+}
+
+// CompanyByCNPJ returns the company of f.companies with that CNPJ.
+func (f *fakeCompanies) CompanyByCNPJ(_ context.Context, cnpj string) (*company.Company, error) {
+	f.record("CompanyByCNPJ", cnpj)
+	if f.err != nil {
+		return nil, f.err
+	}
+	for i := range f.companies {
+		if f.companies[i].CNPJ == cnpj {
+			return &f.companies[i], nil
+		}
+	}
+	return nil, errCompanyNotFound
 }
 
 func (f *fakeCompanies) AssignCredentialToCompany(_ context.Context, in company.AssignCredentialInput) error {

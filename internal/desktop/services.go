@@ -19,6 +19,7 @@ import (
 type companyService interface {
 	AddCompany(ctx context.Context, input company.AddCompanyInput) error
 	UpdateCompany(ctx context.Context, input company.UpdateCompanyInput) error
+	CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*company.Company, error)
 	AssignCredentialToCompany(ctx context.Context, input company.AssignCredentialInput) error
 	ListCompanies(ctx context.Context) ([]company.Company, error)
 }

@@ -144,21 +144,41 @@ func TestUpdateCompanyMapsInput(t *testing.T) {
 	}}})
 }
 
-// TestUpdateCompanyWithoutPolicy pins the current mapping of an empty policy:
-// from_now with no date, unlike AddCompany, which also sets today's date.
+// An empty policy keeps the stored policy and date, as the CLI does; it must
+// not turn into from_now, which the manager refuses after the first sync.
 func TestUpdateCompanyWithoutPolicy(t *testing.T) {
 	f, a := newFakeApp(nil)
+	f.companies.companies = []company.Company{{
+		CNPJ:            testCNPJ,
+		Name:            "Nome Antigo",
+		SyncStartPolicy: syncstate.SyncStartPolicySinceDate,
+		SyncStartDate:   date(t, "2025-07-01"),
+	}}
 
 	if err := a.UpdateCompany(desktopapi.UpdateCompanyInput{CNPJ: testCNPJ, Name: "Nome", Environment: "producao"}); err != nil {
 		t.Fatalf("UpdateCompany: %v", err)
 	}
 
-	assertCalls(t, &f.companies.recorder, call{"UpdateCompany", []any{company.UpdateCompanyInput{
-		CNPJ:            testCNPJ,
-		Name:            "Nome",
-		Environment:     dfe.EnvironmentProduction,
-		SyncStartPolicy: syncstate.SyncStartPolicyFromNow,
-	}}})
+	assertCalls(t, &f.companies.recorder,
+		call{"CompanyByCNPJ", []any{testCNPJ}},
+		call{"UpdateCompany", []any{company.UpdateCompanyInput{
+			CNPJ:            testCNPJ,
+			Name:            "Nome",
+			Environment:     dfe.EnvironmentProduction,
+			SyncStartPolicy: syncstate.SyncStartPolicySinceDate,
+			SyncStartDate:   date(t, "2025-07-01"),
+		}}},
+	)
+}
+
+func TestUpdateCompanyWithoutPolicyNeedsTheCompany(t *testing.T) {
+	f, a := newFakeApp(nil)
+
+	err := a.UpdateCompany(desktopapi.UpdateCompanyInput{CNPJ: testCNPJ, Name: "Nome", Environment: "producao"})
+	if !errors.Is(err, errCompanyNotFound) {
+		t.Fatalf("err = %v, want %v", err, errCompanyNotFound)
+	}
+	assertCalls(t, &f.companies.recorder, call{"CompanyByCNPJ", []any{testCNPJ}})
 }
 
 func TestUpdateCompanyRejectsBeforeCore(t *testing.T) {
