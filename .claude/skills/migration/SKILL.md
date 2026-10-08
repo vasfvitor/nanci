@@ -1,6 +1,6 @@
 ---
 name: migration
-description: Use when changing the SQLite schema of nanci (new table, column, index, CHECK value, export kind, sync source, or a data fix). Covers the goose migration, schema.sql, sqlc regeneration, the hand-written SQL that sqlc does not see, the migration test pattern and the docs list.
+description: Use when changing the SQLite schema of nanci (new table, column, index, CHECK value, export kind, sync source, or a data fix). Covers the goose migration, sqlc regeneration, the hand-written SQL that sqlc does not see, the migration test pattern and the docs list.
 ---
 
 # Migration: change the SQLite schema
@@ -17,7 +17,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 2. One file per change, `NNN_snake_case.sql`, with `-- +goose Up` and `-- +goose Down`. Comments in English say why (see 013, 018, 019, 020).
 3. Down undoes Up. Every schema change since 006 has a real Down (001 and 003 have no Down section, 002 and 005 a no-op one; do not copy them). A data-only migration whose input cannot be rebuilt says so in a comment instead of pretending (`020`: "Nothing to undo: ... which rows had the prefix is not kept").
 4. SQLite cannot add, drop or change a CHECK or a primary key on an existing table: rebuild it. Adding a new column that carries a CHECK works with `ALTER TABLE ... ADD COLUMN` (`016`).
-5. Keep `internal/store/schema.sql` in sync in the same commit (below). Regenerate `sqlgen` in the same commit.
+5. Regenerate `sqlgen` in the same commit (below).
 6. Before running a new migration against a database you care about: close the app and copy `%LOCALAPPDATA%\nanci\nanci-v1.db` together with its `-wal`/`-shm` files (path from `paths.DataDir` + `app.RuntimeDBPath`; website/content/docs/privacidade.md says to copy the whole folder). Better: `make seeddev`, then point the CLI at it with `NANCI_DATA_DIR=devdata`.
 
 ## Patterns to copy
@@ -34,10 +34,9 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 - Export kind: `company_document_export_marks` (NFS-e: `'xml', 'csv', 'xlsx', 'danfse'`), `company_nfe_export_marks` and `company_cte_export_marks` (`'xml'`). The Go side is `nfe.ExportKindXML`, `cte.ExportKindXML` and string literals in `internal/app/export.go`. A new kind is a rebuild of that marks table.
 - Enums of the domain packages (`situacao`, `company_role`, `visibility_reason`, event `type`, `tp_amb`) mirror `Valid()` in `internal/nfse`, `internal/nfe`, `internal/cte`. Change both together. `cte_documents.tp_cte`, `tp_serv` and `modal` have no CHECK on purpose (layouts disagree; docs/CTE_SEFAZ.md).
 
-## schema.sql and sqlc
+## sqlc
 
-- `internal/store/schema.sql` is the current schema written as plain `CREATE TABLE`/`CREATE INDEX`, edited in place, never appended as ALTERs. It is the `schema:` input of `sqlc.yaml`. `TestSchemaSQLMatchesMigrations` (`internal/store/schema_drift_test.go`) compares it against a migrated database, column order included: an added column goes last, where `ADD COLUMN` puts it.
-- Convention (commits `119dd2d` for 018, `641ce45` for 019): an added column goes last in its `CREATE TABLE`, where `ADD COLUMN` puts it; a rebuilt table copies the migration's new `CREATE TABLE`; indexes follow their table.
+- The `schema:` input of `sqlc.yaml` is `internal/store/migrations_v2/` itself. sqlc reads the goose files in order, Up sections only, and follows the table rebuilds (`x_new` + `RENAME`), `DROP COLUMN` and scratch tables, so there is no separate schema file to keep in sync. An added column lands last in the generated struct, where `ADD COLUMN` puts it.
 - Regenerate from the repo root: `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` (on Windows with TDM-GCC prefix `CGO_ENABLED=0`, or the link fails). Commit `internal/store/sqlgen/` with it; never edit it by hand. `rename` in `sqlc.yaml` fixes inflections (`nfe_manifestaco` -> `NfeManifestacao`).
 - Queries live in `internal/store/queries/*.sql` (`companies`, `credentials`, `nfe`, `cte`, `sync`).
 

@@ -13,7 +13,7 @@
 - `internal/company`: Cadastro das empresas (o tipo `Company`, `Store` e `Manager`): validação de CNPJ e UF, política inicial de sincronização e vínculo com a credencial, que precisa ter a mesma raiz de CNPJ.
 - `internal/credential`: Cadastro das credenciais (certificados A1 reutilizáveis entre empresas): o tipo `Credential`, caminho do arquivo e rótulo. A senha fica no keyring do sistema, a cargo de `internal/app`.
 - `internal/store`: Camada de persistência. Contém as queries (frequentemente geradas via sqlc), conexões SQLite e a pasta `migrations_v2/` com o schema do banco.
-- `internal/store/sqlgen`: Código gerado pelo sqlc a partir de `internal/store/queries` (configuração em `sqlc.yaml`). Não editar à mão.
+- `internal/store/sqlgen`: Código gerado pelo sqlc a partir de `internal/store/queries`, com o schema lido das migrations em `migrations_v2/` (configuração em `sqlc.yaml`). Não editar à mão.
 - `internal/files`: Armazenamento dos XMLs brutos em `blobs/`, um arquivo por hash SHA-256 (`BlobStore`).
 - `internal/nfse` e `internal/adn`: Modelos da Nota Fiscal de Serviço Eletrônica (documento, eventos, chave de 50 caracteres, papel da empresa e parsers; só NFS-e, como `nfe` e `cte`) e cliente da API do Ambiente de Dados Nacional.
 - `internal/danfse`: Interface `Renderer` (XML da NFS-e entra, PDF do DANFSe sai) e a implementação em `godanfsev2/`, com a biblioteca `go-danfse-v2`. O DANFSe é gerado localmente, sem chamar a API do ADN.
