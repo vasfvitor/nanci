@@ -66,7 +66,7 @@ Docs:
 - Portuguese fiscal identifiers everywhere (AGENTS.md): `ChaveAcesso`, `Situacao`, `tomador`, `<x>_manifestacoes`.
 - Wails methods return `desktopapi` DTOs, never domain structs.
 - Export marks carry `exported_events`; incremental export re-sends a document when its hash or event count changes, always with all its events.
-- 20 requests/hour per company, source and environment is an app choice for CT-e (no published limit; `requestsPerHour` comment). A source without a published limit takes 20 too.
+- 20 requests/hour per company, source and environment is an app choice for CT-e (no published limit; `requestsPerHour` comment). A source without a published limit takes 20 too. Even for NF-e the official cap covers only consNSU+consChNFe (distNSU has the 1 h wait after cStat 137); counting distNSU in the 20 is the app's conservative choice.
 
 ## What NF-e taught
 

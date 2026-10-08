@@ -44,7 +44,8 @@ func requestsPerHour(source syncstate.SyncSource) int {
 	switch source {
 	case syncstate.SyncSourceNFe:
 		// The SEFAZ limit; going over it gets cStat 656 and an hour of
-		// blocking.
+		// blocking. The official cap covers consNSU+consChNFe; counting
+		// distNSU here is the app's conservative choice.
 		return 20
 	case syncstate.SyncSourceCTe:
 		// The CT-e technical note does not publish a limit; this follows the

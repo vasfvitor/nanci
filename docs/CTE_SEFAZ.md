@@ -82,12 +82,12 @@ A SEFAZ bloqueia o CNPJ que consulta demais com a rejeição **656 (consumo inde
 
 | Regra | Comportamento |
 |---|---|
-| 20 consultas por hora | Orçamento por empresa, origem e ambiente, em janela móvel de 1 hora (`sync_requests`), contado separado do da NF-e. Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
+| 20 consultas por hora | Orçamento por empresa, origem e ambiente, em janela móvel de 1 hora (`sync_requests`), contado separado do da NF-e e que inclui o `distNSU` (escolha do Nanci). Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
 | Fila em dia | Com `cStat` 137 (nenhum documento) ou `ultNSU` igual a `maxNSU`, o pull para com `caught_up` e a próxima consulta só é permitida 1 hora depois. |
 | `cStat` 656 | O pull para com `consumo_indevido` e espera 1 hora. O `ultNSU` devolvido só é adotado se avançar o cursor. |
 | Intervalo entre páginas | 2 segundos entre requisições do mesmo pull. |
 
-A NT 2015.002 não publica um limite de consultas por hora para o CT-e; o Nanci usa o da NF-e por prudência. Se a SEFAZ contar as consultas de NF-e e de CT-e juntas por CNPJ, um pull de CT-e logo depois de um de NF-e pode receber 656. O bloqueio é gravado e respeitado, então o efeito é uma hora de espera.
+A NT 2015.002 não publica um limite de consultas por hora para o CT-e, e não foram encontradas regras de 656 próprias do CT-e; o Nanci supõe que valem as da NF-e (ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`, "Não encontrado"). Na NF-e, o limite de 20 por hora vale para `consNSU` e `consChNFe` somados, e o `distNSU` tem a espera de 1 hora depois de um `cStat` 137 (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)). Contar também o `distNSU` nas 20 é escolha conservadora do Nanci. Se a SEFAZ contar as consultas de NF-e e de CT-e juntas por CNPJ, um pull de CT-e logo depois de um de NF-e pode receber 656. O bloqueio é gravado e respeitado, então o efeito é uma hora de espera.
 
 **Regra dos 60 dias.** Na NF-e, o Ambiente Nacional só gera NSU para a raiz de CNPJ que consultou a distribuição nos últimos 60 dias, e uma pausa maior perde de vez os documentos do período (NT 2014.002 v1.10, conhecida só por relatos de terceiros; ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)). Não foi encontrada fonte que confirme a mesma regra na distribuição de CT-e (NT 2015.002); o Nanci a aplica ao CT-e por prudência, como faz com o limite por hora. Quando a última consulta respondida pela SEFAZ (`sync_state.last_success_at` da origem `cte` no ambiente atual) passa de **45 dias**, o `cte status` e a página de CT-e mostram um aviso. Uma empresa que nunca sincronizou CT-e não recebe o aviso, e um `cte pull` reinicia a contagem.
 
@@ -117,7 +117,7 @@ Eventos de uma chave que a empresa não tem localmente são descartados com um r
 
 ## Prestação do serviço em desacordo
 
-O evento 610110 é a forma de o **tomador** declarar que o serviço de transporte não foi prestado como consta no CT-e. Só o tomador pode enviá-lo, em até 45 dias da autorização, com uma observação de 15 a 255 caracteres, e o envio vai à **SEFAZ autorizadora do CT-e** (serviço de recepção de eventos da UF), não ao Ambiente Nacional. O Nanci mostra o evento quando ele chega pela distribuição, mas não o envia. Veja "Próximos passos".
+O evento 610110 é a forma de o **tomador** declarar que o serviço de transporte não foi prestado como consta no CT-e. Só o tomador pode enviá-lo, em até 45 dias da autorização (relato de terceiros; ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`), com uma observação, e o envio vai à **SEFAZ autorizadora do CT-e** (serviço de recepção de eventos da UF), não ao Ambiente Nacional. O Nanci mostra o evento quando ele chega pela distribuição, mas não o envia. Veja "Próximos passos".
 
 ## Ligação com a NF-e
 

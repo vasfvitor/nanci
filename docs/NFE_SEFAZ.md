@@ -57,11 +57,11 @@ A distribuição exige o código IBGE da UF da empresa (`cUFAutor`). Cadastre a 
 
 ## Limites de consulta
 
-A SEFAZ bloqueia o CNPJ que consulta demais com a rejeição **656 (consumo indevido)**. O Nanci aplica as regras antes de enviar:
+A SEFAZ bloqueia o CNPJ que consulta demais com a rejeição **656 (consumo indevido)**, por 1 hora. As regras vigentes desde 10/03/2022 (NT 2014.002, conhecidas por relatos de terceiros; ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`) são duas: `consNSU` e `consChNFe` somados têm limite de 20 por hora, e o `distNSU` tem de esperar 1 hora depois de um `cStat` 137 ou de `ultNSU` igual a `maxNSU`. O `distNSU` não entra no limite de 20 por hora; o Nanci o conta mesmo assim, por escolha conservadora. O Nanci aplica as regras antes de enviar:
 
 | Regra | Comportamento |
 |---|---|
-| 20 consultas por hora | Orçamento por empresa, origem e ambiente, em janela móvel de 1 hora (`sync_requests`). Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
+| 20 consultas por hora | Orçamento por empresa, origem e ambiente, em janela móvel de 1 hora (`sync_requests`), que inclui o `distNSU` (escolha do Nanci). Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
 | Fila em dia | Com `cStat` 137 (nenhum documento) ou `ultNSU` igual a `maxNSU`, o pull para com `caught_up` e a próxima consulta só é permitida 1 hora depois. |
 | `cStat` 656 | O pull para com `consumo_indevido` e espera 1 hora. O `ultNSU` devolvido só é adotado se avançar o cursor. |
 | Intervalo entre páginas | 2 segundos entre requisições do mesmo pull. |

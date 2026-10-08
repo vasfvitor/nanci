@@ -24,7 +24,7 @@
 - `internal/report`: Classes de exportação que formatam os dados do banco para `.xlsx`, `.csv` e `.zip`.
 - `internal/foundation`: Utilitários gerais do projeto (parsers de CNPJ, códigos de UF em `uf`, handlers de build, criptografia).
 - `internal/foundation/httpclient`: Cliente HTTP mTLS neutro compartilhado por `internal/adn` e `internal/sefaz`: transporte TLS, retry, leitura limitada do corpo e registros de log. Quem chama define cabeçalhos, formato do payload, o significado de cada status e como mascarar identificadores (CNPJ, chave de acesso) antes de irem para o log.
-- `internal/foundation/redact`: Mascaramento de identificadores fiscais (CNPJ, CPF, chave de acesso, nomes) em XML de NF-e, CT-e e NFS-e, usado nos logs de `internal/adn`, `internal/sefaz` e `internal/sync`.
+- `internal/foundation/redact`: Mascaramento de identificadores fiscais (CNPJ, CPF, chave de acesso, nomes) em XML de NF-e, CT-e e NFS-e. `internal/sefaz` e `internal/adn` mascaram os corpos de resposta que vão para o log e para as mensagens de erro; `internal/adn` mascara também o `cnpjConsulta` e a chave de `NFSe/{chave}/...` nas URLs. `internal/sync` mascara a prévia do XML que não pôde ser lido. Nas respostas JSON do ADN a máscara não alcança o XML, que vem em base64 com gzip (`ArquivoXml`).
 - `internal/foundation/xmlwalk`: Leitura de XML em fluxo que entrega cada elemento pelo caminho a partir da raiz (`Walk`, `HasAnySuffix`, `AttrValue`), para os parsers de documentos fiscais casarem campos por sufixo de caminho. Usado por `internal/nfe` e `internal/cte`.
 - `third_party/gonfe`: Licença do [gonfe](https://github.com/mschunke/gonfe) (MIT), do qual partes de `internal/sefaz` foram adaptadas.
 
@@ -41,7 +41,7 @@
 Cada serviço de distribuição por NSU é uma implementação da interface `Source` em `internal/sync/source.go`:
 
 - `Kind()` identifica a origem (`nfse`, `nfe`, `cte`).
-- `Policy()` informa o intervalo entre requisições e o limite de consultas por hora (0 = sem limite). A NFS-e não tem limite; a NF-e e o CT-e têm 20 por hora cada, contados separadamente.
+- `Policy()` informa o intervalo entre requisições e o limite de consultas por hora (0 = sem limite). A NFS-e não tem limite; a NF-e e o CT-e têm 20 por hora cada, contados separadamente. Na NF-e, o limite de 20 por hora da NT 2014.002 vale para `consNSU` e `consChNFe` somados, e o `distNSU` tem a espera de 1 hora depois do `cStat` 137; contar também o `distNSU` nas 20 é escolha conservadora do Nanci (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)).
 - `Fetch()` busca a página seguinte ao cursor e traduz a resposta em um `Batch`: itens, próximo cursor, se deve parar e até quando esperar (`WaitUntil`).
 - `ProcessItem()` decodifica e grava um item e chama `commit` exatamente uma vez, para que o checkpoint avance na mesma transação.
 
