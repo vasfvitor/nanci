@@ -2,16 +2,14 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/vasfvitor/nanci/internal/dfe"
-	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/store/seed"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 func main() {
@@ -49,7 +47,8 @@ func main() {
 	}
 
 	ctx := context.Background()
-	if err := seed.SeedDevelopment(ctx, db); err != nil {
+	comp, err := seed.SeedDevelopment(ctx, db)
+	if err != nil {
 		fatalf("seed dev data: %v", err)
 	}
 
@@ -61,7 +60,8 @@ func main() {
 
 	testDataDir := filepath.Join(rootDir, "internal", "nfse", "testdata")
 	xmlFiles := []string{"simple-prestada.xml", "simple-tomada.xml", "com-retencoes.xml"}
-	for _, f := range xmlFiles {
+	syncStore := sync.NewStore(db)
+	for i, f := range xmlFiles {
 		src := filepath.Join(testDataDir, f)
 		dst := filepath.Join(xmlDir, f)
 		if fileExists(src) {
@@ -69,52 +69,13 @@ func main() {
 				fatalf("copy xml: %v", err)
 			}
 
-			// Process and insert
-			if err := seedXML(ctx, db, dst, "dev-company-70860312000150"); err != nil {
+			if err := seed.SeedDocument(ctx, syncStore, comp, dst, int64(i+1)); err != nil {
 				fatalf("seed xml %s: %v", f, err)
 			}
 		}
 	}
 
 	fmt.Printf("Seed completed successfully.\nDatabase: %s\n", dbPath)
-}
-
-func seedXML(ctx context.Context, db *sql.DB, xmlPath, companyID string) error {
-	data, err := os.ReadFile(xmlPath) // #nosec G304 -- dev seeder reads its own fixture files.
-	if err != nil {
-		return err
-	}
-
-	doc, _, err := nfse.ParseDocumentXML(data)
-	if err != nil {
-		return err
-	}
-
-	doc.ID = nfse.DocumentID("doc-" + doc.ChaveAcesso)
-	doc.XMLPath = xmlPath
-	doc.RawHash = "hash-" + string(doc.ChaveAcesso)
-
-	if err := seed.UpsertDocument(ctx, db, doc); err != nil {
-		return err
-	}
-
-	role := nfse.CompanyRole("none")
-	if doc.TomadorCNPJ == "70860312000150" {
-		role = nfse.CompanyRoleTomada
-	} else if doc.PrestadorCNPJ == "70860312000150" {
-		role = nfse.CompanyRolePrestada
-	}
-
-	cd := nfse.CompanyDocument{
-		Document:         doc,
-		RelationID:       fmt.Sprintf("%s-%s", companyID, doc.ID),
-		CompanyID:        dfe.CompanyID(companyID),
-		DocumentID:       doc.ID,
-		CompanyRole:      role,
-		VisibilityReason: nfse.VisibilityReason("unknown"),
-	}
-
-	return seed.UpsertCompanyDocument(ctx, db, cd)
 }
 
 func fileExists(path string) bool {

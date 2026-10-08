@@ -1,27 +1,27 @@
+// Package seed writes the development database through the stores the app
+// uses, so a schema change breaks it in the store or at compile time instead
+// of in SQL kept only here.
 package seed
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
-func SeedDevelopment(ctx context.Context, db *sql.DB) error {
-	company := company.Company{ // #nosec G101 -- mock dev company; CredentialID is an ID, not a secret.
-		ID:           "dev-company-70860312000150",
-		CNPJ:         "70860312000150",
-		CNPJRoot:     "70860312",
-		Name:         "Empresa Mock Teste",
-		CredentialID: "dev-credential-70860312000150",
-		Environment:  dfe.EnvironmentRestricted,
-	}
-
-	credential := credential.Credential{
+// SeedDevelopment creates the mock credential and company, or brings them back
+// to the mock values when they already exist, and returns the company.
+func SeedDevelopment(ctx context.Context, db *sql.DB) (*company.Company, error) {
+	cred := &credential.Credential{
 		ID:                "dev-credential-70860312000150",
 		Label:             "Certificado Mock 70860312000150",
 		CertPath:          "devdata/certs/cert_a1_mock_70860312000150.pfx",
@@ -29,134 +29,88 @@ func SeedDevelopment(ctx context.Context, db *sql.DB) error {
 		OwnerCNPJRoot:     "70860312",
 		FingerprintSHA256: "mock-fingerprint",
 	}
-
-	if err := UpsertCredential(ctx, db, credential); err != nil {
-		return fmt.Errorf("upsert credential: %w", err)
+	if err := saveCredential(ctx, credential.NewStore(db), cred); err != nil {
+		return nil, fmt.Errorf("save credential: %w", err)
 	}
 
-	if err := UpsertCompany(ctx, db, company); err != nil {
-		return fmt.Errorf("upsert company: %w", err)
+	comp := &company.Company{ // #nosec G101 -- mock dev company; CredentialID is an ID, not a secret.
+		ID:           "dev-company-70860312000150",
+		CNPJ:         "70860312000150",
+		CNPJRoot:     "70860312",
+		Name:         "Empresa Mock Teste",
+		CredentialID: cred.ID,
+		Environment:  dfe.EnvironmentRestricted,
+		// The fixtures are old; from_now, the store's default, would hide them.
+		SyncStartPolicy: syncstate.SyncStartPolicyAll,
+	}
+	saved, err := saveCompany(ctx, company.NewStore(db), comp)
+	if err != nil {
+		return nil, fmt.Errorf("save company: %w", err)
+	}
+	return saved, nil
+}
+
+// SeedDocument parses an NFS-e XML and applies it to the company the way a
+// sync applies a document received at nsu.
+func SeedDocument(ctx context.Context, store *sync.Store, comp *company.Company, xmlPath string, nsu int64) error {
+	data, err := os.ReadFile(xmlPath) // #nosec G304 -- dev seeder reads its own fixture files.
+	if err != nil {
+		return err
 	}
 
-	return nil
-}
+	doc, warnings, err := nfse.ParseDocumentXML(data)
+	if err != nil {
+		return err
+	}
+	doc.ID = nfse.DocumentID("doc-" + string(doc.ChaveAcesso))
+	doc.XMLPath = xmlPath
+	doc.RawHash = "hash-" + string(doc.ChaveAcesso)
+	doc.ParseWarnings = warnings
 
-func UpsertCredential(ctx context.Context, db *sql.DB, c credential.Credential) error {
-	query := `
-		INSERT INTO credentials (
-			id, label, cert_path, owner_cnpj, owner_cnpj_root,
-			fingerprint_sha256, subject_name, not_before, not_after, inspected_at,
-			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-		ON CONFLICT(id) DO UPDATE SET
-			label = excluded.label,
-			cert_path = excluded.cert_path,
-			owner_cnpj = excluded.owner_cnpj,
-			owner_cnpj_root = excluded.owner_cnpj_root,
-			fingerprint_sha256 = excluded.fingerprint_sha256,
-			subject_name = excluded.subject_name,
-			not_before = excluded.not_before,
-			not_after = excluded.not_after,
-			inspected_at = excluded.inspected_at,
-			updated_at = excluded.updated_at;
-	`
-	_, err := db.ExecContext(
-		ctx, query,
-		c.ID, c.Label, c.CertPath, c.OwnerCNPJ, c.OwnerCNPJRoot,
-		c.FingerprintSHA256, c.SubjectName, c.NotBefore, c.NotAfter, c.InspectedAt,
-	)
+	_, err = store.ApplyDocument(ctx, nfse.ApplyDocumentParams{
+		Document:      doc,
+		Participation: nfse.ClassifyCompanyParticipation(&doc, comp.CNPJ),
+		CompanyID:     comp.ID,
+		NSU:           nsu,
+	})
 	return err
 }
 
-func UpsertCompany(ctx context.Context, db *sql.DB, c company.Company) error {
-	query := `
-		INSERT INTO companies (
-			id, cnpj, cnpj_root, name, credential_id, environment,
-			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-		ON CONFLICT(id) DO UPDATE SET
-			cnpj = excluded.cnpj,
-			cnpj_root = excluded.cnpj_root,
-			name = excluded.name,
-			credential_id = excluded.credential_id,
-			environment = excluded.environment,
-			updated_at = excluded.updated_at;
-	`
-	_, err := db.ExecContext(
-		ctx, query,
-		c.ID, c.CNPJ, c.CNPJRoot, c.Name, c.CredentialID, string(c.Environment),
-	)
-	return err
+func saveCredential(ctx context.Context, store *credential.Store, c *credential.Credential) error {
+	_, err := store.CredentialByID(ctx, c.ID)
+	if errors.Is(err, credential.ErrCredentialNotFound) {
+		return store.CreateCredential(ctx, c)
+	}
+	if err != nil {
+		return err
+	}
+	return store.UpdateCredential(ctx, c)
 }
 
-func UpsertDocument(ctx context.Context, db *sql.DB, d nfse.Document) error {
-	query := `
-		INSERT INTO documents (
-			id, chave_acesso, issue_date, competence,
-			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name,
-			intermediario_cnpj, intermediario_name,
-			service_value, iss_value, irrf_value, inss_value, pis_value, cofins_value, csll_value, total_retentions,
-			status, layout_version, xml_path, raw_hash, parse_warnings,
-			nfse_number, service_description, created_at, updated_at
-		) VALUES (
-			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		)
-		ON CONFLICT(chave_acesso) DO UPDATE SET
-			issue_date = excluded.issue_date,
-			competence = excluded.competence,
-			prestador_cnpj = excluded.prestador_cnpj,
-			prestador_name = excluded.prestador_name,
-			tomador_cnpj = excluded.tomador_cnpj,
-			tomador_name = excluded.tomador_name,
-			intermediario_cnpj = excluded.intermediario_cnpj,
-			intermediario_name = excluded.intermediario_name,
-			service_value = excluded.service_value,
-			iss_value = excluded.iss_value,
-			irrf_value = excluded.irrf_value,
-			inss_value = excluded.inss_value,
-			pis_value = excluded.pis_value,
-			cofins_value = excluded.cofins_value,
-			csll_value = excluded.csll_value,
-			total_retentions = excluded.total_retentions,
-			status = excluded.status,
-			layout_version = excluded.layout_version,
-			xml_path = excluded.xml_path,
-			raw_hash = excluded.raw_hash,
-			parse_warnings = excluded.parse_warnings,
-			nfse_number = excluded.nfse_number,
-			service_description = excluded.service_description,
-			updated_at = excluded.updated_at;
-	`
-	// parse_warnings omitted for seed mock simplicity
-	_, err := db.ExecContext(
-		ctx, query,
-		d.ID, d.ChaveAcesso, d.IssueDate.Format("2006-01-02T15:04:05Z07:00"), d.Competence,
-		d.PrestadorCNPJ, d.PrestadorName, d.TomadorCNPJ, d.TomadorName,
-		d.IntermediarioCNPJ, d.IntermediarioName,
-		d.ServiceValue, d.ISSValue, d.IRRFValue, d.INSSValue, d.PISValue, d.COFINSValue, d.CSLLValue, d.TotalRetentions,
-		d.Status, d.LayoutVersion, d.XMLPath, d.RawHash, nil,
-		d.NFSeNumber, d.ServiceDescription,
-	)
-	return err
-}
+// saveCompany looks the company up by CNPJ, so a company added by hand with the
+// mock CNPJ is updated under its own ID.
+func saveCompany(ctx context.Context, store *company.Store, c *company.Company) (*company.Company, error) {
+	existing, err := store.CompanyByCNPJ(ctx, c.CNPJ)
+	if errors.Is(err, company.ErrCompanyNotFound) {
+		if err := store.CreateCompany(ctx, c); err != nil {
+			return nil, err
+		}
+		return c, nil
+	}
+	if err != nil {
+		return nil, err
+	}
 
-func UpsertCompanyDocument(ctx context.Context, db *sql.DB, cd nfse.CompanyDocument) error {
-	query := `
-		INSERT INTO company_documents (
-			relation_id, company_id, document_id, company_role, visibility_reason,
-			first_seen_nsu, last_seen_nsu,
-			first_synced_at, last_synced_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-		ON CONFLICT(relation_id) DO UPDATE SET
-			company_role = excluded.company_role,
-			visibility_reason = excluded.visibility_reason,
-			last_seen_nsu = excluded.last_seen_nsu,
-			last_synced_at = excluded.last_synced_at;
-	`
-	_, err := db.ExecContext(
-		ctx, query,
-		cd.RelationID, cd.CompanyID, cd.DocumentID, string(cd.CompanyRole), string(cd.VisibilityReason),
-		cd.FirstSeenNSU, cd.LastSeenNSU,
-	)
-	return err
+	existing.Name = c.Name
+	existing.Environment = c.Environment
+	existing.SyncStartPolicy = c.SyncStartPolicy
+	existing.SyncStartDate = c.SyncStartDate
+	if err := store.UpdateCompany(ctx, existing); err != nil {
+		return nil, err
+	}
+	if err := store.AssignCredential(ctx, existing.ID, c.CredentialID); err != nil {
+		return nil, err
+	}
+	existing.CredentialID = c.CredentialID
+	return existing, nil
 }
