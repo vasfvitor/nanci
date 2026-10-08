@@ -144,7 +144,7 @@ export function blockedMessage(info: SefazBlockInfo, time: string) {
   }
 }
 
-export type SefazIdleInfo = { IdleDays: number; NSUEmRisco: boolean }
+export type SefazIdleInfo = { IdleDays: number }
 
 // IDLE_WARNING_TOOLTIP explains the idle warning of a SEFAZ distribution:
 // the Ambiente Nacional only generates NSUs for CNPJs that queried it in the
@@ -158,6 +158,6 @@ export const IDLE_WARNING_TOOLTIP =
 // idleWarning is the badge text of a distribution not queried for a long
 // time, or '' when it is not at risk of losing NSUs.
 export function idleWarning(info: SefazIdleInfo | null) {
-  if (!info?.NSUEmRisco) return ''
+  if (!info?.IdleDays) return ''
   return `Sem consulta há ${info.IdleDays} dias`
 }

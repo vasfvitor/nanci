@@ -45,24 +45,24 @@ func TestSefazStatusWarnsWhenDistributionIdle(t *testing.T) {
 		t.Run(string(source), func(t *testing.T) {
 			env := newNFeTestEnv(t)
 
-			if got := status(env, source); got.NSUEmRisco || got.IdleDays != 0 {
-				t.Errorf("never synced: (IdleDays, NSUEmRisco) = (%d, %v), want (0, false)", got.IdleDays, got.NSUEmRisco)
+			if got := status(env, source); got.IdleDays != 0 {
+				t.Errorf("never synced: IdleDays = %d, want 0", got.IdleDays)
 			}
 
 			// A stale query in the other environment does not count.
 			env.setLastQuery(source, dfe.EnvironmentRestricted, time.Now().Add(-90*24*time.Hour))
-			if got := status(env, source); got.NSUEmRisco {
+			if got := status(env, source); got.IdleDays > 0 {
 				t.Error("an idle homologação cursor warns for produção")
 			}
 
 			env.setLastQuery(source, dfe.EnvironmentProduction, time.Now().Add(-44*24*time.Hour))
-			if got := status(env, source); got.NSUEmRisco || got.IdleDays != 44 {
-				t.Errorf("44 days: (IdleDays, NSUEmRisco) = (%d, %v), want (44, false)", got.IdleDays, got.NSUEmRisco)
+			if got := status(env, source); got.IdleDays != 0 {
+				t.Errorf("44 days: IdleDays = %d, want 0", got.IdleDays)
 			}
 
 			env.setLastQuery(source, dfe.EnvironmentProduction, time.Now().Add(-45*24*time.Hour))
-			if got := status(env, source); !got.NSUEmRisco || got.IdleDays != 45 {
-				t.Errorf("45 days: (IdleDays, NSUEmRisco) = (%d, %v), want (45, true)", got.IdleDays, got.NSUEmRisco)
+			if got := status(env, source); got.IdleDays != 45 {
+				t.Errorf("45 days: IdleDays = %d, want 45", got.IdleDays)
 			}
 		})
 	}

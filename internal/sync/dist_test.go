@@ -76,27 +76,21 @@ func TestDistIdle(t *testing.T) {
 	}
 	almost45 := now.Add(-45*24*time.Hour + time.Minute)
 	tests := []struct {
-		name     string
-		source   syncstate.SyncSource
-		last     *time.Time
-		wantDays int
-		wantWarn bool
+		name string
+		last *time.Time
+		want int
 	}{
-		{"NF-e 44 days", syncstate.SyncSourceNFe, daysAgo(44), 44, false},
-		{"NF-e a minute short of 45 days", syncstate.SyncSourceNFe, &almost45, 44, false},
-		{"NF-e 45 days", syncstate.SyncSourceNFe, daysAgo(45), 45, true},
-		{"CT-e 44 days", syncstate.SyncSourceCTe, daysAgo(44), 44, false},
-		{"CT-e 45 days", syncstate.SyncSourceCTe, daysAgo(45), 45, true},
-		{"CT-e 90 days", syncstate.SyncSourceCTe, daysAgo(90), 90, true},
-		{"never synced", syncstate.SyncSourceNFe, nil, 0, false},
-		{"NFS-e has no 60-day rule", syncstate.SyncSourceNFSe, daysAgo(90), 0, false},
-		{"clock behind the last query", syncstate.SyncSourceNFe, daysAgo(-1), 0, false},
+		{"44 days", daysAgo(44), 0},
+		{"a minute short of 45 days", &almost45, 0},
+		{"45 days", daysAgo(45), 45},
+		{"90 days", daysAgo(90), 90},
+		{"never synced", nil, 0},
+		{"clock behind the last query", daysAgo(-1), 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			days, warn := DistIdle(tt.source, tt.last, now)
-			if days != tt.wantDays || warn != tt.wantWarn {
-				t.Errorf("DistIdle = (%d, %v), want (%d, %v)", days, warn, tt.wantDays, tt.wantWarn)
+			if got := DistIdle(tt.last, now); got != tt.want {
+				t.Errorf("DistIdle = %d, want %d", got, tt.want)
 			}
 		})
 	}

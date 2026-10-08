@@ -23,17 +23,19 @@ const distWaitAfterStop = time.Hour
 // weeks to run a pull.
 const DistIdleWarningDays = 45
 
-// DistIdle reports how many whole days have passed between lastQueryAt, the
-// last time the SEFAZ answered a distNSU of source, and now, and whether
-// that reaches DistIdleWarningDays. Only the NF-e and CT-e distributions
-// have the 60-day rule, and a source never queried (lastQueryAt nil) is not
-// idle.
-func DistIdle(source syncstate.SyncSource, lastQueryAt *time.Time, now time.Time) (days int, warn bool) {
-	if lastQueryAt == nil || (source != syncstate.SyncSourceNFe && source != syncstate.SyncSourceCTe) {
-		return 0, false
+// DistIdle returns how many whole days have passed between lastQueryAt, the
+// last time the SEFAZ answered a distNSU, and now, when that reached
+// DistIdleWarningDays; it returns 0 otherwise, and for a distribution never
+// queried (lastQueryAt nil).
+func DistIdle(lastQueryAt *time.Time, now time.Time) int {
+	if lastQueryAt == nil {
+		return 0
 	}
-	days = max(int(now.Sub(*lastQueryAt)/(24*time.Hour)), 0)
-	return days, days >= DistIdleWarningDays
+	days := int(now.Sub(*lastQueryAt) / (24 * time.Hour))
+	if days < DistIdleWarningDays {
+		return 0
+	}
+	return days
 }
 
 // requestsPerHour is the hourly request budget per CNPJ of source; 0 means

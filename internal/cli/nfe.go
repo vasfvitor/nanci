@@ -104,7 +104,7 @@ func formatMaxNSU(nsu *int64) string {
 // nothing when the source is not at risk. pullCmd is the command that resets
 // the count.
 func printIdleWarning(out io.Writer, status app.SefazSourceStatus, pullCmd string) {
-	if !status.NSUEmRisco {
+	if status.IdleDays == 0 {
 		return
 	}
 	_, _ = fmt.Fprintf(out, "  Aviso: %d dias sem consultar a distribuição. O Ambiente Nacional só gera NSU para quem consultou nos últimos 60 dias; os documentos de uma pausa maior não chegam mais por ela. Rode `%s` para reiniciar a contagem.\n", status.IdleDays, pullCmd)

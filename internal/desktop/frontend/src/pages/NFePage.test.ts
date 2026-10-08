@@ -119,7 +119,6 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     RequestsLastHour: 1,
     RequestBudget: 20,
     IdleDays: 0,
-    NSUEmRisco: false,
     TotalDestinatario: 0,
     TotalEmitente: 0,
     TotalOutros: 0,

@@ -342,7 +342,6 @@ export namespace desktopapi {
 	    RequestsLastHour: number;
 	    RequestBudget: number;
 	    IdleDays: number;
-	    NSUEmRisco: boolean;
 	    TotalTomador: number;
 	    TotalDestinatario: number;
 	    TotalRemetente: number;
@@ -369,7 +368,6 @@ export namespace desktopapi {
 	        this.RequestsLastHour = source["RequestsLastHour"];
 	        this.RequestBudget = source["RequestBudget"];
 	        this.IdleDays = source["IdleDays"];
-	        this.NSUEmRisco = source["NSUEmRisco"];
 	        this.TotalTomador = source["TotalTomador"];
 	        this.TotalDestinatario = source["TotalDestinatario"];
 	        this.TotalRemetente = source["TotalRemetente"];
@@ -1444,7 +1442,6 @@ export namespace desktopapi {
 	    RequestsLastHour: number;
 	    RequestBudget: number;
 	    IdleDays: number;
-	    NSUEmRisco: boolean;
 	    TotalDestinatario: number;
 	    TotalEmitente: number;
 	    TotalOutros: number;
@@ -1475,7 +1472,6 @@ export namespace desktopapi {
 	        this.RequestsLastHour = source["RequestsLastHour"];
 	        this.RequestBudget = source["RequestBudget"];
 	        this.IdleDays = source["IdleDays"];
-	        this.NSUEmRisco = source["NSUEmRisco"];
 	        this.TotalDestinatario = source["TotalDestinatario"];
 	        this.TotalEmitente = source["TotalEmitente"];
 	        this.TotalOutros = source["TotalOutros"];

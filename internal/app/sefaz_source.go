@@ -30,13 +30,11 @@ type SefazSourceStatus struct {
 	BlockedReason     string     // caught_up | consumo_indevido | rate_budget; empty when not blocked
 	RequestsLastHour  int
 	RequestBudget     int
-	// IdleDays is how many whole days have passed since the SEFAZ last
-	// answered a distNSU of this source in this environment; 0 when never.
+	// IdleDays is the number of days since the last successful distribution
+	// query, set only when it reached sync.DistIdleWarningDays; 0 otherwise.
+	// The Ambiente Nacional stops generating NSUs for the CNPJ root after 60
+	// days without a distNSU, and a pull resets the count.
 	IdleDays int
-	// NSUEmRisco is set when IdleDays reached sync.DistIdleWarningDays: the
-	// Ambiente Nacional stops generating NSUs for the CNPJ root after 60 days
-	// without a distNSU, and a pull resets the count.
-	NSUEmRisco bool
 }
 
 // loadSefazSourceStatus reads the company's cursor, last run, initial sync
@@ -66,7 +64,7 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 		status.LastNSU = snapshot.State.LastProcessedNSU
 		status.MaxNSU = snapshot.State.MaxNSU
 		status.LastSyncAt = snapshot.State.LastSuccessAt
-		status.IdleDays, status.NSUEmRisco = sync.DistIdle(source, snapshot.State.LastSuccessAt, now)
+		status.IdleDays = sync.DistIdle(snapshot.State.LastSuccessAt, now)
 	}
 	if snapshot.Run != nil {
 		status.LastRunStatus = string(snapshot.Run.Status)

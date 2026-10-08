@@ -117,7 +117,7 @@ describe('sefazDisplay', () => {
 
   it('warns only when the distribution is at risk of losing NSUs', () => {
     expect(idleWarning(null)).toBe('')
-    expect(idleWarning({ IdleDays: 44, NSUEmRisco: false })).toBe('')
-    expect(idleWarning({ IdleDays: 45, NSUEmRisco: true })).toBe('Sem consulta há 45 dias')
+    expect(idleWarning({ IdleDays: 0 })).toBe('')
+    expect(idleWarning({ IdleDays: 45 })).toBe('Sem consulta há 45 dias')
   })
 })

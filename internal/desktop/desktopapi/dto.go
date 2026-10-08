@@ -549,8 +549,7 @@ type NFeStatusResult struct {
 	BlockedReason     string // caught_up | consumo_indevido | rate_budget; empty when not blocked
 	RequestsLastHour  int
 	RequestBudget     int
-	IdleDays          int  // whole days since the SEFAZ last answered a distNSU; 0 when never synced
-	NSUEmRisco        bool // IdleDays reached the warning threshold of the 60-day NSU rule
+	IdleDays          int // days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
 	TotalDestinatario int
 	TotalEmitente     int
 	TotalOutros       int
@@ -879,8 +878,7 @@ type CTeStatusResult struct {
 	BlockedReason     string // caught_up | consumo_indevido | rate_budget; empty when not blocked
 	RequestsLastHour  int
 	RequestBudget     int
-	IdleDays          int  // whole days since the SEFAZ last answered a distNSU; 0 when never synced
-	NSUEmRisco        bool // IdleDays reached the warning threshold of the 60-day NSU rule
+	IdleDays          int // days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
 	TotalTomador      int
 	TotalDestinatario int
 	TotalRemetente    int
