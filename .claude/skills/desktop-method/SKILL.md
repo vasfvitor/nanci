@@ -37,9 +37,9 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 - Same commit: add the method to the `vi.mock('../../../wailsjs/go/main/App', ...)` list in `src/platform/wails/client.test.ts` and to the `window.go.main.App` mock in `scripts/generate-screenshots.ts` (`ExportNFeZIP: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The build does not type-check that script.
 - CI job `bindings` in `.github/workflows/ci.yml` regenerates and fails on any drift in `frontend/wailsjs`.
 
-## 5. Client: `src/types/desktop.ts` and `src/platform/wails/client/`
+## 5. Client: `src/types/desktop/` and `src/platform/wails/client/`
 
-- Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeZIPInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `wailsjs`.
+- Types live by area in `src/types/desktop/` (`common.ts` for shared types such as `ISODateValue`, `ExportResult` and the import results, then `companies.ts`, `nfse.ts`, `nfe.ts`, `cte.ts`); `index.ts` re-exports them all, so code imports `@/types/desktop`. Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeZIPInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `wailsjs`.
 - The client is split by area under `src/platform/wails/client/`: `base.ts` (`callWails`, error normalization, the `as*` readers, `fileTimestamp`, shared mappers such as `mapExportResult`), `companies.ts` (companies and credentials), `nfse.ts`, `nfe.ts`, `cte.ts`, and `system.ts` (dialogs, logs, data directory, build info). `index.ts` spreads the area objects into `desktopClient` and re-exports the public mappers by name, so importers keep using `@/platform/wails/client`.
 - The method goes in its area object (`nfeClient` in `client/nfe.ts`) and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `systemClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
 - Result mappers read `unknown` through `asString`, `asNumber`, `asBoolean`, `asDate`, `asNullableNumber`, `asStringArray`, and `asEnum` (unknown values become `''`). Example: `mapExportResult`, `mapNFeExportResult`. Exported mappers are tested directly.
@@ -83,7 +83,7 @@ A user-facing capability usually ships with its CLI command in the same change: 
 - [ ] `services.go` interface, `app_<area>.go` method, fake in `fakes_test.go`, mapping test, table entries (out path, core errors)
 - [ ] `wails generate module`; diff shows only the new method and DTOs
 - [ ] `client.test.ts` `vi.mock` list and `scripts/generate-screenshots.ts` mock updated in the same commit
-- [ ] `types/desktop.ts` type, `desktopClient` method with mapper, success and cancel tests
+- [ ] `types/desktop/<area>.ts` type, `client/<area>.ts` method with mapper, success and cancel tests
 - [ ] composable function with guard, store flag set before await and cleared in `finally`, second-instance test
 - [ ] page wiring with `useNotify`, dialog typed props/emits, page test
 - [ ] CLI command and test when user-facing
