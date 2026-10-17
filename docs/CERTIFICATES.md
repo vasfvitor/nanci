@@ -1,6 +1,6 @@
 # Certificados Digitais A1
 
-Como o Nanci carrega o certificado, guarda a senha e o usa com o ADN e a SEFAZ. O guia de uso está no site: [Certificado A1](https://vasfvitor.github.io/nanci/docs/certificados/).
+Como o Nanci carrega o certificado, guarda a senha e o usa com o ADN e a SEFAZ. O guia de uso está no site: [Certificado A1](https://nanci.abelhaninja.de/docs/certificados/).
 
 ## Carregamento
 

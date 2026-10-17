@@ -77,7 +77,8 @@ article h1 {
 }
 
 .navbar-title,
-nav a[href$="/nanci/"] span {
+nav a[href="/"] span,
+nav a[href="https://nanci.abelhaninja.de/"] span {
   font-stretch: 125%;
   font-weight: 750;
 }

@@ -39,7 +39,7 @@ jobs:
 
       - name: Build
         working-directory: website
-        run: hugo --minify --baseURL "https://vasfvitor.github.io/nanci/"
+        run: hugo --minify --baseURL "https://nanci.abelhaninja.de/"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4

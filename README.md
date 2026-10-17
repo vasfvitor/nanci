@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/vasfvitor/nanci/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vasfvitor/nanci"></a>
   <a href="LICENSE"><img alt="Licença GPL-3.0" src="https://img.shields.io/github/license/vasfvitor/nanci"></a>
-  <a href="https://vasfvitor.github.io/nanci/"><img alt="Documentação" src="https://img.shields.io/badge/docs-vasfvitor.github.io%2Fnanci-blue"></a>
+  <a href="https://nanci.abelhaninja.de/"><img alt="Documentação" src="https://img.shields.io/badge/docs-nanci.abelhaninja.de-blue"></a>
 </p>
 
 <p align="center">
@@ -31,13 +31,13 @@ Várias empresas, cada uma com o seu certificado A1. Exporta NFS-e, NF-e e CT-e 
 
 ## Instalação
 
-Baixe o instalador da [última versão](https://github.com/vasfvitor/nanci/releases/latest) e siga o [primeiro uso](https://vasfvitor.github.io/nanci/docs/instalacao/).
+Baixe o instalador da [última versão](https://github.com/vasfvitor/nanci/releases/latest) e siga o [primeiro uso](https://nanci.abelhaninja.de/docs/instalacao/).
 
-O CLI não vem no instalador. Compile com `go build -o nanci.exe ./cmd/nanci` e veja os [comandos](https://vasfvitor.github.io/nanci/docs/cli/).
+O CLI não vem no instalador. Compile com `go build -o nanci.exe ./cmd/nanci` e veja os [comandos](https://nanci.abelhaninja.de/docs/cli/).
 
 ## Documentação
 
-- **Uso**: [vasfvitor.github.io/nanci](https://vasfvitor.github.io/nanci/)
+- **Uso**: [nanci.abelhaninja.de](https://nanci.abelhaninja.de/)
 - **Técnica**: [arquitetura](docs/ARCHITECTURE.md), [NFS-e/ADN](docs/NFSE_ADN.md), [NF-e/SEFAZ](docs/NFE_SEFAZ.md), [CT-e/SEFAZ](docs/CTE_SEFAZ.md), [certificados](docs/CERTIFICATES.md)
 - **Desenvolvimento**: [DEVELOPMENT.md](docs/DEVELOPMENT.md), [CONTRIBUTING.md](CONTRIBUTING.md)
 

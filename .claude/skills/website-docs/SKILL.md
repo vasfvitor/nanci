@@ -5,11 +5,11 @@ description: Use when adding or editing a page of the nanci website (Hugo) or re
 
 # Website docs: the Hugo site under `website/`
 
-The site at https://vasfvitor.github.io/nanci/ is the user documentation. Technical detail lives in `docs/*.md` on GitHub and the site links to it on purpose; never copy one into the other (`docs/DEVELOPMENT.md`, "Site de documentação"). Open each cited file before copying its pattern.
+The site at https://nanci.abelhaninja.de/ is the user documentation. Technical detail lives in `docs/*.md` on GitHub and the site links to it on purpose; never copy one into the other (`docs/DEVELOPMENT.md`, "Site de documentação"). Open each cited file before copying its pattern.
 
 ## Setup
 
-- `website/hugo.toml`: theme Hextra as a Hugo module (`github.com/imfing/hextra`, pinned `v0.12.3` in `website/go.mod`), `baseURL` `https://vasfvitor.github.io/nanci/` (the site lives under `/nanci/`), `defaultContentLanguage = "pt"`, `enableGitInfo = true` (last-modified dates come from git), `markup.goldmark.renderer.unsafe = true` (raw HTML in content, used by the home page).
+- `website/hugo.toml`: theme Hextra as a Hugo module (`github.com/imfing/hextra`, pinned `v0.12.3` in `website/go.mod`), `baseURL` `https://nanci.abelhaninja.de/` (the site is served at the domain root; the old `vasfvitor.github.io/nanci/` redirects through GitHub Pages), `defaultContentLanguage = "pt"`, `enableGitInfo = true` (last-modified dates come from git), `markup.goldmark.renderer.unsafe = true` (raw HTML in content, used by the home page).
 - Outputs: `home = ["html", "rss", "llms"]`, `section` and `page` add `"markdown"`. Hextra defines both formats (`hugo config --source website` shows `outputformats.markdown` with `ugly = true`), so every docs page also ships as `docs/<page>.md` and the root gets `llms.txt` (`layouts/llms.txt`, one line per page from its `description`; a page opts out with `llms: false`). `_partials/custom/head-end.html` links the Markdown copy with `rel="alternate"` and, on the home page, `llms.txt`.
 - Upgrading Hextra (`hugo mod get -u github.com/imfing/hextra` in `website/`): re-diff the three copied templates against the new theme: `layouts/docs/single.html`, `layouts/page.markdown.md`, `layouts/llms.txt`.
 

@@ -106,7 +106,7 @@ make screenshots    # ou, em internal/desktop/frontend: pnpm run screenshots
 
 ## Site de documentação
 
-O site em [vasfvitor.github.io/nanci](https://vasfvitor.github.io/nanci/) é gerado com [Hugo](https://gohugo.io/) (extended) e o tema [Hextra](https://imfing.github.io/hextra/), a partir de `website/`. Ele é publicado pelo workflow `.github/workflows/website.yml` a cada push em `main` que mude `website/` ou `docs/screenshots/`.
+O site em [nanci.abelhaninja.de](https://nanci.abelhaninja.de/) é gerado com [Hugo](https://gohugo.io/) (extended) e o tema [Hextra](https://imfing.github.io/hextra/), a partir de `website/`. Ele é publicado pelo workflow `.github/workflows/website.yml` a cada push em `main` que mude `website/` ou `docs/screenshots/`.
 
 Para ver localmente:
 
