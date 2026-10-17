@@ -190,6 +190,15 @@ function table(wrapper: Page) {
   return wrapper.getComponent({ name: 'QTable' })
 }
 
+// typeFilter types text in the filter box and leaves it, which hands the
+// text to the page without waiting for the debounce.
+async function typeFilter(wrapper: Page, text: string) {
+  const input = field(wrapper, 'QInput', placeholder)
+  input.vm.$emit('update:modelValue', text)
+  await input.trigger('blur')
+  await flushPromises()
+}
+
 async function select(wrapper: Page, rows: CTeRow[]) {
   table(wrapper).vm.$emit('update:selected', rows)
   await flushPromises()
@@ -278,8 +287,7 @@ describe('CTePage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    field(wrapper, 'QInput', placeholder).vm.$emit('update:modelValue', 'FICTICIA')
-    await flushPromises()
+    await typeFilter(wrapper, 'FICTICIA')
     expect(table(wrapper).props('rows')).toEqual([tomada])
   })
 
@@ -428,8 +436,7 @@ describe('CTePage', () => {
       })
       const wrapper = mountPage()
       await flushPromises()
-      field(wrapper, 'QInput', placeholder).vm.$emit('update:modelValue', 'serra')
-      await flushPromises()
+      await typeFilter(wrapper, 'serra')
 
       await button(wrapper, 'Exportar').trigger('click')
       expect(dialog).toHaveBeenCalledWith(

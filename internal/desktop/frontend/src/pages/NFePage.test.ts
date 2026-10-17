@@ -248,8 +248,12 @@ async function selectRows(wrapper: Page, rows: NFeRow[]) {
   await flushPromises()
 }
 
+// filterRows types text in the filter box and leaves it, which hands the
+// text to the page without waiting for the debounce.
 async function filterRows(wrapper: Page, text: string) {
-  searchInput(wrapper).vm.$emit('update:modelValue', text)
+  const input = searchInput(wrapper)
+  input.vm.$emit('update:modelValue', text)
+  await input.trigger('blur')
   await flushPromises()
 }
 
