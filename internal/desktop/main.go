@@ -54,7 +54,7 @@ func main() {
 		if _, err := runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
 			Type:    runtime.InfoDialog,
 			Title:   "Sobre o Nanci",
-			Message: fmt.Sprintf("Nanci %s\nCommit: %s\n\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version, buildinfo.Commit),
+			Message: fmt.Sprintf("Nanci %s\nCommit: %s\n\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version, buildinfo.Commit),
 		}); err != nil {
 			runtime.LogErrorf(app.ctx, "abrir diálogo Sobre: %v", err)
 		}
@@ -77,7 +77,7 @@ func main() {
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
 				Title:   "Sobre o Nanci Desktop",
-				Message: fmt.Sprintf("© 2026 Contribuidores do Nanci\nVersão: %s\nSistema de sincronização de notas fiscais (NFSe).", buildinfo.Version),
+				Message: fmt.Sprintf("© 2026 Contribuidores do Nanci\nVersão: %s\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version),
 				Icon:    icon,
 			},
 			TitleBar: &mac.TitleBar{
