@@ -274,6 +274,48 @@ describe('AddCompanyDialog', () => {
     expect(cnpjInput(wrapper).props('error')).toBe(false)
   })
 
+  it('rejects a CNPJ with wrong check digits', async () => {
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+
+    // A short CNPJ waits for a save attempt.
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '1234567800019')
+    await flushPromises()
+    expect(cnpjInput(wrapper).props('error')).toBe(false)
+
+    // The check digits are judged as soon as the 14 characters are in.
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
+    await flushPromises()
+    expect(cnpjInput(wrapper).props('error')).toBe(true)
+    expect(cnpjInput(wrapper).props('errorMessage')).toBe('CNPJ inválido.')
+
+    input(wrapper, 'Nome / Razão Social')?.vm.$emit('update:modelValue', 'Empresa Um')
+    await submitForm(wrapper)
+    expect(desktopClient.addCompany).not.toHaveBeenCalled()
+
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '1234567800019')
+    await flushPromises()
+    expect(cnpjInput(wrapper).props('errorMessage')).toBe('CNPJ deve ter 14 caracteres.')
+  })
+
+  it('normalizes a pasted formatted CNPJ', async () => {
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+    expect(cnpjInput(wrapper).props('mask')).toBe('XX.XXX.XXX/XXXX-##')
+
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '12.abc.345/01de-35')
+    input(wrapper, 'Nome / Razão Social')?.vm.$emit('update:modelValue', 'Empresa Um')
+    await flushPromises()
+    expect(cnpjInput(wrapper).props('modelValue')).toBe('12ABC34501DE35')
+    expect(cnpjInput(wrapper).props('error')).toBe(false)
+
+    await submitForm(wrapper)
+    expect(desktopClient.addCompany).toHaveBeenCalledWith(
+      expect.objectContaining({ CNPJ: '12ABC34501DE35' })
+    )
+    expect(wrapper.emitted('added')).toEqual([['12ABC34501DE35']])
+  })
+
   it('autofocuses the CNPJ', async () => {
     const wrapper = mountDialog()
     await openDialog(wrapper)

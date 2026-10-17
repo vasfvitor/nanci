@@ -9,14 +9,17 @@
         <q-card-section class="q-pt-none q-gutter-y-md">
           <DraftBanner v-if="restored" @clear="clearDraft" />
           <q-input
-            v-model="form.CNPJ"
+            :model-value="form.CNPJ"
             label="CNPJ"
             hint="Informe o CNPJ com DV válido, numérico ou alfanumérico."
+            mask="XX.XXX.XXX/XXXX-##"
+            unmasked-value
             outlined
             dense
             autofocus
-            :error="submitted && !!errors.CNPJ"
-            :error-message="errors.CNPJ"
+            :error="!!cnpjMessage"
+            :error-message="cnpjMessage"
+            @update:model-value="(value) => (form.CNPJ = normalizeCNPJInput(value))"
           />
           <q-input
             v-model="form.Name"
@@ -128,6 +131,7 @@ import DraftBanner from '@/components/DraftBanner.vue'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
+import { cnpjError, normalizeCNPJInput } from '@/utils/cnpj'
 import { environmentOptions } from '@/utils/nfseDisplay'
 import { UF_SIGLAS } from '@/utils/uf'
 
@@ -174,7 +178,8 @@ const { form, dirty, restored, open, keep, clear, done } = useFormDraft('company
 
 const errors = computed(() => {
   const found: Partial<Record<Field, string>> = {}
-  if (!form.value.CNPJ) found.CNPJ = 'Informe o CNPJ.'
+  const cnpj = cnpjError(form.value.CNPJ)
+  if (cnpj) found.CNPJ = cnpj
   if (!form.value.Name) found.Name = 'Informe o nome da empresa.'
   if (form.value.credentialMode === 'existing' && !form.value.CredentialID) {
     found.CredentialID = 'Selecione uma credencial.'
@@ -186,6 +191,13 @@ const errors = computed(() => {
     found.customSyncStartDate = 'Informe a data inicial de importação.'
   }
   return found
+})
+
+// cnpjMessage judges a complete CNPJ as it is typed; an empty or short one
+// waits for a save attempt.
+const cnpjMessage = computed(() => {
+  if (!submitted.value && form.value.CNPJ.length < 14) return ''
+  return errors.value.CNPJ ?? ''
 })
 
 const syncStartOptions = computed(() => [

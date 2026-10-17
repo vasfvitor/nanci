@@ -3,15 +3,8 @@ import { defineStore } from 'pinia'
 import { documentListState } from '@/stores/documentListState'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
+import { compactCode } from '@/utils/cnpj'
 import { latestOnly } from '@/utils/latestOnly'
-
-// compactCode keeps the letters and digits of a typed CNPJ or access key,
-// uppercased, so a pasted "12.345.678/0001-00" or a key in groups of 4 match
-// as the backend stores them. CNPJs, and so access keys, may carry letters
-// (IN RFB 2.229/2024). Clearable inputs set null, which reads as ''.
-function compactCode(value: string | null) {
-  return (value ?? '').replace(/[^0-9A-Za-z]/g, '').toUpperCase()
-}
 
 // isNFeChaveFilter accepts an empty NF-e filter or a 44-character key. The
 // emitente CNPJ inside the key may carry letters, so they are allowed; the
