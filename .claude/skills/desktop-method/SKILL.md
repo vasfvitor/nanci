@@ -1,6 +1,6 @@
 ---
 name: desktop-method
-description: Use when exposing a backend capability to the nanci desktop app end to end (app service, DTO, Wails method, bindings, client, composable, store, page), or changing an existing one. Walks every layer with the file to edit, the pattern to copy and the test that pins it, using ExportNFeZIP as the worked example.
+description: Use when exposing a backend capability to the nanci desktop app end to end (app service, DTO, Wails method, bindings, client, composable, store, page), or changing an existing one. Walks every layer with the file to edit, the pattern to copy and the test that pins it, using ExportNFeDocuments as the worked example.
 ---
 
 # Desktop method: one capability, every layer
@@ -17,7 +17,7 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 
 ## 2. DTO: `internal/desktop/desktopapi/dto_<area>.go`
 
-- Every Wails input and result is a DTO (`ExportNFeZIPInput`, `NFeExportResult`) in the area's file (`dto_companies.go`, `dto_nfse.go`, `dto_nfe.go`, `dto_cte.go`; DTOs used by several areas, such as `ExportResult` and `MarkViewedInput`, in `dto.go`), never an `internal/nfe`, `internal/nfse` or `internal/app` struct.
+- Every Wails input and result is a DTO (`ExportNFeDocumentsInput`, `NFeExportResult`) in the area's file (`dto_companies.go`, `dto_nfse.go`, `dto_nfe.go`, `dto_cte.go`; DTOs used by several areas, such as `ExportResult` and `MarkViewedInput`, in `dto.go`), never an `internal/nfe`, `internal/nfse` or `internal/app` struct.
 - Enums cross as `string` in Portuguese (`Situacao`, `Manifestacao`, `CompanyRole` are `string(document.X)`); money as `int64` cents (`TotalValue: document.TotalValue.Cents()`); dates as `time.Time`, optional ones as `*time.Time` (`optionalTime`); slices never nil, so the frontend gets `[]`.
 - A result built from more than a couple of fields gets a mapper function next to it in `dto_<area>.go` (`NFeRows`/`nfeRow`, `NFeEventResultFrom`, `CTeResetResultFrom`) with a test in `desktopapi/dto_<area>_test.go` (`TestNFeRows` in `dto_nfe_test.go` checks every field, cents, nil dates, enum strings, empty slices). Small results are built inline in the area's `app_<area>.go` (`NFeExportResult{ExportResult: desktopapi.ExportResult(res.ExportResult), SkippedResumos: ...}`).
 
@@ -28,20 +28,20 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 - No path construction in Go beyond what the core does; the user picks the path through `SelectSaveFile`.
 - Errors reach the frontend through `formatError` in `errors.go` as `{Message, Code}`. Codes today: `canceled`, `sefaz_blocked`, `sync_running`. A new code needs `errors.go`, `errors_test.go`, and `WailsErrorCode`/`asErrorCode` in `client/base.ts`.
 - Tests: add the method to the fake in `fakes_test.go` (`f.record("ExportXMLZip", in)`, return a result field). Then in `app_export_test.go` (or `app_documents_test.go`, `app_company_test.go`, `app_sync_test.go` by area):
-  - a mapping test (`TestExportNFeZIP`: `assertCalls` sees every input field, result equals the expected DTO);
+  - a mapping test (`TestExportNFeDocumentsFormats`: `assertCalls` sees every input field, result equals the expected DTO);
   - an entry in the table tests: `exportRuns` feeds `TestExportsRequireOutPath` (no core call, zero result) and `TestExportsPassCoreErrors` (`errors.Is(err, errCore)`); document methods go in `TestDocumentMethodsPassCoreErrors`.
 
 ## 4. Bindings: `internal/desktop/frontend/wailsjs`
 
-- `cd internal/desktop && wails generate module` (copy `frontend/dist` in first, see the `lane` skill). Expect `wailsjs/go/main/App.js` (`window['go']['main']['App']['ExportNFeZIP'](arg1)`), `App.d.ts` (`ExportNFeZIP(arg1:desktopapi.ExportNFeZIPInput):Promise<desktopapi.NFeExportResult>`) and `wailsjs/go/models.ts` (one class per new DTO). Nothing else should change.
-- Same commit: add the method to the `vi.mock('../../../wailsjs/go/main/App', ...)` list in `src/platform/wails/client.test.ts` and to the `window.go.main.App` mock in `scripts/generate-screenshots.ts` (`ExportNFeZIP: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The build does not type-check that script.
+- `cd internal/desktop && wails generate module` (copy `frontend/dist` in first, see the `lane` skill). Expect `wailsjs/go/main/App.js` (`window['go']['main']['App']['ExportNFeDocumentsP'](arg1)`), `App.d.ts` (`ExportNFeDocuments(arg1:desktopapi.ExportNFeDocumentsInput):Promise<desktopapi.NFeExportResult>`) and `wailsjs/go/models.ts` (one class per new DTO). Nothing else should change.
+- Same commit: add the method to the `vi.mock('../../../wailsjs/go/main/App', ...)` list in `src/platform/wails/client.test.ts` and to the `window.go.main.App` mock in `scripts/generate-screenshots.ts` (`ExportNFeDocuments: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The build does not type-check that script.
 - CI job `bindings` in `.github/workflows/ci.yml` regenerates and fails on any drift in `frontend/wailsjs`.
 
 ## 5. Client: `src/types/desktop/` and `src/platform/wails/client/`
 
-- Types live by area in `src/types/desktop/` (`common.ts` for shared types such as `ISODateValue`, `ExportResult` and the import results, then `companies.ts`, `nfse.ts`, `nfe.ts`, `cte.ts`); `index.ts` re-exports them all, so code imports `@/types/desktop`. Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeZIPInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `wailsjs`.
+- Types live by area in `src/types/desktop/` (`common.ts` for shared types such as `ISODateValue`, `ExportResult` and the import results, then `companies.ts`, `nfse.ts`, `nfe.ts`, `cte.ts`); `index.ts` re-exports them all, so code imports `@/types/desktop`. Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeDocumentsInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `wailsjs`.
 - The client is split by area under `src/platform/wails/client/`: `base.ts` (`callWails`, error normalization, the `as*` readers, `fileTimestamp`, shared mappers such as `mapExportResult`), `companies.ts` (companies and credentials), `nfse.ts`, `nfe.ts`, `cte.ts`, and `system.ts` (dialogs, logs, data directory, build info). `index.ts` spreads the area objects into `desktopClient` and re-exports the public mappers by name, so importers keep using `@/platform/wails/client`.
-- The method goes in its area object (`nfeClient` in `client/nfe.ts`) and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `systemClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
+- The method goes in its area object (`nfeClient` in `client/nfe.ts`) and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `systemClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
 - Result mappers read `unknown` through `asString`, `asNumber`, `asBoolean`, `asDate`, `asNullableNumber`, `asStringArray`, and `asEnum` (unknown values become `''`). Example: `mapExportResult`, `mapNFeExportResult`. Exported mappers are tested directly.
 - `client.test.ts`: a success test (dialog title and default-name regex, exact Wails input, mapped result with defaults) and a cancel test (`SelectSaveFile` resolves `''`, result `null`, Wails method not called). See "exports NF-e XML and ZIP to the path chosen in the save dialog".
 

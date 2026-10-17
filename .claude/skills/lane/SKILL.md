@@ -9,7 +9,7 @@ A lane is one subagent, one worktree, a few commits, disjoint files from every o
 
 ## Before spawning
 
-1. Decide the scope in files: two lanes must not touch the same file. `client.ts`, `types/desktop.ts`, `wailsjs/` and `scripts/generate-screenshots.ts` are one unit; `go.mod`/`go.sum` of a module are one unit; `docs/ROADMAP.md` and `docs/PENDENCIAS.md` are edited by the orchestrator only.
+1. Decide the scope in files: two lanes must not touch the same file. `src/platform/wails/client/`, `src/types/desktop/`, `wailsjs/` and `scripts/generate-screenshots.ts` are one unit; `go.mod`/`go.sum` of a module are one unit; `docs/ROADMAP.md` and `docs/PENDENCIAS.md` are edited by the orchestrator only.
 2. Pick the base: `main` for maintenance, the integration branch for a feature. Agent worktrees may start at a stale commit, so the prompt always begins with a reset to the base tip.
 3. Spawn with `model: opus`, `isolation: worktree`, a short `name`, and the prompt below filled in.
 

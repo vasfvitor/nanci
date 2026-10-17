@@ -14,7 +14,7 @@ Run these before and after; every hit needs the new source.
 - `rg "'nfse', 'nfe', 'cte'"`: the `source` CHECK of `sync_runs`, `sync_state`, `company_sync_sources`, `sync_requests` (in the migrations under `internal/store/migrations_v2`; a CHECK change is a table rebuild, see the `migration` skill) and `documentTables` in `frontend/src/stores/preferences.ts`.
 - `rg "case syncstate.SyncSource"`: `sourceLabel` (`internal/sync/errors.go`), `requestsPerHour` (`internal/sync/dist.go`), `checkSource` and `newSource` (`internal/sync/manager.go`).
 - `rg "SyncSourceCTe"`: also `SyncSource.Valid()` (`internal/syncstate/sync.go`) and the `DistIdle` condition in `dist.go`.
-- `rg -F "'nfse' | 'nfe' | 'cte'" internal/desktop/frontend/src`: `SyncSource` (`types/desktop.ts`), `DocumentSource` (`utils/documentSources.ts`, plus its `DOCUMENT_SOURCES` noun, gender and article), `DocumentTable` (`stores/preferences.ts`).
+- `rg -F "'nfse' | 'nfe' | 'cte'" internal/desktop/frontend/src`: `SyncSource` (`types/desktop/common.ts`), `DocumentSource` (`utils/documentSources.ts`, plus its `DOCUMENT_SOURCES` noun, gender and article), `DocumentTable` (`stores/preferences.ts`).
 - Not caught by a grep: the `domain` depguard file list in `.golangci.yml`, `utils/stateLegends.ts` (one `<X>_LEGEND`), `router/index.ts`, the nav entry in `components/AppLeftDrawer.vue`, the key element list `identifierElement` in `internal/foundation/redact/redact.go` (`chCTe` today).
 
 A feature that spans all sources: run the same greps, then change each per-source file (`nfe*.go`, `cte*.go`, `documents.go`) in place. There is no shared layer to put it in.
@@ -43,13 +43,13 @@ Protocol and sync:
 
 App and entry points:
 13. `internal/app/<x>.go`, `<x>_export.go`, `<x>_reset.go` (copy `cte*.go`): `<X>Service` with `Pull`, `Status` (`loadSefazSourceStatus`), `ListDocuments`, `MarkViewed`, `ListEvents`, `TestConnection` (`testSefazConnection`), `ExportXMLZip`/`ExportXML` (`writeViaTemp`, then `MarkExported`), `PreviewReset`/`Reset` under `SyncManager.ReserveSource`. ZIP layout in `internal/report/<x>_zip.go` (`eventZipEntry`).
-14. Wiring: `<X>Repo` in `app.Dependencies`, the nil check and `New` in `internal/app/bootstrap.go`; `store.New<X>Repository(db)` in `internal/cli/runtime.go` and in `startup` of `internal/desktop/app.go`.
+14. Wiring: `<X>Repo` in `app.Dependencies`, the nil check and `New` in `internal/app/bootstrap.go`; `store.New<X>Repository(db)` in `internal/cli/runtime.go` and in `initRuntime` of `internal/desktop/app.go`.
 15. CLI `internal/cli/<x>.go` + `<x>_pull|status|list|export|reset|testar.go` (copy `cte*.go`), registered in `root_factory.go`; `--cnpj` persistent, `reset` simulates without `--confirmar`. Tests in `cli/<x>_test.go`.
 
 Desktop (one method at a time with the `desktop-method` skill):
-16. `desktopapi/dto.go`: inputs, `<X>Row`, `<X>Event`, status, pull and reset DTOs plus mappers (`CTeRows`, `CTeEvents`, `CTeResetResultFrom`) and tests in `dto_test.go`.
-17. `services.go` interface + `servicesFrom`; `app.go` methods `Pull<X>`, `Status<X>`, `List<X>`, `Mark<X>Viewed`, `List<X>Events`, `Test<X>Connection`, `Export<X>XML`, `Export<X>ZIP`, `PreviewReset<X>`, `Reset<X>`; fake in `fakes_test.go`, tests in `app_*_test.go`.
-18. `wails generate module`; `client.ts` (imports, enum lists, `map<X>*`, `desktopClient` methods), `types/desktop.ts`, the `vi.mock` list in `client.test.ts`, mocks in `scripts/generate-screenshots.ts`.
+16. `desktopapi/dto_<x>.go` (copy `dto_cte.go`): inputs, `<X>Row`, `<X>Event`, status, pull and reset DTOs plus mappers (`CTeRows`, `CTeEvents`, `CTeResetResultFrom`) and tests in `dto_<x>_test.go`.
+17. `services.go` interface + `servicesFrom`; `app_<x>.go` (copy `app_cte.go`) methods `Pull<X>`, `Status<X>`, `List<X>`, `Mark<X>Viewed`, `List<X>Events`, `Test<X>Connection`, `Export<X>XML`, `Export<X>ZIP`, `PreviewReset<X>`, `Reset<X>`; fake in `fakes_test.go`, tests in `app_*_test.go`.
+18. `wails generate module`; `platform/wails/client/<x>.ts` (imports, enum lists, `map<X>*`, the `<x>Client` object spread into `desktopClient` in `client/index.ts`), `types/desktop/<x>.ts` re-exported from `types/desktop/index.ts`, the `vi.mock` list in `client.test.ts`, mocks in `scripts/generate-screenshots.ts`.
 
 Frontend (copy the CT-e files):
 19. `stores/<x>Documents.ts` on `documentListState`, filter + `listInput` computed; `composables/use<X>Loaders.ts` (`useDocumentLoaders`) and `use<X>Documents.ts` (`useMarkViewed`, `useExportGuard`, `useSefazBlock`, `useRowTextFilter`, `useTablePagination('<x>')`, `companySync.runSync`); `utils/<x>Display.ts`.
