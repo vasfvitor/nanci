@@ -13,7 +13,7 @@ Baixe `nanci-desktop-windows-amd64-<versão>-installer.exe` da [última versão]
 O instalador não tem assinatura de código, então o SmartScreen pode avisar. Para conferir o arquivo, compare o hash com o `nanci-checksums.txt` da mesma versão:
 
 ```powershell
-Get-FileHash .\nanci-desktop-windows-amd64-v0.5.1-installer.exe -Algorithm SHA256
+Get-FileHash .\nanci-desktop-windows-amd64-v0.6.0-installer.exe -Algorithm SHA256
 ```
 
 ## Cadastrar a empresa
