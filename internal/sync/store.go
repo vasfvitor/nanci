@@ -429,6 +429,27 @@ func (r *Store) ApplyWithProgress(ctx context.Context, progress syncstate.Persis
 	return outcome, nil
 }
 
+// Apply runs write in one transaction without a sync checkpoint. It has the
+// CommitFunc signature, so Source.ProcessItem can store an item that did not
+// come from the pull loop (an imported XML, a document fetched by chave)
+// while sync_state and sync_runs stay as they are.
+func (r *Store) Apply(ctx context.Context, write func(tx *sql.Tx) (ItemOutcome, error)) (ItemOutcome, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return ItemOutcome{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	outcome, err := write(tx)
+	if err != nil {
+		return ItemOutcome{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return ItemOutcome{}, err
+	}
+	return outcome, nil
+}
+
 // ApplyDocumentAndProgress stores a document and its sync checkpoint in one transaction.
 func (r *Store) ApplyDocumentAndProgress(ctx context.Context, params nfse.ApplyDocumentAndProgressParams) (nfse.ApplyOutcome, error) {
 	outcome, err := r.ApplyWithProgress(ctx, params.ProgressParams, func(tx *sql.Tx) (ItemOutcome, error) {

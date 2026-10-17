@@ -393,7 +393,7 @@ func TestParseProcCTeKeySources(t *testing.T) {
 			t.Errorf("(tpAmb, warnings) = (%q, %v), want (1, one warning)", doc.TpAmb, doc.ParseWarnings)
 		}
 	})
-	// The sync decides what to store for these (see sync.checkTpAmb).
+	// The sync decides what to store for these (see sync.CheckTpAmb).
 	t.Run("missing tpAmb is a warning", func(t *testing.T) {
 		doc, err := ParseProcCTe([]byte(strings.ReplaceAll(valid, "<tpAmb>1</tpAmb>", "")))
 		if err != nil {
@@ -614,7 +614,7 @@ func TestParseProcEventoCTeRejects(t *testing.T) {
 }
 
 // The sync decides what to store for a missing or invalid tpAmb (see
-// sync.checkTpAmb).
+// sync.CheckTpAmb).
 func TestParseProcEventoCTeTpAmbIsNotEssential(t *testing.T) {
 	valid := string(readFixture(t, "proceventocte-cancelamento.xml"))
 

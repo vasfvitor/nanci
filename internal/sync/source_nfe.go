@@ -38,7 +38,8 @@ type nfeSource struct {
 }
 
 // NewNFeSource returns the Source for the NF-e distribution. cUFAutor is the
-// IBGE code of the company's UF.
+// IBGE code of the company's UF. Only Fetch uses client: a caller that only
+// stores items through ProcessItem may pass a nil client and cUFAutor 0.
 func NewNFeSource(client nfeFetcher, repo *store.NFeRepository, xml files.XMLStore, log *slog.Logger, cUFAutor int) Source {
 	return &nfeSource{
 		client:   client,
@@ -104,7 +105,7 @@ func (s *nfeSource) processDocument(ctx context.Context, company *company.Compan
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse document", item, payload, err)
 	}
-	doc.TpAmb = checkTpAmb(doc.TpAmb, tpAmb, &doc.ParseWarnings)
+	doc.TpAmb = CheckTpAmb(doc.TpAmb, tpAmb, &doc.ParseWarnings)
 
 	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
 		return ItemOutcome{}, fmt.Errorf("file save failed: %w", err)
@@ -135,7 +136,7 @@ func (s *nfeSource) processEvent(ctx context.Context, company *company.Company, 
 	if err != nil {
 		return ItemOutcome{}, s.parseError(ctx, "parse event", item, payload, err)
 	}
-	ev.TpAmb = checkTpAmb(ev.TpAmb, tpAmb, &ev.ParseWarnings)
+	ev.TpAmb = CheckTpAmb(ev.TpAmb, tpAmb, &ev.ParseWarnings)
 
 	authoredByCompany := cnpj.Clean(ev.AutorCNPJ) == company.CNPJ
 	if !authoredByCompany {

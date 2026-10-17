@@ -561,3 +561,35 @@ func TestPullNFeRequiresCompanyUFBeforePasswordPrompt(t *testing.T) {
 		t.Errorf("password prompts = %d, want 0", got)
 	}
 }
+
+func TestNFeSourceProcessItemThroughStoreApplyLeavesSyncStateAlone(t *testing.T) {
+	h := newNFeTestHelper(t)
+	ctx := context.Background()
+	// No client: ProcessItem never queries the SEFAZ.
+	src := NewNFeSource(nil, h.repo, h.xml, discardLogger(), 0)
+	zip := docZip(t, 7, "procNFe_v4.00.xsd", "procnfe.xml")
+
+	outcome, err := src.ProcessItem(ctx, h.company, SourceState{}, Item{NSU: zip.NSU, Schema: zip.Schema, Payload: zip.Content}, h.store.Apply)
+	if err != nil {
+		t.Fatalf("ProcessItem: %v", err)
+	}
+	if !outcome.Inserted || outcome.IsEvent || outcome.Partial {
+		t.Errorf("outcome = %+v, want an inserted completa", outcome)
+	}
+
+	doc, ok := h.documents()[nfeChaveProc]
+	if !ok {
+		t.Fatalf("procNFe %s not stored", nfeChaveProc)
+	}
+	if doc.Completeness != nfe.CompletenessCompleta {
+		t.Errorf("completeness = %q, want completa", doc.Completeness)
+	}
+	if len(h.xml.stored) != 1 {
+		t.Errorf("stored XML blobs = %d, want 1", len(h.xml.stored))
+	}
+	for _, table := range []string{"sync_state", "sync_runs", "sync_requests"} {
+		if got := h.countRows(`SELECT COUNT(*) FROM ` + table); got != 0 { // #nosec G202 -- fixed table names.
+			t.Errorf("%s rows = %d, want 0", table, got)
+		}
+	}
+}

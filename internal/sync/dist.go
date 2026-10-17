@@ -107,12 +107,13 @@ func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cur
 	return batch, nil
 }
 
-// checkTpAmb returns the tpAmb to store for an NF-e or CT-e item of a pull
-// that queried pullTpAmb. It is the only place that decides it: the parsers
-// only read it from the XML. The XML wins, with a warning when it names
+// CheckTpAmb returns the tpAmb to store for an NF-e or CT-e item of a pull
+// that queried pullTpAmb, or of an XML stored outside the distribution, where
+// pullTpAmb is the company's environment. It is the only place that decides
+// it: the parsers only read it from the XML. The XML wins, with a warning when it names
 // the other environment. A resumo carries no tpAmb and takes the pull's, and
 // so does an XML with a missing or invalid one.
-func checkTpAmb(xmlTpAmb, pullTpAmb string, warnings *[]string) string {
+func CheckTpAmb(xmlTpAmb, pullTpAmb string, warnings *[]string) string {
 	switch xmlTpAmb {
 	case "":
 		return pullTpAmb

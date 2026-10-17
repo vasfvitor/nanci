@@ -482,3 +482,27 @@ func TestPullCTeRequiresCompanyUFAndRepoBeforePasswordPrompt(t *testing.T) {
 		t.Errorf("password prompts = %d, want 0", got)
 	}
 }
+
+func TestCTeSourceProcessItemThroughStoreApplyLeavesSyncStateAlone(t *testing.T) {
+	h := newCTeTestHelper(t)
+	ctx := context.Background()
+	// No client: ProcessItem never queries the SEFAZ.
+	src := NewCTeSource(nil, h.repo, h.xml, discardLogger(), 0)
+	zip := cteDocZip(t, 7, "procCTe_v4.00.xsd", "procte.xml")
+
+	outcome, err := src.ProcessItem(ctx, h.company, SourceState{}, Item{NSU: zip.NSU, Schema: zip.Schema, Payload: zip.Content}, h.store.Apply)
+	if err != nil {
+		t.Fatalf("ProcessItem: %v", err)
+	}
+	if !outcome.Inserted || outcome.IsEvent {
+		t.Errorf("outcome = %+v, want an inserted document", outcome)
+	}
+	if _, ok := h.documents()[cteChaveProc]; !ok {
+		t.Fatalf("procCTe %s not stored", cteChaveProc)
+	}
+	for _, table := range []string{"sync_state", "sync_runs", "sync_requests"} {
+		if got := h.countRows(`SELECT COUNT(*) FROM ` + table); got != 0 { // #nosec G202 -- fixed table names.
+			t.Errorf("%s rows = %d, want 0", table, got)
+		}
+	}
+}

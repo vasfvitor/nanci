@@ -120,8 +120,8 @@ func TestCheckTpAmb(t *testing.T) {
 	}
 	for _, tt := range tests {
 		var warnings []string
-		if got := checkTpAmb(tt.xml, "1", &warnings); got != tt.want || len(warnings) != tt.wantWarnings {
-			t.Errorf("checkTpAmb(%q, 1) = %q with %v, want %q with %d warnings", tt.xml, got, warnings, tt.want, tt.wantWarnings)
+		if got := CheckTpAmb(tt.xml, "1", &warnings); got != tt.want || len(warnings) != tt.wantWarnings {
+			t.Errorf("CheckTpAmb(%q, 1) = %q with %v, want %q with %d warnings", tt.xml, got, warnings, tt.want, tt.wantWarnings)
 		}
 	}
 }
