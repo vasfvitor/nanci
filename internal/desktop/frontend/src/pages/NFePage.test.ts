@@ -2,13 +2,17 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFePage from './NFePage.vue'
+import ImportResultDialog from '@/components/ImportResultDialog.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '@/components/NFeEventResultsDialog.vue'
+import NFeFetchDialog from '@/components/NFeFetchDialog.vue'
 import NFeManifestacaoDialog from '@/components/NFeManifestacaoDialog.vue'
 import { desktopClient, mapNFeRow } from '@/platform/wails/client'
+import { useCompanySyncStore } from '@/stores/companySync'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type {
+  ImportXMLResult,
   NFeCienciaPlan,
   NFeEventBatchResult,
   NFeEventResult,
@@ -56,6 +60,9 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     exportDANFE: vi.fn(),
     exportNFeDocuments: vi.fn(),
     markNFeViewed: vi.fn(),
+    selectXMLFiles: vi.fn(),
+    importNFeXML: vi.fn(),
+    fetchNFeByChave: vi.fn(),
   },
 }))
 
@@ -859,5 +866,193 @@ describe('NFePage row menu', () => {
       message: '1 DANFE exportado para C:\\exports\\danfe.pdf.',
       actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
+  })
+})
+
+describe('NFePage import and fetch by chave', () => {
+  const fetchedChave = '35260912345678000195550010000000011000000010'
+
+  const withRejected: ImportXMLResult = {
+    Files: [
+      { Path: 'C:\\XML\\a.xml', Kind: 'completa', ChaveAcesso: fetchedChave, Outcome: 'imported', Message: '' },
+      { Path: 'C:\\XML\\b.xml', Kind: '', ChaveAcesso: '', Outcome: 'rejected', Message: 'XML ilegível' },
+    ],
+    Imported: 1,
+    Updated: 0,
+    Rejected: 1,
+  }
+
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    okHandlers.length = 0
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario])
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ RequestsLastHour: 4, RequestBudget: 20 }))
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
+  })
+
+  it('offers import and fetch by chave, disabled without a company', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(button(wrapper, 'Importar XML').props('disable')).toBe(false)
+    expect(button(wrapper, 'Buscar pela chave').props('disable')).toBe(false)
+
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
+    const empty = mountPage()
+    await flushPromises()
+    expect(button(empty, 'Importar XML').props('disable')).toBe(true)
+    expect(button(empty, 'Buscar pela chave').props('disable')).toBe(true)
+  })
+
+  it('disables import and fetch while the NF-e sync runs', async () => {
+    useCompanySyncStore().startSync(company.CNPJ, 'nfe')
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(button(wrapper, 'Importar XML').props('disable')).toBe(true)
+    expect(button(wrapper, 'Buscar pela chave').props('disable')).toBe(true)
+  })
+
+  it('imports the picked XML and lists the files when some were rejected', async () => {
+    vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['C:\\XML\\a.xml', 'C:\\XML\\b.xml'])
+    vi.mocked(desktopClient.importNFeXML).mockResolvedValue(withRejected)
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listNFe).mockClear()
+
+    await button(wrapper, 'Importar XML').trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.importNFeXML).toHaveBeenCalledWith(company.CNPJ, ['C:\\XML\\a.xml', 'C:\\XML\\b.xml'])
+    expect(desktopClient.listNFe).toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith({
+      type: 'warning',
+      message: 'Importação: 1 importado, 0 atualizados, 1 rejeitado.',
+    })
+    expect(dialog).toHaveBeenCalledWith({
+      component: ImportResultDialog,
+      componentProps: { result: withRejected, source: 'nfe' },
+    })
+  })
+
+  it('reports an import without rejections and opens no dialog', async () => {
+    vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['C:\\XML\\a.xml'])
+    vi.mocked(desktopClient.importNFeXML).mockResolvedValue({
+      Files: [{ Path: 'C:\\XML\\a.xml', Kind: 'completa', ChaveAcesso: fetchedChave, Outcome: 'imported', Message: '' }],
+      Imported: 1,
+      Updated: 0,
+      Rejected: 0,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Importar XML').trigger('click')
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: 'Importação: 1 importado, 0 atualizados, 0 rejeitados.',
+    })
+    expect(dialog).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when the file dialog is cancelled', async () => {
+    vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue([])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Importar XML').trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.importNFeXML).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('opens the fetch dialog with the hourly budget of the status', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Buscar pela chave').trigger('click')
+
+    expect(dialog).toHaveBeenCalledWith({
+      component: NFeFetchDialog,
+      componentProps: { requestsLastHour: 4, requestBudget: 20 },
+    })
+    expect(desktopClient.fetchNFeByChave).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['completa', '', { type: 'positive', message: 'NF-e completa salva.' }],
+    [
+      'resumo',
+      'a SEFAZ entregou só o resumo: registre a Ciência da Operação para receber o XML completo',
+      {
+        type: 'info',
+        message: 'A SEFAZ entregou só o resumo: registre a Ciência da Operação para receber o XML completo.',
+      },
+    ],
+    [
+      'not_found',
+      'NF-e não localizada ou sem acesso para a empresa',
+      { type: 'warning', message: 'NF-e não localizada ou sem acesso para a empresa.' },
+    ],
+  ] as const)('fetches the chave typed in the dialog and reports %s', async (outcome, message, notice) => {
+    vi.mocked(desktopClient.fetchNFeByChave).mockResolvedValue({
+      ChaveAcesso: fetchedChave,
+      Outcome: outcome,
+      Message: message,
+      RequestsLastHour: 5,
+      RequestBudget: 20,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.statusNFe).mockClear()
+
+    await button(wrapper, 'Buscar pela chave').trigger('click')
+    okHandlers[0]?.(fetchedChave)
+    await flushPromises()
+
+    expect(desktopClient.fetchNFeByChave).toHaveBeenCalledWith(company.CNPJ, fetchedChave)
+    expect(desktopClient.statusNFe).toHaveBeenCalledWith(company.CNPJ)
+    expect(notify).toHaveBeenCalledWith(notice)
+  })
+
+  it('reports a failed fetch', async () => {
+    vi.mocked(desktopClient.fetchNFeByChave).mockRejectedValue(new Error('chave de acesso inválida'))
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Buscar pela chave').trigger('click')
+    okHandlers[0]?.(fetchedChave)
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'negative', message: expect.stringContaining('Erro ao buscar a NF-e') })
+    )
+  })
+
+  it('marks an imported NF-e next to its chave', async () => {
+    const imported = nfeRow('i', { FirstSeenNSU: null })
+    const distributed = nfeRow('d', { FirstSeenNSU: 12 })
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([imported, distributed])
+    const wrapper = mountPage({
+      'q-table': {
+        name: 'QTable',
+        props: ['rows'],
+        template: `<div><div v-for="row in rows" :key="row.ChaveAcesso" :class="'row-' + row.ChaveAcesso">
+          <slot name="body" :row="row" :cols="[{ name: 'chave' }]" :expand="false" />
+        </div></div>`,
+      },
+      ChaveCell: { template: '<span />' },
+      'q-badge': { name: 'QBadge', props: ['label'], template: '<span class="badge">{{ label }}</span>' },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('.row-i .badge').text()).toBe('Importado')
+    expect(wrapper.find('.row-d .badge').exists()).toBe(false)
   })
 })

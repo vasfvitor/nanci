@@ -12,6 +12,7 @@ import type {
   CTeResetResult,
   CTeRow,
   CTeStatusResult,
+  ImportXMLResult,
   PullCTeResult,
 } from '@/types/desktop'
 import { deferred } from '@/test/fixtures'
@@ -28,6 +29,8 @@ vi.mock('@/platform/wails/client', () => ({
     exportDACTE: vi.fn(),
     exportCTeDocuments: vi.fn(),
     markCTeViewed: vi.fn(),
+    selectXMLFiles: vi.fn(),
+    importCTeXML: vi.fn(),
   },
 }))
 
@@ -380,5 +383,70 @@ describe('useCTeDocuments', () => {
     expect(cte.companyName.value).toBe('Empresa do status')
     expect(cte.documentCount.value).toBe(5)
     expect(cte.statusLine.value).toContain('NSU 5/9 · CT-e: 5')
+  })
+
+  describe('importXML', () => {
+    const imported: ImportXMLResult = { Files: [], Imported: 2, Updated: 0, Rejected: 0 }
+
+    it('keeps the import visible to a second instance while it is pending', async () => {
+      vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['a.xml', 'b.xml'])
+      const pending = deferred<ImportXMLResult>()
+      vi.mocked(desktopClient.importCTeXML).mockReturnValue(pending.promise)
+
+      const firstPage = useCTeDocuments()
+      useWorkspaceStore().cnpj = '123'
+      const importing = firstPage.importXML()
+      await vi.waitFor(() => expect(desktopClient.importCTeXML).toHaveBeenCalledTimes(1))
+
+      const remountedPage = useCTeDocuments()
+      expect(remountedPage.isSyncing.value).toBe(true)
+      expect(useCompanySyncStore().isSyncing('123', 'cte')).toBe(true)
+      await expect(remountedPage.importXML()).resolves.toBeNull()
+      await expect(remountedPage.syncCTe()).resolves.toBeNull()
+      expect(desktopClient.selectXMLFiles).toHaveBeenCalledTimes(1)
+      expect(desktopClient.pullCTe).not.toHaveBeenCalled()
+
+      pending.resolve(imported)
+      await expect(importing).resolves.toEqual(imported)
+
+      expect(desktopClient.importCTeXML).toHaveBeenCalledWith('123', ['a.xml', 'b.xml'])
+      expect(remountedPage.isSyncing.value).toBe(false)
+      expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
+    })
+
+    it('returns null and calls nothing when the dialog is cancelled', async () => {
+      vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue([])
+
+      const page = useCTeDocuments()
+      useWorkspaceStore().cnpj = '123'
+
+      await expect(page.importXML()).resolves.toBeNull()
+      expect(desktopClient.importCTeXML).not.toHaveBeenCalled()
+      expect(desktopClient.statusCTe).not.toHaveBeenCalled()
+      expect(page.isSyncing.value).toBe(false)
+    })
+
+    it('does not open the dialog without a company or while a pull runs', async () => {
+      const page = useCTeDocuments()
+      await expect(page.importXML()).resolves.toBeNull()
+
+      useWorkspaceStore().cnpj = '123'
+      useCompanySyncStore().startSync('123', 'cte')
+      await expect(page.importXML()).resolves.toBeNull()
+
+      expect(desktopClient.selectXMLFiles).not.toHaveBeenCalled()
+    })
+
+    it('clears the marker, refreshes and passes the error when the import fails', async () => {
+      vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['a.xml'])
+      vi.mocked(desktopClient.importCTeXML).mockRejectedValue(new Error('empresa não encontrada'))
+
+      const page = useCTeDocuments()
+      useWorkspaceStore().cnpj = '123'
+
+      await expect(page.importXML()).rejects.toThrow('empresa não encontrada')
+      expect(page.isSyncing.value).toBe(false)
+      expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
+    })
   })
 })

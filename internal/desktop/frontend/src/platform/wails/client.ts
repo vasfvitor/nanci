@@ -14,8 +14,11 @@ import {
   ExportNFeDocuments,
   ExportNFeXML,
   ExportXML,
+  FetchNFeByChave,
   GetBuildInfo,
   GetDataDirectory,
+  ImportCTeXML,
+  ImportNFeXML,
   ListCTe,
   ListCTeEvents,
   ListCompanies,
@@ -43,6 +46,7 @@ import {
   ResetSyncState,
   SelectCertificate,
   SelectSaveFile,
+  SelectXMLFiles,
   SetLogLevel,
   ShowInFolder,
   StatusCTe,
@@ -88,6 +92,12 @@ import type {
   ExportXMLInput,
   ExportNFeDocumentsInput,
   ExportNFeXMLInput,
+  FetchByChaveResult,
+  FetchOutcome,
+  ImportedFile,
+  ImportKind,
+  ImportOutcome,
+  ImportXMLResult,
   ISODateValue,
   ListCTeInput,
   ListDocumentsInput,
@@ -228,6 +238,10 @@ const nfeRoles: readonly NFeRole[] = ['destinatario', 'emitente', 'transportador
 const nfeOutcomes: readonly NFeEventOutcome[] = ['registrada', 'ja_registrada', 'rejeitada', 'nao_enviada']
 const nfePendingKinds: readonly NFePendingKind[] = ['sem_ciencia', 'sem_conclusiva']
 const nfeBlockedReasons: readonly NFeBlockedReason[] = ['caught_up', 'consumo_indevido', 'rate_budget']
+
+const importKinds: readonly ImportKind[] = ['completa', 'resumo', 'evento']
+const importOutcomes: readonly ImportOutcome[] = ['imported', 'updated', 'rejected']
+const fetchOutcomes: readonly FetchOutcome[] = ['completa', 'resumo', 'not_found']
 
 const cteSituacoes: readonly CTeSituacao[] = ['autorizada', 'denegada', 'cancelada']
 const ctePapeis: readonly CTePapel[] = [
@@ -479,6 +493,7 @@ export function mapNFeRow(raw: unknown): NFeRow {
     ConclusiveDue: asDate(item['ConclusiveDue']),
     CompanyRole: asEnum(item['CompanyRole'], nfeRoles),
     EventCount: asNumber(item['EventCount']),
+    FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
     FirstSyncedAt: asDate(item['FirstSyncedAt']),
     LastSyncedAt: asDate(item['LastSyncedAt']),
     ViewedAt: asDate(item['ViewedAt']),
@@ -797,6 +812,38 @@ export function mapCTeResetResult(raw: unknown): CTeResetResult {
   }
 }
 
+function mapImportedFile(raw: unknown): ImportedFile {
+  const item = asRawRecord(raw)
+  return {
+    Path: asString(item['Path']),
+    Kind: asEnum(item['Kind'], importKinds),
+    ChaveAcesso: asString(item['ChaveAcesso']),
+    Outcome: asEnum(item['Outcome'], importOutcomes),
+    Message: asString(item['Message']),
+  }
+}
+
+export function mapImportXMLResult(raw: unknown): ImportXMLResult {
+  const item = asRawRecord(raw)
+  return {
+    Files: asArray(item['Files']).map(mapImportedFile),
+    Imported: asNumber(item['Imported']),
+    Updated: asNumber(item['Updated']),
+    Rejected: asNumber(item['Rejected']),
+  }
+}
+
+export function mapFetchByChaveResult(raw: unknown): FetchByChaveResult {
+  const item = asRawRecord(raw)
+  return {
+    ChaveAcesso: asString(item['ChaveAcesso']),
+    Outcome: asEnum(item['Outcome'], fetchOutcomes),
+    Message: asString(item['Message']),
+    RequestsLastHour: asNumber(item['RequestsLastHour']),
+    RequestBudget: asNumber(item['RequestBudget']),
+  }
+}
+
 function mapConnectionTestResult(raw: unknown): ConnectionTestResult {
   const item = asRawRecord(raw)
   return {
@@ -901,6 +948,12 @@ export const desktopClient = {
     const path = await callWails(() => SelectSaveFile(title, defaultFilename, pattern))
     return path || null
   },
+  // selectXMLFiles opens the dialog to pick XML files to import; an empty
+  // list means the user cancelled.
+  async selectXMLFiles(): Promise<string[]> {
+    const paths = await callWails(() => SelectXMLFiles())
+    return asStringArray(paths).filter(Boolean)
+  },
   setLogLevel(level: string) {
     return callWails(() => SetLogLevel(level))
   },
@@ -996,6 +1049,17 @@ export const desktopClient = {
     const res = await callWails(() => RegisterNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
     return mapNFeEventBatchResult(res)
   },
+  // importNFeXML stores NF-e and NF-e event XML files without asking SEFAZ.
+  async importNFeXML(cnpj: string, files: string[]): Promise<ImportXMLResult> {
+    const res = await callWails(() => ImportNFeXML({ CNPJ: cnpj, Files: files }))
+    return mapImportXMLResult(res)
+  },
+  // fetchNFeByChave asks SEFAZ for one NF-e; it spends one request of the
+  // company's NF-e hourly budget.
+  async fetchNFeByChave(cnpj: string, chaveAcesso: string): Promise<FetchByChaveResult> {
+    const res = await callWails(() => FetchNFeByChave({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
+    return mapFetchByChaveResult(res)
+  },
   async registerNFeManifestacao(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
     const res = await callWails(() => RegisterNFeManifestacao(input))
     return mapNFeEventResult(res)
@@ -1071,6 +1135,11 @@ export const desktopClient = {
   async listCTeEvents(cnpj: string, chaveAcesso: string): Promise<CTeEvent[]> {
     const res = await callWails(() => ListCTeEvents({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
     return (res || []).map(mapCTeEvent)
+  },
+  // importCTeXML stores CT-e and CT-e event XML files without asking SEFAZ.
+  async importCTeXML(cnpj: string, files: string[]): Promise<ImportXMLResult> {
+    const res = await callWails(() => ImportCTeXML({ CNPJ: cnpj, Files: files }))
+    return mapImportXMLResult(res)
   },
   // previewResetCTe counts what resetCTe would remove, changing nothing.
   async previewResetCTe(cnpj: string): Promise<CTeResetResult> {

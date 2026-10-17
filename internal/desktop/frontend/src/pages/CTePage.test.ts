@@ -2,9 +2,10 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CTePage from './CTePage.vue'
+import ImportResultDialog from '@/components/ImportResultDialog.vue'
 import { desktopClient, mapCTeRow } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { CTeRow, CTeStatusResult } from '@/types/desktop'
+import type { CTeRow, CTeStatusResult, ImportXMLResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 import { CTE_EXPORT_FORMATS } from '@/utils/exportFormats'
 
@@ -43,6 +44,8 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     exportDACTE: vi.fn(),
     exportCTeDocuments: vi.fn(),
     markCTeViewed: vi.fn(),
+    selectXMLFiles: vi.fn(),
+    importCTeXML: vi.fn(),
   },
 }))
 
@@ -677,5 +680,99 @@ describe('CTePage row menu', () => {
       message: '1 DACTE exportado para C:\\exports\\dacte.pdf.',
       actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
+  })
+})
+
+describe('CTePage import', () => {
+  const withRejected: ImportXMLResult = {
+    Files: [
+      { Path: 'C:\\XML\\a.xml', Kind: 'completa', ChaveAcesso: tomada.ChaveAcesso, Outcome: 'updated', Message: '' },
+      { Path: 'C:\\XML\\b.xml', Kind: '', ChaveAcesso: '', Outcome: 'rejected', Message: 'o XML não cita a empresa' },
+    ],
+    Imported: 0,
+    Updated: 1,
+    Rejected: 1,
+  }
+
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    okHandlers.length = 0
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.listCTe).mockResolvedValue([tomada])
+    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status())
+    await useWorkspaceStore().loadCompanies()
+  })
+
+  it('offers the import, disabled without a company, and no fetch by chave', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(button(wrapper, 'Importar XML').props('disable')).toBe(false)
+    expect(() => button(wrapper, 'Buscar pela chave')).toThrow()
+
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
+    const empty = mountPage()
+    await flushPromises()
+    expect(button(empty, 'Importar XML').props('disable')).toBe(true)
+  })
+
+  it('imports the picked XML and lists the files when some were rejected', async () => {
+    vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['C:\\XML\\a.xml', 'C:\\XML\\b.xml'])
+    vi.mocked(desktopClient.importCTeXML).mockResolvedValue(withRejected)
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCTe).mockClear()
+
+    await button(wrapper, 'Importar XML').trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.importCTeXML).toHaveBeenCalledWith(company.CNPJ, ['C:\\XML\\a.xml', 'C:\\XML\\b.xml'])
+    expect(desktopClient.listCTe).toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith({
+      type: 'warning',
+      message: 'Importação: 0 importados, 1 atualizado, 1 rejeitado.',
+    })
+    expect(dialog).toHaveBeenCalledWith({
+      component: ImportResultDialog,
+      componentProps: { result: withRejected, source: 'cte' },
+    })
+  })
+
+  it('reports a failed import', async () => {
+    vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['C:\\XML\\a.xml'])
+    vi.mocked(desktopClient.importCTeXML).mockRejectedValue(new Error('empresa não encontrada'))
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Importar XML').trigger('click')
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'negative', message: expect.stringContaining('Erro ao importar XML') })
+    )
+    expect(dialog).not.toHaveBeenCalled()
+  })
+
+  it('marks an imported CT-e next to its chave', async () => {
+    const imported = mapCTeRow({ ChaveAcesso: 'imp', FirstSeenNSU: null })
+    const distributed = mapCTeRow({ ChaveAcesso: 'dist', FirstSeenNSU: 7 })
+    vi.mocked(desktopClient.listCTe).mockResolvedValue([imported, distributed])
+    const wrapper = mountPage({
+      'q-table': {
+        name: 'QTable',
+        props: ['rows'],
+        template: `<div><div v-for="row in rows" :key="row.ChaveAcesso" :class="'row-' + row.ChaveAcesso">
+          <slot name="body" :row="row" :cols="[{ name: 'chave' }]" :expand="false" />
+        </div></div>`,
+      },
+      ChaveCell: { template: '<span />' },
+      'q-badge': { name: 'QBadge', props: ['label'], template: '<span class="badge">{{ label }}</span>' },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('.row-imp .badge').text()).toBe('Importado')
+    expect(wrapper.find('.row-dist .badge').exists()).toBe(false)
   })
 })

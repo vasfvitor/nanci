@@ -18,6 +18,12 @@ A SEFAZ guarda os CT-e por 3 meses ([NT 2015.002](https://www.cte.fazenda.gov.br
 
 **Exportar** gera, da lista filtrada ou da seleção, uma planilha Excel ou CSV, um ZIP com os XMLs e eventos, ou um ZIP com os DACTE em PDF. Cada documento também pode ser salvo sozinho em XML ou DACTE. O DACTE existe só para o CT-e modelo 57; CT-e OS, GTV-e e CT-e Simplificado ficam fora do ZIP de DACTE, e a tela diz quantos ficaram de fora. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.
 
+## Importar XML
+
+**Importar XML** guarda os CT-e que a empresa já tem em arquivo, sem consultar a SEFAZ e sem gastar consultas: os que ela mesma emitiu, os de mais de 3 meses e os recebidos por e-mail. Aceita CT-e, CT-e OS, GTV-e e CT-e Simplificado autorizados e os eventos, vários arquivos de uma vez. As recusas são as da [NF-e](../nfe/#importar-e-buscar), e o Nanci mostra o motivo de cada arquivo. Na lista, o CT-e importado leva a marca **Importado**.
+
+Não há busca pela chave para o CT-e: a distribuição do CT-e só entrega pela fila de NSU.
+
 ## Achar o frete de uma NF-e
 
 Filtre por **Chave de NF-e transportada** para ver os CT-e que levaram aquela nota.

@@ -55,6 +55,19 @@
           @keyup.enter="searchOnEnter"
         />
       </template>
+
+      <template #actions>
+        <q-btn
+          color="primary"
+          icon="upload_file"
+          label="Importar XML"
+          title="Importa XMLs que a empresa já tem, sem consultar a SEFAZ"
+          :disable="importDisabled"
+          dense
+          flat
+          @click="importXML"
+        />
+      </template>
     </DocumentFilterBar>
 
     <StateLegend :sections="CTE_LEGEND" class="q-mb-md" />
@@ -110,7 +123,16 @@
               :viewed-at="rowProps.row.ViewedAt"
             />
 
-            <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
+            <div v-else-if="col.name === 'chave'" class="column items-start no-wrap">
+              <ChaveCell :chave="rowProps.row.ChaveAcesso" />
+              <q-badge
+                v-if="rowProps.row.FirstSeenNSU === null"
+                outline
+                color="primary"
+                label="Importado"
+                title="Veio de um XML importado, não da SEFAZ"
+              />
+            </div>
 
             <PartyCell
               v-else-if="col.name === 'emitente'"
@@ -177,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
@@ -188,6 +210,7 @@ import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
+import ImportResultDialog from '../components/ImportResultDialog.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
@@ -200,7 +223,7 @@ import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { copyChave, useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type { CTeExportFormat, CTeResetResult, CTeRow } from '@/types/desktop'
+import type { CTeExportFormat, CTeResetResult, CTeRow, ImportXMLResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {
   cteModalLabel,
@@ -212,6 +235,7 @@ import {
   cteTpServLabel,
 } from '@/utils/cteDisplay'
 import { CTE_EXPORT_FORMATS, exportedNoun } from '@/utils/exportFormats'
+import { importSummary } from '@/utils/importDisplay'
 import {
   formatChaveDFe,
   formatCpfCnpj,
@@ -342,6 +366,31 @@ async function syncCTe() {
     )
   } catch (error) {
     notifySyncError('Erro na sincronização do CT-e', error)
+  }
+}
+
+// The import holds the CT-e sync marker, so it waits for a pull, a reset or
+// an export to finish.
+const importDisabled = computed(
+  () => exporting.value || isSyncing.value || isResetting.value || !cnpj.value
+)
+
+async function importXML() {
+  try {
+    const result = await cte.importXML()
+    if (result) notifyImportResult(result)
+  } catch (error) {
+    notifyError('Erro ao importar XML', error)
+  }
+}
+
+// notifyImportResult counts the files and, when some were rejected, lists
+// every file with its reason.
+function notifyImportResult(result: ImportXMLResult) {
+  const notify = result.Rejected > 0 ? notifyWarning : notifySuccess
+  notify(`Importação: ${importSummary(result)}.`)
+  if (result.Rejected > 0) {
+    $q.dialog({ component: ImportResultDialog, componentProps: { result, source: 'cte' } })
   }
 }
 

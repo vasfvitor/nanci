@@ -297,6 +297,9 @@ export type NFeRow = {
   ConclusiveDue?: ISODateValue
   CompanyRole: NFeRole | ''
   EventCount: number
+  // FirstSeenNSU is null for a note that came by XML import, not by the
+  // distribution.
+  FirstSeenNSU: number | null
   FirstSyncedAt?: ISODateValue
   LastSyncedAt?: ISODateValue
   // ViewedAt is empty while the note is new.
@@ -706,4 +709,40 @@ export type ExportDACTEInput = {
 // has no DACTE.
 export type CTeExportResult = ExportResult & {
   SkippedSemDACTE: number
+}
+
+// --- Import and fetch by chave ---
+
+export type ImportKind = 'completa' | 'resumo' | 'evento'
+export type ImportOutcome = 'imported' | 'updated' | 'rejected'
+
+// ImportedFile is the result of one imported XML. Kind and ChaveAcesso are
+// empty when the file was rejected before they were known.
+export type ImportedFile = {
+  Path: string
+  Kind: ImportKind | ''
+  ChaveAcesso: string
+  Outcome: ImportOutcome | ''
+  Message: string
+}
+
+// ImportXMLResult has one ImportedFile per picked file, in the order picked,
+// and the counts per outcome.
+export type ImportXMLResult = {
+  Files: ImportedFile[]
+  Imported: number
+  Updated: number
+  Rejected: number
+}
+
+export type FetchOutcome = 'completa' | 'resumo' | 'not_found'
+
+// FetchByChaveResult is what SEFAZ delivered for one NF-e asked by its chave
+// and the hourly budget after the request.
+export type FetchByChaveResult = {
+  ChaveAcesso: string
+  Outcome: FetchOutcome | ''
+  Message: string
+  RequestsLastHour: number
+  RequestBudget: number
 }

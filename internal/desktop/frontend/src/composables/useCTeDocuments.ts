@@ -95,6 +95,35 @@ export function useCTeDocuments() {
     }
   }
 
+  // syncBusy is true without a company, while a pull, import or fetch of the
+  // company's CT-e runs, or while its reset runs.
+  function syncBusy(companyCNPJ: string) {
+    return (
+      !companyCNPJ ||
+      syncStore.isSyncing(companyCNPJ, 'cte') ||
+      resettingCNPJ.value === companyCNPJ
+    )
+  }
+
+  // importXML asks for XML files and stores them for the company without
+  // asking SEFAZ. It holds the CT-e sync marker, like a pull, so the two
+  // never overlap. null means it did not run or the dialog was cancelled.
+  async function importXML() {
+    const companyCNPJ = cnpj.value
+    if (syncBusy(companyCNPJ)) return null
+
+    const files = await desktopClient.selectXMLFiles()
+    if (!files.length || syncBusy(companyCNPJ)) return null
+
+    try {
+      return await syncStore.runSync(companyCNPJ, 'cte', () =>
+        desktopClient.importCTeXML(companyCNPJ, files)
+      )
+    } finally {
+      await refresh(companyCNPJ)
+    }
+  }
+
   // previewReset counts what resetCTe would remove, for the confirmation.
   async function previewReset() {
     const companyCNPJ = cnpj.value
@@ -182,6 +211,7 @@ export function useCTeDocuments() {
     search,
     loadStatus,
     syncCTe,
+    importXML,
     previewReset,
     resetCTe,
     exportXML,

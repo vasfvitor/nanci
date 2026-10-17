@@ -30,6 +30,9 @@ import {
   ExportDocuments,
   ExportNFeDocuments,
   ExportNFeXML,
+  FetchNFeByChave,
+  ImportCTeXML,
+  ImportNFeXML,
   ListCTe,
   ListCTeEvents,
   ListCompanies,
@@ -52,6 +55,7 @@ import {
   ResetNFe,
   SelectCertificate,
   SelectSaveFile,
+  SelectXMLFiles,
   StatusCTe,
   StatusNFe,
   TestCTeConnection,
@@ -397,6 +401,7 @@ describe('NF-e mappers', () => {
       ManifestacaoAt: null,
       ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 2,
+      FirstSeenNSU: 321,
       TpAmb: '1',
       NatOp: 'Venda de mercadoria',
       EmitenteUF: 'SP',
@@ -419,6 +424,7 @@ describe('NF-e mappers', () => {
       AuthorizedAt: '2024-09-01T10:00:00Z',
       ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 2,
+      FirstSeenNSU: 321,
       TpAmb: '1',
       NatOp: 'Venda de mercadoria',
       EmitenteUF: 'SP',
@@ -431,6 +437,7 @@ describe('NF-e mappers', () => {
     expect(row.CienciaDue).toBeNull()
     expect(mapNFeRow({ ViewedAt: null, ParseWarnings: null })).toMatchObject({
       ViewedAt: null,
+      FirstSeenNSU: null,
       ParseWarnings: [],
       ICMSValue: 0,
       IPIValue: 0,
@@ -1115,6 +1122,85 @@ describe('CT-e client calls', () => {
     expect(ExportCTeXML).not.toHaveBeenCalled()
     expect(ExportDACTE).not.toHaveBeenCalled()
     expect(ExportCTeDocuments).not.toHaveBeenCalled()
+  })
+})
+
+describe('import and fetch by chave client calls', () => {
+  const nfeChave = '35260912345678000195550010000000011000000010'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns the picked XML files and an empty list on cancel', async () => {
+    vi.mocked(SelectXMLFiles).mockResolvedValue(['C:\\xml\\a.xml', 'C:\\xml\\b.xml'])
+    await expect(desktopClient.selectXMLFiles()).resolves.toEqual(['C:\\xml\\a.xml', 'C:\\xml\\b.xml'])
+
+    vi.mocked(SelectXMLFiles).mockResolvedValue(null as never)
+    await expect(desktopClient.selectXMLFiles()).resolves.toEqual([])
+
+    vi.mocked(SelectXMLFiles).mockResolvedValue([])
+    await expect(desktopClient.selectXMLFiles()).resolves.toEqual([])
+  })
+
+  it('imports NF-e and CT-e XML files and maps the result', async () => {
+    const raw = {
+      Files: [
+        { Path: 'a.xml', Kind: 'completa', ChaveAcesso: nfeChave, Outcome: 'imported', Message: '' },
+        { Path: 'b.xml', Kind: 'outro', Outcome: 'rejected', Message: 'XML ilegível' },
+      ],
+      Imported: 1,
+      Rejected: 1,
+    }
+    vi.mocked(ImportNFeXML).mockResolvedValue(raw as never)
+    vi.mocked(ImportCTeXML).mockResolvedValue({ Files: null } as never)
+
+    await expect(desktopClient.importNFeXML('123', ['a.xml', 'b.xml'])).resolves.toEqual({
+      Files: [
+        { Path: 'a.xml', Kind: 'completa', ChaveAcesso: nfeChave, Outcome: 'imported', Message: '' },
+        { Path: 'b.xml', Kind: '', ChaveAcesso: '', Outcome: 'rejected', Message: 'XML ilegível' },
+      ],
+      Imported: 1,
+      Updated: 0,
+      Rejected: 1,
+    })
+    await expect(desktopClient.importCTeXML('123', ['c.xml'])).resolves.toEqual({
+      Files: [],
+      Imported: 0,
+      Updated: 0,
+      Rejected: 0,
+    })
+
+    expect(ImportNFeXML).toHaveBeenCalledWith({ CNPJ: '123', Files: ['a.xml', 'b.xml'] })
+    expect(ImportCTeXML).toHaveBeenCalledWith({ CNPJ: '123', Files: ['c.xml'] })
+  })
+
+  it('fetches an NF-e by chave and maps the result', async () => {
+    vi.mocked(FetchNFeByChave).mockResolvedValue({
+      ChaveAcesso: nfeChave,
+      Outcome: 'resumo',
+      Message: 'Registre a ciência.',
+      RequestsLastHour: 4,
+      RequestBudget: 20,
+    } as never)
+
+    await expect(desktopClient.fetchNFeByChave('123', nfeChave)).resolves.toEqual({
+      ChaveAcesso: nfeChave,
+      Outcome: 'resumo',
+      Message: 'Registre a ciência.',
+      RequestsLastHour: 4,
+      RequestBudget: 20,
+    })
+    expect(FetchNFeByChave).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: nfeChave })
+  })
+
+  it('keeps the error code of a blocked fetch', async () => {
+    vi.mocked(FetchNFeByChave).mockRejectedValue({ code: 'sefaz_blocked', message: 'bloqueado' })
+
+    await expect(desktopClient.fetchNFeByChave('123', nfeChave)).rejects.toMatchObject({
+      code: 'sefaz_blocked',
+      message: 'bloqueado',
+    })
   })
 })
 

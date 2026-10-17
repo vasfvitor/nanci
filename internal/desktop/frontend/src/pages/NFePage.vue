@@ -65,6 +65,26 @@
               flat
               @click="registerSelectedCiencia"
             />
+            <q-btn
+              color="primary"
+              icon="upload_file"
+              label="Importar XML"
+              title="Importa XMLs que a empresa já tem, sem consultar a SEFAZ"
+              :disable="importDisabled"
+              dense
+              flat
+              @click="importXML"
+            />
+            <q-btn
+              color="primary"
+              icon="travel_explore"
+              label="Buscar pela chave"
+              title="Pede uma NF-e à SEFAZ pela chave de acesso"
+              :disable="importDisabled"
+              dense
+              flat
+              @click="openFetchDialog"
+            />
           </template>
         </DocumentFilterBar>
 
@@ -134,7 +154,16 @@
                   :viewed-at="rowProps.row.ViewedAt"
                 />
 
-                <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
+                <div v-else-if="col.name === 'chave'" class="column items-start no-wrap">
+                  <ChaveCell :chave="rowProps.row.ChaveAcesso" />
+                  <q-badge
+                    v-if="rowProps.row.FirstSeenNSU === null"
+                    outline
+                    color="primary"
+                    label="Importado"
+                    title="Veio de um XML importado, não da SEFAZ"
+                  />
+                </div>
 
                 <PartyCell
                   v-else-if="col.name === 'emitente'"
@@ -206,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
@@ -216,9 +245,11 @@ import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
+import ImportResultDialog from '../components/ImportResultDialog.vue'
 import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
+import NFeFetchDialog from '../components/NFeFetchDialog.vue'
 import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NumeroCell from '../components/NumeroCell.vue'
@@ -235,6 +266,8 @@ import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type {
+  FetchByChaveResult,
+  ImportXMLResult,
   NFeConclusiveTipo,
   NFeEventBatchResult,
   NFeEventResult,
@@ -243,6 +276,7 @@ import type {
 } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
+import { importSummary } from '@/utils/importDisplay'
 import {
   formatCpfCnpj,
   formatCurrencyCents,
@@ -446,6 +480,72 @@ async function syncNFe() {
     )
   } catch (error) {
     notifySyncError('Erro na sincronização da NF-e', error)
+  }
+}
+
+// The import and the fetch hold the NF-e sync marker, so they wait for a
+// pull, a reset or an export to finish.
+const importDisabled = computed(
+  () => exporting.value || isSyncing.value || isResetting.value || !cnpj.value
+)
+
+async function importXML() {
+  try {
+    const result = await nfe.importXML()
+    if (result) notifyImportResult(result, 'nfe')
+  } catch (error) {
+    notifyError('Erro ao importar XML', error)
+  }
+}
+
+// notifyImportResult counts the files and, when some were rejected, lists
+// every file with its reason.
+function notifyImportResult(result: ImportXMLResult, source: 'nfe' | 'cte') {
+  const notify = result.Rejected > 0 ? notifyWarning : notifySuccess
+  notify(`Importação: ${importSummary(result)}.`)
+  if (result.Rejected > 0) {
+    $q.dialog({ component: ImportResultDialog, componentProps: { result, source } })
+  }
+}
+
+function openFetchDialog() {
+  if (!cnpj.value) return
+  $q.dialog({
+    component: NFeFetchDialog,
+    componentProps: {
+      requestsLastHour: status.value?.RequestsLastHour ?? 0,
+      requestBudget: status.value?.RequestBudget ?? 0,
+    },
+  }).onOk((chave: string) => {
+    void fetchByChave(chave)
+  })
+}
+
+async function fetchByChave(chave: string) {
+  try {
+    const result = await nfe.fetchByChave(chave)
+    if (result) notifyFetchResult(result)
+  } catch (error) {
+    notifySyncError('Erro ao buscar a NF-e', error)
+  }
+}
+
+// The backend message is a lowercase clause ("a SEFAZ entregou só o
+// resumo: ..."); the notice shows it as a sentence.
+function sentence(message: string) {
+  return message ? `${message.charAt(0).toUpperCase()}${message.slice(1)}.` : ''
+}
+
+function notifyFetchResult(result: FetchByChaveResult) {
+  switch (result.Outcome) {
+    case 'completa':
+      notifySuccess('NF-e completa salva.')
+      return
+    case 'resumo':
+      notifyInfo(sentence(result.Message) || 'A SEFAZ entregou só o resumo da NF-e.')
+      return
+    default:
+      notifyWarning(sentence(result.Message) || 'A SEFAZ não encontrou a NF-e.')
   }
 }
 

@@ -12,7 +12,7 @@ O Nanci baixa as NF-e em que a empresa aparece, pela distribuição DF-e da SEFA
 
 {{< theme-image light="/img/screenshots/nfe-light.png" dark="/img/screenshots/nfe-dark.png" alt="Página de NF-e" >}}
 
-A SEFAZ guarda as notas por 90 dias; o que saiu da fila não volta. Como destinatária, a empresa recebe primeiro um **resumo**. O XML completo chega depois da **Ciência da Operação**, da Confirmação ou da Operação não Realizada ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)).
+A SEFAZ guarda as notas por 90 dias e não reenvia o que já saiu da fila. Dentro desse prazo, uma nota que não chegou pode ser buscada pela chave; depois dele, só entra pelo XML (ver [Importar e buscar](#importar-e-buscar)). Como destinatária, a empresa recebe primeiro um **resumo**. O XML completo chega depois da **Ciência da Operação**, da Confirmação ou da Operação não Realizada ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)).
 
 ## Limite de consultas
 
@@ -34,6 +34,12 @@ Uma manifestação enviada não pode ser cancelada. A SEFAZ aceita retificar uma
 A aba **Pendências** mostra as notas sem manifestação conclusiva e o prazo de cada uma: 90 dias da autorização. Depois disso a operação é considerada confirmada ([Ajuste SINIEF 07/05](https://www.confaz.fazenda.gov.br/legislacao/ajustes/2005/AJ007_05), cláusula 15ª-C).
 
 {{< theme-image light="/img/screenshots/nfe-pendencias-light.png" dark="/img/screenshots/nfe-pendencias-dark.png" alt="Aba de pendências de manifestação" >}}
+
+## Importar e buscar
+
+**Importar XML** guarda as NF-e que a empresa já tem em arquivo, sem consultar a SEFAZ e sem gastar consultas: as notas que ela mesma emitiu, que a SEFAZ não entrega ao emitente, as de mais de 90 dias e as que o fornecedor mandou por e-mail. Aceita a nota autorizada (com o protocolo), o resumo e os eventos, vários arquivos de uma vez. Um arquivo de outro ambiente, ilegível ou de uma nota em que a empresa não aparece é recusado sem impedir os outros, e o Nanci mostra o motivo de cada um. Na lista, a nota importada leva a marca **Importado**.
+
+**Buscar pela chave** pede uma NF-e à SEFAZ pela chave de acesso. Funciona para a destinatária, a transportadora e quem foi autorizado no XML, dentro dos 90 dias; a SEFAZ não entrega ao emitente a própria nota, que só entra pela importação. Cada busca gasta 1 das 20 consultas da hora ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)). Enquanto a empresa não manifesta a nota, a SEFAZ entrega só o resumo: registre a Ciência da Operação e busque de novo, ou espere a próxima sincronização.
 
 ## Exportar
 

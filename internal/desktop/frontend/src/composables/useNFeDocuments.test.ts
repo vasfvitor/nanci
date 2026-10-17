@@ -10,6 +10,8 @@ import { nextTick } from 'vue'
 import type {
   CompanySummary,
   ExportResult,
+  FetchByChaveResult,
+  ImportXMLResult,
   NFeExportResult,
   NFeResetResult,
   NFeRow,
@@ -30,6 +32,9 @@ vi.mock('@/platform/wails/client', () => ({
     exportDANFE: vi.fn(),
     exportNFeDocuments: vi.fn(),
     markNFeViewed: vi.fn(),
+    selectXMLFiles: vi.fn(),
+    importNFeXML: vi.fn(),
+    fetchNFeByChave: vi.fn(),
   },
 }))
 
@@ -448,5 +453,126 @@ describe('useNFeDocuments', () => {
 
     useNFeDocumentsStore().setRows([nfeRow('b')])
     expect([...nfe.badgesByChave.value.keys()]).toEqual(['b'])
+  })
+
+  describe('importXML', () => {
+    const imported: ImportXMLResult = { Files: [], Imported: 2, Updated: 0, Rejected: 0 }
+
+    it('keeps the import visible to a second instance while it is pending', async () => {
+      vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['a.xml', 'b.xml'])
+      const pending = deferred<ImportXMLResult>()
+      vi.mocked(desktopClient.importNFeXML).mockReturnValue(pending.promise)
+
+      const firstPage = useNFeDocuments()
+      useWorkspaceStore().cnpj = '123'
+      const importing = firstPage.importXML()
+      await vi.waitFor(() => expect(desktopClient.importNFeXML).toHaveBeenCalledTimes(1))
+
+      const remountedPage = useNFeDocuments()
+      expect(remountedPage.isSyncing.value).toBe(true)
+      expect(useCompanySyncStore().isSyncing('123', 'nfe')).toBe(true)
+      await expect(remountedPage.importXML()).resolves.toBeNull()
+      await expect(remountedPage.syncNFe()).resolves.toBeNull()
+      expect(desktopClient.selectXMLFiles).toHaveBeenCalledTimes(1)
+      expect(desktopClient.pullNFe).not.toHaveBeenCalled()
+
+      pending.resolve(imported)
+      await expect(importing).resolves.toEqual(imported)
+
+      expect(desktopClient.importNFeXML).toHaveBeenCalledWith('123', ['a.xml', 'b.xml'])
+      expect(remountedPage.isSyncing.value).toBe(false)
+      expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    })
+
+    it('returns null and calls nothing when the dialog is cancelled', async () => {
+      vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue([])
+
+      const page = useNFeDocuments()
+      useWorkspaceStore().cnpj = '123'
+
+      await expect(page.importXML()).resolves.toBeNull()
+      expect(desktopClient.importNFeXML).not.toHaveBeenCalled()
+      expect(desktopClient.statusNFe).not.toHaveBeenCalled()
+      expect(page.isSyncing.value).toBe(false)
+    })
+
+    it('does not open the dialog without a company or while a pull runs', async () => {
+      const page = useNFeDocuments()
+      await expect(page.importXML()).resolves.toBeNull()
+
+      useWorkspaceStore().cnpj = '123'
+      useCompanySyncStore().startSync('123', 'nfe')
+      await expect(page.importXML()).resolves.toBeNull()
+
+      expect(desktopClient.selectXMLFiles).not.toHaveBeenCalled()
+    })
+
+    it('clears the marker, refreshes and passes the error when the import fails', async () => {
+      vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['a.xml'])
+      vi.mocked(desktopClient.importNFeXML).mockRejectedValue(new Error('empresa não encontrada'))
+
+      const page = useNFeDocuments()
+      useWorkspaceStore().cnpj = '123'
+
+      await expect(page.importXML()).rejects.toThrow('empresa não encontrada')
+      expect(page.isSyncing.value).toBe(false)
+      expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    })
+  })
+
+  describe('fetchByChave', () => {
+    const chave = '35260912345678000195550010000000011000000010'
+
+    it('keeps the fetch visible to a second instance while it is pending', async () => {
+      const pending = deferred<FetchByChaveResult>()
+      vi.mocked(desktopClient.fetchNFeByChave).mockReturnValue(pending.promise)
+
+      const firstPage = useNFeDocuments()
+      useWorkspaceStore().cnpj = '123'
+      const fetching = firstPage.fetchByChave(chave)
+
+      const remountedPage = useNFeDocuments()
+      expect(remountedPage.isSyncing.value).toBe(true)
+      await expect(remountedPage.fetchByChave(chave)).resolves.toBeNull()
+      await expect(remountedPage.syncNFe()).resolves.toBeNull()
+      expect(desktopClient.fetchNFeByChave).toHaveBeenCalledTimes(1)
+
+      const result: FetchByChaveResult = {
+        ChaveAcesso: chave,
+        Outcome: 'completa',
+        Message: '',
+        RequestsLastHour: 1,
+        RequestBudget: 20,
+      }
+      pending.resolve(result)
+      await expect(fetching).resolves.toEqual(result)
+
+      expect(desktopClient.fetchNFeByChave).toHaveBeenCalledWith('123', chave)
+      expect(remountedPage.isSyncing.value).toBe(false)
+      expect(desktopClient.listNFe).toHaveBeenCalled()
+      expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    })
+
+    it('does not fetch without a company or during a reset', async () => {
+      const page = useNFeDocuments()
+      await expect(page.fetchByChave(chave)).resolves.toBeNull()
+
+      useWorkspaceStore().cnpj = '123'
+      useNFeDocumentsStore().resettingCNPJ = '123'
+      await expect(page.fetchByChave(chave)).resolves.toBeNull()
+
+      expect(desktopClient.fetchNFeByChave).not.toHaveBeenCalled()
+    })
+
+    it('clears the marker, refreshes and passes the error when the fetch fails', async () => {
+      vi.mocked(desktopClient.fetchNFeByChave).mockRejectedValue(new Error('consultas bloqueadas'))
+
+      const page = useNFeDocuments()
+      useWorkspaceStore().cnpj = '123'
+
+      await expect(page.fetchByChave(chave)).rejects.toThrow('consultas bloqueadas')
+      expect(page.isSyncing.value).toBe(false)
+      expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    })
   })
 })

@@ -96,6 +96,50 @@ export function useNFeDocuments() {
     }
   }
 
+  // syncBusy is true without a company, while a pull, import or fetch of the
+  // company's NF-e runs, or while its reset runs.
+  function syncBusy(companyCNPJ: string) {
+    return (
+      !companyCNPJ ||
+      syncStore.isSyncing(companyCNPJ, 'nfe') ||
+      resettingCNPJ.value === companyCNPJ
+    )
+  }
+
+  // importXML asks for XML files and stores them for the company without
+  // asking SEFAZ. It holds the NF-e sync marker, like a pull, so the two
+  // never overlap. null means it did not run or the dialog was cancelled.
+  async function importXML() {
+    const companyCNPJ = cnpj.value
+    if (syncBusy(companyCNPJ)) return null
+
+    const files = await desktopClient.selectXMLFiles()
+    if (!files.length || syncBusy(companyCNPJ)) return null
+
+    try {
+      return await syncStore.runSync(companyCNPJ, 'nfe', () =>
+        desktopClient.importNFeXML(companyCNPJ, files)
+      )
+    } finally {
+      await refresh(companyCNPJ)
+    }
+  }
+
+  // fetchByChave asks SEFAZ for one NF-e by its chave, spending one request
+  // of the hourly budget. It holds the NF-e sync marker, like a pull.
+  async function fetchByChave(chaveAcesso: string) {
+    const companyCNPJ = cnpj.value
+    if (syncBusy(companyCNPJ)) return null
+
+    try {
+      return await syncStore.runSync(companyCNPJ, 'nfe', () =>
+        desktopClient.fetchNFeByChave(companyCNPJ, chaveAcesso)
+      )
+    } finally {
+      await refresh(companyCNPJ)
+    }
+  }
+
   // resetNFe removes the company's NF-e and resets its NF-e sync. It never
   // runs alongside a pull, and its in-flight marker lives in the store so the
   // page stays busy after navigating away and back.
@@ -179,6 +223,8 @@ export function useNFeDocuments() {
     search,
     loadStatus,
     syncNFe,
+    importXML,
+    fetchByChave,
     resetNFe,
     exportXML,
     exportDANFE,

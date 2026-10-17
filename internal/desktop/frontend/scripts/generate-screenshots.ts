@@ -414,6 +414,7 @@ function mockNFeRow<T extends MockNFeFields>(fields: T) {
     ParseWarnings: [] as string[],
     CompanyRole: 'destinatario',
     EventCount: 0,
+    FirstSeenNSU: 1 as number | null,
     FirstSyncedAt: daysFromNow(-1),
     LastSyncedAt: daysFromNow(-1),
     // Every note was seen but the new resumos and the note the company issued.
