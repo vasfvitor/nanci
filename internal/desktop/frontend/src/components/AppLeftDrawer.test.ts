@@ -133,7 +133,7 @@ describe('AppLeftDrawer', () => {
     expect(wrapper.findComponent({ name: 'QSelect' }).exists()).toBe(false)
     expect(wrapper.text()).toContain('Nenhuma empresa cadastrada.')
     const register = wrapper.findAll('button').find((item) => item.text() === 'Cadastrar empresa')
-    expect(register?.attributes('data-to')).toBe('/')
+    expect(register?.attributes('data-to')).toBe('/?add=1')
   })
 
   it('shows a failed load and tries again', async () => {

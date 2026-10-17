@@ -7,6 +7,7 @@
       :status-line="statusLine"
       :syncing="isSyncing"
       :sync-disabled="!cnpj || isResetting"
+      :first-sync="firstSync"
       reset-title="Reinicia a sincronização da NFS-e a partir do NSU 0; os documentos ficam"
       :resetting="isResetting"
       :reset-disabled="!cnpj || isSyncing"
@@ -121,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
@@ -172,6 +173,16 @@ const {
   isSyncing,
   isResetting,
 } = nfse
+
+// firstSync points at the sync button while the company never synced its
+// NFS-e. LastSyncAt is the NFS-e sync time, so only this page uses it.
+const firstSync = computed(
+  () =>
+    !!selectedCompany.value &&
+    !selectedCompany.value.LastSyncAt &&
+    !selectedCompany.value.InitialSyncDoneAt &&
+    !isSyncing.value
+)
 
 const showEventsDialog = ref(false)
 const eventsDocument = ref({ id: '', chave: '' })

@@ -1,12 +1,20 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import CompaniesPage from './CompaniesPage.vue'
 import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { deferred } from '@/test/fixtures'
+import type { CompanySummary } from '@/types/desktop'
 
 const notify = vi.fn()
 const push = vi.fn()
+// route is the current route; replace swaps its query as the router would.
+const route = reactive<{ query: Record<string, string> }>({ query: {} })
+const replace = vi.fn((to: { query: Record<string, string> }) => {
+  route.query = to.query
+})
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({
@@ -17,7 +25,8 @@ vi.mock('quasar', () => ({
 }))
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
+  useRoute: () => route,
 }))
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
@@ -70,7 +79,13 @@ function mountPage(tableTemplate = credentialCellTable) {
           props: ['rows', 'loading'],
           template: tableTemplate,
         },
-        AddCompanyDialog: { template: '<div />' },
+        AddCompanyDialog: {
+          name: 'AddCompanyDialog',
+          props: ['modelValue'],
+          emits: ['update:modelValue', 'added'],
+          template: '<div />',
+        },
+        WelcomeCard: { name: 'WelcomeCard', emits: ['add'], template: '<div />' },
         EditCompanyDialog: { template: '<div />' },
       },
       directives: {
@@ -89,6 +104,7 @@ function layoutLoad() {
 describe('CompaniesPage credential assignment', () => {
   beforeEach(() => {
     localStorage.clear()
+    route.query = {}
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
@@ -96,12 +112,8 @@ describe('CompaniesPage credential assignment', () => {
   })
 
   it('drives the table loading indicator while companies load', async () => {
-    let resolveList!: (value: never[]) => void
-    vi.mocked(desktopClient.listCompanies).mockReturnValue(
-      new Promise((resolve) => {
-        resolveList = resolve
-      }) as ReturnType<typeof desktopClient.listCompanies>
-    )
+    const list = deferred<CompanySummary[]>()
+    vi.mocked(desktopClient.listCompanies).mockReturnValue(list.promise)
 
     const wrapper = mountPage()
     const loading = layoutLoad()
@@ -110,7 +122,8 @@ describe('CompaniesPage credential assignment', () => {
     const table = wrapper.getComponent({ name: 'QTable' })
     expect(table.props('loading')).toBe(true)
 
-    resolveList([])
+    // An empty list would swap the table for the welcome card.
+    list.resolve([company])
     await loading
     await flushPromises()
 
@@ -161,6 +174,7 @@ describe('CompaniesPage credential assignment', () => {
 describe('CompaniesPage initial load', () => {
   beforeEach(() => {
     localStorage.clear()
+    route.query = {}
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
@@ -209,6 +223,7 @@ describe('CompaniesPage initial load', () => {
 describe('CompaniesPage actions', () => {
   beforeEach(() => {
     localStorage.clear()
+    route.query = {}
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
@@ -242,5 +257,97 @@ describe('CompaniesPage actions', () => {
     expect(titles).toEqual(['Ver documentos', 'Editar'])
     expect(wrapper.find('button[data-icon="sync"]').exists()).toBe(false)
     expect(wrapper.find('button[data-icon="restart_alt"]').exists()).toBe(false)
+  })
+})
+
+describe('CompaniesPage first company', () => {
+  const outra = { ...company, ID: 'company-2', CNPJ: '98765432000188', Name: 'Empresa Dois' }
+
+  beforeEach(() => {
+    localStorage.clear()
+    route.query = {}
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([])
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+  })
+
+  function addDialog(wrapper: ReturnType<typeof mountPage>) {
+    return wrapper.getComponent({ name: 'AddCompanyDialog' })
+  }
+
+  it('shows the welcome card with no company', async () => {
+    await layoutLoad()
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'WelcomeCard' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'QTable' }).exists()).toBe(false)
+  })
+
+  it('hides it once a company exists', async () => {
+    const wrapper = mountPage()
+    // Before the list arrives the table shows its loading state.
+    expect(wrapper.findComponent({ name: 'WelcomeCard' }).exists()).toBe(false)
+
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    await layoutLoad()
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'WelcomeCard' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'QTable' }).exists()).toBe(true)
+  })
+
+  it('opens the add dialog from the card', async () => {
+    await layoutLoad()
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(addDialog(wrapper).props('modelValue')).toBe(false)
+
+    wrapper.getComponent({ name: 'WelcomeCard' }).vm.$emit('add')
+    await flushPromises()
+
+    expect(addDialog(wrapper).props('modelValue')).toBe(true)
+  })
+
+  it('opens the add dialog from ?add=1 and drops the query', async () => {
+    await layoutLoad()
+    // Set right before the mount: the pages of earlier tests stay mounted
+    // and would drop the query on the next tick.
+    route.query = { add: '1' }
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(addDialog(wrapper).props('modelValue')).toBe(true)
+    expect(replace).toHaveBeenCalledWith({ query: {} })
+    expect(route.query).toEqual({})
+  })
+
+  it('selects the first added company and opens /documents', async () => {
+    await layoutLoad()
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+
+    addDialog(wrapper).vm.$emit('added', company.CNPJ)
+    await flushPromises()
+
+    expect(useWorkspaceStore().cnpj).toBe(company.CNPJ)
+    expect(push).toHaveBeenCalledWith('/documents')
+    expect(wrapper.findComponent({ name: 'WelcomeCard' }).exists()).toBe(false)
+  })
+
+  it('selects a later company without navigating', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    await layoutLoad()
+    const wrapper = mountPage()
+    await flushPromises()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company, outra])
+
+    addDialog(wrapper).vm.$emit('added', outra.CNPJ)
+    await flushPromises()
+
+    expect(useWorkspaceStore().cnpj).toBe(outra.CNPJ)
+    expect(push).not.toHaveBeenCalled()
   })
 })

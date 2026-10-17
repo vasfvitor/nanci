@@ -17,7 +17,8 @@ const stubs = {
     name: 'QBtn',
     props: ['label', 'loading', 'disable', 'title'],
     emits: ['click'],
-    template: '<button :disabled="disable" :data-loading="loading" @click="$emit(\'click\')">{{ label }}</button>',
+    template:
+      '<button :disabled="disable" :data-loading="loading" @click="$emit(\'click\')">{{ label }}<slot /></button>',
   },
   QBanner: { template: '<div class="banner"><slot /></div>' },
   QSpace: { template: '<span />' },
@@ -118,6 +119,24 @@ describe('DocumentPageHeader', () => {
     const tooltip = badge.find('.tooltip').text()
     expect(tooltip).toContain('últimos 60 dias')
     expect(tooltip).toContain('Sincronizar agora reinicia a contagem')
+  })
+
+  it('marks the first sync on the sync button', () => {
+    const wrapper = mountHeader({ firstSync: true })
+
+    const sync = wrapper.findAll('button').find((item) => item.text().startsWith('Sincronizar NF-e'))
+    expect(sync?.classes()).toContain('first-sync')
+    expect(sync?.find('.badge').attributes('data-color')).toBe('accent')
+    expect(sync?.find('.badge').text()).toBe('Primeira sincronização')
+    expect(sync?.find('.tooltip').text()).toBe('Busque as notas da empresa pela primeira vez.')
+  })
+
+  it('shows no first-sync badge by default', () => {
+    const sync = button(mountHeader(), 'Sincronizar NF-e')
+
+    expect(sync.classes()).not.toContain('first-sync')
+    expect(sync.find('.badge').exists()).toBe(false)
+    expect(sync.find('.tooltip').exists()).toBe(false)
   })
 
   it('colors the ambiente badge and the banner for the theme', () => {

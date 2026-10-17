@@ -1,6 +1,8 @@
 <template>
   <q-page padding>
+    <WelcomeCard v-if="showWelcome" @add="showAddDialog = true" />
     <q-table
+      v-else
       title="Empresas"
       :rows="companies"
       :columns="columns"
@@ -99,7 +101,7 @@
       </template>
     </q-table>
 
-    <AddCompanyDialog v-model="showAddDialog" @added="reloadData" />
+    <AddCompanyDialog v-model="showAddDialog" @added="onAdded" />
     <EditCompanyDialog
       v-model="showEditDialog"
       :company-data="selectedCompanyToEdit"
@@ -111,15 +113,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { type QTableColumn } from 'quasar'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AddCompanyDialog from '../components/AddCompanyDialog.vue'
 import EditCompanyDialog from '../components/EditCompanyDialog.vue'
+import WelcomeCard from '../components/WelcomeCard.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useCompanies } from '@/composables/useCompanies'
 import { useNotify } from '@/composables/useNotify'
 import { formatCpfCnpj, formatDate, formatDateTime } from '@/utils/formatters'
 import type { CompanySummary } from '@/types/desktop'
 
+const route = useRoute()
 const router = useRouter()
 const workspace = useWorkspaceStore()
 const companiesApi = useCompanies()
@@ -134,6 +138,12 @@ const selectedCompanyToEdit = ref<CompanySummary | null>(null)
 // layout loads it when the app opens, and notifies a failure.
 const tableLoading = computed(
   () => loading.value || (!workspace.loaded && !workspace.loadError)
+)
+
+// showWelcome swaps the table for the welcome card once a list arrived
+// empty.
+const showWelcome = computed(
+  () => workspace.loaded && !workspace.loadError && companies.value.length === 0
 )
 
 const credentialOptions = computed(() =>
@@ -206,6 +216,29 @@ async function reloadData() {
     notifyError('Erro ao carregar empresas', e)
   }
 }
+
+// onAdded selects the company just added. The first one also opens its
+// documents, where the first sync starts; a later one stays on this page.
+async function onAdded(cnpj: string) {
+  const first = companies.value.length === 0
+  await reloadData()
+  // A failed reload is notified; cnpj only names a listed company.
+  if (!companies.value.some((company) => company.CNPJ === cnpj)) return
+  workspace.cnpj = cnpj
+  if (first) void router.push('/documents')
+}
+
+// "?add=1", as the drawer links it, opens the add dialog and is then
+// dropped, so going back to the page does not open it again.
+watch(
+  () => route.query['add'],
+  (add) => {
+    if (!add) return
+    showAddDialog.value = true
+    void router.replace({ query: {} })
+  },
+  { immediate: true }
+)
 
 async function assignCredential(cnpj: string) {
   const credId = selectedCredentials.value[cnpj]

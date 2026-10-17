@@ -25,8 +25,14 @@
         :label="`Sincronizar ${title}`"
         :loading="syncing"
         :disable="syncDisabled"
+        :class="{ 'first-sync': firstSync }"
         @click="emit('sync')"
-      />
+      >
+        <template v-if="firstSync">
+          <q-badge floating color="accent" label="Primeira sincronização" />
+          <q-tooltip>Busque as notas da empresa pela primeira vez.</q-tooltip>
+        </template>
+      </q-btn>
     </div>
 
     <!-- The workspace is picked in the left drawer, which Quasar hides below
@@ -69,7 +75,8 @@ import { badgeProps, IDLE_WARNING_TOOLTIP } from '@/utils/sefazDisplay'
 // competência, the status line, the badge that warns of a distribution idle
 // for too long and the banner that explains a blocked sync. ambiente is null
 // until the company is known; contextLine is '' while no company is
-// selected; resetTitle explains what the reset does.
+// selected; resetTitle explains what the reset does; firstSync marks the
+// sync button while the company was never synced.
 withDefaults(
   defineProps<{
     title: string
@@ -83,11 +90,13 @@ withDefaults(
     resetTitle: string
     resetting: boolean
     resetDisabled: boolean
+    firstSync?: boolean
   }>(),
   {
     statusLine: '',
     idleWarning: '',
     blockedText: '',
+    firstSync: false,
   }
 )
 
@@ -98,3 +107,31 @@ const emit = defineEmits<{
 
 const $q = useQuasar()
 </script>
+
+<style scoped>
+/* currentColor is the white label of the primary button, which would vanish
+   on a light page; the outline takes the primary colour instead. */
+.first-sync {
+  animation: first-sync-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes first-sync-pulse {
+  0%,
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 0;
+  }
+  50% {
+    outline: 2px solid var(--q-primary);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .first-sync {
+    animation: none;
+    outline: 2px solid var(--q-primary);
+    outline-offset: 3px;
+  }
+}
+</style>

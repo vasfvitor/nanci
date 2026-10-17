@@ -14,7 +14,7 @@
 
       <div v-if="noCompanies" class="column items-start">
         <div class="text-body2">Nenhuma empresa cadastrada.</div>
-        <q-btn flat dense color="primary" label="Cadastrar empresa" to="/" />
+        <q-btn flat dense color="primary" label="Cadastrar empresa" to="/?add=1" />
       </div>
       <q-select
         v-else-if="companies.length > 0 || !loadError"

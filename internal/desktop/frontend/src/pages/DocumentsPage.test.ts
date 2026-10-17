@@ -526,6 +526,37 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it('flags the first sync while the company never synced', async () => {
+    const pull = deferred<PullResult>()
+    vi.mocked(desktopClient.pull).mockReturnValue(pull.promise)
+    const wrapper = mountPage()
+    await flushPromises()
+    const header = () => wrapper.getComponent({ name: 'DocumentPageHeader' })
+    expect(header().props('firstSync')).toBe(true)
+
+    // The flag goes away while the sync runs and stays away once the
+    // company has a sync time.
+    await button(wrapper, 'Sincronizar NFS-e').trigger('click')
+    await flushPromises()
+    expect(header().props('firstSync')).toBe(false)
+
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
+      { ...acme, LastSyncAt: new Date('2026-10-17T10:00:00Z') },
+      outra,
+    ])
+    pull.resolve({ Status: 'success', StopReason: 'no-more-nsu', LastProcessedNSU: 30 } as PullResult)
+    await flushPromises()
+    expect(header().props('firstSync')).toBe(false)
+
+    // A company that only finished its initial import is not new either.
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
+      { ...acme, InitialSyncDoneAt: new Date('2026-10-17T10:00:00Z') },
+    ])
+    await useWorkspaceStore().loadCompanies()
+    await flushPromises()
+    expect(header().props('firstSync')).toBe(false)
+  })
+
   it('confirms that the reset keeps the documents, then resets the cursor', async () => {
     vi.mocked(desktopClient.resetSyncState).mockResolvedValue(undefined)
     const wrapper = mountPage()
