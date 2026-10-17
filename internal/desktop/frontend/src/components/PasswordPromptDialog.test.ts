@@ -1,6 +1,8 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PasswordPromptDialog from './PasswordPromptDialog.vue'
+import { desktopClient } from '@/platform/wails/client'
+import { deferred } from '@/test/fixtures'
 
 type Handler = (payload: unknown) => void
 
@@ -28,8 +30,19 @@ function mountDialog() {
         'q-card': { template: '<div><slot /></div>' },
         'q-card-section': { template: '<div><slot /></div>' },
         'q-card-actions': { template: '<div><slot /></div>' },
-        'q-input': { template: '<input />' },
-        'q-btn': { template: '<button />' },
+        'q-form': {
+          emits: ['submit'],
+          template: `<form @submit.prevent="$emit('submit')"><slot /></form>`,
+        },
+        'q-input': {
+          props: ['type', 'disable'],
+          template: '<div><input :type="type" :disabled="disable" /><slot name="append" /></div>',
+        },
+        'q-icon': { template: '<i />' },
+        'q-btn': {
+          props: ['label', 'type', 'disable', 'loading'],
+          template: `<button :type="type || 'button'" :disabled="disable">{{ label }}</button>`,
+        },
       },
     },
   })
@@ -65,5 +78,44 @@ describe('PasswordPromptDialog', () => {
 
     expect(wrapper.text()).toContain('Empresa: Empresa Um')
     expect(wrapper.text()).not.toContain('Finalidade')
+  })
+
+  it('toggles password visibility', async () => {
+    const wrapper = mountDialog()
+    handlers['request-cert-password']?.(request)
+    await flushPromises()
+
+    expect(wrapper.find('input').attributes('type')).toBe('password')
+    await wrapper.find('[aria-label="Mostrar senha"]').trigger('click')
+    expect(wrapper.find('input').attributes('type')).toBe('text')
+    await wrapper.find('[aria-label="Ocultar senha"]').trigger('click')
+    expect(wrapper.find('input').attributes('type')).toBe('password')
+
+    await wrapper.find('[aria-label="Mostrar senha"]').trigger('click')
+    handlers['request-cert-password']?.({ ...request, RequestID: 'req-2' })
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('input').attributes('type')).toBe('password')
+  })
+
+  it('disables the actions while submitting', async () => {
+    const pending = deferred<undefined>()
+    vi.mocked(desktopClient.submitCertPassword).mockReturnValue(pending.promise)
+    const wrapper = mountDialog()
+    handlers['request-cert-password']?.(request)
+    await flushPromises()
+
+    await wrapper.find('form').trigger('submit')
+    const buttons = () => wrapper.findAll('button')
+    expect(buttons().map((b) => [b.text(), b.attributes('disabled')])).toEqual([
+      ['Cancelar', ''],
+      ['Confirmar', ''],
+    ])
+    await wrapper.find('form').trigger('submit')
+    expect(desktopClient.submitCertPassword).toHaveBeenCalledTimes(1)
+
+    pending.resolve(undefined)
+    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
   })
 })
