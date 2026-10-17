@@ -6,7 +6,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-type ReportRow struct {
+// NFSeRow is one NFS-e in the spreadsheet exports, with values in reais.
+type NFSeRow struct {
 	CompanyRole       nfse.CompanyRole
 	IssueDate         time.Time
 	PrestadorCNPJ     string
@@ -33,8 +34,9 @@ type ReportRow struct {
 	WarningsCount     int
 }
 
-func BuildRows(docs []nfse.CompanyDocument) []ReportRow {
-	var reportRows []ReportRow
+// BuildNFSeRows turns company documents into spreadsheet rows, in order.
+func BuildNFSeRows(docs []nfse.CompanyDocument) []NFSeRow {
+	var reportRows []NFSeRow
 
 	for _, doc := range docs {
 		isEmitida := doc.CompanyRole == nfse.CompanyRolePrestada
@@ -50,7 +52,7 @@ func BuildRows(docs []nfse.CompanyDocument) []ReportRow {
 		totalRetentions := float64(doc.TotalRetentions) / 100.0
 		netValue := serviceValue - totalRetentions
 
-		reportRows = append(reportRows, ReportRow{
+		reportRows = append(reportRows, NFSeRow{
 			CompanyRole:       doc.CompanyRole,
 			IssueDate:         doc.IssueDate,
 			PrestadorCNPJ:     doc.PrestadorCNPJ,

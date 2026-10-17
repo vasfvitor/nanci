@@ -1,7 +1,6 @@
 package report
 
 import (
-	"encoding/csv"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,72 +9,64 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-func TestGenerateCSV(t *testing.T) {
-	tempDir := t.TempDir()
-	outPath := filepath.Join(tempDir, "test.csv")
-
-	issueDate := time.Date(2026, 6, 7, 0, 0, 0, 0, time.UTC)
-	docs := []ReportRow{
+// TestNFSeCSVOutput pins the NFS-e CSV byte for byte: header line, quoting,
+// CNPJ formatting, two-decimal money and empty issue dates. The expected
+// bytes were produced by the CSV writer this one replaced.
+func TestNFSeCSVOutput(t *testing.T) {
+	outPath := filepath.Join(t.TempDir(), "test.csv")
+	rows := []NFSeRow{
 		{
 			CompanyRole:   nfse.CompanyRolePrestada,
-			IssueDate:     issueDate,
+			IssueDate:     time.Date(2026, 6, 7, 0, 0, 0, 0, time.UTC),
 			Competence:    "202606",
 			ChaveAcesso:   "12345678901234567890123456789012345678901234",
 			PrestadorCNPJ: "12345678000100",
-			PrestadorName: "Prestador Teste",
+			PrestadorName: "Prestador, Teste",
 			TomadorCNPJ:   "98765432000199",
-			TomadorName:   "Tomador Teste",
+			TomadorName:   `Tomador "Teste"`,
 			ServiceValue:  1500.50,
 			ISSValue:      30.00,
 			PISValue:      9.75,
 			COFINSValue:   45.00,
 			Status:        nfse.DocumentStatusNormal,
 		},
+		{
+			CompanyRole: nfse.CompanyRoleIntermediario,
+			Competence:  "202606",
+			ChaveAcesso: "B",
+			TomadorCNPJ: "12345678901",
+			IRRFValue:   0.005,
+			Status:      nfse.DocumentStatusCancelada,
+		},
 	}
 
-	err := GenerateCSV(docs, outPath)
+	if err := WriteCSV(NFSeCSV(rows), outPath); err != nil {
+		t.Fatalf("WriteCSV: %v", err)
+	}
+	got, err := os.ReadFile(outPath) // #nosec G304 -- file created by this test.
 	if err != nil {
-		t.Fatalf("GenerateCSV failed: %v", err)
+		t.Fatalf("read csv: %v", err)
 	}
 
-	file, err := os.Open(outPath) //nolint:gosec // intentional: test file reading
+	want := "Competencia,Data Emissao,Chave de Acesso,Direcao,CNPJ Prestador,Nome Prestador,CNPJ Tomador,Nome Tomador,Valor Servico,ISS,IRRF,INSS,PIS,COFINS,CSLL,Status\n" +
+		`202606,2026-06-07,12345678901234567890123456789012345678901234,prestada,12.345.678/0001-00,"Prestador, Teste",98.765.432/0001-99,"Tomador ""Teste""",1500.50,30.00,0.00,0.00,9.75,45.00,0.00,normal` + "\n" +
+		"202606,,B,intermediario,,,12345678901,,0.00,0.00,0.01,0.00,0.00,0.00,0.00,cancelada\n"
+	if string(got) != want {
+		t.Errorf("csv =\n%q\nwant\n%q", got, want)
+	}
+}
+
+func TestNFSeCSVEmptyWritesHeaderOnly(t *testing.T) {
+	outPath := filepath.Join(t.TempDir(), "empty.csv")
+	if err := WriteCSV(NFSeCSV(nil), outPath); err != nil {
+		t.Fatalf("WriteCSV: %v", err)
+	}
+	got, err := os.ReadFile(outPath) // #nosec G304 -- file created by this test.
 	if err != nil {
-		t.Fatalf("failed to open generated CSV: %v", err)
+		t.Fatalf("read csv: %v", err)
 	}
-	defer func() { _ = file.Close() }()
-
-	reader := csv.NewReader(file)
-	records, err := reader.ReadAll()
-	if err != nil {
-		t.Fatalf("failed to read CSV: %v", err)
-	}
-
-	if len(records) != 2 {
-		t.Fatalf("expected 2 rows (header + 1 doc), got %d", len(records))
-	}
-
-	header := records[0]
-	if header[0] != "Competencia" {
-		t.Errorf("expected header[0] to be Competencia, got %s", header[0])
-	}
-
-	row1 := records[1]
-	// "Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
-	// "CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
-	// "Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
-	if row1[0] != "202606" {
-		t.Errorf("expected Competencia '202606', got %s", row1[0])
-	}
-	if row1[1] != "2026-06-07" {
-		t.Errorf("expected IssueDate '2026-06-07', got %s", row1[1])
-	}
-	if row1[8] != "1500.50" {
-		t.Errorf("expected Valor Servico '1500.50', got %s", row1[8])
-	}
-	if row1[12] != "9.75" {
-		t.Errorf("expected PIS '9.75', got %s", row1[12])
-	}
-	if row1[15] != "normal" {
-		t.Errorf("expected Status 'normal', got %s", row1[15])
+	want := "Competencia,Data Emissao,Chave de Acesso,Direcao,CNPJ Prestador,Nome Prestador,CNPJ Tomador,Nome Tomador,Valor Servico,ISS,IRRF,INSS,PIS,COFINS,CSLL,Status\n"
+	if string(got) != want {
+		t.Errorf("csv = %q, want %q", got, want)
 	}
 }

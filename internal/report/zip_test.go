@@ -32,7 +32,7 @@ func TestGenerateZIPUsesCompanyRoleFolders(t *testing.T) {
 		},
 	}
 
-	if err := GenerateZIP(NFSeZipEntries(BuildRows(documents)), store, outPath); err != nil {
+	if err := GenerateZIP(NFSeZipEntries(BuildNFSeRows(documents)), store, outPath); err != nil {
 		t.Fatalf("GenerateZIP: %v", err)
 	}
 
@@ -70,7 +70,7 @@ func TestGenerateZIPFailsWhenBlobIsMissing(t *testing.T) {
 		},
 	}
 
-	err := GenerateZIP(NFSeZipEntries(BuildRows(documents)), store, outPath)
+	err := GenerateZIP(NFSeZipEntries(BuildNFSeRows(documents)), store, outPath)
 	if err == nil {
 		t.Fatal("expected missing blob error")
 	}
@@ -80,7 +80,7 @@ func TestGenerateZIPFailsWhenBlobIsMissing(t *testing.T) {
 }
 
 func TestNFSeZipEntriesSkipsDocumentsWithoutXML(t *testing.T) {
-	rows := BuildRows([]nfse.CompanyDocument{
+	rows := BuildNFSeRows([]nfse.CompanyDocument{
 		{Document: nfse.Document{ChaveAcesso: "A", Competence: "2026-06", RawHash: "hash-a"}, CompanyRole: "tomada"},
 		{Document: nfse.Document{ChaveAcesso: "B", Competence: "2026-06"}, CompanyRole: "tomada"},
 		{Document: nfse.Document{ChaveAcesso: "C", RawHash: "hash-c"}, CompanyRole: ""},

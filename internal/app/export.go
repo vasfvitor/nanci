@@ -72,21 +72,21 @@ func NewExportService(d Dependencies) *ExportService {
 // ExportCSV writes a CSV report for the matching documents to input.OutPath.
 func (s *ExportService) ExportCSV(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "csv", func(docs []nfse.CompanyDocument, tempPath string) error {
-		return report.GenerateCSV(report.BuildRows(docs), tempPath)
+		return report.WriteCSV(report.NFSeCSV(report.BuildNFSeRows(docs)), tempPath)
 	})
 }
 
 // ExportXLSX writes an Excel report for the matching documents to input.OutPath.
 func (s *ExportService) ExportXLSX(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "xlsx", func(docs []nfse.CompanyDocument, tempPath string) error {
-		return report.GenerateXLSX(report.BuildRows(docs), tempPath)
+		return report.WriteXLSX(report.NFSeXLSX(report.BuildNFSeRows(docs)), tempPath)
 	})
 }
 
 // ExportZIP packs the raw XML files for the matching documents into input.OutPath.
 func (s *ExportService) ExportZIP(ctx context.Context, input ExportInput) (ExportResult, error) {
 	return s.bulkExport(ctx, input, "xml", func(docs []nfse.CompanyDocument, tempPath string) error {
-		return report.GenerateZIP(report.NFSeZipEntries(report.BuildRows(docs)), s.XMLStore, tempPath)
+		return report.GenerateZIP(report.NFSeZipEntries(report.BuildNFSeRows(docs)), s.XMLStore, tempPath)
 	})
 }
 

@@ -20,7 +20,7 @@ type ZipEntry struct {
 // NFSeZipEntries lays out the NFS-e archive: each document goes to
 // <competencia>/<papel>/<chave>.xml. Documents without a stored XML are left
 // out.
-func NFSeZipEntries(rows []ReportRow) []ZipEntry {
+func NFSeZipEntries(rows []NFSeRow) []ZipEntry {
 	var entries []ZipEntry
 	for _, row := range rows {
 		if row.RawHash == "" {

@@ -1,53 +1,76 @@
 package report
 
 import (
-	"os"
 	"path/filepath"
+	"slices"
 	"testing"
-	"time"
+
+	"github.com/xuri/excelize/v2"
 
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-func TestGenerateXLSX(t *testing.T) {
-	tempDir := t.TempDir()
-	outPath := filepath.Join(tempDir, "test.xlsx")
+func TestNFSeXLSXPlacesEveryRole(t *testing.T) {
+	rows := BuildNFSeRows([]nfse.CompanyDocument{
+		{Document: nfse.Document{ChaveAcesso: "P1"}, CompanyRole: nfse.CompanyRolePrestada},
+		{Document: nfse.Document{ChaveAcesso: "T1"}, CompanyRole: nfse.CompanyRoleTomada},
+		{Document: nfse.Document{ChaveAcesso: "T2"}, CompanyRole: nfse.CompanyRoleTomada},
+		{Document: nfse.Document{ChaveAcesso: "I1"}, CompanyRole: nfse.CompanyRoleIntermediario},
+		{Document: nfse.Document{ChaveAcesso: "N1"}, CompanyRole: "none"},
+		{Document: nfse.Document{ChaveAcesso: "E1"}, CompanyRole: ""},
+	})
 
-	issueDate := time.Date(2026, 6, 7, 0, 0, 0, 0, time.UTC)
-	docs := []ReportRow{
+	s := NFSeXLSX(rows)
+	got := map[string]int{}
+	total := 0
+	for _, sheet := range s.Sheets {
+		got[sheet.Name] = len(sheet.Rows)
+		total += len(sheet.Rows)
+	}
+	want := map[string]int{"NFSe Emitidas": 1, "NFSe Tomadas": 2, "NFSe Intermediadas": 1, "NFSe Outras": 2}
+	for name, n := range want {
+		if got[name] != n {
+			t.Errorf("sheet %s has %d rows, want %d", name, got[name], n)
+		}
+	}
+	if total != len(rows) {
+		t.Errorf("sheets hold %d rows, want %d", total, len(rows))
+	}
+}
+
+func TestNFSeXLSXWritesOneWorksheetPerRole(t *testing.T) {
+	outPath := filepath.Join(t.TempDir(), "test.xlsx")
+	rows := BuildNFSeRows([]nfse.CompanyDocument{
 		{
-			CompanyRole:   nfse.CompanyRoleTomada,
-			IssueDate:     issueDate,
-			Competence:    "202606",
-			ChaveAcesso:   "12345678901234567890123456789012345678901234",
-			PrestadorCNPJ: "12345678000100",
-			PrestadorName: "Prestador Teste",
-			TomadorCNPJ:   "98765432000199",
-			TomadorName:   "Tomador Teste",
-			ServiceValue:  2500.00,
-			ISSValue:      50.00,
-			PISValue:      16.25,
-			COFINSValue:   75.00,
-			Status:        nfse.DocumentStatusNormal,
-			Description:   "Consultoria em TI",
-			WarningsCount: 1,
+			Document: nfse.Document{
+				ChaveAcesso:  "12345678901234567890123456789012345678901234",
+				Competence:   "202606",
+				ServiceValue: 250000,
+				Status:       nfse.DocumentStatusNormal,
+			},
+			CompanyRole: nfse.CompanyRoleTomada,
 		},
+		{Document: nfse.Document{ChaveAcesso: "I1"}, CompanyRole: nfse.CompanyRoleIntermediario},
+	})
+
+	if err := WriteXLSX(NFSeXLSX(rows), outPath); err != nil {
+		t.Fatalf("WriteXLSX: %v", err)
 	}
 
-	err := GenerateXLSX(docs, outPath)
+	f, err := excelize.OpenFile(outPath)
 	if err != nil {
-		t.Fatalf("GenerateXLSX failed: %v", err)
+		t.Fatalf("OpenFile: %v", err)
 	}
+	defer func() { _ = f.Close() }()
 
-	if _, err := os.Stat(outPath); os.IsNotExist(err) {
-		t.Fatalf("XLSX file was not created")
+	if got, want := f.GetSheetList(), []string{"NFSe Tomadas", "NFSe Intermediadas"}; !slices.Equal(got, want) {
+		t.Fatalf("sheets = %v, want %v", got, want)
 	}
-
-	info, err := os.Stat(outPath)
+	value, err := f.GetCellValue("NFSe Tomadas", "G2")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("GetCellValue: %v", err)
 	}
-	if info.Size() == 0 {
-		t.Error("XLSX file is empty")
+	if value != "2,500.00" {
+		t.Errorf("Valor Serviço = %q, want 2,500.00", value)
 	}
 }

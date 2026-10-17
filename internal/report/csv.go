@@ -1,70 +1,66 @@
 package report
 
 import (
-	"encoding/csv"
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 )
 
-// GenerateCSV creates a CSV file from a list of company-facing documents and saves it to the specified path.
-func GenerateCSV(documents []ReportRow, outPath string) (err error) {
-	file, err := os.Create(outPath) // #nosec G304 -- destination is explicitly selected by the local user.
-	if err != nil {
-		return fmt.Errorf("failed to create csv file: %w", err)
-	}
-	defer func() {
-		if cerr := file.Close(); cerr != nil && err == nil {
-			err = fmt.Errorf("failed to close csv file: %w", cerr)
-		}
-	}()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// Write header
-	headers := []string{
-		"Competencia", "Data Emissao", "Chave de Acesso", "Direcao",
-		"CNPJ Prestador", "Nome Prestador", "CNPJ Tomador", "Nome Tomador",
-		"Valor Servico", "ISS", "IRRF", "INSS", "PIS", "COFINS", "CSLL", "Status",
-	}
-
-	if err := writer.Write(headers); err != nil {
-		return fmt.Errorf("failed to write csv header: %w", err)
+// NFSeCSV lays out the NFS-e CSV export: one row per document, in order,
+// under ASCII headers.
+func NFSeCSV(rows []NFSeRow) Spreadsheet {
+	columns := []Column{
+		{Header: "Competencia"},
+		{Header: "Data Emissao"},
+		{Header: "Chave de Acesso"},
+		{Header: "Direcao"},
+		{Header: "CNPJ Prestador"},
+		{Header: "Nome Prestador"},
+		{Header: "CNPJ Tomador"},
+		{Header: "Nome Tomador"},
+		{Header: "Valor Servico", Money: true},
+		{Header: "ISS", Money: true},
+		{Header: "IRRF", Money: true},
+		{Header: "INSS", Money: true},
+		{Header: "PIS", Money: true},
+		{Header: "COFINS", Money: true},
+		{Header: "CSLL", Money: true},
+		{Header: "Status"},
 	}
 
-	// Write rows
-	for _, doc := range documents {
-		issueStr := ""
-		if !doc.IssueDate.IsZero() {
-			issueStr = doc.IssueDate.Format(time.DateOnly)
-		}
-
-		row := []string{
+	cells := make([][]any, 0, len(rows))
+	for _, doc := range rows {
+		cells = append(cells, []any{
 			doc.Competence,
-			issueStr,
+			formatIssueDate(doc.IssueDate),
 			doc.ChaveAcesso,
 			string(doc.CompanyRole),
 			cnpj.Format(doc.PrestadorCNPJ),
 			doc.PrestadorName,
 			cnpj.Format(doc.TomadorCNPJ),
 			doc.TomadorName,
-			fmt.Sprintf("%.2f", doc.ServiceValue),
-			fmt.Sprintf("%.2f", doc.ISSValue),
-			fmt.Sprintf("%.2f", doc.IRRFValue),
-			fmt.Sprintf("%.2f", doc.INSSValue),
-			fmt.Sprintf("%.2f", doc.PISValue),
-			fmt.Sprintf("%.2f", doc.COFINSValue),
-			fmt.Sprintf("%.2f", doc.CSLLValue),
+			doc.ServiceValue,
+			doc.ISSValue,
+			doc.IRRFValue,
+			doc.INSSValue,
+			doc.PISValue,
+			doc.COFINSValue,
+			doc.CSLLValue,
 			string(doc.Status),
-		}
-
-		if err := writer.Write(row); err != nil {
-			return fmt.Errorf("failed to write csv row: %w", err)
-		}
+		})
 	}
 
-	return nil
+	return Spreadsheet{
+		Columns:   columns,
+		StatusCol: 15,
+		Sheets:    []Sheet{{Name: "Documentos", Table: "DocumentosTable", Rows: cells}},
+	}
+}
+
+// formatIssueDate is the issue date as YYYY-MM-DD, or empty when unknown.
+func formatIssueDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(time.DateOnly)
 }
