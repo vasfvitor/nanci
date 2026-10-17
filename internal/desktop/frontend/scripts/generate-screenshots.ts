@@ -22,6 +22,14 @@ type ScreenshotSpec = {
   // fitsWidth asserts that the document table fits the 1280px window without
   // a horizontal scroll bar.
   fitsWidth?: boolean
+  // companies, credentials and documents replace the mock lists the Wails
+  // methods return; each defaults to the mock of the same name.
+  companies?: Record<string, unknown>[]
+  credentials?: Record<string, unknown>[]
+  documents?: Record<string, unknown>[]
+  // waitFor 'welcome' waits for the welcome card instead of the drawer's CNPJ
+  // hint, which never shows when no company is listed.
+  waitFor?: 'welcome'
 }
 
 declare global {
@@ -865,9 +873,18 @@ async function selectNFeRows(page: Page, numeros: string[]) {
 // nfseWorkspace is the competência of every NFS-e mock.
 const nfseWorkspace = { competence: '2026-06' }
 
+// neverSyncedCompanies lists the first company as one that never synced its
+// NFS-e, so the NFS-e page marks the sync button.
+const neverSyncedCompanies = mockCompanies.map((company, index) =>
+  index === 0 ? { ...company, LastFoundNSU: 0, LastSyncAt: '', InitialSyncDoneAt: '' } : company
+)
+
 const screenshots: ScreenshotSpec[] = [
   { route: '/', name: 'empresas', theme: 'light', ready: 'text=Wayne Empreendimentos S.A.' },
   { route: '/', name: 'empresas', theme: 'dark', ready: 'text=Wayne Empreendimentos S.A.' },
+
+  { route: '/', name: 'boas-vindas', theme: 'light', companies: [], credentials: [], waitFor: 'welcome' },
+  { route: '/', name: 'boas-vindas', theme: 'dark', companies: [], credentials: [], waitFor: 'welcome' },
 
   {
     route: '/',
@@ -929,6 +946,16 @@ const screenshots: ScreenshotSpec[] = [
 
   { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Agência de Publicidade Marketing S/A', workspace: nfseWorkspace, fitsWidth: true },
   { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Agência de Publicidade Marketing S/A', workspace: nfseWorkspace, fitsWidth: true },
+
+  {
+    route: '/documents',
+    name: 'primeira-sincronizacao',
+    theme: 'light',
+    ready: 'text=Primeira sincronização',
+    workspace: nfseWorkspace,
+    companies: neverSyncedCompanies,
+    documents: [],
+  },
 
   {
     route: '/documents',
@@ -1134,7 +1161,7 @@ const screenshots: ScreenshotSpec[] = [
   },
 ]
 
-async function installWailsMock(context: BrowserContext, nfeStatus: Record<string, unknown>) {
+async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
   await context.addInitScript(
     ({ companies, credentials, documents, events, nfe, cte }) => {
       const listeners: Record<string, EventCallback[]> = {}
@@ -1301,14 +1328,14 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
       }
     },
     {
-      companies: mockCompanies,
-      credentials: mockCredentials,
-      documents: mockDocuments,
+      companies: spec.companies ?? mockCompanies,
+      credentials: spec.credentials ?? mockCredentials,
+      documents: spec.documents ?? mockDocuments,
       events: mockEvents,
       nfe: {
         rows: mockNFeRows,
         pending: mockNFePending,
-        status: nfeStatus,
+        status: spec.nfeStatus ?? mockNFeStatus,
         cienciaPlan: mockNFeCienciaPlan,
         events: mockNFeEvents,
       },
@@ -1329,7 +1356,7 @@ async function createPage(browser: Browser, spec: ScreenshotSpec) {
     colorScheme: theme,
   })
 
-  await installWailsMock(context, spec.nfeStatus ?? mockNFeStatus)
+  await installWailsMock(context, spec)
 
   await context.addInitScript((selectedTheme) => {
     localStorage.setItem('darkMode', String(selectedTheme === 'dark'))
@@ -1349,10 +1376,14 @@ async function createPage(browser: Browser, spec: ScreenshotSpec) {
 
 async function waitForApp(page: Page, spec: ScreenshotSpec) {
   await page.waitForSelector('.q-page', { timeout: 5000 })
-  // The drawer shows the CNPJ of the workspace company once the list loaded.
-  await page.waitForSelector('.q-drawer .q-field__messages >> text=/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/', {
-    timeout: 5000,
-  })
+  if (spec.waitFor === 'welcome') {
+    await page.waitForSelector('button:has-text("Cadastrar primeira empresa")', { timeout: 5000 })
+  } else {
+    // The drawer shows the CNPJ of the workspace company once the list loaded.
+    await page.waitForSelector('.q-drawer .q-field__messages >> text=/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/', {
+      timeout: 5000,
+    })
+  }
 
   if (spec.ready) {
     await page.waitForSelector(spec.ready, { timeout: 5000 })

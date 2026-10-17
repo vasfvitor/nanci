@@ -18,6 +18,10 @@ Get-FileHash .\nanci-desktop-windows-amd64-v0.5.1-installer.exe -Algorithm SHA25
 
 ## Cadastrar a empresa
 
+Sem empresa cadastrada, a primeira tela mostra os três passos até as primeiras notas, e o botão **Cadastrar primeira empresa** abre o cadastro.
+
+{{< theme-image light="/img/screenshots/boas-vindas-light.png" dark="/img/screenshots/boas-vindas-dark.png" alt="Tela de boas-vindas" >}}
+
 Em **Empresas**, clique em **Adicionar** e informe CNPJ, nome e certificado. Preencha também:
 
 - **UF**, se for baixar NF-e ou CT-e.
@@ -28,3 +32,7 @@ Em **Empresas**, clique em **Adicionar** e informe CNPJ, nome e certificado. Pre
 ## Sincronizar
 
 Escolha a empresa no menu lateral, abra **NFS-e**, **NF-e** ou **CT-e** e clique em **Sincronizar**. A senha do certificado é pedida uma vez e fica guardada no Windows.
+
+Na **NFS-e**, o botão **Sincronizar NFS-e** traz a marca **Primeira sincronização** até a empresa sincronizar pela primeira vez.
+
+{{< theme-image light="/img/screenshots/primeira-sincronizacao-light.png" alt="Botão de sincronizar com a marca de primeira sincronização" >}}
