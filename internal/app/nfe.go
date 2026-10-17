@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/danfe"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
@@ -47,20 +48,23 @@ type NFeService struct {
 	SyncManager  *sync.Manager
 	XMLStore     files.XMLStore
 	Certificates *sync.CertificateLoader
+	// DANFERenderer renders the DANFE exports; nil leaves them unavailable.
+	DANFERenderer danfe.Renderer
 
 	now func() time.Time
 }
 
 func NewNFeService(d Dependencies, certificates *sync.CertificateLoader, syncManager *sync.Manager) *NFeService {
 	return &NFeService{
-		Log:          d.Log,
-		CompanyStore: d.CompanyStore,
-		NFeRepo:      d.NFeRepo,
-		SyncRepo:     d.SyncRepo,
-		SyncManager:  syncManager,
-		XMLStore:     d.XMLStore,
-		Certificates: certificates,
-		now:          time.Now,
+		Log:           d.Log,
+		CompanyStore:  d.CompanyStore,
+		NFeRepo:       d.NFeRepo,
+		SyncRepo:      d.SyncRepo,
+		SyncManager:   syncManager,
+		XMLStore:      d.XMLStore,
+		Certificates:  certificates,
+		DANFERenderer: d.DANFERenderer,
+		now:           time.Now,
 	}
 }
 
