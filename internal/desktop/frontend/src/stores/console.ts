@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
+import { readStorage, writeStorage } from '@/utils/storage'
 
 export type LogFilterLevel = 'info' | 'warn' | 'debug' | 'trace'
 
@@ -29,6 +30,18 @@ const minSeverityByFilter: Record<LogFilterLevel, number> = {
   debug: 1,
   info: 2,
   warn: 3,
+}
+
+const logLevelKey = 'nanci:logLevel'
+
+// readLogFilterLevel returns the saved filter level, or 'info' when none is
+// saved, the value is not a known level or the storage cannot be read.
+function readLogFilterLevel(): LogFilterLevel {
+  const saved = readStorage(logLevelKey)
+  if (saved !== null && saved in minSeverityByFilter) {
+    return saved as LogFilterLevel
+  }
+  return 'info'
 }
 
 function normalizeLogLevel(level: unknown): string {
@@ -60,8 +73,7 @@ function formatLogEntry(entry: LogEntry) {
 
 export const useConsoleStore = defineStore('console', () => {
   const consoleOpen = ref(false)
-  const savedLevel = (localStorage.getItem('nanci:logLevel') || 'info') as LogFilterLevel
-  const logFilterLevel = ref<LogFilterLevel>(savedLevel)
+  const logFilterLevel = ref<LogFilterLevel>(readLogFilterLevel())
   const logEntries = ref<LogEntry[]>([])
   const logListenersInitialised = ref(false)
   const logUnsubscribe = ref<Unsubscribe | null>(null)
@@ -97,13 +109,13 @@ export const useConsoleStore = defineStore('console', () => {
   async function setLogFilter(level: LogFilterLevel) {
     const previousLevel = logFilterLevel.value
     logFilterLevel.value = level
-    localStorage.setItem('nanci:logLevel', level)
+    writeStorage(logLevelKey, level)
 
     try {
       await desktopClient.setLogLevel(level)
     } catch (error) {
       logFilterLevel.value = previousLevel
-      localStorage.setItem('nanci:logLevel', previousLevel)
+      writeStorage(logLevelKey, previousLevel)
       throw error
     }
   }

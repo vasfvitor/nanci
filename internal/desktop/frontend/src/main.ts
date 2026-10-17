@@ -14,6 +14,7 @@ import { createPinia } from 'pinia'
 import { useConsoleStore } from '@/stores/console'
 import { desktopRuntime } from '@/platform/wails/runtime'
 import { errorMessage } from '@/platform/wails/client'
+import { readStorage } from '@/utils/storage'
 
 const myApp = createApp(App)
 const pinia = createPinia()
@@ -21,7 +22,7 @@ const pinia = createPinia()
 myApp.use(pinia)
 myApp.use(router)
 
-const savedDark = localStorage.getItem('darkMode')
+const savedDark = readStorage('darkMode')
 let initialDark: boolean | 'auto' = 'auto'
 if (savedDark === 'true') {
   initialDark = true
