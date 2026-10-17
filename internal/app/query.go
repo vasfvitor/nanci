@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -117,17 +118,20 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 		return result, err
 	}
 
-	credential, err := credential.LookupByID(ctx, s.CredentialStore, company.CredentialID)
-	if err != nil {
+	cred, err := s.CredentialStore.CredentialByID(ctx, company.CredentialID)
+	if errors.Is(err, credential.ErrCredentialNotFound) {
 		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
-		return result, nil //nolint:nilerr // intentional: return diagnostic error info in result
+		return result, nil
+	}
+	if err != nil {
+		return result, fmt.Errorf("buscar credencial: %w", err)
 	}
 
 	result.CertLoaded = true
-	result.CertSubject = credential.SubjectName
-	if credential.NotAfter != nil {
-		result.CertExpiration = credential.NotAfter.Format("02/01/2006 15:04:05")
-		if credential.NotAfter.Before(time.Now()) {
+	result.CertSubject = cred.SubjectName
+	if cred.NotAfter != nil {
+		result.CertExpiration = cred.NotAfter.Format("02/01/2006 15:04:05")
+		if cred.NotAfter.Before(time.Now()) {
 			result.StatusExplanation = "Certificado digital expirado."
 			return result, nil
 		}
