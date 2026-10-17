@@ -40,7 +40,7 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `export xlsx`, `csv`, `zip`, `xml`, `danfse`, `danfse-zip` | Exporta as NFS-e. Nos formatos em lote, `--chave` (pode repetir) limita às notas informadas. |
 | `nfe pull`, `status`, `list`, `pendentes` | Sincroniza e lista as NF-e e as manifestações pendentes. |
 | `nfe ciencia`, `manifestar` | Registra a Manifestação do Destinatário. |
-| `nfe export zip`, `xml` | Exporta as NF-e. |
+| `nfe export zip`, `xml`, `csv`, `xlsx`, `danfe-zip`, `danfe` | Exporta as NF-e em XML, planilha ou DANFE (PDF). O DANFE não sai para resumos. |
 | `cte pull`, `status`, `list` | Sincroniza e lista os CT-e. `cte list --nfe <chave>` acha o frete de uma NF-e. |
 | `cte export zip`, `xml` | Exporta os CT-e. |
 | `nfe testar-conexao`, `cte testar-conexao` | Testa o certificado sem gastar consultas. |

@@ -20,6 +20,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/danfe"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfe"
@@ -93,6 +94,7 @@ func newNFeTestRoot(t *testing.T) *nfeTestRoot {
 		XMLStore:           xmlStore,
 		DataDir:            t.TempDir(),
 		CredentialProvider: passwords,
+		DANFERenderer:      fakeDANFE{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -101,6 +103,13 @@ func newNFeTestRoot(t *testing.T) *nfeTestRoot {
 	root, out := newTestRootForApp(application)
 	root.SetErr(&bytes.Buffer{})
 	return &nfeTestRoot{t: t, root: root, out: out, db: db, repo: repo, xml: xmlStore, company: comp, passwords: passwords}
+}
+
+// fakeDANFE renders every NF-e as the same small PDF.
+type fakeDANFE struct{}
+
+func (fakeDANFE) Render([]byte, danfe.Options) ([]byte, error) {
+	return []byte("%PDF-fake"), nil
 }
 
 // run executes the command line and returns its error; stdout is in e.out.

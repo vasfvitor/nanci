@@ -8,6 +8,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/danfe/fiscalrenderer"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
@@ -18,7 +19,8 @@ import (
 
 // prodAppFactory returns the production AppFactory: it opens a real SQLite
 // database, wires the repositories, the blob store, the keyring-based
-// credential provider (with a terminal fallback), and the DANFSe renderer.
+// credential provider (with a terminal fallback), and the DANFSe and DANFE
+// renderers.
 func prodAppFactory(env CommandEnv) AppFactory {
 	return func(ctx context.Context) (*app.App, func(), error) {
 		if err := app.LoadRuntimeEnv(); err != nil {
@@ -62,6 +64,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 				Log:      log,
 			},
 			DANFSeRenderer: godanfsev2.New(),
+			DANFERenderer:  fiscalrenderer.New(),
 		})
 		if err != nil {
 			cleanup()

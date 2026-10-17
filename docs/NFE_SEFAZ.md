@@ -141,10 +141,14 @@ nanci.exe nfe manifestar --cnpj 12345678000199 --chave <CHAVE> --tipo nao_realiz
 # 7. Notas sem manifestação conclusiva, por prazo
 nanci.exe nfe pendentes --cnpj 12345678000199 --vencendo-em 30
 
-# 8. Exportar XML
+# 8. Exportar XML, planilha ou DANFE
 nanci.exe nfe export zip --cnpj 12345678000199 --competencia 2026-09 -p destinatario --out nfe.zip
 nanci.exe nfe export zip --cnpj 12345678000199 --chave <CHAVE> --chave <OUTRA_CHAVE> --out notas.zip
 nanci.exe nfe export xml --cnpj 12345678000199 --chave <CHAVE> --out nota.xml
+nanci.exe nfe export csv --cnpj 12345678000199 --competencia 2026-09 --out nfe.csv
+nanci.exe nfe export xlsx --cnpj 12345678000199 --competencia 2026-09 --incluir-resumos --out nfe.xlsx
+nanci.exe nfe export danfe-zip --cnpj 12345678000199 --competencia 2026-09 --out danfes.zip
+nanci.exe nfe export danfe --cnpj 12345678000199 --chave <CHAVE> --out nota.pdf
 
 # 9. Redefinir as NF-e da empresa (apaga as notas dos dois ambientes)
 nanci.exe nfe reset --cnpj 12345678000199
@@ -156,6 +160,9 @@ nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 - `nfe reset` sem `--confirmar` mostra quantas notas, eventos e marcas de exportação seriam removidos e não altera nada.
 - `nfe export zip` grava `<competencia>/<papel>/<chave>-procNFe.xml` e os eventos completos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (`-o`, padrão `nfe.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível). Resumos ficam de fora, a menos que se passe `--incluir-resumos`; `--incremental` exporta só o que ainda não foi exportado, mudou (por exemplo, um resumo que virou completa) ou cuja quantidade de eventos mudou desde a última exportação (por exemplo, depois de um cancelamento); o documento volta com todos os seus eventos completos.
 - `nfe export xml` grava o `procNFe` da `--chave`, ou o `resNFe` de um resumo, em `--out` (`-o`); sem `--out`, o arquivo é `<chave>.xml` na pasta atual.
+- `nfe export csv` e `nfe export xlsx` gravam uma linha por nota (papel, emissão, série e número, chave, emitente, destinatário, tipo, natureza da operação, finalidade, valor total, ICMS, IPI, situação, completude, manifestação, protocolo e quantidade de eventos), com os mesmos filtros, `--incluir-resumos` e `--incremental` do `zip` (padrão `nfe.csv` e `nfe.xlsx`). O Excel separa as abas "NFe Recebidas" (a empresa é destinatária), "NFe Emitidas" e "NFe Outras"; o CSV traz todas sob um só cabeçalho, sem acentos. Nas linhas de resumo ficam vazios os campos que o `resNFe` não traz, como o destinatário.
+- `nfe export danfe-zip` grava o DANFE de cada nota em `<competencia>/<papel>/<chave>.pdf` (padrão `danfes.zip`), com os mesmos filtros e `--incremental`. O DANFE precisa do XML completo, então os resumos nunca entram e não há `--incluir-resumos`; a saída conta os que ficaram de fora em "Resumos sem DANFE". `nfe export danfe` grava o DANFE de uma `--chave` (padrão `<chave>.pdf`) e recusa um resumo. Uma nota cancelada sai com a marca d'água de cancelamento.
+- Cada formato tem a sua marca de exportação (`xml`, `csv`, `xlsx`, `danfe`): exportar em CSV não tira a nota da próxima exportação incremental em XML ou Excel.
 
 ## Aplicativo desktop
 
