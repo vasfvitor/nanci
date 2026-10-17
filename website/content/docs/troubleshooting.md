@@ -1,6 +1,6 @@
 ---
 title: "Solução de problemas"
-description: "Erros comuns e como enviar logs."
+description: "Erros comuns, janela embaçada com dois monitores e como enviar logs."
 weight: 80
 ---
 
@@ -17,6 +17,14 @@ weight: 80
 | 593 ou 213 | O CNPJ da empresa não tem a mesma raiz do certificado ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=), [NT 2020.001](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=%2BWTd7iuD21s%3D)). |
 | 656: consumo indevido | Consultas demais ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)). Se outro sistema também consulta esse CNPJ na SEFAZ, eles somam. O Nanci espera uma hora. |
 | 596 | A manifestação passou do prazo de 90 dias ([NT 2020.001](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=%2BWTd7iuD21s%3D)). |
+
+## Janela levemente embaçada com dois monitores
+
+Com o notebook ligado a um monitor externo, a janela pode ficar levemente embaçada, como se a resolução tivesse caído, depois de um diálogo abrir ou fechar ou quando o foco vai para o outro monitor.
+
+1. Arraste a borda da janela para mudar o tamanho dela. Ou, em **Configurações → Sobre o Nanci**, clique em **Reajustar janela**, que faz o mesmo.
+2. Se o texto voltar a ficar nítido, a falha é do WebView2, o componente do Windows que desenha a janela. As versões novas do Nanci fazem esse reajuste sozinhas quando a escala do monitor muda; atualize o app.
+3. Se continuar embaçado, ou se voltar a acontecer, abra uma issue com os dados de **Sobre o Nanci** (versão, WebView2, escala e monitores), a escala de cada monitor nas Configurações de vídeo do Windows, e o pacote de diagnóstico (veja abaixo). Abra também o **Console** na barra de título, clique em **Copiar logs** e cole as linhas que começam com "Janela:" e "Escala do monitor". Diga também se o borrado some quando você clica de novo na janela do Nanci.
 
 ## Enviar logs
 
