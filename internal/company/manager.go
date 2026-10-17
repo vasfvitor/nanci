@@ -303,7 +303,8 @@ func normalizeUF(raw string) (string, error) {
 }
 
 // LookupByCNPJ validates raw and returns the company registered under it.
-// A missing company fails with "empresa não encontrada para o CNPJ ...".
+// A missing company fails with "empresa não encontrada para o CNPJ ...",
+// which wraps ErrCompanyNotFound.
 func LookupByCNPJ(ctx context.Context, repo interface {
 	CompanyByCNPJ(ctx context.Context, cnpj string) (*Company, error)
 }, raw string) (*Company, error) {
@@ -315,7 +316,7 @@ func LookupByCNPJ(ctx context.Context, repo interface {
 	company, err := repo.CompanyByCNPJ(ctx, cleanedCNPJ)
 	if err != nil {
 		if errors.Is(err, ErrCompanyNotFound) {
-			return nil, fmt.Errorf("empresa não encontrada para o CNPJ %s", cnpj.Format(cleanedCNPJ))
+			return nil, fmt.Errorf("%w para o CNPJ %s", ErrCompanyNotFound, cnpj.Format(cleanedCNPJ))
 		}
 		return nil, fmt.Errorf("buscar empresa: %w", err)
 	}

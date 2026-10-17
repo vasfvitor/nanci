@@ -498,8 +498,8 @@ func TestLookupByCNPJ(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		_, err := company.LookupByCNPJ(ctx, &stubStore{}, testCNPJ)
 		wantErrContains(t, err, "empresa não encontrada para o CNPJ 11.222.333/0001-81")
-		if errors.Is(err, company.ErrCompanyNotFound) {
-			t.Error("the friendly message should not wrap ErrCompanyNotFound")
+		if !errors.Is(err, company.ErrCompanyNotFound) {
+			t.Errorf("error %v does not wrap ErrCompanyNotFound", err)
 		}
 	})
 

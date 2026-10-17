@@ -196,6 +196,9 @@ func TestManager_UpdateCredentialLookupErrors(t *testing.T) {
 				if err.Error() != "credencial não encontrada" {
 					t.Errorf("error = %q, want %q", err, "credencial não encontrada")
 				}
+				if !errors.Is(err, ErrCredentialNotFound) {
+					t.Errorf("error %v does not wrap ErrCredentialNotFound", err)
+				}
 			},
 		},
 	}
