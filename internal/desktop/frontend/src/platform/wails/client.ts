@@ -5,11 +5,12 @@ import {
   CancelCertPassword,
   ExportCTeXML,
   ExportCTeZIP,
+  ExportDANFE,
   ExportDANFSe,
   ExportDocuments,
   ExportLogs,
+  ExportNFeDocuments,
   ExportNFeXML,
-  ExportNFeZIP,
   ExportXML,
   GetBuildInfo,
   GetDataDirectory,
@@ -72,13 +73,14 @@ import type {
   DocumentRow,
   ExportCTeXMLInput,
   ExportCTeZIPInput,
+  ExportDANFEInput,
   ExportDANFSeInput,
   ExportDocumentsInput,
   ExportFormat,
   ExportResult,
   ExportXMLInput,
+  ExportNFeDocumentsInput,
   ExportNFeXMLInput,
-  ExportNFeZIPInput,
   ISODateValue,
   ListCTeInput,
   ListDocumentsInput,
@@ -90,6 +92,7 @@ import type {
   NFeEventBatchResult,
   NFeEventOutcome,
   NFeEventResult,
+  NFeExportFormat,
   NFeExportResult,
   NFeManifestacao,
   NFePendingKind,
@@ -266,6 +269,29 @@ function nfseExportDialog(format: ExportFormat, cnpj: string): SaveDialog {
     title: 'Exportar Documentos',
     defaultName: `nanci_exportacao_${cnpj}_${fileTimestamp()}.${format}`,
     pattern: `*.${format}`,
+  }
+}
+
+function nfeExportDialog(format: NFeExportFormat, cnpj: string): SaveDialog {
+  switch (format) {
+    case 'danfe-zip':
+      return {
+        title: 'Salvar ZIP de DANFEs',
+        defaultName: `danfes_${cnpj}_${fileTimestamp()}.zip`,
+        pattern: '*.zip',
+      }
+    case 'zip':
+      return {
+        title: 'Salvar XMLs de NF-e (ZIP)',
+        defaultName: `nfe_${cnpj}_${fileTimestamp()}.zip`,
+        pattern: '*.zip',
+      }
+    default:
+      return {
+        title: 'Exportar NF-e',
+        defaultName: `nfe_${cnpj}_${fileTimestamp()}.${format}`,
+        pattern: `*.${format}`,
+      }
   }
 }
 
@@ -935,20 +961,34 @@ export const desktopClient = {
     )
     return mapExportResult(res)
   },
-  async exportNFeZIP(
-    input: Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
-  ): Promise<NFeExportResult | null> {
-    const defaultName = input.BaseName || `nfe_${input.CNPJ}_${fileTimestamp()}.zip`
+  async exportDANFE(
+    input: Omit<ExportDANFEInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<ExportResult | null> {
+    const defaultName = input.BaseName || `danfe_${input.ChaveAcesso}.pdf`
     const outPath =
-      input.OutPath ||
-      (await desktopClient.selectSaveFile('Salvar XMLs de NF-e (ZIP)', defaultName, '*.zip'))
+      input.OutPath || (await desktopClient.selectSaveFile('Salvar DANFE', defaultName, '*.pdf'))
     if (!outPath) return null
 
     const res = await callWails(() =>
-      ExportNFeZIP({
+      ExportDANFE({ CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso, OutPath: outPath })
+    )
+    return mapExportResult(res)
+  },
+  async exportNFeDocuments(
+    input: Omit<ExportNFeDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<NFeExportResult | null> {
+    const dialog = nfeExportDialog(input.Format, input.CNPJ)
+    const defaultName = input.BaseName || dialog.defaultName
+    const outPath =
+      input.OutPath || (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
+    if (!outPath) return null
+
+    const res = await callWails(() =>
+      ExportNFeDocuments({
         CNPJ: input.CNPJ,
         Competence: input.Competence,
         Role: input.Role,
+        Format: input.Format,
         ChavesAcesso: input.ChavesAcesso || [],
         IncludeResumos: input.IncludeResumos,
         Incremental: input.Incremental,

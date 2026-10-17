@@ -129,6 +129,15 @@ func TestSingleDocumentExports(t *testing.T) {
 			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml", ExportedCount: 1},
 		},
 		{
+			name: "ExportDANFE",
+			run: func(a *App) (desktopapi.ExportResult, error) {
+				return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
+			},
+			recorder: func(f fakeSet) *recorder { return &f.nfe.recorder },
+			want:     call{"ExportDANFE", []any{app.NFeExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
+			result:   desktopapi.ExportResult{OutPath: testOut + ".pdf", Format: "danfe", ExportedCount: 1},
+		},
+		{
 			name: "ExportCTeXML",
 			run: func(a *App) (desktopapi.ExportResult, error) {
 				return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
@@ -154,41 +163,83 @@ func TestSingleDocumentExports(t *testing.T) {
 	}
 }
 
-func TestExportNFeZIP(t *testing.T) {
-	f, a := newFakeApp(nil)
-	f.nfe.zip = app.NFeExportResult{
-		ExportResult:   app.ExportResult{OutPath: testOut + ".zip", Format: "xml", Incremental: true, ExportedCount: 4},
-		SkippedResumos: 2,
+func TestExportNFeDocumentsFormats(t *testing.T) {
+	tests := []struct {
+		format string
+		method string
+	}{
+		{"csv", "ExportCSV"},
+		{"xlsx", "ExportXLSX"},
+		{"zip", "ExportXMLZip"},
+		{"danfe-zip", "ExportDANFEZip"},
+		{" ZIP ", "ExportXMLZip"},
 	}
+	for _, tt := range tests {
+		t.Run(tt.format, func(t *testing.T) {
+			f, a := newFakeApp(nil)
+			f.nfe.export = app.NFeExportResult{
+				ExportResult:   app.ExportResult{OutPath: testOut + ".zip", Format: "xml", Incremental: true, ExportedCount: 4},
+				SkippedResumos: 2,
+			}
 
-	got, err := a.ExportNFeZIP(desktopapi.ExportNFeZIPInput{
-		CNPJ:           testCNPJ,
-		Competence:     "2026-09",
-		Role:           "destinatario",
-		ChavesAcesso:   []string{testChave},
-		IncludeResumos: true,
-		Incremental:    true,
-		OutPath:        testOut + ".zip",
-	})
-	if err != nil {
-		t.Fatalf("ExportNFeZIP: %v", err)
-	}
+			got, err := a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{
+				CNPJ:           testCNPJ,
+				Competence:     "2026-09",
+				Role:           "destinatario",
+				Format:         tt.format,
+				ChavesAcesso:   []string{testChave},
+				IncludeResumos: true,
+				Incremental:    true,
+				OutPath:        testOut + ".zip",
+			})
+			if err != nil {
+				t.Fatalf("ExportNFeDocuments: %v", err)
+			}
 
-	assertCalls(t, &f.nfe.recorder, call{"ExportXMLZip", []any{app.NFeExportInput{
-		CNPJ:           testCNPJ,
-		Competence:     "2026-09",
-		Role:           "destinatario",
-		ChavesAcesso:   []string{testChave},
-		IncludeResumos: true,
-		Incremental:    true,
-		OutPath:        testOut + ".zip",
-	}}})
-	want := desktopapi.NFeExportResult{
-		ExportResult:   desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "xml", Incremental: true, ExportedCount: 4},
-		SkippedResumos: 2,
+			assertCalls(t, &f.nfe.recorder, call{tt.method, []any{app.NFeExportInput{
+				CNPJ:           testCNPJ,
+				Competence:     "2026-09",
+				Role:           "destinatario",
+				ChavesAcesso:   []string{testChave},
+				IncludeResumos: true,
+				Incremental:    true,
+				OutPath:        testOut + ".zip",
+			}}})
+			want := desktopapi.NFeExportResult{
+				ExportResult:   desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "xml", Incremental: true, ExportedCount: 4},
+				SkippedResumos: 2,
+			}
+			if got != want {
+				t.Errorf("result = %+v, want %+v", got, want)
+			}
+		})
 	}
-	if got != want {
-		t.Errorf("result = %+v, want %+v", got, want)
+}
+
+func TestExportNFeDocumentsRejectsBeforeCore(t *testing.T) {
+	tests := []struct {
+		name    string
+		format  string
+		outPath string
+		wantErr string
+	}{
+		{"unknown format", "danfse-zip", testOut, "formato de exportação desconhecido: danfse-zip"},
+		{"empty format", "", testOut, "formato de exportação desconhecido: "},
+		{"empty out path", "csv", "", "caminho de saída não especificado"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, a := newFakeApp(nil)
+
+			got, err := a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
+			if err == nil || err.Error() != tt.wantErr {
+				t.Fatalf("err = %v, want %q", err, tt.wantErr)
+			}
+			if got != (desktopapi.NFeExportResult{}) {
+				t.Errorf("result = %+v, want zero", got)
+			}
+			f.assertNoCalls(t)
+		})
 	}
 }
 
@@ -235,8 +286,11 @@ func exportRuns(outPath string) map[string]func(a *App) (any, error) {
 		"ExportNFeXML": func(a *App) (any, error) {
 			return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
-		"ExportNFeZIP": func(a *App) (any, error) {
-			return a.ExportNFeZIP(desktopapi.ExportNFeZIPInput{CNPJ: testCNPJ, OutPath: outPath})
+		"ExportNFeDocuments": func(a *App) (any, error) {
+			return a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
+		},
+		"ExportDANFE": func(a *App) (any, error) {
+			return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 		"ExportCTeXML": func(a *App) (any, error) {
 			return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})

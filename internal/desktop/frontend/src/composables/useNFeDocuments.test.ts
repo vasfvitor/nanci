@@ -27,7 +27,8 @@ vi.mock('@/platform/wails/client', () => ({
     pullNFe: vi.fn(),
     resetNFe: vi.fn(),
     exportNFeXML: vi.fn(),
-    exportNFeZIP: vi.fn(),
+    exportDANFE: vi.fn(),
+    exportNFeDocuments: vi.fn(),
     markNFeViewed: vi.fn(),
   },
 }))
@@ -204,32 +205,45 @@ describe('useNFeDocuments', () => {
     expect(nfe.syncBlockedUntil.value).toBeNull()
   })
 
-  it('does not export a ZIP without chaves', async () => {
+  it('does not export a list without chaves', async () => {
     const nfe = useNFeDocuments()
     useWorkspaceStore().cnpj = '123'
 
-    await expect(nfe.exportZIP([], plainExport)).resolves.toBeNull()
-    expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
+    await expect(nfe.exportDocuments('csv', [], plainExport)).resolves.toBeNull()
+    expect(desktopClient.exportNFeDocuments).not.toHaveBeenCalled()
   })
 
-  it('exports XML and ZIP for the given chaves with the choice of the dialog', async () => {
+  it.each(['csv', 'xlsx', 'zip', 'danfe-zip'] as const)(
+    'exports the given chaves as %s with the choice of the dialog',
+    async (format) => {
+      const nfe = useNFeDocuments()
+      useWorkspaceStore().cnpj = '123'
+      useWorkspaceStore().competence = '2024-09'
+      nfe.filter.value.Role = 'destinatario'
+
+      await nfe.exportDocuments(format, ['chave-1'], { incremental: true, includeResumos: true })
+
+      expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith({
+        CNPJ: '123',
+        Competence: '',
+        Role: '',
+        Format: format,
+        ChavesAcesso: ['chave-1'],
+        IncludeResumos: true,
+        Incremental: true,
+      })
+    }
+  )
+
+  it('exports the XML and the DANFE of a row', async () => {
     const nfe = useNFeDocuments()
     useWorkspaceStore().cnpj = '123'
-    useWorkspaceStore().competence = '2024-09'
-    nfe.filter.value.Role = 'destinatario'
 
     await nfe.exportXML('chave-1')
-    await nfe.exportZIP(['chave-1'], { incremental: true, includeResumos: true })
+    await nfe.exportDANFE('chave-2')
 
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-1' })
-    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith({
-      CNPJ: '123',
-      Competence: '',
-      Role: '',
-      ChavesAcesso: ['chave-1'],
-      IncludeResumos: true,
-      Incremental: true,
-    })
+    expect(desktopClient.exportDANFE).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-2' })
   })
 
   it('exports for the company in the list input, as the grid shows it', async () => {
@@ -237,22 +251,26 @@ describe('useNFeDocuments', () => {
     useWorkspaceStore().cnpj = ''
 
     await expect(nfe.exportXML('chave-1')).resolves.toBeNull()
-    await expect(nfe.exportZIP(['chave-1'], plainExport)).resolves.toBeNull()
+    await expect(nfe.exportDANFE('chave-1')).resolves.toBeNull()
+    await expect(nfe.exportDocuments('zip', ['chave-1'], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
-    expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
+    expect(desktopClient.exportDANFE).not.toHaveBeenCalled()
+    expect(desktopClient.exportNFeDocuments).not.toHaveBeenCalled()
 
     useWorkspaceStore().cnpj = '123'
     await nfe.exportXML('chave-1')
-    await nfe.exportZIP(['chave-1'], plainExport)
+    await nfe.exportDANFE('chave-1')
+    await nfe.exportDocuments('zip', ['chave-1'], plainExport)
 
     const cnpj = useNFeDocumentsStore().listInput.CNPJ
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
-    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
+    expect(desktopClient.exportDANFE).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
+    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
   })
 
   it('keeps an export visible to a second instance while it is pending', async () => {
     let resolveExport!: (value: NFeExportResult | null) => void
-    vi.mocked(desktopClient.exportNFeZIP).mockReturnValue(
+    vi.mocked(desktopClient.exportNFeDocuments).mockReturnValue(
       new Promise((resolve) => {
         resolveExport = resolve
       })
@@ -260,14 +278,16 @@ describe('useNFeDocuments', () => {
 
     const firstPage = useNFeDocuments()
     useWorkspaceStore().cnpj = '123'
-    const exporting = firstPage.exportZIP(['chave-1'], plainExport)
+    const exporting = firstPage.exportDocuments('danfe-zip', ['chave-1'], plainExport)
 
     const remountedPage = useNFeDocuments()
     expect(remountedPage.exporting.value).toBe(true)
     await expect(remountedPage.exportXML('chave-1')).resolves.toBeNull()
-    await expect(remountedPage.exportZIP(['chave-1'], plainExport)).resolves.toBeNull()
+    await expect(remountedPage.exportDANFE('chave-1')).resolves.toBeNull()
+    await expect(remountedPage.exportDocuments('danfe-zip', ['chave-1'], plainExport)).resolves.toBeNull()
     expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
-    expect(desktopClient.exportNFeZIP).toHaveBeenCalledTimes(1)
+    expect(desktopClient.exportDANFE).not.toHaveBeenCalled()
+    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledTimes(1)
 
     resolveExport({ OutPath: 'out.zip', ExportedCount: 1, SkippedResumos: 0 } as NFeExportResult)
     await exporting

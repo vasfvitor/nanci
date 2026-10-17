@@ -14,15 +14,17 @@ export function ExportCTeXML(arg1:desktopapi.ExportCTeXMLInput):Promise<desktopa
 
 export function ExportCTeZIP(arg1:desktopapi.ExportCTeZIPInput):Promise<desktopapi.CTeExportResult>;
 
+export function ExportDANFE(arg1:desktopapi.ExportDANFEInput):Promise<desktopapi.ExportResult>;
+
 export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
 
 export function ExportDocuments(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
 
 export function ExportLogs():Promise<string>;
 
-export function ExportNFeXML(arg1:desktopapi.ExportNFeXMLInput):Promise<desktopapi.ExportResult>;
+export function ExportNFeDocuments(arg1:desktopapi.ExportNFeDocumentsInput):Promise<desktopapi.NFeExportResult>;
 
-export function ExportNFeZIP(arg1:desktopapi.ExportNFeZIPInput):Promise<desktopapi.NFeExportResult>;
+export function ExportNFeXML(arg1:desktopapi.ExportNFeXMLInput):Promise<desktopapi.ExportResult>;
 
 export function ExportXML(arg1:desktopapi.ExportXMLInput):Promise<desktopapi.ExportResult>;
 

@@ -751,6 +751,22 @@ export namespace desktopapi {
 	        this.OutPath = source["OutPath"];
 	    }
 	}
+	export class ExportDANFEInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportDANFEInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
 	export class ExportDANFSeInput {
 	    CNPJ: string;
 	    ChaveAcesso: string;
@@ -791,6 +807,32 @@ export namespace desktopapi {
 	        this.ChavesAcesso = source["ChavesAcesso"];
 	    }
 	}
+	export class ExportNFeDocumentsInput {
+	    CNPJ: string;
+	    Competence: string;
+	    Role: string;
+	    Format: string;
+	    ChavesAcesso: string[];
+	    IncludeResumos: boolean;
+	    Incremental: boolean;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportNFeDocumentsInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Competence = source["Competence"];
+	        this.Role = source["Role"];
+	        this.Format = source["Format"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
+	        this.IncludeResumos = source["IncludeResumos"];
+	        this.Incremental = source["Incremental"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
 	export class ExportNFeXMLInput {
 	    CNPJ: string;
 	    ChaveAcesso: string;
@@ -804,30 +846,6 @@ export namespace desktopapi {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CNPJ = source["CNPJ"];
 	        this.ChaveAcesso = source["ChaveAcesso"];
-	        this.OutPath = source["OutPath"];
-	    }
-	}
-	export class ExportNFeZIPInput {
-	    CNPJ: string;
-	    Competence: string;
-	    Role: string;
-	    ChavesAcesso: string[];
-	    IncludeResumos: boolean;
-	    Incremental: boolean;
-	    OutPath: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ExportNFeZIPInput(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.CNPJ = source["CNPJ"];
-	        this.Competence = source["Competence"];
-	        this.Role = source["Role"];
-	        this.ChavesAcesso = source["ChavesAcesso"];
-	        this.IncludeResumos = source["IncludeResumos"];
-	        this.Incremental = source["Incremental"];
 	        this.OutPath = source["OutPath"];
 	    }
 	}

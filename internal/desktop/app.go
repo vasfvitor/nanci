@@ -19,6 +19,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	danferenderer "github.com/vasfvitor/nanci/internal/danfe/fiscalrenderer"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	"github.com/vasfvitor/nanci/internal/dfe"
@@ -224,6 +225,7 @@ func (a *App) initRuntime(ctx context.Context) (services, func(), error) {
 			Log:      log,
 		},
 		DANFSeRenderer: godanfsev2.New(),
+		DANFERenderer:  danferenderer.New(),
 	})
 	if err != nil {
 		_ = db.Close()
@@ -939,15 +941,35 @@ func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeExportResult, error) {
+func (a *App) ExportDANFE(input desktopapi.ExportDANFEInput) (desktopapi.ExportResult, error) {
+	if err := a.ready(); err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	err := a.svc.nfe.ExportDANFE(a.ctx, app.NFeExportDANFEInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfe", ExportedCount: 1}, nil
+}
+
+func (a *App) ExportNFeDocuments(input desktopapi.ExportNFeDocumentsInput) (desktopapi.NFeExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeExportResult{}, err
 	}
+	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	res, err := a.svc.nfe.ExportXMLZip(a.ctx, app.NFeExportInput{
+	exportInput := app.NFeExportInput{
 		CNPJ:           input.CNPJ,
 		Competence:     input.Competence,
 		Role:           input.Role,
@@ -955,7 +977,22 @@ func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeEx
 		IncludeResumos: input.IncludeResumos,
 		Incremental:    input.Incremental,
 		OutPath:        input.OutPath,
-	})
+	}
+
+	var res app.NFeExportResult
+	var err error
+	switch format {
+	case "csv":
+		res, err = a.svc.nfe.ExportCSV(a.ctx, exportInput)
+	case "xlsx":
+		res, err = a.svc.nfe.ExportXLSX(a.ctx, exportInput)
+	case "zip":
+		res, err = a.svc.nfe.ExportXMLZip(a.ctx, exportInput)
+	case "danfe-zip":
+		res, err = a.svc.nfe.ExportDANFEZip(a.ctx, exportInput)
+	default:
+		return desktopapi.NFeExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
+	}
 	if err != nil {
 		return desktopapi.NFeExportResult{}, err
 	}

@@ -26,6 +26,10 @@ export function ExportCTeZIP(arg1) {
   return window['go']['main']['App']['ExportCTeZIP'](arg1);
 }
 
+export function ExportDANFE(arg1) {
+  return window['go']['main']['App']['ExportDANFE'](arg1);
+}
+
 export function ExportDANFSe(arg1) {
   return window['go']['main']['App']['ExportDANFSe'](arg1);
 }
@@ -38,12 +42,12 @@ export function ExportLogs() {
   return window['go']['main']['App']['ExportLogs']();
 }
 
-export function ExportNFeXML(arg1) {
-  return window['go']['main']['App']['ExportNFeXML'](arg1);
+export function ExportNFeDocuments(arg1) {
+  return window['go']['main']['App']['ExportNFeDocuments'](arg1);
 }
 
-export function ExportNFeZIP(arg1) {
-  return window['go']['main']['App']['ExportNFeZIP'](arg1);
+export function ExportNFeXML(arg1) {
+  return window['go']['main']['App']['ExportNFeXML'](arg1);
 }
 
 export function ExportXML(arg1) {

@@ -28,6 +28,9 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"ExportCTeZIP": func(a *App) (any, error) {
 			return a.ExportCTeZIP(desktopapi.ExportCTeZIPInput{CNPJ: testCNPJ, OutPath: testOut})
 		},
+		"ExportDANFE": func(a *App) (any, error) {
+			return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+		},
 		"ExportDANFSe": func(a *App) (any, error) {
 			return a.ExportDANFSe(desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
@@ -37,8 +40,8 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"ExportNFeXML": func(a *App) (any, error) {
 			return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
-		"ExportNFeZIP": func(a *App) (any, error) {
-			return a.ExportNFeZIP(desktopapi.ExportNFeZIPInput{CNPJ: testCNPJ, OutPath: testOut})
+		"ExportNFeDocuments": func(a *App) (any, error) {
+			return a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
 		},
 		"ExportXML": func(a *App) (any, error) {
 			return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})

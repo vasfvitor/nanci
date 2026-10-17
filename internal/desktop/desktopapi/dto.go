@@ -578,16 +578,25 @@ type ExportNFeXMLInput struct {
 	OutPath     string
 }
 
-// ExportNFeZIPInput selects the NF-e for the XML ZIP. The export filters by
-// competência, papel and chaves only.
-type ExportNFeZIPInput struct {
+// ExportNFeDocumentsInput selects the NF-e of a list export and its Format:
+// csv, xlsx, zip (the XMLs) or danfe-zip. The export filters by competência,
+// papel and chaves only.
+type ExportNFeDocumentsInput struct {
 	CNPJ           string
 	Competence     string
 	Role           string
+	Format         string
 	ChavesAcesso   []string
 	IncludeResumos bool
 	Incremental    bool
 	OutPath        string
+}
+
+// ExportDANFEInput names the NF-e whose DANFE is written to OutPath.
+type ExportDANFEInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
 }
 
 type NFeExportResult struct {

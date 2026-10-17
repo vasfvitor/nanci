@@ -11,6 +11,7 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
+import type { NFeExportFormat } from '@/types/desktop'
 import { nfeNoteCount, nfePendingCount, nfeStateBadges, nfeStatusLine } from '@/utils/nfeDisplay'
 import { idleWarning as idleWarningText, sefazAmbiente } from '@/utils/sefazDisplay'
 
@@ -119,20 +120,27 @@ export function useNFeDocuments() {
     return runExport((cnpj) => desktopClient.exportNFeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
-  // exportZIP exports exactly the given chaves; incremental leaves out the
-  // ones exported before and includeResumos adds the resumos, which have no
-  // complete XML. Competence and Role are left empty: the grid may hold the
-  // result of an earlier search, and an empty list would export everything.
-  async function exportZIP(
+  function exportDANFE(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportDANFE({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
+  }
+
+  // exportDocuments exports exactly the given chaves as a spreadsheet, a ZIP
+  // of XMLs or a ZIP of DANFEs; incremental leaves out the ones exported
+  // before and includeResumos adds the resumos, which have no complete XML.
+  // Competence and Role are left empty: the grid may hold the result of an
+  // earlier search, and an empty list would export everything.
+  async function exportDocuments(
+    format: NFeExportFormat,
     chavesAcesso: string[],
     choice: { incremental: boolean; includeResumos: boolean }
   ) {
     if (chavesAcesso.length === 0) return null
     return runExport((cnpj) =>
-      desktopClient.exportNFeZIP({
+      desktopClient.exportNFeDocuments({
         CNPJ: cnpj,
         Competence: '',
         Role: '',
+        Format: format,
         ChavesAcesso: chavesAcesso,
         IncludeResumos: choice.includeResumos,
         Incremental: choice.incremental,
@@ -173,7 +181,8 @@ export function useNFeDocuments() {
     syncNFe,
     resetNFe,
     exportXML,
-    exportZIP,
+    exportDANFE,
+    exportDocuments,
     markViewed,
   }
 }

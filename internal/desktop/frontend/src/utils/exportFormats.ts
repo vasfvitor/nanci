@@ -11,7 +11,10 @@ export const NFSE_EXPORT_FORMATS: ExportFormatOption[] = [
 ]
 
 export const NFE_EXPORT_FORMATS: ExportFormatOption[] = [
+  { label: 'Planilha CSV', value: 'csv', resumos: true },
+  { label: 'Planilha Excel (XLSX)', value: 'xlsx', resumos: true },
   { label: 'XMLs (ZIP)', value: 'zip', resumos: true },
+  { label: 'DANFEs (ZIP)', value: 'danfe-zip' },
 ]
 
 export const CTE_EXPORT_FORMATS: ExportFormatOption[] = [{ label: 'XMLs (ZIP)', value: 'zip' }]

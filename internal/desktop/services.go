@@ -68,7 +68,11 @@ type nfeService interface {
 	RegisterCiencia(ctx context.Context, in app.NFeCienciaInput) (app.NFeManifestacaoSummary, error)
 	RegisterManifestacao(ctx context.Context, in app.NFeManifestacaoInput) (app.NFeEventOutcome, error)
 	ExportXML(ctx context.Context, in app.NFeExportXMLInput) error
+	ExportDANFE(ctx context.Context, in app.NFeExportDANFEInput) error
 	ExportXMLZip(ctx context.Context, in app.NFeExportInput) (app.NFeExportResult, error)
+	ExportCSV(ctx context.Context, in app.NFeExportInput) (app.NFeExportResult, error)
+	ExportXLSX(ctx context.Context, in app.NFeExportInput) (app.NFeExportResult, error)
+	ExportDANFEZip(ctx context.Context, in app.NFeExportInput) (app.NFeExportResult, error)
 	Reset(ctx context.Context, cnpj string) (app.NFeResetResult, error)
 }
 

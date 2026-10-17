@@ -453,13 +453,23 @@ export type ExportNFeXMLInput = {
   OutPath: string
 }
 
-export type ExportNFeZIPInput = {
+// NFeExportFormat is the NF-e list export the user picks in the dialog.
+export type NFeExportFormat = 'csv' | 'xlsx' | 'zip' | 'danfe-zip'
+
+export type ExportNFeDocumentsInput = {
   CNPJ: string
   Competence: string
   Role: NFeRole | ''
+  Format: NFeExportFormat
   ChavesAcesso: string[]
   IncludeResumos: boolean
   Incremental: boolean
+  OutPath: string
+}
+
+export type ExportDANFEInput = {
+  CNPJ: string
+  ChaveAcesso: string
   OutPath: string
 }
 

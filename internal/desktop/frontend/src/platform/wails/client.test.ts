@@ -24,10 +24,11 @@ import {
 import {
   ExportCTeXML,
   ExportCTeZIP,
+  ExportDANFE,
   ExportDANFSe,
   ExportDocuments,
+  ExportNFeDocuments,
   ExportNFeXML,
-  ExportNFeZIP,
   ListCTe,
   ListCTeEvents,
   ListCompanies,
@@ -61,11 +62,12 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   CancelCertPassword: vi.fn(),
   ExportCTeXML: vi.fn(),
   ExportCTeZIP: vi.fn(),
+  ExportDANFE: vi.fn(),
   ExportDANFSe: vi.fn(),
   ExportDocuments: vi.fn(),
   ExportLogs: vi.fn(),
+  ExportNFeDocuments: vi.fn(),
   ExportNFeXML: vi.fn(),
-  ExportNFeZIP: vi.fn(),
   ExportXML: vi.fn(),
   GetBuildInfo: vi.fn(),
   GetDataDirectory: vi.fn(),
@@ -639,54 +641,100 @@ describe('NF-e client calls', () => {
     })
   })
 
-  it('exports NF-e XML and ZIP to the path chosen in the save dialog', async () => {
+  it('exports the NF-e XML and DANFE of a row to the path chosen in the save dialog', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
     vi.mocked(ExportNFeXML).mockResolvedValue({ OutPath: 'C:\\out\\file', Format: 'xml' } as never)
-    vi.mocked(ExportNFeZIP).mockResolvedValue({
+    vi.mocked(ExportDANFE).mockResolvedValue({
       OutPath: 'C:\\out\\file',
-      Format: 'zip',
-      ExportedCount: 3,
-      SkippedResumos: 2,
+      Format: 'danfe',
+      ExportedCount: 1,
     } as never)
 
     const xml = await desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
-    const zip = await desktopClient.exportNFeZIP({
-      CNPJ: '123',
-      Competence: '2024-09',
-      Role: '',
-      ChavesAcesso: [chave],
-      IncludeResumos: false,
-      Incremental: false,
-    })
+    const danfe = await desktopClient.exportDANFE({ CNPJ: '123', ChaveAcesso: chave })
 
     expect(SelectSaveFile).toHaveBeenNthCalledWith(1, 'Salvar XML da NF-e', `nfe_${chave}.xml`, '*.xml')
-    expect(vi.mocked(SelectSaveFile).mock.calls[1]?.[1]).toMatch(/^nfe_123_\d{4}_\d{2}_\d{2}_\d{6}\.zip$/)
-    expect(ExportNFeXML).toHaveBeenCalledWith({
-      CNPJ: '123',
-      ChaveAcesso: chave,
-      OutPath: 'C:\\out\\file',
-    })
-    expect(ExportNFeZIP).toHaveBeenCalledWith({
-      CNPJ: '123',
-      Competence: '2024-09',
-      Role: '',
-      ChavesAcesso: [chave],
-      IncludeResumos: false,
-      Incremental: false,
-      OutPath: 'C:\\out\\file',
-    })
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(2, 'Salvar DANFE', `danfe_${chave}.pdf`, '*.pdf')
+    expect(ExportNFeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave, OutPath: 'C:\\out\\file' })
+    expect(ExportDANFE).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave, OutPath: 'C:\\out\\file' })
     expect(xml).toEqual({
       OutPath: 'C:\\out\\file',
       Format: 'xml',
       Incremental: false,
       ExportedCount: 0,
     })
-    expect(zip).toEqual({
+    expect(danfe).toEqual({
       OutPath: 'C:\\out\\file',
-      Format: 'zip',
+      Format: 'danfe',
       Incremental: false,
-      ExportedCount: 3,
-      SkippedResumos: 2,
+      ExportedCount: 1,
+    })
+  })
+
+  describe('exportNFeDocuments', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date(2026, 9, 17, 9, 5, 7))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it.each([
+      { format: 'csv', title: 'Exportar NF-e', name: 'nfe_123_2026_10_17_090507.csv', pattern: '*.csv' },
+      { format: 'xlsx', title: 'Exportar NF-e', name: 'nfe_123_2026_10_17_090507.xlsx', pattern: '*.xlsx' },
+      {
+        format: 'zip',
+        title: 'Salvar XMLs de NF-e (ZIP)',
+        name: 'nfe_123_2026_10_17_090507.zip',
+        pattern: '*.zip',
+      },
+      {
+        format: 'danfe-zip',
+        title: 'Salvar ZIP de DANFEs',
+        name: 'danfes_123_2026_10_17_090507.zip',
+        pattern: '*.zip',
+      },
+    ] as const)('saves $format through the dialog "$title"', async (want) => {
+      const { format, title, name, pattern } = want
+      vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
+      vi.mocked(ExportNFeDocuments).mockResolvedValue({
+        OutPath: 'C:\\out\\file',
+        Format: 'xml',
+        ExportedCount: 3,
+        SkippedResumos: 2,
+      } as never)
+
+      await expect(
+        desktopClient.exportNFeDocuments({
+          CNPJ: '123',
+          Competence: '2024-09',
+          Role: '',
+          Format: format,
+          ChavesAcesso: [chave],
+          IncludeResumos: true,
+          Incremental: false,
+        })
+      ).resolves.toEqual({
+        OutPath: 'C:\\out\\file',
+        Format: 'xml',
+        Incremental: false,
+        ExportedCount: 3,
+        SkippedResumos: 2,
+      })
+
+      expect(SelectSaveFile).toHaveBeenCalledWith(title, name, pattern)
+      expect(ExportNFeDocuments).toHaveBeenCalledWith({
+        CNPJ: '123',
+        Competence: '2024-09',
+        Role: '',
+        Format: format,
+        ChavesAcesso: [chave],
+        IncludeResumos: true,
+        Incremental: false,
+        OutPath: 'C:\\out\\file',
+      })
     })
   })
 
@@ -694,11 +742,13 @@ describe('NF-e client calls', () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('')
 
     await expect(desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })).resolves.toBeNull()
+    await expect(desktopClient.exportDANFE({ CNPJ: '123', ChaveAcesso: chave })).resolves.toBeNull()
     await expect(
-      desktopClient.exportNFeZIP({
+      desktopClient.exportNFeDocuments({
         CNPJ: '123',
         Competence: '',
         Role: '',
+        Format: 'danfe-zip',
         ChavesAcesso: [],
         IncludeResumos: false,
         Incremental: true,
@@ -706,7 +756,8 @@ describe('NF-e client calls', () => {
     ).resolves.toBeNull()
 
     expect(ExportNFeXML).not.toHaveBeenCalled()
-    expect(ExportNFeZIP).not.toHaveBeenCalled()
+    expect(ExportDANFE).not.toHaveBeenCalled()
+    expect(ExportNFeDocuments).not.toHaveBeenCalled()
   })
 })
 

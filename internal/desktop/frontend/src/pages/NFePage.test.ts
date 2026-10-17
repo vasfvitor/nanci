@@ -16,6 +16,7 @@ import type {
   NFeStatusResult,
 } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
+import { NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
 
 type OkHandler = (payload: unknown) => void
 
@@ -52,7 +53,8 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     pullNFe: vi.fn(),
     resetNFe: vi.fn(),
     exportNFeXML: vi.fn(),
-    exportNFeZIP: vi.fn(),
+    exportDANFE: vi.fn(),
+    exportNFeDocuments: vi.fn(),
     markNFeViewed: vi.fn(),
   },
 }))
@@ -141,8 +143,9 @@ const emitida = nfeRow('b', {
 })
 
 // mountPage mounts on the active Pinia, so two mounts in a test stand for
-// leaving the page and coming back.
-function mountPage() {
+// leaving the page and coming back. stubs adds to or replaces the default
+// stubs.
+function mountPage(stubs: Record<string, unknown> = {}) {
   return shallowMount(NFePage, {
     global: {
       stubs: {
@@ -192,6 +195,7 @@ function mountPage() {
         },
         NFePendingPanel: { name: 'NFePendingPanel', template: '<div />' },
         NFeEventsDialog: { template: '<div />' },
+        ...stubs,
       },
       directives: {
         ClosePopup: {},
@@ -453,9 +457,14 @@ describe('NFePage', () => {
     )
   })
 
-  it('exports the filtered rows as a ZIP with the choice of the dialog', async () => {
-    vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue({
-      OutPath: 'C:\\exports\\nfe.zip',
+  it.each([
+    { format: 'csv', noun: 'documento' },
+    { format: 'xlsx', noun: 'documento' },
+    { format: 'zip', noun: 'XML' },
+    { format: 'danfe-zip', noun: 'DANFE' },
+  ])('exports the filtered rows as $format with the choice of the dialog', async ({ format, noun }) => {
+    vi.mocked(desktopClient.exportNFeDocuments).mockResolvedValue({
+      OutPath: 'C:\\exports\\nfe',
       Format: 'xml',
       Incremental: true,
       ExportedCount: 1,
@@ -472,26 +481,27 @@ describe('NFePage', () => {
           source: 'nfe',
           count: 1,
           scope: 'listed',
-          formats: [{ label: 'XMLs (ZIP)', value: 'zip', resumos: true }],
+          formats: NFE_EXPORT_FORMATS,
         },
       })
     )
-    expect(desktopClient.exportNFeZIP).not.toHaveBeenCalled()
+    expect(desktopClient.exportNFeDocuments).not.toHaveBeenCalled()
 
-    okHandlers[0]?.({ format: 'zip', incremental: true, includeResumos: false })
+    okHandlers[0]?.({ format, incremental: true, includeResumos: false })
     await flushPromises()
 
-    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith({
+    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith({
       CNPJ: company.CNPJ,
       Competence: '',
       Role: '',
+      Format: format,
       ChavesAcesso: [emitida.ChaveAcesso],
       IncludeResumos: false,
       Incremental: true,
     })
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
-      message: '1 XML exportado para C:\\exports\\nfe.zip.',
+      message: `1 ${noun} exportado para C:\\exports\\nfe.`,
     })
     expect(notify).toHaveBeenCalledWith({
       type: 'info',
@@ -499,8 +509,27 @@ describe('NFePage', () => {
     })
   })
 
+  it('says when an export found nothing to export', async () => {
+    vi.mocked(desktopClient.exportNFeDocuments).mockResolvedValue({
+      OutPath: '',
+      Format: 'csv',
+      Incremental: false,
+      ExportedCount: 0,
+      SkippedResumos: 0,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Exportar').trigger('click')
+    okHandlers[0]?.({ format: 'csv', incremental: false, includeResumos: false })
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith({ type: 'info', message: 'Nenhum documento para exportar.' })
+    expect(notify).toHaveBeenCalledTimes(1)
+  })
+
   it('exports the selection, with the resumos when asked', async () => {
-    vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue(null)
+    vi.mocked(desktopClient.exportNFeDocuments).mockResolvedValue(null)
     const wrapper = mountPage()
     await flushPromises()
     await selectRows(wrapper, [destinatario])
@@ -514,8 +543,9 @@ describe('NFePage', () => {
     okHandlers[0]?.({ format: 'zip', incremental: false, includeResumos: true })
     await flushPromises()
 
-    expect(desktopClient.exportNFeZIP).toHaveBeenCalledWith(
+    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
+        Format: 'zip',
         ChavesAcesso: [destinatario.ChaveAcesso],
         IncludeResumos: true,
         Incremental: false,
@@ -748,5 +778,83 @@ describe('NFePage', () => {
       Justificativa: '',
     })
     expect(notify).toHaveBeenCalledWith(expected)
+  })
+})
+
+// The row menu renders through the body slot of the table, which the default
+// q-table stub leaves out.
+describe('NFePage row menu', () => {
+  const rowStubs = {
+    'q-table': {
+      name: 'QTable',
+      props: ['rows'],
+      template: `<div><div v-for="row in rows" :key="row.ChaveAcesso">
+        <slot name="body" :row="row" :cols="[{ name: 'acoes' }]" :expand="false" />
+      </div></div>`,
+    },
+    RowActionsMenu: { template: '<div><slot /></div>' },
+    RowMenuItem: {
+      name: 'RowMenuItem',
+      props: ['label', 'caption', 'disable'],
+      emits: ['click'],
+      template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}</button>',
+    },
+  }
+
+  const completa = nfeRow('c', { Completeness: 'completa' })
+
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
+  })
+
+  function menuItem(wrapper: Page, label: string) {
+    const found = wrapper
+      .findAllComponents({ name: 'RowMenuItem' })
+      .find((item) => item.props('label') === label)
+    if (!found) throw new Error(`menu item ${label} not found`)
+    return found
+  }
+
+  it('keeps "Exportar DANFE" disabled on a resumo and says why', async () => {
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario])
+    const wrapper = mountPage(rowStubs)
+    await flushPromises()
+
+    const item = menuItem(wrapper, 'Exportar DANFE')
+    expect(item.props('disable')).toBe(true)
+    expect(item.props('caption')).toBe('XML completo ainda não baixado')
+  })
+
+  it('exports the DANFE of a complete NF-e and says so', async () => {
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([completa])
+    vi.mocked(desktopClient.exportDANFE).mockResolvedValue({
+      OutPath: 'C:\\exports\\danfe.pdf',
+      Format: 'danfe',
+      Incremental: false,
+      ExportedCount: 1,
+    })
+    const wrapper = mountPage(rowStubs)
+    await flushPromises()
+
+    const item = menuItem(wrapper, 'Exportar DANFE')
+    expect(item.props('disable')).toBe(false)
+    expect(item.props('caption')).toBe('')
+    await item.trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.exportDANFE).toHaveBeenCalledWith({
+      CNPJ: company.CNPJ,
+      ChaveAcesso: completa.ChaveAcesso,
+    })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 DANFE exportado para C:\\exports\\danfe.pdf.',
+    })
   })
 })

@@ -292,7 +292,7 @@ type fakeNFe struct {
 	plan      app.NFeCienciaPlan
 	summary   app.NFeManifestacaoSummary
 	outcome   app.NFeEventOutcome
-	zip       app.NFeExportResult
+	export    app.NFeExportResult
 	reset     app.NFeResetResult
 	err       error
 }
@@ -347,9 +347,29 @@ func (f *fakeNFe) ExportXML(_ context.Context, in app.NFeExportXMLInput) error {
 	return f.err
 }
 
+func (f *fakeNFe) ExportDANFE(_ context.Context, in app.NFeExportDANFEInput) error {
+	f.record("ExportDANFE", in)
+	return f.err
+}
+
 func (f *fakeNFe) ExportXMLZip(_ context.Context, in app.NFeExportInput) (app.NFeExportResult, error) {
 	f.record("ExportXMLZip", in)
-	return f.zip, f.err
+	return f.export, f.err
+}
+
+func (f *fakeNFe) ExportCSV(_ context.Context, in app.NFeExportInput) (app.NFeExportResult, error) {
+	f.record("ExportCSV", in)
+	return f.export, f.err
+}
+
+func (f *fakeNFe) ExportXLSX(_ context.Context, in app.NFeExportInput) (app.NFeExportResult, error) {
+	f.record("ExportXLSX", in)
+	return f.export, f.err
+}
+
+func (f *fakeNFe) ExportDANFEZip(_ context.Context, in app.NFeExportInput) (app.NFeExportResult, error) {
+	f.record("ExportDANFEZip", in)
+	return f.export, f.err
 }
 
 func (f *fakeNFe) Reset(_ context.Context, cnpj string) (app.NFeResetResult, error) {

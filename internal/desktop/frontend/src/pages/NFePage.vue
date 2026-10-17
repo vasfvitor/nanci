@@ -119,6 +119,12 @@
                     :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
                     @click="exportXML(rowProps.row.ChaveAcesso)"
                   />
+                  <RowMenuItem
+                    label="Exportar DANFE"
+                    :caption="nfeRowActions(rowProps.row).canExportXML ? '' : 'XML completo ainda não baixado'"
+                    :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
+                    @click="exportDANFE(rowProps.row.ChaveAcesso)"
+                  />
                 </RowActionsMenu>
 
                 <NumeroCell
@@ -228,7 +234,13 @@ import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type { NFeConclusiveTipo, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
+import type {
+  NFeConclusiveTipo,
+  NFeEventBatchResult,
+  NFeEventResult,
+  NFeExportFormat,
+  NFeRow,
+} from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
 import {
@@ -308,7 +320,7 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   unviewedChaves,
   markViewed: nfe.markViewed,
   exportFormats: NFE_EXPORT_FORMATS,
-  exportList: exportZIP,
+  exportList,
 })
 
 const columns = documentColumns<NFeRow>({
@@ -609,11 +621,19 @@ async function exportXML(chaveAcesso: string) {
   }
 }
 
-// exportZIP reports the export and, apart, the resumos it left out because
-// their complete XML has not arrived yet.
-async function exportZIP(chaves: string[], choice: ExportChoice) {
+async function exportDANFE(chaveAcesso: string) {
   try {
-    const result = await nfe.exportZIP(chaves, choice)
+    notifyExported(await nfe.exportDANFE(chaveAcesso), 'DANFE')
+  } catch (error) {
+    notifyError('Erro ao exportar DANFE', error)
+  }
+}
+
+// exportList reports the export and, apart, the resumos it left out because
+// their complete XML has not arrived yet.
+async function exportList(chaves: string[], choice: ExportChoice) {
+  try {
+    const result = await nfe.exportDocuments(choice.format as NFeExportFormat, chaves, choice)
     notifyExported(result, exportedNoun(choice.format))
     if (result && result.SkippedResumos > 0) {
       notifyInfo(
@@ -623,7 +643,7 @@ async function exportZIP(chaves: string[], choice: ExportChoice) {
       )
     }
   } catch (error) {
-    notifyError('Erro ao exportar XMLs', error)
+    notifyError('Erro ao exportar NF-e', error)
   }
 }
 </script>

@@ -14,14 +14,21 @@ describe('exportFormats', () => {
       'zip',
       'danfse-zip',
     ])
-    expect(NFE_EXPORT_FORMATS.map((format) => format.value)).toEqual(['zip'])
+    expect(NFE_EXPORT_FORMATS.map((format) => format.value)).toEqual([
+      'csv',
+      'xlsx',
+      'zip',
+      'danfe-zip',
+    ])
     expect(CTE_EXPORT_FORMATS.map((format) => format.value)).toEqual(['zip'])
   })
 
-  it('offers resumos only with the NF-e XMLs', () => {
+  it('offers resumos only with the NF-e spreadsheets and XMLs', () => {
     expect(NFSE_EXPORT_FORMATS.some((format) => format.resumos)).toBe(false)
     expect(CTE_EXPORT_FORMATS.some((format) => format.resumos)).toBe(false)
-    expect(NFE_EXPORT_FORMATS).toEqual([{ label: 'XMLs (ZIP)', value: 'zip', resumos: true }])
+    expect(
+      NFE_EXPORT_FORMATS.filter((format) => format.resumos).map((format) => format.value)
+    ).toEqual(['csv', 'xlsx', 'zip'])
   })
 
   it('names what each format writes', () => {
