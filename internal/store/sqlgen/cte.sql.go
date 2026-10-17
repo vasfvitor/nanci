@@ -179,36 +179,6 @@ func (q *Queries) ListCTeEventsByChave(ctx context.Context, chaveAcesso string) 
 	return items, nil
 }
 
-const markCTeExported = `-- name: MarkCTeExported :exec
-INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at, exported_events)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(company_id, cte_document_id, export_kind) DO UPDATE SET
-    exported_hash = excluded.exported_hash,
-    exported_at = excluded.exported_at,
-    exported_events = excluded.exported_events
-`
-
-type MarkCTeExportedParams struct {
-	CompanyID      string
-	CteDocumentID  string
-	ExportKind     string
-	ExportedHash   string
-	ExportedAt     string
-	ExportedEvents int64
-}
-
-func (q *Queries) MarkCTeExported(ctx context.Context, arg MarkCTeExportedParams) error {
-	_, err := q.db.ExecContext(ctx, markCTeExported,
-		arg.CompanyID,
-		arg.CteDocumentID,
-		arg.ExportKind,
-		arg.ExportedHash,
-		arg.ExportedAt,
-		arg.ExportedEvents,
-	)
-	return err
-}
-
 const updateCTeSituacao = `-- name: UpdateCTeSituacao :exec
 UPDATE cte_documents SET situacao = ?, updated_at = ? WHERE chave_acesso = ?
 `

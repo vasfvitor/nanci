@@ -240,36 +240,6 @@ func (q *Queries) ListNFeEventsByChave(ctx context.Context, chaveAcesso string) 
 	return items, nil
 }
 
-const markNFeExported = `-- name: MarkNFeExported :exec
-INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at, exported_events)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(company_id, nfe_document_id, export_kind) DO UPDATE SET
-    exported_hash = excluded.exported_hash,
-    exported_at = excluded.exported_at,
-    exported_events = excluded.exported_events
-`
-
-type MarkNFeExportedParams struct {
-	CompanyID      string
-	NfeDocumentID  string
-	ExportKind     string
-	ExportedHash   string
-	ExportedAt     string
-	ExportedEvents int64
-}
-
-func (q *Queries) MarkNFeExported(ctx context.Context, arg MarkNFeExportedParams) error {
-	_, err := q.db.ExecContext(ctx, markNFeExported,
-		arg.CompanyID,
-		arg.NfeDocumentID,
-		arg.ExportKind,
-		arg.ExportedHash,
-		arg.ExportedAt,
-		arg.ExportedEvents,
-	)
-	return err
-}
-
 const updateCompanyNFeManifestacao = `-- name: UpdateCompanyNFeManifestacao :exec
 UPDATE company_nfe_documents SET manifestacao = ?, manifestacao_at = ? WHERE relation_id = ?
 `

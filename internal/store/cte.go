@@ -247,44 +247,16 @@ func (r *CTeRepository) ListEventsByChave(ctx context.Context, chave string) ([]
 }
 
 // ListEventsByChaves returns the stored events of every chave in one query,
-// ordered by chave and then oldest first. sqlc cannot type the json_each
-// parameter, so the query is written here.
+// ordered by chave and then oldest first.
 func (r *CTeRepository) ListEventsByChaves(ctx context.Context, chaves []string) ([]cte.Event, error) {
 	if len(chaves) == 0 {
 		return nil, nil
 	}
-	const query = `
-		SELECT id, cte_document_id, chave_acesso, tp_amb, c_orgao, tp_evento, type, n_seq_evento, event_at,
-			registered_at, registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa,
-			observacao, correcao, condicao_uso, raw_hash, parse_warnings, created_at, updated_at
-		FROM cte_events
-		WHERE chave_acesso IN (SELECT value FROM json_each(?))
-		ORDER BY chave_acesso, COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento
-	`
-	chavesJSON, _ := json.Marshal(chaves) // a []string always marshals
-	rows, err := r.db.QueryContext(ctx, query, string(chavesJSON))
+	rows, err := listEventsByChaves(ctx, r.db, cteTables, chaves, scanCTeEvent)
 	if err != nil {
-		return nil, fmt.Errorf("list cte events of %d chaves: %w", len(chaves), err)
+		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
-
-	var items []sqlgen.CteEvent
-	for rows.Next() {
-		var i sqlgen.CteEvent
-		err := rows.Scan(
-			&i.ID, &i.CteDocumentID, &i.ChaveAcesso, &i.TpAmb, &i.COrgao, &i.TpEvento, &i.Type, &i.NSeqEvento, &i.EventAt,
-			&i.RegisteredAt, &i.Registered, &i.CStat, &i.XMotivo, &i.Protocolo, &i.AutorCnpj, &i.Description, &i.Justificativa,
-			&i.Observacao, &i.Correcao, &i.CondicaoUso, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("scan cte event: %w", err)
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list cte events of %d chaves: %w", len(chaves), err)
-	}
-	return cteEventsFromRows(items)
+	return cteEventsFromRows(rows)
 }
 
 // CountSummary counts the company's CT-e by primary role. A non-empty tpAmb
@@ -322,31 +294,11 @@ func (r *CTeRepository) CountSummary(ctx context.Context, companyID dfe.CompanyI
 // document as exported. The event count is the one listed with the document,
 // so an event stored while the export was written stays pending.
 func (r *CTeRepository) MarkExported(ctx context.Context, companyID dfe.CompanyID, kind string, docs []cte.CompanyDocument) error {
-	if len(docs) == 0 {
-		return nil
-	}
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	q := r.queries.WithTx(tx)
-	now := time.Now().UTC().Format(time.RFC3339)
+	marks := make([]exportMark, 0, len(docs))
 	for _, doc := range docs {
-		err := q.MarkCTeExported(ctx, sqlgen.MarkCTeExportedParams{
-			CompanyID:      string(companyID),
-			CteDocumentID:  doc.ID,
-			ExportKind:     kind,
-			ExportedHash:   doc.RawHash,
-			ExportedAt:     now,
-			ExportedEvents: int64(doc.EventCount),
-		})
-		if err != nil {
-			return fmt.Errorf("mark cte document %s exported: %w", doc.ChaveAcesso, err)
-		}
+		marks = append(marks, exportMark{documentID: doc.ID, chaveAcesso: doc.ChaveAcesso, rawHash: doc.RawHash, events: doc.EventCount})
 	}
-	return tx.Commit()
+	return markExported(ctx, r.db, cteTables, companyID, kind, marks)
 }
 
 // ResetCompany removes the company's CT-e view in one transaction: its
@@ -375,53 +327,15 @@ func (r *CTeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	id := string(companyID)
-	var counts cte.ResetCounts
-
-	// The documents only this company sees go with its rows.
-	documentIDs, err := exclusiveCTeDocumentIDs(ctx, tx, id)
+	removed, err := resetCompanyDocuments(ctx, tx, cteTables, companyID)
 	if err != nil {
 		return cte.ResetCounts{}, err
 	}
-	documentIDsJSON, _ := json.Marshal(documentIDs) // a []string always marshals
-
-	exec := func(what, query string, args ...any) (int, error) {
-		res, err := tx.ExecContext(ctx, query, args...)
-		if err != nil {
-			return 0, fmt.Errorf("reset %s: %w", what, err)
-		}
-		n, err := res.RowsAffected()
-		return int(n), err
-	}
-
-	if counts.ExportMarks, err = exec("cte export marks", `DELETE FROM company_cte_export_marks WHERE company_id = ?`, id); err != nil {
-		return cte.ResetCounts{}, err
-	}
-	counts.Events, err = exec("cte events", `
-		DELETE FROM cte_events
-		WHERE autor_cnpj NOT IN (SELECT cnpj FROM companies WHERE id <> ?)
-			AND (
-				chave_acesso IN (SELECT chave_acesso FROM cte_documents WHERE id IN (SELECT value FROM json_each(?)))
-				OR (
-					autor_cnpj = (SELECT cnpj FROM companies WHERE id = ?)
-					AND NOT EXISTS (SELECT 1 FROM cte_documents d WHERE d.chave_acesso = cte_events.chave_acesso)
-				)
-			)
-	`, id, string(documentIDsJSON), id)
-	if err != nil {
-		return cte.ResetCounts{}, err
-	}
-	if _, err := exec("kept cte events", `
-		UPDATE cte_events SET cte_document_id = NULL
-		WHERE cte_document_id IN (SELECT value FROM json_each(?))
-	`, string(documentIDsJSON)); err != nil {
-		return cte.ResetCounts{}, err
-	}
-	if counts.CompanyDocuments, err = exec("company cte documents", `DELETE FROM company_cte_documents WHERE company_id = ?`, id); err != nil {
-		return cte.ResetCounts{}, err
-	}
-	if counts.Documents, err = exec("cte documents", `DELETE FROM cte_documents WHERE id IN (SELECT value FROM json_each(?))`, string(documentIDsJSON)); err != nil {
-		return cte.ResetCounts{}, err
+	counts := cte.ResetCounts{
+		CompanyDocuments: removed.CompanyDocuments,
+		Documents:        removed.Documents,
+		Events:           removed.Events,
+		ExportMarks:      removed.ExportMarks,
 	}
 
 	if !apply {
@@ -434,36 +348,6 @@ func (r *CTeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 		return cte.ResetCounts{}, err
 	}
 	return counts, nil
-}
-
-// exclusiveCTeDocumentIDs returns the cte_documents the company sees and no
-// other company does.
-func exclusiveCTeDocumentIDs(ctx context.Context, tx *sql.Tx, companyID string) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `
-		SELECT cd.cte_document_id FROM company_cte_documents cd
-		WHERE cd.company_id = ?
-			AND NOT EXISTS (
-				SELECT 1 FROM company_cte_documents other
-				WHERE other.cte_document_id = cd.cte_document_id AND other.company_id <> cd.company_id
-			)
-	`, companyID)
-	if err != nil {
-		return nil, fmt.Errorf("list exclusive cte documents: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	ids := []string{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan cte document id: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list exclusive cte documents: %w", err)
-	}
-	return ids, nil
 }
 
 // refreshCTeChave links the events of one chave to its document and applies
@@ -551,6 +435,38 @@ func upsertCTeEvent(ctx context.Context, q *sqlgen.Queries, e cte.Event, now str
 	return nil
 }
 
+// cteTables names the CT-e tables for the queries shared with NF-e.
+var cteTables = dfeTables{
+	name:                   "cte",
+	documents:              "cte_documents",
+	companyDocuments:       "company_cte_documents",
+	documentID:             "cte_document_id",
+	events:                 "cte_events",
+	exportMarks:            "company_cte_export_marks",
+	companyDocumentColumns: cteCompanyDocumentColumns,
+	eventColumns:           cteEventColumns,
+}
+
+// cteEventColumns is the column list of ListEventsByChaves; scanCTeEvent
+// reads it in the same order.
+const cteEventColumns = `
+	id, cte_document_id, chave_acesso, tp_amb, c_orgao, tp_evento, type, n_seq_evento, event_at,
+	registered_at, registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa,
+	observacao, correcao, condicao_uso, raw_hash, parse_warnings, created_at, updated_at`
+
+func scanCTeEvent(rows *sql.Rows) (sqlgen.CteEvent, error) {
+	var i sqlgen.CteEvent
+	err := rows.Scan(
+		&i.ID, &i.CteDocumentID, &i.ChaveAcesso, &i.TpAmb, &i.COrgao, &i.TpEvento, &i.Type, &i.NSeqEvento, &i.EventAt,
+		&i.RegisteredAt, &i.Registered, &i.CStat, &i.XMotivo, &i.Protocolo, &i.AutorCnpj, &i.Description, &i.Justificativa,
+		&i.Observacao, &i.Correcao, &i.CondicaoUso, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt,
+	)
+	if err != nil {
+		return sqlgen.CteEvent{}, fmt.Errorf("scan cte event: %w", err)
+	}
+	return i, nil
+}
+
 // cteCompanyDocumentColumns is the only column list for company CT-e rows;
 // scanCompanyCTeDocument reads it in the same order.
 const cteCompanyDocumentColumns = `
@@ -571,53 +487,8 @@ const cteCompanyDocumentColumns = `
 // listCompanyDocuments runs the single company CT-e query. A non-empty
 // exportKind keeps only rows pending export for that kind.
 func (r *CTeRepository) listCompanyDocuments(ctx context.Context, companyID dfe.CompanyID, f cte.DocumentFilter, exportKind string) ([]cte.CompanyDocument, error) {
-	query := `SELECT ` + cteCompanyDocumentColumns + `
-		FROM company_cte_documents cd
-		INNER JOIN cte_documents d ON d.id = cd.cte_document_id`
-	var args []any
-	if exportKind != "" {
-		query += `
-		LEFT JOIN company_cte_export_marks m
-			ON m.company_id = cd.company_id AND m.cte_document_id = cd.cte_document_id AND m.export_kind = ?`
-		args = append(args, exportKind)
-	}
-
-	where, whereArgs := buildCTeFilterSQL(companyID, f)
-	query += " WHERE " + where // #nosec G202 -- constant conditions with ? placeholders from buildCTeFilterSQL.
-	args = append(args, whereArgs...)
-	if exportKind != "" {
-		// A change in the event count since the mark, such as a
-		// cancelamento that arrived after the export, makes the document
-		// pending again. Counting instead of comparing created_at with
-		// exported_at also catches an event stored in the same second.
-		query += ` AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash
-			OR m.exported_events != (SELECT COUNT(*) FROM cte_events e WHERE e.chave_acesso = d.chave_acesso))`
-	}
-
-	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
-	if f.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, f.Limit)
-	}
-
-	rows, err := r.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query cte documents: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var docs []cte.CompanyDocument
-	for rows.Next() {
-		doc, err := scanCompanyCTeDocument(rows)
-		if err != nil {
-			return nil, err
-		}
-		docs = append(docs, doc)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate cte documents: %w", err)
-	}
-	return docs, nil
+	where, args := buildCTeFilterSQL(companyID, f)
+	return queryCompanyDocuments(ctx, r.db, cteTables, where, args, f.Limit, exportKind, scanCompanyCTeDocument)
 }
 
 // buildCTeFilterSQL returns the WHERE conditions for f over the aliases cd

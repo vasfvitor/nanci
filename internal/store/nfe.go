@@ -242,44 +242,16 @@ func (r *NFeRepository) ListEventsByChave(ctx context.Context, chave string) ([]
 }
 
 // ListEventsByChaves returns the stored events of every chave in one query,
-// ordered by chave and then oldest first. sqlc cannot type the json_each
-// parameter, so the query is written here.
+// ordered by chave and then oldest first.
 func (r *NFeRepository) ListEventsByChaves(ctx context.Context, chaves []string) ([]nfe.Event, error) {
 	if len(chaves) == 0 {
 		return nil, nil
 	}
-	const query = `
-		SELECT id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
-			registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
-			completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at, tp_amb
-		FROM nfe_events
-		WHERE chave_acesso IN (SELECT value FROM json_each(?))
-		ORDER BY chave_acesso, COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento
-	`
-	chavesJSON, _ := json.Marshal(chaves) // a []string always marshals
-	rows, err := r.db.QueryContext(ctx, query, string(chavesJSON))
+	rows, err := listEventsByChaves(ctx, r.db, nfeTables, chaves, scanNFeEvent)
 	if err != nil {
-		return nil, fmt.Errorf("list nfe events of %d chaves: %w", len(chaves), err)
+		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
-
-	var items []sqlgen.NfeEvent
-	for rows.Next() {
-		var i sqlgen.NfeEvent
-		err := rows.Scan(
-			&i.ID, &i.NfeDocumentID, &i.ChaveAcesso, &i.TpEvento, &i.Type, &i.NSeqEvento, &i.EventAt, &i.RegisteredAt,
-			&i.Registered, &i.CStat, &i.XMotivo, &i.Protocolo, &i.AutorCnpj, &i.Description, &i.Justificativa, &i.Correcao,
-			&i.Completeness, &i.SentByNanci, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt, &i.TpAmb,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("scan nfe event: %w", err)
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list nfe events of %d chaves: %w", len(chaves), err)
-	}
-	return eventsFromRows(items)
+	return eventsFromRows(rows)
 }
 
 // CountSummary counts the company's NF-e of the tpAmb environment by role
@@ -324,31 +296,11 @@ func (r *NFeRepository) CountSummary(ctx context.Context, companyID dfe.CompanyI
 // document as exported. The event count is the one listed with the document,
 // so an event stored while the export was written stays pending.
 func (r *NFeRepository) MarkExported(ctx context.Context, companyID dfe.CompanyID, kind string, docs []nfe.CompanyDocument) error {
-	if len(docs) == 0 {
-		return nil
-	}
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	q := r.queries.WithTx(tx)
-	now := time.Now().UTC().Format(time.RFC3339)
+	marks := make([]exportMark, 0, len(docs))
 	for _, doc := range docs {
-		err := q.MarkNFeExported(ctx, sqlgen.MarkNFeExportedParams{
-			CompanyID:      string(companyID),
-			NfeDocumentID:  doc.ID,
-			ExportKind:     kind,
-			ExportedHash:   doc.RawHash,
-			ExportedAt:     now,
-			ExportedEvents: int64(doc.EventCount),
-		})
-		if err != nil {
-			return fmt.Errorf("mark nfe document %s exported: %w", doc.ChaveAcesso, err)
-		}
+		marks = append(marks, exportMark{documentID: doc.ID, chaveAcesso: doc.ChaveAcesso, rawHash: doc.RawHash, events: doc.EventCount})
 	}
-	return tx.Commit()
+	return markExported(ctx, r.db, nfeTables, companyID, kind, marks)
 }
 
 // RecordManifestacoes stores the outcomes of one lote in one transaction.
@@ -553,6 +505,38 @@ func upsertEvent(ctx context.Context, q *sqlgen.Queries, e nfe.Event, now string
 	return nil
 }
 
+// nfeTables names the NF-e tables for the queries shared with CT-e.
+var nfeTables = dfeTables{
+	name:                   "nfe",
+	documents:              "nfe_documents",
+	companyDocuments:       "company_nfe_documents",
+	documentID:             "nfe_document_id",
+	events:                 "nfe_events",
+	exportMarks:            "company_nfe_export_marks",
+	companyDocumentColumns: nfeCompanyDocumentColumns,
+	eventColumns:           nfeEventColumns,
+}
+
+// nfeEventColumns is the column list of ListEventsByChaves; scanNFeEvent
+// reads it in the same order.
+const nfeEventColumns = `
+	id, nfe_document_id, chave_acesso, tp_evento, type, n_seq_evento, event_at, registered_at,
+	registered, c_stat, x_motivo, protocolo, autor_cnpj, description, justificativa, correcao,
+	completeness, sent_by_nanci, raw_hash, parse_warnings, created_at, updated_at, tp_amb`
+
+func scanNFeEvent(rows *sql.Rows) (sqlgen.NfeEvent, error) {
+	var i sqlgen.NfeEvent
+	err := rows.Scan(
+		&i.ID, &i.NfeDocumentID, &i.ChaveAcesso, &i.TpEvento, &i.Type, &i.NSeqEvento, &i.EventAt, &i.RegisteredAt,
+		&i.Registered, &i.CStat, &i.XMotivo, &i.Protocolo, &i.AutorCnpj, &i.Description, &i.Justificativa, &i.Correcao,
+		&i.Completeness, &i.SentByNanci, &i.RawHash, &i.ParseWarnings, &i.CreatedAt, &i.UpdatedAt, &i.TpAmb,
+	)
+	if err != nil {
+		return sqlgen.NfeEvent{}, fmt.Errorf("scan nfe event: %w", err)
+	}
+	return i, nil
+}
+
 // nfeCompanyDocumentColumns is the only column list for company NF-e rows;
 // scanCompanyNFeDocument reads it in the same order.
 const nfeCompanyDocumentColumns = `
@@ -568,53 +552,8 @@ const nfeCompanyDocumentColumns = `
 // listCompanyDocuments runs the single company NF-e query. A non-empty
 // exportKind keeps only rows pending export for that kind.
 func (r *NFeRepository) listCompanyDocuments(ctx context.Context, companyID dfe.CompanyID, f nfe.DocumentFilter, exportKind string) ([]nfe.CompanyDocument, error) {
-	query := `SELECT ` + nfeCompanyDocumentColumns + `
-		FROM company_nfe_documents cd
-		INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id`
-	var args []any
-	if exportKind != "" {
-		query += `
-		LEFT JOIN company_nfe_export_marks m
-			ON m.company_id = cd.company_id AND m.nfe_document_id = cd.nfe_document_id AND m.export_kind = ?`
-		args = append(args, exportKind)
-	}
-
-	where, whereArgs := buildNFeFilterSQL(companyID, f)
-	query += " WHERE " + where // #nosec G202 -- constant conditions with ? placeholders from buildNFeFilterSQL.
-	args = append(args, whereArgs...)
-	if exportKind != "" {
-		// A change in the event count since the mark, such as a
-		// cancelamento that arrived after the export, makes the document
-		// pending again. Counting instead of comparing created_at with
-		// exported_at also catches an event stored in the same second.
-		query += ` AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash
-			OR m.exported_events != (SELECT COUNT(*) FROM nfe_events e WHERE e.chave_acesso = d.chave_acesso))`
-	}
-
-	query += " ORDER BY d.issue_date DESC, d.chave_acesso DESC"
-	if f.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, f.Limit)
-	}
-
-	rows, err := r.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query nfe documents: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var docs []nfe.CompanyDocument
-	for rows.Next() {
-		doc, err := scanCompanyNFeDocument(rows)
-		if err != nil {
-			return nil, err
-		}
-		docs = append(docs, doc)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate nfe documents: %w", err)
-	}
-	return docs, nil
+	where, args := buildNFeFilterSQL(companyID, f)
+	return queryCompanyDocuments(ctx, r.db, nfeTables, where, args, f.Limit, exportKind, scanCompanyNFeDocument)
 }
 
 // buildNFeFilterSQL returns the WHERE conditions for f over the aliases cd
@@ -893,57 +832,18 @@ func (r *NFeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	id := string(companyID)
 	var counts nfe.ResetCounts
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_manifestacoes WHERE company_id = ?`, id).Scan(&counts.ManifestacoesKept); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM nfe_manifestacoes WHERE company_id = ?`, string(companyID)).Scan(&counts.ManifestacoesKept); err != nil {
 		return nfe.ResetCounts{}, fmt.Errorf("count nfe manifestacoes: %w", err)
 	}
-
-	// The documents only this company sees go with its rows.
-	documentIDs, err := exclusiveDocumentIDs(ctx, tx, id)
+	removed, err := resetCompanyDocuments(ctx, tx, nfeTables, companyID)
 	if err != nil {
 		return nfe.ResetCounts{}, err
 	}
-	documentIDsJSON, _ := json.Marshal(documentIDs) // a []string always marshals
-
-	exec := func(what, query string, args ...any) (int, error) {
-		res, err := tx.ExecContext(ctx, query, args...)
-		if err != nil {
-			return 0, fmt.Errorf("reset %s: %w", what, err)
-		}
-		n, err := res.RowsAffected()
-		return int(n), err
-	}
-
-	if counts.ExportMarks, err = exec("nfe export marks", `DELETE FROM company_nfe_export_marks WHERE company_id = ?`, id); err != nil {
-		return nfe.ResetCounts{}, err
-	}
-	counts.Events, err = exec("nfe events", `
-		DELETE FROM nfe_events
-		WHERE autor_cnpj NOT IN (SELECT cnpj FROM companies WHERE id <> ?)
-			AND (
-				chave_acesso IN (SELECT chave_acesso FROM nfe_documents WHERE id IN (SELECT value FROM json_each(?)))
-				OR (
-					autor_cnpj = (SELECT cnpj FROM companies WHERE id = ?)
-					AND NOT EXISTS (SELECT 1 FROM nfe_documents d WHERE d.chave_acesso = nfe_events.chave_acesso)
-				)
-			)
-	`, id, string(documentIDsJSON), id)
-	if err != nil {
-		return nfe.ResetCounts{}, err
-	}
-	if _, err := exec("kept nfe events", `
-		UPDATE nfe_events SET nfe_document_id = NULL
-		WHERE nfe_document_id IN (SELECT value FROM json_each(?))
-	`, string(documentIDsJSON)); err != nil {
-		return nfe.ResetCounts{}, err
-	}
-	if counts.CompanyDocuments, err = exec("company nfe documents", `DELETE FROM company_nfe_documents WHERE company_id = ?`, id); err != nil {
-		return nfe.ResetCounts{}, err
-	}
-	if counts.Documents, err = exec("nfe documents", `DELETE FROM nfe_documents WHERE id IN (SELECT value FROM json_each(?))`, string(documentIDsJSON)); err != nil {
-		return nfe.ResetCounts{}, err
-	}
+	counts.CompanyDocuments = removed.CompanyDocuments
+	counts.Documents = removed.Documents
+	counts.Events = removed.Events
+	counts.ExportMarks = removed.ExportMarks
 
 	if !apply {
 		return counts, nil
@@ -955,34 +855,4 @@ func (r *NFeRepository) resetCompany(ctx context.Context, companyID dfe.CompanyI
 		return nfe.ResetCounts{}, err
 	}
 	return counts, nil
-}
-
-// exclusiveDocumentIDs returns the nfe_documents the company sees and no
-// other company does.
-func exclusiveDocumentIDs(ctx context.Context, tx *sql.Tx, companyID string) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `
-		SELECT cd.nfe_document_id FROM company_nfe_documents cd
-		WHERE cd.company_id = ?
-			AND NOT EXISTS (
-				SELECT 1 FROM company_nfe_documents other
-				WHERE other.nfe_document_id = cd.nfe_document_id AND other.company_id <> cd.company_id
-			)
-	`, companyID)
-	if err != nil {
-		return nil, fmt.Errorf("list exclusive nfe documents: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	ids := []string{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan nfe document id: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list exclusive nfe documents: %w", err)
-	}
-	return ids, nil
 }

@@ -125,11 +125,3 @@ INSERT INTO nfe_manifestacoes (
     status, c_stat, x_motivo, protocolo, registered_at, request_raw_hash, response_raw_hash, created_at,
     tp_amb
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
--- name: MarkNFeExported :exec
-INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at, exported_events)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(company_id, nfe_document_id, export_kind) DO UPDATE SET
-    exported_hash = excluded.exported_hash,
-    exported_at = excluded.exported_at,
-    exported_events = excluded.exported_events;
