@@ -116,7 +116,7 @@ func (s *nfeSource) processDocument(ctx context.Context, company *company.Compan
 		Document:    doc,
 		CompanyID:   company.ID,
 		CompanyCNPJ: company.CNPJ,
-		NSU:         item.NSU,
+		NSU:         &item.NSU,
 	}
 	outcome, err := commit(ctx, func(tx *sql.Tx) (ItemOutcome, error) {
 		inserted, err := s.repo.ApplyDocumentTx(ctx, tx, params)

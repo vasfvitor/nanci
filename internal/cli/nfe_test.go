@@ -152,7 +152,7 @@ func (e *nfeTestRoot) seed(fixture string, nsu int64) {
 		}
 		doc.RawHash = hash
 		doc.TpAmb = cmp.Or(doc.TpAmb, sefaz.TpAmbProducao) // a resumo takes the pull's, like the NF-e source does
-		params := store.ApplyNFeDocumentParams{Document: doc, CompanyID: e.company.ID, CompanyCNPJ: e.company.CNPJ, NSU: nsu}
+		params := store.ApplyNFeDocumentParams{Document: doc, CompanyID: e.company.ID, CompanyCNPJ: e.company.CNPJ, NSU: &nsu}
 		if _, err := e.repo.ApplyDocumentTx(ctx, tx, params); err != nil {
 			e.t.Fatal(err)
 		}

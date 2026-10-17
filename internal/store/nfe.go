@@ -38,7 +38,11 @@ type ApplyNFeDocumentParams struct {
 	Document    nfe.Document
 	CompanyID   dfe.CompanyID
 	CompanyCNPJ string
-	NSU         int64
+	// NSU is the distribution NSU the document came with. nil means it did
+	// not come from the distribution (an imported XML, a document fetched
+	// by chave): a new row has no first/last seen NSU and an existing row
+	// keeps the ones it has.
+	NSU *int64
 }
 
 // ApplyNFeEventParams is one distributed resEvento or procEventoNFe.
@@ -90,6 +94,10 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		return false, fmt.Errorf("check company nfe document %s: %w", chave, err)
 	}
 
+	var seenNSU sql.NullInt64
+	if p.NSU != nil {
+		seenNSU = sql.NullInt64{Int64: *p.NSU, Valid: true}
+	}
 	participation := nfe.ClassifyParticipation(&doc, p.CompanyCNPJ)
 	err = q.UpsertCompanyNFeDocument(ctx, sqlgen.UpsertCompanyNFeDocumentParams{
 		RelationID:       dfe.GenerateID(),
@@ -97,8 +105,8 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		NfeDocumentID:    documentID,
 		CompanyRole:      string(participation.CompanyRole),
 		VisibilityReason: string(participation.VisibilityReason),
-		FirstSeenNsu:     sql.NullInt64{Int64: p.NSU, Valid: true},
-		LastSeenNsu:      sql.NullInt64{Int64: p.NSU, Valid: true},
+		FirstSeenNsu:     seenNSU,
+		LastSeenNsu:      seenNSU,
 		FirstSyncedAt:    now,
 		LastSyncedAt:     now,
 	})
@@ -110,6 +118,40 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		return false, err
 	}
 	return seen == 0, nil
+}
+
+// ApplyDocument runs ApplyDocumentTx in a transaction of its own, for a
+// document stored outside a sync item.
+func (r *NFeRepository) ApplyDocument(ctx context.Context, p ApplyNFeDocumentParams) (inserted bool, err error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	inserted, err = r.ApplyDocumentTx(ctx, tx, p)
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return inserted, nil
+}
+
+// ApplyEvent runs ApplyEventTx in a transaction of its own, for an event
+// stored outside a sync item.
+func (r *NFeRepository) ApplyEvent(ctx context.Context, p ApplyNFeEventParams) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := r.ApplyEventTx(ctx, tx, p); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // ApplyEventTx stores the event (a resumo never replaces a completa) and

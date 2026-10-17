@@ -101,7 +101,7 @@ func (f *cteFixture) applyDocument(companyID, companyCNPJ string, doc cte.Docume
 			Document:    doc,
 			CompanyID:   dfe.CompanyID(companyID),
 			CompanyCNPJ: companyCNPJ,
-			NSU:         nsu,
+			NSU:         &nsu,
 		})
 		return err
 	})
@@ -663,5 +663,66 @@ func TestCTeResetCompany(t *testing.T) {
 	f.applyDocument("mock", cnpjMock, f.document("procteos.xml", "hash-os"), 2)
 	if got := f.companyDocument("mock", cteKeyOS); got.Situacao != cte.SituacaoAutorizada || got.EventCount != 0 {
 		t.Errorf("CT-e OS delivered again = (%s, %d events)", got.Situacao, got.EventCount)
+	}
+}
+
+func TestCTeDocumentWithoutNSUKeepsTheSeenNSUs(t *testing.T) {
+	f := newCTeFixture(t)
+	doc := f.document("procte.xml", "hash-proc")
+	f.applyDocument("mock", cnpjMock, doc, 10)
+	f.applyDocument("mock", cnpjMock, doc, 12)
+
+	inserted, err := f.repo.ApplyDocument(context.Background(), store.ApplyCTeDocumentParams{
+		Document:    doc,
+		CompanyID:   "mock",
+		CompanyCNPJ: cnpjMock,
+	})
+	if err != nil {
+		t.Fatalf("ApplyDocument: %v", err)
+	}
+	if inserted {
+		t.Error("ApplyDocument of a chave the company sees should not insert")
+	}
+	got := f.companyDocument("mock", cteKeyProc)
+	if seen := seenNSUs(got.FirstSeenNSU, got.LastSeenNSU); seen != "10,12" {
+		t.Errorf("seen NSUs = %s, want 10,12", seen)
+	}
+}
+
+func TestCTeDocumentWithoutNSUHasNoSeenNSUs(t *testing.T) {
+	f := newCTeFixture(t)
+	doc := f.document("procte.xml", "hash-proc")
+
+	inserted, err := f.repo.ApplyDocument(context.Background(), store.ApplyCTeDocumentParams{
+		Document:    doc,
+		CompanyID:   "mock",
+		CompanyCNPJ: cnpjMock,
+	})
+	if err != nil {
+		t.Fatalf("ApplyDocument: %v", err)
+	}
+	if !inserted {
+		t.Error("ApplyDocument of a new chave should insert")
+	}
+	got := f.companyDocument("mock", cteKeyProc)
+	if seen := seenNSUs(got.FirstSeenNSU, got.LastSeenNSU); seen != "NULL,NULL" {
+		t.Errorf("seen NSUs = %s, want NULL,NULL", seen)
+	}
+
+	f.applyDocument("mock", cnpjMock, doc, 15)
+	got = f.companyDocument("mock", cteKeyProc)
+	if seen := seenNSUs(got.FirstSeenNSU, got.LastSeenNSU); seen != "15,15" {
+		t.Errorf("seen NSUs after the distribution = %s, want 15,15", seen)
+	}
+}
+
+func TestCTeApplyEventWithoutTransaction(t *testing.T) {
+	f := newCTeFixture(t)
+	ev := f.event("proceventocte-cancelamento.xml", "hash-cancelamento")
+	if err := f.repo.ApplyEvent(context.Background(), store.ApplyCTeEventParams{Event: ev}); err != nil {
+		t.Fatalf("ApplyEvent: %v", err)
+	}
+	if events := f.events(cteKeyProc); len(events) != 1 {
+		t.Errorf("events = %d, want 1", len(events))
 	}
 }

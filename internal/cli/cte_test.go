@@ -109,7 +109,7 @@ func (e *cteTestRoot) seedCTe(fixture string, nsu int64) {
 			e.t.Fatalf("parse %s: %v", fixture, err)
 		}
 		doc.RawHash = hash
-		params := store.ApplyCTeDocumentParams{Document: doc, CompanyID: e.company.ID, CompanyCNPJ: e.company.CNPJ, NSU: nsu}
+		params := store.ApplyCTeDocumentParams{Document: doc, CompanyID: e.company.ID, CompanyCNPJ: e.company.CNPJ, NSU: &nsu}
 		if _, err := e.cteRepo.ApplyDocumentTx(ctx, tx, params); err != nil {
 			e.t.Fatal(err)
 		}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -103,7 +104,7 @@ func (f *nfeFixture) applyDocument(companyID, companyCNPJ string, doc nfe.Docume
 			Document:    doc,
 			CompanyID:   dfe.CompanyID(companyID),
 			CompanyCNPJ: companyCNPJ,
-			NSU:         nsu,
+			NSU:         &nsu,
 		})
 		return err
 	})
@@ -883,5 +884,94 @@ func TestNFeResetCompany(t *testing.T) {
 	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
 	if got := f.companyDocument("mock", nfeKeyProc); got.EventCount != 1 {
 		t.Errorf("events of the note delivered again = %d, want the CC-e relinked", got.EventCount)
+	}
+}
+
+// seenNSUs formats a row's first and last seen NSU, nil as "NULL".
+func seenNSUs(first, last *int64) string {
+	format := func(v *int64) string {
+		if v == nil {
+			return "NULL"
+		}
+		return strconv.FormatInt(*v, 10)
+	}
+	return format(first) + "," + format(last)
+}
+
+func TestNFeDocumentWithoutNSUKeepsTheSeenNSUs(t *testing.T) {
+	f := newNFeFixture(t)
+	f.applyDocument("mock", cnpjMock, f.resNFe("resnfe.xml", "hash-resumo"), 10)
+	f.applyDocument("mock", cnpjMock, f.resNFe("resnfe.xml", "hash-resumo"), 12)
+
+	inserted, err := f.repo.ApplyDocument(context.Background(), store.ApplyNFeDocumentParams{
+		Document:    f.procNFe("procnfe.xml", "hash-completa"),
+		CompanyID:   "mock",
+		CompanyCNPJ: cnpjMock,
+	})
+	if err != nil {
+		t.Fatalf("ApplyDocument: %v", err)
+	}
+	if inserted {
+		t.Error("ApplyDocument of a chave the company sees should not insert")
+	}
+	got := f.companyDocument("mock", nfeKeyProc)
+	if seen := seenNSUs(got.FirstSeenNSU, got.LastSeenNSU); seen != "10,12" {
+		t.Errorf("seen NSUs = %s, want 10,12", seen)
+	}
+	if got.Completeness != nfe.CompletenessCompleta {
+		t.Errorf("completeness = %s, want completa", got.Completeness)
+	}
+}
+
+func TestNFeDocumentWithoutNSUHasNoSeenNSUs(t *testing.T) {
+	f := newNFeFixture(t)
+
+	inserted, err := f.repo.ApplyDocument(context.Background(), store.ApplyNFeDocumentParams{
+		Document:    f.procNFe("procnfe.xml", "hash-completa"),
+		CompanyID:   "mock",
+		CompanyCNPJ: cnpjMock,
+	})
+	if err != nil {
+		t.Fatalf("ApplyDocument: %v", err)
+	}
+	if !inserted {
+		t.Error("ApplyDocument of a new chave should insert")
+	}
+	got := f.companyDocument("mock", nfeKeyProc)
+	if seen := seenNSUs(got.FirstSeenNSU, got.LastSeenNSU); seen != "NULL,NULL" {
+		t.Errorf("seen NSUs = %s, want NULL,NULL", seen)
+	}
+
+	// The distribution fills them in later.
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 15)
+	got = f.companyDocument("mock", nfeKeyProc)
+	if seen := seenNSUs(got.FirstSeenNSU, got.LastSeenNSU); seen != "15,15" {
+		t.Errorf("seen NSUs after the distribution = %s, want 15,15", seen)
+	}
+}
+
+func TestNFeApplyEventWithoutTransaction(t *testing.T) {
+	f := newNFeFixture(t)
+	if _, err := f.repo.ApplyDocument(context.Background(), store.ApplyNFeDocumentParams{
+		Document:    f.procNFe("procnfe.xml", "hash-completa"),
+		CompanyID:   "mock",
+		CompanyCNPJ: cnpjMock,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	ev := f.procEvento("proceventonfe-ciencia.xml", "hash-ciencia")
+	if err := f.repo.ApplyEvent(context.Background(), store.ApplyNFeEventParams{Event: ev}); err != nil {
+		t.Fatalf("ApplyEvent: %v", err)
+	}
+	if events := f.events(nfeKeyProc); len(events) != 1 || events[0].TpEvento != ev.TpEvento {
+		t.Errorf("events = %+v, want the ciência", events)
+	}
+	// Applying it again is a no-op.
+	if err := f.repo.ApplyEvent(context.Background(), store.ApplyNFeEventParams{Event: ev}); err != nil {
+		t.Fatalf("ApplyEvent again: %v", err)
+	}
+	if events := f.events(nfeKeyProc); len(events) != 1 {
+		t.Errorf("events after a second apply = %d, want 1", len(events))
 	}
 }
