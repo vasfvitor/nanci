@@ -9,6 +9,7 @@
       dense
       clearable
       debounce="300"
+      @keyup.esc="text = ''"
     >
       <template #append>
         <q-icon name="search" />
@@ -20,7 +21,7 @@
 <script setup lang="ts">
 // DocumentTableTop is the top of a document table: its title and the box
 // that narrows the listed rows. The placeholder names only the fields that
-// fit in the 350px box; each page searches a few more.
+// fit in the 350px box; each page searches a few more. Escape clears it.
 defineProps<{
   title: string
 }>()

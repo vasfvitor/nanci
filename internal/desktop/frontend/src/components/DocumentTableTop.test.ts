@@ -36,4 +36,18 @@ describe('DocumentTableTop', () => {
 
     expect(wrapper.emitted('update:modelValue')).toEqual([['serra']])
   })
+
+  it('clears the filter with Escape', async () => {
+    const wrapper = mount(DocumentTableTop, {
+      props: { title: 'CT-e', modelValue: 'serra' },
+      global: { stubs },
+    })
+    const input = wrapper.getComponent({ name: 'QInput' })
+
+    await input.trigger('keyup', { key: 'Enter' })
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+
+    await input.trigger('keyup', { key: 'Escape' })
+    expect(wrapper.emitted('update:modelValue')).toEqual([['']])
+  })
 })
