@@ -8,6 +8,8 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dacte"
+	"github.com/vasfvitor/nanci/internal/danfe"
 	"github.com/vasfvitor/nanci/internal/danfse"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/envfile"
@@ -57,6 +59,10 @@ type Dependencies struct {
 	DataDir            string
 	CredentialProvider CredentialProvider
 	DANFSeRenderer     danfse.Renderer
+	// DANFERenderer and DACTERenderer render the NF-e and CT-e PDFs; nil
+	// leaves those exports unavailable.
+	DANFERenderer danfe.Renderer
+	DACTERenderer dacte.Renderer
 }
 
 // New constructs an App and rejects incomplete dependency graphs.
