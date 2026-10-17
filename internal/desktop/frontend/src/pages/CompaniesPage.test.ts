@@ -65,7 +65,10 @@ function mountPage(tableTemplate = credentialCellTable) {
     global: {
       stubs: {
         'q-page': { template: '<div><slot /></div>' },
-        'q-btn': { props: ['title', 'icon'], template: '<button :title="title" :data-icon="icon" />' },
+        'q-btn': {
+          props: ['title', 'icon'],
+          template: '<button :title="title" :data-icon="icon" />',
+        },
         'q-badge': { template: '<div />' },
         'q-td': { template: '<td><slot /></td>' },
         'q-select': {
@@ -144,9 +147,7 @@ describe('CompaniesPage credential assignment', () => {
     await flushPromises()
 
     expect(desktopClient.assignCredential).toHaveBeenCalled()
-    expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'negative' })
-    )
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'negative' }))
     expect(select.props('modelValue')).toBe('cred-1')
   })
 
@@ -165,9 +166,7 @@ describe('CompaniesPage credential assignment', () => {
     await flushPromises()
 
     expect(select.props('modelValue')).toBe('cred-2')
-    expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'positive' })
-    )
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'positive' }))
   })
 })
 

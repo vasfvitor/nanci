@@ -20,9 +20,12 @@ export function useSefazBlock(status: Readonly<Ref<SefazBlockStatus | null>>) {
       clearTimeout(unblockTimer)
       const until = parseDate(value)
       if (until && until.getTime() > now.value) {
-        unblockTimer = setTimeout(() => {
-          now.value = Date.now()
-        }, until.getTime() - now.value + 1000)
+        unblockTimer = setTimeout(
+          () => {
+            now.value = Date.now()
+          },
+          until.getTime() - now.value + 1000
+        )
       }
     },
     { immediate: true }

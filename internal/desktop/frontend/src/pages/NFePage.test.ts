@@ -174,7 +174,8 @@ function mountPage(stubs: Record<string, unknown> = {}) {
           name: 'QBtn',
           props: ['label', 'disable', 'loading'],
           emits: ['click'],
-          template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
+          template:
+            '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
         },
         'q-table': {
           name: 'QTable',
@@ -231,7 +232,9 @@ function searchInput(wrapper: Page) {
 }
 
 function select(wrapper: Page, label: string) {
-  const found = wrapper.findAllComponents({ name: 'QSelect' }).find((input) => input.props('label') === label)
+  const found = wrapper
+    .findAllComponents({ name: 'QSelect' })
+    .find((input) => input.props('label') === label)
   if (!found) throw new Error(`select ${label} not found`)
   return found
 }
@@ -267,7 +270,9 @@ describe('NFePage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: company.CNPJ }))
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(
+      expect.objectContaining({ CNPJ: company.CNPJ })
+    )
     expect(desktopClient.statusNFe).toHaveBeenCalledWith(company.CNPJ)
     expect(table(wrapper).props('rows')).toEqual([destinatario, emitida])
     expect(table(wrapper).props('noDataLabel')).toBe('Nenhuma NF-e encontrada.')
@@ -309,11 +314,18 @@ describe('NFePage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    const columns = table(wrapper).props('columns') as { name: string; label: string; sortable?: boolean }[]
+    const columns = table(wrapper).props('columns') as {
+      name: string
+      label: string
+      sortable?: boolean
+    }[]
     expect(columns.map((column) => column.name)).toEqual([...DOCUMENT_COLUMN_NAMES])
     expect(columns.find((column) => column.name === 'destinatario')?.label).toBe('Destinatário')
     expect(columns.find((column) => column.name === 'issueDate')?.sortable).toBe(true)
-    expect(table(wrapper).props('pagination')).toMatchObject({ sortBy: 'issueDate', descending: true })
+    expect(table(wrapper).props('pagination')).toMatchObject({
+      sortBy: 'issueDate',
+      descending: true,
+    })
   })
 
   it('filters the notes by accent- and case-insensitive text, destinatário included', async () => {
@@ -381,7 +393,9 @@ describe('NFePage', () => {
     wrapper.getComponent({ name: 'QToggle' }).vm.$emit('update:modelValue', true)
     await flushPromises()
 
-    expect(desktopClient.listNFe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+    expect(desktopClient.listNFe).toHaveBeenCalledWith(
+      expect.objectContaining({ OnlyUnread: true })
+    )
   })
 
   it('keeps the ciência button disabled without an eligible selection', async () => {
@@ -469,54 +483,57 @@ describe('NFePage', () => {
     { format: 'xlsx', noun: 'documento' },
     { format: 'zip', noun: 'XML' },
     { format: 'danfe-zip', noun: 'DANFE' },
-  ])('exports the filtered rows as $format with the choice of the dialog', async ({ format, noun }) => {
-    vi.mocked(desktopClient.exportNFeDocuments).mockResolvedValue({
-      OutPath: 'C:\\exports\\nfe',
-      Format: 'xml',
-      Incremental: true,
-      ExportedCount: 1,
-      SkippedResumos: 2,
-    })
-    const wrapper = mountPage()
-    await flushPromises()
-    await filterRows(wrapper, 'campo verde')
-
-    await button(wrapper, 'Exportar').trigger('click')
-    expect(dialog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        componentProps: {
-          source: 'nfe',
-          count: 1,
-          scope: 'listed',
-          formats: NFE_EXPORT_FORMATS,
-          initialFormat: '',
-        },
+  ])(
+    'exports the filtered rows as $format with the choice of the dialog',
+    async ({ format, noun }) => {
+      vi.mocked(desktopClient.exportNFeDocuments).mockResolvedValue({
+        OutPath: 'C:\\exports\\nfe',
+        Format: 'xml',
+        Incremental: true,
+        ExportedCount: 1,
+        SkippedResumos: 2,
       })
-    )
-    expect(desktopClient.exportNFeDocuments).not.toHaveBeenCalled()
+      const wrapper = mountPage()
+      await flushPromises()
+      await filterRows(wrapper, 'campo verde')
 
-    okHandlers[0]?.({ format, incremental: true, includeResumos: false })
-    await flushPromises()
+      await button(wrapper, 'Exportar').trigger('click')
+      expect(dialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          componentProps: {
+            source: 'nfe',
+            count: 1,
+            scope: 'listed',
+            formats: NFE_EXPORT_FORMATS,
+            initialFormat: '',
+          },
+        })
+      )
+      expect(desktopClient.exportNFeDocuments).not.toHaveBeenCalled()
 
-    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith({
-      CNPJ: company.CNPJ,
-      Competence: '',
-      Role: '',
-      Format: format,
-      ChavesAcesso: [emitida.ChaveAcesso],
-      IncludeResumos: false,
-      Incremental: true,
-    })
-    expect(notify).toHaveBeenCalledWith({
-      type: 'positive',
-      message: `1 ${noun} exportado para C:\\exports\\nfe.`,
-      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
-    })
-    expect(notify).toHaveBeenCalledWith({
-      type: 'info',
-      message: '2 resumos ignorados: o XML completo ainda não foi baixado.',
-    })
-  })
+      okHandlers[0]?.({ format, incremental: true, includeResumos: false })
+      await flushPromises()
+
+      expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith({
+        CNPJ: company.CNPJ,
+        Competence: '',
+        Role: '',
+        Format: format,
+        ChavesAcesso: [emitida.ChaveAcesso],
+        IncludeResumos: false,
+        Incremental: true,
+      })
+      expect(notify).toHaveBeenCalledWith({
+        type: 'positive',
+        message: `1 ${noun} exportado para C:\\exports\\nfe.`,
+        actions: [expect.objectContaining({ label: 'Abrir pasta' })],
+      })
+      expect(notify).toHaveBeenCalledWith({
+        type: 'info',
+        message: '2 resumos ignorados: o XML completo ainda não foi baixado.',
+      })
+    }
+  )
 
   it('says when an export found nothing to export', async () => {
     vi.mocked(desktopClient.exportNFeDocuments).mockResolvedValue({
@@ -533,7 +550,10 @@ describe('NFePage', () => {
     okHandlers[0]?.({ format: 'csv', incremental: false, includeResumos: false })
     await flushPromises()
 
-    expect(notify).toHaveBeenCalledWith({ type: 'info', message: 'Nenhum documento para exportar.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'Nenhum documento para exportar.',
+    })
     expect(notify).toHaveBeenCalledTimes(1)
   })
 
@@ -577,7 +597,10 @@ describe('NFePage', () => {
     expect(desktopClient.markNFeViewed).toHaveBeenCalledWith(company.CNPJ, [emitida.ChaveAcesso])
     expect(table(wrapper).props('selected')).toEqual([])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 documento marcado como visto.',
+    })
   })
 
   it('asks before marking the whole list viewed', async () => {
@@ -599,7 +622,10 @@ describe('NFePage', () => {
       emitida.ChaveAcesso,
     ])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '2 documentos marcados como vistos.',
+    })
   })
 
   it('does not open the dialog when planNFeCiencia finds no eligible note', async () => {
@@ -660,7 +686,9 @@ describe('NFePage', () => {
   })
 
   it('resets the company NF-e after the confirmation', async () => {
-    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ TotalDestinatario: 2, TotalEmitente: 1 }))
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(
+      status({ TotalDestinatario: 2, TotalEmitente: 1 })
+    )
     vi.mocked(desktopClient.resetNFe).mockResolvedValue({
       CompanyName: 'Empresa Um',
       CNPJ: company.CNPJ,
@@ -683,7 +711,9 @@ describe('NFePage', () => {
     )
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: expect.stringContaining('Remove as NF-e de Empresa Um nos dois ambientes (3 no ambiente atual)'),
+        message: expect.stringContaining(
+          'Remove as NF-e de Empresa Um nos dois ambientes (3 no ambiente atual)'
+        ),
       })
     )
     expect(desktopClient.resetNFe).not.toHaveBeenCalled()
@@ -702,7 +732,10 @@ describe('NFePage', () => {
   })
 
   it('shows the per-note results when a ciência has problems', async () => {
-    vi.mocked(desktopClient.planNFeCiencia).mockResolvedValue({ Eligible: [destinatario], Skipped: [] })
+    vi.mocked(desktopClient.planNFeCiencia).mockResolvedValue({
+      Eligible: [destinatario],
+      Skipped: [],
+    })
     const result: NFeEventBatchResult = {
       Results: [
         {
@@ -728,7 +761,10 @@ describe('NFePage', () => {
     await flushPromises()
 
     const notice = notify.mock.calls.map(([options]) => options).find((options) => options.actions)
-    expect(notice).toMatchObject({ type: 'warning', message: expect.stringContaining('1 rejeitadas') })
+    expect(notice).toMatchObject({
+      type: 'warning',
+      message: expect.stringContaining('1 rejeitadas'),
+    })
     expect(notice.actions[0]).not.toHaveProperty('color')
     expect(dialog).toHaveBeenLastCalledWith({
       component: NFeEventResultsDialog,
@@ -756,7 +792,10 @@ describe('NFePage', () => {
       CStat: '596',
       XMotivo: 'Prazo vencido',
       Protocolo: '',
-      expected: { type: 'negative', message: 'Manifestação rejeitada pela SEFAZ: 596 - Prazo vencido' },
+      expected: {
+        type: 'negative',
+        message: 'Manifestação rejeitada pela SEFAZ: 596 - Prazo vencido',
+      },
     },
     {
       Status: 'nao_enviada',
@@ -874,8 +913,20 @@ describe('NFePage import and fetch by chave', () => {
 
   const withRejected: ImportXMLResult = {
     Files: [
-      { Path: 'C:\\XML\\a.xml', Kind: 'completa', ChaveAcesso: fetchedChave, Outcome: 'imported', Message: '' },
-      { Path: 'C:\\XML\\b.xml', Kind: '', ChaveAcesso: '', Outcome: 'rejected', Message: 'XML ilegível' },
+      {
+        Path: 'C:\\XML\\a.xml',
+        Kind: 'completa',
+        ChaveAcesso: fetchedChave,
+        Outcome: 'imported',
+        Message: '',
+      },
+      {
+        Path: 'C:\\XML\\b.xml',
+        Kind: '',
+        ChaveAcesso: '',
+        Outcome: 'rejected',
+        Message: 'XML ilegível',
+      },
     ],
     Imported: 1,
     Updated: 0,
@@ -889,7 +940,9 @@ describe('NFePage import and fetch by chave', () => {
     okHandlers.length = 0
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario])
-    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ RequestsLastHour: 4, RequestBudget: 20 }))
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(
+      status({ RequestsLastHour: 4, RequestBudget: 20 })
+    )
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
     await useWorkspaceStore().loadCompanies()
   })
@@ -927,7 +980,10 @@ describe('NFePage import and fetch by chave', () => {
     await button(wrapper, 'Importar XML').trigger('click')
     await flushPromises()
 
-    expect(desktopClient.importNFeXML).toHaveBeenCalledWith(company.CNPJ, ['C:\\XML\\a.xml', 'C:\\XML\\b.xml'])
+    expect(desktopClient.importNFeXML).toHaveBeenCalledWith(company.CNPJ, [
+      'C:\\XML\\a.xml',
+      'C:\\XML\\b.xml',
+    ])
     expect(desktopClient.listNFe).toHaveBeenCalled()
     expect(notify).toHaveBeenCalledWith({
       type: 'warning',
@@ -942,7 +998,15 @@ describe('NFePage import and fetch by chave', () => {
   it('reports an import without rejections and opens no dialog', async () => {
     vi.mocked(desktopClient.selectXMLFiles).mockResolvedValue(['C:\\XML\\a.xml'])
     vi.mocked(desktopClient.importNFeXML).mockResolvedValue({
-      Files: [{ Path: 'C:\\XML\\a.xml', Kind: 'completa', ChaveAcesso: fetchedChave, Outcome: 'imported', Message: '' }],
+      Files: [
+        {
+          Path: 'C:\\XML\\a.xml',
+          Kind: 'completa',
+          ChaveAcesso: fetchedChave,
+          Outcome: 'imported',
+          Message: '',
+        },
+      ],
       Imported: 1,
       Updated: 0,
       Rejected: 0,
@@ -992,7 +1056,8 @@ describe('NFePage import and fetch by chave', () => {
       'a SEFAZ entregou só o resumo: registre a Ciência da Operação para receber o XML completo',
       {
         type: 'info',
-        message: 'A SEFAZ entregou só o resumo: registre a Ciência da Operação para receber o XML completo.',
+        message:
+          'A SEFAZ entregou só o resumo: registre a Ciência da Operação para receber o XML completo.',
       },
     ],
     [
@@ -1000,29 +1065,34 @@ describe('NFePage import and fetch by chave', () => {
       'NF-e não localizada ou sem acesso para a empresa',
       { type: 'warning', message: 'NF-e não localizada ou sem acesso para a empresa.' },
     ],
-  ] as const)('fetches the chave typed in the dialog and reports %s', async (outcome, message, notice) => {
-    vi.mocked(desktopClient.fetchNFeByChave).mockResolvedValue({
-      ChaveAcesso: fetchedChave,
-      Outcome: outcome,
-      Message: message,
-      RequestsLastHour: 5,
-      RequestBudget: 20,
-    })
-    const wrapper = mountPage()
-    await flushPromises()
-    vi.mocked(desktopClient.statusNFe).mockClear()
+  ] as const)(
+    'fetches the chave typed in the dialog and reports %s',
+    async (outcome, message, notice) => {
+      vi.mocked(desktopClient.fetchNFeByChave).mockResolvedValue({
+        ChaveAcesso: fetchedChave,
+        Outcome: outcome,
+        Message: message,
+        RequestsLastHour: 5,
+        RequestBudget: 20,
+      })
+      const wrapper = mountPage()
+      await flushPromises()
+      vi.mocked(desktopClient.statusNFe).mockClear()
 
-    await button(wrapper, 'Buscar pela chave').trigger('click')
-    okHandlers[0]?.(fetchedChave)
-    await flushPromises()
+      await button(wrapper, 'Buscar pela chave').trigger('click')
+      okHandlers[0]?.(fetchedChave)
+      await flushPromises()
 
-    expect(desktopClient.fetchNFeByChave).toHaveBeenCalledWith(company.CNPJ, fetchedChave)
-    expect(desktopClient.statusNFe).toHaveBeenCalledWith(company.CNPJ)
-    expect(notify).toHaveBeenCalledWith(notice)
-  })
+      expect(desktopClient.fetchNFeByChave).toHaveBeenCalledWith(company.CNPJ, fetchedChave)
+      expect(desktopClient.statusNFe).toHaveBeenCalledWith(company.CNPJ)
+      expect(notify).toHaveBeenCalledWith(notice)
+    }
+  )
 
   it('reports a failed fetch', async () => {
-    vi.mocked(desktopClient.fetchNFeByChave).mockRejectedValue(new Error('chave de acesso inválida'))
+    vi.mocked(desktopClient.fetchNFeByChave).mockRejectedValue(
+      new Error('chave de acesso inválida')
+    )
     const wrapper = mountPage()
     await flushPromises()
 
@@ -1031,7 +1101,10 @@ describe('NFePage import and fetch by chave', () => {
     await flushPromises()
 
     expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'negative', message: expect.stringContaining('Erro ao buscar a NF-e') })
+      expect.objectContaining({
+        type: 'negative',
+        message: expect.stringContaining('Erro ao buscar a NF-e'),
+      })
     )
   })
 
@@ -1048,7 +1121,11 @@ describe('NFePage import and fetch by chave', () => {
         </div></div>`,
       },
       ChaveCell: { template: '<span />' },
-      'q-badge': { name: 'QBadge', props: ['label'], template: '<span class="badge">{{ label }}</span>' },
+      'q-badge': {
+        name: 'QBadge',
+        props: ['label'],
+        template: '<span class="badge">{{ label }}</span>',
+      },
     })
     await flushPromises()
 

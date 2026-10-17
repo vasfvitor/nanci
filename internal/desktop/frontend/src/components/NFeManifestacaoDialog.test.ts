@@ -80,7 +80,9 @@ function mountDialog(row = note()) {
 }
 
 function button(wrapper: ReturnType<typeof mountDialog>, label: string) {
-  const found = wrapper.findAllComponents({ name: 'QBtn' }).find((btn) => btn.props('label') === label)
+  const found = wrapper
+    .findAllComponents({ name: 'QBtn' })
+    .find((btn) => btn.props('label') === label)
   if (!found) throw new Error(`button ${label} not found`)
   return found
 }
@@ -123,11 +125,15 @@ describe('NFeManifestacaoDialog', () => {
     const wrapper = mountDialog()
     wrapper.getComponent({ name: 'QOptionGroup' }).vm.$emit('update:modelValue', '210240')
     await wrapper.vm.$nextTick()
-    wrapper.getComponent({ name: 'QInput' }).vm.$emit('update:modelValue', '  mercadoria não foi entregue  ')
+    wrapper
+      .getComponent({ name: 'QInput' })
+      .vm.$emit('update:modelValue', '  mercadoria não foi entregue  ')
     await wrapper.vm.$nextTick()
 
     await button(wrapper, 'Revisar').trigger('click')
-    expect(wrapper.text()).toContain('Este evento é registrado na SEFAZ e não pode ser desfeito pelo Nanci')
+    expect(wrapper.text()).toContain(
+      'Este evento é registrado na SEFAZ e não pode ser desfeito pelo Nanci'
+    )
 
     await button(wrapper, 'Registrar na SEFAZ').trigger('click')
     expect(onDialogOK).toHaveBeenCalledWith({

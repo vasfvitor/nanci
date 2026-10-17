@@ -14,10 +14,15 @@
 
       <q-card-section class="q-pt-none">
         <div class="text-body2 text-weight-medium">
-          NF-e {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
+          NF-e {{ formatNFeNumber(note.Numero, note.Serie) }} ·
+          {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
         </div>
-        <div class="text-caption text-app-muted text-mono">{{ formatChaveDFe(note.ChaveAcesso) }}</div>
-        <div class="text-caption text-app-muted">Valor: {{ formatCurrencyCents(note.TotalValue) }}</div>
+        <div class="text-caption text-app-muted text-mono">
+          {{ formatChaveDFe(note.ChaveAcesso) }}
+        </div>
+        <div class="text-caption text-app-muted">
+          Valor: {{ formatCurrencyCents(note.TotalValue) }}
+        </div>
       </q-card-section>
 
       <template v-if="step === 'escolha'">
@@ -100,7 +105,12 @@
 import { computed, ref } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import type { NFeConclusiveTipo, NFeRow } from '@/types/desktop'
-import { formatChaveDFe, formatCurrencyCents, formatNFeNumber, formatParty } from '@/utils/formatters'
+import {
+  formatChaveDFe,
+  formatCurrencyCents,
+  formatNFeNumber,
+  formatParty,
+} from '@/utils/formatters'
 import { nfeEventColor, nfeEventLabel } from '@/utils/nfeDisplay'
 import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
 import {

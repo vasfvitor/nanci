@@ -210,7 +210,9 @@ export function nfePendingCount(status: NFeStatusCounts | null) {
 
 // nfeNoteCount counts the company's notes in every role.
 export function nfeNoteCount(status: NFeStatusCounts | null) {
-  return (status?.TotalDestinatario ?? 0) + (status?.TotalEmitente ?? 0) + (status?.TotalOutros ?? 0)
+  return (
+    (status?.TotalDestinatario ?? 0) + (status?.TotalEmitente ?? 0) + (status?.TotalOutros ?? 0)
+  )
 }
 
 // nfeStatusLine sums up the last sync, the NSU cursor and the pendências.

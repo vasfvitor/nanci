@@ -99,9 +99,7 @@ export function useCTeDocuments() {
   // company's CT-e runs, or while its reset runs.
   function syncBusy(companyCNPJ: string) {
     return (
-      !companyCNPJ ||
-      syncStore.isSyncing(companyCNPJ, 'cte') ||
-      resettingCNPJ.value === companyCNPJ
+      !companyCNPJ || syncStore.isSyncing(companyCNPJ, 'cte') || resettingCNPJ.value === companyCNPJ
     )
   }
 

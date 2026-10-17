@@ -38,7 +38,11 @@ const emit = defineEmits<{
 
 const steps = [
   { icon: 'key', title: 'Certificado A1', caption: 'O arquivo .pfx ou .p12 e a senha.' },
-  { icon: 'business', title: 'Empresa', caption: 'CNPJ, ambiente e o histórico inicial a importar.' },
+  {
+    icon: 'business',
+    title: 'Empresa',
+    caption: 'CNPJ, ambiente e o histórico inicial a importar.',
+  },
   { icon: 'sync', title: 'Sincronizar', caption: 'Buscar as notas na Receita e na SEFAZ.' },
 ]
 </script>

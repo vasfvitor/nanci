@@ -140,7 +140,10 @@ export function workspaceContextLine(
 
 // formatTime prints a local HH:MM time, or fallback for empty/invalid values.
 export function formatTime(value: string | Date | null | undefined, fallback = '') {
-  return parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? fallback
+  return (
+    parseDate(value)?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ??
+    fallback
+  )
 }
 
 // withViewed returns rows with ViewedAt set to now on the rows whose access
@@ -148,11 +151,7 @@ export function formatTime(value: string | Date | null | undefined, fallback = '
 // The other rows are returned as they are.
 export function withViewed<
   Row extends { ChaveAcesso: string; ViewedAt?: string | Date | null | undefined },
->(
-  rows: Row[],
-  chaves: string[],
-  now: Date = new Date()
-): Row[] {
+>(rows: Row[], chaves: string[], now: Date = new Date()): Row[] {
   const marked = new Set(chaves)
   return rows.map((row) =>
     marked.has(row.ChaveAcesso) && !row.ViewedAt ? { ...row, ViewedAt: now } : row

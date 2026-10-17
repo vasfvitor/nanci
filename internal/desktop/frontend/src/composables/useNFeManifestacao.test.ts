@@ -79,7 +79,9 @@ describe('useNFeManifestacao', () => {
     const blocked = { ...nfeRow('b'), CienciaBlockReason: 'a empresa não é a destinatária' }
     store.selected = [nfeRow('a'), blocked]
 
-    expect(useNFeManifestacao().eligibleSelection.value.map((row) => row.ChaveAcesso)).toEqual(['a'])
+    expect(useNFeManifestacao().eligibleSelection.value.map((row) => row.ChaveAcesso)).toEqual([
+      'a',
+    ])
   })
 
   it('keeps a ciência plan in flight visible across a route remount', async () => {
@@ -233,7 +235,9 @@ describe('useNFeManifestacao', () => {
     vi.mocked(desktopClient.registerNFeManifestacao).mockRejectedValue(new Error('boom'))
 
     const manifestacao = useNFeManifestacao()
-    await expect(manifestacao.registerManifestacao('a', '210200', 'ignorada')).rejects.toThrow('boom')
+    await expect(manifestacao.registerManifestacao('a', '210200', 'ignorada')).rejects.toThrow(
+      'boom'
+    )
 
     expect(manifestacao.isChaveBusy('a')).toBe(false)
     expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledWith({

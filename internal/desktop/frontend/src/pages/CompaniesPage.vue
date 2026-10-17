@@ -25,7 +25,10 @@
       </template>
 
       <template #body-cell-nome="props">
-        <q-td :props="props" :class="{ 'text-primary text-weight-bold': props.row.CNPJ === workspace.cnpj }">
+        <q-td
+          :props="props"
+          :class="{ 'text-primary text-weight-bold': props.row.CNPJ === workspace.cnpj }"
+        >
           {{ props.row.Name }}
         </q-td>
       </template>
@@ -136,9 +139,7 @@ const selectedCompanyToEdit = ref<CompanySummary | null>(null)
 
 // tableLoading also covers the workspace company list until it arrives; the
 // layout loads it when the app opens, and notifies a failure.
-const tableLoading = computed(
-  () => loading.value || (!workspace.loaded && !workspace.loadError)
-)
+const tableLoading = computed(() => loading.value || (!workspace.loaded && !workspace.loadError))
 
 // showWelcome swaps the table for the welcome card once a list arrived
 // empty.
@@ -156,12 +157,43 @@ const credentialOptions = computed(() =>
 const columns: QTableColumn[] = [
   { name: 'acoes', label: 'Ações', field: () => '', align: 'center' as const },
   { name: 'nome', label: 'Nome', field: 'Name', align: 'left', sortable: true },
-  { name: 'cnpj', label: 'CNPJ', field: 'CNPJ', align: 'left', sortable: true, format: (val: string) => formatCpfCnpj(val) },
+  {
+    name: 'cnpj',
+    label: 'CNPJ',
+    field: 'CNPJ',
+    align: 'left',
+    sortable: true,
+    format: (val: string) => formatCpfCnpj(val),
+  },
   { name: 'ambiente', label: 'Ambiente', field: 'Environment', align: 'left', sortable: true },
-  { name: 'lastFoundNSU', label: 'Último NSU (c/ doc)', field: 'LastFoundNSU', align: 'left', sortable: true },
-  { name: 'syncStart', label: 'Histórico inicial', field: 'SyncStartPolicy', align: 'left', sortable: true },
-  { name: 'lastSyncAt', label: 'Última sincronização', field: 'LastSyncAt', align: 'left', sortable: true },
-  { name: 'credencial', label: 'Credencial', field: () => '', align: 'left', style: 'max-width: 250px' },
+  {
+    name: 'lastFoundNSU',
+    label: 'Último NSU (c/ doc)',
+    field: 'LastFoundNSU',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'syncStart',
+    label: 'Histórico inicial',
+    field: 'SyncStartPolicy',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'lastSyncAt',
+    label: 'Última sincronização',
+    field: 'LastSyncAt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'credencial',
+    label: 'Credencial',
+    field: () => '',
+    align: 'left',
+    style: 'max-width: 250px',
+  },
 ]
 
 function openEditDialog(company: CompanySummary) {
@@ -183,7 +215,9 @@ function syncStartLabel(company: CompanySummary) {
     case 'since_date':
       return `Desde ${formatDate(company.SyncStartDate)}`
     case 'from_now':
-      return company.SyncStartDate ? `A partir de ${formatDate(company.SyncStartDate)}` : 'A partir de hoje'
+      return company.SyncStartDate
+        ? `A partir de ${formatDate(company.SyncStartDate)}`
+        : 'A partir de hoje'
     default:
       return 'A partir de hoje'
   }
@@ -244,7 +278,8 @@ async function assignCredential(cnpj: string) {
   const credId = selectedCredentials.value[cnpj]
   if (!credId) return
 
-  const previousCredId = companies.value.find((company) => company.CNPJ === cnpj)?.CredentialID ?? ''
+  const previousCredId =
+    companies.value.find((company) => company.CNPJ === cnpj)?.CredentialID ?? ''
 
   // assignCredential lists the companies again, which seeds the selects.
   try {
@@ -259,5 +294,4 @@ async function assignCredential(cnpj: string) {
 onMounted(() => {
   void loadCredentials()
 })
-
 </script>

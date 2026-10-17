@@ -48,15 +48,21 @@
               outlined
               dense
               :rules="[
-                val => !!val || 'Chave é obrigatória',
-                val => {
-                  const v = typeof val === 'object' && val !== null ? val.value : val;
-                  return isChaveNFSe(v) || 'Chave deve ter 50 posições; letras só no CNPJ do emitente';
-                }
+                (val) => !!val || 'Chave é obrigatória',
+                (val) => {
+                  const v = typeof val === 'object' && val !== null ? val.value : val
+                  return (
+                    isChaveNFSe(v) || 'Chave deve ter 50 posições; letras só no CNPJ do emitente'
+                  )
+                },
               ]"
               @new-value="createValue"
               @filter="filterDocumentsFn"
-              @input-value="(v) => { if (v && v.length === 50) form.chave = v }"
+              @input-value="
+                (v) => {
+                  if (v && v.length === 50) form.chave = v
+                }
+              "
             >
               <template #option="scope">
                 <q-item v-bind="scope.itemProps">
@@ -123,7 +129,10 @@ const companyLabel = computed(() =>
   selectedCompany.value ? companyOption(selectedCompany.value).label : ''
 )
 
-function createValue(val: string, done: (item: unknown, mode: 'add' | 'add-unique' | 'toggle') => void) {
+function createValue(
+  val: string,
+  done: (item: unknown, mode: 'add' | 'add-unique' | 'toggle') => void
+) {
   if (val.length > 0) {
     done(val, 'add-unique')
   }

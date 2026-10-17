@@ -48,7 +48,8 @@ export function displayTable(
   unknownLabel: (value: string) => string = (value) => value
 ) {
   const find = (value: string) => (Object.hasOwn(table, value) ? table[value] : undefined)
-  const label = (value: string) => find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido')
+  const label = (value: string) =>
+    find(value)?.label ?? (value ? unknownLabel(value) : 'Desconhecido')
   const color = (value: string) => find(value)?.color ?? 'grey'
   const abbr = (value: string) => (value ? (find(value)?.abbr ?? '?') : '—')
   return {

@@ -151,9 +151,15 @@ const cteEvent = displayTable({
   registro_multimodal: { label: 'Registro multimodal', color: 'info' },
   gtv: { label: 'Informações da GTV', color: 'info' },
   comprovante_entrega: { label: 'Comprovante de entrega', color: 'positive' },
-  cancelamento_comprovante_entrega: { label: 'Cancelamento do comprovante de entrega', color: 'warning' },
+  cancelamento_comprovante_entrega: {
+    label: 'Cancelamento do comprovante de entrega',
+    color: 'warning',
+  },
   insucesso_entrega: { label: 'Insucesso na entrega', color: 'warning' },
-  cancelamento_insucesso_entrega: { label: 'Cancelamento do insucesso na entrega', color: 'warning' },
+  cancelamento_insucesso_entrega: {
+    label: 'Cancelamento do insucesso na entrega',
+    color: 'warning',
+  },
   prestacao_desacordo: { label: 'Prestação de serviço em desacordo', color: 'negative' },
   cancelamento_desacordo: { label: 'Cancelamento da prestação em desacordo', color: 'warning' },
   mdfe_autorizado: { label: 'MDF-e autorizado', color: 'info' },

@@ -84,7 +84,10 @@ const software = documentRow('B'.repeat(50), {
   PrestadorName: 'Software Ltda',
   ViewedAt: new Date('2026-07-10T00:00:00Z'),
 })
-const treinamento = documentRow('C'.repeat(50), { NFSeNumber: '9012', PrestadorName: 'Treinamentos' })
+const treinamento = documentRow('C'.repeat(50), {
+  NFSeNumber: '9012',
+  PrestadorName: 'Treinamentos',
+})
 
 // mountPage mounts on the active Pinia, so two mounts in a test stand for
 // leaving the page and coming back. stubs adds to or replaces the default
@@ -102,7 +105,8 @@ function mountPage(stubs: Record<string, unknown> = {}) {
           name: 'QBtn',
           props: ['label', 'disable', 'loading'],
           emits: ['click'],
-          template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
+          template:
+            '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
         },
         'q-table': {
           name: 'QTable',
@@ -457,7 +461,10 @@ describe('DocumentsPage', () => {
     okHandlers[0]?.({ format: 'zip', incremental: false, includeResumos: false })
     await flushPromises()
 
-    expect(notify).toHaveBeenCalledWith({ type: 'info', message: 'Nenhum documento para exportar.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'Nenhum documento para exportar.',
+    })
   })
 
   it('marks the selected NFS-e viewed without asking', async () => {
@@ -472,10 +479,15 @@ describe('DocumentsPage', () => {
     await flushPromises()
 
     expect(dialog).not.toHaveBeenCalled()
-    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith(acme.CNPJ, [treinamento.ChaveAcesso])
+    expect(desktopClient.markDocumentsViewed).toHaveBeenCalledWith(acme.CNPJ, [
+      treinamento.ChaveAcesso,
+    ])
     expect(table(wrapper).props('selected')).toEqual([])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 documento marcado como visto.',
+    })
   })
 
   it('asks before marking the whole list viewed', async () => {
@@ -497,7 +509,10 @@ describe('DocumentsPage', () => {
       treinamento.ChaveAcesso,
     ])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '2 documentos marcados como vistos.',
+    })
   })
 
   it('syncs the NFS-e and refreshes the list and the status line', async () => {
@@ -545,7 +560,11 @@ describe('DocumentsPage', () => {
       { ...acme, LastSyncAt: new Date('2026-10-17T10:00:00Z') },
       outra,
     ])
-    pull.resolve({ Status: 'success', StopReason: 'no-more-nsu', LastProcessedNSU: 30 } as PullResult)
+    pull.resolve({
+      Status: 'success',
+      StopReason: 'no-more-nsu',
+      LastProcessedNSU: 30,
+    } as PullResult)
     await flushPromises()
     expect(header().props('firstSync')).toBe(false)
 
@@ -567,7 +586,8 @@ describe('DocumentsPage', () => {
     expect(dialog).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Redefinir NFS-e',
-        message: 'Reinicia a sincronização da NFS-e a partir do NSU 0. Os documentos já baixados ficam.',
+        message:
+          'Reinicia a sincronização da NFS-e a partir do NSU 0. Os documentos já baixados ficam.',
       })
     )
     expect(desktopClient.resetSyncState).not.toHaveBeenCalled()
@@ -622,7 +642,13 @@ describe('DocumentsPage row menu', () => {
 
   it.each([
     { label: 'Exportar XML', call: 'exportXML', format: 'xml', noun: 'XML', file: 'nfse.xml' },
-    { label: 'Exportar DANFSe', call: 'exportDANFSe', format: 'danfse', noun: 'DANFSe', file: 'nfse.pdf' },
+    {
+      label: 'Exportar DANFSe',
+      call: 'exportDANFSe',
+      format: 'danfse',
+      noun: 'DANFSe',
+      file: 'nfse.pdf',
+    },
   ] as const)('$label exports the row and says so', async ({ label, call, format, noun, file }) => {
     const outPath = `C:\\exports\\${file}`
     vi.mocked(desktopClient[call]).mockResolvedValue({

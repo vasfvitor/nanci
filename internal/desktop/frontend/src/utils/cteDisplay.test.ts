@@ -80,7 +80,10 @@ describe('cteDisplay', () => {
       label: 'CT-e Simplificado',
       color: 'info',
     })
-    expect(documentBadge({ Modelo: '67', TipoDocumento: '' })).toMatchObject({ label: 'CT-e OS', color: 'secondary' })
+    expect(documentBadge({ Modelo: '67', TipoDocumento: '' })).toMatchObject({
+      label: 'CT-e OS',
+      color: 'secondary',
+    })
     expect(documentBadge({ Modelo: '', TipoDocumento: '' })?.label).toBe('Desconhecido')
   })
 
@@ -129,10 +132,16 @@ describe('cteDisplay', () => {
   })
 
   it('titles unrecognized events from the description or the tpEvento', () => {
-    expect(cteEventTitle({ Type: 'carta_correcao', TpEvento: '110110', Description: 'x' })).toBe('Carta de Correção')
-    expect(cteEventTitle({ Type: 'unknown', TpEvento: '999999', Description: 'Evento novo' })).toBe('Evento novo')
+    expect(cteEventTitle({ Type: 'carta_correcao', TpEvento: '110110', Description: 'x' })).toBe(
+      'Carta de Correção'
+    )
+    expect(cteEventTitle({ Type: 'unknown', TpEvento: '999999', Description: 'Evento novo' })).toBe(
+      'Evento novo'
+    )
     expect(cteEventTitle({ Type: '', TpEvento: '999999', Description: '' })).toBe('Evento 999999')
-    expect(cteEventTitle({ Type: '', TpEvento: '', Description: '' })).toBe('Evento não reconhecido')
+    expect(cteEventTitle({ Type: '', TpEvento: '', Description: '' })).toBe(
+      'Evento não reconhecido'
+    )
   })
 
   it('shows unknown values as unknown in grey', () => {
@@ -147,7 +156,12 @@ describe('cteDisplay', () => {
 
   it('builds filter options with an "all" entry first', () => {
     expect(cteSituacaoFilterOptions[0]).toEqual({ label: 'Todas', value: '' })
-    expect(cteSituacaoFilterOptions.map((o) => o.value)).toEqual(['', 'autorizada', 'denegada', 'cancelada'])
+    expect(cteSituacaoFilterOptions.map((o) => o.value)).toEqual([
+      '',
+      'autorizada',
+      'denegada',
+      'cancelada',
+    ])
     expect(ctePapelFilterOptions[0]).toEqual({ label: 'Todos', value: '' })
     expect(ctePapelFilterOptions.map((o) => o.value)).toEqual([
       '',
@@ -189,9 +203,9 @@ describe('cteDisplay', () => {
     expect(cteMunicipioLabel(saoPaulo)).toBe('São Paulo/SP')
     expect(cteMunicipioLabel({ Codigo: '3550308', Nome: '', UF: '' })).toBe('3550308')
     expect(cteMunicipioLabel({ Codigo: '', Nome: '', UF: '' })).toBe('—')
-    expect(ctePercurso({ MunIni: saoPaulo, MunFim: { Codigo: '4106902', Nome: 'Curitiba', UF: 'PR' } })).toBe(
-      'São Paulo/SP → Curitiba/PR'
-    )
+    expect(
+      ctePercurso({ MunIni: saoPaulo, MunFim: { Codigo: '4106902', Nome: 'Curitiba', UF: 'PR' } })
+    ).toBe('São Paulo/SP → Curitiba/PR')
   })
 
   it('lists the parties present and the other roles of the company', () => {
@@ -210,7 +224,11 @@ describe('cteDisplay', () => {
       Papeis: ['tomador', 'remetente'],
     } as CTeRow
 
-    expect(cteParticipantes(row).map((party) => party.label)).toEqual(['Remetente', 'Recebedor', 'Tomador'])
+    expect(cteParticipantes(row).map((party) => party.label)).toEqual([
+      'Remetente',
+      'Recebedor',
+      'Tomador',
+    ])
     expect(cteOtherPapeis(row)).toEqual(['remetente'])
   })
 
@@ -219,7 +237,16 @@ describe('cteDisplay', () => {
       expectShortUniqueAbbrs(table)
     }
     expect(cteTipoDocumento.values().map(cteTipoDocumento.abbr)).toEqual(['CT', 'OS', 'GV', 'CS'])
-    expect(ctePapel.values().map(ctePapel.abbr)).toEqual(['TO', 'DE', 'RE', 'EX', 'RC', 'EM', 'AU', 'SP'])
+    expect(ctePapel.values().map(ctePapel.abbr)).toEqual([
+      'TO',
+      'DE',
+      'RE',
+      'EX',
+      'RC',
+      'EM',
+      'AU',
+      'SP',
+    ])
     expect(cteSituacao.values().map(cteSituacao.abbr)).toEqual(['A', 'D', 'C'])
   })
 

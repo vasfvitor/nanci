@@ -28,7 +28,12 @@ describe('useQuery', () => {
     ] as never)
     const alphaChave = '355030812' + '12ABC34501DE35' + '000000000012326081234567897'
     vi.mocked(desktopClient.listDocuments).mockResolvedValue([
-      { ChaveAcesso: '3'.repeat(50), ServiceValue: 100, CompanyRole: 'prestada', TomadorName: 'Tomador' },
+      {
+        ChaveAcesso: '3'.repeat(50),
+        ServiceValue: 100,
+        CompanyRole: 'prestada',
+        TomadorName: 'Tomador',
+      },
       { ChaveAcesso: alphaChave, ServiceValue: 100, CompanyRole: 'tomada', PrestadorName: 'Alfa' },
     ] as never)
 
@@ -56,7 +61,9 @@ describe('useQuery', () => {
     workspace.cnpj = '222'
     await flushPromises()
 
-    expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: '222' }))
+    expect(desktopClient.listDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ CNPJ: '222' })
+    )
     expect(query.documentOptions.value).toEqual([])
     expect(query.form.value.chave).toBe('3'.repeat(50))
   })
@@ -67,7 +74,12 @@ describe('useQuery', () => {
       { ID: '2', CNPJ: '222', Name: 'Beta' },
     ] as never)
     vi.mocked(desktopClient.listDocuments).mockResolvedValue([
-      { ChaveAcesso: '3'.repeat(50), ServiceValue: 12345, CompanyRole: 'tomada', PrestadorName: 'Prestador' },
+      {
+        ChaveAcesso: '3'.repeat(50),
+        ServiceValue: 12345,
+        CompanyRole: 'tomada',
+        PrestadorName: 'Prestador',
+      },
     ] as never)
     const workspace = useWorkspaceStore()
     await workspace.loadCompanies()
@@ -122,7 +134,10 @@ describe('useQuery', () => {
     query.form.value = { chave: ` ${chave.toLowerCase()} ` }
 
     await expect(query.runQuery()).resolves.toBe('{}')
-    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({ CompanyCNPJ: '123', ChaveAcesso: chave })
+    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({
+      CompanyCNPJ: '123',
+      ChaveAcesso: chave,
+    })
   })
 
   it('rejects letters outside the inscrição federal before calling Wails', async () => {

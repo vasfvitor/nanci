@@ -36,7 +36,11 @@ declare global {
   interface Window {
     go: unknown
     runtime: {
-      EventsOnMultiple: (eventName: string, callback: EventCallback, maxCallbacks?: number) => () => void
+      EventsOnMultiple: (
+        eventName: string,
+        callback: EventCallback,
+        maxCallbacks?: number
+      ) => () => void
       EventsOnce: (eventName: string, callback: EventCallback) => void
       EventsOff: (eventName: string) => void
       EventsOffAll: () => void
@@ -203,7 +207,8 @@ const mockDocuments = [
     RawHash: 'sha256...',
     ParseWarnings: [],
     NFSeNumber: '1234',
-    ServiceDescription: 'Serviços de desenvolvimento de software sob medida e consultoria técnica de TI.',
+    ServiceDescription:
+      'Serviços de desenvolvimento de software sob medida e consultoria técnica de TI.',
     CreatedAt: '2026-06-18T10:05:00Z',
     UpdatedAt: '2026-06-18T10:05:00Z',
     RelationID: 'rel-1',
@@ -242,7 +247,8 @@ const mockDocuments = [
     RawHash: 'sha256...',
     ParseWarnings: ['Aliquota ISS incomum para o municipio'],
     NFSeNumber: '5678',
-    ServiceDescription: 'Serviços de assessoria contábil mensal, fechamento fiscal e folha de pagamento.',
+    ServiceDescription:
+      'Serviços de assessoria contábil mensal, fechamento fiscal e folha de pagamento.',
     CreatedAt: '2026-06-17T15:45:00Z',
     UpdatedAt: '2026-06-17T15:45:00Z',
     RelationID: 'rel-2',
@@ -280,7 +286,8 @@ const mockDocuments = [
     RawHash: 'sha256...',
     ParseWarnings: [],
     NFSeNumber: '1235',
-    ServiceDescription: 'Treinamento presencial de equipe de vendas corporativa e fornecimento de material didático.',
+    ServiceDescription:
+      'Treinamento presencial de equipe de vendas corporativa e fornecimento de material didático.',
     CreatedAt: '2026-06-15T09:10:00Z',
     UpdatedAt: '2026-06-15T09:10:00Z',
     RelationID: 'rel-3',
@@ -335,7 +342,11 @@ const mockDocuments = [
 ]
 
 const syncLogs = [
-  { level: 'INFO', msg: 'Iniciando sincronização para ACME Tecnologia e Serviços LTDA', time: '2026-06-18T14:30:01Z' },
+  {
+    level: 'INFO',
+    msg: 'Iniciando sincronização para ACME Tecnologia e Serviços LTDA',
+    time: '2026-06-18T14:30:01Z',
+  },
   { level: 'DEBUG', msg: 'Usando ambiente de produção', time: '2026-06-18T14:30:02Z' },
   { level: 'TRACE', msg: 'Consultando NSU para CNPJ 12345678000100', time: '2026-06-18T14:30:02Z' },
   { level: 'INFO', msg: 'Busca concluída: 3 documentos encontrados', time: '2026-06-18T14:30:03Z' },
@@ -884,8 +895,22 @@ const screenshots: ScreenshotSpec[] = [
   { route: '/', name: 'empresas', theme: 'light', ready: 'text=Wayne Empreendimentos S.A.' },
   { route: '/', name: 'empresas', theme: 'dark', ready: 'text=Wayne Empreendimentos S.A.' },
 
-  { route: '/', name: 'boas-vindas', theme: 'light', companies: [], credentials: [], waitFor: 'welcome' },
-  { route: '/', name: 'boas-vindas', theme: 'dark', companies: [], credentials: [], waitFor: 'welcome' },
+  {
+    route: '/',
+    name: 'boas-vindas',
+    theme: 'light',
+    companies: [],
+    credentials: [],
+    waitFor: 'welcome',
+  },
+  {
+    route: '/',
+    name: 'boas-vindas',
+    theme: 'dark',
+    companies: [],
+    credentials: [],
+    waitFor: 'welcome',
+  },
 
   {
     route: '/',
@@ -945,8 +970,22 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/documents', name: 'documentos', theme: 'light', ready: 'text=Agência de Publicidade Marketing S/A', workspace: nfseWorkspace, fitsWidth: true },
-  { route: '/documents', name: 'documentos', theme: 'dark', ready: 'text=Agência de Publicidade Marketing S/A', workspace: nfseWorkspace, fitsWidth: true },
+  {
+    route: '/documents',
+    name: 'documentos',
+    theme: 'light',
+    ready: 'text=Agência de Publicidade Marketing S/A',
+    workspace: nfseWorkspace,
+    fitsWidth: true,
+  },
+  {
+    route: '/documents',
+    name: 'documentos',
+    theme: 'dark',
+    ready: 'text=Agência de Publicidade Marketing S/A',
+    workspace: nfseWorkspace,
+    fitsWidth: true,
+  },
 
   {
     route: '/documents',
@@ -991,9 +1030,14 @@ const screenshots: ScreenshotSpec[] = [
     ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
       // A NFS-e 8888, substituída, tem os eventos da mock
-      await page.locator('tbody tr', { hasText: '8888' }).locator('button[aria-label="Ações da NFS-e"]').click()
+      await page
+        .locator('tbody tr', { hasText: '8888' })
+        .locator('button[aria-label="Ações da NFS-e"]')
+        .click()
       await page.click('.q-menu >> text=Eventos')
-      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', { timeout: 3000 })
+      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', {
+        timeout: 3000,
+      })
     },
   },
   {
@@ -1004,20 +1048,55 @@ const screenshots: ScreenshotSpec[] = [
     ready: 'text=Agência de Publicidade Marketing S/A',
     setup: async (page) => {
       // A NFS-e 8888, substituída, tem os eventos da mock
-      await page.locator('tbody tr', { hasText: '8888' }).locator('button[aria-label="Ações da NFS-e"]').click()
+      await page
+        .locator('tbody tr', { hasText: '8888' })
+        .locator('button[aria-label="Ações da NFS-e"]')
+        .click()
       await page.click('.q-menu >> text=Eventos')
-      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', { timeout: 3000 })
+      await page.waitForSelector('.q-dialog >> text=Nota fiscal substituída pela de número 8889.', {
+        timeout: 3000,
+      })
     },
   },
 
-  { route: '/credentials', name: 'credenciais', theme: 'light', ready: 'text=Certificado TechCorp (Vencido)' },
-  { route: '/credentials', name: 'credenciais', theme: 'dark', ready: 'text=Certificado TechCorp (Vencido)' },
+  {
+    route: '/credentials',
+    name: 'credenciais',
+    theme: 'light',
+    ready: 'text=Certificado TechCorp (Vencido)',
+  },
+  {
+    route: '/credentials',
+    name: 'credenciais',
+    theme: 'dark',
+    ready: 'text=Certificado TechCorp (Vencido)',
+  },
 
-  { route: '/query', name: 'consulta-direta', theme: 'light', ready: 'text=Consulta Direta (API ADN)' },
-  { route: '/query', name: 'consulta-direta', theme: 'dark', ready: 'text=Consulta Direta (API ADN)' },
+  {
+    route: '/query',
+    name: 'consulta-direta',
+    theme: 'light',
+    ready: 'text=Consulta Direta (API ADN)',
+  },
+  {
+    route: '/query',
+    name: 'consulta-direta',
+    theme: 'dark',
+    ready: 'text=Consulta Direta (API ADN)',
+  },
 
-  { route: '/settings', name: 'configuracoes', theme: 'light', ready: 'text=Configurações e Suporte' },
-  { route: '/settings', name: 'configuracoes', theme: 'dark', ready: 'text=Configurações e Suporte' },
+  {
+    route: '/settings',
+    name: 'configuracoes',
+    theme: 'light',
+    ready: 'text=Configurações e Suporte',
+  },
+  {
+    route: '/settings',
+    name: 'configuracoes',
+    theme: 'dark',
+    ready: 'text=Configurações e Suporte',
+  },
 
   {
     route: '/',
@@ -1048,8 +1127,20 @@ const screenshots: ScreenshotSpec[] = [
     },
   },
 
-  { route: '/nfe', name: 'nfe', theme: 'light', ready: 'text=Metalúrgica Horizonte Ltda', fitsWidth: true },
-  { route: '/nfe', name: 'nfe', theme: 'dark', ready: 'text=Metalúrgica Horizonte Ltda', fitsWidth: true },
+  {
+    route: '/nfe',
+    name: 'nfe',
+    theme: 'light',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    fitsWidth: true,
+  },
+  {
+    route: '/nfe',
+    name: 'nfe',
+    theme: 'dark',
+    ready: 'text=Metalúrgica Horizonte Ltda',
+    fitsWidth: true,
+  },
 
   {
     route: '/nfe',
@@ -1058,7 +1149,10 @@ const screenshots: ScreenshotSpec[] = [
     ready: 'text=Metalúrgica Horizonte Ltda',
     setup: async (page) => {
       // A segunda linha é uma nota completa, com natureza da operação, IE e impostos
-      await page.locator('tbody tr', { hasText: '000.000.318' }).locator('button[aria-label="Ver detalhes da NF-e"]').click()
+      await page
+        .locator('tbody tr', { hasText: '000.000.318' })
+        .locator('button[aria-label="Ver detalhes da NF-e"]')
+        .click()
       await page.waitForSelector('text=Natureza da operação', { timeout: 3000 })
       await page.waitForTimeout(300) // espera a animação da expansão
     },
@@ -1069,7 +1163,10 @@ const screenshots: ScreenshotSpec[] = [
     theme: 'dark',
     ready: 'text=Metalúrgica Horizonte Ltda',
     setup: async (page) => {
-      await page.locator('tbody tr', { hasText: '000.000.318' }).locator('button[aria-label="Ver detalhes da NF-e"]').click()
+      await page
+        .locator('tbody tr', { hasText: '000.000.318' })
+        .locator('button[aria-label="Ver detalhes da NF-e"]')
+        .click()
       await page.waitForSelector('text=Natureza da operação', { timeout: 3000 })
       await page.waitForTimeout(300) // espera a animação da expansão
     },
@@ -1122,8 +1219,20 @@ const screenshots: ScreenshotSpec[] = [
     nfeStatus: mockNFeBlockedStatus,
   },
 
-  { route: '/cte', name: 'cte', theme: 'light', ready: 'text=Expresso Litoral Cargas Ltda', fitsWidth: true },
-  { route: '/cte', name: 'cte', theme: 'dark', ready: 'text=Expresso Litoral Cargas Ltda', fitsWidth: true },
+  {
+    route: '/cte',
+    name: 'cte',
+    theme: 'light',
+    ready: 'text=Expresso Litoral Cargas Ltda',
+    fitsWidth: true,
+  },
+  {
+    route: '/cte',
+    name: 'cte',
+    theme: 'dark',
+    ready: 'text=Expresso Litoral Cargas Ltda',
+    fitsWidth: true,
+  },
 
   {
     route: '/cte',
@@ -1155,7 +1264,10 @@ const screenshots: ScreenshotSpec[] = [
     ready: 'text=Expresso Litoral Cargas Ltda',
     setup: async (page) => {
       // O CT-e da Transportes Rodovia Sul com NF-e da Distribuidora tem dois eventos
-      await page.locator('tbody tr', { hasText: '000.008.127' }).locator('button[aria-label="Ações do CT-e"]').click()
+      await page
+        .locator('tbody tr', { hasText: '000.008.127' })
+        .locator('button[aria-label="Ações do CT-e"]')
+        .click()
       await page.click('.q-menu >> text=Eventos (2)')
       await page.waitForSelector('.q-dialog >> text=Comprovante de entrega', { timeout: 3000 })
     },
@@ -1174,22 +1286,63 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
       window.go = {
         main: {
           App: {
-            AddCompany: async (input: unknown) => ({ ...(input as object), ID: String(Date.now()) }),
-            AddCredential: async (input: unknown) => ({ ...(input as object), ID: String(Date.now()) }),
+            AddCompany: async (input: unknown) => ({
+              ...(input as object),
+              ID: String(Date.now()),
+            }),
+            AddCredential: async (input: unknown) => ({
+              ...(input as object),
+              ID: String(Date.now()),
+            }),
             AssignCredentialToCompany: async () => undefined,
             CancelCertPassword: async () => undefined,
             ConfirmQuit: async () => undefined,
-            ExportDocuments: async () => ({ OutPath: 'C:\\exports\\nfs-export.xlsx', Format: 'xlsx', Incremental: false, ExportedCount: 1 }),
-            ExportDANFE: async () => ({ OutPath: 'C:\\exports\\danfe.pdf', Format: 'danfe', Incremental: false, ExportedCount: 1 }),
-            ExportDANFSe: async () => ({ OutPath: 'C:\\exports\\danfse.pdf', Format: 'danfse', Incremental: false, ExportedCount: 1 }),
-            ExportXML: async () => ({ OutPath: 'C:\\exports\\nfs.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
+            ExportDocuments: async () => ({
+              OutPath: 'C:\\exports\\nfs-export.xlsx',
+              Format: 'xlsx',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
+            ExportDANFE: async () => ({
+              OutPath: 'C:\\exports\\danfe.pdf',
+              Format: 'danfe',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
+            ExportDANFSe: async () => ({
+              OutPath: 'C:\\exports\\danfse.pdf',
+              Format: 'danfse',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
+            ExportXML: async () => ({
+              OutPath: 'C:\\exports\\nfs.xml',
+              Format: 'xml',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
             ExportLogs: async () => undefined,
-            GetBuildInfo: async () => ({ version: 'v0.4.0', commit: '296a3d9', date: '2026-09-30T12:00:00Z' }),
+            GetBuildInfo: async () => ({
+              version: 'v0.4.0',
+              commit: '296a3d9',
+              date: '2026-09-30T12:00:00Z',
+            }),
             GetDataDirectory: async () => 'C:\\Users\\usuario\\AppData\\Roaming\\nanci',
             OpenDataDirectory: async () => undefined,
             OpenLogsDirectory: async () => undefined,
-            ExportNFeXML: async () => ({ OutPath: 'C:\\exports\\nfe.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
-            ExportNFeDocuments: async () => ({ OutPath: 'C:\\exports\\nfe.zip', Format: 'xml', Incremental: false, ExportedCount: 4, SkippedResumos: 3 }),
+            ExportNFeXML: async () => ({
+              OutPath: 'C:\\exports\\nfe.xml',
+              Format: 'xml',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
+            ExportNFeDocuments: async () => ({
+              OutPath: 'C:\\exports\\nfe.zip',
+              Format: 'xml',
+              Incremental: false,
+              ExportedCount: 4,
+              SkippedResumos: 3,
+            }),
             FetchNFeByChave: async (input: { ChaveAcesso?: string }) => ({
               ChaveAcesso: input.ChaveAcesso ?? '',
               Outcome: 'completa',
@@ -1198,7 +1351,13 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
               RequestBudget: 20,
             }),
             ImportNFeXML: async (input: { Files?: string[] }) => ({
-              Files: (input.Files ?? []).map((Path) => ({ Path, Kind: 'completa', ChaveAcesso: '', Outcome: 'imported', Message: '' })),
+              Files: (input.Files ?? []).map((Path) => ({
+                Path,
+                Kind: 'completa',
+                ChaveAcesso: '',
+                Outcome: 'imported',
+                Message: '',
+              })),
               Imported: (input.Files ?? []).length,
               Updated: 0,
               Rejected: 0,
@@ -1207,24 +1366,72 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
             ListNFeEvents: async () => nfe.events,
             ListNFePendingManifestacoes: async () => nfe.pending,
             PlanNFeCiencia: async () => nfe.cienciaPlan,
-            PullNFe: async () => ({ CompanyName: nfe.status.CompanyName, CNPJ: nfe.status.CNPJ, Status: 'success' }),
+            PullNFe: async () => ({
+              CompanyName: nfe.status.CompanyName,
+              CNPJ: nfe.status.CNPJ,
+              Status: 'success',
+            }),
             RegisterNFeCiencia: async () => ({ Results: [], Skipped: [], Interrupted: '' }),
-            RegisterNFeManifestacao: async () => ({ Status: 'registrada', CStat: '135', Protocolo: '135260000000001' }),
+            RegisterNFeManifestacao: async () => ({
+              Status: 'registrada',
+              CStat: '135',
+              Protocolo: '135260000000001',
+            }),
             StatusNFe: async () => nfe.status,
-            ExportCTeXML: async () => ({ OutPath: 'C:\\exports\\cte.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
-            ExportCTeDocuments: async () => ({ OutPath: 'C:\\exports\\cte.zip', Format: 'xml', Incremental: false, ExportedCount: 5, SkippedSemDACTE: 0 }),
-            ExportDACTE: async () => ({ OutPath: 'C:\\exports\\dacte.pdf', Format: 'dacte', Incremental: false, ExportedCount: 1 }),
+            ExportCTeXML: async () => ({
+              OutPath: 'C:\\exports\\cte.xml',
+              Format: 'xml',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
+            ExportCTeDocuments: async () => ({
+              OutPath: 'C:\\exports\\cte.zip',
+              Format: 'xml',
+              Incremental: false,
+              ExportedCount: 5,
+              SkippedSemDACTE: 0,
+            }),
+            ExportDACTE: async () => ({
+              OutPath: 'C:\\exports\\dacte.pdf',
+              Format: 'dacte',
+              Incremental: false,
+              ExportedCount: 1,
+            }),
             ImportCTeXML: async (input: { Files?: string[] }) => ({
-              Files: (input.Files ?? []).map((Path) => ({ Path, Kind: 'completa', ChaveAcesso: '', Outcome: 'imported', Message: '' })),
+              Files: (input.Files ?? []).map((Path) => ({
+                Path,
+                Kind: 'completa',
+                ChaveAcesso: '',
+                Outcome: 'imported',
+                Message: '',
+              })),
               Imported: (input.Files ?? []).length,
               Updated: 0,
               Rejected: 0,
             }),
             ListCTe: async () => cte.rows,
             ListCTeEvents: async () => cte.events,
-            PreviewResetCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, CompanyDocuments: 5, Documents: 5, Events: 3, ExportMarks: 0 }),
-            PullCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, Status: 'success' }),
-            ResetCTe: async () => ({ CompanyName: cte.status.CompanyName, CNPJ: cte.status.CNPJ, CompanyDocuments: 5, Documents: 5, Events: 3, ExportMarks: 0 }),
+            PreviewResetCTe: async () => ({
+              CompanyName: cte.status.CompanyName,
+              CNPJ: cte.status.CNPJ,
+              CompanyDocuments: 5,
+              Documents: 5,
+              Events: 3,
+              ExportMarks: 0,
+            }),
+            PullCTe: async () => ({
+              CompanyName: cte.status.CompanyName,
+              CNPJ: cte.status.CNPJ,
+              Status: 'success',
+            }),
+            ResetCTe: async () => ({
+              CompanyName: cte.status.CompanyName,
+              CNPJ: cte.status.CNPJ,
+              CompanyDocuments: 5,
+              Documents: 5,
+              Events: 3,
+              ExportMarks: 0,
+            }),
             StatusCTe: async () => cte.status,
             MarkCTeViewed: async () => 0,
             MarkDocumentsViewed: async () => 0,
@@ -1253,11 +1460,25 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
               Errors: 0,
               Duration: 1240000000,
             }),
-            QueryNFSeEvents: async () => JSON.stringify({ chaveAcesso: '35260912345678000100550010000012341000012345', eventos: [] }, null, 2),
-            ResetNFe: async () => ({ CompanyName: nfe.status.CompanyName, CNPJ: nfe.status.CNPJ, CompanyDocuments: 4, Documents: 4, Events: 2, ExportMarks: 0, ManifestacoesKept: 1 }),
+            QueryNFSeEvents: async () =>
+              JSON.stringify(
+                { chaveAcesso: '35260912345678000100550010000012341000012345', eventos: [] },
+                null,
+                2
+              ),
+            ResetNFe: async () => ({
+              CompanyName: nfe.status.CompanyName,
+              CNPJ: nfe.status.CNPJ,
+              CompanyDocuments: 4,
+              Documents: 4,
+              Events: 2,
+              ExportMarks: 0,
+              ManifestacoesKept: 1,
+            }),
             ResetSyncState: async () => undefined,
             SelectCertificate: async () => 'C:\\Certificados\\mock.pfx',
-            SelectSaveFile: async (_title: string, defaultFilename: string) => `C:\\exports\\${defaultFilename}`,
+            SelectSaveFile: async (_title: string, defaultFilename: string) =>
+              `C:\\exports\\${defaultFilename}`,
             SelectXMLFiles: async () => ['C:\\XML\\nota-fornecedor.xml'],
             SetLogLevel: async () => undefined,
             ShowInFolder: async () => undefined,
@@ -1274,7 +1495,8 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
               endpointReached: true,
               responseCode: '',
               responseDetail: '',
-              statusExplanation: 'Conexão TLS com a SEFAZ (CT-e) estabelecida. Nenhuma consulta foi enviada, para não gastar o limite de consultas por hora; a SEFAZ só valida o certificado na primeira consulta.',
+              statusExplanation:
+                'Conexão TLS com a SEFAZ (CT-e) estabelecida. Nenhuma consulta foi enviada, para não gastar o limite de consultas por hora; a SEFAZ só valida o certificado na primeira consulta.',
             }),
             TestConnection: async () => ({
               certLoaded: true,
@@ -1401,9 +1623,12 @@ async function waitForApp(page: Page, spec: ScreenshotSpec) {
     await page.waitForSelector('button:has-text("Cadastrar primeira empresa")', { timeout: 5000 })
   } else {
     // The drawer shows the CNPJ of the workspace company once the list loaded.
-    await page.waitForSelector('.q-drawer .q-field__messages >> text=/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/', {
-      timeout: 5000,
-    })
+    await page.waitForSelector(
+      '.q-drawer .q-field__messages >> text=/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/',
+      {
+        timeout: 5000,
+      }
+    )
   }
 
   if (spec.ready) {
@@ -1443,7 +1668,9 @@ async function checkTableWidth(page: Page, spec: ScreenshotSpec) {
 async function capture(browser: Browser, spec: ScreenshotSpec) {
   const { context, page } = await createPage(browser, spec)
 
-  page.on('pageerror', (error) => console.warn(`[${spec.name}-${spec.theme}] page error: ${error.message}`))
+  page.on('pageerror', (error) =>
+    console.warn(`[${spec.name}-${spec.theme}] page error: ${error.message}`)
+  )
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') {
       console.warn(`[${spec.name}-${spec.theme}] console ${message.type()}: ${message.text()}`)
@@ -1455,10 +1682,7 @@ async function capture(browser: Browser, spec: ScreenshotSpec) {
 
     await page.goto(`${appUrl}/${hash}`, { waitUntil: 'domcontentloaded' })
 
-    await page.waitForFunction(
-      (expectedHash) => window.location.hash === expectedHash,
-      hash
-    )
+    await page.waitForFunction((expectedHash) => window.location.hash === expectedHash, hash)
 
     await waitForApp(page, spec)
 

@@ -52,7 +52,9 @@ const plan: NFeCienciaPlan = {
     note('35240912345678000199550010000000011000000011', '1', 10000),
     note('35240912345678000199550010000000021000000021', '2', 25050),
   ],
-  Skipped: [{ ChaveAcesso: '35240998765432000199550010000000031000000031', Reason: 'Nota cancelada' }],
+  Skipped: [
+    { ChaveAcesso: '35240998765432000199550010000000031000000031', Reason: 'Nota cancelada' },
+  ],
 }
 
 function mountDialog() {

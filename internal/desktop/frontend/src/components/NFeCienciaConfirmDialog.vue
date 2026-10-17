@@ -27,16 +27,21 @@
           <q-item v-for="note in plan.Eligible" :key="note.ChaveAcesso">
             <q-item-section>
               <q-item-label>
-                {{ formatNFeNumber(note.Numero, note.Serie) }} · {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
+                {{ formatNFeNumber(note.Numero, note.Serie) }} ·
+                {{ formatParty(note.EmitenteName, note.EmitenteCNPJ) }}
               </q-item-label>
-              <q-item-label caption class="text-mono">{{ formatChaveDFe(note.ChaveAcesso) }}</q-item-label>
+              <q-item-label caption class="text-mono">{{
+                formatChaveDFe(note.ChaveAcesso)
+              }}</q-item-label>
             </q-item-section>
             <q-item-section side class="text-mono">
               {{ formatCurrencyCents(note.TotalValue) }}
             </q-item-section>
           </q-item>
           <q-item v-if="plan.Eligible.length === 0">
-            <q-item-section class="text-app-muted">Nenhuma nota elegível para ciência.</q-item-section>
+            <q-item-section class="text-app-muted"
+              >Nenhuma nota elegível para ciência.</q-item-section
+            >
           </q-item>
         </q-list>
 
@@ -50,7 +55,9 @@
           <q-list dense separator>
             <q-item v-for="skip in plan.Skipped" :key="skip.ChaveAcesso">
               <q-item-section>
-                <q-item-label caption class="text-mono">{{ formatChaveDFe(skip.ChaveAcesso) }}</q-item-label>
+                <q-item-label caption class="text-mono">{{
+                  formatChaveDFe(skip.ChaveAcesso)
+                }}</q-item-label>
                 <q-item-label>{{ skip.Reason }}</q-item-label>
               </q-item-section>
             </q-item>
@@ -59,13 +66,17 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none">
-        <q-banner dense rounded :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'">
+        <q-banner
+          dense
+          rounded
+          :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
+        >
           <template #avatar>
             <q-icon name="gavel" />
           </template>
-          A ciência da operação é um evento fiscal registrado na SEFAZ em nome da empresa e não pode ser
-          cancelada. Ela não interrompe o prazo de 90 dias da autorização para a manifestação conclusiva:
-          sem manifestação conclusiva nesse prazo, a operação é considerada confirmada.
+          A ciência da operação é um evento fiscal registrado na SEFAZ em nome da empresa e não pode
+          ser cancelada. Ela não interrompe o prazo de 90 dias da autorização para a manifestação
+          conclusiva: sem manifestação conclusiva nesse prazo, a operação é considerada confirmada.
         </q-banner>
 
         <q-checkbox

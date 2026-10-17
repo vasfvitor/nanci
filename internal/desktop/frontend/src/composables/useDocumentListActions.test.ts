@@ -57,7 +57,10 @@ describe('useDocumentListActions', () => {
 
     expect(dialog).not.toHaveBeenCalled()
     expect(markViewed).toHaveBeenCalledWith(['a', 'b'])
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '2 documentos marcados como vistos.',
+    })
   })
 
   it('asks before marking the whole list, in the gender of the source', async () => {
@@ -73,7 +76,10 @@ describe('useDocumentListActions', () => {
     okHandlers[0]?.(undefined)
     await flushPromises()
     expect(markViewed).toHaveBeenCalledWith(['a'])
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 documento marcado como visto.',
+    })
   })
 
   it('does nothing without new documents', () => {
@@ -107,7 +113,10 @@ describe('useDocumentListActions', () => {
     actions.confirmMarkViewed()
     await flushPromises()
 
-    expect(notify).toHaveBeenCalledWith({ type: 'negative', message: 'Erro ao marcar NFS-e como vistas: boom' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'negative',
+      message: 'Erro ao marcar NFS-e como vistas: boom',
+    })
   })
 
   it('opens the export dialog for the scope rows and exports the choice', async () => {
@@ -144,7 +153,9 @@ describe('useDocumentListActions', () => {
 
     actions.openExportDialog()
     expect(dialog).toHaveBeenCalledWith(
-      expect.objectContaining({ componentProps: expect.objectContaining({ initialFormat: 'xlsx' }) })
+      expect.objectContaining({
+        componentProps: expect.objectContaining({ initialFormat: 'xlsx' }),
+      })
     )
 
     const choice = { format: 'csv', incremental: false, includeResumos: false }

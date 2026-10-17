@@ -199,7 +199,9 @@ describe('useDocuments', () => {
     const pending = firstPage.exportDocuments('xlsx', ['a'], { incremental: false })
     const remountedPage = useDocuments()
     expect(remountedPage.exporting.value).toBe(true)
-    await expect(remountedPage.exportDocuments('xlsx', ['a'], { incremental: false })).resolves.toBeNull()
+    await expect(
+      remountedPage.exportDocuments('xlsx', ['a'], { incremental: false })
+    ).resolves.toBeNull()
     await expect(remountedPage.exportXML('a')).resolves.toBeNull()
     expect(desktopClient.exportDocuments).toHaveBeenCalledTimes(1)
     expect(desktopClient.exportXML).not.toHaveBeenCalled()

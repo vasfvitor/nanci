@@ -73,13 +73,15 @@ export function useQuery() {
     }
     const needle = val.toLowerCase()
     documentOptions.value = chaveOptions.value.filter(
-      (v) => v.value.toLowerCase().includes(needle) || (v.description && v.description.toLowerCase().includes(needle))
+      (v) =>
+        v.value.toLowerCase().includes(needle) ||
+        (v.description && v.description.toLowerCase().includes(needle))
     )
   }
 
   async function runQuery() {
     if (loading.value) return result.value
-    
+
     const chaveVal = normalizeChaveNFSe(
       typeof form.value.chave === 'object' && form.value.chave !== null
         ? (form.value.chave as { value: string }).value

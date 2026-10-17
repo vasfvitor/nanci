@@ -208,7 +208,10 @@ async function submit() {
 
 function syncStartDateForSubmit() {
   if (form.value.SyncStartPolicy === 'all') return ''
-  if (form.value.SyncStartPolicy === 'from_now' && props.companyData?.SyncStartPolicy !== 'from_now') {
+  if (
+    form.value.SyncStartPolicy === 'from_now' &&
+    props.companyData?.SyncStartPolicy !== 'from_now'
+  ) {
     return ''
   }
   return form.value.SyncStartDate

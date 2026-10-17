@@ -19,7 +19,14 @@ vi.mock('quasar', () => {
 })
 
 function outcome(chave: string, status: NFeEventResult['Status']): NFeEventResult {
-  return { ChaveAcesso: chave, TpEvento: '210210', Status: status, CStat: '', XMotivo: '', Protocolo: '' }
+  return {
+    ChaveAcesso: chave,
+    TpEvento: '210210',
+    Status: status,
+    CStat: '',
+    XMotivo: '',
+    Protocolo: '',
+  }
 }
 
 function mountDialog(result: NFeEventBatchResult) {
@@ -51,13 +58,25 @@ describe('NFeEventResultsDialog', () => {
     const naoEnviada = outcome('d', 'nao_enviada')
     const desconhecida = outcome('e', '')
     const wrapper = mountDialog({
-      Results: [outcome('a', 'registrada'), outcome('b', 'ja_registrada'), rejeitada, naoEnviada, desconhecida],
+      Results: [
+        outcome('a', 'registrada'),
+        outcome('b', 'ja_registrada'),
+        rejeitada,
+        naoEnviada,
+        desconhecida,
+      ],
       Skipped: [],
       Interrupted: '',
     })
 
-    expect(wrapper.text()).toMatch(/1 registradas · 1 já registradas ·\s+1 rejeitadas · 2 não enviadas/)
-    expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([rejeitada, naoEnviada, desconhecida])
+    expect(wrapper.text()).toMatch(
+      /1 registradas · 1 já registradas ·\s+1 rejeitadas · 2 não enviadas/
+    )
+    expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([
+      rejeitada,
+      naoEnviada,
+      desconhecida,
+    ])
     expect(wrapper.find('.banner').exists()).toBe(false)
   })
 
@@ -68,7 +87,9 @@ describe('NFeEventResultsDialog', () => {
       Interrupted: 'senha não informada',
     })
 
-    expect(wrapper.find('.banner').text()).toContain('O envio foi interrompido: senha não informada.')
+    expect(wrapper.find('.banner').text()).toContain(
+      'O envio foi interrompido: senha não informada.'
+    )
   })
 
   it('closes with OK', async () => {

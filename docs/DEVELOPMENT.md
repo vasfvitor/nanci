@@ -73,6 +73,8 @@ pnpm run test:unit
 pnpm run build
 ```
 
+`lint:check` roda o ESLint e o `prettier --check` em `src` e `scripts`; `pnpm run lint` corrige os dois.
+
 ## Verificar antes do PR
 
 ```bash

@@ -7,7 +7,9 @@
 
     <!-- Section 1: Preferences -->
     <q-card flat bordered class="q-pa-md shadow-1">
-      <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">Preferências de Interface</div>
+      <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">
+        Preferências de Interface
+      </div>
       <q-list>
         <q-item tag="label" class="q-px-none">
           <q-item-section>
@@ -30,7 +32,9 @@
         <q-item v-ripple tag="label" class="q-px-none">
           <q-item-section>
             <q-item-label class="text-weight-medium">Modo Debug</q-item-label>
-            <q-item-label caption>Habilita logs detalhados e ações avançadas de diagnóstico</q-item-label>
+            <q-item-label caption
+              >Habilita logs detalhados e ações avançadas de diagnóstico</q-item-label
+            >
           </q-item-section>
           <q-item-section side>
             <q-toggle
@@ -46,9 +50,12 @@
 
     <!-- Section 2: Connection Test -->
     <q-card flat bordered class="q-pa-md shadow-1">
-      <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">Ferramenta de Diagnóstico de Conexão</div>
+      <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">
+        Ferramenta de Diagnóstico de Conexão
+      </div>
       <div class="q-mb-md text-body2 text-grey-7">
-        Selecione uma empresa para testar a comunicação criptografada (mTLS) e a resposta da API do governo.
+        Selecione uma empresa para testar a comunicação criptografada (mTLS) e a resposta da API do
+        governo.
       </div>
       <div class="row q-col-gutter-sm items-center">
         <q-select
@@ -89,35 +96,62 @@
       </div>
 
       <!-- Connection Test Results -->
-      <div v-if="testResult" :class="['q-mt-md q-pa-md rounded-borders text-body2 border-dashed', $q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-grey-1 text-grey-8']">
+      <div
+        v-if="testResult"
+        :class="[
+          'q-mt-md q-pa-md rounded-borders text-body2 border-dashed',
+          $q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-grey-1 text-grey-8',
+        ]"
+      >
         <div class="text-subtitle2 text-weight-bold q-mb-sm">Resultado do Diagnóstico:</div>
         <div class="row q-col-gutter-sm">
           <div class="col-6">
             <strong>Certificado Carregado:</strong>
-            <q-icon :name="testResult.certLoaded ? 'check_circle' : 'cancel'" :color="testResult.certLoaded ? 'positive' : 'negative'" class="q-ml-xs" size="xs" />
+            <q-icon
+              :name="testResult.certLoaded ? 'check_circle' : 'cancel'"
+              :color="testResult.certLoaded ? 'positive' : 'negative'"
+              class="q-ml-xs"
+              size="xs"
+            />
           </div>
           <div v-if="testResult.certLoaded" class="col-6">
-            <strong>Expiração:</strong> <span class="text-mono">{{ testResult.certExpiration }}</span>
+            <strong>Expiração:</strong>
+            <span class="text-mono">{{ testResult.certExpiration }}</span>
           </div>
           <div v-if="testResult.certLoaded" class="col-12">
-            <strong>Assunto:</strong> <span class="text-caption text-grey-6">{{ testResult.certSubject }}</span>
+            <strong>Assunto:</strong>
+            <span class="text-caption text-grey-6">{{ testResult.certSubject }}</span>
           </div>
           <div class="col-6">
             <strong>mTLS Aceito:</strong>
-            <q-icon :name="testResult.mtlsAccepted ? 'check_circle' : 'cancel'" :color="testResult.mtlsAccepted ? 'positive' : 'negative'" class="q-ml-xs" size="xs" />
+            <q-icon
+              :name="testResult.mtlsAccepted ? 'check_circle' : 'cancel'"
+              :color="testResult.mtlsAccepted ? 'positive' : 'negative'"
+              class="q-ml-xs"
+              size="xs"
+            />
           </div>
           <div class="col-6">
             <strong>Endpoint {{ testedService }} Alcançado:</strong>
-            <q-icon :name="testResult.endpointReached ? 'check_circle' : 'cancel'" :color="testResult.endpointReached ? 'positive' : 'negative'" class="q-ml-xs" size="xs" />
+            <q-icon
+              :name="testResult.endpointReached ? 'check_circle' : 'cancel'"
+              :color="testResult.endpointReached ? 'positive' : 'negative'"
+              class="q-ml-xs"
+              size="xs"
+            />
           </div>
           <div v-if="testResult.responseCode || testResult.responseDetail" class="col-12">
-            <strong>Resposta {{ testedService }}:</strong> <span class="text-mono text-weight-medium">{{ testResult.responseCode }}</span>
+            <strong>Resposta {{ testedService }}:</strong>
+            <span class="text-mono text-weight-medium">{{ testResult.responseCode }}</span>
             <div class="text-caption text-grey-6 q-mt-xs">{{ testResult.responseDetail }}</div>
           </div>
           <q-separator class="col-12 q-my-xs" />
           <div class="col-12">
             <strong>Conclusão:</strong>
-            <div class="text-subtitle2 text-weight-bold q-mt-xs" :class="testResult.endpointReached ? 'text-positive' : 'text-negative'">
+            <div
+              class="text-subtitle2 text-weight-bold q-mt-xs"
+              :class="testResult.endpointReached ? 'text-positive' : 'text-negative'"
+            >
               {{ testResult.statusExplanation }}
             </div>
           </div>
@@ -130,7 +164,10 @@
       <div class="text-subtitle1 text-weight-bold q-mb-md text-primary">Sobre o Nanci</div>
       <div class="row q-col-gutter-md">
         <!-- System Metadata -->
-        <div class="col-12 col-md-6 text-body2" :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+        <div
+          class="col-12 col-md-6 text-body2"
+          :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'"
+        >
           <div class="row q-col-gutter-xs">
             <div class="col-4 text-weight-bold">Versão:</div>
             <div class="col-8 text-mono">{{ buildInfo.version }}</div>
@@ -219,7 +256,7 @@ const darkMode = computed({
   get: () => preferencesStore.darkMode,
   set: (val) => {
     preferencesStore.darkMode = val
-  }
+  },
 })
 
 const buildInfo = ref<BuildInfo>({ version: '...', commit: '...', date: '...' })
@@ -240,7 +277,7 @@ const companyOptions = computed(() => workspace.companies.map(companyOption))
 const darkModeOptions = [
   { label: 'Automático (Sistema)', value: 'auto' },
   { label: 'Sempre Claro', value: false },
-  { label: 'Sempre Escuro', value: true }
+  { label: 'Sempre Escuro', value: true },
 ]
 
 onMounted(async () => {
@@ -248,7 +285,10 @@ onMounted(async () => {
     buildInfo.value = await desktopClient.getBuildInfo()
     dataDir.value = await desktopClient.getDataDirectory()
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Erro ao carregar dados de sistema: ' + errorMessage(err) })
+    $q.notify({
+      type: 'negative',
+      message: 'Erro ao carregar dados de sistema: ' + errorMessage(err),
+    })
   }
 })
 
@@ -311,7 +351,10 @@ async function runConnectionTest() {
         ? await desktopClient.testCTeConnection(selectedCompany.value)
         : await desktopClient.testConnection(selectedCompany.value)
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Falha ao executar teste de conexão: ' + errorMessage(err) })
+    $q.notify({
+      type: 'negative',
+      message: 'Falha ao executar teste de conexão: ' + errorMessage(err),
+    })
   } finally {
     testing.value = false
   }

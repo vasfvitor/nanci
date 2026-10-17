@@ -11,7 +11,7 @@ const stubs = {
   QItemSection: { template: '<div><slot /></div>' },
   QItemLabel: {
     props: { caption: Boolean },
-    template: '<div :class="caption ? \'caption\' : \'title\'"><slot /></div>',
+    template: "<div :class=\"caption ? 'caption' : 'title'\"><slot /></div>",
   },
   QIcon: { props: ['name'], template: '<i :data-icon="name" />' },
   QBtn: {

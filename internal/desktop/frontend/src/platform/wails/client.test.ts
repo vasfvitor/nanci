@@ -457,7 +457,9 @@ describe('NF-e mappers', () => {
     expect(row.Manifestacao).toBe('')
     expect(row.CompanyRole).toBe('')
     expect(mapNFeStatus({ BlockedReason: 'sem_documentos' }).BlockedReason).toBe('')
-    expect(mapNFeEventBatchResult({ Results: [{ Status: 'registered' }] }).Results[0]?.Status).toBe('')
+    expect(mapNFeEventBatchResult({ Results: [{ Status: 'registered' }] }).Results[0]?.Status).toBe(
+      ''
+    )
   })
 
   it('maps flat pending rows with their deadline fields', () => {
@@ -626,7 +628,10 @@ describe('NF-e client calls', () => {
       { ChaveAcesso: chave },
     ])
     await desktopClient.listNFePendingManifestacoes('123', 10)
-    await expect(desktopClient.planNFeCiencia('123', [chave])).resolves.toEqual({ Eligible: [], Skipped: [] })
+    await expect(desktopClient.planNFeCiencia('123', [chave])).resolves.toEqual({
+      Eligible: [],
+      Skipped: [],
+    })
     await expect(desktopClient.registerNFeCiencia('123', [chave])).resolves.toMatchObject({
       Interrupted: 'timeout',
     })
@@ -641,12 +646,22 @@ describe('NF-e client calls', () => {
 
     expect(PullNFe).toHaveBeenCalledWith({ CNPJ: '123' })
     expect(StatusNFe).toHaveBeenCalledWith('123')
-    expect(ListNFe).toHaveBeenNthCalledWith(1, { ...listInput, ChavesAcesso: [], OnlyUnread: false })
+    expect(ListNFe).toHaveBeenNthCalledWith(1, {
+      ...listInput,
+      ChavesAcesso: [],
+      OnlyUnread: false,
+    })
     expect(ListNFe).toHaveBeenNthCalledWith(2, { ...listInput, ChavesAcesso: [], OnlyUnread: true })
     expect(MarkNFeViewed).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
     expect(ListNFeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave })
-    expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(1, { CNPJ: '123', DueWithinDays: 0 })
-    expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(2, { CNPJ: '123', DueWithinDays: 10 })
+    expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(1, {
+      CNPJ: '123',
+      DueWithinDays: 0,
+    })
+    expect(ListNFePendingManifestacoes).toHaveBeenNthCalledWith(2, {
+      CNPJ: '123',
+      DueWithinDays: 10,
+    })
     expect(PlanNFeCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
     expect(RegisterNFeCiencia).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [chave] })
     expect(RegisterNFeManifestacao).toHaveBeenCalledWith({
@@ -669,10 +684,23 @@ describe('NF-e client calls', () => {
     const xml = await desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
     const danfe = await desktopClient.exportDANFE({ CNPJ: '123', ChaveAcesso: chave })
 
-    expect(SelectSaveFile).toHaveBeenNthCalledWith(1, 'Salvar XML da NF-e', `nfe_${chave}.xml`, '*.xml')
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(
+      1,
+      'Salvar XML da NF-e',
+      `nfe_${chave}.xml`,
+      '*.xml'
+    )
     expect(SelectSaveFile).toHaveBeenNthCalledWith(2, 'Salvar DANFE', `danfe_${chave}.pdf`, '*.pdf')
-    expect(ExportNFeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave, OutPath: 'C:\\out\\file' })
-    expect(ExportDANFE).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: chave, OutPath: 'C:\\out\\file' })
+    expect(ExportNFeXML).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: chave,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(ExportDANFE).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: chave,
+      OutPath: 'C:\\out\\file',
+    })
     expect(xml).toEqual({
       OutPath: 'C:\\out\\file',
       Format: 'xml',
@@ -698,8 +726,18 @@ describe('NF-e client calls', () => {
     })
 
     it.each([
-      { format: 'csv', title: 'Exportar NF-e', name: 'nfe_123_2026_10_17_090507.csv', pattern: '*.csv' },
-      { format: 'xlsx', title: 'Exportar NF-e', name: 'nfe_123_2026_10_17_090507.xlsx', pattern: '*.xlsx' },
+      {
+        format: 'csv',
+        title: 'Exportar NF-e',
+        name: 'nfe_123_2026_10_17_090507.csv',
+        pattern: '*.csv',
+      },
+      {
+        format: 'xlsx',
+        title: 'Exportar NF-e',
+        name: 'nfe_123_2026_10_17_090507.xlsx',
+        pattern: '*.xlsx',
+      },
       {
         format: 'zip',
         title: 'Salvar XMLs de NF-e (ZIP)',
@@ -757,7 +795,9 @@ describe('NF-e client calls', () => {
   it('returns null and skips NF-e exports when the save dialog is cancelled', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('')
 
-    await expect(desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })).resolves.toBeNull()
+    await expect(
+      desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
+    ).resolves.toBeNull()
     await expect(desktopClient.exportDANFE({ CNPJ: '123', ChaveAcesso: chave })).resolves.toBeNull()
     await expect(
       desktopClient.exportNFeDocuments({
@@ -837,7 +877,9 @@ describe('CT-e mappers', () => {
       ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 3,
     })
-    expect(mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null, ViewedAt: null })).toMatchObject({
+    expect(
+      mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null, ViewedAt: null })
+    ).toMatchObject({
       HasDACTE: false,
       NFeChaves: [],
       Papeis: [],
@@ -922,7 +964,9 @@ describe('CT-e mappers', () => {
       IdleDays: 45,
     })
 
-    expect(mapPullCTeResult({ LastNSU: 5, MaxNSU: 9, DocumentsSaved: 3, EventsSaved: 1 })).toMatchObject({
+    expect(
+      mapPullCTeResult({ LastNSU: 5, MaxNSU: 9, DocumentsSaved: 3, EventsSaved: 1 })
+    ).toMatchObject({
       LastNSU: 5,
       MaxNSU: 9,
       DocumentsSaved: 3,
@@ -974,15 +1018,27 @@ describe('CT-e client calls', () => {
     await expect(desktopClient.listCTe(listInput)).resolves.toMatchObject([
       { ID: 'rel-1', Situacao: 'autorizada', Papeis: [], NFeChaves: [] },
     ])
-    await desktopClient.listCTe({ ...listInput, ChavesAcesso: [cteChave], Limit: 1, OnlyUnread: true })
+    await desktopClient.listCTe({
+      ...listInput,
+      ChavesAcesso: [cteChave],
+      Limit: 1,
+      OnlyUnread: true,
+    })
     await expect(desktopClient.markCTeViewed('123', [cteChave])).resolves.toBe(2)
     await expect(desktopClient.listCTeEvents('123', cteChave)).resolves.toEqual([])
-    await expect(desktopClient.previewResetCTe('123')).resolves.toMatchObject({ CompanyDocuments: 3 })
+    await expect(desktopClient.previewResetCTe('123')).resolves.toMatchObject({
+      CompanyDocuments: 3,
+    })
     await expect(desktopClient.resetCTe('123')).resolves.toMatchObject({ CompanyDocuments: 3 })
 
     expect(PullCTe).toHaveBeenCalledWith({ CNPJ: '123' })
     expect(StatusCTe).toHaveBeenCalledWith('123')
-    expect(ListCTe).toHaveBeenNthCalledWith(1, { ...listInput, ChavesAcesso: [], OnlyUnread: false, Limit: 0 })
+    expect(ListCTe).toHaveBeenNthCalledWith(1, {
+      ...listInput,
+      ChavesAcesso: [],
+      OnlyUnread: false,
+      Limit: 0,
+    })
     expect(ListCTe).toHaveBeenNthCalledWith(2, {
       ...listInput,
       ChavesAcesso: [cteChave],
@@ -1029,12 +1085,40 @@ describe('CT-e client calls', () => {
     const xml = await desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })
     const dacte = await desktopClient.exportDACTE({ CNPJ: '123', ChaveAcesso: cteChave })
 
-    expect(SelectSaveFile).toHaveBeenNthCalledWith(1, 'Salvar XML do CT-e', `cte_${cteChave}.xml`, '*.xml')
-    expect(SelectSaveFile).toHaveBeenNthCalledWith(2, 'Salvar DACTE', `dacte_${cteChave}.pdf`, '*.pdf')
-    expect(ExportCTeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave, OutPath: 'C:\\out\\file' })
-    expect(ExportDACTE).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave, OutPath: 'C:\\out\\file' })
-    expect(xml).toEqual({ OutPath: 'C:\\out\\file', Format: 'xml', Incremental: false, ExportedCount: 0 })
-    expect(dacte).toEqual({ OutPath: 'C:\\out\\file', Format: 'dacte', Incremental: false, ExportedCount: 1 })
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(
+      1,
+      'Salvar XML do CT-e',
+      `cte_${cteChave}.xml`,
+      '*.xml'
+    )
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(
+      2,
+      'Salvar DACTE',
+      `dacte_${cteChave}.pdf`,
+      '*.pdf'
+    )
+    expect(ExportCTeXML).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: cteChave,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(ExportDACTE).toHaveBeenCalledWith({
+      CNPJ: '123',
+      ChaveAcesso: cteChave,
+      OutPath: 'C:\\out\\file',
+    })
+    expect(xml).toEqual({
+      OutPath: 'C:\\out\\file',
+      Format: 'xml',
+      Incremental: false,
+      ExportedCount: 0,
+    })
+    expect(dacte).toEqual({
+      OutPath: 'C:\\out\\file',
+      Format: 'dacte',
+      Incremental: false,
+      ExportedCount: 1,
+    })
   })
 
   describe('exportCTeDocuments', () => {
@@ -1048,8 +1132,18 @@ describe('CT-e client calls', () => {
     })
 
     it.each([
-      { format: 'csv', title: 'Exportar CT-e', name: 'cte_123_2026_10_17_090507.csv', pattern: '*.csv' },
-      { format: 'xlsx', title: 'Exportar CT-e', name: 'cte_123_2026_10_17_090507.xlsx', pattern: '*.xlsx' },
+      {
+        format: 'csv',
+        title: 'Exportar CT-e',
+        name: 'cte_123_2026_10_17_090507.csv',
+        pattern: '*.csv',
+      },
+      {
+        format: 'xlsx',
+        title: 'Exportar CT-e',
+        name: 'cte_123_2026_10_17_090507.xlsx',
+        pattern: '*.xlsx',
+      },
       {
         format: 'zip',
         title: 'Salvar XMLs de CT-e (ZIP)',
@@ -1106,8 +1200,12 @@ describe('CT-e client calls', () => {
   it('returns null and skips CT-e exports when the save dialog is cancelled', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('')
 
-    await expect(desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })).resolves.toBeNull()
-    await expect(desktopClient.exportDACTE({ CNPJ: '123', ChaveAcesso: cteChave })).resolves.toBeNull()
+    await expect(
+      desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })
+    ).resolves.toBeNull()
+    await expect(
+      desktopClient.exportDACTE({ CNPJ: '123', ChaveAcesso: cteChave })
+    ).resolves.toBeNull()
     await expect(
       desktopClient.exportCTeDocuments({
         CNPJ: '123',
@@ -1134,7 +1232,10 @@ describe('import and fetch by chave client calls', () => {
 
   it('returns the picked XML files and an empty list on cancel', async () => {
     vi.mocked(SelectXMLFiles).mockResolvedValue(['C:\\xml\\a.xml', 'C:\\xml\\b.xml'])
-    await expect(desktopClient.selectXMLFiles()).resolves.toEqual(['C:\\xml\\a.xml', 'C:\\xml\\b.xml'])
+    await expect(desktopClient.selectXMLFiles()).resolves.toEqual([
+      'C:\\xml\\a.xml',
+      'C:\\xml\\b.xml',
+    ])
 
     vi.mocked(SelectXMLFiles).mockResolvedValue(null as never)
     await expect(desktopClient.selectXMLFiles()).resolves.toEqual([])
@@ -1146,7 +1247,13 @@ describe('import and fetch by chave client calls', () => {
   it('imports NF-e and CT-e XML files and maps the result', async () => {
     const raw = {
       Files: [
-        { Path: 'a.xml', Kind: 'completa', ChaveAcesso: nfeChave, Outcome: 'imported', Message: '' },
+        {
+          Path: 'a.xml',
+          Kind: 'completa',
+          ChaveAcesso: nfeChave,
+          Outcome: 'imported',
+          Message: '',
+        },
         { Path: 'b.xml', Kind: 'outro', Outcome: 'rejected', Message: 'XML ilegível' },
       ],
       Imported: 1,
@@ -1157,7 +1264,13 @@ describe('import and fetch by chave client calls', () => {
 
     await expect(desktopClient.importNFeXML('123', ['a.xml', 'b.xml'])).resolves.toEqual({
       Files: [
-        { Path: 'a.xml', Kind: 'completa', ChaveAcesso: nfeChave, Outcome: 'imported', Message: '' },
+        {
+          Path: 'a.xml',
+          Kind: 'completa',
+          ChaveAcesso: nfeChave,
+          Outcome: 'imported',
+          Message: '',
+        },
         { Path: 'b.xml', Kind: '', ChaveAcesso: '', Outcome: 'rejected', Message: 'XML ilegível' },
       ],
       Imported: 1,
@@ -1211,9 +1324,21 @@ describe('Wails error codes', () => {
 
   it.each([
     [{ code: 'canceled', message: 'operação cancelada' }, 'canceled', 'operação cancelada'],
-    [{ code: 'sefaz_blocked', message: 'consultas bloqueadas até 15:00' }, 'sefaz_blocked', 'consultas bloqueadas até 15:00'],
-    [{ code: 'sync_running', message: 'sincronização em andamento' }, 'sync_running', 'sincronização em andamento'],
-    [{ code: 'startup_failed', message: 'o nanci não iniciou: abrir banco de dados' }, 'startup_failed', 'o nanci não iniciou: abrir banco de dados'],
+    [
+      { code: 'sefaz_blocked', message: 'consultas bloqueadas até 15:00' },
+      'sefaz_blocked',
+      'consultas bloqueadas até 15:00',
+    ],
+    [
+      { code: 'sync_running', message: 'sincronização em andamento' },
+      'sync_running',
+      'sincronização em andamento',
+    ],
+    [
+      { code: 'startup_failed', message: 'o nanci não iniciou: abrir banco de dados' },
+      'startup_failed',
+      'o nanci não iniciou: abrir banco de dados',
+    ],
     [{ code: '', message: 'empresa não encontrada' }, '', 'empresa não encontrada'],
     [{ code: 'unknown', message: 'algo' }, '', 'algo'],
     ['error parsing arguments: boom', '', 'error parsing arguments: boom'],

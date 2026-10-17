@@ -47,7 +47,9 @@ describe('block reasons', () => {
       ConclusiveBlockReason: 'NF-e já possui manifestação conclusiva (Confirmada)',
     })
     expect(cienciaBlockReason(blocked)).toBe('Já manifestada (ciencia)')
-    expect(conclusiveBlockReason(blocked)).toBe('NF-e já possui manifestação conclusiva (Confirmada)')
+    expect(conclusiveBlockReason(blocked)).toBe(
+      'NF-e já possui manifestação conclusiva (Confirmada)'
+    )
   })
 
   it('returns null when the backend sends no reason', () => {
@@ -105,7 +107,12 @@ describe('countOutcomes', () => {
         result(''),
       ])
     ).toEqual({ registrada: 2, ja_registrada: 1, rejeitada: 1, nao_enviada: 2 })
-    expect(countOutcomes([])).toEqual({ registrada: 0, ja_registrada: 0, rejeitada: 0, nao_enviada: 0 })
+    expect(countOutcomes([])).toEqual({
+      registrada: 0,
+      ja_registrada: 0,
+      rejeitada: 0,
+      nao_enviada: 0,
+    })
   })
 })
 
@@ -143,7 +150,11 @@ describe('nfeRowActions', () => {
     })
     expect(
       nfeRowActions(
-        row({ Completeness: 'resumo', CienciaBlockReason: 'NF-e cancelada', ConclusiveBlockReason: 'NF-e cancelada' })
+        row({
+          Completeness: 'resumo',
+          CienciaBlockReason: 'NF-e cancelada',
+          ConclusiveBlockReason: 'NF-e cancelada',
+        })
       )
     ).toEqual({
       cienciaBlockReason: 'NF-e cancelada',

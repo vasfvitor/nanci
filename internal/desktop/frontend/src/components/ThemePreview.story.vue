@@ -3,14 +3,14 @@
     <Variant title="Light Theme">
       <div class="body--light preview-container q-pa-lg">
         <div class="text-h4 q-mb-md">Light Theme Tokens</div>
-        
+
         <div class="q-pa-md bg-app-bg q-mb-md border-radius border-std">
           <div class="text-subtitle1 q-mb-sm">Background Area (--app-bg)</div>
           <div class="q-pa-md bg-app-surface border-radius border-std">
             <div class="text-h6">Surface Area (--app-surface)</div>
             <p>Main text color over surface (--app-text).</p>
             <p class="text-app-muted">Muted text color over surface (--app-text-muted).</p>
-            
+
             <q-btn color="primary" class="q-mt-sm" style="color: var(--app-primary-text)">
               Primary Button Text (--app-primary-text)
             </q-btn>
@@ -22,14 +22,14 @@
     <Variant title="Dark Theme">
       <div class="body--dark preview-container q-pa-lg">
         <div class="text-h4 q-mb-md">Dark Theme Tokens</div>
-        
+
         <div class="q-pa-md bg-app-bg q-mb-md border-radius border-std">
           <div class="text-subtitle1 q-mb-sm">Background Area (--app-bg)</div>
           <div class="q-pa-md bg-app-surface border-radius border-std">
             <div class="text-h6">Surface Area (--app-surface)</div>
             <p>Main text color over surface (--app-text).</p>
             <p class="text-app-muted">Muted text color over surface (--app-text-muted).</p>
-            
+
             <q-btn color="primary" class="q-mt-sm" style="color: var(--app-primary-text)">
               Primary Button Text (--app-primary-text)
             </q-btn>

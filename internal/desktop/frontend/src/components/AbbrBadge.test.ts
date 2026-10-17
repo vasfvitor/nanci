@@ -13,7 +13,8 @@ function mountBadge(props: InstanceType<typeof AbbrBadge>['$props']) {
       stubs: {
         QBadge: {
           props: ['label', 'color', 'textColor'],
-          template: '<span class="badge" :data-color="color" :data-text-color="textColor">{{ label }}</span>',
+          template:
+            '<span class="badge" :data-color="color" :data-text-color="textColor">{{ label }}</span>',
         },
       },
     },
@@ -26,7 +27,12 @@ describe('AbbrBadge', () => {
   })
 
   it('shows the abbreviation and explains it as "Kind: Label"', () => {
-    const wrapper = mountBadge({ abbr: 'A', label: 'Autorizada', color: 'positive', kind: 'Situação' })
+    const wrapper = mountBadge({
+      abbr: 'A',
+      label: 'Autorizada',
+      color: 'positive',
+      kind: 'Situação',
+    })
 
     const badge = wrapper.find('.badge')
     expect(badge.text()).toBe('A')

@@ -28,9 +28,24 @@
       @export="openExportDialog"
     >
       <template #default="{ search: searchOnEnter }">
-        <DocumentFilterSelect v-model="filter.Role" :options="ctePapelFilterOptions" label="Papel" :disable="loading" />
-        <DocumentFilterSelect v-model="filter.Modelo" :options="cteModeloFilterOptions" label="Modelo" :disable="loading" />
-        <DocumentFilterSelect v-model="filter.Situacao" :options="cteSituacaoFilterOptions" label="Situação" :disable="loading" />
+        <DocumentFilterSelect
+          v-model="filter.Role"
+          :options="ctePapelFilterOptions"
+          label="Papel"
+          :disable="loading"
+        />
+        <DocumentFilterSelect
+          v-model="filter.Modelo"
+          :options="cteModeloFilterOptions"
+          label="Modelo"
+          :disable="loading"
+        />
+        <DocumentFilterSelect
+          v-model="filter.Situacao"
+          :options="cteSituacaoFilterOptions"
+          label="Situação"
+          :disable="loading"
+        />
         <q-input
           v-model="filter.TomadorCNPJ"
           class="cte-filter-cnpj"
@@ -97,7 +112,11 @@
             <q-checkbox v-model="rowProps.selected" dense />
           </q-td>
           <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="cte">
+            <RowActionsMenu
+              v-if="col.name === 'acoes'"
+              v-model:expanded="rowProps.expand"
+              source="cte"
+            >
               <RowMenuItem
                 :label="`Eventos (${rowProps.row.EventCount})`"
                 :disable="rowProps.row.EventCount === 0"
@@ -146,7 +165,10 @@
               :cnpj="rowProps.row.TomadorCNPJ"
             />
 
-            <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []" />
+            <StateBadges
+              v-else-if="col.name === 'estados'"
+              :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []"
+            />
 
             <template v-else>{{ col.value }}</template>
           </q-td>
@@ -154,13 +176,21 @@
 
         <DocumentDetailRow v-if="rowProps.expand" :row-props="rowProps">
           <div class="row q-col-gutter-md">
-            <DetailList class="col-12 col-md-4" title="Prestação" :items="prestacaoItems(rowProps.row)" />
+            <DetailList
+              class="col-12 col-md-4"
+              title="Prestação"
+              :items="prestacaoItems(rowProps.row)"
+            />
             <DetailList
               class="col-12 col-md-4"
               title="Participantes"
               :items="participantesItems(rowProps.row)"
             />
-            <DetailList class="col-12 col-md-4" title="Valores" :items="valoresItems(rowProps.row)" />
+            <DetailList
+              class="col-12 col-md-4"
+              title="Valores"
+              :items="valoresItems(rowProps.row)"
+            />
 
             <div v-if="rowProps.row.NFeChaves.length > 0" class="col-12">
               <div class="text-subtitle2 text-primary q-mb-xs">
@@ -428,7 +458,9 @@ async function resetCTe() {
   try {
     const result = await cte.resetCTe()
     if (!result) return
-    notifySuccess(`CT-e redefinidos: ${result.CompanyDocuments} CT-e e ${result.Events} eventos removidos.`)
+    notifySuccess(
+      `CT-e redefinidos: ${result.CompanyDocuments} CT-e e ${result.Events} eventos removidos.`
+    )
   } catch (error) {
     if (wailsErrorCode(error) === 'sync_running') {
       notifyWarning('Aguarde a sincronização CT-e terminar antes de redefinir.')

@@ -79,7 +79,9 @@ describe('useCTeLoaders', () => {
 
     await useCTeLoaders().search()
 
-    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(
+      expect.objectContaining({ OnlyUnread: true })
+    )
   })
 
   it('does not fail when a reload fails', async () => {

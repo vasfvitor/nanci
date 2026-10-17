@@ -49,17 +49,39 @@
           @mark-viewed="confirmMarkViewed"
           @export="openExportDialog"
         >
-          <DocumentFilterSelect v-model="filter.Situacao" :options="situacaoFilterOptions" label="Situação" :disable="loading" />
-          <DocumentFilterSelect v-model="filter.Completeness" :options="completenessFilterOptions" label="Completude" :disable="loading" />
-          <DocumentFilterSelect v-model="filter.Manifestacao" :options="manifestacaoFilterOptions" label="Manifestação" :disable="loading" />
-          <DocumentFilterSelect v-model="filter.Role" :options="nfeRoleFilterOptions" label="Papel" :disable="loading" />
+          <DocumentFilterSelect
+            v-model="filter.Situacao"
+            :options="situacaoFilterOptions"
+            label="Situação"
+            :disable="loading"
+          />
+          <DocumentFilterSelect
+            v-model="filter.Completeness"
+            :options="completenessFilterOptions"
+            label="Completude"
+            :disable="loading"
+          />
+          <DocumentFilterSelect
+            v-model="filter.Manifestacao"
+            :options="manifestacaoFilterOptions"
+            label="Manifestação"
+            :disable="loading"
+          />
+          <DocumentFilterSelect
+            v-model="filter.Role"
+            :options="nfeRoleFilterOptions"
+            label="Papel"
+            :disable="loading"
+          />
 
           <template #actions>
             <q-btn
               color="primary"
               icon="task_alt"
               :label="`Registrar ciência (${eligibleSelection.length})`"
-              :disable="eligibleSelection.length === 0 || planningCiencia || Boolean(cienciaInFlight)"
+              :disable="
+                eligibleSelection.length === 0 || planningCiencia || Boolean(cienciaInFlight)
+              "
               :loading="planningCiencia"
               dense
               flat
@@ -115,7 +137,11 @@
                 <q-checkbox v-model="rowProps.selected" dense />
               </q-td>
               <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-                <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="nfe">
+                <RowActionsMenu
+                  v-if="col.name === 'acoes'"
+                  v-model:expanded="rowProps.expand"
+                  source="nfe"
+                >
                   <RowMenuItem
                     label="Manifestar…"
                     :caption="manifestarCaption(rowProps.row)"
@@ -135,13 +161,21 @@
                   />
                   <RowMenuItem
                     label="Exportar XML"
-                    :caption="nfeRowActions(rowProps.row).canExportXML ? '' : 'XML completo ainda não baixado'"
+                    :caption="
+                      nfeRowActions(rowProps.row).canExportXML
+                        ? ''
+                        : 'XML completo ainda não baixado'
+                    "
                     :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
                     @click="exportXML(rowProps.row.ChaveAcesso)"
                   />
                   <RowMenuItem
                     label="Exportar DANFE"
-                    :caption="nfeRowActions(rowProps.row).canExportXML ? '' : 'XML completo ainda não baixado'"
+                    :caption="
+                      nfeRowActions(rowProps.row).canExportXML
+                        ? ''
+                        : 'XML completo ainda não baixado'
+                    "
                     :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
                     @click="exportDANFE(rowProps.row.ChaveAcesso)"
                   />
@@ -177,12 +211,21 @@
                   :cnpj="rowProps.row.DestinatarioCNPJ"
                 />
 
-                <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []">
+                <StateBadges
+                  v-else-if="col.name === 'estados'"
+                  :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []"
+                >
                   <template
-                    v-if="isChaveBusy(rowProps.row.ChaveAcesso) || showsConclusiveDeadline(rowProps.row)"
+                    v-if="
+                      isChaveBusy(rowProps.row.ChaveAcesso) || showsConclusiveDeadline(rowProps.row)
+                    "
                     #default
                   >
-                    <q-spinner v-if="isChaveBusy(rowProps.row.ChaveAcesso)" size="xs" color="primary" />
+                    <q-spinner
+                      v-if="isChaveBusy(rowProps.row.ChaveAcesso)"
+                      size="xs"
+                      color="primary"
+                    />
                     <q-chip
                       v-if="showsConclusiveDeadline(rowProps.row)"
                       dense
@@ -204,9 +247,17 @@
             <DocumentDetailRow v-if="rowProps.expand" :row-props="rowProps">
               <div class="row q-col-gutter-md">
                 <DetailList class="col-12 col-md-5" title="Nota" :items="notaItems(rowProps.row)" />
-                <DetailList class="col-12 col-md-4" title="Emitente" :items="emitenteItems(rowProps.row)" />
+                <DetailList
+                  class="col-12 col-md-4"
+                  title="Emitente"
+                  :items="emitenteItems(rowProps.row)"
+                />
                 <div class="col-12 col-md-3">
-                  <DetailList title="Destinatário" :items="destinatarioItems(rowProps.row)" class="q-mb-md" />
+                  <DetailList
+                    title="Destinatário"
+                    :items="destinatarioItems(rowProps.row)"
+                    class="q-mb-md"
+                  />
                   <DetailList title="Valores" :items="valoresItems(rowProps.row)" />
                 </div>
 
@@ -345,7 +396,6 @@ const {
 
 const showEventsDialog = ref(false)
 const eventsChave = ref('')
-
 
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   source: 'nfe',
@@ -674,7 +724,11 @@ function openManifestacao(row: NFeRow) {
   })
 }
 
-async function sendManifestacao(chaveAcesso: string, tipo: NFeConclusiveTipo, justificativa: string) {
+async function sendManifestacao(
+  chaveAcesso: string,
+  tipo: NFeConclusiveTipo,
+  justificativa: string
+) {
   try {
     const result = await manifestacao.registerManifestacao(chaveAcesso, tipo, justificativa)
     if (!result) {

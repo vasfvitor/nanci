@@ -68,7 +68,9 @@ export function useDocumentListActions(options: DocumentListActionsOptions) {
       return
     }
     if (count === null) return
-    notifySuccess(count === 1 ? '1 documento marcado como visto.' : `${count} documentos marcados como vistos.`)
+    notifySuccess(
+      count === 1 ? '1 documento marcado como visto.' : `${count} documentos marcados como vistos.`
+    )
   }
 
   // openExportDialog exports the scope rows in the format the user picks.

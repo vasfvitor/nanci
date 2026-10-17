@@ -25,7 +25,10 @@ describe('useNotify', () => {
   it('warns about canceled, running and blocked syncs and reports other failures', () => {
     const { notifySyncError } = useNotify()
 
-    notifySyncError('Erro na sincronização', new WailsClientError('senha não informada', 'canceled'))
+    notifySyncError(
+      'Erro na sincronização',
+      new WailsClientError('senha não informada', 'canceled')
+    )
     notifySyncError('Erro na sincronização', new WailsClientError('em andamento', 'sync_running'))
     notifySyncError('Erro na sincronização', { code: 'sefaz_blocked', message: 'bloqueado' })
     notifySyncError('Erro na sincronização', new Error('boom'))
@@ -41,7 +44,9 @@ describe('useNotify', () => {
   it('copies the chave without the NFS prefix', async () => {
     vi.mocked(copyToClipboard).mockResolvedValue(undefined)
     await copyChave('NFS35503082245852546000109000000000000126060000000011')
-    expect(copyToClipboard).toHaveBeenCalledWith('35503082245852546000109000000000000126060000000011')
+    expect(copyToClipboard).toHaveBeenCalledWith(
+      '35503082245852546000109000000000000126060000000011'
+    )
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'positive' }))
   })
 
@@ -95,14 +100,19 @@ describe('useNotify', () => {
 
     notifyExported({ ExportedCount: 2, OutPath: 'C:/saida/notas.zip' })
     const [options] = notify.mock.calls[0] ?? []
-    expect(options.actions).toEqual([expect.objectContaining({ label: 'Abrir pasta', color: 'white' })])
+    expect(options.actions).toEqual([
+      expect.objectContaining({ label: 'Abrir pasta', color: 'white' }),
+    ])
     options.actions[0].handler()
     expect(showInFolder).toHaveBeenCalledWith('C:/saida/notas.zip')
 
     showInFolder.mockRejectedValue(new Error('negado'))
     options.actions[0].handler()
     await flushPromises()
-    expect(notify).toHaveBeenLastCalledWith({ type: 'negative', message: 'Erro ao abrir a pasta: negado' })
+    expect(notify).toHaveBeenLastCalledWith({
+      type: 'negative',
+      message: 'Erro ao abrir a pasta: negado',
+    })
 
     notify.mockClear()
     notifyExported({ ExportedCount: 0, OutPath: '' })

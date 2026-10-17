@@ -122,7 +122,9 @@ describe('DocumentFilterBar', () => {
 
   it('disables Exportar when there is nothing to export, an export runs or the list loads', () => {
     expect(button(mountBar(), 'Exportar').attributes('disabled')).toBeUndefined()
-    expect(button(mountBar({ exportDisabled: true }), 'Exportar').attributes('disabled')).toBeDefined()
+    expect(
+      button(mountBar({ exportDisabled: true }), 'Exportar').attributes('disabled')
+    ).toBeDefined()
     expect(button(mountBar({ exporting: true }), 'Exportar').attributes('disabled')).toBeDefined()
     expect(button(mountBar({ loading: true }), 'Exportar').attributes('disabled')).toBeDefined()
   })

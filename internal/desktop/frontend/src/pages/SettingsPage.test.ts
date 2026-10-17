@@ -19,7 +19,9 @@ vi.mock('quasar', () => ({
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     listCompanies: vi.fn().mockResolvedValue([]),
-    getBuildInfo: vi.fn().mockResolvedValue({ version: '1.0.0', commit: 'abc', date: '2026-06-21' }),
+    getBuildInfo: vi
+      .fn()
+      .mockResolvedValue({ version: '1.0.0', commit: 'abc', date: '2026-06-21' }),
     getDataDirectory: vi.fn().mockResolvedValue('C:\\data'),
     openDataDirectory: vi.fn(),
     openLogsDirectory: vi.fn(),
@@ -162,7 +164,9 @@ describe('SettingsPage', () => {
     })
     await flushPromises()
     const select = () =>
-      wrapper.findAllComponents({ name: 'QSelect' }).find((item) => item.props('label') === 'Empresa')
+      wrapper
+        .findAllComponents({ name: 'QSelect' })
+        .find((item) => item.props('label') === 'Empresa')
     expect(select()?.props('loading')).toBe(true)
     expect(desktopClient.listCompanies).not.toHaveBeenCalled()
 

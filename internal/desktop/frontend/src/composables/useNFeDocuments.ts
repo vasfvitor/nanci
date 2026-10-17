@@ -100,9 +100,7 @@ export function useNFeDocuments() {
   // company's NF-e runs, or while its reset runs.
   function syncBusy(companyCNPJ: string) {
     return (
-      !companyCNPJ ||
-      syncStore.isSyncing(companyCNPJ, 'nfe') ||
-      resettingCNPJ.value === companyCNPJ
+      !companyCNPJ || syncStore.isSyncing(companyCNPJ, 'nfe') || resettingCNPJ.value === companyCNPJ
     )
   }
 

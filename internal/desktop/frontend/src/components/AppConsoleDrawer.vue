@@ -1,11 +1,5 @@
 <template>
-  <q-drawer
-    v-model="model"
-    side="right"
-    bordered
-    :width="500"
-    overlay
-  >
+  <q-drawer v-model="model" side="right" bordered :width="500" overlay>
     <div class="column full-height">
       <q-toolbar class="dense">
         <q-toolbar-title class="text-subtitle1">Console</q-toolbar-title>
@@ -30,14 +24,14 @@
         <q-btn flat round dense icon="close" aria-label="Fechar console" @click="model = false" />
       </q-toolbar>
       <q-scroll-area ref="logScrollArea" class="col q-pa-sm app-console">
-        <div v-if="filteredLogEntries.length === 0" class="text-grey-6 text-center q-mt-md">Nenhum log disponível</div>
-        <div
-          v-for="(log, idx) in filteredLogEntries"
-          :key="idx"
-          class="q-mb-xs log-line"
-        >
+        <div v-if="filteredLogEntries.length === 0" class="text-grey-6 text-center q-mt-md">
+          Nenhum log disponível
+        </div>
+        <div v-for="(log, idx) in filteredLogEntries" :key="idx" class="q-mb-xs log-line">
           <span class="text-grey-6 q-mr-sm">[{{ formatTime(log.time) }}]</span>
-          <span :class="getLevelColor(log.level)" class="text-weight-bold q-mr-sm">{{ log.level }}</span>
+          <span :class="getLevelColor(log.level)" class="text-weight-bold q-mr-sm">{{
+            log.level
+          }}</span>
           <span class="log-message q-mr-sm">{{ log.msg }}</span>
           <span v-if="log.attrs" class="text-grey-5">{{ log.attrs }}</span>
         </div>

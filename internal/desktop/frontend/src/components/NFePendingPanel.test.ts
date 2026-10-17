@@ -115,7 +115,10 @@ describe('NFePendingPanel', () => {
     })
 
     const table = wrapper.findAllComponents({ name: 'QTable' })[0]
-    const columns = table?.props('columns') as { name: string; format?: (value: number) => string }[]
+    const columns = table?.props('columns') as {
+      name: string
+      format?: (value: number) => string
+    }[]
     expect(columns.map((column) => column.name)).toEqual([
       'numero',
       'chave',

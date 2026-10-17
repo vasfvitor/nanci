@@ -7,12 +7,13 @@ const stubs = {
     props: ['disable'],
     emits: ['click'],
     // Like Quasar's, a disabled item does not emit click.
-    template: '<div class="item" :data-disable="disable" @click="disable || $emit(\'click\')"><slot /></div>',
+    template:
+      '<div class="item" :data-disable="disable" @click="disable || $emit(\'click\')"><slot /></div>',
   },
   QItemSection: { template: '<div><slot /></div>' },
   QItemLabel: {
     props: { caption: Boolean },
-    template: '<div :class="caption ? \'caption\' : \'label\'"><slot /></div>',
+    template: "<div :class=\"caption ? 'caption' : 'label'\"><slot /></div>",
   },
 }
 
@@ -28,7 +29,11 @@ describe('RowMenuItem', () => {
 
   it('explains a disabled entry and never emits click', async () => {
     const wrapper = mount(RowMenuItem, {
-      props: { label: 'Registrar ciência', caption: 'A empresa não é a destinatária', disable: true },
+      props: {
+        label: 'Registrar ciência',
+        caption: 'A empresa não é a destinatária',
+        disable: true,
+      },
       global: { stubs },
     })
 

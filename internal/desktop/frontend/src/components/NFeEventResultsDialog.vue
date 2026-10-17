@@ -10,12 +10,16 @@
       </q-card-section>
 
       <q-card-section v-if="result.Interrupted" class="q-pt-none">
-        <q-banner dense rounded :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'">
+        <q-banner
+          dense
+          rounded
+          :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
+        >
           <template #avatar>
             <q-icon name="warning" />
           </template>
-          O envio foi interrompido: {{ result.Interrupted }}. As notas não enviadas podem ser enviadas
-          novamente depois.
+          O envio foi interrompido: {{ result.Interrupted }}. As notas não enviadas podem ser
+          enviadas novamente depois.
         </q-banner>
       </q-card-section>
 

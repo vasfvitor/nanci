@@ -91,7 +91,10 @@ describe('stateLegends', () => {
 
   it('NFE_PENDING_LEGEND describes both pending groups with outlined chips', () => {
     const legend = NFE_PENDING_LEGEND
-    expect(legend.map((entry) => entry.title)).toEqual(['Sem ciência', 'Sem manifestação conclusiva'])
+    expect(legend.map((entry) => entry.title)).toEqual([
+      'Sem ciência',
+      'Sem manifestação conclusiva',
+    ])
     for (const entry of legend) {
       expect(entry.items.every((item) => item.outline)).toBe(true)
     }

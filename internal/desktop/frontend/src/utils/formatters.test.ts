@@ -85,9 +85,7 @@ describe('formatters', () => {
 
   it('groups a 44-character NF-e or CT-e access key in blocks of four', () => {
     const chave = '35240912345678000199550010000123451123456789'
-    expect(formatChaveDFe(chave)).toBe(
-      '3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789'
-    )
+    expect(formatChaveDFe(chave)).toBe('3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789')
     expect(formatChaveDFe('3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789')).toBe(
       '3524 0912 3456 7800 0199 5500 1000 0123 4511 2345 6789'
     )

@@ -32,7 +32,7 @@ const pairs = [
   ['--app-text-muted', '--app-bg', 4.5],
   ['--app-text-muted', '--app-surface', 4.5],
   ['--app-primary-text', '--q-primary', 4.5],
-  ['--app-border', '--app-bg', 3.0]
+  ['--app-border', '--app-bg', 3.0],
 ] as const
 
 function hexToRgb(hex: string) {
@@ -42,7 +42,7 @@ function hexToRgb(hex: string) {
   return {
     r: (bigint >> 16) & 255,
     g: (bigint >> 8) & 255,
-    b: bigint & 255
+    b: bigint & 255,
   }
 }
 
@@ -73,11 +73,11 @@ for (const [themeName, tokens] of Object.entries(themes)) {
   for (const [fgKey, bgKey, min] of pairs) {
     const fgColor = tokens[fgKey]
     const bgColor = tokens[bgKey]
-    
+
     if (!fgColor || !bgColor) {
-        failed = true
-        console.error(`  ❌ Missing token! ${fgKey} or ${bgKey} is not defined.`)
-        continue
+      failed = true
+      console.error(`  ❌ Missing token! ${fgKey} or ${bgKey} is not defined.`)
+      continue
     }
 
     const ratio = contrast(fgColor, bgColor)
@@ -88,9 +88,7 @@ for (const [themeName, tokens] of Object.entries(themes)) {
         `  ❌ ${fgKey} (${fgColor}) on ${bgKey} (${bgColor}) failed: ${ratio.toFixed(2)} < ${min}`
       )
     } else {
-      console.log(
-        `  ✅ ${fgKey} on ${bgKey} passed: ${ratio.toFixed(2)}`
-      )
+      console.log(`  ✅ ${fgKey} on ${bgKey} passed: ${ratio.toFixed(2)}`)
     }
   }
 }

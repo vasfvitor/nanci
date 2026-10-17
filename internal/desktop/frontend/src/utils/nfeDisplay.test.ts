@@ -208,7 +208,13 @@ describe('nfeDisplay', () => {
     }
     expect(nfeSituacao.values().map(nfeSituacao.abbr)).toEqual(['A', 'D', 'C'])
     expect(nfeCompleteness.values().map(nfeCompleteness.abbr)).toEqual(['R', 'X'])
-    expect(nfeManifestacao.values().map(nfeManifestacao.abbr)).toEqual(['SM', 'CI', 'CO', 'DE', 'NR'])
+    expect(nfeManifestacao.values().map(nfeManifestacao.abbr)).toEqual([
+      'SM',
+      'CI',
+      'CO',
+      'DE',
+      'NR',
+    ])
     expect(nfeRole.values().map(nfeRole.abbr)).toEqual(['D', 'E', 'T', 'A', 'SP'])
   })
 
@@ -219,7 +225,12 @@ describe('nfeDisplay', () => {
       Manifestacao: 'ciencia',
       CompanyRole: 'destinatario',
     })
-    expect(badges.map((badge) => badge.kind)).toEqual(['Situação', 'Completude', 'Manifestação', 'Papel'])
+    expect(badges.map((badge) => badge.kind)).toEqual([
+      'Situação',
+      'Completude',
+      'Manifestação',
+      'Papel',
+    ])
     expect(badges.map((badge) => badge.abbr)).toEqual(['A', 'R', 'CI', 'D'])
     expect(badges[2]).toEqual({
       key: 'Manifestação:ciencia',
@@ -231,7 +242,12 @@ describe('nfeDisplay', () => {
   })
 
   it('shows empty states as — in the badges', () => {
-    const badges = nfeStateBadges({ Situacao: '', Completeness: '', Manifestacao: '', CompanyRole: '' })
+    const badges = nfeStateBadges({
+      Situacao: '',
+      Completeness: '',
+      Manifestacao: '',
+      CompanyRole: '',
+    })
     expect(badges.map((badge) => badge.abbr)).toEqual(['—', '—', '—', '—'])
   })
 })

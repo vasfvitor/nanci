@@ -26,7 +26,12 @@
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
-      <DocumentFilterSelect v-model="filter.Direction" :options="nfseRoleFilterOptions" label="Papel" :disable="loading" />
+      <DocumentFilterSelect
+        v-model="filter.Direction"
+        :options="nfseRoleFilterOptions"
+        label="Papel"
+        :disable="loading"
+      />
     </DocumentFilterBar>
 
     <StateLegend :sections="NFSE_LEGEND" class="q-mb-md" />
@@ -56,7 +61,11 @@
             <q-checkbox v-model="rowProps.selected" dense />
           </q-td>
           <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-            <RowActionsMenu v-if="col.name === 'acoes'" v-model:expanded="rowProps.expand" source="nfse">
+            <RowActionsMenu
+              v-if="col.name === 'acoes'"
+              v-model:expanded="rowProps.expand"
+              source="nfse"
+            >
               <RowMenuItem label="Eventos" @click="openEvents(rowProps.row)" />
               <RowMenuItem
                 label="Exportar XML"
@@ -70,7 +79,11 @@
               />
             </RowActionsMenu>
 
-            <NumeroCell v-else-if="col.name === 'numero'" :numero="col.value" :viewed-at="rowProps.row.ViewedAt" />
+            <NumeroCell
+              v-else-if="col.name === 'numero'"
+              :numero="col.value"
+              :viewed-at="rowProps.row.ViewedAt"
+            />
 
             <ChaveCell v-else-if="col.name === 'chave'" :chave="rowProps.row.ChaveAcesso" />
 
@@ -86,7 +99,10 @@
               :cnpj="rowProps.row.TomadorCNPJ"
             />
 
-            <StateBadges v-else-if="col.name === 'estados'" :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []" />
+            <StateBadges
+              v-else-if="col.name === 'estados'"
+              :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []"
+            />
 
             <template v-else>{{ col.value }}</template>
           </q-td>
@@ -266,7 +282,8 @@ async function syncNFSe() {
 function confirmResetSync() {
   $q.dialog({
     title: 'Redefinir NFS-e',
-    message: 'Reinicia a sincronização da NFS-e a partir do NSU 0. Os documentos já baixados ficam.',
+    message:
+      'Reinicia a sincronização da NFS-e a partir do NSU 0. Os documentos já baixados ficam.',
     cancel: true,
     persistent: true,
     ok: { label: 'Redefinir', color: 'negative' },
@@ -280,7 +297,9 @@ async function resetSync() {
   try {
     if (!(await nfse.resetSync())) return
     notifySuccess(
-      name ? `Sincronização da NFS-e redefinida para ${name}.` : 'Sincronização da NFS-e redefinida.'
+      name
+        ? `Sincronização da NFS-e redefinida para ${name}.`
+        : 'Sincronização da NFS-e redefinida.'
     )
   } catch (error) {
     notifyError('Erro ao redefinir a sincronização da NFS-e', error)

@@ -1,6 +1,7 @@
 /* src/css/app.scss */
 
-body.body--light, .body--light {
+body.body--light,
+.body--light {
   color-scheme: light;
 
   /* Quasar Brand Colors */
@@ -34,7 +35,8 @@ body.body--light, .body--light {
   --app-console-text: #e5e7eb;
 }
 
-body.body--dark, .body--dark {
+body.body--dark,
+.body--dark {
   color-scheme: dark;
 
   /* Quasar Brand Colors */

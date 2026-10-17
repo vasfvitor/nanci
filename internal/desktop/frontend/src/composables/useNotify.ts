@@ -65,7 +65,9 @@ export function useNotify() {
       return
     }
     const openFolder = () => {
-      desktopClient.showInFolder(path).catch((e: unknown) => notifyError('Erro ao abrir a pasta', e))
+      desktopClient
+        .showInFolder(path)
+        .catch((e: unknown) => notifyError('Erro ao abrir a pasta', e))
     }
     notifySuccess(`${what} para ${path}.`, {
       actions: [{ label: 'Abrir pasta', color: 'white', handler: openFolder }],

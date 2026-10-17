@@ -214,7 +214,11 @@ describe('useCTeDocuments', () => {
     expect(cte.syncBlockedUntil.value).toBeNull()
 
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(
-      status({ NextAllowedAt: '2026-09-23T13:00:00Z', BlockedReason: 'rate_budget', RequestsLastHour: 20 })
+      status({
+        NextAllowedAt: '2026-09-23T13:00:00Z',
+        BlockedReason: 'rate_budget',
+        RequestsLastHour: 20,
+      })
     )
     await cte.loadStatus()
     expect(cte.syncBlockedUntil.value?.toISOString()).toBe('2026-09-23T13:00:00.000Z')
@@ -377,7 +381,13 @@ describe('useCTeDocuments', () => {
     expect(cte.statusLine.value).toBe('')
 
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(
-      status({ CompanyName: 'Empresa do status', LastNSU: 5, MaxNSU: 9, TotalTomador: 3, TotalRemetente: 2 })
+      status({
+        CompanyName: 'Empresa do status',
+        LastNSU: 5,
+        MaxNSU: 9,
+        TotalTomador: 3,
+        TotalRemetente: 2,
+      })
     )
     await cte.loadStatus()
     expect(cte.companyName.value).toBe('Empresa do status')

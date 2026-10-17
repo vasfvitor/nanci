@@ -4,15 +4,25 @@
       <q-form @submit="onSubmit">
         <q-card-section>
           <div class="text-h6">Senha do Certificado</div>
-          <div v-if="requestData?.Purpose" class="text-caption text-app-muted">Finalidade: {{ requestData.Purpose }}</div>
+          <div v-if="requestData?.Purpose" class="text-caption text-app-muted">
+            Finalidade: {{ requestData.Purpose }}
+          </div>
           <div class="text-caption text-app-muted">Empresa: {{ requestData?.CompanyName }}</div>
           <div class="text-caption text-app-muted">CNPJ: {{ requestData?.TargetCNPJ }}</div>
-          <div class="text-caption text-app-muted">Credencial: {{ requestData?.CredentialLabel }}</div>
+          <div class="text-caption text-app-muted">
+            Credencial: {{ requestData?.CredentialLabel }}
+          </div>
           <div class="text-caption text-app-muted">Arquivo: {{ requestData?.CertPath }}</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          <q-input v-model="password" dense autofocus :type="show ? 'text' : 'password'" :disable="submitting">
+          <q-input
+            v-model="password"
+            dense
+            autofocus
+            :type="show ? 'text' : 'password'"
+            :disable="submitting"
+          >
             <template #append>
               <q-icon
                 :name="show ? 'visibility_off' : 'visibility'"

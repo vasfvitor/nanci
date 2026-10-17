@@ -34,7 +34,11 @@ describe('useSefazBlock', () => {
   })
 
   it('is not blocked without a status, a wait time or with an invalid one', () => {
-    for (const status of [null, blockStatus({ NextAllowedAt: undefined }), blockStatus({ NextAllowedAt: 'x' })]) {
+    for (const status of [
+      null,
+      blockStatus({ NextAllowedAt: undefined }),
+      blockStatus({ NextAllowedAt: 'x' }),
+    ]) {
       const { syncBlockedUntil, blockedText, scope } = setup(status)
       expect(syncBlockedUntil.value).toBeNull()
       expect(blockedText.value).toBe('')
@@ -43,7 +47,9 @@ describe('useSefazBlock', () => {
   })
 
   it('is not blocked when the wait time has passed', () => {
-    const { syncBlockedUntil, blockedText } = setup(blockStatus({ NextAllowedAt: '2026-10-07T12:59:00Z' }))
+    const { syncBlockedUntil, blockedText } = setup(
+      blockStatus({ NextAllowedAt: '2026-10-07T12:59:00Z' })
+    )
 
     expect(syncBlockedUntil.value).toBeNull()
     expect(blockedText.value).toBe('')
@@ -58,10 +64,16 @@ describe('useSefazBlock', () => {
 
   it('shows the request budget of a rate block', () => {
     const { blockedText } = setup(
-      blockStatus({ BlockedReason: 'rate_budget', RequestsLastHour: 20, NextAllowedAt: '2026-10-07T13:45:00Z' })
+      blockStatus({
+        BlockedReason: 'rate_budget',
+        RequestsLastHour: 20,
+        NextAllowedAt: '2026-10-07T13:45:00Z',
+      })
     )
 
-    expect(blockedText.value).toBe('Limite de consultas por hora atingido (20/20); aguarde até 10:45')
+    expect(blockedText.value).toBe(
+      'Limite de consultas por hora atingido (20/20); aguarde até 10:45'
+    )
   })
 
   it('clears itself once the block ends, without a status change', () => {
@@ -78,7 +90,10 @@ describe('useSefazBlock', () => {
   it('follows a new status and its new wait time', async () => {
     const { status, syncBlockedUntil, blockedText } = setup(blockStatus())
 
-    status.value = blockStatus({ BlockedReason: 'caught_up', NextAllowedAt: '2026-10-07T15:00:00Z' })
+    status.value = blockStatus({
+      BlockedReason: 'caught_up',
+      NextAllowedAt: '2026-10-07T15:00:00Z',
+    })
     await nextTick()
     expect(blockedText.value).toBe('Sem novos documentos; próxima consulta a partir de 12:00')
 

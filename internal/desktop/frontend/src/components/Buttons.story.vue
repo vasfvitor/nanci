@@ -57,7 +57,12 @@ const loading = ref(false)
         <div class="row q-gutter-sm">
           <q-btn disable color="primary" label="Disabled" />
           <q-btn :loading="loading" color="primary" label="Loading" @click="loading = true" />
-          <q-btn round color="primary" icon="shopping_cart" style="color: var(--app-primary-text)" />
+          <q-btn
+            round
+            color="primary"
+            icon="shopping_cart"
+            style="color: var(--app-primary-text)"
+          />
         </div>
       </div>
     </Variant>

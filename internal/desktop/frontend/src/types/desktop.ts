@@ -240,7 +240,8 @@ export type CertPasswordRequest = {
 
 export type NFeSituacao = 'autorizada' | 'denegada' | 'cancelada'
 export type NFeCompleteness = 'resumo' | 'completa'
-export type NFeManifestacao = 'nenhuma' | 'ciencia' | 'confirmada' | 'desconhecida' | 'nao_realizada'
+export type NFeManifestacao =
+  'nenhuma' | 'ciencia' | 'confirmada' | 'desconhecida' | 'nao_realizada'
 export type NFeRole = 'destinatario' | 'emitente' | 'transportador' | 'autorizado' | 'none'
 // NFeConclusiveTipo is the tpEvento code of a conclusive manifestação:
 // 210200 confirmação, 210220 desconhecimento, 210240 operação não realizada.

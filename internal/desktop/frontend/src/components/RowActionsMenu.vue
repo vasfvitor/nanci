@@ -12,7 +12,15 @@
       :aria-expanded="expanded ? 'true' : 'false'"
       @click.stop="expanded = !expanded"
     />
-    <q-btn dense flat round size="sm" color="grey-7" icon="more_vert" :aria-label="`Ações ${ofNoun}`">
+    <q-btn
+      dense
+      flat
+      round
+      size="sm"
+      color="grey-7"
+      icon="more_vert"
+      :aria-label="`Ações ${ofNoun}`"
+    >
       <q-menu auto-close>
         <q-list dense class="row-actions-menu">
           <slot />

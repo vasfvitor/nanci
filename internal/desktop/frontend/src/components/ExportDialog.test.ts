@@ -71,7 +71,9 @@ function mountDialog(props: Partial<Props> = {}) {
 type Wrapper = ReturnType<typeof mountDialog>
 
 function checkbox(wrapper: Wrapper, label: string) {
-  return wrapper.findAllComponents({ name: 'QCheckbox' }).find((box) => box.props('label') === label)
+  return wrapper
+    .findAllComponents({ name: 'QCheckbox' })
+    .find((box) => box.props('label') === label)
 }
 
 async function clickExport(wrapper: Wrapper) {
@@ -112,7 +114,11 @@ describe('ExportDialog', () => {
     expect(wrapper.text()).toContain('Formato: XMLs (ZIP)')
 
     await clickExport(wrapper)
-    expect(onDialogOK).toHaveBeenCalledWith({ format: 'zip', incremental: false, includeResumos: false })
+    expect(onDialogOK).toHaveBeenCalledWith({
+      format: 'zip',
+      incremental: false,
+      includeResumos: false,
+    })
   })
 
   it('offers several formats and returns the one picked', async () => {
@@ -151,14 +157,22 @@ describe('ExportDialog', () => {
     expect(resumos).toBeDefined()
     resumos?.vm.$emit('update:modelValue', true)
     await clickExport(wrapper)
-    expect(onDialogOK).toHaveBeenLastCalledWith({ format: 'zip', incremental: false, includeResumos: true })
+    expect(onDialogOK).toHaveBeenLastCalledWith({
+      format: 'zip',
+      incremental: false,
+      includeResumos: true,
+    })
 
     // A format without resumos hides the box and drops the choice made on it.
     group.vm.$emit('update:modelValue', 'danfe-zip')
     await wrapper.vm.$nextTick()
     expect(checkbox(wrapper, 'Incluir resumos')).toBeUndefined()
     await clickExport(wrapper)
-    expect(onDialogOK).toHaveBeenLastCalledWith({ format: 'danfe-zip', incremental: false, includeResumos: false })
+    expect(onDialogOK).toHaveBeenLastCalledWith({
+      format: 'danfe-zip',
+      incremental: false,
+      includeResumos: false,
+    })
   })
 
   it('starts on the remembered format', async () => {
@@ -171,7 +185,11 @@ describe('ExportDialog', () => {
 
   it('ignores an unknown remembered format', async () => {
     // A format the source no longer offers, or one saved by another source.
-    const wrapper = mountDialog({ source: 'nfse', formats: nfseFormats, initialFormat: 'danfe-zip' })
+    const wrapper = mountDialog({
+      source: 'nfse',
+      formats: nfseFormats,
+      initialFormat: 'danfe-zip',
+    })
     expect(wrapper.getComponent({ name: 'QOptionGroup' }).props('modelValue')).toBe('csv')
 
     await clickExport(wrapper)

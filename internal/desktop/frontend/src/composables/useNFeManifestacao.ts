@@ -11,8 +11,14 @@ import { cienciaBlockReason } from '@/utils/nfeManifestacao'
 // nfeDocuments store and the follow-up refresh does not depend on the page.
 export function useNFeManifestacao() {
   const store = useNFeDocumentsStore()
-  const { selected, pending, pendingLoading, planningCiencia, cienciaInFlight, manifestacaoInFlight } =
-    storeToRefs(store)
+  const {
+    selected,
+    pending,
+    pendingLoading,
+    planningCiencia,
+    cienciaInFlight,
+    manifestacaoInFlight,
+  } = storeToRefs(store)
   const { loadPending, refresh, refreshNote } = useNFeLoaders()
 
   // eligibleSelection is the selected notes that can receive ciência.

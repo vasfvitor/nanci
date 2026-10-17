@@ -49,8 +49,18 @@ export function documentColumns<Row extends DocumentRowBase>(
       classes: 'text-mono',
       format: (value: ISODateValue) => formatDate(value),
     },
-    numero: { name: 'numero', label: spec.numeroLabel ?? 'Nº / Série', field: spec.numero, align: 'left' },
-    chave: { name: 'chave', label: 'Chave de acesso', field: (row) => row.ChaveAcesso, align: 'left' },
+    numero: {
+      name: 'numero',
+      label: spec.numeroLabel ?? 'Nº / Série',
+      field: spec.numero,
+      align: 'left',
+    },
+    chave: {
+      name: 'chave',
+      label: 'Chave de acesso',
+      field: (row) => row.ChaveAcesso,
+      align: 'left',
+    },
     emitente: {
       name: 'emitente',
       label: spec.emitenteLabel,

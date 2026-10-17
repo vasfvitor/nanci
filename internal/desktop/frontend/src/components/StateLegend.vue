@@ -18,9 +18,16 @@
         :data-legend-section="section.title"
       >
         <div class="text-subtitle2 q-mb-xs">{{ section.title }}</div>
-        <div v-if="section.note" class="text-caption text-app-muted q-mb-xs">{{ section.note }}</div>
+        <div v-if="section.note" class="text-caption text-app-muted q-mb-xs">
+          {{ section.note }}
+        </div>
         <q-list dense>
-          <q-item v-for="entry in section.items" :key="entry.badge" dense class="q-px-none state-legend-item">
+          <q-item
+            v-for="entry in section.items"
+            :key="entry.badge"
+            dense
+            class="q-px-none state-legend-item"
+          >
             <q-item-section side class="state-legend-badge">
               <q-chip
                 v-if="entry.outline"

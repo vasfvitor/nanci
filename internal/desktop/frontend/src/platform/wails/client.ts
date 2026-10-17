@@ -205,7 +205,9 @@ function asRawRecord(value: unknown): RawRecord {
 }
 
 function asStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 function asArray(value: unknown): unknown[] {
@@ -234,10 +236,25 @@ const nfeManifestacoes: readonly NFeManifestacao[] = [
   'desconhecida',
   'nao_realizada',
 ]
-const nfeRoles: readonly NFeRole[] = ['destinatario', 'emitente', 'transportador', 'autorizado', 'none']
-const nfeOutcomes: readonly NFeEventOutcome[] = ['registrada', 'ja_registrada', 'rejeitada', 'nao_enviada']
+const nfeRoles: readonly NFeRole[] = [
+  'destinatario',
+  'emitente',
+  'transportador',
+  'autorizado',
+  'none',
+]
+const nfeOutcomes: readonly NFeEventOutcome[] = [
+  'registrada',
+  'ja_registrada',
+  'rejeitada',
+  'nao_enviada',
+]
 const nfePendingKinds: readonly NFePendingKind[] = ['sem_ciencia', 'sem_conclusiva']
-const nfeBlockedReasons: readonly NFeBlockedReason[] = ['caught_up', 'consumo_indevido', 'rate_budget']
+const nfeBlockedReasons: readonly NFeBlockedReason[] = [
+  'caught_up',
+  'consumo_indevido',
+  'rate_budget',
+]
 
 const importKinds: readonly ImportKind[] = ['completa', 'resumo', 'evento']
 const importOutcomes: readonly ImportOutcome[] = ['imported', 'updated', 'rejected']
@@ -272,7 +289,11 @@ const cteEventTypes: readonly CTeEventType[] = [
   'mdfe_cancelado',
   'unknown',
 ]
-const cteBlockedReasons: readonly CTeBlockedReason[] = ['caught_up', 'consumo_indevido', 'rate_budget']
+const cteBlockedReasons: readonly CTeBlockedReason[] = [
+  'caught_up',
+  'consumo_indevido',
+  'rate_budget',
+]
 
 // SaveDialog is what the save dialog of a list export shows: its title, the
 // suggested file name and the file pattern.
@@ -868,11 +889,14 @@ export const desktopClient = {
   assignCredential(input: AssignCredentialInput) {
     return callWails(() => AssignCredentialToCompany(input))
   },
-  async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
+  async exportDocuments(
+    input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<ExportResult | null> {
     const dialog = nfseExportDialog(input.Format, input.CNPJ)
     const defaultName = input.BaseName || dialog.defaultName
     const outPath =
-      input.OutPath || (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
+      input.OutPath ||
+      (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -884,9 +908,12 @@ export const desktopClient = {
     )
     return mapExportResult(result)
   },
-  async exportDANFSe(input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
+  async exportDANFSe(
+    input: Omit<ExportDANFSeInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `danfse_${input.ChaveAcesso}.pdf`
-    const outPath = input.OutPath || await desktopClient.selectSaveFile('Salvar DANFSe', defaultName, '*.pdf')
+    const outPath =
+      input.OutPath || (await desktopClient.selectSaveFile('Salvar DANFSe', defaultName, '*.pdf'))
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -897,9 +924,13 @@ export const desktopClient = {
     )
     return mapExportResult(result)
   },
-  async exportXML(input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
+  async exportXML(
+    input: Omit<ExportXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `nfse_${input.ChaveAcesso}.xml`
-    const outPath = input.OutPath || await desktopClient.selectSaveFile('Salvar XML Original', defaultName, '*.xml')
+    const outPath =
+      input.OutPath ||
+      (await desktopClient.selectSaveFile('Salvar XML Original', defaultName, '*.xml'))
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -944,7 +975,11 @@ export const desktopClient = {
     const path = await callWails(() => SelectCertificate())
     return path || null
   },
-  async selectSaveFile(title: string, defaultFilename: string, pattern: string): Promise<string | null> {
+  async selectSaveFile(
+    title: string,
+    defaultFilename: string,
+    pattern: string
+  ): Promise<string | null> {
     const path = await callWails(() => SelectSaveFile(title, defaultFilename, pattern))
     return path || null
   },
@@ -1046,7 +1081,9 @@ export const desktopClient = {
     return mapNFeCienciaPlan(res)
   },
   async registerNFeCiencia(cnpj: string, chavesAcesso: string[]): Promise<NFeEventBatchResult> {
-    const res = await callWails(() => RegisterNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
+    const res = await callWails(() =>
+      RegisterNFeCiencia({ CNPJ: cnpj, ChavesAcesso: chavesAcesso })
+    )
     return mapNFeEventBatchResult(res)
   },
   // importNFeXML stores NF-e and NF-e event XML files without asking SEFAZ.
@@ -1069,7 +1106,8 @@ export const desktopClient = {
   ): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `nfe_${input.ChaveAcesso}.xml`
     const outPath =
-      input.OutPath || (await desktopClient.selectSaveFile('Salvar XML da NF-e', defaultName, '*.xml'))
+      input.OutPath ||
+      (await desktopClient.selectSaveFile('Salvar XML da NF-e', defaultName, '*.xml'))
     if (!outPath) return null
 
     const res = await callWails(() =>
@@ -1096,7 +1134,8 @@ export const desktopClient = {
     const dialog = nfeExportDialog(input.Format, input.CNPJ)
     const defaultName = input.BaseName || dialog.defaultName
     const outPath =
-      input.OutPath || (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
+      input.OutPath ||
+      (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
     if (!outPath) return null
 
     const res = await callWails(() =>
@@ -1156,7 +1195,8 @@ export const desktopClient = {
   ): Promise<ExportResult | null> {
     const defaultName = input.BaseName || `cte_${input.ChaveAcesso}.xml`
     const outPath =
-      input.OutPath || (await desktopClient.selectSaveFile('Salvar XML do CT-e', defaultName, '*.xml'))
+      input.OutPath ||
+      (await desktopClient.selectSaveFile('Salvar XML do CT-e', defaultName, '*.xml'))
     if (!outPath) return null
 
     const res = await callWails(() =>
@@ -1183,7 +1223,8 @@ export const desktopClient = {
     const dialog = cteExportDialog(input.Format, input.CNPJ)
     const defaultName = input.BaseName || dialog.defaultName
     const outPath =
-      input.OutPath || (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
+      input.OutPath ||
+      (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
     if (!outPath) return null
 
     const res = await callWails(() =>

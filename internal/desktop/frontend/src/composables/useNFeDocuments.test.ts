@@ -270,7 +270,9 @@ describe('useNFeDocuments', () => {
     const cnpj = useNFeDocumentsStore().listInput.CNPJ
     expect(desktopClient.exportNFeXML).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
     expect(desktopClient.exportDANFE).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
-    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: cnpj }))
+    expect(desktopClient.exportNFeDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({ CNPJ: cnpj })
+    )
   })
 
   it('keeps an export visible to a second instance while it is pending', async () => {
@@ -289,7 +291,9 @@ describe('useNFeDocuments', () => {
     expect(remountedPage.exporting.value).toBe(true)
     await expect(remountedPage.exportXML('chave-1')).resolves.toBeNull()
     await expect(remountedPage.exportDANFE('chave-1')).resolves.toBeNull()
-    await expect(remountedPage.exportDocuments('danfe-zip', ['chave-1'], plainExport)).resolves.toBeNull()
+    await expect(
+      remountedPage.exportDocuments('danfe-zip', ['chave-1'], plainExport)
+    ).resolves.toBeNull()
     expect(desktopClient.exportNFeXML).not.toHaveBeenCalled()
     expect(desktopClient.exportDANFE).not.toHaveBeenCalled()
     expect(desktopClient.exportNFeDocuments).toHaveBeenCalledTimes(1)
@@ -331,7 +335,10 @@ describe('useNFeDocuments', () => {
 
   it('searches the destinatário too', async () => {
     const nfe = useNFeDocuments()
-    const vendida = nfeRow('a', { DestinatarioName: 'Agropecuária Campo Verde', DestinatarioCNPJ: '45091726000115' })
+    const vendida = nfeRow('a', {
+      DestinatarioName: 'Agropecuária Campo Verde',
+      DestinatarioCNPJ: '45091726000115',
+    })
     useNFeDocumentsStore().setRows([vendida, nfeRow('b')])
 
     nfe.filterText.value = 'agropecuaria'
@@ -428,7 +435,15 @@ describe('useNFeDocuments', () => {
     expect(nfe.statusLine.value).toBe('')
 
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(
-      status({ CompanyName: 'Empresa do status', LastNSU: 5, MaxNSU: 9, PendingCiencia: 1, PendingConclusiva: 2, TotalDestinatario: 3, TotalEmitente: 1 })
+      status({
+        CompanyName: 'Empresa do status',
+        LastNSU: 5,
+        MaxNSU: 9,
+        PendingCiencia: 1,
+        PendingConclusiva: 2,
+        TotalDestinatario: 3,
+        TotalEmitente: 1,
+      })
     )
     await nfe.loadStatus()
     expect(nfe.companyName.value).toBe('Empresa do status')

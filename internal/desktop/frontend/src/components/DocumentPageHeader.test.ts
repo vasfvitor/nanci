@@ -61,7 +61,10 @@ describe('DocumentPageHeader', () => {
     expect(wrapper.find('h5').text()).toBe('NF-e')
     expect(wrapper.find('.badge').exists()).toBe(false)
     expect(wrapper.find('.banner').exists()).toBe(false)
-    expect(wrapper.findAll('button').map((item) => item.text())).toEqual(['Redefinir NF-e', 'Sincronizar NF-e'])
+    expect(wrapper.findAll('button').map((item) => item.text())).toEqual([
+      'Redefinir NF-e',
+      'Sincronizar NF-e',
+    ])
 
     await button(wrapper, 'Sincronizar NF-e').trigger('click')
     expect(wrapper.emitted('sync')).toHaveLength(1)
@@ -124,7 +127,9 @@ describe('DocumentPageHeader', () => {
   it('marks the first sync on the sync button', () => {
     const wrapper = mountHeader({ firstSync: true })
 
-    const sync = wrapper.findAll('button').find((item) => item.text().startsWith('Sincronizar NF-e'))
+    const sync = wrapper
+      .findAll('button')
+      .find((item) => item.text().startsWith('Sincronizar NF-e'))
     expect(sync?.classes()).toContain('first-sync')
     expect(sync?.find('.badge').attributes('data-color')).toBe('accent')
     expect(sync?.find('.badge').text()).toBe('Primeira sincronização')
@@ -140,12 +145,18 @@ describe('DocumentPageHeader', () => {
   })
 
   it('colors the ambiente badge and the banner for the theme', () => {
-    const light = mountHeader({ ambiente: { label: 'Produção', color: 'negative' }, blockedText: 'x' })
+    const light = mountHeader({
+      ambiente: { label: 'Produção', color: 'negative' },
+      blockedText: 'x',
+    })
     expect(light.find('.badge').text()).toBe('Produção')
     expect(light.find('.badge').attributes('data-text-color')).toBe('white')
 
     quasar.dark.isActive = true
-    const dark = mountHeader({ ambiente: { label: 'Produção', color: 'negative' }, blockedText: 'x' })
+    const dark = mountHeader({
+      ambiente: { label: 'Produção', color: 'negative' },
+      blockedText: 'x',
+    })
     expect(dark.find('.badge').attributes('data-text-color')).toBe('dark')
     expect(dark.find('.banner').classes()).toContain('bg-grey-9')
   })

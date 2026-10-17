@@ -11,9 +11,7 @@ import AppTitleBar from './AppTitleBar.vue'
             <AppTitleBar />
           </q-header>
           <q-page-container class="bg-transparent">
-            <q-page class="q-pa-md">
-              Window Content Placeholder
-            </q-page>
+            <q-page class="q-pa-md"> Window Content Placeholder </q-page>
           </q-page-container>
         </q-layout>
       </div>
@@ -26,9 +24,7 @@ import AppTitleBar from './AppTitleBar.vue'
             <AppTitleBar />
           </q-header>
           <q-page-container class="bg-transparent">
-            <q-page class="q-pa-md">
-              Window Content Placeholder
-            </q-page>
+            <q-page class="q-pa-md"> Window Content Placeholder </q-page>
           </q-page-container>
         </q-layout>
       </div>

@@ -16,7 +16,8 @@ function mountCell(chave: string) {
         QBtn: {
           props: ['disable', 'icon'],
           emits: ['click'],
-          template: '<button :disabled="disable" :data-icon="icon" @click="$emit(\'click\', $event)" />',
+          template:
+            '<button :disabled="disable" :data-icon="icon" @click="$emit(\'click\', $event)" />',
         },
       },
     },

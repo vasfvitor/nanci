@@ -15,7 +15,12 @@
         />
       </div>
 
-      <q-banner dense rounded class="q-mb-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'">
+      <q-banner
+        dense
+        rounded
+        class="q-mb-sm"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'"
+      >
         <template #avatar>
           <q-icon name="info" />
         </template>
@@ -56,7 +61,9 @@
               outline
               :label="cienciaChipLabel(cellProps.row)"
             />
-            <div class="text-caption text-app-muted">{{ formatDate(cellProps.row.CienciaDue) }}</div>
+            <div class="text-caption text-app-muted">
+              {{ formatDate(cellProps.row.CienciaDue) }}
+            </div>
           </q-td>
         </template>
 
@@ -64,8 +71,22 @@
           <q-td :props="cellProps" class="q-gutter-x-xs">
             <q-spinner v-if="busy(cellProps.row.ChaveAcesso)" size="sm" color="primary" />
             <template v-else>
-              <q-btn dense flat size="sm" color="primary" label="Ciência" @click="emit('ciencia', [cellProps.row])" />
-              <q-btn dense flat size="sm" color="secondary" label="Manifestar…" @click="emit('manifest', cellProps.row)" />
+              <q-btn
+                dense
+                flat
+                size="sm"
+                color="primary"
+                label="Ciência"
+                @click="emit('ciencia', [cellProps.row])"
+              />
+              <q-btn
+                dense
+                flat
+                size="sm"
+                color="secondary"
+                label="Manifestar…"
+                @click="emit('manifest', cellProps.row)"
+              />
               <q-btn
                 dense
                 flat
@@ -88,13 +109,18 @@
         Aguardando manifestação conclusiva ({{ semConclusiva.length }})
       </div>
 
-      <q-banner dense rounded class="q-mb-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'">
+      <q-banner
+        dense
+        rounded
+        class="q-mb-sm"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'"
+      >
         <template #avatar>
           <q-icon name="gavel" />
         </template>
-        Confirmação, desconhecimento ou operação não realizada podem ser registrados em até 90 dias da
-        autorização da nota. Passado esse prazo sem manifestação conclusiva, a operação é considerada
-        confirmada por lei, mesmo que a ciência tenha sido registrada.
+        Confirmação, desconhecimento ou operação não realizada podem ser registrados em até 90 dias
+        da autorização da nota. Passado esse prazo sem manifestação conclusiva, a operação é
+        considerada confirmada por lei, mesmo que a ciência tenha sido registrada.
       </q-banner>
 
       <q-table
@@ -130,7 +156,9 @@
               outline
               :label="conclusiveChipLabel(cellProps.row)"
             />
-            <div class="text-caption text-app-muted">{{ formatDate(cellProps.row.ConclusiveDue) }}</div>
+            <div class="text-caption text-app-muted">
+              {{ formatDate(cellProps.row.ConclusiveDue) }}
+            </div>
           </q-td>
         </template>
 
@@ -138,7 +166,14 @@
           <q-td :props="cellProps" class="q-gutter-x-xs">
             <q-spinner v-if="busy(cellProps.row.ChaveAcesso)" size="sm" color="primary" />
             <template v-else>
-              <q-btn dense flat size="sm" color="secondary" label="Manifestar…" @click="emit('manifest', cellProps.row)" />
+              <q-btn
+                dense
+                flat
+                size="sm"
+                color="secondary"
+                label="Manifestar…"
+                @click="emit('manifest', cellProps.row)"
+              />
               <q-btn
                 dense
                 flat
@@ -189,7 +224,9 @@ const $q = useQuasar()
 const semCiencia = computed(() => props.rows.filter((row) => row.Kind === 'sem_ciencia'))
 
 // allSemCienciaBusy is true when every note without ciência is being sent.
-const allSemCienciaBusy = computed(() => semCiencia.value.every((row) => props.busy(row.ChaveAcesso)))
+const allSemCienciaBusy = computed(() =>
+  semCiencia.value.every((row) => props.busy(row.ChaveAcesso))
+)
 
 // The backend lists pending rows nearest conclusive deadline first.
 const semConclusiva = computed(() => props.rows.filter((row) => row.Kind === 'sem_conclusiva'))

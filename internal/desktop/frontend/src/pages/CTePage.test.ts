@@ -133,7 +133,8 @@ function mountPage(stubs: Record<string, unknown> = {}) {
           name: 'QBtn',
           props: ['label', 'disable', 'loading'],
           emits: ['click'],
-          template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
+          template:
+            '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}<slot /></button>',
         },
         'q-table': {
           name: 'QTable',
@@ -210,7 +211,9 @@ describe('CTePage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ CNPJ: company.CNPJ }))
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(
+      expect.objectContaining({ CNPJ: company.CNPJ })
+    )
     expect(desktopClient.statusCTe).toHaveBeenCalledWith(company.CNPJ)
     expect(table(wrapper).props('rows')).toEqual([tomada, servico])
     expect(table(wrapper).props('noDataLabel')).toBe('Nenhum CT-e encontrado.')
@@ -256,7 +259,9 @@ describe('CTePage', () => {
     useWorkspaceStore().cnpj = outra.CNPJ
     await flushPromises()
 
-    expect(desktopClient.listCTe).toHaveBeenLastCalledWith(expect.objectContaining({ CNPJ: outra.CNPJ }))
+    expect(desktopClient.listCTe).toHaveBeenLastCalledWith(
+      expect.objectContaining({ CNPJ: outra.CNPJ })
+    )
     expect(table(wrapper).props('selected')).toEqual([])
   })
 
@@ -328,7 +333,9 @@ describe('CTePage', () => {
     wrapper.getComponent({ name: 'QToggle' }).vm.$emit('update:modelValue', true)
     await flushPromises()
 
-    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ OnlyUnread: true }))
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(
+      expect.objectContaining({ OnlyUnread: true })
+    )
   })
 
   it('does not search with an NF-e key that is not 44 characters', async () => {
@@ -336,7 +343,10 @@ describe('CTePage', () => {
     await flushPromises()
     vi.mocked(desktopClient.listCTe).mockClear()
 
-    field(wrapper, 'QInput', 'Chave de NF-e transportada').vm.$emit('update:modelValue', '3526 0911')
+    field(wrapper, 'QInput', 'Chave de NF-e transportada').vm.$emit(
+      'update:modelValue',
+      '3526 0911'
+    )
     await flushPromises()
 
     const chave = field(wrapper, 'QInput', 'Chave de NF-e transportada')
@@ -357,7 +367,9 @@ describe('CTePage', () => {
     await tomador.trigger('keyup', { key: 'Enter' })
     await flushPromises()
 
-    expect(desktopClient.listCTe).toHaveBeenCalledWith(expect.objectContaining({ TomadorCNPJ: '12345678000199' }))
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(
+      expect.objectContaining({ TomadorCNPJ: '12345678000199' })
+    )
   })
 
   it('disables sync and explains the block while SEFAZ blocks the company', async () => {
@@ -392,7 +404,10 @@ describe('CTePage', () => {
 
     expect(desktopClient.pullCTe).toHaveBeenCalledWith(company.CNPJ)
     expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'positive', message: expect.stringContaining('3 CT-e e 1 eventos') })
+      expect.objectContaining({
+        type: 'positive',
+        message: expect.stringContaining('3 CT-e e 1 eventos'),
+      })
     )
   })
 
@@ -401,51 +416,54 @@ describe('CTePage', () => {
     { format: 'xlsx', noun: 'documento' },
     { format: 'zip', noun: 'XML' },
     { format: 'dacte-zip', noun: 'DACTE' },
-  ])('exports the filtered rows as $format with the choice of the dialog', async ({ format, noun }) => {
-    vi.mocked(desktopClient.exportCTeDocuments).mockResolvedValue({
-      OutPath: 'C:\\exports\\cte',
-      Format: 'xml',
-      Incremental: true,
-      ExportedCount: 1,
-      SkippedSemDACTE: 0,
-    })
-    const wrapper = mountPage()
-    await flushPromises()
-    field(wrapper, 'QInput', placeholder).vm.$emit('update:modelValue', 'serra')
-    await flushPromises()
-
-    await button(wrapper, 'Exportar').trigger('click')
-    expect(dialog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        componentProps: {
-          source: 'cte',
-          count: 1,
-          scope: 'listed',
-          formats: CTE_EXPORT_FORMATS,
-          initialFormat: '',
-        },
+  ])(
+    'exports the filtered rows as $format with the choice of the dialog',
+    async ({ format, noun }) => {
+      vi.mocked(desktopClient.exportCTeDocuments).mockResolvedValue({
+        OutPath: 'C:\\exports\\cte',
+        Format: 'xml',
+        Incremental: true,
+        ExportedCount: 1,
+        SkippedSemDACTE: 0,
       })
-    )
-    expect(desktopClient.exportCTeDocuments).not.toHaveBeenCalled()
+      const wrapper = mountPage()
+      await flushPromises()
+      field(wrapper, 'QInput', placeholder).vm.$emit('update:modelValue', 'serra')
+      await flushPromises()
 
-    okHandlers[0]?.({ format, incremental: true, includeResumos: false })
-    await flushPromises()
+      await button(wrapper, 'Exportar').trigger('click')
+      expect(dialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          componentProps: {
+            source: 'cte',
+            count: 1,
+            scope: 'listed',
+            formats: CTE_EXPORT_FORMATS,
+            initialFormat: '',
+          },
+        })
+      )
+      expect(desktopClient.exportCTeDocuments).not.toHaveBeenCalled()
 
-    expect(desktopClient.exportCTeDocuments).toHaveBeenCalledWith({
-      CNPJ: company.CNPJ,
-      Competence: '',
-      Role: '',
-      Format: format,
-      ChavesAcesso: [servico.ChaveAcesso],
-      Incremental: true,
-    })
-    expect(notify).toHaveBeenCalledTimes(1)
-    expect(notify).toHaveBeenCalledWith({
-      type: 'positive',
-      message: `1 ${noun} exportado para C:\\exports\\cte.`,
-      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
-    })
-  })
+      okHandlers[0]?.({ format, incremental: true, includeResumos: false })
+      await flushPromises()
+
+      expect(desktopClient.exportCTeDocuments).toHaveBeenCalledWith({
+        CNPJ: company.CNPJ,
+        Competence: '',
+        Role: '',
+        Format: format,
+        ChavesAcesso: [servico.ChaveAcesso],
+        Incremental: true,
+      })
+      expect(notify).toHaveBeenCalledTimes(1)
+      expect(notify).toHaveBeenCalledWith({
+        type: 'positive',
+        message: `1 ${noun} exportado para C:\\exports\\cte.`,
+        actions: [expect.objectContaining({ label: 'Abrir pasta' })],
+      })
+    }
+  )
 
   it.each([
     { skipped: 1, message: '1 documento ignorado: este tipo de documento não tem DACTE.' },
@@ -488,7 +506,10 @@ describe('CTePage', () => {
     okHandlers[0]?.({ format: 'csv', incremental: false, includeResumos: false })
     await flushPromises()
 
-    expect(notify).toHaveBeenCalledWith({ type: 'info', message: 'Nenhum documento para exportar.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'Nenhum documento para exportar.',
+    })
     expect(notify).toHaveBeenCalledTimes(1)
   })
 
@@ -508,7 +529,11 @@ describe('CTePage', () => {
     await flushPromises()
 
     expect(desktopClient.exportCTeDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ Format: 'zip', ChavesAcesso: [tomada.ChaveAcesso], Incremental: false })
+      expect.objectContaining({
+        Format: 'zip',
+        ChavesAcesso: [tomada.ChaveAcesso],
+        Incremental: false,
+      })
     )
   })
 
@@ -527,7 +552,10 @@ describe('CTePage', () => {
     expect(desktopClient.markCTeViewed).toHaveBeenCalledWith(company.CNPJ, [servico.ChaveAcesso])
     expect(table(wrapper).props('selected')).toEqual([])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (1)')
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '1 documento marcado como visto.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 documento marcado como visto.',
+    })
   })
 
   it('asks before marking the whole list viewed', async () => {
@@ -549,7 +577,10 @@ describe('CTePage', () => {
       servico.ChaveAcesso,
     ])
     expect(button(wrapper, /^Marcar vistos/).props('label')).toBe('Marcar vistos (0)')
-    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '2 documentos marcados como vistos.' })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '2 documentos marcados como vistos.',
+    })
   })
 
   it('previews the reset, confirms it with the counts and then resets', async () => {
@@ -587,7 +618,10 @@ describe('CTePage', () => {
     expect(desktopClient.resetCTe).toHaveBeenCalledWith(company.CNPJ)
     expect(desktopClient.listCTe).toHaveBeenCalled()
     expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'positive', message: expect.stringContaining('2 CT-e e 3 eventos') })
+      expect.objectContaining({
+        type: 'positive',
+        message: expect.stringContaining('2 CT-e e 3 eventos'),
+      })
     )
   })
 
@@ -686,8 +720,20 @@ describe('CTePage row menu', () => {
 describe('CTePage import', () => {
   const withRejected: ImportXMLResult = {
     Files: [
-      { Path: 'C:\\XML\\a.xml', Kind: 'completa', ChaveAcesso: tomada.ChaveAcesso, Outcome: 'updated', Message: '' },
-      { Path: 'C:\\XML\\b.xml', Kind: '', ChaveAcesso: '', Outcome: 'rejected', Message: 'o XML não cita a empresa' },
+      {
+        Path: 'C:\\XML\\a.xml',
+        Kind: 'completa',
+        ChaveAcesso: tomada.ChaveAcesso,
+        Outcome: 'updated',
+        Message: '',
+      },
+      {
+        Path: 'C:\\XML\\b.xml',
+        Kind: '',
+        ChaveAcesso: '',
+        Outcome: 'rejected',
+        Message: 'o XML não cita a empresa',
+      },
     ],
     Imported: 0,
     Updated: 1,
@@ -728,7 +774,10 @@ describe('CTePage import', () => {
     await button(wrapper, 'Importar XML').trigger('click')
     await flushPromises()
 
-    expect(desktopClient.importCTeXML).toHaveBeenCalledWith(company.CNPJ, ['C:\\XML\\a.xml', 'C:\\XML\\b.xml'])
+    expect(desktopClient.importCTeXML).toHaveBeenCalledWith(company.CNPJ, [
+      'C:\\XML\\a.xml',
+      'C:\\XML\\b.xml',
+    ])
     expect(desktopClient.listCTe).toHaveBeenCalled()
     expect(notify).toHaveBeenCalledWith({
       type: 'warning',
@@ -750,7 +799,10 @@ describe('CTePage import', () => {
     await flushPromises()
 
     expect(notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'negative', message: expect.stringContaining('Erro ao importar XML') })
+      expect.objectContaining({
+        type: 'negative',
+        message: expect.stringContaining('Erro ao importar XML'),
+      })
     )
     expect(dialog).not.toHaveBeenCalled()
   })
@@ -768,7 +820,11 @@ describe('CTePage import', () => {
         </div></div>`,
       },
       ChaveCell: { template: '<span />' },
-      'q-badge': { name: 'QBadge', props: ['label'], template: '<span class="badge">{{ label }}</span>' },
+      'q-badge': {
+        name: 'QBadge',
+        props: ['label'],
+        template: '<span class="badge">{{ label }}</span>',
+      },
     })
     await flushPromises()
 

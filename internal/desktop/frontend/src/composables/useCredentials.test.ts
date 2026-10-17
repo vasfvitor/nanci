@@ -13,7 +13,11 @@ vi.mock('@/platform/wails/client', () => ({
   },
 }))
 
-const credential = { ID: 'cred-1', Label: 'A1 matriz', CertPath: 'C:\\certs\\a1.pfx' } as CredentialSummary
+const credential = {
+  ID: 'cred-1',
+  Label: 'A1 matriz',
+  CertPath: 'C:\\certs\\a1.pfx',
+} as CredentialSummary
 
 describe('useCredentials', () => {
   beforeEach(() => {
@@ -73,16 +77,23 @@ describe('useCredentials', () => {
     const api = useCredentials()
     await api.updateCredentialData('cred-1', 'A1 filial')
 
-    expect(desktopClient.updateCredentialData).toHaveBeenCalledWith({ CredentialID: 'cred-1', Label: 'A1 filial' })
+    expect(desktopClient.updateCredentialData).toHaveBeenCalledWith({
+      CredentialID: 'cred-1',
+      Label: 'A1 filial',
+    })
     expect(desktopClient.listCredentials).toHaveBeenCalledOnce()
   })
 
   it('does not reload the list when an update fails', async () => {
-    vi.mocked(desktopClient.updateCredentialPath).mockRejectedValue(new Error('arquivo não encontrado'))
+    vi.mocked(desktopClient.updateCredentialPath).mockRejectedValue(
+      new Error('arquivo não encontrado')
+    )
     vi.mocked(desktopClient.updateCredentialData).mockRejectedValue(new Error('nome inválido'))
 
     const api = useCredentials()
-    await expect(api.updateCredentialPath('cred-1', 'C:\\x.pfx')).rejects.toThrow('arquivo não encontrado')
+    await expect(api.updateCredentialPath('cred-1', 'C:\\x.pfx')).rejects.toThrow(
+      'arquivo não encontrado'
+    )
     await expect(api.updateCredentialData('cred-1', '')).rejects.toThrow('nome inválido')
 
     expect(desktopClient.listCredentials).not.toHaveBeenCalled()
