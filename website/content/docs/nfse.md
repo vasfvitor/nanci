@@ -14,7 +14,7 @@ As NFS-e vêm do ADN Contribuintes, a API nacional da Receita Federal ([manual d
 
 {{< theme-image light="/img/screenshots/documentos-light.png" dark="/img/screenshots/documentos-dark.png" alt="Página de NFS-e" >}}
 
-Exporte a lista filtrada em Excel, CSV, ZIP com os XMLs ou ZIP com os DANFSe. Cada nota também pode ser salva sozinha em XML ou PDF.
+Exporte a lista filtrada em Excel, CSV, ZIP com os XMLs ou ZIP com os DANFSe. Cada nota também pode ser salva sozinha em XML ou PDF. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.
 
 **Consulta Direta API** busca os eventos de uma nota pela chave de acesso, sem sincronizar.
 

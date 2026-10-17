@@ -37,4 +37,4 @@ A aba **Pendências** mostra as notas sem manifestação conclusiva e o prazo de
 
 ## Exportar
 
-**Exportar** gera um ZIP com os XMLs da lista. **Exportar XML** salva uma nota.
+**Exportar** gera, da lista filtrada ou da seleção, uma planilha Excel ou CSV, um ZIP com os XMLs e eventos, ou um ZIP com os DANFE em PDF. Cada nota também pode ser salva sozinha em XML ou DANFE. Resumos (notas sem o XML completo) entram na planilha e no ZIP de XML só com **Incluir resumos**, e nunca têm DANFE: o ZIP de DANFE avisa quantos ficaram de fora. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.

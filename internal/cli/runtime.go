@@ -20,7 +20,7 @@ import (
 
 // prodAppFactory returns the production AppFactory: it opens a real SQLite
 // database, wires the repositories, the blob store, the keyring-based
-// credential provider (with a terminal fallback), and the DANFSe and DANFE
+// credential provider (with a terminal fallback), and the DANFSe, DANFE and DACTE
 // renderers.
 func prodAppFactory(env CommandEnv) AppFactory {
 	return func(ctx context.Context) (*app.App, func(), error) {

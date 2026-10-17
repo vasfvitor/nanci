@@ -51,6 +51,7 @@ toc: false
 <div><dt>Origem</dt><dd>SEFAZ, modelo 55</dd></div>
 <div><dt>O que chega</dt><dd>Notas recebidas pela empresa.</dd></div>
 <div><dt>Manifestação</dt><dd>Ciência em lote e manifestações, com os prazos.</dd></div>
+<div><dt>Exportação</dt><dd>Excel, CSV, XML e DANFE.</dd></div>
 </dl>
 <a class="nc-box-link" href="docs/nfe/">Ver NF-e</a>
 </article>
@@ -60,6 +61,7 @@ toc: false
 <div><dt>Origem</dt><dd>SEFAZ, modelos 57, 64 e 67</dd></div>
 <div><dt>O que chega</dt><dd>Fretes em que a empresa é parte.</dd></div>
 <div><dt>Ligação</dt><dd>Ache o CT-e de uma NF-e.</dd></div>
+<div><dt>Exportação</dt><dd>Excel, CSV, XML e DACTE.</dd></div>
 </dl>
 <a class="nc-box-link" href="docs/cte/">Ver CT-e</a>
 </article>

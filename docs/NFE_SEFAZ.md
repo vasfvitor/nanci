@@ -233,7 +233,7 @@ Em aberto:
 - **`TSChaveNFSe` contradiz `TSIdNFSe`.** O primeiro põe as letras nas posições 7 a 20; o segundo e a regra de formação, nas posições 10 a 23. O Nanci segue o `TSIdNFSe`. Rever quando os esquemas com CNPJ alfanumérico chegarem à "Documentação atual".
 - **Letras vedadas.** A NT 2025.001 v1.00 não confirma a exclusão de I, O, U, Q e F; o Nanci aceita qualquer letra de A a Z.
 - **CNPJ alfanumérico solto no log exportado.** Fora de uma chave e sem pontuação, continua sem máscara, para não mascarar identificadores hexadecimais (decisão do teste `raw alphanumeric untouched`).
-- **Código de barras.** O Nanci ainda não gera DANFE nem DACTE; o CODE-128 híbrido entra quando a exportação em PDF vier.
+- **Código de barras.** O DANFE e o DACTE saem pelo `fiscal-renderer` v0.8.1 desde 16/10/2026; não foi verificado se ele gera o CODE-128 híbrido para chave com CNPJ alfanumérico. Conferir com um XML real quando houver.
 - **Sem chave real nos testes.** Os testes usam o CNPJ do exemplo da NT; não há XML real de emitente com CNPJ alfanumérico.
 
 ## Fora do escopo

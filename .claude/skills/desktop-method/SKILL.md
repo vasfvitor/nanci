@@ -74,7 +74,6 @@ A user-facing capability usually ships with its CLI command in the same change: 
 - Only `src/platform/wails/client.ts`, `events.ts` and `runtime.ts` import `wailsjs`. No `window.go`, no `@ts-expect-error` Wails calls, no raw `EventsOff`, no `v-html`.
 - Wails methods return `desktopapi` DTOs; the default file name is suggested in `client.ts`, the path is chosen by the user, the file is written by the core.
 - Portuguese fiscal vocabulary stays in every layer: `ChaveAcesso`, `ChavesAcesso`, `Competence`, `Manifestacao`, `tomada`/`prestada`, `destinatario`, `tomador`.
-- Known debt, do not copy: single-document exports (`ExportXML`, `ExportDANFSe`, `ExportNFeXML`, `ExportCTeXML` in `app.go`) return `ExportedCount: 0`, so the page shows "Nenhum documento para exportar." after a successful export (ROADMAP item). New single exports return `ExportedCount: 1`.
 
 ## Checklist
 

@@ -27,7 +27,7 @@
 | **NF-e** | Distribuição DF-e da SEFAZ, com Manifestação do Destinatário |
 | **CT-e** | Distribuição DF-e da SEFAZ |
 
-Várias empresas, cada uma com o seu certificado A1. Exporta para Excel, CSV, XML e DANFSe. Não há servidor no meio: a conexão vai direto ao governo.
+Várias empresas, cada uma com o seu certificado A1. Exporta NFS-e, NF-e e CT-e para Excel, CSV, XML e PDF (DANFSe, DANFE e DACTE). Não há servidor no meio: a conexão vai direto ao governo.
 
 ## Instalação
 
