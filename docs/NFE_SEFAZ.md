@@ -168,7 +168,11 @@ nanci.exe nfe export xlsx --cnpj 12345678000199 --competencia 2026-09 --incluir-
 nanci.exe nfe export danfe-zip --cnpj 12345678000199 --competencia 2026-09 --out danfes.zip
 nanci.exe nfe export danfe --cnpj 12345678000199 --chave <CHAVE> --out nota.pdf
 
-# 9. Redefinir as NF-e da empresa (apaga as notas dos dois ambientes)
+# 9. Importar XML avulso (procNFe, resNFe ou evento) e buscar uma NF-e pela chave
+nanci.exe nfe import --cnpj 12345678000199 nota.xml cancelamento.xml
+nanci.exe nfe buscar --cnpj 12345678000199 --chave <CHAVE>
+
+# 10. Redefinir as NF-e da empresa (apaga as notas dos dois ambientes)
 nanci.exe nfe reset --cnpj 12345678000199
 nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 ```
@@ -181,6 +185,8 @@ nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 - `nfe export csv` e `nfe export xlsx` gravam uma linha por nota (papel, emissão, série e número, chave, emitente, destinatário, tipo, natureza da operação, finalidade, valor total, ICMS, IPI, situação, completude, manifestação, protocolo e quantidade de eventos), com os mesmos filtros, `--incluir-resumos` e `--incremental` do `zip` (padrão `nfe.csv` e `nfe.xlsx`). O Excel separa as abas "NFe Recebidas" (a empresa é destinatária), "NFe Emitidas" e "NFe Outras"; o CSV traz todas sob um só cabeçalho, sem acentos. Nas linhas de resumo ficam vazios os campos que o `resNFe` não traz, como o destinatário.
 - `nfe export danfe-zip` grava o DANFE de cada nota em `<competencia>/<papel>/<chave>.pdf` (padrão `danfes.zip`), com os mesmos filtros e `--incremental`. O DANFE precisa do XML completo, então os resumos nunca entram e não há `--incluir-resumos`; a saída conta os que ficaram de fora em "Resumos sem DANFE". `nfe export danfe` grava o DANFE de uma `--chave` (padrão `<chave>.pdf`) e recusa um resumo. Uma nota cancelada sai com a marca d'água de cancelamento.
 - Cada formato tem a sua marca de exportação (`xml`, `csv`, `xlsx`, `danfe`): exportar em CSV não tira a nota da próxima exportação incremental em XML ou Excel.
+- `nfe import` recebe um ou mais arquivos e imprime uma linha por arquivo (importado, atualizado ou rejeitado, com o motivo) e o resumo; só falha quando todos foram rejeitados. Arquivos inexistentes são recusados antes de abrir o banco. As regras de recusa estão em "Importação de XML".
+- `nfe buscar` valida a chave antes de abrir o banco, gasta uma das 20 consultas da hora e grava o que a SEFAZ devolver (completa, ou só o resumo até a Ciência). Durante um `nfe pull` o comando recusa com "sincronização em andamento".
 
 ## Aplicativo desktop
 

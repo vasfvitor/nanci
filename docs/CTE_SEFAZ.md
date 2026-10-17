@@ -172,7 +172,10 @@ nanci.exe cte export csv --cnpj 12345678000199 --incremental
 nanci.exe cte export dacte-zip --cnpj 12345678000199 --competencia 2026-09
 nanci.exe cte export dacte --cnpj 12345678000199 --chave <CHAVE>
 
-# 7. Redefinir os CT-e da empresa (apaga os documentos dos dois ambientes)
+# 7. Importar XML avulso (procCTe, procCTeOS, procGTVe, procCTeSimp ou evento)
+nanci.exe cte import --cnpj 12345678000199 frete.xml
+
+# 8. Redefinir os CT-e da empresa (apaga os documentos dos dois ambientes)
 nanci.exe cte reset --cnpj 12345678000199
 nanci.exe cte reset --cnpj 12345678000199 --confirmar
 ```
@@ -184,6 +187,7 @@ nanci.exe cte reset --cnpj 12345678000199 --confirmar
 - `cte export csv`, `xlsx` e `dacte-zip` aceitam os mesmos filtros e `--incremental` do `zip`; o `--out` padrão é `cte.csv`, `cte.xlsx` e `dactes.zip`. O `dacte-zip` mostra "CT-e sem DACTE: N" quando deixou documentos de fora.
 - `cte export dacte` grava o DACTE da `--chave` em `--out`, por padrão `<chave>.pdf`.
 - `cte reset` sem `--confirmar` mostra quantos documentos, eventos e marcas de exportação seriam removidos e não altera nada.
+- `cte import` recebe um ou mais arquivos e imprime uma linha por arquivo (importado, atualizado ou rejeitado, com o motivo) e o resumo; só falha quando todos foram rejeitados. Não há busca por chave para CT-e.
 
 ## Aplicativo desktop
 
