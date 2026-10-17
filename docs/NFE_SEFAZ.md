@@ -108,6 +108,15 @@ As constantes ficam em `internal/nfe/manifestacao.go`.
 
 Cada evento é assinado no perfil XMLDSig da NF-e: assinatura envelopada sobre `infEvento`, canonicalização C14N 1.0 inclusiva, digest SHA-1, assinatura RSA-SHA1 e o certificado da empresa em `KeyInfo`. O Nanci escreve o `infEvento` já na forma canônica, então usa só a biblioteca padrão do Go (`crypto/sha1` e `crypto/rsa`), sem biblioteca de C14N. O formato foi conferido contra um evento de ciência real aceito pela SEFAZ: o `infEvento` gerado é idêntico byte a byte e produz o mesmo `DigestValue` (`TestInfEventoDigest_RealEvent` em `internal/sefaz/xmldsig_test.go`). O teste opcional `go test -tags xmlsec ./internal/sefaz/` verifica a assinatura com o `xmlsec1`.
 
+## Importação de XML
+
+A empresa pode guardar no Nanci XMLs de NF-e que já tem em mãos, sem consultar a SEFAZ e sem gastar o limite por hora: as notas que ela mesma emitiu (a SEFAZ não as distribui ao emitente), as de mais de 90 dias, que já saíram da fila, ou as que o fornecedor enviou por e-mail. A camada `app` expõe a importação em `NFeService.ImportXML`, que recebe a lista de arquivos e responde arquivo por arquivo.
+
+- O tipo do arquivo vem do elemento raiz: `nfeProc` (completa), `resNFe` (resumo), `procEventoNFe` e `resEvento` (eventos). Outra raiz, inclusive uma `NFe` sem o protocolo de autorização, é recusada.
+- Um arquivo recusado não interrompe os outros. São recusados: arquivo ilegível ou maior que 20 MiB (o mesmo limite de um documento da distribuição), XML inválido ou que o leitor não aceita, XML de outro ambiente (`tpAmb` 2 numa empresa de produção ou 1 numa de produção restrita), nota em que a empresa não aparece em papel nenhum, e evento de uma nota que a empresa não tem, a menos que a própria empresa seja a autora do evento, como na distribuição.
+- A nota importada passa pela mesma gravação da distribuição: o papel é classificado, um resumo nunca substitui uma completa, eventos já gravados são ligados e a situação e a manifestação são recalculadas. Ela entra sem NSU (`first_seen_nsu` e `last_seen_nsu` nulos); se a distribuição trouxer a mesma nota depois, o NSU é preenchido.
+- Cada arquivo sai como `imported` (a empresa não tinha a chave, ou o evento), `updated` (já tinha e a gravação juntou as duas versões) ou `rejected`, com o motivo.
+
 ## Uso pela linha de comando
 
 Todos os subcomandos de `nanci nfe` recebem a empresa por `--cnpj` (`-c`).
@@ -239,12 +248,7 @@ Em aberto:
 ## Fora do escopo
 
 - NFC-e (modelo 65), NFCom, NF3e e CF-e SAT.
-- Importação de XML avulso.
-- Recuperar notas emitidas pela própria empresa.
-
-## Próximos passos
-
-- Importação de XML avulso.
+- Recuperar pela SEFAZ as notas emitidas pela própria empresa; o XML delas pode ser importado (ver "Importação de XML").
 
 ## Atribuição
 

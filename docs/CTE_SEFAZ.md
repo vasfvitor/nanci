@@ -137,6 +137,10 @@ Os CT-e saem em quatro formatos, cada um com as suas marcas de exportação incr
 
 O DACTE só existe para o CT-e modelo 57 propriamente dito: o leiaute da biblioteca não cobre CT-e OS (modelo 67), GTV-e (modelo 64) nem CT-e Simplificado. No `dacte-zip` esses documentos ficam de fora, são contados ("CT-e sem DACTE: N") e não recebem marca de exportação, então uma exportação incremental volta a contá-los, como os resumos da NF-e. O `dacte` de um desses documentos falha com "DACTE disponível só para o CT-e modelo 57; CT-e OS, GTV-e e CT-e Simplificado não têm DACTE".
 
+## Importação de XML
+
+Como na NF-e (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#importação-de-xml)), a empresa pode guardar XMLs de CT-e que já tem, sem consultar a SEFAZ, por `CTeService.ImportXML`. A raiz decide o tipo: `cteProc`, `cteOSProc`, `GTVeProc` e `cteSimpProc` são documentos, `procEventoCTe` é evento; não há resumo. As recusas são as mesmas da NF-e: arquivo ilegível ou maior que 20 MiB, XML inválido, outro ambiente, CT-e em que a empresa não tem papel nenhum, e evento de um CT-e que a empresa não tem e de que não é autora. O documento importado entra sem NSU e passa pela mesma gravação da distribuição (papéis, ligação dos eventos, situação).
+
 ## Uso pela linha de comando
 
 Todos os subcomandos de `nanci cte` recebem a empresa por `--cnpj` (`-c`).
@@ -202,7 +206,7 @@ Um CT-e recebido de novo substitui o anterior (não há resumo a preservar), man
 
 - Envio da prestação do serviço em desacordo (610110) e do seu cancelamento.
 - MDF-e: os documentos em si e os eventos de MDF-e sobre CT-e que a empresa não tem.
-- Recuperar CT-e emitidos pela própria empresa.
+- Recuperar pela SEFAZ os CT-e emitidos pela própria empresa; o XML deles pode ser importado (ver "Importação de XML").
 - Ligação visual entre CT-e, NF-e e NFS-e nas telas.
 
 ## Próximos passos
