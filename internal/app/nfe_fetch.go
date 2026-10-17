@@ -44,7 +44,8 @@ type FetchByChaveResult struct {
 // FetchByChave asks the NF-e distribution for one NF-e by its chave
 // (consChNFe) and stores what comes back as the distribution does, without
 // moving the NSU cursor. The request spends one of the NF-e budget's 20 per
-// hour. A consumo_indevido or rate_budget block refuses it before the
+// hour, right before it is sent, so a cancelled password prompt costs
+// nothing. A consumo_indevido or rate_budget block refuses it before the
 // password prompt; the hour of wait after the queue caught up does not,
 // since it only applies to distNSU. A SEFAZ rejection is an error with its
 // meaning spelled out.
@@ -75,6 +76,10 @@ func (s *NFeService) FetchByChave(ctx context.Context, in FetchByChaveInput) (Fe
 	if err := s.SyncManager.BlockedFor(ctx, comp, source, syncstate.SyncStopReasonConsumoIndevido, syncstate.SyncStopReasonRateBudget); err != nil {
 		return FetchByChaveResult{}, err
 	}
+	loaded, err := s.Certificates.LoadForCompany(ctx, comp, "Busca de NF-e pela chave")
+	if err != nil {
+		return FetchByChaveResult{}, err
+	}
 	spent, err := s.SyncManager.SpendRequest(ctx, comp, source)
 	if err != nil {
 		return FetchByChaveResult{}, err
@@ -85,11 +90,6 @@ func (s *NFeService) FetchByChave(ctx context.Context, in FetchByChaveInput) (Fe
 			return FetchByChaveResult{}, err
 		}
 		return FetchByChaveResult{}, errors.New("limite de consultas por hora de NF-e atingido")
-	}
-
-	loaded, err := s.Certificates.LoadForCompany(ctx, comp, "Busca de NF-e pela chave")
-	if err != nil {
-		return FetchByChaveResult{}, err
 	}
 	client, err := newSEFAZClient(sefaz.ClientConfig{
 		Environment: comp.Environment,

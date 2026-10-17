@@ -233,13 +233,46 @@ func TestNFeFetchByChaveRateBudget(t *testing.T) {
 		}
 	}
 
+	// The budget is spent after the password prompt, so the first refusal
+	// comes after one prompt; it stores the rate_budget block.
 	_, err := env.fetch(nfeChaveProc)
 	var blocked *sync.BlockedError
 	if !errors.As(err, &blocked) || blocked.Reason != syncstate.SyncStopReasonRateBudget {
 		t.Fatalf("FetchByChave = %v, want a rate_budget block", err)
 	}
-	if len(fake.bodies) != 0 || len(env.passwords.requests) != 0 || env.countSyncRequests() != 20 {
-		t.Errorf("%d requests, %d prompts, %d recorded; want 0, 0 and 20", len(fake.bodies), len(env.passwords.requests), env.countSyncRequests())
+	if len(fake.bodies) != 0 || len(env.passwords.requests) != 1 || env.countSyncRequests() != 20 {
+		t.Errorf("%d requests, %d prompts, %d recorded; want 0, 1 and 20", len(fake.bodies), len(env.passwords.requests), env.countSyncRequests())
+	}
+
+	// The stored block refuses the next fetch before the prompt.
+	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, ErrSourceBlocked) {
+		t.Errorf("second FetchByChave = %v, want ErrSourceBlocked", err)
+	}
+	if len(fake.bodies) != 0 || len(env.passwords.requests) != 1 || env.countSyncRequests() != 20 {
+		t.Errorf("after the blocked fetch: %d requests, %d prompts, %d recorded; want 0, 1 and 20", len(fake.bodies), len(env.passwords.requests), env.countSyncRequests())
+	}
+}
+
+// cancelledPassword answers every prompt as the desktop does when the user
+// closes the password dialog.
+type cancelledPassword struct{ prompts int }
+
+func (p *cancelledPassword) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+	p.prompts++
+	return nil, ErrOperationCanceled
+}
+
+func TestNFeFetchByChaveCancelledPasswordSpendsNoRequest(t *testing.T) {
+	env := newNFeTestEnv(t)
+	fake := env.useFakeNFeDistribuicao(nfeRetDistDFeInt(t, 137, "Nenhum documento localizado"))
+	cancelled := &cancelledPassword{}
+	env.app.NFe.Certificates.Passwords = cancelled
+
+	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, ErrOperationCanceled) {
+		t.Fatalf("FetchByChave = %v, want ErrOperationCanceled", err)
+	}
+	if cancelled.prompts != 1 || len(fake.bodies) != 0 || env.countSyncRequests() != 0 {
+		t.Errorf("%d prompts, %d requests, %d recorded; want 1, 0 and 0", cancelled.prompts, len(fake.bodies), env.countSyncRequests())
 	}
 }
 
