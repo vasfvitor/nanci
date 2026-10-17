@@ -33,6 +33,7 @@ func newNFeCommand(env CommandEnv) *cobra.Command {
 	nfeCmd.AddCommand(newNFePendentesCmd(env, &cnpjFlag))
 	nfeCmd.AddCommand(newNFeExportCmd(env, &cnpjFlag))
 	nfeCmd.AddCommand(newNFeImportCmd(env, &cnpjFlag))
+	nfeCmd.AddCommand(newNFeBuscarCmd(env, &cnpjFlag))
 	nfeCmd.AddCommand(newNFeTestarConexaoCmd(env, &cnpjFlag))
 	nfeCmd.AddCommand(newNFeResetCmd(env, &cnpjFlag))
 	return nfeCmd
