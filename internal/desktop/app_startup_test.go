@@ -109,6 +109,7 @@ func coreRuns() map[string]func(a *App) (any, error) {
 // password prompts, dialogs, log settings and build or path information.
 var withoutCore = map[string]bool{
 	"CancelCertPassword": true,
+	"ConfirmQuit":        true,
 	"ExportLogs":         true,
 	"GetBuildInfo":       true,
 	"GetDataDirectory":   true,

@@ -61,6 +61,7 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
   CancelCertPassword: vi.fn(),
+  ConfirmQuit: vi.fn(),
   ExportCTeDocuments: vi.fn(),
   ExportCTeXML: vi.fn(),
   ExportDACTE: vi.fn(),

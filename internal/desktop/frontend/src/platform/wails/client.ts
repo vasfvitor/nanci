@@ -3,6 +3,7 @@ import {
   AddCredential,
   AssignCredentialToCompany,
   CancelCertPassword,
+  ConfirmQuit,
   ExportCTeDocuments,
   ExportCTeXML,
   ExportDACTE,
@@ -906,6 +907,10 @@ export const desktopClient = {
   },
   cancelCertPassword(requestID: string) {
     return callWails(() => CancelCertPassword(requestID))
+  },
+  // confirmQuit closes the app after the user chose to leave during a sync.
+  confirmQuit(): Promise<void> {
+    return callWails(() => ConfirmQuit())
   },
   updateCompany(input: UpdateCompanyInput) {
     return callWails(() => UpdateCompany(input))

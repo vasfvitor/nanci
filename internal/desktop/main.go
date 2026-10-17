@@ -96,6 +96,7 @@ func main() {
 		},
 		OnStartup:      app.startup,
 		OnShutdown:     app.shutdown,
+		OnBeforeClose:  app.beforeClose,
 		ErrorFormatter: formatError,
 		Bind: []any{
 			app,

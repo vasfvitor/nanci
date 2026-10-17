@@ -1150,6 +1150,7 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             AddCredential: async (input: unknown) => ({ ...(input as object), ID: String(Date.now()) }),
             AssignCredentialToCompany: async () => undefined,
             CancelCertPassword: async () => undefined,
+            ConfirmQuit: async () => undefined,
             ExportDocuments: async () => ({ OutPath: 'C:\\exports\\nfs-export.xlsx', Format: 'xlsx', Incremental: false, ExportedCount: 1 }),
             ExportDANFE: async () => ({ OutPath: 'C:\\exports\\danfe.pdf', Format: 'danfe', Incremental: false, ExportedCount: 1 }),
             ExportDANFSe: async () => ({ OutPath: 'C:\\exports\\danfse.pdf', Format: 'danfse', Incremental: false, ExportedCount: 1 }),

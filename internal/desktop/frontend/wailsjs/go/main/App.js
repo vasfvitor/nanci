@@ -18,6 +18,10 @@ export function CancelCertPassword(arg1) {
   return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
+export function ConfirmQuit() {
+  return window['go']['main']['App']['ConfirmQuit']();
+}
+
 export function ExportCTeDocuments(arg1) {
   return window['go']['main']['App']['ExportCTeDocuments'](arg1);
 }

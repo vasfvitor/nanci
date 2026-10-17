@@ -142,6 +142,9 @@ type App struct {
 	logLevel   *slog.LevelVar
 	logWriter  *rotatingFileWriter
 	logPath    string
+	guard      closeGuard
+	events     eventEmitter
+	quit       func(ctx context.Context) // runtime.Quit; tests replace it
 }
 
 // NewApp creates a new App application struct
@@ -149,6 +152,8 @@ func NewApp() *App {
 	return &App{
 		cred:     newWailsCredentialProvider(),
 		logLevel: new(slog.LevelVar),
+		events:   wailsEvents{},
+		quit:     runtime.Quit,
 	}
 }
 
@@ -425,6 +430,7 @@ func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.PullResult{}, err
 	}
+	defer a.trackPull()()
 	res, err := a.svc.sync.Pull(a.ctx, nsync.PullInput{
 		CNPJ:   input.CNPJ,
 		Mode:   input.Mode,
@@ -764,6 +770,7 @@ func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, 
 	if err := a.ready(); err != nil {
 		return desktopapi.PullNFeResult{}, err
 	}
+	defer a.trackPull()()
 	res, err := a.svc.nfe.Pull(a.ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullNFeResult{}, err
@@ -1031,6 +1038,7 @@ func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, 
 	if err := a.ready(); err != nil {
 		return desktopapi.PullCTeResult{}, err
 	}
+	defer a.trackPull()()
 	res, err := a.svc.cte.Pull(a.ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullCTeResult{}, err
