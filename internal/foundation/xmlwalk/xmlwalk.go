@@ -13,8 +13,8 @@ import (
 )
 
 // Walk streams data with encoding/xml, keeping a stack of local element names.
-// onStart, when not nil, is called for every start element and onText for
-// every element with non-blank text. Both receive the path from the root with
+// onStart is called for every start element and onText for every element
+// with non-blank text; either may be nil. Both receive the path from the root with
 // a leading slash, for example "/nfeProc/NFe/infNFe/ide/nNF". Namespace
 // prefixes are ignored. Parsers match paths by suffix, anchored on enough
 // parent elements to tell apart fields that share a name, such as
@@ -52,7 +52,7 @@ func Walk(data []byte, onStart func(path string, attrs []xml.Attr), onText func(
 			stack = stack[:len(stack)-1]
 			value := strings.TrimSpace(text.String())
 			text.Reset()
-			if value == "" {
+			if value == "" || onText == nil {
 				continue
 			}
 			if err := onText(path, value); err != nil {

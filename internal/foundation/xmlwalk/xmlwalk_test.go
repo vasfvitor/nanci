@@ -79,6 +79,17 @@ func TestWalkErrors(t *testing.T) {
 	}
 }
 
+func TestWalkWithoutTextCallback(t *testing.T) {
+	var starts int
+	err := xmlwalk.Walk([]byte(sample), func(string, []xml.Attr) { starts++ }, nil)
+	if err != nil {
+		t.Fatalf("Walk: %v", err)
+	}
+	if starts == 0 {
+		t.Error("onStart was never called")
+	}
+}
+
 func TestHasAnySuffix(t *testing.T) {
 	path := "/nfeProc/NFe/infNFe/total/ICMSTot/vICMS"
 	if !xmlwalk.HasAnySuffix(path, "/det/imposto/vICMS", "/ICMSTot/vICMS") {
