@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,7 +16,10 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
+	"github.com/vasfvitor/nanci/internal/dacte"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
@@ -37,11 +41,36 @@ type cteTestRoot struct {
 }
 
 // newCTeTestRoot builds a root over a real database holding one company, the
-// tomador of the CT-e fixtures.
+// tomador of the CT-e fixtures. The app renders DACTE with fakeDACTE.
 func newCTeTestRoot(t *testing.T) *cteTestRoot {
 	t.Helper()
 	env := newNFeTestRoot(t)
+	application, err := app.New(app.Dependencies{
+		Log:                slog.New(slog.DiscardHandler),
+		CompanyStore:       company.NewStore(env.db),
+		CredentialStore:    credential.NewStore(env.db),
+		SyncRepo:           sync.NewStore(env.db),
+		DocumentRepo:       store.NewDocumentRepository(env.db),
+		NFeRepo:            env.repo,
+		CTeRepo:            store.NewCTeRepository(env.db),
+		XMLStore:           env.xml,
+		DataDir:            t.TempDir(),
+		CredentialProvider: env.passwords,
+		DACTERenderer:      fakeDACTE{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	env.root, env.out = newTestRootForApp(application)
+	env.root.SetErr(&bytes.Buffer{})
 	return &cteTestRoot{nfeTestRoot: env, cteRepo: store.NewCTeRepository(env.db)}
+}
+
+// fakeDACTE renders a fixed PDF stand-in.
+type fakeDACTE struct{}
+
+func (fakeDACTE) Render(_ []byte, _ dacte.Options) ([]byte, error) {
+	return []byte("%PDF fake DACTE"), nil
 }
 
 // seedCTe stores the fixture as if the CT-e distribution had delivered it at
@@ -376,5 +405,97 @@ func TestCTeExportXML_WritesStoredXML(t *testing.T) {
 
 	if err := env.run("cte", "export", "xml", "-c", nfeTestCNPJ, "--chave", "123"); err == nil || !strings.Contains(err.Error(), "chave de acesso inválida") {
 		t.Errorf("export xml --chave 123 = %v, want an invalid chave error", err)
+	}
+}
+
+func TestCTeExportCSV_WritesSpreadsheet(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	outPath := filepath.Join(t.TempDir(), "cte.csv")
+
+	if err := env.run("cte", "export", "csv", "-c", nfeTestCNPJ, "--out", outPath); err != nil {
+		t.Fatalf("export csv: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, "Arquivo csv gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
+		t.Errorf("export csv output:\n%s", got)
+	}
+	data, err := os.ReadFile(outPath) // #nosec G304 -- test temp path.
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(data), "Papel,Papéis,") || strings.Count(string(data), "\n") != 3 {
+		t.Errorf("csv = %q, want the header and 2 rows", data)
+	}
+}
+
+func TestCTeExportXLSX_WritesSpreadsheet(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	outPath := filepath.Join(t.TempDir(), "cte.xlsx")
+
+	if err := env.run("cte", "export", "xlsx", "-c", nfeTestCNPJ, "--out", outPath, "--incremental"); err != nil {
+		t.Fatalf("export xlsx: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, "Arquivo xlsx gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
+		t.Errorf("export xlsx output:\n%s", got)
+	}
+	if _, err := os.Stat(outPath); err != nil {
+		t.Errorf("xlsx not written: %v", err)
+	}
+}
+
+func TestCTeExportDACTEZip_CountsDocumentsWithoutDACTE(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	outPath := filepath.Join(t.TempDir(), "dactes.zip")
+
+	if err := env.run("cte", "export", "dacte-zip", "-c", nfeTestCNPJ, "--out", outPath); err != nil {
+		t.Fatalf("export dacte-zip: %v", err)
+	}
+	got := env.out.String()
+	if !strings.Contains(got, "Arquivo dacte gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 1") ||
+		!strings.Contains(got, "CT-e sem DACTE: 1") {
+		t.Errorf("export dacte-zip output:\n%s", got)
+	}
+
+	zr, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = zr.Close() }()
+	if len(zr.File) != 1 || zr.File[0].Name != "2026-09/tomador/"+cteChaveProc+".pdf" {
+		t.Errorf("zip has %d entries, want only the procCTe DACTE", len(zr.File))
+	}
+}
+
+func TestCTeExportDACTE_Single(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	outPath := filepath.Join(t.TempDir(), "proc.pdf")
+
+	if err := env.run("cte", "export", "dacte", "-c", nfeTestCNPJ, "--chave", cteChaveProc, "--out", outPath); err != nil {
+		t.Fatalf("export dacte: %v", err)
+	}
+	if got := env.out.String(); !strings.Contains(got, "DACTE exportado com sucesso: "+outPath) {
+		t.Errorf("export dacte output:\n%s", got)
+	}
+	if data, err := os.ReadFile(outPath); err != nil || string(data) != "%PDF fake DACTE" { // #nosec G304 -- test temp path.
+		t.Errorf("DACTE = %q, %v; want the rendered PDF", data, err)
+	}
+
+	env = newCTeTestRoot(t) // flag values stick to a command tree
+	env.seedListFixtures()
+	err := env.run("cte", "export", "dacte", "-c", nfeTestCNPJ, "--chave", cteChaveOS, "--out", filepath.Join(t.TempDir(), "os.pdf"))
+	if err == nil || !strings.Contains(err.Error(), "DACTE disponível só para o CT-e modelo 57") {
+		t.Errorf("export dacte of a CT-e OS = %v, want the modelo 57 error", err)
+	}
+
+	env = newCTeTestRoot(t)
+	err = env.run("cte", "export", "dacte", "-c", nfeTestCNPJ, "--chave", "123")
+	if err == nil || !strings.Contains(err.Error(), "chave de acesso inválida") {
+		t.Errorf("export dacte --chave 123 = %v, want an invalid chave error", err)
+	}
+	if env.passwords.requests != 0 {
+		t.Errorf("an invalid --chave asked for %d passwords", env.passwords.requests)
 	}
 }

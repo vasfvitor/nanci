@@ -127,6 +127,16 @@ O CT-e é guardado uma vez por chave, para todas as empresas que o recebem. Quan
 
 `nanci cte list --nfe <CHAVE_NFE>` (e o filtro de chave de NF-e no aplicativo) encontra os CT-e que transportaram uma NF-e. As telas ainda não mostram a ligação entre um CT-e e as notas dele.
 
+## Exportação
+
+Os CT-e saem em quatro formatos, cada um com as suas marcas de exportação incremental (exportar a planilha não marca o XML):
+
+- **XML** (`cte export zip` e `cte export xml`): o XML guardado e, no ZIP, os eventos de cada documento.
+- **CSV** e **XLSX** (`cte export csv` e `cte export xlsx`): uma linha por CT-e com papel e todos os papéis da empresa, emissão, competência, modelo, série, número, chave, CFOP, natureza da operação, início e fim (município/UF), CNPJ/CPF e nome de emitente, tomador, remetente e destinatário, valores da prestação, a receber, ICMS, tributos aproximados e carga, produto predominante, quantidade de NF-e transportadas, situação, protocolo e quantidade de eventos. A planilha Excel separa as abas "CTe Tomados" (papel principal tomador), "CTe Emitidos" (emitente) e "CTe Outros"; o CSV traz as três em sequência sob um único cabeçalho.
+- **DACTE** (`cte export dacte` e `cte export dacte-zip`): o PDF gerado com [fiscal-renderer](https://github.com/awafinance/fiscal-renderer), com a marca d'água de cancelado quando o CT-e foi cancelado. O ZIP grava `<competencia>/<papel>/<chave>.pdf`.
+
+O DACTE só existe para o CT-e modelo 57 propriamente dito: o leiaute da biblioteca não cobre CT-e OS (modelo 67), GTV-e (modelo 64) nem CT-e Simplificado. No `dacte-zip` esses documentos ficam de fora, são contados ("CT-e sem DACTE: N") e não recebem marca de exportação, então uma exportação incremental volta a contá-los, como os resumos da NF-e. O `dacte` de um desses documentos falha com "DACTE disponível só para o CT-e modelo 57; CT-e OS, GTV-e e CT-e Simplificado não têm DACTE".
+
 ## Uso pela linha de comando
 
 Todos os subcomandos de `nanci cte` recebem a empresa por `--cnpj` (`-c`).
@@ -149,10 +159,14 @@ nanci.exe cte list --cnpj 12345678000199 --modelo 67
 # 5. CT-e que transportaram uma NF-e
 nanci.exe cte list --cnpj 12345678000199 --nfe <CHAVE_NFE>
 
-# 6. Exportar XML
+# 6. Exportar XML, planilha e DACTE
 nanci.exe cte export zip --cnpj 12345678000199 --competencia 2026-09 -p tomador --out cte.zip
 nanci.exe cte export zip --cnpj 12345678000199 --incremental
 nanci.exe cte export xml --cnpj 12345678000199 --chave <CHAVE> --out cte.xml
+nanci.exe cte export xlsx --cnpj 12345678000199 --competencia 2026-09
+nanci.exe cte export csv --cnpj 12345678000199 --incremental
+nanci.exe cte export dacte-zip --cnpj 12345678000199 --competencia 2026-09
+nanci.exe cte export dacte --cnpj 12345678000199 --chave <CHAVE>
 
 # 7. Redefinir os CT-e da empresa (apaga os documentos dos dois ambientes)
 nanci.exe cte reset --cnpj 12345678000199
@@ -163,6 +177,8 @@ nanci.exe cte reset --cnpj 12345678000199 --confirmar
 - `cte list` mostra chave, modelo, número e série, emissão, emitente, tomador, papel, valor da prestação e situação. `--papel` casa com o papel principal ou com qualquer outro papel da empresa no documento; `--modelo` aceita 57, 64 ou 67; `--chave` pode repetir.
 - `cte export zip` grava `<competencia>/<papel>/<chave>-procCTe.xml` (`-procCTeOS`, `-procGTVe` ou `-procCTeSimp` conforme o tipo) e os eventos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (padrão `cte.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível); `--incremental` exporta só o que ainda não foi exportado, mudou ou cuja quantidade de eventos mudou desde a última exportação (por exemplo, depois de um cancelamento); o documento volta com todos os seus eventos.
 - `cte export xml` grava o XML do documento da `--chave` em `--out` (`-o`), por padrão `<chave>.xml`.
+- `cte export csv`, `xlsx` e `dacte-zip` aceitam os mesmos filtros e `--incremental` do `zip`; o `--out` padrão é `cte.csv`, `cte.xlsx` e `dactes.zip`. O `dacte-zip` mostra "CT-e sem DACTE: N" quando deixou documentos de fora.
+- `cte export dacte` grava o DACTE da `--chave` em `--out`, por padrão `<chave>.pdf`.
 - `cte reset` sem `--confirmar` mostra quantos documentos, eventos e marcas de exportação seriam removidos e não altera nada.
 
 ## Aplicativo desktop

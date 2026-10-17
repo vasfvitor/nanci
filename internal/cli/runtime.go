@@ -8,7 +8,8 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
-	"github.com/vasfvitor/nanci/internal/danfe/fiscalrenderer"
+	dacterenderer "github.com/vasfvitor/nanci/internal/dacte/fiscalrenderer"
+	danferenderer "github.com/vasfvitor/nanci/internal/danfe/fiscalrenderer"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/foundation/logger"
@@ -64,7 +65,8 @@ func prodAppFactory(env CommandEnv) AppFactory {
 				Log:      log,
 			},
 			DANFSeRenderer: godanfsev2.New(),
-			DANFERenderer:  fiscalrenderer.New(),
+			DANFERenderer:  danferenderer.New(),
+			DACTERenderer:  dacterenderer.New(),
 		})
 		if err != nil {
 			cleanup()

@@ -42,7 +42,7 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `nfe ciencia`, `manifestar` | Registra a Manifestação do Destinatário. |
 | `nfe export zip`, `xml`, `csv`, `xlsx`, `danfe-zip`, `danfe` | Exporta as NF-e em XML, planilha ou DANFE (PDF). O DANFE não sai para resumos. |
 | `cte pull`, `status`, `list` | Sincroniza e lista os CT-e. `cte list --nfe <chave>` acha o frete de uma NF-e. |
-| `cte export zip`, `xml` | Exporta os CT-e. |
+| `cte export zip`, `xml`, `csv`, `xlsx`, `dacte`, `dacte-zip` | Exporta os CT-e. O DACTE só existe para o CT-e modelo 57. |
 | `nfe testar-conexao`, `cte testar-conexao` | Testa o certificado sem gastar consultas. |
 | `nfe reset`, `cte reset` | Apaga as notas da empresa e recomeça a sincronização. |
 
