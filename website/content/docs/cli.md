@@ -37,7 +37,7 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `company assign-credential --cnpj <cnpj> --credential-id <id>` | Liga a empresa a um certificado já cadastrado. O ID sai em `credential list`. |
 | `credential add`, `list`, `update-path` | Cadastra certificados e atualiza o caminho do arquivo. |
 | `pull`, `status`, `list` | Sincroniza, mostra a situação e lista as NFS-e. |
-| `export xlsx`, `csv`, `zip`, `danfse`, `danfse-zip` | Exporta as NFS-e. |
+| `export xlsx`, `csv`, `zip`, `xml`, `danfse`, `danfse-zip` | Exporta as NFS-e. Nos formatos em lote, `--chave` (pode repetir) limita às notas informadas. |
 | `nfe pull`, `status`, `list`, `pendentes` | Sincroniza e lista as NF-e e as manifestações pendentes. |
 | `nfe ciencia`, `manifestar` | Registra a Manifestação do Destinatário. |
 | `nfe export zip`, `xml` | Exporta as NF-e. |

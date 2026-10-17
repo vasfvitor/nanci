@@ -1,140 +1,158 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
 func newExportCommand(env CommandEnv) *cobra.Command {
-	var (
-		cnpjFlag        string
-		competenceFlag  string
-		directionFlag   string
-		incrementalFlag bool
-	)
+	flags := &nfseExportFlags{}
 	exportCmd := &cobra.Command{
 		Use:   "export",
 		Short: "Exporta os documentos sincronizados para planilhas ou ZIP",
 	}
 	// Persistent flags inherited by every export subcommand.
-	exportCmd.PersistentFlags().StringVarP(&cnpjFlag, "cnpj", "c", "", "CNPJ da empresa")
-	exportCmd.PersistentFlags().StringVarP(&competenceFlag, "competencia", "m", "", "Competência (ex: 2026-06)")
-	exportCmd.PersistentFlags().StringVarP(&directionFlag, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
-	exportCmd.PersistentFlags().BoolVar(&incrementalFlag, "incremental", false, "Exportar apenas documentos não exportados (ou modificados)")
+	exportCmd.PersistentFlags().StringVarP(&flags.cnpj, "cnpj", "c", "", "CNPJ da empresa")
+	exportCmd.PersistentFlags().StringVarP(&flags.competence, "competencia", "m", "", "Competência (ex: 2026-06)")
+	exportCmd.PersistentFlags().StringVarP(&flags.direction, "direcao", "d", "", "Direção (tomada, prestada, intermediario)")
+	exportCmd.PersistentFlags().BoolVar(&flags.incremental, "incremental", false, "Exportar apenas documentos não exportados (ou modificados)")
 	_ = exportCmd.MarkPersistentFlagRequired("cnpj")
 
-	exportCmd.AddCommand(newExportXlsxCmd(env, &cnpjFlag, &competenceFlag, &directionFlag, &incrementalFlag))
-	exportCmd.AddCommand(newExportCsvCmd(env, &cnpjFlag, &competenceFlag, &directionFlag, &incrementalFlag))
-	exportCmd.AddCommand(newExportZipCmd(env, &cnpjFlag, &competenceFlag, &directionFlag, &incrementalFlag))
-	exportCmd.AddCommand(newExportDANFSeCmd(env, &cnpjFlag))
-	exportCmd.AddCommand(newExportDANFSeZipCmd(env, &cnpjFlag, &competenceFlag, &directionFlag, &incrementalFlag))
+	exportCmd.AddCommand(newNFSeBulkExportCmd(env, flags, "xlsx",
+		"Exporta os dados para uma planilha Excel (.xlsx)", "export.xlsx", "Gerando arquivo Excel...", "erro ao gerar arquivo XLSX",
+		func(ctx context.Context, a *app.App, in app.ExportInput) (app.ExportResult, error) {
+			return a.Exports.ExportXLSX(ctx, in)
+		}))
+	exportCmd.AddCommand(newNFSeBulkExportCmd(env, flags, "csv",
+		"Exporta os dados para um arquivo de texto separado por vírgulas (.csv)", "export.csv", "Gerando arquivo CSV...", "erro ao gerar arquivo CSV",
+		func(ctx context.Context, a *app.App, in app.ExportInput) (app.ExportResult, error) {
+			return a.Exports.ExportCSV(ctx, in)
+		}))
+	exportCmd.AddCommand(newNFSeBulkExportCmd(env, flags, "zip",
+		"Exporta os arquivos físicos (.xml) em um arquivo compactado (.zip)", "export.zip", "Gerando arquivo ZIP...", "erro ao gerar arquivo ZIP",
+		func(ctx context.Context, a *app.App, in app.ExportInput) (app.ExportResult, error) {
+			return a.Exports.ExportZIP(ctx, in)
+		}))
+	exportCmd.AddCommand(newExportXMLCmd(env, &flags.cnpj))
+	exportCmd.AddCommand(newExportDANFSeCmd(env, &flags.cnpj))
+	exportCmd.AddCommand(newNFSeBulkExportCmd(env, flags, "danfse-zip",
+		"Exporta DANFSes dos documentos filtrados em um arquivo compactado (.zip)", "danfses.zip", "Gerando ZIP de DANFSes...", "erro ao gerar ZIP de DANFSes",
+		func(ctx context.Context, a *app.App, in app.ExportInput) (app.ExportResult, error) {
+			return a.Exports.ExportDANFSeZIP(ctx, in)
+		}))
 	return exportCmd
 }
 
-func newExportXlsxCmd(env CommandEnv, cnpj, competence, direction *string, incremental *bool) *cobra.Command {
-	var outPath string
+// nfseExportFlags holds the persistent flags of the export group.
+type nfseExportFlags struct {
+	cnpj        string
+	competence  string
+	direction   string
+	incremental bool
+}
+
+// newNFSeBulkExportCmd builds an export of every document matching the group
+// filters and the repeatable --chave. progress is printed before run calls
+// the use case; failure prefixes its error.
+func newNFSeBulkExportCmd(env CommandEnv, flags *nfseExportFlags, use, short, defaultOut, progress, failure string, run func(context.Context, *app.App, app.ExportInput) (app.ExportResult, error)) *cobra.Command {
+	var (
+		chaveFlags []string
+		outPath    string
+	)
 	cmd := &cobra.Command{
-		Use:   "xlsx",
-		Short: "Exporta os dados para uma planilha Excel (.xlsx)",
+		Use:   use,
+		Short: short,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, raw := range chaveFlags {
+				if _, err := parseNFSeChave(raw); err != nil {
+					return err
+				}
+			}
+
 			application, cleanup, err := env.AppFactory(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("inicializar: %w", err)
 			}
 			defer cleanup()
 
-			input := app.ExportInput{
-				CNPJ:        *cnpj,
-				Competence:  *competence,
-				Direction:   *direction,
-				OutPath:     outPath,
-				Incremental: *incremental,
-			}
-
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo Excel...")
-			res, err := application.Exports.ExportXLSX(cmd.Context(), input)
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), progress)
+			res, err := run(cmd.Context(), application, app.ExportInput{
+				CNPJ:         flags.cnpj,
+				Competence:   flags.competence,
+				Direction:    flags.direction,
+				OutPath:      outPath,
+				Incremental:  flags.incremental,
+				ChavesAcesso: chaveFlags,
+			})
 			if err != nil {
-				return fmt.Errorf("erro ao gerar arquivo XLSX: %w", err)
+				return fmt.Errorf("%s: %w", failure, err)
 			}
 
 			printExportResult(cmd.OutOrStdout(), res)
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&outPath, "out", "o", "export.xlsx", "Caminho do arquivo de saída")
+	cmd.Flags().StringSliceVar(&chaveFlags, "chave", nil, "Chave de acesso da NFS-e (pode repetir)")
+	cmd.Flags().StringVarP(&outPath, "out", "o", defaultOut, "Caminho do arquivo de saída")
 	return cmd
 }
 
-func newExportCsvCmd(env CommandEnv, cnpj, competence, direction *string, incremental *bool) *cobra.Command {
-	var outPath string
+func newExportXMLCmd(env CommandEnv, cnpj *string) *cobra.Command {
+	var (
+		chaveFlag string
+		outPath   string
+	)
 	cmd := &cobra.Command{
-		Use:   "csv",
-		Short: "Exporta os dados para um arquivo de texto separado por vírgulas (.csv)",
+		Use:   "xml",
+		Short: "Exporta o XML de uma NFS-e",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			chave, err := parseNFSeChave(chaveFlag)
+			if err != nil {
+				return err
+			}
+			if outPath == "" {
+				outPath = chave + ".xml"
+			}
+
 			application, cleanup, err := env.AppFactory(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("inicializar: %w", err)
 			}
 			defer cleanup()
 
-			input := app.ExportInput{
+			if err := application.Exports.ExportXML(cmd.Context(), app.ExportXMLInput{
 				CNPJ:        *cnpj,
-				Competence:  *competence,
-				Direction:   *direction,
+				ChaveAcesso: chave,
 				OutPath:     outPath,
-				Incremental: *incremental,
+			}); err != nil {
+				return fmt.Errorf("erro ao exportar XML: %w", err)
 			}
 
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo CSV...")
-			res, err := application.Exports.ExportCSV(cmd.Context(), input)
-			if err != nil {
-				return fmt.Errorf("erro ao gerar arquivo CSV: %w", err)
-			}
-
-			printExportResult(cmd.OutOrStdout(), res)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "XML exportado com sucesso: %s\n", outPath)
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&outPath, "out", "o", "export.csv", "Caminho do arquivo de saída")
+	cmd.Flags().StringVar(&chaveFlag, "chave", "", "Chave de acesso da NFS-e")
+	cmd.Flags().StringVarP(&outPath, "out", "o", "", "Caminho do arquivo de saída (padrão: <chave>.xml)")
+	_ = cmd.MarkFlagRequired("chave")
 	return cmd
 }
 
-func newExportZipCmd(env CommandEnv, cnpj, competence, direction *string, incremental *bool) *cobra.Command {
-	var outPath string
-	cmd := &cobra.Command{
-		Use:   "zip",
-		Short: "Exporta os arquivos físicos (.xml) em um arquivo compactado (.zip)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			application, cleanup, err := env.AppFactory(cmd.Context())
-			if err != nil {
-				return fmt.Errorf("inicializar: %w", err)
-			}
-			defer cleanup()
-
-			input := app.ExportInput{
-				CNPJ:        *cnpj,
-				Competence:  *competence,
-				Direction:   *direction,
-				OutPath:     outPath,
-				Incremental: *incremental,
-			}
-
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando arquivo ZIP...")
-			res, err := application.Exports.ExportZIP(cmd.Context(), input)
-			if err != nil {
-				return fmt.Errorf("erro ao gerar arquivo ZIP: %w", err)
-			}
-
-			printExportResult(cmd.OutOrStdout(), res)
-			return nil
-		},
+// parseNFSeChave checks a --chave value before the database is opened and
+// returns it trimmed. The message matches the one app gives.
+func parseNFSeChave(raw string) (string, error) {
+	chave := strings.TrimSpace(raw)
+	if _, err := nfse.ParseInfNFSeID(chave); err != nil {
+		return "", fmt.Errorf("chave de acesso inválida %q: %w", chave, err)
 	}
-	cmd.Flags().StringVarP(&outPath, "out", "o", "export.zip", "Caminho do arquivo de saída")
-	return cmd
+	return chave, nil
 }
 
 func newExportDANFSeCmd(env CommandEnv, cnpj *string) *cobra.Command {
@@ -170,40 +188,6 @@ func newExportDANFSeCmd(env CommandEnv, cnpj *string) *cobra.Command {
 	cmd.Flags().StringVar(&chave, "chave", "", "Chave de acesso da NFS-e")
 	cmd.Flags().StringVarP(&outPath, "out", "o", "danfse.pdf", "Caminho do arquivo de saída")
 	_ = cmd.MarkFlagRequired("chave")
-	return cmd
-}
-
-func newExportDANFSeZipCmd(env CommandEnv, cnpj, competence, direction *string, incremental *bool) *cobra.Command {
-	var outPath string
-	cmd := &cobra.Command{
-		Use:   "danfse-zip",
-		Short: "Exporta DANFSes dos documentos filtrados em um arquivo compactado (.zip)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			application, cleanup, err := env.AppFactory(cmd.Context())
-			if err != nil {
-				return fmt.Errorf("inicializar: %w", err)
-			}
-			defer cleanup()
-
-			input := app.ExportInput{
-				CNPJ:        *cnpj,
-				Competence:  *competence,
-				Direction:   *direction,
-				OutPath:     outPath,
-				Incremental: *incremental,
-			}
-
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando ZIP de DANFSes...")
-			res, err := application.Exports.ExportDANFSeZIP(cmd.Context(), input)
-			if err != nil {
-				return fmt.Errorf("erro ao gerar ZIP de DANFSes: %w", err)
-			}
-
-			printExportResult(cmd.OutOrStdout(), res)
-			return nil
-		},
-	}
-	cmd.Flags().StringVarP(&outPath, "out", "o", "danfses.zip", "Caminho do arquivo de saída")
 	return cmd
 }
 
