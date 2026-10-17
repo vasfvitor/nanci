@@ -5,6 +5,7 @@ import SettingsPage from './SettingsPage.vue'
 import { useConsoleStore } from '@/stores/console'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { desktopClient } from '@/platform/wails/client'
+import { desktopRuntime } from '@/platform/wails/runtime'
 import type { CompanySummary } from '@/types/desktop'
 
 const notify = vi.fn()
@@ -38,6 +39,9 @@ vi.mock('@/platform/wails/runtime', () => ({
     setDarkTheme: vi.fn(),
     setLightTheme: vi.fn(),
     setSystemDefaultTheme: vi.fn(),
+    windowGetSize: vi.fn(async () => ({ w: 1280, h: 768 })),
+    windowSetSize: vi.fn(),
+    windowIsMaximised: vi.fn(async () => false),
   },
 }))
 
@@ -232,5 +236,37 @@ describe('SettingsPage', () => {
     expect(wrapper.text()).toContain('Endpoint SEFAZ Alcançado')
     expect(wrapper.text()).not.toContain('Resposta SEFAZ')
     expect(wrapper.text()).toContain('Conexão TLS com a SEFAZ (CT-e) estabelecida.')
+  })
+
+  it('nudges the window on request and says so', async () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      queueMicrotask(() => callback(0))
+      return 0
+    })
+    const wrapper = shallowMount(SettingsPage, {
+      global: {
+        stubs: {
+          'q-btn': {
+            props: ['label'],
+            emits: ['click'],
+            template: `<button @click="$emit('click')">{{ label }}</button>`,
+          },
+        },
+        directives: { ripple: {} },
+      },
+    })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Reajustar janela')
+    if (!button) throw new Error('no Reajustar janela button')
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(vi.mocked(desktopRuntime.windowSetSize).mock.calls).toEqual([
+      [1281, 768],
+      [1280, 768],
+    ])
+    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: 'Janela reajustada.' })
+    vi.unstubAllGlobals()
   })
 })

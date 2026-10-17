@@ -207,6 +207,19 @@
             </div>
             <div class="col-12">
               <q-btn
+                flat
+                bordered
+                dense
+                icon="aspect_ratio"
+                label="Reajustar janela"
+                class="full-width text-body2"
+                title="Redesenha a janela com 1 px a mais e volta ao tamanho; use se o texto ficar borrado"
+                data-testid="nudge-window"
+                @click="nudgeWindow"
+              />
+            </div>
+            <div class="col-12">
+              <q-btn
                 color="secondary"
                 icon="archive"
                 label="Exportar Pacote de Diagnóstico (Logs)"
@@ -228,6 +241,7 @@ import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import { companyOption } from '@/composables/useCompanies'
+import { useDisplayScale } from '@/composables/useDisplayScale'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
 import { useConsoleStore } from '@/stores/console'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -246,6 +260,7 @@ const testSourceOptions = [
 const testedService = computed(() => (testSource.value === 'cte' ? 'SEFAZ' : 'ADN'))
 
 const consoleStore = useConsoleStore()
+const displayScale = useDisplayScale()
 const preferencesStore = usePreferencesStore()
 const workspace = useWorkspaceStore()
 const updatingDebug = ref(false)
@@ -327,6 +342,24 @@ async function openLogsDir() {
     await desktopClient.openLogsDirectory()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de logs: ' + errorMessage(err) })
+  }
+}
+
+// nudgeWindow lets the user test whether a relayout sharpens a soft window
+// even when the display scale did not change.
+async function nudgeWindow() {
+  try {
+    const result = await displayScale.nudgeOnRequest()
+    if (result === 'resized') {
+      $q.notify({ type: 'positive', message: 'Janela reajustada.' })
+    } else if (result === 'maximised') {
+      $q.notify({
+        type: 'info',
+        message: 'A janela está maximizada. Restaure o tamanho dela e tente de novo.',
+      })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Erro ao reajustar janela: ' + errorMessage(err) })
   }
 }
 

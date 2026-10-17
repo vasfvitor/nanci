@@ -1551,6 +1551,9 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
 
         WindowMinimise: () => undefined,
         WindowToggleMaximise: () => undefined,
+        WindowGetSize: async () => ({ w: 1280, h: 768 }),
+        WindowSetSize: () => undefined,
+        WindowIsMaximised: async () => false,
         Quit: () => undefined,
 
         WindowSetDarkTheme: () => undefined,
