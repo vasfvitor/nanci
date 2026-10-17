@@ -1,6 +1,8 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AddCredentialDialog from './AddCredentialDialog.vue'
+import DraftBanner from './DraftBanner.vue'
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({ notify: vi.fn() }),
@@ -44,10 +46,11 @@ function labelInput(wrapper: ReturnType<typeof mountDialog>) {
 
 describe('AddCredentialDialog', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
-  it('clears an abandoned form when reopened after cancelling', async () => {
+  it('keeps an abandoned form as a draft when reopened after cancelling', async () => {
     const wrapper = mountDialog()
 
     await wrapper.setProps({ modelValue: true })
@@ -60,6 +63,7 @@ describe('AddCredentialDialog', () => {
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
 
-    expect(labelInput(wrapper).props('modelValue')).toBe('')
+    expect(labelInput(wrapper).props('modelValue')).toBe('rótulo abandonado')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(true)
   })
 })

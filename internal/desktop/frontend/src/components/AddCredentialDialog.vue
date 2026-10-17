@@ -1,11 +1,12 @@
 <template>
-  <q-dialog v-model="isOpen">
+  <q-dialog v-model="isOpen" :no-backdrop-dismiss="dirty" :persistent="loading">
     <q-card style="min-width: 420px">
       <q-card-section>
         <div class="text-h6">Adicionar Credencial</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none q-gutter-y-md">
+        <DraftBanner v-if="restored" @clear="clear" />
         <q-input v-model="form.Label" label="Rótulo" outlined dense />
 
         <div class="row items-center q-gutter-x-sm">
@@ -32,6 +33,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import DraftBanner from '@/components/DraftBanner.vue'
+import { useFormDraft } from '@/composables/useFormDraft'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 
 const props = defineProps<{
@@ -46,28 +49,23 @@ const $q = useQuasar()
 const isOpen = ref(props.modelValue)
 const loading = ref(false)
 
-const form = ref({
+const { form, dirty, restored, open, keep, clear, done } = useFormDraft('credential:add', () => ({
   Label: '',
   CertPath: '',
-})
+}))
 
 watch(
   () => props.modelValue,
   (val) => {
     isOpen.value = val
-    if (val) {
-      resetForm()
-    }
+    if (val) open()
   }
 )
 
 watch(isOpen, (val) => {
+  if (!val) keep()
   emit('update:modelValue', val)
 })
-
-function resetForm() {
-  form.value = { Label: '', CertPath: '' }
-}
 
 async function selectCert() {
   try {
@@ -94,8 +92,8 @@ async function submit() {
     await desktopClient.addCredential(form.value)
     $q.notify({ type: 'positive', message: 'Credencial adicionada com sucesso!' })
     emit('added')
+    done()
     isOpen.value = false
-    resetForm()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao adicionar credencial: ' + errorMessage(err) })
   } finally {

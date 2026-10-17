@@ -1,11 +1,12 @@
 <template>
-  <q-dialog v-model="isOpen">
+  <q-dialog v-model="isOpen" :no-backdrop-dismiss="dirty" :persistent="loading">
     <q-card style="min-width: 460px">
       <q-card-section>
         <div class="text-h6">Editar Empresa</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none q-gutter-y-md">
+        <DraftBanner v-if="restored" @clear="clear" />
         <q-input
           v-model="form.CNPJ"
           label="CNPJ"
@@ -81,6 +82,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import DraftBanner from '@/components/DraftBanner.vue'
+import { useFormDraft } from '@/composables/useFormDraft'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { CompanySummary, SyncStartPolicy } from '@/types/desktop'
 import { environmentOptions } from '@/utils/nfseDisplay'
@@ -101,15 +104,25 @@ const isOpen = ref(props.modelValue)
 const loading = ref(false)
 const ufOptions = [...UF_SIGLAS]
 
-const form = ref({
-  CNPJ: '',
-  Name: '',
-  Environment: 'producao',
-  // q-select sets null when cleared.
-  UF: '' as string | null,
-  SyncStartPolicy: 'from_now' as SyncStartPolicy,
-  SyncStartDate: '',
-})
+// companySeed is the form as the company is stored.
+function companySeed() {
+  const company = props.companyData
+  return {
+    CNPJ: company?.CNPJ || '',
+    Name: company?.Name || '',
+    Environment: company?.Environment || 'producao',
+    // q-select sets null when cleared.
+    UF: (company?.UF || '') as string | null,
+    SyncStartPolicy: (company?.SyncStartPolicy || 'from_now') as SyncStartPolicy,
+    SyncStartDate: formatInputDate(company?.SyncStartDate),
+  }
+}
+
+const { form, dirty, restored, open, keep, clear, done } = useFormDraft(
+  () => `company:edit:${props.companyData?.CNPJ ?? ''}`,
+  companySeed,
+  { dropWhenSeedChanges: true }
+)
 
 const syncPolicyOptions = [
   { label: 'Todo o histórico disponível', value: 'all' },
@@ -127,18 +140,12 @@ watch(
   () => props.modelValue,
   (val) => {
     isOpen.value = val
-    if (val && props.companyData) {
-      form.value.CNPJ = props.companyData.CNPJ || ''
-      form.value.Name = props.companyData.Name || ''
-      form.value.Environment = props.companyData.Environment || 'producao'
-      form.value.UF = props.companyData.UF || ''
-      form.value.SyncStartPolicy = props.companyData.SyncStartPolicy || 'from_now'
-      form.value.SyncStartDate = formatInputDate(props.companyData.SyncStartDate)
-    }
+    if (val) open()
   }
 )
 
 watch(isOpen, (val) => {
+  if (!val) keep()
   emit('update:modelValue', val)
 })
 
@@ -164,6 +171,7 @@ async function submit() {
     })
     $q.notify({ type: 'positive', message: 'Empresa atualizada com sucesso!' })
     emit('updated')
+    done()
     isOpen.value = false
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao atualizar empresa: ' + errorMessage(err) })

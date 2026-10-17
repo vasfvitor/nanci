@@ -1,11 +1,12 @@
 <template>
-  <q-dialog v-model="isOpen">
+  <q-dialog v-model="isOpen" :no-backdrop-dismiss="dirty" :persistent="loading">
     <q-card style="min-width: 560px">
       <q-card-section>
         <div class="text-h6">Adicionar Empresa</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none q-gutter-y-md">
+        <DraftBanner v-if="restored" @clear="clear" />
         <q-input
           v-model="form.CNPJ"
           label="CNPJ"
@@ -44,14 +45,14 @@
         </div>
 
         <q-option-group
-          v-model="syncStartChoice"
+          v-model="form.syncStartChoice"
           :options="syncStartOptions"
           color="primary"
         />
 
         <q-input
-          v-if="syncStartChoice === 'custom_date'"
-          v-model="customSyncStartDate"
+          v-if="form.syncStartChoice === 'custom_date'"
+          v-model="form.customSyncStartDate"
           label="Importar a partir de"
           type="date"
           outlined
@@ -59,7 +60,7 @@
         />
 
         <q-option-group
-          v-model="credentialMode"
+          v-model="form.credentialMode"
           inline
           :options="[
             { label: 'Usar credencial existente', value: 'existing' },
@@ -68,7 +69,7 @@
         />
 
         <q-select
-          v-if="credentialMode === 'existing'"
+          v-if="form.credentialMode === 'existing'"
           v-model="form.CredentialID"
           :options="credentialOptions"
           label="Credencial"
@@ -105,10 +106,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { date, useQuasar } from 'quasar'
+import DraftBanner from '@/components/DraftBanner.vue'
+import { useFormDraft } from '@/composables/useFormDraft'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
 import { environmentOptions } from '@/utils/nfseDisplay'
 import { UF_SIGLAS } from '@/utils/uf'
+
+type SyncStartChoice = 'from_now' | 'last_12_months' | 'last_5_years' | 'custom_date' | 'all'
 
 const props = defineProps<{
   modelValue: boolean
@@ -122,22 +127,29 @@ const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)
 const loading = ref(false)
-const credentialMode = ref<'existing' | 'new'>('existing')
 const credentialOptions = ref<{ label: string; value: string }[]>([])
-const syncStartChoice = ref<'from_now' | 'last_12_months' | 'last_5_years' | 'custom_date' | 'all'>('from_now')
-const customSyncStartDate = ref('')
 const ufOptions = [...UF_SIGLAS]
 
-const form = ref({
-  CNPJ: '',
-  Name: '',
-  CredentialID: '',
-  CredentialLabel: '',
-  CertPath: '',
-  Environment: 'producao',
-  // q-select sets null when cleared.
-  UF: '' as string | null,
-})
+// The form starts at the first loaded credential, or at a new one when there
+// is none.
+function emptyForm() {
+  const firstCredential = credentialOptions.value[0]?.value ?? ''
+  return {
+    CNPJ: '',
+    Name: '',
+    CredentialID: firstCredential,
+    CredentialLabel: '',
+    CertPath: '',
+    Environment: 'producao',
+    // q-select sets null when cleared.
+    UF: '' as string | null,
+    syncStartChoice: 'from_now' as SyncStartChoice,
+    customSyncStartDate: '',
+    credentialMode: (firstCredential ? 'existing' : 'new') as 'existing' | 'new',
+  }
+}
+
+const { form, dirty, restored, open, keep, clear, done } = useFormDraft('company:add', emptyForm)
 
 const syncStartOptions = computed(() => [
   { label: 'Apenas documentos a partir de hoje', value: 'from_now' },
@@ -152,13 +164,15 @@ watch(
   async (val) => {
     isOpen.value = val
     if (val) {
-      resetForm()
       await loadCredentials()
+      open()
+      keepCredentialInList()
     }
   }
 )
 
 watch(isOpen, (val) => {
+  if (!val) keep()
   emit('update:modelValue', val)
 })
 
@@ -169,16 +183,18 @@ async function loadCredentials() {
       label: `${credential.Label}`,
       value: credential.ID,
     }))
-    credentialMode.value = credentialOptions.value.length > 0 ? 'existing' : 'new'
-    if (credentialOptions.value.length > 0 && !form.value.CredentialID) {
-      const firstOpt = credentialOptions.value[0]
-      if (firstOpt) {
-        form.value.CredentialID = firstOpt.value
-      }
-    }
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao carregar credenciais: ' + errorMessage(err) })
   }
+}
+
+// keepCredentialInList points a restored draft whose credential was removed
+// since at the first credential, or at a new one when there is none left.
+function keepCredentialInList() {
+  if (credentialOptions.value.some((option) => option.value === form.value.CredentialID)) return
+  const firstCredential = credentialOptions.value[0]?.value ?? ''
+  form.value.CredentialID = firstCredential
+  if (!firstCredential) form.value.credentialMode = 'new'
 }
 
 async function selectCert() {
@@ -200,11 +216,11 @@ async function submit() {
     $q.notify({ type: 'warning', message: 'Preencha CNPJ e nome da empresa.' })
     return
   }
-  if (credentialMode.value === 'existing' && !form.value.CredentialID) {
+  if (form.value.credentialMode === 'existing' && !form.value.CredentialID) {
     $q.notify({ type: 'warning', message: 'Selecione uma credencial.' })
     return
   }
-  if (credentialMode.value === 'new' && !form.value.CertPath) {
+  if (form.value.credentialMode === 'new' && !form.value.CertPath) {
     $q.notify({ type: 'warning', message: 'Selecione um certificado.' })
     return
   }
@@ -213,12 +229,13 @@ async function submit() {
 
   loading.value = true
   try {
+    const existing = form.value.credentialMode === 'existing'
     await desktopClient.addCompany({
       CNPJ: form.value.CNPJ,
       Name: form.value.Name,
-      CredentialID: credentialMode.value === 'existing' ? form.value.CredentialID : '',
-      CredentialLabel: credentialMode.value === 'new' ? form.value.CredentialLabel : '',
-      CertPath: credentialMode.value === 'new' ? form.value.CertPath : '',
+      CredentialID: existing ? form.value.CredentialID : '',
+      CredentialLabel: existing ? '' : form.value.CredentialLabel,
+      CertPath: existing ? '' : form.value.CertPath,
       Environment: form.value.Environment,
       UF: form.value.UF ?? '',
       SyncStartPolicy: syncStart.policy,
@@ -226,8 +243,8 @@ async function submit() {
     })
     $q.notify({ type: 'positive', message: 'Empresa adicionada com sucesso!' })
     emit('added')
+    done()
     isOpen.value = false
-    resetForm()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao adicionar empresa: ' + errorMessage(err) })
   } finally {
@@ -235,23 +252,9 @@ async function submit() {
   }
 }
 
-function resetForm() {
-  form.value = {
-    CNPJ: '',
-    Name: '',
-    CredentialID: credentialOptions.value[0]?.value || '',
-    CredentialLabel: '',
-    CertPath: '',
-    Environment: 'producao',
-    UF: '',
-  }
-  syncStartChoice.value = 'from_now'
-  customSyncStartDate.value = ''
-}
-
 function resolveSyncStartInput(): { policy: SyncStartPolicy; date: string } | null {
   const today = new Date()
-  switch (syncStartChoice.value) {
+  switch (form.value.syncStartChoice) {
     case 'from_now':
       return { policy: 'from_now', date: '' }
     case 'last_12_months':
@@ -259,11 +262,11 @@ function resolveSyncStartInput(): { policy: SyncStartPolicy; date: string } | nu
     case 'last_5_years':
       return { policy: 'since_date', date: addYears(today, -5) }
     case 'custom_date':
-      if (!customSyncStartDate.value) {
+      if (!form.value.customSyncStartDate) {
         $q.notify({ type: 'warning', message: 'Informe a data inicial de importação.' })
         return null
       }
-      return { policy: 'since_date', date: customSyncStartDate.value }
+      return { policy: 'since_date', date: form.value.customSyncStartDate }
     case 'all':
       return { policy: 'all', date: '' }
   }

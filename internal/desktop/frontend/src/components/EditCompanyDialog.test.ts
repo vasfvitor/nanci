@@ -1,5 +1,7 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import DraftBanner from './DraftBanner.vue'
 import EditCompanyDialog from './EditCompanyDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
 import type { CompanySummary } from '@/types/desktop'
@@ -43,7 +45,12 @@ function mountDialog() {
         'q-separator': { template: '<div />' },
         'q-banner': { template: '<div><slot /></div>' },
         'q-btn': { name: 'QBtn', props: ['label'], template: '<button />' },
-        'q-input': { template: '<div />' },
+        'q-input': {
+          name: 'QInput',
+          props: ['modelValue', 'label'],
+          emits: ['update:modelValue'],
+          template: '<div />',
+        },
         'q-select': {
           name: 'QSelect',
           props: ['modelValue', 'label'],
@@ -64,6 +71,21 @@ function ufSelect(wrapper: ReturnType<typeof mountDialog>) {
     .find((select) => select.props('label') === 'UF (opcional)')
 }
 
+function nameInput(wrapper: ReturnType<typeof mountDialog>) {
+  return wrapper
+    .findAllComponents({ name: 'QInput' })
+    .find((input) => input.props('label') === 'Nome / Razão Social')
+}
+
+// reopen closes the dialog, swaps the edited company when given, and opens it
+// again.
+async function reopen(wrapper: ReturnType<typeof mountDialog>, companyData?: CompanySummary) {
+  await wrapper.setProps({ modelValue: false })
+  if (companyData) await wrapper.setProps({ companyData })
+  await wrapper.setProps({ modelValue: true })
+  await flushPromises()
+}
+
 async function save(wrapper: ReturnType<typeof mountDialog>) {
   await wrapper
     .findAllComponents({ name: 'QBtn' })
@@ -74,6 +96,7 @@ async function save(wrapper: ReturnType<typeof mountDialog>) {
 
 describe('EditCompanyDialog', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
@@ -103,5 +126,37 @@ describe('EditCompanyDialog', () => {
     await save(wrapper)
 
     expect(desktopClient.updateCompany).toHaveBeenCalledWith(expect.objectContaining({ UF: '' }))
+  })
+
+  it('keeps edits as a draft per company', async () => {
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    nameInput(wrapper)?.vm.$emit('update:modelValue', 'Empresa Editada')
+    await reopen(wrapper)
+    expect(nameInput(wrapper)?.props('modelValue')).toBe('Empresa Editada')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(true)
+
+    // Another company opens from its stored values.
+    await reopen(wrapper, { ...company, CNPJ: '12345678000195', Name: 'Empresa Dois' })
+    expect(nameInput(wrapper)?.props('modelValue')).toBe('Empresa Dois')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
+
+    await reopen(wrapper, company)
+    expect(nameInput(wrapper)?.props('modelValue')).toBe('Empresa Editada')
+  })
+
+  it('drops the draft when the company changed', async () => {
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    nameInput(wrapper)?.vm.$emit('update:modelValue', 'Empresa Editada')
+    await flushPromises()
+
+    // The company was renamed elsewhere while the dialog was closed.
+    await reopen(wrapper, { ...company, Name: 'Empresa Renomeada' })
+
+    expect(nameInput(wrapper)?.props('modelValue')).toBe('Empresa Renomeada')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
   })
 })

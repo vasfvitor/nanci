@@ -1,6 +1,8 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AddCompanyDialog from './AddCompanyDialog.vue'
+import DraftBanner from './DraftBanner.vue'
 import { desktopClient } from '@/platform/wails/client'
 
 // Keep Quasar's real date helpers; only useQuasar needs stubbing.
@@ -22,7 +24,11 @@ function mountDialog() {
     props: { modelValue: false },
     global: {
       stubs: {
-        'q-dialog': { template: '<div><slot /></div>' },
+        'q-dialog': {
+          name: 'QDialog',
+          props: ['noBackdropDismiss', 'persistent'],
+          template: '<div><slot /></div>',
+        },
         'q-card': { template: '<div><slot /></div>' },
         'q-card-section': { template: '<div><slot /></div>' },
         'q-card-actions': { template: '<div><slot /></div>' },
@@ -59,8 +65,21 @@ function cnpjInput(wrapper: ReturnType<typeof mountDialog>) {
   return wrapper.getComponent({ name: 'QInput' })
 }
 
+function credentialSelect(wrapper: ReturnType<typeof mountDialog>) {
+  return wrapper
+    .findAllComponents({ name: 'QSelect' })
+    .find((select) => select.props('label') === 'Credencial')
+}
+
+async function reopen(wrapper: ReturnType<typeof mountDialog>) {
+  await wrapper.setProps({ modelValue: false })
+  await wrapper.setProps({ modelValue: true })
+  await flushPromises()
+}
+
 describe('AddCompanyDialog', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
   })
@@ -133,9 +152,7 @@ describe('AddCompanyDialog', () => {
     expect(desktopClient.addCompany).toHaveBeenLastCalledWith(expect.objectContaining({ UF: 'SP' }))
 
     // Saving closes and resets the form; reopen and clear the select.
-    await wrapper.setProps({ modelValue: false })
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await reopen(wrapper)
     inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
     inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
     ufSelect?.vm.$emit('update:modelValue', null)
@@ -171,21 +188,77 @@ describe('AddCompanyDialog', () => {
     )
   })
 
-  it('clears an abandoned form when reopened after cancelling', async () => {
+  it('keeps an abandoned form as a draft when reopened after cancelling', async () => {
     const wrapper = mountDialog()
 
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
 
     cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
     await flushPromises()
     expect(cnpjInput(wrapper).props('modelValue')).toBe('12345678000199')
 
     // Cancel, then reopen.
-    await wrapper.setProps({ modelValue: false })
+    await reopen(wrapper)
+
+    expect(cnpjInput(wrapper).props('modelValue')).toBe('12345678000199')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(true)
+  })
+
+  it('Limpar starts an empty form', async () => {
+    const wrapper = mountDialog()
     await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
+    await reopen(wrapper)
+
+    wrapper.getComponent(DraftBanner).vm.$emit('clear')
     await flushPromises()
 
     expect(cnpjInput(wrapper).props('modelValue')).toBe('')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
+    await reopen(wrapper)
+    expect(cnpjInput(wrapper).props('modelValue')).toBe('')
+  })
+
+  it('blocks backdrop dismiss only while dirty', async () => {
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    const dialog = () => wrapper.getComponent({ name: 'QDialog' })
+    expect(dialog().props('noBackdropDismiss')).toBe(false)
+
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '1')
+    await flushPromises()
+    expect(dialog().props('noBackdropDismiss')).toBe(true)
+
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '')
+    await flushPromises()
+    expect(dialog().props('noBackdropDismiss')).toBe(false)
+  })
+
+  it('falls back to the first credential when the drafted one is gone', async () => {
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
+      { ID: 'cred-1', Label: 'Certificado A' },
+      { ID: 'cred-2', Label: 'Certificado B' },
+    ] as never)
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    expect(credentialSelect(wrapper)?.props('modelValue')).toBe('cred-1')
+    credentialSelect(wrapper)?.vm.$emit('update:modelValue', 'cred-2')
+    cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
+    await flushPromises()
+
+    // cred-2 is deleted while the dialog is closed.
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
+      { ID: 'cred-3', Label: 'Certificado C' },
+      { ID: 'cred-1', Label: 'Certificado A' },
+    ] as never)
+    await reopen(wrapper)
+
+    expect(cnpjInput(wrapper).props('modelValue')).toBe('12345678000199')
+    expect(credentialSelect(wrapper)?.props('modelValue')).toBe('cred-3')
   })
 })
