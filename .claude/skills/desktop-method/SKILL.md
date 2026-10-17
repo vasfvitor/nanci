@@ -19,12 +19,12 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 
 - Every Wails input and result is a DTO here (`ExportNFeZIPInput`, `NFeExportResult`), never an `internal/nfe`, `internal/nfse` or `internal/app` struct.
 - Enums cross as `string` in Portuguese (`Situacao`, `Manifestacao`, `CompanyRole` are `string(document.X)`); money as `int64` cents (`TotalValue: document.TotalValue.Cents()`); dates as `time.Time`, optional ones as `*time.Time` (`optionalTime`); slices never nil, so the frontend gets `[]`.
-- A result built from more than a couple of fields gets a mapper function in `dto.go` (`NFeRows`/`nfeRow`, `NFeEventResultFrom`, `CTeResetResultFrom`) with a test in `desktopapi/dto_test.go` (`TestNFeRows` checks every field, cents, nil dates, enum strings, empty slices). Small results are built inline in `app.go` (`NFeExportResult{ExportResult: desktopapi.ExportResult(res.ExportResult), SkippedResumos: ...}`).
+- A result built from more than a couple of fields gets a mapper function in `dto.go` (`NFeRows`/`nfeRow`, `NFeEventResultFrom`, `CTeResetResultFrom`) with a test in `desktopapi/dto_test.go` (`TestNFeRows` checks every field, cents, nil dates, enum strings, empty slices). Small results are built inline in the area's `app_<area>.go` (`NFeExportResult{ExportResult: desktopapi.ExportResult(res.ExportResult), SkippedResumos: ...}`).
 
 ## 3. Wails method: `internal/desktop`
 
 - `services.go`: add the core method to the service interface (`nfeService.ExportXMLZip`). `servicesFrom` wires the real `*app.App`; tests swap fakes.
-- `app.go`: one thin method per action. Validate what the core cannot see (`if input.OutPath == "" { return ..., fmt.Errorf("caminho de saída não especificado") }`, enum parsing such as `dfe.ParseEnvironment` in `AddCompany`), map DTO to app input field by field, call `a.svc.nfe.ExportXMLZip(a.ctx, ...)`, return the zero DTO with the error unchanged, map the result.
+- `app_<area>.go` (`app_companies.go`, `app_nfse.go`, `app_nfe.go`, `app_cte.go`; dialogs, folders and logs in `app_runtime.go`; `app.go` keeps the `App` struct, startup and shared helpers): one thin method per action. Validate what the core cannot see (`if input.OutPath == "" { return ..., fmt.Errorf("caminho de saída não especificado") }`, enum parsing such as `dfe.ParseEnvironment` in `AddCompany`), map DTO to app input field by field, call `a.svc.nfe.ExportXMLZip(a.ctx, ...)`, return the zero DTO with the error unchanged, map the result.
 - No path construction in Go beyond what the core does; the user picks the path through `SelectSaveFile`.
 - Errors reach the frontend through `formatError` in `errors.go` as `{Message, Code}`. Codes today: `canceled`, `sefaz_blocked`, `sync_running`. A new code needs `errors.go`, `errors_test.go`, and `WailsErrorCode`/`asErrorCode` in `client.ts`.
 - Tests: add the method to the fake in `fakes_test.go` (`f.record("ExportXMLZip", in)`, return a result field). Then in `app_export_test.go` (or `app_documents_test.go`, `app_company_test.go`, `app_sync_test.go` by area):
@@ -79,7 +79,7 @@ A user-facing capability usually ships with its CLI command in the same change: 
 
 - [ ] `internal/app` method, input/result types, tests
 - [ ] `desktopapi` DTOs (+ mapper and `dto_test.go` when not trivial)
-- [ ] `services.go` interface, `app.go` method, fake in `fakes_test.go`, mapping test, table entries (out path, core errors)
+- [ ] `services.go` interface, `app_<area>.go` method, fake in `fakes_test.go`, mapping test, table entries (out path, core errors)
 - [ ] `wails generate module`; diff shows only the new method and DTOs
 - [ ] `client.test.ts` `vi.mock` list and `scripts/generate-screenshots.ts` mock updated in the same commit
 - [ ] `types/desktop.ts` type, `desktopClient` method with mapper, success and cancel tests
