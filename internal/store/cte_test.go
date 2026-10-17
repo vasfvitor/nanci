@@ -474,6 +474,32 @@ func TestCTeMarkViewed(t *testing.T) {
 	}
 }
 
+func TestCTeMarkExportedAcceptsEveryKind(t *testing.T) {
+	ctx := context.Background()
+	f := newCTeFixture(t)
+	f.applyDocument("mock", cnpjMock, f.document("procte.xml", "hash-proc"), 1)
+
+	// Each kind keeps its own marks: exporting one leaves the others pending.
+	kinds := []string{cte.ExportKindXML, cte.ExportKindCSV, cte.ExportKindXLSX, cte.ExportKindDACTE}
+	for i, kind := range kinds {
+		docs, err := f.repo.ListPendingExport(ctx, "mock", cte.DocumentFilter{}, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(docs) != 1 {
+			t.Fatalf("pending %s before its export = %v, want one CT-e", kind, cteChaves(docs))
+		}
+		if err := f.repo.MarkExported(ctx, "mock", kind, docs); err != nil {
+			t.Fatalf("mark exported as %s: %v", kind, err)
+		}
+		for _, done := range kinds[:i+1] {
+			if docs, _ := f.repo.ListPendingExport(ctx, "mock", cte.DocumentFilter{}, done); len(docs) != 0 {
+				t.Errorf("pending %s after exporting it = %v, want none", done, cteChaves(docs))
+			}
+		}
+	}
+}
+
 func TestCTeExportMarks(t *testing.T) {
 	ctx := context.Background()
 	f := newCTeFixture(t)

@@ -7,8 +7,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 )
 
-// ExportKindXML is the only export kind tracked for NF-e.
-const ExportKindXML = "xml"
+// Export kinds tracked in the NF-e export marks. Each kind keeps its own
+// marks, so exporting the XML does not mark the spreadsheet as exported.
+const (
+	ExportKindXML   = "xml"
+	ExportKindCSV   = "csv"
+	ExportKindXLSX  = "xlsx"
+	ExportKindDANFE = "danfe"
+)
 
 // ErrDocumentNotFound is returned when the company does not see a chave.
 var ErrDocumentNotFound = errors.New("NF-e não encontrada para a empresa")

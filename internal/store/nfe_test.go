@@ -645,6 +645,32 @@ func TestNFeCountSummaryEmitente(t *testing.T) {
 	}
 }
 
+func TestNFeMarkExportedAcceptsEveryKind(t *testing.T) {
+	ctx := context.Background()
+	f := newNFeFixture(t)
+	f.applyDocument("mock", cnpjMock, f.procNFe("procnfe.xml", "hash-completa"), 1)
+
+	// Each kind keeps its own marks: exporting one leaves the others pending.
+	kinds := []string{nfe.ExportKindXML, nfe.ExportKindCSV, nfe.ExportKindXLSX, nfe.ExportKindDANFE}
+	for i, kind := range kinds {
+		docs, err := f.repo.ListPendingExport(ctx, "mock", nfe.DocumentFilter{}, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(chaves(docs), []string{nfeKeyProc}) {
+			t.Fatalf("pending %s before its export = %v, want %s", kind, chaves(docs), nfeKeyProc)
+		}
+		if err := f.repo.MarkExported(ctx, "mock", kind, docs); err != nil {
+			t.Fatalf("mark exported as %s: %v", kind, err)
+		}
+		for _, done := range kinds[:i+1] {
+			if docs, _ := f.repo.ListPendingExport(ctx, "mock", nfe.DocumentFilter{}, done); len(docs) != 0 {
+				t.Errorf("pending %s after exporting it = %v, want none", done, chaves(docs))
+			}
+		}
+	}
+}
+
 func TestNFeExportMarks(t *testing.T) {
 	ctx := context.Background()
 	f := newNFeFixture(t)

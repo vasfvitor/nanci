@@ -885,6 +885,73 @@ func TestMigration020StripsTheNFSPrefixOfNFSeChaves(t *testing.T) {
 	}
 }
 
+func TestMigration021WidensExportKinds(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 20)
+
+	const exportedAt = "2026-10-01T10:00:00Z"
+	// The marks tables have no foreign keys, so the marks are seeded alone.
+	mustExec(t, db, `
+		INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at, exported_events)
+		VALUES ('comp-1', 'nfe-1', 'xml', 'hash-nfe', ?, 2)
+	`, exportedAt)
+	mustExec(t, db, `
+		INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at, exported_events)
+		VALUES ('comp-1', 'cte-1', 'xml', 'hash-cte', ?, 3)
+	`, exportedAt)
+
+	if _, err := provider.UpTo(ctx, 21); err != nil {
+		t.Fatalf("migrate to version 21: %v", err)
+	}
+	for table, want := range map[string]int{"company_nfe_export_marks": 2, "company_cte_export_marks": 3} {
+		var hash string
+		var exported int
+		if err := db.QueryRowContext(ctx, `SELECT exported_hash, exported_events FROM `+table+` WHERE export_kind = 'xml'`).Scan(&hash, &exported); err != nil { // #nosec G202 -- fixed table names.
+			t.Fatalf("read the xml mark of %s: %v", table, err)
+		}
+		if hash == "" || exported != want {
+			t.Errorf("%s xml mark = (%q, %d), want the hash and %d events kept", table, hash, exported, want)
+		}
+	}
+
+	insertNFeMark := `
+		INSERT INTO company_nfe_export_marks (company_id, nfe_document_id, export_kind, exported_hash, exported_at)
+		VALUES ('comp-1', 'nfe-1', ?, 'hash-nfe', ?)
+	`
+	insertCTeMark := `
+		INSERT INTO company_cte_export_marks (company_id, cte_document_id, export_kind, exported_hash, exported_at)
+		VALUES ('comp-1', 'cte-1', ?, 'hash-cte', ?)
+	`
+	mustExec(t, db, insertNFeMark, "csv", exportedAt)
+	mustExec(t, db, insertNFeMark, "danfe", exportedAt)
+	mustExec(t, db, insertCTeMark, "dacte", exportedAt)
+	for _, insert := range []string{insertNFeMark, insertCTeMark} {
+		if _, err := db.ExecContext(ctx, insert, "pdf", exportedAt); err == nil {
+			t.Errorf("export kind 'pdf' accepted by %q, want the CHECK to reject it", insert)
+		}
+	}
+	if _, err := db.ExecContext(ctx, insertCTeMark, "danfe", exportedAt); err == nil {
+		t.Error("export kind 'danfe' accepted for CT-e, want the CHECK to reject it")
+	}
+
+	if _, err := provider.DownTo(ctx, 20); err != nil {
+		t.Fatalf("migrate down to version 20: %v", err)
+	}
+	for table, want := range map[string]int{"company_nfe_export_marks": 2, "company_cte_export_marks": 3} {
+		var kinds string
+		var exported int
+		if err := db.QueryRowContext(ctx, `SELECT group_concat(export_kind), SUM(exported_events) FROM `+table).Scan(&kinds, &exported); err != nil { // #nosec G202 -- fixed table names.
+			t.Fatalf("read the marks of %s: %v", table, err)
+		}
+		if kinds != "xml" || exported != want {
+			t.Errorf("%s after down = (%q, %d events), want only the xml mark with %d events", table, kinds, exported, want)
+		}
+	}
+	if _, err := db.ExecContext(ctx, insertNFeMark, "csv", "2026-10-02T10:00:00Z"); err == nil {
+		t.Error("export kind 'csv' accepted after down, want the old CHECK to reject it")
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()

@@ -2,8 +2,14 @@ package cte
 
 import "errors"
 
-// ExportKindXML is the only export kind tracked for CT-e.
-const ExportKindXML = "xml"
+// Export kinds tracked in the CT-e export marks. Each kind keeps its own
+// marks, so exporting the XML does not mark the spreadsheet as exported.
+const (
+	ExportKindXML   = "xml"
+	ExportKindCSV   = "csv"
+	ExportKindXLSX  = "xlsx"
+	ExportKindDACTE = "dacte"
+)
 
 // ErrDocumentNotFound is returned when the company does not see a chave.
 var ErrDocumentNotFound = errors.New("CT-e não encontrado para a empresa")

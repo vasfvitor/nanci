@@ -9,7 +9,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 
 - Migrations are goose SQL files in `internal/store/migrations_v2/`, embedded by `//go:embed migrations_v2/*.sql` in `internal/store/db.go`. `store.OpenDB(ctx, path, true)` runs `provider.Up` on every CLI run (`internal/cli/runtime.go`) and desktop startup (`internal/desktop/app.go`), so a release migrates the user's database on first launch.
 - The connection has `_pragma=foreign_keys(1)` and WAL (`db.go`). goose runs each file in a transaction.
-- The latest is `020_nfse_chave_without_prefix.sql`; the next is `021`. Check `ls internal/store/migrations_v2` and open branches first: docs/ROADMAP.md (Fase 2, item 1) already reserves 021 for the new export kinds.
+- The latest is `021_export_kinds.sql`; the next is `022`. Check `ls internal/store/migrations_v2` and open branches first.
 
 ## Rules
 
@@ -23,15 +23,15 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 ## Patterns to copy
 
 - Add a column + backfill: `018_export_marks_event_count.sql`. `ADD COLUMN ... NOT NULL DEFAULT 0`, then one `UPDATE ... SET col = (SELECT ...)` per table; Down drops the columns in reverse order.
-- Rebuild for a CHECK or key change: `013_manifestacoes_and_sync_requests_check.sql` and `019_sync_sources_by_environment.sql`. `CREATE TABLE x_new` with the full new definition, `INSERT INTO x_new SELECT ...` (019 joins `companies` to fill the new `environment`), `DROP INDEX`, `DROP TABLE x`, `ALTER TABLE x_new RENAME TO x`, recreate the indexes. Down rebuilds the old shape the same way and says what it loses.
+- Rebuild for a CHECK or key change: `013_manifestacoes_and_sync_requests_check.sql` and `019_sync_sources_by_environment.sql`; `021_export_kinds.sql` for a widened CHECK with no index. `CREATE TABLE x_new` with the full new definition, `INSERT INTO x_new SELECT ...` (019 joins `companies` to fill the new `environment`), `DROP INDEX`, `DROP TABLE x`, `ALTER TABLE x_new RENAME TO x`, recreate the indexes. Down rebuilds the old shape the same way and says what it loses.
 - Data migration: `020_nfse_chave_without_prefix.sql`. Stage the affected ids in a scratch table (`nfse_prefixed_020`), update from it, relink dependent rows, recompute derived columns with the same rule as the Go code (`recomputeDocumentStatus` in `internal/sync/store.go`), drop the scratch table.
 - Rename: `013` (`ALTER TABLE ... RENAME TO`, drop and recreate the index under the new name).
-- Every rebuild so far (006, 007, 013, 019) was of a table that no other table `REFERENCES`. Rebuilding a parent (`companies`, `documents`, `nfe_documents`, `cte_documents`) with foreign keys on is untried here; read SQLite's "ALTER TABLE" 12-step procedure and test it with child rows seeded.
+- Every rebuild so far (006, 007, 013, 019, 021) was of a table that no other table `REFERENCES`. Rebuilding a parent (`companies`, `documents`, `nfe_documents`, `cte_documents`) with foreign keys on is untried here; read SQLite's "ALTER TABLE" 12-step procedure and test it with child rows seeded.
 
 ## CHECK constraints that enumerate values
 
 - Sync source `'nfse', 'nfe', 'cte'` (`rg "'nfse', 'nfe', 'cte'" internal/store`): `sync_runs`, `sync_state`, `company_sync_sources`, `sync_requests`. A new source rebuilds all four; see the `new-source` skill.
-- Export kind: `company_document_export_marks` (NFS-e: `'xml', 'csv', 'xlsx', 'danfse'`), `company_nfe_export_marks` and `company_cte_export_marks` (`'xml'`). The Go side is `nfe.ExportKindXML`, `cte.ExportKindXML` and string literals in `internal/app/export.go`. A new kind is a rebuild of that marks table.
+- Export kind: `company_document_export_marks` (NFS-e: `'xml', 'csv', 'xlsx', 'danfse'`), `company_nfe_export_marks` (`'xml', 'csv', 'xlsx', 'danfe'`) and `company_cte_export_marks` (`'xml', 'csv', 'xlsx', 'dacte'`). The Go side is the `ExportKind*` constants in `internal/nfse/export_kinds.go`, `internal/nfe/repositories.go` and `internal/cte/repositories.go`. A new kind is a rebuild of that marks table.
 - Enums of the domain packages (`situacao`, `company_role`, `visibility_reason`, event `type`, `tp_amb`) mirror `Valid()` in `internal/nfse`, `internal/nfe`, `internal/cte`. Change both together. `cte_documents.tp_cte`, `tp_serv` and `modal` have no CHECK on purpose (layouts disagree; docs/CTE_SEFAZ.md).
 
 ## sqlc
