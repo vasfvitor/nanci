@@ -11,7 +11,7 @@ The site at https://nanci.abelhaninja.de/ is the user documentation. Technical d
 
 - `website/hugo.toml`: theme Hextra as a Hugo module (`github.com/imfing/hextra`, pinned `v0.12.3` in `website/go.mod`), `baseURL` `https://nanci.abelhaninja.de/` (the site is served at the domain root; the old `vasfvitor.github.io/nanci/` redirects through GitHub Pages), `defaultContentLanguage = "pt"`, `enableGitInfo = true` (last-modified dates come from git), `markup.goldmark.renderer.unsafe = true` (raw HTML in content, used by the home page).
 - Outputs: `home = ["html", "rss", "llms"]`, `section` and `page` add `"markdown"`. Hextra defines both formats (`hugo config --source website` shows `outputformats.markdown` with `ugly = true`), so every docs page also ships as `docs/<page>.md` and the root gets `llms.txt` (`layouts/llms.txt`, one line per page from its `description`; a page opts out with `llms: false`). `_partials/custom/head-end.html` links the Markdown copy with `rel="alternate"` and, on the home page, `llms.txt`.
-- Upgrading Hextra (`hugo mod get -u github.com/imfing/hextra` in `website/`): re-diff the three copied templates against the new theme: `layouts/docs/single.html`, `layouts/page.markdown.md`, `layouts/llms.txt`.
+- Upgrading Hextra (`hugo mod get -u github.com/imfing/hextra` in `website/`): re-diff the copied templates against the new theme: `layouts/docs/single.html`, `layouts/page.markdown.md`, `layouts/llms.txt`, `layouts/llms-full.txt`, `layouts/_partials/opengraph.html`, `layouts/_partials/twitter_cards.html`, `layouts/_partials/social-image.html` (ours), the empty `layouts/_partials/schema.html` (replaces Hugo's microdata with JSON-LD) and `layouts/robots.txt`.
 
 ## Content
 
@@ -24,7 +24,7 @@ The site at https://nanci.abelhaninja.de/ is the user documentation. Technical d
 ## Layouts and shortcodes
 
 - `layouts/docs/single.html`: Hextra's docs template plus `{{ partial "page-fields.html" . }}` under the title. `page-fields.html` shows "Atualizado em" (git `Lastmod`, linked to the file's commit history), "Fonte oficial" and "Referência técnica" (a `blob/main/<referencia>` link).
-- `layouts/page.markdown.md`: Hextra's Markdown copy, with `](../` rewritten to `](/nanci/docs/`. The copy is served at `docs/<page>.md`, one level above the HTML at `docs/<page>/`, so `../nfe/` would resolve to `/nanci/nfe/` and 404 (issue #14, fixed in `476cb2f`). Shortcodes stay as written in the copy.
+- `layouts/page.markdown.md`: Hextra's Markdown copy, with `](../` rewritten to `](/docs/`. The copy is served at `docs/<page>.md`, one level above the HTML at `docs/<page>/`, so `../nfe/` would resolve to `/nfe/` and 404 (issue #14, fixed in `476cb2f`). Shortcodes stay as written in the copy.
 - `callout`: `type` is `warning` (caption "Atenção"), `error` ("Cuidado"), `important` ("Importante"), `info` or omitted ("Nota"); the body is Markdown.
   ```
   {{< callout type="warning" >}}
@@ -42,7 +42,7 @@ The site at https://nanci.abelhaninja.de/ is the user documentation. Technical d
 ## Links
 
 - Between docs pages: relative, `../nfe/` or `../nfe/#limite-de-consultas`. Works in the HTML and is rewritten for the Markdown copy. From `docs/_index.md`: `nfse/`. From the home: `docs/nfse/`.
-- Never root-absolute (`/docs/nfe/` drops the `/nanci/` prefix) and never a `github.com/.../website/content` link between site pages. Only Markdown `](../` is rewritten; avoid `href="../"` in raw HTML on docs pages.
+- Prefer relative `](../nfe/)` over root-absolute `/docs/nfe/` (it works at the domain root but would break if the site ever moved under a path again) and never a `github.com/.../website/content` link between site pages. Only Markdown `](../` is rewritten; avoid `href="../"` in raw HTML on docs pages.
 - Anchors are Hugo's heading ids: lowercase, accents kept, spaces to `-` (`#manifestação-do-destinatário`).
 - Developer docs are linked on purpose and only as GitHub URLs: the list in `desenvolvimento.md` and the `referencia` field. In the other direction, `docs/*.md` link the site by its full URL (`docs/CERTIFICATES.md`).
 - External facts cite the official source inline (NT links on `nfe.fazenda.gov.br`/`cte.fazenda.gov.br`, Ajustes on `confaz.fazenda.gov.br`, `gov.br/nfse`); see the `research-doc` skill.
@@ -60,17 +60,19 @@ The site at https://nanci.abelhaninja.de/ is the user documentation. Technical d
 - Local build (Hugo extended and Go on the PATH; `public/` is gitignored, but build outside the tree anyway):
   ```bash
   bash website/scripts/copy-screenshots.sh
-  hugo --source website --destination "$TMP/site"   # or: hugo server --source website  -> http://localhost:1313/nanci/
+  hugo --source website --destination "$TMP/site"   # or: hugo server --source website  -> http://localhost:1313/
   ```
 - Link check on the build (what #14 needed; both must print nothing):
   ```bash
   S="$TMP/site"
   grep -l '](\.\./' "$S"/docs/*.md
-  grep -oh '](/nanci/docs/[^)]*)' "$S"/docs/*.md | sort -u | sed 's#](/nanci/##; s#)$##' |
+  grep -oh '](/docs/[^)]*)' "$S"/docs/*.md | sort -u | sed 's#](/##; s#)$##' |
     while IFS='#' read -r p a; do
       [ -f "$S/${p}index.html" ] || echo "missing page $p"
-      [ -z "$a" ] || grep -q "id=\"$a\"" "$S/${p}index.html" || echo "missing anchor $p#$a"
+      [ -z "$a" ] || grep -Eq "id=\"?$a\"?[ >]" "$S/${p}index.html" || echo "missing anchor $p#$a"
     done
+  # --minify drops the quotes around ids, hence the optional quotes. llms-full.txt
+  # carries absolute https:// links; check it with the same loop after stripping the baseURL.
   ```
 
 ## Checklist
