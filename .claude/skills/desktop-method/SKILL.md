@@ -15,11 +15,11 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 - Tests next to the code (`internal/app/nfe_test.go`, `TestNFeExportXMLZipLayoutAndIncrementalMarks`): archive layout, incremental marks, resumos skipped.
 - Nothing Wails-specific here: no DTOs, no dialogs, no default file names.
 
-## 2. DTO: `internal/desktop/desktopapi/dto.go`
+## 2. DTO: `internal/desktop/desktopapi/dto_<area>.go`
 
-- Every Wails input and result is a DTO here (`ExportNFeZIPInput`, `NFeExportResult`), never an `internal/nfe`, `internal/nfse` or `internal/app` struct.
+- Every Wails input and result is a DTO (`ExportNFeZIPInput`, `NFeExportResult`) in the area's file (`dto_companies.go`, `dto_nfse.go`, `dto_nfe.go`, `dto_cte.go`; DTOs used by several areas, such as `ExportResult` and `MarkViewedInput`, in `dto.go`), never an `internal/nfe`, `internal/nfse` or `internal/app` struct.
 - Enums cross as `string` in Portuguese (`Situacao`, `Manifestacao`, `CompanyRole` are `string(document.X)`); money as `int64` cents (`TotalValue: document.TotalValue.Cents()`); dates as `time.Time`, optional ones as `*time.Time` (`optionalTime`); slices never nil, so the frontend gets `[]`.
-- A result built from more than a couple of fields gets a mapper function in `dto.go` (`NFeRows`/`nfeRow`, `NFeEventResultFrom`, `CTeResetResultFrom`) with a test in `desktopapi/dto_test.go` (`TestNFeRows` checks every field, cents, nil dates, enum strings, empty slices). Small results are built inline in the area's `app_<area>.go` (`NFeExportResult{ExportResult: desktopapi.ExportResult(res.ExportResult), SkippedResumos: ...}`).
+- A result built from more than a couple of fields gets a mapper function next to it in `dto_<area>.go` (`NFeRows`/`nfeRow`, `NFeEventResultFrom`, `CTeResetResultFrom`) with a test in `desktopapi/dto_<area>_test.go` (`TestNFeRows` in `dto_nfe_test.go` checks every field, cents, nil dates, enum strings, empty slices). Small results are built inline in the area's `app_<area>.go` (`NFeExportResult{ExportResult: desktopapi.ExportResult(res.ExportResult), SkippedResumos: ...}`).
 
 ## 3. Wails method: `internal/desktop`
 
@@ -78,7 +78,7 @@ A user-facing capability usually ships with its CLI command in the same change: 
 ## Checklist
 
 - [ ] `internal/app` method, input/result types, tests
-- [ ] `desktopapi` DTOs (+ mapper and `dto_test.go` when not trivial)
+- [ ] `desktopapi` DTOs (+ mapper and `dto_<area>_test.go` when not trivial)
 - [ ] `services.go` interface, `app_<area>.go` method, fake in `fakes_test.go`, mapping test, table entries (out path, core errors)
 - [ ] `wails generate module`; diff shows only the new method and DTOs
 - [ ] `client.test.ts` `vi.mock` list and `scripts/generate-screenshots.ts` mock updated in the same commit
