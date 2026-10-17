@@ -92,6 +92,8 @@ export function SelectSaveFile(arg1:string,arg2:string,arg3:string):Promise<stri
 
 export function SetLogLevel(arg1:string):Promise<void>;
 
+export function ShowInFolder(arg1:string):Promise<void>;
+
 export function Status(arg1:string):Promise<desktopapi.StatusResult>;
 
 export function StatusCTe(arg1:string):Promise<desktopapi.CTeStatusResult>;

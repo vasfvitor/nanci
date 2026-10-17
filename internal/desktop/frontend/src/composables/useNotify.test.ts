@@ -2,7 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { copyToClipboard } from 'quasar'
 import { copyChave, useNotify } from './useNotify'
-import { WailsClientError } from '@/platform/wails/client'
+import { desktopClient, WailsClientError } from '@/platform/wails/client'
 
 const notify = vi.hoisted(() => vi.fn())
 
@@ -81,11 +81,31 @@ describe('useNotify', () => {
     notifyExported({ ExportedCount: 0, OutPath: '' })
     notifyExported(null)
 
-    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+    expect(notify.mock.calls.map(([{ type, message }]) => ({ type, message }))).toEqual([
       { type: 'positive', message: '3 XMLs exportados para C:/saida/notas.zip.' },
       { type: 'positive', message: '1 XML exportado para C:/saida/nota.zip.' },
       { type: 'positive', message: '2 DANFSes exportados para C:/saida/danfse.zip.' },
       { type: 'info', message: 'Nenhum documento para exportar.' },
     ])
+  })
+
+  it('offers Abrir pasta on an export notice', async () => {
+    const showInFolder = vi.spyOn(desktopClient, 'showInFolder').mockResolvedValue(undefined)
+    const { notifyExported } = useNotify()
+
+    notifyExported({ ExportedCount: 2, OutPath: 'C:/saida/notas.zip' })
+    const [options] = notify.mock.calls[0] ?? []
+    expect(options.actions).toEqual([expect.objectContaining({ label: 'Abrir pasta', color: 'white' })])
+    options.actions[0].handler()
+    expect(showInFolder).toHaveBeenCalledWith('C:/saida/notas.zip')
+
+    showInFolder.mockRejectedValue(new Error('negado'))
+    options.actions[0].handler()
+    await flushPromises()
+    expect(notify).toHaveBeenLastCalledWith({ type: 'negative', message: 'Erro ao abrir a pasta: negado' })
+
+    notify.mockClear()
+    notifyExported({ ExportedCount: 0, OutPath: '' })
+    expect(notify.mock.calls[0]?.[0]).not.toHaveProperty('actions')
   })
 })

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -726,6 +727,44 @@ func openDir(dir string) error {
 	// #nosec G204 -- fixed opener per OS; dir is the app's data or log directory, passed without a shell.
 	cmd := exec.Command(opener, dir) //nolint:noctx // fire-and-forget launch of the file browser; nothing to cancel.
 	return cmd.Start()
+}
+
+// ShowInFolder opens the file browser on the folder of path, with the file
+// selected where the OS allows it. The export toast calls it with the
+// exported file.
+func (a *App) ShowInFolder(path string) error {
+	info, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("arquivo não encontrado: %s", path)
+	}
+	if err != nil {
+		return fmt.Errorf("verificar arquivo %s: %w", path, err)
+	}
+	name, args := showInFolderCommand(goruntime.GOOS, path, info.IsDir())
+	// #nosec G204 -- fixed opener per OS; path is a file the app exported, passed without a shell.
+	cmd := exec.Command(name, args...) //nolint:noctx // fire-and-forget launch of the file browser; nothing to cancel.
+	return cmd.Start()
+}
+
+// showInFolderCommand returns the command that shows path in the file
+// browser of goos: Explorer and Finder select the file, other systems open
+// its folder.
+func showInFolderCommand(goos, path string, isDir bool) (name string, args []string) {
+	dir := path
+	if !isDir {
+		dir = filepath.Dir(path)
+	}
+	switch goos {
+	case "windows":
+		if isDir {
+			return "explorer", []string{path}
+		}
+		return "explorer", []string{"/select," + path}
+	case "darwin":
+		return "open", []string{"-R", path}
+	default:
+		return "xdg-open", []string{dir}
+	}
 }
 
 func (a *App) OpenDataDirectory() error {

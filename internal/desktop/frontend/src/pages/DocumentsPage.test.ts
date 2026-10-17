@@ -404,6 +404,7 @@ describe('DocumentsPage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: '1 documento exportado para C:\\exports\\nfse.xlsx.',
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
   })
 
@@ -437,6 +438,7 @@ describe('DocumentsPage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: '2 DANFSes exportados para C:\\exports\\danfses.zip.',
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
   })
 
@@ -610,6 +612,7 @@ describe('DocumentsPage row menu', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: `1 ${noun} exportado para ${outPath}.`,
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
   })
 })

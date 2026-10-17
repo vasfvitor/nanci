@@ -118,6 +118,7 @@ var withoutCore = map[string]bool{
 	"SelectCertificate":  true,
 	"SelectSaveFile":     true,
 	"SetLogLevel":        true,
+	"ShowInFolder":       true,
 	"SubmitCertPassword": true,
 }
 

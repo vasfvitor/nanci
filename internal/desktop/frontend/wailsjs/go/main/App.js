@@ -182,6 +182,10 @@ export function SetLogLevel(arg1) {
   return window['go']['main']['App']['SetLogLevel'](arg1);
 }
 
+export function ShowInFolder(arg1) {
+  return window['go']['main']['App']['ShowInFolder'](arg1);
+}
+
 export function Status(arg1) {
   return window['go']['main']['App']['Status'](arg1);
 }

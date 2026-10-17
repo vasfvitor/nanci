@@ -439,6 +439,7 @@ describe('CTePage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: `1 ${noun} exportado para C:\\exports\\cte.`,
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
   })
 
@@ -463,6 +464,7 @@ describe('CTePage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: '1 DACTE exportado para C:\\exports\\dactes.zip.',
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
     expect(notify).toHaveBeenCalledWith({ type: 'info', message })
   })
@@ -672,6 +674,7 @@ describe('CTePage row menu', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: '1 DACTE exportado para C:\\exports\\dacte.pdf.',
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
   })
 })

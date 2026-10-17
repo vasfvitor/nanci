@@ -102,6 +102,7 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   SelectCertificate: vi.fn(),
   SelectSaveFile: vi.fn(),
   SetLogLevel: vi.fn(),
+  ShowInFolder: vi.fn(),
   Status: vi.fn(),
   StatusCTe: vi.fn(),
   StatusNFe: vi.fn(),

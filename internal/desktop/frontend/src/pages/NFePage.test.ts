@@ -502,6 +502,7 @@ describe('NFePage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: `1 ${noun} exportado para C:\\exports\\nfe.`,
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
     expect(notify).toHaveBeenCalledWith({
       type: 'info',
@@ -855,6 +856,7 @@ describe('NFePage row menu', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: '1 DANFE exportado para C:\\exports\\danfe.pdf.',
+      actions: [expect.objectContaining({ label: 'Abrir pasta' })],
     })
   })
 })

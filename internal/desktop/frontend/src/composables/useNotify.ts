@@ -1,5 +1,5 @@
 import { copyToClipboard, Notify, useQuasar, type QNotifyCreateOptions } from 'quasar'
-import { errorMessage, wailsErrorCode } from '@/platform/wails/client'
+import { desktopClient, errorMessage, wailsErrorCode } from '@/platform/wails/client'
 import type { ExportResult } from '@/types/desktop'
 
 type NotifyOptions = Omit<QNotifyCreateOptions, 'type' | 'message'>
@@ -46,7 +46,8 @@ export function useNotify() {
   // notifyExported reports an export: "N XMLs exportados para <caminho>.",
   // or that nothing was exported. noun is the singular name of the exported
   // files ("XML", "DANFSe", "documento"). A missing result means the export
-  // did not run, and says nothing.
+  // did not run, and says nothing. A notice with a path offers to open its
+  // folder.
   function notifyExported(
     result: Pick<ExportResult, 'ExportedCount' | 'OutPath'> | null | undefined,
     noun = 'XML'
@@ -58,7 +59,17 @@ export function useNotify() {
       return
     }
     const what = count === 1 ? `1 ${noun} exportado` : `${count} ${noun}s exportados`
-    notifySuccess(`${what} para ${result.OutPath}.`)
+    const path = result.OutPath
+    if (!path) {
+      notifySuccess(`${what} para ${path}.`)
+      return
+    }
+    const openFolder = () => {
+      desktopClient.showInFolder(path).catch((e: unknown) => notifyError('Erro ao abrir a pasta', e))
+    }
+    notifySuccess(`${what} para ${path}.`, {
+      actions: [{ label: 'Abrir pasta', color: 'white', handler: openFolder }],
+    })
   }
 
   // notifySyncError reports a failed sync. A canceled, already running or

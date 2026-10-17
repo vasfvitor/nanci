@@ -44,6 +44,7 @@ import {
   SelectCertificate,
   SelectSaveFile,
   SetLogLevel,
+  ShowInFolder,
   StatusCTe,
   StatusNFe,
   SubmitCertPassword,
@@ -932,6 +933,10 @@ export const desktopClient = {
   },
   openLogsDirectory(): Promise<void> {
     return callWails(() => OpenLogsDirectory())
+  },
+  // showInFolder opens the file browser on the folder of an exported file.
+  showInFolder(path: string): Promise<void> {
+    return callWails(() => ShowInFolder(path))
   },
   async exportLogs(): Promise<string | null> {
     const path = await callWails(() => ExportLogs())

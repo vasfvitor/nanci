@@ -1212,6 +1212,7 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             SelectCertificate: async () => 'C:\\Certificados\\mock.pfx',
             SelectSaveFile: async (_title: string, defaultFilename: string) => `C:\\exports\\${defaultFilename}`,
             SetLogLevel: async () => undefined,
+            ShowInFolder: async () => undefined,
             Status: async () => ({}),
             SubmitCertPassword: async () => undefined,
             UpdateCompany: async () => undefined,
