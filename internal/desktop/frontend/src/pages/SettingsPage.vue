@@ -63,6 +63,18 @@
           dense
           options-dense
         />
+        <div class="col-auto">
+          <q-btn-toggle
+            v-model="testSource"
+            :options="testSourceOptions"
+            :disable="testing"
+            aria-label="Serviço testado"
+            no-caps
+            unelevated
+            toggle-color="primary"
+            @update:model-value="diagnosticsStore.clearResult()"
+          />
+        </div>
         <div class="col-12 col-md-3">
           <q-btn
             color="primary"
@@ -95,11 +107,11 @@
             <q-icon :name="testResult.mtlsAccepted ? 'check_circle' : 'cancel'" :color="testResult.mtlsAccepted ? 'positive' : 'negative'" class="q-ml-xs" size="xs" />
           </div>
           <div class="col-6">
-            <strong>Endpoint ADN Alcançado:</strong>
+            <strong>Endpoint {{ testedService }} Alcançado:</strong>
             <q-icon :name="testResult.endpointReached ? 'check_circle' : 'cancel'" :color="testResult.endpointReached ? 'positive' : 'negative'" class="q-ml-xs" size="xs" />
           </div>
-          <div class="col-12">
-            <strong>Resposta ADN:</strong> <span class="text-mono text-weight-medium">{{ testResult.responseCode }}</span>
+          <div v-if="testResult.responseCode || testResult.responseDetail" class="col-12">
+            <strong>Resposta {{ testedService }}:</strong> <span class="text-mono text-weight-medium">{{ testResult.responseCode }}</span>
             <div class="text-caption text-grey-6 q-mt-xs">{{ testResult.responseDetail }}</div>
           </div>
           <q-separator class="col-12 q-my-xs" />
@@ -187,7 +199,14 @@ import type { BuildInfo } from '@/types/desktop'
 
 const $q = useQuasar()
 const diagnosticsStore = useDiagnosticsStore()
-const { testing, testResult } = storeToRefs(diagnosticsStore)
+const { testing, testResult, testSource } = storeToRefs(diagnosticsStore)
+const testSourceOptions = [
+  { label: 'NFS-e', value: 'nfse' },
+  { label: 'CT-e', value: 'cte' },
+]
+// testedService names the server of the result: the ADN for NFS-e, the
+// SEFAZ for CT-e. Changing the service clears the result.
+const testedService = computed(() => (testSource.value === 'cte' ? 'SEFAZ' : 'ADN'))
 
 const consoleStore = useConsoleStore()
 const preferencesStore = usePreferencesStore()
@@ -287,7 +306,10 @@ async function runConnectionTest() {
   testing.value = true
   diagnosticsStore.clearResult()
   try {
-    testResult.value = await desktopClient.testConnection(selectedCompany.value)
+    testResult.value =
+      testSource.value === 'cte'
+        ? await desktopClient.testCTeConnection(selectedCompany.value)
+        : await desktopClient.testConnection(selectedCompany.value)
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Falha ao executar teste de conexão: ' + errorMessage(err) })
   } finally {

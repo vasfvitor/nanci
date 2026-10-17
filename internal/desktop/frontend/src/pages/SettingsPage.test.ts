@@ -25,6 +25,7 @@ vi.mock('@/platform/wails/client', () => ({
     openLogsDirectory: vi.fn(),
     exportLogs: vi.fn(),
     testConnection: vi.fn(),
+    testCTeConnection: vi.fn(),
     setLogLevel: vi.fn(),
   },
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
@@ -171,5 +172,61 @@ describe('SettingsPage', () => {
 
     expect(select()?.props('loading')).toBe(false)
     expect(select()?.props('modelValue')).toBe(um.CNPJ)
+  })
+
+  it('tests the CT-e connection when CT-e is chosen', async () => {
+    const um = { CNPJ: '11111111000111', Name: 'Empresa Um' } as CompanySummary
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([um])
+    await useWorkspaceStore().loadCompanies()
+    vi.mocked(desktopClient.testCTeConnection).mockResolvedValue({
+      certLoaded: true,
+      certSubject: 'ACME',
+      certExpiration: '2027-01-01',
+      mtlsAccepted: true,
+      endpointReached: true,
+      responseCode: '',
+      responseDetail: '',
+      statusExplanation: 'Conexão TLS com a SEFAZ (CT-e) estabelecida.',
+    })
+
+    const wrapper = shallowMount(SettingsPage, {
+      global: {
+        stubs: {
+          'q-btn-toggle': {
+            name: 'QBtnToggle',
+            props: ['modelValue', 'options'],
+            emits: ['update:modelValue'],
+            template: '<div />',
+          },
+          'q-btn': {
+            props: ['label'],
+            emits: ['click'],
+            template: `<button @click="$emit('click')">{{ label }}</button>`,
+          },
+        },
+        directives: { ripple: {} },
+      },
+    })
+    await flushPromises()
+
+    const toggle = wrapper.getComponent({ name: 'QBtnToggle' })
+    expect(toggle.props('options')).toEqual([
+      { label: 'NFS-e', value: 'nfse' },
+      { label: 'CT-e', value: 'cte' },
+    ])
+    expect(toggle.props('modelValue')).toBe('nfse')
+    toggle.vm.$emit('update:modelValue', 'cte')
+    await flushPromises()
+
+    const testButton = wrapper.findAll('button').find((b) => b.text() === 'Testar Conexão')
+    if (!testButton) throw new Error('no Testar Conexão button')
+    await testButton.trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.testCTeConnection).toHaveBeenCalledWith(um.CNPJ)
+    expect(desktopClient.testConnection).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Endpoint SEFAZ Alcançado')
+    expect(wrapper.text()).not.toContain('Resposta SEFAZ')
+    expect(wrapper.text()).toContain('Conexão TLS com a SEFAZ (CT-e) estabelecida.')
   })
 })

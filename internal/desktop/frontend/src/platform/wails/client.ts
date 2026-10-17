@@ -48,6 +48,7 @@ import {
   StatusCTe,
   StatusNFe,
   SubmitCertPassword,
+  TestCTeConnection,
   TestConnection,
   UpdateCompany,
   UpdateCredentialData,
@@ -944,6 +945,12 @@ export const desktopClient = {
   },
   async testConnection(companyCNPJ: string): Promise<ConnectionTestResult> {
     const res = await callWails(() => TestConnection(companyCNPJ))
+    return mapConnectionTestResult(res)
+  },
+  // testCTeConnection opens a TLS connection to the CT-e distribution host;
+  // it sends no query, so it does not use the hourly budget.
+  async testCTeConnection(cnpj: string): Promise<ConnectionTestResult> {
+    const res = await callWails(() => TestCTeConnection(cnpj))
     return mapConnectionTestResult(res)
   },
 

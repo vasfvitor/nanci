@@ -54,6 +54,7 @@ import {
   SelectSaveFile,
   StatusCTe,
   StatusNFe,
+  TestCTeConnection,
 } from '../../../wailsjs/go/main/App'
 
 vi.mock('../../../wailsjs/go/main/App', () => ({
@@ -981,6 +982,28 @@ describe('CT-e client calls', () => {
     expect(ListCTeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave })
     expect(PreviewResetCTe).toHaveBeenCalledWith('123')
     expect(ResetCTe).toHaveBeenCalledWith('123')
+  })
+
+  it('tests the CT-e connection and maps the result', async () => {
+    vi.mocked(TestCTeConnection).mockResolvedValue({
+      certLoaded: true,
+      certSubject: 'ACME',
+      mtlsAccepted: true,
+      endpointReached: true,
+      statusExplanation: 'Conexão TLS com a SEFAZ (CT-e) estabelecida.',
+    } as never)
+
+    await expect(desktopClient.testCTeConnection('123')).resolves.toEqual({
+      certLoaded: true,
+      certSubject: 'ACME',
+      certExpiration: '',
+      mtlsAccepted: true,
+      endpointReached: true,
+      responseCode: '',
+      responseDetail: '',
+      statusExplanation: 'Conexão TLS com a SEFAZ (CT-e) estabelecida.',
+    })
+    expect(TestCTeConnection).toHaveBeenCalledWith('123')
   })
 
   it('exports the CT-e XML and DACTE of a row to the path chosen in the save dialog', async () => {
