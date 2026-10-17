@@ -80,7 +80,7 @@ type cteService interface {
 	ListEvents(ctx context.Context, cnpj, chave string) ([]cte.Event, error)
 	TestConnection(ctx context.Context, cnpj string) (app.ConnectionTestResult, error)
 	ExportXML(ctx context.Context, in app.CTeExportXMLInput) error
-	ExportXMLZip(ctx context.Context, in app.CTeExportInput) (app.ExportResult, error)
+	ExportXMLZip(ctx context.Context, in app.CTeExportInput) (app.CTeExportResult, error)
 	PreviewReset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 	Reset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 }

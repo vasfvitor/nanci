@@ -132,6 +132,26 @@ export namespace desktopapi {
 		    return a;
 		}
 	}
+	export class CTeExportResult {
+	    OutPath: string;
+	    Format: string;
+	    Incremental: boolean;
+	    ExportedCount: number;
+	    SkippedSemDACTE: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CTeExportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.OutPath = source["OutPath"];
+	        this.Format = source["Format"];
+	        this.Incremental = source["Incremental"];
+	        this.ExportedCount = source["ExportedCount"];
+	        this.SkippedSemDACTE = source["SkippedSemDACTE"];
+	    }
+	}
 	export class CTeKeyInput {
 	    CNPJ: string;
 	    ChaveAcesso: string;

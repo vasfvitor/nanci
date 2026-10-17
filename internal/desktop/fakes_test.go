@@ -365,7 +365,7 @@ type fakeCTe struct {
 	viewed     int
 	events     []cte.Event
 	connection app.ConnectionTestResult
-	zip        app.ExportResult
+	zip        app.CTeExportResult
 	reset      app.CTeResetResult
 	err        error
 }
@@ -405,7 +405,7 @@ func (f *fakeCTe) ExportXML(_ context.Context, in app.CTeExportXMLInput) error {
 	return f.err
 }
 
-func (f *fakeCTe) ExportXMLZip(_ context.Context, in app.CTeExportInput) (app.ExportResult, error) {
+func (f *fakeCTe) ExportXMLZip(_ context.Context, in app.CTeExportInput) (app.CTeExportResult, error) {
 	f.record("ExportXMLZip", in)
 	return f.zip, f.err
 }

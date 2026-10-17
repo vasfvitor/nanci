@@ -9,6 +9,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
+	"github.com/vasfvitor/nanci/internal/dacte"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/store"
@@ -27,17 +28,20 @@ type CTeService struct {
 	SyncManager  *sync.Manager
 	XMLStore     files.XMLStore
 	Certificates *sync.CertificateLoader
+	// DACTERenderer renders the DACTE; nil makes the DACTE exports fail.
+	DACTERenderer dacte.Renderer
 }
 
 func NewCTeService(d Dependencies, certificates *sync.CertificateLoader, syncManager *sync.Manager) *CTeService {
 	return &CTeService{
-		Log:          d.Log,
-		CompanyStore: d.CompanyStore,
-		CTeRepo:      d.CTeRepo,
-		SyncRepo:     d.SyncRepo,
-		SyncManager:  syncManager,
-		XMLStore:     d.XMLStore,
-		Certificates: certificates,
+		Log:           d.Log,
+		CompanyStore:  d.CompanyStore,
+		CTeRepo:       d.CTeRepo,
+		SyncRepo:      d.SyncRepo,
+		SyncManager:   syncManager,
+		XMLStore:      d.XMLStore,
+		Certificates:  certificates,
+		DACTERenderer: d.DACTERenderer,
 	}
 }
 

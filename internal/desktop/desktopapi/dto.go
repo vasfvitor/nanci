@@ -913,6 +913,20 @@ type ExportCTeZIPInput struct {
 	OutPath      string
 }
 
+// CTeExportResult is ExportResult plus the CT-e a DACTE export left out
+// because their kind has no DACTE.
+type CTeExportResult struct {
+	ExportResult
+	SkippedSemDACTE int
+}
+
+func CTeExportResultFrom(res app.CTeExportResult) CTeExportResult {
+	return CTeExportResult{
+		ExportResult:    ExportResult(res.ExportResult),
+		SkippedSemDACTE: res.SkippedSemDACTE,
+	}
+}
+
 func CTeRows(documents []cte.CompanyDocument) []CTeRow {
 	out := make([]CTeRow, len(documents))
 	for i, document := range documents {

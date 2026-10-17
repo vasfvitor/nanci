@@ -224,7 +224,7 @@ func TestExportNFeZIP(t *testing.T) {
 
 func TestExportCTeZIP(t *testing.T) {
 	f, a := newFakeApp(nil)
-	f.cte.zip = app.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}
+	f.cte.zip = app.CTeExportResult{ExportResult: app.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}}
 
 	got, err := a.ExportCTeZIP(desktopapi.ExportCTeZIPInput{
 		CNPJ:         testCNPJ,
@@ -244,7 +244,7 @@ func TestExportCTeZIP(t *testing.T) {
 		ChavesAcesso: []string{testChave},
 		OutPath:      testOut + ".zip",
 	}}})
-	want := desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}
+	want := desktopapi.CTeExportResult{ExportResult: desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}}
 	if got != want {
 		t.Errorf("result = %+v, want %+v", got, want)
 	}

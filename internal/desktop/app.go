@@ -1150,12 +1150,12 @@ func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.CTeExportResult, error) {
 	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
+		return desktopapi.CTeExportResult{}, err
 	}
 	if input.OutPath == "" {
-		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+		return desktopapi.CTeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
 	res, err := a.svc.cte.ExportXMLZip(a.ctx, app.CTeExportInput{
@@ -1167,9 +1167,9 @@ func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.Expor
 		OutPath:      input.OutPath,
 	})
 	if err != nil {
-		return desktopapi.ExportResult{}, err
+		return desktopapi.CTeExportResult{}, err
 	}
-	return desktopapi.ExportResult(res), nil
+	return desktopapi.CTeExportResultFrom(res), nil
 }
 
 // PreviewResetCTe returns what ResetCTe would remove, changing nothing.

@@ -50,7 +50,7 @@ func newCTeExportZipCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro ao gerar arquivo ZIP: %w", err)
 			}
 
-			printExportResult(cmd.OutOrStdout(), res)
+			printExportResult(cmd.OutOrStdout(), res.ExportResult)
 			return nil
 		},
 	}

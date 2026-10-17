@@ -440,6 +440,20 @@ func TestCTeEvents(t *testing.T) {
 	}
 }
 
+func TestCTeExportResultFrom(t *testing.T) {
+	got := CTeExportResultFrom(app.CTeExportResult{
+		ExportResult:    app.ExportResult{OutPath: "dactes.zip", Format: "dacte", Incremental: true, ExportedCount: 3},
+		SkippedSemDACTE: 2,
+	})
+	want := CTeExportResult{
+		ExportResult:    ExportResult{OutPath: "dactes.zip", Format: "dacte", Incremental: true, ExportedCount: 3},
+		SkippedSemDACTE: 2,
+	}
+	if got != want {
+		t.Errorf("CTeExportResultFrom = %+v, want %+v", got, want)
+	}
+}
+
 func TestCTeResetResultFrom(t *testing.T) {
 	got := CTeResetResultFrom(app.CTeResetResult{
 		CompanyName: "Empresa",
