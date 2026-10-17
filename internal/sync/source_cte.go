@@ -3,16 +3,13 @@ package sync
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/files"
-	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/foundation/gzipxml"
-	"github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -30,10 +27,9 @@ type cteFetcher interface {
 // (CTeDistribuicaoDFe). Like the NF-e source, it does not apply the company
 // start policy: the queue already holds only the last 3 months.
 type cteSource struct {
+	dfeItems
 	client   cteFetcher
 	repo     *store.CTeRepository
-	xml      files.XMLStore
-	log      *slog.Logger
 	cUFAutor int
 }
 
@@ -42,10 +38,9 @@ type cteSource struct {
 // stores items through ProcessItem may pass a nil client and cUFAutor 0.
 func NewCTeSource(client cteFetcher, repo *store.CTeRepository, xml files.XMLStore, log *slog.Logger, cUFAutor int) Source {
 	return &cteSource{
+		dfeItems: dfeItems{label: "CT-e", xml: xml, log: log, documentExists: repo.CompanyDocumentExists},
 		client:   client,
 		repo:     repo,
-		xml:      xml,
-		log:      log,
 		cUFAutor: cUFAutor,
 	}
 }
@@ -73,14 +68,7 @@ func isCTeEvent(schema string) bool {
 }
 
 func (s *cteSource) ProcessItem(ctx context.Context, company *company.Company, src SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
-	s.log.Log(ctx, logger.LevelTrace, "Processando documento CT-e", slog.Int64("nsu", item.NSU), slog.String("schema", item.Schema))
-
-	payload, err := gzipxml.Decode(item.Payload, dfePayloadLimits)
-	if err != nil {
-		return ItemOutcome{}, &ProcessingError{Op: "decode document", NSU: item.NSU, Schema: item.Schema, Err: err}
-	}
-
-	tpAmb, err := sefaz.TpAmb(company.Environment)
+	payload, tpAmb, err := s.decode(ctx, company, item)
 	if err != nil {
 		return ItemOutcome{}, err
 	}
@@ -91,7 +79,7 @@ func (s *cteSource) ProcessItem(ctx context.Context, company *company.Company, s
 	case cte.SchemaProcEventoCTe:
 		return s.processEvent(ctx, company, tpAmb, item, payload, commit)
 	default:
-		return s.processUnsupported(ctx, item, payload, commit)
+		return s.keepUnsupported(ctx, item, payload, commit)
 	}
 }
 
@@ -102,32 +90,20 @@ func (s *cteSource) processDocument(ctx context.Context, company *company.Compan
 	}
 	doc.TpAmb = CheckTpAmb(doc.TpAmb, tpAmb, &doc.ParseWarnings)
 
-	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
-		return ItemOutcome{}, fmt.Errorf("file save failed: %w", err)
-	}
-	doc.RawHash = payload.SHA256
-
-	params := store.ApplyCTeDocumentParams{
-		Document:    doc,
-		CompanyID:   company.ID,
-		CompanyCNPJ: company.CNPJ,
-		NSU:         &item.NSU,
-	}
-	outcome, err := commit(ctx, func(tx *sql.Tx) (ItemOutcome, error) {
-		inserted, err := s.repo.ApplyDocumentTx(ctx, tx, params)
-		return ItemOutcome{Inserted: inserted}, err
+	return s.keepDocument(ctx, payload, commit, false, func(tx *sql.Tx, rawHash string) (bool, error) {
+		doc.RawHash = rawHash
+		return s.repo.ApplyDocumentTx(ctx, tx, store.ApplyCTeDocumentParams{
+			Document:    doc,
+			CompanyID:   company.ID,
+			CompanyCNPJ: company.CNPJ,
+			NSU:         &item.NSU,
+		})
 	})
-	if err != nil {
-		return ItemOutcome{}, fmt.Errorf("db apply cte document failed: %w", err)
-	}
-	return outcome, nil
 }
 
-// processEvent stores an event. An event for a chave the company does not
-// see yet is skipped by policy, unless the company authored it: that one is
-// kept and linked when the document arrives. In practice this drops the
-// MDF-e events the emitente receives about its own CT-e, which the
-// distribution never delivers to it.
+// processEvent stores an event under the shared policy of keepEvent. In
+// practice the policy drops the MDF-e events the emitente receives about its
+// own CT-e, which the distribution never delivers to it.
 func (s *cteSource) processEvent(ctx context.Context, company *company.Company, tpAmb string, item Item, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
 	ev, err := cte.ParseProcEventoCTe(payload.XML)
 	if err != nil {
@@ -135,67 +111,9 @@ func (s *cteSource) processEvent(ctx context.Context, company *company.Company, 
 	}
 	ev.TpAmb = CheckTpAmb(ev.TpAmb, tpAmb, &ev.ParseWarnings)
 
-	authoredByCompany := cnpj.Clean(ev.AutorCNPJ) == company.CNPJ
-	if !authoredByCompany {
-		hasLocalDocument, err := s.repo.CompanyDocumentExists(ctx, company.ID, string(ev.ChaveAcesso))
-		if err != nil {
-			return ItemOutcome{}, fmt.Errorf("check local document for event failed: %w", err)
-		}
-		if !hasLocalDocument {
-			outcome, err := commitSkip(ctx, commit, true)
-			if err != nil {
-				return ItemOutcome{}, err
-			}
-			s.log.InfoContext(ctx, "Evento CT-e descartado por não possuir documento local correspondente",
-				slog.Int64("nsu", item.NSU),
-				slog.String("tp_evento", ev.TpEvento))
-			return outcome, nil
-		}
-	}
-
-	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
-		return ItemOutcome{}, fmt.Errorf("event file save failed: %w", err)
-	}
-	ev.RawHash = payload.SHA256
-
-	outcome, err := commit(ctx, func(tx *sql.Tx) (ItemOutcome, error) {
-		inserted, err := s.repo.ApplyEventTx(ctx, tx, store.ApplyCTeEventParams{Event: ev})
-		return ItemOutcome{Inserted: inserted, IsEvent: true}, err
+	keys := dfeEvent{chaveAcesso: string(ev.ChaveAcesso), autorCNPJ: ev.AutorCNPJ, tpEvento: ev.TpEvento}
+	return s.keepEvent(ctx, company, item, payload, commit, keys, func(tx *sql.Tx, rawHash string) (bool, error) {
+		ev.RawHash = rawHash
+		return s.repo.ApplyEventTx(ctx, tx, store.ApplyCTeEventParams{Event: ev})
 	})
-	if err != nil {
-		return ItemOutcome{}, fmt.Errorf("db apply cte event failed: %w", err)
-	}
-	return outcome, nil
-}
-
-// processUnsupported keeps the XML of a schema nanci does not read and lets
-// the cursor move past it.
-func (s *cteSource) processUnsupported(ctx context.Context, item Item, payload gzipxml.Decoded, commit CommitFunc) (ItemOutcome, error) {
-	if err := s.xml.Store(payload.SHA256, payload.XML); err != nil {
-		return ItemOutcome{}, fmt.Errorf("file save failed: %w", err)
-	}
-	outcome, err := commit(ctx, func(*sql.Tx) (ItemOutcome, error) {
-		return ItemOutcome{Unsupported: true}, nil
-	})
-	if err != nil {
-		return ItemOutcome{}, fmt.Errorf("persist unsupported item progress failed: %w", err)
-	}
-	s.log.WarnContext(ctx, "Documento CT-e com schema não suportado ignorado",
-		slog.Int64("nsu", item.NSU),
-		slog.String("schema", item.Schema),
-		slog.String("raw_hash", payload.SHA256))
-	return outcome, nil
-}
-
-// parseError keeps the XML that failed to parse and wraps err so the loop
-// can skip the item after repeated failures.
-func (s *cteSource) parseError(ctx context.Context, op string, item Item, payload gzipxml.Decoded, err error) error {
-	return &ProcessingError{
-		Op:         op,
-		NSU:        item.NSU,
-		Schema:     item.Schema,
-		XMLPreview: xmlPreview(payload.XML),
-		RawHash:    keepUnparsedXML(ctx, s.xml, s.log, payload),
-		Err:        err,
-	}
 }
