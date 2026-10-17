@@ -39,7 +39,7 @@ Store:
 
 Protocol and sync:
 11. `internal/sefaz` (if SEFAZ SOAP): endpoint consts and an `Endpoints` field (`endpoints.go`), a `distService` var and `Dist<X>NSU` (`cte_distribuicao.go`), `CheckTLS<X>` (`tls_check.go`), `retdist-<x>-137/138/656.xml` fixtures.
-12. `internal/sync/source_<x>.go` (copy `source_cte.go`): `Kind`, `Policy` (delay var plus `requestsPerHour`), `Fetch` through `distBatch`, `ProcessItem` returning `*ProcessingError` on decode/parse failures, `checkTpAmb` for every item, events of an unknown chave dropped via `commitSkip` unless the company authored them, `processUnsupported` for unknown schemas. Add `<X>Repo` to `sync.Manager`. Tests: `source_cte_test.go` cases.
+12. `internal/sync/source_<x>.go` (copy `source_cte.go`): `Kind`, `Policy` (delay var plus `requestsPerHour`), `Fetch` through `distBatch`, `ProcessItem` returning `*ProcessingError` on decode/parse failures, `CheckTpAmb` for every item, events of an unknown chave dropped via `commitSkip` unless the company authored them, `processUnsupported` for unknown schemas. Add `<X>Repo` to `sync.Manager`. Tests: `source_cte_test.go` cases.
 
 App and entry points:
 13. `internal/app/<x>.go`, `<x>_export.go`, `<x>_reset.go` (copy `cte*.go`): `<X>Service` with `Pull`, `Status` (`loadSefazSourceStatus`), `ListDocuments`, `MarkViewed`, `ListEvents`, `TestConnection` (`testSefazConnection`), `ExportXMLZip`/`ExportXML` (`writeViaTemp`, then `MarkExported`), `PreviewReset`/`Reset` under `SyncManager.ReserveSource`. ZIP layout in `internal/report/<x>_zip.go` (`eventZipEntry`).

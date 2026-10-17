@@ -76,6 +76,11 @@ func (f *fakeSEFAZ) EnviarEventos(_ context.Context, signer *sefaz.Signer, idLot
 	return result, nil
 }
 
+func (f *fakeSEFAZ) ConsChNFe(context.Context, string, int, string) (sefaz.DistResult, error) {
+	f.t.Fatal("ConsChNFe called")
+	return sefaz.DistResult{}, nil
+}
+
 func (f *fakeSEFAZ) loteSizes() []int {
 	sizes := make([]int, 0, len(f.lotes))
 	for _, lote := range f.lotes {

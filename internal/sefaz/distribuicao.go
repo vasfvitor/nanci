@@ -98,7 +98,7 @@ func (c *Client) DistNSU(ctx context.Context, cnpjValue string, cUFAutor int, ul
 // a gap in the queue.
 //
 // It has no caller yet: it is kept for the planned NSU gap recovery (ROADMAP,
-// Fase 2). A call spends the same 20 per hour NF-e budget as DistNSU.
+// Fase 2, item 5). A call spends the same 20 per hour NF-e budget as DistNSU.
 func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, nsu int64) (DistResult, error) {
 	query, err := nsuQuery("consNSU", "NSU", nsu)
 	if err != nil {
@@ -107,11 +107,9 @@ func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, ns
 	return c.distribuicao(ctx, nfeDist, cnpjValue, cUFAutor, query)
 }
 
-// ConsChNFe asks for the NF-e with the given access key (consChNFe).
-//
-// It has no caller yet: it is kept for the planned XML import and fetch by
-// key (ROADMAP, Fase 2). A call spends the same 20 per hour NF-e budget as
-// DistNSU.
+// ConsChNFe asks for the NF-e with the given access key (consChNFe). A call
+// spends the same 20 per hour NF-e budget as DistNSU. The cStat 632, 640,
+// 641, 653 and 654 answers come back as *RejectionError.
 func (c *Client) ConsChNFe(ctx context.Context, cnpjValue string, cUFAutor int, chave string) (DistResult, error) {
 	key, err := dfe.ParseAccessKey(chave)
 	if err != nil {

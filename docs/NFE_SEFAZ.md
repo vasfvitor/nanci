@@ -117,6 +117,15 @@ A empresa pode guardar no Nanci XMLs de NF-e que já tem em mãos, sem consultar
 - A nota importada passa pela mesma gravação da distribuição: o papel é classificado, um resumo nunca substitui uma completa, eventos já gravados são ligados e a situação e a manifestação são recalculadas. Ela entra sem NSU (`first_seen_nsu` e `last_seen_nsu` nulos); se a distribuição trouxer a mesma nota depois, o NSU é preenchido.
 - Cada arquivo sai como `imported` (a empresa não tinha a chave, ou o evento), `updated` (já tinha e a gravação juntou as duas versões) ou `rejected`, com o motivo.
 
+## Busca pela chave
+
+`NFeService.FetchByChave` pede à SEFAZ uma NF-e pela chave de acesso (`consChNFe`, no mesmo NFeDistribuicaoDFe da distribuição) e grava o que vier pelo mesmo caminho da distribuição. Serve para uma nota que a empresa sabe que existe e que ainda não chegou, ou para trazer o XML completo depois da Ciência da Operação sem esperar o próximo pull. Só aceita chave de modelo 55, e a empresa precisa de UF cadastrada.
+
+- **Orçamento.** Cada busca gasta 1 das 20 consultas por hora da origem `nfe`, registrada antes do envio, como no pull. Um bloqueio por `consumo_indevido` ou `rate_budget` recusa a busca antes de pedir a senha; a hora de espera depois de `caught_up` não, porque ela vale só para o `distNSU`. Enquanto um pull de NF-e da mesma empresa roda, a busca é recusada (`ErrSyncRunning`).
+- **Cursor.** A resposta não move o cursor de NSU nem abre uma execução em `sync_runs`. O NSU do `docZip` fica registrado na nota (`first_seen_nsu`/`last_seen_nsu`).
+- **Respostas.** A SEFAZ devolve a nota sem os eventos. `cStat` 138 com `procNFe` grava a nota completa (`completa`). Com `resNFe`, grava o resumo (`resumo`) e avisa que o XML completo só vem depois da Ciência da Operação. 137 vira `not_found` ("NF-e não localizada ou sem acesso para a empresa") e gasta a consulta. 656 bloqueia a origem por 1 hora com `consumo_indevido`, como no pull.
+- **Rejeições** viram erro com o significado: 640 (a empresa não é destinatária, transportadora nem autorizada nesta NF-e), 641 (a SEFAZ não entrega ao emitente a própria NF-e; o caminho é importar o XML), 632 (chave fora da janela de 90 dias), 653 (NF-e cancelada), 654 (NF-e denegada) e 618 (modelo não aceito); qualquer outra sai como `cStat <n>: <xMotivo>`. Os códigos estão em `docs/pesquisa/2026-10-07-sefaz-dfe.md` (NT 2014.002).
+
 ## Uso pela linha de comando
 
 Todos os subcomandos de `nanci nfe` recebem a empresa por `--cnpj` (`-c`).

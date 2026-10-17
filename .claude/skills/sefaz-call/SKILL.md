@@ -29,7 +29,7 @@ description: Use when adding a new call to SEFAZ (NF-e/CT-e Ambiente Nacional or
 
 ### Existing methods to extend, not duplicate
 
-`ConsNSU` and `ConsChNFe` (`distribuicao.go`) and `ConsCTeNSU` (`cte_distribuicao.go`) exist with no caller, kept for ROADMAP Fase 2 (fetch by key, NSU gap recovery). Wire them; do not write a second `distDFeInt` builder. `ConsChNFe` answers 632/640/641/653/654 come back as `*RejectionError`; give them meaning in the caller. Add the method to the narrow interface the caller uses (`sefazClient` in `internal/app/nfe.go`, `nfeFetcher` in `internal/sync/source_nfe.go`) so tests can fake it.
+`ConsChNFe` (`distribuicao.go`) backs `NFeService.FetchByChave`, which gives the 618/632/640/641/653/654 `*RejectionError`s their meaning. `ConsNSU` and `ConsCTeNSU` (`cte_distribuicao.go`) exist with no caller, kept for the NSU gap recovery (ROADMAP Fase 2, item 5). Wire them; do not write a second `distDFeInt` builder. A stored item outside the loop goes through the source's `ProcessItem` with `sync.Store.Apply` as the `CommitFunc`, as `FetchByChave` does. Add the method to the narrow interface the caller uses (`sefazClient` in `internal/app/nfe.go`, `nfeFetcher` in `internal/sync/source_nfe.go`) so tests can fake it.
 
 ### UF services (planned 610110)
 
@@ -49,7 +49,7 @@ description: Use when adding a new call to SEFAZ (NF-e/CT-e Ambiente Nacional or
 
 - Reuse the returned `ultNSU`; all software consulting the same CNPJ shares one ascending sequence. Out of sequence gets 656, and querying while blocked restarts the hour.
 - Wait 1 hour after 137 or `ultNSU == maxNSU`. 656 blocks 1 hour and, since NT v1.14, returns the server's `ultNSU`.
-- `consNSU` and `consChNFe` together: 20 per hour. nanci budgets every distribution request (distNSU too) per company, source and environment in `sync_requests`: `sync.SyncService.spendRequest` (`internal/sync/loop.go`) records before sending, so failures count, and blocks with `rate_budget` when spent. A call outside the loop must use the same `sync.Store` (`RequestsSince`, `RecordRequest`, `SetBlockedUntil`) with the same source and respect `company_sync_sources.blocked_until`. CT-e has its own budget by assumption.
+- `consNSU` and `consChNFe` together: 20 per hour. nanci budgets every distribution request (distNSU too) per company, source and environment in `sync_requests`: the loop records each request before sending it, so failures count, and blocks with `rate_budget` when the budget is spent. A call outside the loop goes through the same `sync.Manager`: `BlockedFor(ctx, comp, source, reasons...)` before the password prompt (with reasons, only those blocks count, so a lookup can ignore the `caught_up` wait and still respect `consumo_indevido` and `rate_budget`), `ReserveSource` to keep a pull of the same source out, then `SpendRequest` right before sending (false means spent and already blocked with `rate_budget`), and `SourceLimits` for what to report. On 656 it sets the block itself with `sync.Store.SetBlockedUntil`. `NFeService.FetchByChave` (`internal/app/nfe_fetch.go`) is the worked example. CT-e has its own budget by assumption.
 - 60-day keep-alive: the AN only generates NSU for a CNPJ root that called distNSU in the last 60 days (third-party reports); nanci warns at 45 (`sync.DistIdleWarningDays`). Only a successful distNSU resets it.
 - 90-day window (CT-e: 3 months) for distribution and consChNFe; `ultNSU` 0 returns only the last 3 months.
 - The emitente gets 641 from consChNFe and never receives its own NF-e by distribution.
