@@ -22,9 +22,6 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"AssignCredentialToCompany": func(a *App) (any, error) {
 			return nil, a.AssignCredentialToCompany(desktopapi.AssignCredentialInput{CompanyCNPJ: testCNPJ, CredentialID: "cred-1"})
 		},
-		"CountPendingExports": func(a *App) (any, error) {
-			return a.CountPendingExports(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "zip"})
-		},
 		"ExportCTeXML": func(a *App) (any, error) {
 			return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
@@ -108,17 +105,16 @@ func coreRuns() map[string]func(a *App) (any, error) {
 // withoutCore lists the bound methods that work without the core services:
 // password prompts, dialogs, log settings and build or path information.
 var withoutCore = map[string]bool{
-	"CancelCertPassword":    true,
-	"ExportLogs":            true,
-	"GetBuildInfo":          true,
-	"GetDataDirectory":      true,
-	"OpenDataDirectory":     true,
-	"OpenLogsDirectory":     true,
-	"SelectCertificate":     true,
-	"SelectExportDirectory": true,
-	"SelectSaveFile":        true,
-	"SetLogLevel":           true,
-	"SubmitCertPassword":    true,
+	"CancelCertPassword": true,
+	"ExportLogs":         true,
+	"GetBuildInfo":       true,
+	"GetDataDirectory":   true,
+	"OpenDataDirectory":  true,
+	"OpenLogsDirectory":  true,
+	"SelectCertificate":  true,
+	"SelectSaveFile":     true,
+	"SetLogLevel":        true,
+	"SubmitCertPassword": true,
 }
 
 // TestCoreRunsCoverEveryBoundMethod keeps coreRuns in step with App: a new

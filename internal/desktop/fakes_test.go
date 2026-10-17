@@ -248,7 +248,6 @@ func (f *fakeSync) ResetSyncState(_ context.Context, in nsync.ResetSyncInput) er
 type fakeExports struct {
 	recorder
 	result app.ExportResult
-	count  int
 	err    error
 }
 
@@ -280,11 +279,6 @@ func (f *fakeExports) ExportDANFSe(_ context.Context, in app.ExportDANFSeInput) 
 func (f *fakeExports) ExportXML(_ context.Context, in app.ExportXMLInput) error {
 	f.record("ExportXML", in)
 	return f.err
-}
-
-func (f *fakeExports) CountPendingExportDocuments(_ context.Context, in app.ExportInput, kind string) (int, error) {
-	f.record("CountPendingExportDocuments", in, kind)
-	return f.count, f.err
 }
 
 type fakeNFe struct {

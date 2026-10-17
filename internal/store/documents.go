@@ -388,25 +388,6 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 	return docs, nil
 }
 
-// CountPendingExportDocuments counts pending export documents.
-func (s *DocumentRepository) CountPendingExportDocuments(ctx context.Context, companyID dfe.CompanyID, filter nfse.DocumentFilter, kind string) (int, error) {
-	query := `
-		SELECT COUNT(1)
-		FROM company_documents cd
-		INNER JOIN documents d ON d.id = cd.document_id
-		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
-	`
-	where, whereArgs := buildNFSeFilterSQL(companyID, filter)
-	query += " WHERE " + where + pendingExportCondition // #nosec G202 -- constant conditions with ? placeholders from buildNFSeFilterSQL.
-	args := append([]any{kind}, whereArgs...)
-
-	var count int
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
 // MarkDocumentsExported marks documents as exported for a specific kind.
 func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyID dfe.CompanyID, kind string, marks []nfse.DocumentExportMark) error {
 	if len(marks) == 0 {

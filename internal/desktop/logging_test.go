@@ -1,14 +1,12 @@
 package main
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/vasfvitor/nanci/internal/files"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 )
 
@@ -99,26 +97,5 @@ func TestParseDesktopLogLevelMapsSupportedValues(t *testing.T) {
 		if got := parseDesktopLogLevel(input); got != want {
 			t.Fatalf("parseDesktopLogLevel(%q) = %v, want %v", input, got, want)
 		}
-	}
-}
-
-func TestFormatExportErrorAddsRecoveryHintOnlyForMissingFiles(t *testing.T) {
-	t.Parallel()
-
-	missing := formatExportError(files.ErrBlobNotFound)
-	if !errors.Is(missing, files.ErrBlobNotFound) {
-		t.Fatalf("expected ErrBlobNotFound in wrapped error, got %v", missing)
-	}
-	if !strings.Contains(missing.Error(), "Resetar NSU") {
-		t.Fatalf("expected recovery hint for missing file, got %q", missing.Error())
-	}
-
-	renderErr := errors.New("renderizar DANFSe: renderer exploded")
-	formatted := formatExportError(renderErr)
-	if formatted != renderErr { //nolint:errorlint // identity check: the error must come back unwrapped.
-		t.Fatalf("expected non-file error to be returned unchanged")
-	}
-	if strings.Contains(formatted.Error(), "Resetar NSU") {
-		t.Fatalf("unexpected recovery hint for renderer error: %q", formatted.Error())
 	}
 }

@@ -3,7 +3,6 @@ import {
   AddCredential,
   AssignCredentialToCompany,
   CancelCertPassword,
-  CountPendingExports,
   ExportCTeXML,
   ExportCTeZIP,
   ExportDANFSe,
@@ -41,7 +40,6 @@ import {
   ResetNFe,
   ResetSyncState,
   SelectCertificate,
-  SelectExportDirectory,
   SelectSaveFile,
   SetLogLevel,
   StatusCTe,
@@ -812,9 +810,6 @@ export const desktopClient = {
   async markDocumentsViewed(cnpj: string, chavesAcesso: string[]): Promise<number> {
     return callWails(() => MarkDocumentsViewed({ CNPJ: cnpj, ChavesAcesso: chavesAcesso }))
   },
-  async countPendingExports(input: ExportDocumentsInput): Promise<number> {
-    return callWails(() => CountPendingExports(input))
-  },
   async listEventsForDocument(documentID: string): Promise<DocumentEvent[]> {
     const result = await callWails(() => ListEventsForDocument(documentID))
     return (result || []).map(mapDocumentEvent)
@@ -830,10 +825,6 @@ export const desktopClient = {
   },
   async selectCertificate(): Promise<string | null> {
     const path = await callWails(() => SelectCertificate())
-    return path || null
-  },
-  async selectExportDirectory(): Promise<string | null> {
-    const path = await callWails(() => SelectExportDirectory())
     return path || null
   },
   async selectSaveFile(title: string, defaultFilename: string, pattern: string): Promise<string | null> {

@@ -278,23 +278,6 @@ func (s *ExportService) ExportXML(ctx context.Context, input ExportXMLInput) err
 	return nil
 }
 
-// CountPendingExportDocuments counts the documents that are pending export for the given format.
-func (s *ExportService) CountPendingExportDocuments(ctx context.Context, input ExportInput, kind string) (int, error) {
-	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, input.CNPJ)
-	if err != nil {
-		return 0, err
-	}
-	filter := nfse.DocumentFilter{
-		Competence: input.Competence,
-		Direction:  input.Direction,
-	}
-
-	if company.SyncStartPolicy != "" && company.SyncStartPolicy != syncstate.SyncStartPolicyAll && company.SyncStartDate != nil {
-		filter.IssueDateGTE = company.SyncStartDate
-	}
-	return s.DocumentRepo.CountPendingExportDocuments(ctx, company.ID, filter, kind)
-}
-
 func (s *ExportService) renderDANFSe(doc *nfse.CompanyDocument) ([]byte, error) {
 	if s.DANFSeRenderer == nil {
 		return nil, fmt.Errorf("DANFSe não configurado")

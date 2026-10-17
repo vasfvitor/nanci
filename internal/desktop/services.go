@@ -44,7 +44,6 @@ type exportService interface {
 	ExportDANFSeZIP(ctx context.Context, input app.ExportInput) (app.ExportResult, error)
 	ExportDANFSe(ctx context.Context, input app.ExportDANFSeInput) error
 	ExportXML(ctx context.Context, input app.ExportXMLInput) error
-	CountPendingExportDocuments(ctx context.Context, input app.ExportInput, kind string) (int, error)
 }
 
 type queryService interface {

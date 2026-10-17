@@ -90,9 +90,8 @@ func TestExportDocumentsRejectsBeforeCore(t *testing.T) {
 	}
 }
 
-// TestSingleDocumentExports pins the current result of the one-document
-// exports: OutPath and Format from the request, ExportedCount 0 even though
-// one file was written.
+// TestSingleDocumentExports pins the result of the one-document exports:
+// OutPath and Format from the request, ExportedCount 1 for the file written.
 func TestSingleDocumentExports(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -108,7 +107,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			},
 			recorder: func(f fakeSet) *recorder { return &f.exports.recorder },
 			want:     call{"ExportDANFSe", []any{app.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
-			result:   desktopapi.ExportResult{OutPath: testOut + ".pdf", Format: "danfse"},
+			result:   desktopapi.ExportResult{OutPath: testOut + ".pdf", Format: "danfse", ExportedCount: 1},
 		},
 		{
 			name: "ExportXML",
@@ -117,7 +116,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			},
 			recorder: func(f fakeSet) *recorder { return &f.exports.recorder },
 			want:     call{"ExportXML", []any{app.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
-			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml"},
+			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml", ExportedCount: 1},
 		},
 		{
 			name: "ExportNFeXML",
@@ -126,7 +125,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			},
 			recorder: func(f fakeSet) *recorder { return &f.nfe.recorder },
 			want:     call{"ExportXML", []any{app.NFeExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
-			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml"},
+			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml", ExportedCount: 1},
 		},
 		{
 			name: "ExportCTeXML",
@@ -135,7 +134,7 @@ func TestSingleDocumentExports(t *testing.T) {
 			},
 			recorder: func(f fakeSet) *recorder { return &f.cte.recorder },
 			want:     call{"ExportXML", []any{app.CTeExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
-			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml"},
+			result:   desktopapi.ExportResult{OutPath: testOut + ".xml", Format: "xml", ExportedCount: 1},
 		},
 	}
 	for _, tt := range tests {
@@ -311,55 +310,5 @@ func TestExportsPassCoreErrors(t *testing.T) {
 				t.Errorf("result = %+v, want zero", got)
 			}
 		})
-	}
-}
-
-func TestCountPendingExports(t *testing.T) {
-	tests := []struct {
-		format string
-		kind   string
-	}{
-		{"zip", "xml"},
-		{"danfse-zip", "danfse"},
-		{"csv", "csv"},
-		{" XLSX ", "xlsx"},
-		// Unknown formats reach the core unchanged; it decides.
-		{"pdf", "pdf"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.format, func(t *testing.T) {
-			f, a := newFakeApp(nil)
-			f.exports.count = 9
-
-			got, err := a.CountPendingExports(desktopapi.ExportDocumentsInput{
-				CNPJ:         testCNPJ,
-				Competence:   "2026-09",
-				Direction:    "tomada",
-				Format:       tt.format,
-				OutPath:      testOut,
-				Incremental:  true,
-				ChavesAcesso: []string{testChave},
-			})
-			if err != nil {
-				t.Fatalf("CountPendingExports: %v", err)
-			}
-			if got != 9 {
-				t.Errorf("count = %d, want 9", got)
-			}
-			// Only the filters reach the counter; out path, incremental and
-			// chaves do not.
-			assertCalls(t, &f.exports.recorder, call{"CountPendingExportDocuments", []any{
-				app.ExportInput{CNPJ: testCNPJ, Competence: "2026-09", Direction: "tomada"},
-				tt.kind,
-			}})
-		})
-	}
-}
-
-func TestCountPendingExportsPassesCoreError(t *testing.T) {
-	_, a := newFakeApp(errCore)
-
-	if _, err := a.CountPendingExports(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "zip"}); !errors.Is(err, errCore) {
-		t.Fatalf("err = %v, want %v", err, errCore)
 	}
 }

@@ -10,8 +10,6 @@ export function AssignCredentialToCompany(arg1:desktopapi.AssignCredentialInput)
 
 export function CancelCertPassword(arg1:string):Promise<void>;
 
-export function CountPendingExports(arg1:desktopapi.ExportDocumentsInput):Promise<number>;
-
 export function ExportCTeXML(arg1:desktopapi.ExportCTeXMLInput):Promise<desktopapi.ExportResult>;
 
 export function ExportCTeZIP(arg1:desktopapi.ExportCTeZIPInput):Promise<desktopapi.ExportResult>;
@@ -85,8 +83,6 @@ export function ResetNFe(arg1:string):Promise<desktopapi.NFeResetResult>;
 export function ResetSyncState(arg1:desktopapi.ResetSyncInput):Promise<void>;
 
 export function SelectCertificate():Promise<string>;
-
-export function SelectExportDirectory():Promise<string>;
 
 export function SelectSaveFile(arg1:string,arg2:string,arg3:string):Promise<string>;
 

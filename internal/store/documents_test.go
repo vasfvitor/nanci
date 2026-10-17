@@ -115,18 +115,14 @@ func TestNFSeFiltersByChaves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	count, err := repo.CountPendingExportDocuments(ctx, "comp-a", filter, "xml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(pending) != 2 || count != 2 {
-		t.Errorf("pending export by chaves = %d listed, %d counted; want 2 and 2", len(pending), count)
+	if len(pending) != 2 {
+		t.Errorf("pending export by chaves = %d, want 2", len(pending))
 	}
 
 	if err := repo.MarkDocumentsExported(ctx, "comp-a", "xml", []nfse.DocumentExportMark{{DocumentID: string(pending[0].DocumentID), Hash: pending[0].RawHash}}); err != nil {
 		t.Fatal(err)
 	}
-	if count, err := repo.CountPendingExportDocuments(ctx, "comp-a", filter, "xml"); err != nil || count != 1 {
-		t.Errorf("pending after one export = %d, %v; want 1", count, err)
+	if pending, err := repo.ListPendingExportDocuments(ctx, "comp-a", filter, "xml"); err != nil || len(pending) != 1 {
+		t.Errorf("pending after one export = %d, %v; want 1", len(pending), err)
 	}
 }

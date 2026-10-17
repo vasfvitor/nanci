@@ -18,10 +18,6 @@ export function CancelCertPassword(arg1) {
   return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
-export function CountPendingExports(arg1) {
-  return window['go']['main']['App']['CountPendingExports'](arg1);
-}
-
 export function ExportCTeXML(arg1) {
   return window['go']['main']['App']['ExportCTeXML'](arg1);
 }
@@ -168,10 +164,6 @@ export function ResetSyncState(arg1) {
 
 export function SelectCertificate() {
   return window['go']['main']['App']['SelectCertificate']();
-}
-
-export function SelectExportDirectory() {
-  return window['go']['main']['App']['SelectExportDirectory']();
 }
 
 export function SelectSaveFile(arg1, arg2, arg3) {

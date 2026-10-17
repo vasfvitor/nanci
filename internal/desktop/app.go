@@ -277,13 +277,6 @@ func (a *App) SelectCertificate() (string, error) {
 	})
 }
 
-// SelectExportDirectory opens a dialog to select an output directory for exports
-func (a *App) SelectExportDirectory() (string, error) {
-	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Selecione a Pasta de Destino",
-	})
-}
-
 // SelectSaveFile opens a dialog to select an output file path for exports
 func (a *App) SelectSaveFile(title, defaultFilename, pattern string) (string, error) {
 	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
@@ -546,7 +539,7 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse"}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse", ExportedCount: 1}, nil
 }
 
 func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResult, error) {
@@ -565,7 +558,7 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
 func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
@@ -630,26 +623,6 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	return desktopapi.ExportResult(res), nil
 }
 
-func (a *App) CountPendingExports(input desktopapi.ExportDocumentsInput) (int, error) {
-	if err := a.ready(); err != nil {
-		return 0, err
-	}
-	format := strings.ToLower(strings.TrimSpace(input.Format))
-	switch format {
-	case "zip":
-		format = "xml"
-	case "danfse-zip":
-		format = "danfse"
-	}
-
-	exportInput := app.ExportInput{
-		CNPJ:       input.CNPJ,
-		Competence: input.Competence,
-		Direction:  input.Direction,
-	}
-	return a.svc.exports.CountPendingExportDocuments(a.ctx, exportInput, format)
-}
-
 // MarkDocumentsViewed marks the company's NFS-e with the given chaves as
 // viewed and returns how many were new.
 func (a *App) MarkDocumentsViewed(input desktopapi.MarkViewedInput) (int, error) {
@@ -657,13 +630,6 @@ func (a *App) MarkDocumentsViewed(input desktopapi.MarkViewedInput) (int, error)
 		return 0, err
 	}
 	return a.svc.documents.MarkDocumentsViewed(a.ctx, input.CNPJ, input.ChavesAcesso)
-}
-
-func formatExportError(err error) error {
-	if errors.Is(err, files.ErrBlobNotFound) {
-		return fmt.Errorf("%w. Dica: o XML do documento não foi encontrado no disco. Isso pode ocorrer se o arquivo foi apagado manualmente ou se a sincronização não baixou o XML corretamente. Resetar NSU nas configurações da empresa pode forçar o download novamente", err)
-	}
-	return err
 }
 
 func parseDesktopLogLevel(level string) slog.Level {
@@ -992,7 +958,7 @@ func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.Expor
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
 func (a *App) ExportNFeZIP(input desktopapi.ExportNFeZIPInput) (desktopapi.NFeExportResult, error) {
@@ -1181,7 +1147,7 @@ func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.Expor
 	if err != nil {
 		return desktopapi.ExportResult{}, err
 	}
-	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml"}, nil
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
 func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.ExportResult, error) {
