@@ -11,6 +11,7 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
+import type { CTeExportFormat } from '@/types/desktop'
 import { cteDocumentCount, cteStateBadges, cteStatusLine } from '@/utils/cteDisplay'
 import { idleWarning as idleWarningText, sefazAmbiente } from '@/utils/sefazDisplay'
 
@@ -125,17 +126,26 @@ export function useCTeDocuments() {
     return runExport((cnpj) => desktopClient.exportCTeXML({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
-  // exportZIP exports exactly the given chaves; incremental leaves out the
-  // ones exported before. Competence and Role are left empty: the grid may
-  // hold the result of an earlier search, and an empty list would export
-  // everything.
-  async function exportZIP(chavesAcesso: string[], choice: { incremental: boolean }) {
+  function exportDACTE(chaveAcesso: string) {
+    return runExport((cnpj) => desktopClient.exportDACTE({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
+  }
+
+  // exportDocuments exports exactly the given chaves as a spreadsheet, a ZIP
+  // of XMLs or a ZIP of DACTEs; incremental leaves out the ones exported
+  // before. Competence and Role are left empty: the grid may hold the result
+  // of an earlier search, and an empty list would export everything.
+  async function exportDocuments(
+    format: CTeExportFormat,
+    chavesAcesso: string[],
+    choice: { incremental: boolean }
+  ) {
     if (chavesAcesso.length === 0) return null
     return runExport((cnpj) =>
-      desktopClient.exportCTeZIP({
+      desktopClient.exportCTeDocuments({
         CNPJ: cnpj,
         Competence: '',
         Role: '',
+        Format: format,
         ChavesAcesso: chavesAcesso,
         Incremental: choice.incremental,
       })
@@ -175,7 +185,8 @@ export function useCTeDocuments() {
     previewReset,
     resetCTe,
     exportXML,
-    exportZIP,
+    exportDACTE,
+    exportDocuments,
     markViewed,
   }
 }

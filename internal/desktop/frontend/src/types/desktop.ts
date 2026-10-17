@@ -544,6 +544,8 @@ export type CTeRow = {
   TpAmb: string
   Modelo: CTeModelo | ''
   TipoDocumento: CTeTipoDocumento | ''
+  // HasDACTE is false for the kinds that have no DACTE.
+  HasDACTE: boolean
   Serie: string
   Numero: string
   CFOP: string
@@ -681,11 +683,27 @@ export type ExportCTeXMLInput = {
   OutPath: string
 }
 
-export type ExportCTeZIPInput = {
+// CTeExportFormat is the CT-e list export the user picks in the dialog.
+export type CTeExportFormat = 'csv' | 'xlsx' | 'zip' | 'dacte-zip'
+
+export type ExportCTeDocumentsInput = {
   CNPJ: string
   Competence: string
   Role: CTePapel | ''
+  Format: CTeExportFormat
   ChavesAcesso: string[]
   Incremental: boolean
   OutPath: string
+}
+
+export type ExportDACTEInput = {
+  CNPJ: string
+  ChaveAcesso: string
+  OutPath: string
+}
+
+// CTeExportResult adds the CT-e a DACTE export left out because their kind
+// has no DACTE.
+export type CTeExportResult = ExportResult & {
+  SkippedSemDACTE: number
 }

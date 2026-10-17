@@ -3,8 +3,9 @@ import {
   AddCredential,
   AssignCredentialToCompany,
   CancelCertPassword,
+  ExportCTeDocuments,
   ExportCTeXML,
-  ExportCTeZIP,
+  ExportDACTE,
   ExportDANFE,
   ExportDANFSe,
   ExportDocuments,
@@ -71,8 +72,11 @@ import type {
   CTeTipoDocumento,
   DocumentEvent,
   DocumentRow,
+  CTeExportFormat,
+  CTeExportResult,
+  ExportCTeDocumentsInput,
   ExportCTeXMLInput,
-  ExportCTeZIPInput,
+  ExportDACTEInput,
   ExportDANFEInput,
   ExportDANFSeInput,
   ExportDocumentsInput,
@@ -290,6 +294,29 @@ function nfeExportDialog(format: NFeExportFormat, cnpj: string): SaveDialog {
       return {
         title: 'Exportar NF-e',
         defaultName: `nfe_${cnpj}_${fileTimestamp()}.${format}`,
+        pattern: `*.${format}`,
+      }
+  }
+}
+
+function cteExportDialog(format: CTeExportFormat, cnpj: string): SaveDialog {
+  switch (format) {
+    case 'dacte-zip':
+      return {
+        title: 'Salvar ZIP de DACTEs',
+        defaultName: `dactes_${cnpj}_${fileTimestamp()}.zip`,
+        pattern: '*.zip',
+      }
+    case 'zip':
+      return {
+        title: 'Salvar XMLs de CT-e (ZIP)',
+        defaultName: `cte_${cnpj}_${fileTimestamp()}.zip`,
+        pattern: '*.zip',
+      }
+    default:
+      return {
+        title: 'Exportar CT-e',
+        defaultName: `cte_${cnpj}_${fileTimestamp()}.${format}`,
         pattern: `*.${format}`,
       }
   }
@@ -587,6 +614,13 @@ function mapExportResult(raw: unknown): ExportResult {
   }
 }
 
+function mapCTeExportResult(raw: unknown): CTeExportResult {
+  return {
+    ...mapExportResult(raw),
+    SkippedSemDACTE: asNumber(asRawRecord(raw)['SkippedSemDACTE']),
+  }
+}
+
 function mapNFeExportResult(raw: unknown): NFeExportResult {
   return {
     ...mapExportResult(raw),
@@ -632,6 +666,7 @@ export function mapCTeRow(raw: unknown): CTeRow {
     TpAmb: asString(item['TpAmb']),
     Modelo: asEnum(item['Modelo'], cteModelos),
     TipoDocumento: asEnum(item['TipoDocumento'], cteTiposDocumento),
+    HasDACTE: asBoolean(item['HasDACTE']),
     Serie: asString(item['Serie']),
     Numero: asString(item['Numero']),
     CFOP: asString(item['CFOP']),
@@ -1043,25 +1078,39 @@ export const desktopClient = {
     )
     return mapExportResult(res)
   },
-  async exportCTeZIP(
-    input: Omit<ExportCTeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  async exportDACTE(
+    input: Omit<ExportDACTEInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
   ): Promise<ExportResult | null> {
-    const defaultName = input.BaseName || `cte_${input.CNPJ}_${fileTimestamp()}.zip`
+    const defaultName = input.BaseName || `dacte_${input.ChaveAcesso}.pdf`
     const outPath =
-      input.OutPath ||
-      (await desktopClient.selectSaveFile('Salvar XMLs de CT-e (ZIP)', defaultName, '*.zip'))
+      input.OutPath || (await desktopClient.selectSaveFile('Salvar DACTE', defaultName, '*.pdf'))
     if (!outPath) return null
 
     const res = await callWails(() =>
-      ExportCTeZIP({
+      ExportDACTE({ CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso, OutPath: outPath })
+    )
+    return mapExportResult(res)
+  },
+  async exportCTeDocuments(
+    input: Omit<ExportCTeDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
+  ): Promise<CTeExportResult | null> {
+    const dialog = cteExportDialog(input.Format, input.CNPJ)
+    const defaultName = input.BaseName || dialog.defaultName
+    const outPath =
+      input.OutPath || (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
+    if (!outPath) return null
+
+    const res = await callWails(() =>
+      ExportCTeDocuments({
         CNPJ: input.CNPJ,
         Competence: input.Competence,
         Role: input.Role,
+        Format: input.Format,
         ChavesAcesso: input.ChavesAcesso || [],
         Incremental: input.Incremental,
         OutPath: outPath,
       })
     )
-    return mapExportResult(res)
+    return mapCTeExportResult(res)
   },
 }

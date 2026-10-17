@@ -774,6 +774,7 @@ type CTeRow struct {
 	TpAmb         string // "1" produção, "2" homologação
 	Modelo        string // "57", "64" or "67"
 	TipoDocumento string // cte | cte_os | gtve | cte_simplificado
+	HasDACTE      bool   // false for the kinds that have no DACTE
 	Serie         string
 	Numero        string
 	CFOP          string
@@ -911,15 +912,24 @@ type ExportCTeXMLInput struct {
 	OutPath     string
 }
 
-// ExportCTeZIPInput selects the CT-e for the XML ZIP. The export filters by
-// competência, papel and chaves only.
-type ExportCTeZIPInput struct {
+// ExportCTeDocumentsInput selects the CT-e of a list export and its Format:
+// csv, xlsx, zip (the XMLs) or dacte-zip. The export filters by competência,
+// papel and chaves only.
+type ExportCTeDocumentsInput struct {
 	CNPJ         string
 	Competence   string
 	Role         string
+	Format       string
 	ChavesAcesso []string
 	Incremental  bool
 	OutPath      string
+}
+
+// ExportDACTEInput names the CT-e whose DACTE is written to OutPath.
+type ExportDACTEInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	OutPath     string
 }
 
 // CTeExportResult is ExportResult plus the CT-e a DACTE export left out
@@ -952,6 +962,7 @@ func cteRow(document cte.CompanyDocument) CTeRow {
 		TpAmb:               document.TpAmb,
 		Modelo:              document.Modelo,
 		TipoDocumento:       string(document.TipoDocumento),
+		HasDACTE:            document.HasDACTE(),
 		Serie:               document.Serie,
 		Numero:              document.Numero,
 		CFOP:                document.CFOP,

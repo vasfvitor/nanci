@@ -18,12 +18,16 @@ export function CancelCertPassword(arg1) {
   return window['go']['main']['App']['CancelCertPassword'](arg1);
 }
 
+export function ExportCTeDocuments(arg1) {
+  return window['go']['main']['App']['ExportCTeDocuments'](arg1);
+}
+
 export function ExportCTeXML(arg1) {
   return window['go']['main']['App']['ExportCTeXML'](arg1);
 }
 
-export function ExportCTeZIP(arg1) {
-  return window['go']['main']['App']['ExportCTeZIP'](arg1);
+export function ExportDACTE(arg1) {
+  return window['go']['main']['App']['ExportDACTE'](arg1);
 }
 
 export function ExportDANFE(arg1) {

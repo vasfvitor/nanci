@@ -22,8 +22,9 @@ import {
   WailsClientError,
 } from './client'
 import {
+  ExportCTeDocuments,
   ExportCTeXML,
-  ExportCTeZIP,
+  ExportDACTE,
   ExportDANFE,
   ExportDANFSe,
   ExportDocuments,
@@ -60,8 +61,9 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
   CancelCertPassword: vi.fn(),
+  ExportCTeDocuments: vi.fn(),
   ExportCTeXML: vi.fn(),
-  ExportCTeZIP: vi.fn(),
+  ExportDACTE: vi.fn(),
   ExportDANFE: vi.fn(),
   ExportDANFSe: vi.fn(),
   ExportDocuments: vi.fn(),
@@ -772,6 +774,7 @@ describe('CT-e mappers', () => {
       TpAmb: '2',
       Modelo: '57',
       TipoDocumento: 'cte_simplificado',
+      HasDACTE: true,
       TpServ: '2',
       Modal: '01',
       MunIni: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
@@ -798,6 +801,7 @@ describe('CT-e mappers', () => {
       TpAmb: '2',
       Modelo: '57',
       TipoDocumento: 'cte_simplificado',
+      HasDACTE: true,
       TpServ: '2',
       Modal: '01',
       MunIni: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
@@ -820,6 +824,7 @@ describe('CT-e mappers', () => {
       EventCount: 3,
     })
     expect(mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null, ViewedAt: null })).toMatchObject({
+      HasDACTE: false,
       NFeChaves: [],
       Papeis: [],
       ParseWarnings: [],
@@ -976,54 +981,111 @@ describe('CT-e client calls', () => {
     expect(ResetCTe).toHaveBeenCalledWith('123')
   })
 
-  it('exports CT-e XML and ZIP to the path chosen in the save dialog', async () => {
+  it('exports the CT-e XML and DACTE of a row to the path chosen in the save dialog', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
     vi.mocked(ExportCTeXML).mockResolvedValue({ OutPath: 'C:\\out\\file', Format: 'xml' } as never)
-    vi.mocked(ExportCTeZIP).mockResolvedValue({
+    vi.mocked(ExportDACTE).mockResolvedValue({
       OutPath: 'C:\\out\\file',
-      Format: 'xml',
-      Incremental: true,
-      ExportedCount: 3,
+      Format: 'dacte',
+      ExportedCount: 1,
     } as never)
 
     const xml = await desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })
-    const zip = await desktopClient.exportCTeZIP({
-      CNPJ: '123',
-      Competence: '2024-09',
-      Role: 'tomador',
-      ChavesAcesso: [cteChave],
-      Incremental: true,
-    })
+    const dacte = await desktopClient.exportDACTE({ CNPJ: '123', ChaveAcesso: cteChave })
 
     expect(SelectSaveFile).toHaveBeenNthCalledWith(1, 'Salvar XML do CT-e', `cte_${cteChave}.xml`, '*.xml')
-    expect(vi.mocked(SelectSaveFile).mock.calls[1]?.[1]).toMatch(/^cte_123_\d{4}_\d{2}_\d{2}_\d{6}\.zip$/)
-    expect(ExportCTeXML).toHaveBeenCalledWith({
-      CNPJ: '123',
-      ChaveAcesso: cteChave,
-      OutPath: 'C:\\out\\file',
-    })
-    expect(ExportCTeZIP).toHaveBeenCalledWith({
-      CNPJ: '123',
-      Competence: '2024-09',
-      Role: 'tomador',
-      ChavesAcesso: [cteChave],
-      Incremental: true,
-      OutPath: 'C:\\out\\file',
-    })
+    expect(SelectSaveFile).toHaveBeenNthCalledWith(2, 'Salvar DACTE', `dacte_${cteChave}.pdf`, '*.pdf')
+    expect(ExportCTeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave, OutPath: 'C:\\out\\file' })
+    expect(ExportDACTE).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave, OutPath: 'C:\\out\\file' })
     expect(xml).toEqual({ OutPath: 'C:\\out\\file', Format: 'xml', Incremental: false, ExportedCount: 0 })
-    expect(zip).toEqual({ OutPath: 'C:\\out\\file', Format: 'xml', Incremental: true, ExportedCount: 3 })
+    expect(dacte).toEqual({ OutPath: 'C:\\out\\file', Format: 'dacte', Incremental: false, ExportedCount: 1 })
+  })
+
+  describe('exportCTeDocuments', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date(2026, 9, 17, 9, 5, 7))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it.each([
+      { format: 'csv', title: 'Exportar CT-e', name: 'cte_123_2026_10_17_090507.csv', pattern: '*.csv' },
+      { format: 'xlsx', title: 'Exportar CT-e', name: 'cte_123_2026_10_17_090507.xlsx', pattern: '*.xlsx' },
+      {
+        format: 'zip',
+        title: 'Salvar XMLs de CT-e (ZIP)',
+        name: 'cte_123_2026_10_17_090507.zip',
+        pattern: '*.zip',
+      },
+      {
+        format: 'dacte-zip',
+        title: 'Salvar ZIP de DACTEs',
+        name: 'dactes_123_2026_10_17_090507.zip',
+        pattern: '*.zip',
+      },
+    ] as const)('saves $format through the dialog "$title"', async (want) => {
+      const { format, title, name, pattern } = want
+      vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
+      vi.mocked(ExportCTeDocuments).mockResolvedValue({
+        OutPath: 'C:\\out\\file',
+        Format: 'dacte',
+        Incremental: true,
+        ExportedCount: 3,
+        SkippedSemDACTE: 1,
+      } as never)
+
+      await expect(
+        desktopClient.exportCTeDocuments({
+          CNPJ: '123',
+          Competence: '2024-09',
+          Role: 'tomador',
+          Format: format,
+          ChavesAcesso: [cteChave],
+          Incremental: true,
+        })
+      ).resolves.toEqual({
+        OutPath: 'C:\\out\\file',
+        Format: 'dacte',
+        Incremental: true,
+        ExportedCount: 3,
+        SkippedSemDACTE: 1,
+      })
+
+      expect(SelectSaveFile).toHaveBeenCalledWith(title, name, pattern)
+      expect(ExportCTeDocuments).toHaveBeenCalledWith({
+        CNPJ: '123',
+        Competence: '2024-09',
+        Role: 'tomador',
+        Format: format,
+        ChavesAcesso: [cteChave],
+        Incremental: true,
+        OutPath: 'C:\\out\\file',
+      })
+    })
   })
 
   it('returns null and skips CT-e exports when the save dialog is cancelled', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('')
 
     await expect(desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })).resolves.toBeNull()
+    await expect(desktopClient.exportDACTE({ CNPJ: '123', ChaveAcesso: cteChave })).resolves.toBeNull()
     await expect(
-      desktopClient.exportCTeZIP({ CNPJ: '123', Competence: '', Role: '', ChavesAcesso: [], Incremental: false })
+      desktopClient.exportCTeDocuments({
+        CNPJ: '123',
+        Competence: '',
+        Role: '',
+        Format: 'dacte-zip',
+        ChavesAcesso: [],
+        Incremental: false,
+      })
     ).resolves.toBeNull()
 
     expect(ExportCTeXML).not.toHaveBeenCalled()
-    expect(ExportCTeZIP).not.toHaveBeenCalled()
+    expect(ExportDACTE).not.toHaveBeenCalled()
+    expect(ExportCTeDocuments).not.toHaveBeenCalled()
   })
 })
 

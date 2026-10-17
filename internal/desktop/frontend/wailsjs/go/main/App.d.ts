@@ -10,9 +10,11 @@ export function AssignCredentialToCompany(arg1:desktopapi.AssignCredentialInput)
 
 export function CancelCertPassword(arg1:string):Promise<void>;
 
+export function ExportCTeDocuments(arg1:desktopapi.ExportCTeDocumentsInput):Promise<desktopapi.CTeExportResult>;
+
 export function ExportCTeXML(arg1:desktopapi.ExportCTeXMLInput):Promise<desktopapi.ExportResult>;
 
-export function ExportCTeZIP(arg1:desktopapi.ExportCTeZIPInput):Promise<desktopapi.CTeExportResult>;
+export function ExportDACTE(arg1:desktopapi.ExportDACTEInput):Promise<desktopapi.ExportResult>;
 
 export function ExportDANFE(arg1:desktopapi.ExportDANFEInput):Promise<desktopapi.ExportResult>;
 

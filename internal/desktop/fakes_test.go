@@ -385,7 +385,7 @@ type fakeCTe struct {
 	viewed     int
 	events     []cte.Event
 	connection app.ConnectionTestResult
-	zip        app.CTeExportResult
+	export     app.CTeExportResult
 	reset      app.CTeResetResult
 	err        error
 }
@@ -425,9 +425,29 @@ func (f *fakeCTe) ExportXML(_ context.Context, in app.CTeExportXMLInput) error {
 	return f.err
 }
 
+func (f *fakeCTe) ExportDACTE(_ context.Context, in app.CTeExportDACTEInput) error {
+	f.record("ExportDACTE", in)
+	return f.err
+}
+
 func (f *fakeCTe) ExportXMLZip(_ context.Context, in app.CTeExportInput) (app.CTeExportResult, error) {
 	f.record("ExportXMLZip", in)
-	return f.zip, f.err
+	return f.export, f.err
+}
+
+func (f *fakeCTe) ExportCSV(_ context.Context, in app.CTeExportInput) (app.CTeExportResult, error) {
+	f.record("ExportCSV", in)
+	return f.export, f.err
+}
+
+func (f *fakeCTe) ExportXLSX(_ context.Context, in app.CTeExportInput) (app.CTeExportResult, error) {
+	f.record("ExportXLSX", in)
+	return f.export, f.err
+}
+
+func (f *fakeCTe) ExportDACTEZip(_ context.Context, in app.CTeExportInput) (app.CTeExportResult, error) {
+	f.record("ExportDACTEZip", in)
+	return f.export, f.err
 }
 
 func (f *fakeCTe) PreviewReset(_ context.Context, cnpj string) (app.CTeResetResult, error) {

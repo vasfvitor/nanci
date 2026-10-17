@@ -138,6 +138,15 @@ func TestSingleDocumentExports(t *testing.T) {
 			result:   desktopapi.ExportResult{OutPath: testOut + ".pdf", Format: "danfe", ExportedCount: 1},
 		},
 		{
+			name: "ExportDACTE",
+			run: func(a *App) (desktopapi.ExportResult, error) {
+				return a.ExportDACTE(desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
+			},
+			recorder: func(f fakeSet) *recorder { return &f.cte.recorder },
+			want:     call{"ExportDACTE", []any{app.CTeExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
+			result:   desktopapi.ExportResult{OutPath: testOut + ".pdf", Format: "dacte", ExportedCount: 1},
+		},
+		{
 			name: "ExportCTeXML",
 			run: func(a *App) (desktopapi.ExportResult, error) {
 				return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
@@ -243,31 +252,81 @@ func TestExportNFeDocumentsRejectsBeforeCore(t *testing.T) {
 	}
 }
 
-func TestExportCTeZIP(t *testing.T) {
-	f, a := newFakeApp(nil)
-	f.cte.zip = app.CTeExportResult{ExportResult: app.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}}
-
-	got, err := a.ExportCTeZIP(desktopapi.ExportCTeZIPInput{
-		CNPJ:         testCNPJ,
-		Competence:   "2026-09",
-		Role:         "tomador",
-		ChavesAcesso: []string{testChave},
-		OutPath:      testOut + ".zip",
-	})
-	if err != nil {
-		t.Fatalf("ExportCTeZIP: %v", err)
+func TestExportCTeDocumentsFormats(t *testing.T) {
+	tests := []struct {
+		format string
+		method string
+	}{
+		{"csv", "ExportCSV"},
+		{"xlsx", "ExportXLSX"},
+		{"zip", "ExportXMLZip"},
+		{"dacte-zip", "ExportDACTEZip"},
+		{" DACTE-ZIP ", "ExportDACTEZip"},
 	}
+	for _, tt := range tests {
+		t.Run(tt.format, func(t *testing.T) {
+			f, a := newFakeApp(nil)
+			f.cte.export = app.CTeExportResult{
+				ExportResult:    app.ExportResult{OutPath: testOut + ".zip", Format: "dacte", ExportedCount: 5},
+				SkippedSemDACTE: 2,
+			}
 
-	assertCalls(t, &f.cte.recorder, call{"ExportXMLZip", []any{app.CTeExportInput{
-		CNPJ:         testCNPJ,
-		Competence:   "2026-09",
-		Role:         "tomador",
-		ChavesAcesso: []string{testChave},
-		OutPath:      testOut + ".zip",
-	}}})
-	want := desktopapi.CTeExportResult{ExportResult: desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "xml", ExportedCount: 5}}
-	if got != want {
-		t.Errorf("result = %+v, want %+v", got, want)
+			got, err := a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{
+				CNPJ:         testCNPJ,
+				Competence:   "2026-09",
+				Role:         "tomador",
+				Format:       tt.format,
+				ChavesAcesso: []string{testChave},
+				Incremental:  true,
+				OutPath:      testOut + ".zip",
+			})
+			if err != nil {
+				t.Fatalf("ExportCTeDocuments: %v", err)
+			}
+
+			assertCalls(t, &f.cte.recorder, call{tt.method, []any{app.CTeExportInput{
+				CNPJ:         testCNPJ,
+				Competence:   "2026-09",
+				Role:         "tomador",
+				ChavesAcesso: []string{testChave},
+				Incremental:  true,
+				OutPath:      testOut + ".zip",
+			}}})
+			want := desktopapi.CTeExportResult{
+				ExportResult:    desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "dacte", ExportedCount: 5},
+				SkippedSemDACTE: 2,
+			}
+			if got != want {
+				t.Errorf("result = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestExportCTeDocumentsRejectsBeforeCore(t *testing.T) {
+	tests := []struct {
+		name    string
+		format  string
+		outPath string
+		wantErr string
+	}{
+		{"unknown format", "danfe-zip", testOut, "formato de exportação desconhecido: danfe-zip"},
+		{"empty format", "", testOut, "formato de exportação desconhecido: "},
+		{"empty out path", "csv", "", "caminho de saída não especificado"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, a := newFakeApp(nil)
+
+			got, err := a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
+			if err == nil || err.Error() != tt.wantErr {
+				t.Fatalf("err = %v, want %q", err, tt.wantErr)
+			}
+			if got != (desktopapi.CTeExportResult{}) {
+				t.Errorf("result = %+v, want zero", got)
+			}
+			f.assertNoCalls(t)
+		})
 	}
 }
 
@@ -295,8 +354,11 @@ func exportRuns(outPath string) map[string]func(a *App) (any, error) {
 		"ExportCTeXML": func(a *App) (any, error) {
 			return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
-		"ExportCTeZIP": func(a *App) (any, error) {
-			return a.ExportCTeZIP(desktopapi.ExportCTeZIPInput{CNPJ: testCNPJ, OutPath: outPath})
+		"ExportCTeDocuments": func(a *App) (any, error) {
+			return a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
+		},
+		"ExportDACTE": func(a *App) (any, error) {
+			return a.ExportDACTE(desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 	}
 }

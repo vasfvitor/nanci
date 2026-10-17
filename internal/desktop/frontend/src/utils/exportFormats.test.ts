@@ -20,7 +20,12 @@ describe('exportFormats', () => {
       'zip',
       'danfe-zip',
     ])
-    expect(CTE_EXPORT_FORMATS.map((format) => format.value)).toEqual(['zip'])
+    expect(CTE_EXPORT_FORMATS.map((format) => format.value)).toEqual([
+      'csv',
+      'xlsx',
+      'zip',
+      'dacte-zip',
+    ])
   })
 
   it('offers resumos only with the NF-e spreadsheets and XMLs', () => {

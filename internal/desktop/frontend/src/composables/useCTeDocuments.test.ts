@@ -8,10 +8,10 @@ import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type {
   CompanySummary,
+  CTeExportResult,
   CTeResetResult,
   CTeRow,
   CTeStatusResult,
-  ExportResult,
   PullCTeResult,
 } from '@/types/desktop'
 import { deferred } from '@/test/fixtures'
@@ -25,7 +25,8 @@ vi.mock('@/platform/wails/client', () => ({
     previewResetCTe: vi.fn(),
     resetCTe: vi.fn(),
     exportCTeXML: vi.fn(),
-    exportCTeZIP: vi.fn(),
+    exportDACTE: vi.fn(),
+    exportCTeDocuments: vi.fn(),
     markCTeViewed: vi.fn(),
   },
 }))
@@ -116,14 +117,14 @@ describe('useCTeDocuments', () => {
 
   it('keeps pull and export visible to a second instance while they are pending', async () => {
     const pull = deferred<PullCTeResult>()
-    const zip = deferred<ExportResult | null>()
+    const zip = deferred<CTeExportResult | null>()
     vi.mocked(desktopClient.pullCTe).mockReturnValue(pull.promise)
-    vi.mocked(desktopClient.exportCTeZIP).mockReturnValue(zip.promise)
+    vi.mocked(desktopClient.exportCTeDocuments).mockReturnValue(zip.promise)
 
     const firstPage = useCTeDocuments()
     useWorkspaceStore().cnpj = '123'
     const syncing = firstPage.syncCTe()
-    const exporting = firstPage.exportZIP(['chave-1'], { incremental: false })
+    const exporting = firstPage.exportDocuments('dacte-zip', ['chave-1'], { incremental: false })
 
     const remountedPage = useCTeDocuments()
     expect(remountedPage.isSyncing.value).toBe(true)
@@ -132,16 +133,20 @@ describe('useCTeDocuments', () => {
     expect(useCompanySyncStore().isSyncing('123', 'nfe')).toBe(false)
 
     await expect(remountedPage.syncCTe()).resolves.toBeNull()
-    await expect(remountedPage.exportZIP(['chave-1'], { incremental: false })).resolves.toBeNull()
+    await expect(
+      remountedPage.exportDocuments('dacte-zip', ['chave-1'], { incremental: false })
+    ).resolves.toBeNull()
     await expect(remountedPage.exportXML('chave-1')).resolves.toBeNull()
+    await expect(remountedPage.exportDACTE('chave-1')).resolves.toBeNull()
     await expect(remountedPage.resetCTe()).resolves.toBeNull()
     expect(desktopClient.pullCTe).toHaveBeenCalledTimes(1)
-    expect(desktopClient.exportCTeZIP).toHaveBeenCalledTimes(1)
+    expect(desktopClient.exportCTeDocuments).toHaveBeenCalledTimes(1)
     expect(desktopClient.exportCTeXML).not.toHaveBeenCalled()
+    expect(desktopClient.exportDACTE).not.toHaveBeenCalled()
     expect(desktopClient.resetCTe).not.toHaveBeenCalled()
 
     pull.resolve({ CNPJ: '123' } as PullCTeResult)
-    zip.resolve({ OutPath: 'out.zip', ExportedCount: 1 } as ExportResult)
+    zip.resolve({ OutPath: 'out.zip', ExportedCount: 1, SkippedSemDACTE: 0 } as CTeExportResult)
     await Promise.all([syncing, exporting])
 
     expect(remountedPage.isSyncing.value).toBe(false)
@@ -217,36 +222,49 @@ describe('useCTeDocuments', () => {
     expect(cte.blockedText.value).toBe('')
   })
 
-  it('exports XML and ZIP for the given chaves, incremental when asked', async () => {
+  it.each(['csv', 'xlsx', 'zip', 'dacte-zip'] as const)(
+    'exports the given chaves as %s, incremental when asked',
+    async (format) => {
+      const cte = useCTeDocuments()
+      useWorkspaceStore().cnpj = '123'
+      useWorkspaceStore().competence = '2026-08'
+      cte.filter.value.Role = 'tomador'
+
+      await cte.exportDocuments(format, ['chave-1'], { incremental: false })
+      await cte.exportDocuments(format, ['chave-2'], { incremental: true })
+
+      expect(desktopClient.exportCTeDocuments).toHaveBeenNthCalledWith(1, {
+        CNPJ: '123',
+        Competence: '',
+        Role: '',
+        Format: format,
+        ChavesAcesso: ['chave-1'],
+        Incremental: false,
+      })
+      expect(desktopClient.exportCTeDocuments).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ Format: format, ChavesAcesso: ['chave-2'], Incremental: true })
+      )
+    }
+  )
+
+  it('exports the XML and the DACTE of a row', async () => {
     const cte = useCTeDocuments()
     useWorkspaceStore().cnpj = '123'
-    useWorkspaceStore().competence = '2026-08'
-    cte.filter.value.Role = 'tomador'
 
     await cte.exportXML('chave-1')
-    await cte.exportZIP(['chave-1'], { incremental: false })
-    await cte.exportZIP(['chave-2'], { incremental: true })
+    await cte.exportDACTE('chave-2')
 
     expect(desktopClient.exportCTeXML).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-1' })
-    expect(desktopClient.exportCTeZIP).toHaveBeenNthCalledWith(1, {
-      CNPJ: '123',
-      Competence: '',
-      Role: '',
-      ChavesAcesso: ['chave-1'],
-      Incremental: false,
-    })
-    expect(desktopClient.exportCTeZIP).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ ChavesAcesso: ['chave-2'], Incremental: true })
-    )
+    expect(desktopClient.exportDACTE).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: 'chave-2' })
   })
 
   it('does not export an empty list of chaves', async () => {
     const cte = useCTeDocuments()
     useWorkspaceStore().cnpj = '123'
 
-    await expect(cte.exportZIP([], { incremental: false })).resolves.toBeNull()
-    expect(desktopClient.exportCTeZIP).not.toHaveBeenCalled()
+    await expect(cte.exportDocuments('csv', [], { incremental: false })).resolves.toBeNull()
+    expect(desktopClient.exportCTeDocuments).not.toHaveBeenCalled()
   })
 
   it('scopes the actions to the selection, or else to the filtered rows', () => {

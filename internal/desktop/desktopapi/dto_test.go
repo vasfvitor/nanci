@@ -398,6 +398,26 @@ func TestCTeRows(t *testing.T) {
 	}
 }
 
+func TestCTeRowHasDACTE(t *testing.T) {
+	tests := []struct {
+		tipo cte.TipoDocumento
+		want bool
+	}{
+		{cte.TipoDocumentoCTe, true},
+		{cte.TipoDocumentoCTeOS, false},
+		{cte.TipoDocumentoGTVe, false},
+		{cte.TipoDocumentoCTeSimplificado, false},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.tipo), func(t *testing.T) {
+			rows := CTeRows([]cte.CompanyDocument{{Document: cte.Document{TipoDocumento: tt.tipo}}})
+			if rows[0].HasDACTE != tt.want {
+				t.Errorf("HasDACTE = %v, want %v", rows[0].HasDACTE, tt.want)
+			}
+		})
+	}
+}
+
 func TestCTeEvents(t *testing.T) {
 	registeredAt := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
 	got := CTeEvents([]cte.Event{{

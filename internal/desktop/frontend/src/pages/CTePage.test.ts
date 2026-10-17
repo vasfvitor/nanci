@@ -6,6 +6,7 @@ import { desktopClient, mapCTeRow } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
+import { CTE_EXPORT_FORMATS } from '@/utils/exportFormats'
 
 type OkHandler = (payload: unknown) => void
 
@@ -39,7 +40,8 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     previewResetCTe: vi.fn(),
     resetCTe: vi.fn(),
     exportCTeXML: vi.fn(),
-    exportCTeZIP: vi.fn(),
+    exportDACTE: vi.fn(),
+    exportCTeDocuments: vi.fn(),
     markCTeViewed: vi.fn(),
   },
 }))
@@ -67,6 +69,7 @@ const tomada = mapCTeRow({
   ChaveAcesso: '35260811222333000181570010000012341000012345',
   Modelo: '57',
   TipoDocumento: 'cte',
+  HasDACTE: true,
   Numero: '1234',
   EmitenteName: 'Transportadora Fictícia',
   TomadorName: 'Empresa Um',
@@ -79,6 +82,7 @@ const servico = mapCTeRow({
   ChaveAcesso: '35260811222333000181670010000000561000000567',
   Modelo: '67',
   TipoDocumento: 'cte_os',
+  HasDACTE: false,
   Numero: '56',
   EmitenteName: 'Fretamento Serra Ltda',
   CompanyRole: 'tomador',
@@ -110,8 +114,9 @@ function status(overrides: Partial<CTeStatusResult> = {}): CTeStatusResult {
 }
 
 // mountPage mounts on the active Pinia, so two mounts in a test stand for
-// leaving the page and coming back.
-function mountPage() {
+// leaving the page and coming back. stubs adds to or replaces the default
+// stubs.
+function mountPage(stubs: Record<string, unknown> = {}) {
   return shallowMount(CTePage, {
     global: {
       stubs: {
@@ -152,6 +157,7 @@ function mountPage() {
           template: '<div />',
         },
         CTeEventsDialog: { template: '<div />' },
+        ...stubs,
       },
     },
   })
@@ -387,12 +393,18 @@ describe('CTePage', () => {
     )
   })
 
-  it('exports the filtered rows as a ZIP with the choice of the dialog', async () => {
-    vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue({
-      OutPath: 'C:\\exports\\cte.zip',
+  it.each([
+    { format: 'csv', noun: 'documento' },
+    { format: 'xlsx', noun: 'documento' },
+    { format: 'zip', noun: 'XML' },
+    { format: 'dacte-zip', noun: 'DACTE' },
+  ])('exports the filtered rows as $format with the choice of the dialog', async ({ format, noun }) => {
+    vi.mocked(desktopClient.exportCTeDocuments).mockResolvedValue({
+      OutPath: 'C:\\exports\\cte',
       Format: 'xml',
       Incremental: true,
       ExportedCount: 1,
+      SkippedSemDACTE: 0,
     })
     const wrapper = mountPage()
     await flushPromises()
@@ -406,30 +418,76 @@ describe('CTePage', () => {
           source: 'cte',
           count: 1,
           scope: 'listed',
-          formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
+          formats: CTE_EXPORT_FORMATS,
         },
       })
     )
-    expect(desktopClient.exportCTeZIP).not.toHaveBeenCalled()
+    expect(desktopClient.exportCTeDocuments).not.toHaveBeenCalled()
 
-    okHandlers[0]?.({ format: 'zip', incremental: true, includeResumos: false })
+    okHandlers[0]?.({ format, incremental: true, includeResumos: false })
     await flushPromises()
 
-    expect(desktopClient.exportCTeZIP).toHaveBeenCalledWith({
+    expect(desktopClient.exportCTeDocuments).toHaveBeenCalledWith({
       CNPJ: company.CNPJ,
       Competence: '',
       Role: '',
+      Format: format,
       ChavesAcesso: [servico.ChaveAcesso],
       Incremental: true,
     })
+    expect(notify).toHaveBeenCalledTimes(1)
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
-      message: '1 XML exportado para C:\\exports\\cte.zip.',
+      message: `1 ${noun} exportado para C:\\exports\\cte.`,
     })
   })
 
+  it.each([
+    { skipped: 1, message: '1 documento ignorado: este tipo de documento não tem DACTE.' },
+    { skipped: 2, message: '2 documentos ignorados: estes tipos de documento não têm DACTE.' },
+  ])('reports the documents without DACTE left out ($skipped)', async ({ skipped, message }) => {
+    vi.mocked(desktopClient.exportCTeDocuments).mockResolvedValue({
+      OutPath: 'C:\\exports\\dactes.zip',
+      Format: 'dacte',
+      Incremental: false,
+      ExportedCount: 1,
+      SkippedSemDACTE: skipped,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Exportar').trigger('click')
+    okHandlers[0]?.({ format: 'dacte-zip', incremental: false, includeResumos: false })
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 DACTE exportado para C:\\exports\\dactes.zip.',
+    })
+    expect(notify).toHaveBeenCalledWith({ type: 'info', message })
+  })
+
+  it('says when an export found nothing to export', async () => {
+    vi.mocked(desktopClient.exportCTeDocuments).mockResolvedValue({
+      OutPath: '',
+      Format: 'csv',
+      Incremental: false,
+      ExportedCount: 0,
+      SkippedSemDACTE: 0,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await button(wrapper, 'Exportar').trigger('click')
+    okHandlers[0]?.({ format: 'csv', incremental: false, includeResumos: false })
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith({ type: 'info', message: 'Nenhum documento para exportar.' })
+    expect(notify).toHaveBeenCalledTimes(1)
+  })
+
   it('exports the selection when there is one', async () => {
-    vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue(null)
+    vi.mocked(desktopClient.exportCTeDocuments).mockResolvedValue(null)
     const wrapper = mountPage()
     await flushPromises()
     await select(wrapper, [tomada])
@@ -443,8 +501,8 @@ describe('CTePage', () => {
     okHandlers[0]?.({ format: 'zip', incremental: false, includeResumos: false })
     await flushPromises()
 
-    expect(desktopClient.exportCTeZIP).toHaveBeenCalledWith(
-      expect.objectContaining({ ChavesAcesso: [tomada.ChaveAcesso], Incremental: false })
+    expect(desktopClient.exportCTeDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({ Format: 'zip', ChavesAcesso: [tomada.ChaveAcesso], Incremental: false })
     )
   })
 
@@ -539,6 +597,81 @@ describe('CTePage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'negative',
       message: 'Erro ao preparar a redefinição do CT-e: boom',
+    })
+  })
+})
+
+// The row menu renders through the body slot of the table, which the default
+// q-table stub leaves out.
+describe('CTePage row menu', () => {
+  const rowStubs = {
+    'q-table': {
+      name: 'QTable',
+      props: ['rows'],
+      template: `<div><div v-for="row in rows" :key="row.ChaveAcesso">
+        <slot name="body" :row="row" :cols="[{ name: 'acoes' }]" :expand="false" />
+      </div></div>`,
+    },
+    RowActionsMenu: { template: '<div><slot /></div>' },
+    RowMenuItem: {
+      name: 'RowMenuItem',
+      props: ['label', 'caption', 'disable'],
+      emits: ['click'],
+      template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}</button>',
+    },
+  }
+
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status())
+    await useWorkspaceStore().loadCompanies()
+  })
+
+  function menuItem(wrapper: Page, label: string) {
+    const found = wrapper
+      .findAllComponents({ name: 'RowMenuItem' })
+      .find((item) => item.props('label') === label)
+    if (!found) throw new Error(`menu item ${label} not found`)
+    return found
+  }
+
+  it('keeps "Exportar DACTE" disabled on a kind without DACTE and says why', async () => {
+    vi.mocked(desktopClient.listCTe).mockResolvedValue([servico])
+    const wrapper = mountPage(rowStubs)
+    await flushPromises()
+
+    const item = menuItem(wrapper, 'Exportar DACTE')
+    expect(item.props('disable')).toBe(true)
+    expect(item.props('caption')).toBe('Este tipo de documento não tem DACTE')
+  })
+
+  it('exports the DACTE of a CT-e and says so', async () => {
+    vi.mocked(desktopClient.listCTe).mockResolvedValue([tomada])
+    vi.mocked(desktopClient.exportDACTE).mockResolvedValue({
+      OutPath: 'C:\\exports\\dacte.pdf',
+      Format: 'dacte',
+      Incremental: false,
+      ExportedCount: 1,
+    })
+    const wrapper = mountPage(rowStubs)
+    await flushPromises()
+
+    const item = menuItem(wrapper, 'Exportar DACTE')
+    expect(item.props('disable')).toBe(false)
+    expect(item.props('caption')).toBe('')
+    await item.trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.exportDACTE).toHaveBeenCalledWith({
+      CNPJ: company.CNPJ,
+      ChaveAcesso: tomada.ChaveAcesso,
+    })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: '1 DACTE exportado para C:\\exports\\dacte.pdf.',
     })
   })
 })

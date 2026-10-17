@@ -95,6 +95,12 @@
                 :disable="exporting"
                 @click="exportXML(rowProps.row.ChaveAcesso)"
               />
+              <RowMenuItem
+                label="Exportar DACTE"
+                :caption="rowProps.row.HasDACTE ? '' : 'Este tipo de documento não tem DACTE'"
+                :disable="exporting || !rowProps.row.HasDACTE"
+                @click="exportDACTE(rowProps.row.ChaveAcesso)"
+              />
             </RowActionsMenu>
 
             <NumeroCell
@@ -194,7 +200,7 @@ import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { copyChave, useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type { CTeResetResult, CTeRow } from '@/types/desktop'
+import type { CTeExportFormat, CTeResetResult, CTeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {
   cteModalLabel,
@@ -217,7 +223,8 @@ import { CTE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
 const cte = useCTeDocuments()
-const { notifyError, notifySuccess, notifyWarning, notifyExported, notifySyncError } = useNotify()
+const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
+  useNotify()
 
 const {
   filter,
@@ -256,7 +263,7 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   unviewedChaves,
   markViewed: cte.markViewed,
   exportFormats: CTE_EXPORT_FORMATS,
-  exportList: exportZIP,
+  exportList,
 })
 
 const columns = documentColumns<CTeRow>({
@@ -395,11 +402,29 @@ async function exportXML(chaveAcesso: string) {
   }
 }
 
-async function exportZIP(chaves: string[], choice: ExportChoice) {
+async function exportDACTE(chaveAcesso: string) {
   try {
-    notifyExported(await cte.exportZIP(chaves, choice), exportedNoun(choice.format))
+    notifyExported(await cte.exportDACTE(chaveAcesso), 'DACTE')
   } catch (error) {
-    notifyError('Erro ao exportar XMLs', error)
+    notifyError('Erro ao exportar DACTE', error)
+  }
+}
+
+// exportList reports the export and, apart, the CT-e it left out because
+// their kind has no DACTE.
+async function exportList(chaves: string[], choice: ExportChoice) {
+  try {
+    const result = await cte.exportDocuments(choice.format as CTeExportFormat, chaves, choice)
+    notifyExported(result, exportedNoun(choice.format))
+    if (result && result.SkippedSemDACTE > 0) {
+      notifyInfo(
+        result.SkippedSemDACTE === 1
+          ? '1 documento ignorado: este tipo de documento não tem DACTE.'
+          : `${result.SkippedSemDACTE} documentos ignorados: estes tipos de documento não têm DACTE.`
+      )
+    }
+  } catch (error) {
+    notifyError('Erro ao exportar CT-e', error)
   }
 }
 </script>

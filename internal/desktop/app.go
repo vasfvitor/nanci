@@ -19,6 +19,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	dacterenderer "github.com/vasfvitor/nanci/internal/dacte/fiscalrenderer"
 	danferenderer "github.com/vasfvitor/nanci/internal/danfe/fiscalrenderer"
 	"github.com/vasfvitor/nanci/internal/danfse/godanfsev2"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
@@ -226,6 +227,7 @@ func (a *App) initRuntime(ctx context.Context) (services, func(), error) {
 		},
 		DANFSeRenderer: godanfsev2.New(),
 		DANFERenderer:  danferenderer.New(),
+		DACTERenderer:  dacterenderer.New(),
 	})
 	if err != nil {
 		_ = db.Close()
@@ -1165,22 +1167,57 @@ func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportCTeZIP(input desktopapi.ExportCTeZIPInput) (desktopapi.CTeExportResult, error) {
+func (a *App) ExportDACTE(input desktopapi.ExportDACTEInput) (desktopapi.ExportResult, error) {
+	if err := a.ready(); err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	if input.OutPath == "" {
+		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
+	}
+
+	err := a.svc.cte.ExportDACTE(a.ctx, app.CTeExportDACTEInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		OutPath:     input.OutPath,
+	})
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "dacte", ExportedCount: 1}, nil
+}
+
+func (a *App) ExportCTeDocuments(input desktopapi.ExportCTeDocumentsInput) (desktopapi.CTeExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.CTeExportResult{}, err
 	}
+	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.CTeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	res, err := a.svc.cte.ExportXMLZip(a.ctx, app.CTeExportInput{
+	exportInput := app.CTeExportInput{
 		CNPJ:         input.CNPJ,
 		Competence:   input.Competence,
 		Role:         input.Role,
 		ChavesAcesso: input.ChavesAcesso,
 		Incremental:  input.Incremental,
 		OutPath:      input.OutPath,
-	})
+	}
+
+	var res app.CTeExportResult
+	var err error
+	switch format {
+	case "csv":
+		res, err = a.svc.cte.ExportCSV(a.ctx, exportInput)
+	case "xlsx":
+		res, err = a.svc.cte.ExportXLSX(a.ctx, exportInput)
+	case "zip":
+		res, err = a.svc.cte.ExportXMLZip(a.ctx, exportInput)
+	case "dacte-zip":
+		res, err = a.svc.cte.ExportDACTEZip(a.ctx, exportInput)
+	default:
+		return desktopapi.CTeExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
+	}
 	if err != nil {
 		return desktopapi.CTeExportResult{}, err
 	}

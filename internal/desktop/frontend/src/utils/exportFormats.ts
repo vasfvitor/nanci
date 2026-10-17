@@ -17,7 +17,12 @@ export const NFE_EXPORT_FORMATS: ExportFormatOption[] = [
   { label: 'DANFEs (ZIP)', value: 'danfe-zip' },
 ]
 
-export const CTE_EXPORT_FORMATS: ExportFormatOption[] = [{ label: 'XMLs (ZIP)', value: 'zip' }]
+export const CTE_EXPORT_FORMATS: ExportFormatOption[] = [
+  { label: 'Planilha CSV', value: 'csv' },
+  { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
+  { label: 'XMLs (ZIP)', value: 'zip' },
+  { label: 'DACTEs (ZIP)', value: 'dacte-zip' },
+]
 
 // exportedNoun names what an export in format writes, for the "N XMLs
 // exportados" notice: 'DANFSe' for 'danfse-zip', 'XML' for 'zip',

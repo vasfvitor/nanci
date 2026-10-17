@@ -25,8 +25,11 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"ExportCTeXML": func(a *App) (any, error) {
 			return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
-		"ExportCTeZIP": func(a *App) (any, error) {
-			return a.ExportCTeZIP(desktopapi.ExportCTeZIPInput{CNPJ: testCNPJ, OutPath: testOut})
+		"ExportCTeDocuments": func(a *App) (any, error) {
+			return a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
+		},
+		"ExportDACTE": func(a *App) (any, error) {
+			return a.ExportDACTE(desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"ExportDANFE": func(a *App) (any, error) {
 			return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})

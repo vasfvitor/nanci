@@ -211,6 +211,7 @@ export namespace desktopapi {
 	    TpAmb: string;
 	    Modelo: string;
 	    TipoDocumento: string;
+	    HasDACTE: boolean;
 	    Serie: string;
 	    Numero: string;
 	    CFOP: string;
@@ -276,6 +277,7 @@ export namespace desktopapi {
 	        this.TpAmb = source["TpAmb"];
 	        this.Modelo = source["Modelo"];
 	        this.TipoDocumento = source["TipoDocumento"];
+	        this.HasDACTE = source["HasDACTE"];
 	        this.Serie = source["Serie"];
 	        this.Numero = source["Numero"];
 	        this.CFOP = source["CFOP"];
@@ -713,6 +715,30 @@ export namespace desktopapi {
 		    return a;
 		}
 	}
+	export class ExportCTeDocumentsInput {
+	    CNPJ: string;
+	    Competence: string;
+	    Role: string;
+	    Format: string;
+	    ChavesAcesso: string[];
+	    Incremental: boolean;
+	    OutPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportCTeDocumentsInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Competence = source["Competence"];
+	        this.Role = source["Role"];
+	        this.Format = source["Format"];
+	        this.ChavesAcesso = source["ChavesAcesso"];
+	        this.Incremental = source["Incremental"];
+	        this.OutPath = source["OutPath"];
+	    }
+	}
 	export class ExportCTeXMLInput {
 	    CNPJ: string;
 	    ChaveAcesso: string;
@@ -729,25 +755,19 @@ export namespace desktopapi {
 	        this.OutPath = source["OutPath"];
 	    }
 	}
-	export class ExportCTeZIPInput {
+	export class ExportDACTEInput {
 	    CNPJ: string;
-	    Competence: string;
-	    Role: string;
-	    ChavesAcesso: string[];
-	    Incremental: boolean;
+	    ChaveAcesso: string;
 	    OutPath: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new ExportCTeZIPInput(source);
+	        return new ExportDACTEInput(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CNPJ = source["CNPJ"];
-	        this.Competence = source["Competence"];
-	        this.Role = source["Role"];
-	        this.ChavesAcesso = source["ChavesAcesso"];
-	        this.Incremental = source["Incremental"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
 	        this.OutPath = source["OutPath"];
 	    }
 	}
