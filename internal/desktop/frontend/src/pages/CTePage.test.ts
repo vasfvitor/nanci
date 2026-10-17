@@ -390,7 +390,7 @@ describe('CTePage', () => {
   it('exports the filtered rows as a ZIP with the choice of the dialog', async () => {
     vi.mocked(desktopClient.exportCTeZIP).mockResolvedValue({
       OutPath: 'C:\\exports\\cte.zip',
-      Format: 'zip',
+      Format: 'xml',
       Incremental: true,
       ExportedCount: 1,
     })

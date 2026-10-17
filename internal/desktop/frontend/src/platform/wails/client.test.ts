@@ -1,4 +1,4 @@
-import { beforeEach, expect, vi } from 'vitest'
+import { afterEach, beforeEach, expect, vi } from 'vitest'
 import {
   desktopClient,
   errorMessage,
@@ -25,7 +25,6 @@ import {
   ExportCTeXML,
   ExportCTeZIP,
   ExportDANFSe,
-  ExportDANFSeZIP,
   ExportDocuments,
   ExportNFeXML,
   ExportNFeZIP,
@@ -63,7 +62,6 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   ExportCTeXML: vi.fn(),
   ExportCTeZIP: vi.fn(),
   ExportDANFSe: vi.fn(),
-  ExportDANFSeZIP: vi.fn(),
   ExportDocuments: vi.fn(),
   ExportLogs: vi.fn(),
   ExportNFeXML: vi.fn(),
@@ -235,10 +233,6 @@ describe('desktop client calls', () => {
       OutPath: 'C:\\exports\\danfse.pdf',
       Format: 'danfse',
     } as never)
-    vi.mocked(ExportDANFSeZIP).mockResolvedValue({
-      OutPath: 'C:\\exports\\danfses.zip',
-      Format: 'danfse-zip',
-    } as never)
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\mock\\save\\path.ext')
 
     await expect(
@@ -252,28 +246,84 @@ describe('desktop client calls', () => {
       Incremental: false,
       ExportedCount: 0,
     })
-    await desktopClient.exportDANFSeZIP({
-      CNPJ: '123',
-      Competence: '2026-06',
-      Direction: 'tomada',
-      Format: 'zip',
-      Incremental: false,
-      ChavesAcesso: [],
-    })
 
     expect(ExportDANFSe).toHaveBeenCalledWith({
       CNPJ: '123',
       ChaveAcesso: 'chave-1',
       OutPath: 'C:\\mock\\save\\path.ext',
     })
-    expect(ExportDANFSeZIP).toHaveBeenCalledWith({
-      CNPJ: '123',
-      Competence: '2026-06',
-      Direction: 'tomada',
-      Format: 'zip',
-      OutPath: 'C:\\mock\\save\\path.ext',
-      Incremental: false,
-      ChavesAcesso: [],
+  })
+
+  describe('exportDocuments', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date(2026, 9, 17, 9, 5, 7))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it.each([
+      {
+        format: 'csv',
+        title: 'Exportar Documentos',
+        name: 'nanci_exportacao_123_2026_10_17_090507.csv',
+        pattern: '*.csv',
+      },
+      {
+        format: 'xlsx',
+        title: 'Exportar Documentos',
+        name: 'nanci_exportacao_123_2026_10_17_090507.xlsx',
+        pattern: '*.xlsx',
+      },
+      {
+        format: 'zip',
+        title: 'Exportar Documentos',
+        name: 'nanci_exportacao_123_2026_10_17_090507.zip',
+        pattern: '*.zip',
+      },
+      {
+        format: 'danfse-zip',
+        title: 'Salvar ZIP de DANFSes',
+        name: 'danfses_123_2026_10_17_090507.zip',
+        pattern: '*.zip',
+      },
+    ] as const)('saves $format through the dialog "$title"', async (want) => {
+      const { format, title, name, pattern } = want
+      vi.mocked(SelectSaveFile).mockResolvedValue('C:\\exports\\saida')
+      vi.mocked(ExportDocuments).mockResolvedValue({
+        OutPath: 'C:\\exports\\saida',
+        Format: 'csv',
+        ExportedCount: 2,
+      } as never)
+
+      await expect(
+        desktopClient.exportDocuments({
+          CNPJ: '123',
+          Competence: '',
+          Direction: '',
+          Format: format,
+          Incremental: true,
+          ChavesAcesso: ['chave-1'],
+        })
+      ).resolves.toEqual({
+        OutPath: 'C:\\exports\\saida',
+        Format: 'csv',
+        Incremental: false,
+        ExportedCount: 2,
+      })
+
+      expect(SelectSaveFile).toHaveBeenCalledWith(title, name, pattern)
+      expect(ExportDocuments).toHaveBeenCalledWith({
+        CNPJ: '123',
+        Competence: '',
+        Direction: '',
+        Format: format,
+        Incremental: true,
+        ChavesAcesso: ['chave-1'],
+        OutPath: 'C:\\exports\\saida',
+      })
     })
   })
 
@@ -297,11 +347,11 @@ describe('desktop client calls', () => {
       })
     ).resolves.toBeNull()
     await expect(
-      desktopClient.exportDANFSeZIP({
+      desktopClient.exportDocuments({
         CNPJ: '123',
         Competence: '2026-06',
         Direction: 'tomada',
-        Format: 'zip',
+        Format: 'danfse-zip',
         Incremental: false,
         ChavesAcesso: [],
       })
@@ -309,7 +359,6 @@ describe('desktop client calls', () => {
 
     expect(ExportDocuments).not.toHaveBeenCalled()
     expect(ExportDANFSe).not.toHaveBeenCalled()
-    expect(ExportDANFSeZIP).not.toHaveBeenCalled()
   })
 
   it('normalizes thrown Wails errors', async () => {

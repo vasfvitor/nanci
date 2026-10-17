@@ -94,8 +94,10 @@ export type ListDocumentsInput = {
   OnlyUnread: boolean
 }
 
-export type ExportFormat = 'csv' | 'xlsx' | 'zip'
-export type ExportResultFormat = ExportFormat | 'danfse' | 'danfse-zip'
+// ExportFormat is the NFS-e list export the user picks in the dialog;
+// ExportResultFormat is what the backend reports it wrote.
+export type ExportFormat = 'csv' | 'xlsx' | 'zip' | 'danfse-zip'
+export type ExportResultFormat = 'csv' | 'xlsx' | 'xml' | 'danfse' | 'danfe' | 'dacte'
 
 export type ExportDocumentsInput = {
   CNPJ: string

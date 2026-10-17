@@ -37,7 +37,6 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     listDocuments: vi.fn(),
     markDocumentsViewed: vi.fn(),
     exportDocuments: vi.fn(),
-    exportDANFSeZIP: vi.fn(),
     exportDANFSe: vi.fn(),
     exportXML: vi.fn(),
     pull: vi.fn(),
@@ -88,8 +87,9 @@ const software = documentRow('B'.repeat(50), {
 const treinamento = documentRow('C'.repeat(50), { NFSeNumber: '9012', PrestadorName: 'Treinamentos' })
 
 // mountPage mounts on the active Pinia, so two mounts in a test stand for
-// leaving the page and coming back.
-function mountPage() {
+// leaving the page and coming back. stubs adds to or replaces the default
+// stubs.
+function mountPage(stubs: Record<string, unknown> = {}) {
   return shallowMount(DocumentsPage, {
     global: {
       stubs: {
@@ -129,6 +129,7 @@ function mountPage() {
           template: '<div />',
         },
         DocumentEventsDialog: { template: '<div />' },
+        ...stubs,
       },
     },
   })
@@ -407,9 +408,9 @@ describe('DocumentsPage', () => {
   })
 
   it('exports the DANFSes of the selection when there is one', async () => {
-    vi.mocked(desktopClient.exportDANFSeZIP).mockResolvedValue({
+    vi.mocked(desktopClient.exportDocuments).mockResolvedValue({
       OutPath: 'C:\\exports\\danfses.zip',
-      Format: 'danfse-zip',
+      Format: 'danfse',
       Incremental: false,
       ExportedCount: 2,
     })
@@ -426,8 +427,9 @@ describe('DocumentsPage', () => {
     okHandlers[0]?.({ format: 'danfse-zip', incremental: false, includeResumos: false })
     await flushPromises()
 
-    expect(desktopClient.exportDANFSeZIP).toHaveBeenCalledWith(
+    expect(desktopClient.exportDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
+        Format: 'danfse-zip',
         ChavesAcesso: [software.ChaveAcesso, treinamento.ChaveAcesso],
         Incremental: false,
       })
@@ -441,7 +443,7 @@ describe('DocumentsPage', () => {
   it('says when an export found nothing to export', async () => {
     vi.mocked(desktopClient.exportDocuments).mockResolvedValue({
       OutPath: '',
-      Format: 'zip',
+      Format: 'xml',
       Incremental: false,
       ExportedCount: 0,
     })
@@ -543,6 +545,71 @@ describe('DocumentsPage', () => {
     expect(notify).toHaveBeenCalledWith({
       type: 'positive',
       message: 'Sincronização da NFS-e redefinida para ACME.',
+    })
+  })
+})
+
+// The row menu renders through the body slot of the table, which the default
+// q-table stub leaves out.
+describe('DocumentsPage row menu', () => {
+  const rowStubs = {
+    'q-table': {
+      name: 'QTable',
+      props: ['rows'],
+      template: `<div><div v-for="row in rows" :key="row.ChaveAcesso">
+        <slot name="body" :row="row" :cols="[{ name: 'acoes' }]" :expand="false" />
+      </div></div>`,
+    },
+    RowActionsMenu: { template: '<div><slot /></div>' },
+    RowMenuItem: {
+      name: 'RowMenuItem',
+      props: ['label', 'caption', 'disable'],
+      emits: ['click'],
+      template: '<button :disabled="disable" @click="$emit(\'click\')">{{ label }}</button>',
+    },
+  }
+
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([acme])
+    vi.mocked(desktopClient.listDocuments).mockResolvedValue([consultoria])
+    await useWorkspaceStore().loadCompanies()
+  })
+
+  function menuItem(wrapper: Page, label: string) {
+    const found = wrapper
+      .findAllComponents({ name: 'RowMenuItem' })
+      .find((item) => item.props('label') === label)
+    if (!found) throw new Error(`menu item ${label} not found`)
+    return found
+  }
+
+  it.each([
+    { label: 'Exportar XML', call: 'exportXML', format: 'xml', noun: 'XML', file: 'nfse.xml' },
+    { label: 'Exportar DANFSe', call: 'exportDANFSe', format: 'danfse', noun: 'DANFSe', file: 'nfse.pdf' },
+  ] as const)('$label exports the row and says so', async ({ label, call, format, noun, file }) => {
+    const outPath = `C:\\exports\\${file}`
+    vi.mocked(desktopClient[call]).mockResolvedValue({
+      OutPath: outPath,
+      Format: format,
+      Incremental: false,
+      ExportedCount: 1,
+    })
+    const wrapper = mountPage(rowStubs)
+    await flushPromises()
+
+    await menuItem(wrapper, label).trigger('click')
+    await flushPromises()
+
+    expect(desktopClient[call]).toHaveBeenCalledWith({
+      CNPJ: acme.CNPJ,
+      ChaveAcesso: consultoria.ChaveAcesso,
+    })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: `1 ${noun} exportado para ${outPath}.`,
     })
   })
 })

@@ -31,9 +31,6 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"ExportDANFSe": func(a *App) (any, error) {
 			return a.ExportDANFSe(desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
-		"ExportDANFSeZIP": func(a *App) (any, error) {
-			return a.ExportDANFSeZIP(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, OutPath: testOut})
-		},
 		"ExportDocuments": func(a *App) (any, error) {
 			return a.ExportDocuments(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
 		},

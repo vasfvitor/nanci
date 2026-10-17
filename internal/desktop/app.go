@@ -561,30 +561,6 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportDANFSeZIP(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	if input.OutPath == "" {
-		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
-	}
-
-	exportInput := app.ExportInput{
-		CNPJ:         input.CNPJ,
-		Competence:   input.Competence,
-		Direction:    input.Direction,
-		OutPath:      input.OutPath,
-		Incremental:  input.Incremental,
-		ChavesAcesso: input.ChavesAcesso,
-	}
-
-	res, err := a.svc.exports.ExportDANFSeZIP(a.ctx, exportInput)
-	if err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	return desktopapi.ExportResult(res), nil
-}
-
 func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
@@ -612,6 +588,8 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 		res, err = a.svc.exports.ExportXLSX(a.ctx, exportInput)
 	case "zip":
 		res, err = a.svc.exports.ExportZIP(a.ctx, exportInput)
+	case "danfse-zip":
+		res, err = a.svc.exports.ExportDANFSeZIP(a.ctx, exportInput)
 	default:
 		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}

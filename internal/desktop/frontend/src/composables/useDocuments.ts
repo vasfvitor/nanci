@@ -140,11 +140,10 @@ export function useDocuments() {
     return runExport((cnpj) => desktopClient.exportDANFSe({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
   }
 
-  // exportDocuments exports exactly the given NFS-e as a spreadsheet or a ZIP
-  // of XMLs, and exportDANFSeZIP as a ZIP of DANFSes; incremental leaves out
-  // the ones exported before. Competence and Direction are left empty: the
-  // grid may hold the result of an earlier search, and an empty list would
-  // export everything.
+  // exportDocuments exports exactly the given NFS-e as a spreadsheet, a ZIP
+  // of XMLs or a ZIP of DANFSes; incremental leaves out the ones exported
+  // before. Competence and Direction are left empty: the grid may hold the
+  // result of an earlier search, and an empty list would export everything.
   async function exportDocuments(
     format: ExportFormat,
     chavesAcesso: string[],
@@ -157,20 +156,6 @@ export function useDocuments() {
         Competence: '',
         Direction: '',
         Format: format,
-        Incremental: choice.incremental,
-        ChavesAcesso: chavesAcesso,
-      })
-    )
-  }
-
-  async function exportDANFSeZIP(chavesAcesso: string[], choice: { incremental: boolean }) {
-    if (chavesAcesso.length === 0) return null
-    return runExport((cnpj) =>
-      desktopClient.exportDANFSeZIP({
-        CNPJ: cnpj,
-        Competence: '',
-        Direction: '',
-        Format: 'zip',
         Incremental: choice.incremental,
         ChavesAcesso: chavesAcesso,
       })
@@ -204,7 +189,6 @@ export function useDocuments() {
     exportXML,
     exportDANFSe,
     exportDocuments,
-    exportDANFSeZIP,
     markViewed,
   }
 }

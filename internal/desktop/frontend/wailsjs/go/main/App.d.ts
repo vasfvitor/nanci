@@ -16,8 +16,6 @@ export function ExportCTeZIP(arg1:desktopapi.ExportCTeZIPInput):Promise<desktopa
 
 export function ExportDANFSe(arg1:desktopapi.ExportDANFSeInput):Promise<desktopapi.ExportResult>;
 
-export function ExportDANFSeZIP(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
-
 export function ExportDocuments(arg1:desktopapi.ExportDocumentsInput):Promise<desktopapi.ExportResult>;
 
 export function ExportLogs():Promise<string>;

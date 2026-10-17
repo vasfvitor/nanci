@@ -1149,7 +1149,6 @@ async function installWailsMock(context: BrowserContext, nfeStatus: Record<strin
             CancelCertPassword: async () => undefined,
             ExportDocuments: async () => ({ OutPath: 'C:\\exports\\nfs-export.xlsx', Format: 'xlsx', Incremental: false, ExportedCount: 1 }),
             ExportDANFSe: async () => ({ OutPath: 'C:\\exports\\danfse.pdf', Format: 'danfse', Incremental: false, ExportedCount: 1 }),
-            ExportDANFSeZIP: async () => ({ OutPath: 'C:\\exports\\danfses.zip', Format: 'danfse', Incremental: false, ExportedCount: 1 }),
             ExportXML: async () => ({ OutPath: 'C:\\exports\\nfs.xml', Format: 'xml', Incremental: false, ExportedCount: 1 }),
             ExportLogs: async () => undefined,
             GetBuildInfo: async () => ({ version: 'v0.4.0', commit: '296a3d9', date: '2026-09-30T12:00:00Z' }),

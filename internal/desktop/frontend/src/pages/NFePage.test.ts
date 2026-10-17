@@ -456,7 +456,7 @@ describe('NFePage', () => {
   it('exports the filtered rows as a ZIP with the choice of the dialog', async () => {
     vi.mocked(desktopClient.exportNFeZIP).mockResolvedValue({
       OutPath: 'C:\\exports\\nfe.zip',
-      Format: 'zip',
+      Format: 'xml',
       Incremental: true,
       ExportedCount: 1,
       SkippedResumos: 2,

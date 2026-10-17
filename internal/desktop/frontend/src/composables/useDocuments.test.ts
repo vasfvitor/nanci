@@ -13,7 +13,6 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: {
     exportDANFSe: vi.fn(),
-    exportDANFSeZIP: vi.fn(),
     exportDocuments: vi.fn(),
     exportXML: vi.fn(),
     listCompanies: vi.fn(),
@@ -151,7 +150,7 @@ describe('useDocuments', () => {
     nfse.filter.value.Direction = 'tomada'
 
     await nfse.exportDocuments('csv', ['a', 'b'], { incremental: false })
-    await nfse.exportDANFSeZIP(['c'], { incremental: true })
+    await nfse.exportDocuments('danfse-zip', ['c'], { incremental: true })
 
     expect(desktopClient.exportDocuments).toHaveBeenCalledWith({
       CNPJ: '123',
@@ -161,11 +160,11 @@ describe('useDocuments', () => {
       Incremental: false,
       ChavesAcesso: ['a', 'b'],
     })
-    expect(desktopClient.exportDANFSeZIP).toHaveBeenCalledWith({
+    expect(desktopClient.exportDocuments).toHaveBeenCalledWith({
       CNPJ: '123',
       Competence: '',
       Direction: '',
-      Format: 'zip',
+      Format: 'danfse-zip',
       Incremental: true,
       ChavesAcesso: ['c'],
     })
@@ -176,9 +175,8 @@ describe('useDocuments', () => {
     useWorkspaceStore().cnpj = '123'
 
     await expect(nfse.exportDocuments('zip', [], { incremental: false })).resolves.toBeNull()
-    await expect(nfse.exportDANFSeZIP([], { incremental: false })).resolves.toBeNull()
+    await expect(nfse.exportDocuments('danfse-zip', [], { incremental: false })).resolves.toBeNull()
     expect(desktopClient.exportDocuments).not.toHaveBeenCalled()
-    expect(desktopClient.exportDANFSeZIP).not.toHaveBeenCalled()
   })
 
   it('exports one XML or DANFSe of the listed company', async () => {

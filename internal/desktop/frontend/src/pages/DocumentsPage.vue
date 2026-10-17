@@ -143,7 +143,7 @@ import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useDocuments } from '@/composables/useDocuments'
 import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
-import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
+import type { DocumentRow, ExportFormat } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFSE_EXPORT_FORMATS } from '@/utils/exportFormats'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
@@ -299,12 +299,7 @@ async function exportDANFSe(chaveAcesso: string) {
 
 async function exportList(chaves: string[], choice: ExportChoice) {
   try {
-    let result: ExportResult | null
-    if (choice.format === 'danfse-zip') {
-      result = await nfse.exportDANFSeZIP(chaves, choice)
-    } else {
-      result = await nfse.exportDocuments(choice.format as ExportFormat, chaves, choice)
-    }
+    const result = await nfse.exportDocuments(choice.format as ExportFormat, chaves, choice)
     notifyExported(result, exportedNoun(choice.format))
   } catch (error) {
     notifyError('Erro ao exportar NFS-e', error)

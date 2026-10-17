@@ -25,6 +25,7 @@ func TestExportDocumentsFormats(t *testing.T) {
 		{"csv", "ExportCSV"},
 		{"xlsx", "ExportXLSX"},
 		{"zip", "ExportZIP"},
+		{"danfse-zip", "ExportDANFSeZIP"},
 		{" XLSX ", "ExportXLSX"},
 	}
 	for _, tt := range tests {
@@ -153,37 +154,6 @@ func TestSingleDocumentExports(t *testing.T) {
 	}
 }
 
-func TestExportDANFSeZIP(t *testing.T) {
-	f, a := newFakeApp(nil)
-	f.exports.result = app.ExportResult{OutPath: testOut + ".zip", Format: "danfse", Incremental: true, ExportedCount: 7}
-
-	got, err := a.ExportDANFSeZIP(desktopapi.ExportDocumentsInput{
-		CNPJ:         testCNPJ,
-		Competence:   "2026-09",
-		Direction:    "prestada",
-		Format:       "ignored",
-		OutPath:      testOut + ".zip",
-		Incremental:  true,
-		ChavesAcesso: []string{testChave},
-	})
-	if err != nil {
-		t.Fatalf("ExportDANFSeZIP: %v", err)
-	}
-
-	assertCalls(t, &f.exports.recorder, call{"ExportDANFSeZIP", []any{app.ExportInput{
-		CNPJ:         testCNPJ,
-		Competence:   "2026-09",
-		Direction:    "prestada",
-		OutPath:      testOut + ".zip",
-		Incremental:  true,
-		ChavesAcesso: []string{testChave},
-	}}})
-	want := desktopapi.ExportResult{OutPath: testOut + ".zip", Format: "danfse", Incremental: true, ExportedCount: 7}
-	if got != want {
-		t.Errorf("result = %+v, want %+v", got, want)
-	}
-}
-
 func TestExportNFeZIP(t *testing.T) {
 	f, a := newFakeApp(nil)
 	f.nfe.zip = app.NFeExportResult{
@@ -261,9 +231,6 @@ func exportRuns(outPath string) map[string]func(a *App) (any, error) {
 		},
 		"ExportXML": func(a *App) (any, error) {
 			return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
-		},
-		"ExportDANFSeZIP": func(a *App) (any, error) {
-			return a.ExportDANFSeZIP(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, OutPath: outPath})
 		},
 		"ExportNFeXML": func(a *App) (any, error) {
 			return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})

@@ -6,7 +6,6 @@ import {
   ExportCTeXML,
   ExportCTeZIP,
   ExportDANFSe,
-  ExportDANFSeZIP,
   ExportDocuments,
   ExportLogs,
   ExportNFeXML,
@@ -75,6 +74,7 @@ import type {
   ExportCTeZIPInput,
   ExportDANFSeInput,
   ExportDocumentsInput,
+  ExportFormat,
   ExportResult,
   ExportXMLInput,
   ExportNFeXMLInput,
@@ -249,6 +249,25 @@ const cteEventTypes: readonly CTeEventType[] = [
   'unknown',
 ]
 const cteBlockedReasons: readonly CTeBlockedReason[] = ['caught_up', 'consumo_indevido', 'rate_budget']
+
+// SaveDialog is what the save dialog of a list export shows: its title, the
+// suggested file name and the file pattern.
+type SaveDialog = { title: string; defaultName: string; pattern: string }
+
+function nfseExportDialog(format: ExportFormat, cnpj: string): SaveDialog {
+  if (format === 'danfse-zip') {
+    return {
+      title: 'Salvar ZIP de DANFSes',
+      defaultName: `danfses_${cnpj}_${fileTimestamp()}.zip`,
+      pattern: '*.zip',
+    }
+  }
+  return {
+    title: 'Exportar Documentos',
+    defaultName: `nanci_exportacao_${cnpj}_${fileTimestamp()}.${format}`,
+    pattern: `*.${format}`,
+  }
+}
 
 function fileTimestamp(now = new Date()) {
   const y = now.getFullYear()
@@ -739,9 +758,10 @@ export const desktopClient = {
     return callWails(() => AssignCredentialToCompany(input))
   },
   async exportDocuments(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
-    const extension = input.Format === 'csv' ? '.csv' : input.Format === 'xlsx' ? '.xlsx' : '.zip'
-    const defaultName = input.BaseName || `nanci_exportacao_${input.CNPJ}_${fileTimestamp()}${extension}`
-    const outPath = input.OutPath || await desktopClient.selectSaveFile('Exportar Documentos', defaultName, `*${extension}`)
+    const dialog = nfseExportDialog(input.Format, input.CNPJ)
+    const defaultName = input.BaseName || dialog.defaultName
+    const outPath =
+      input.OutPath || (await desktopClient.selectSaveFile(dialog.title, defaultName, dialog.pattern))
     if (!outPath) return null
 
     const result = await callWails(() =>
@@ -775,20 +795,6 @@ export const desktopClient = {
       ExportXML({
         ...input,
         OutPath: outPath,
-      })
-    )
-    return mapExportResult(result)
-  },
-  async exportDANFSeZIP(input: Omit<ExportDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }): Promise<ExportResult | null> {
-    const defaultName = input.BaseName || `danfses_${input.CNPJ}_${Date.now()}.zip`
-    const outPath = input.OutPath || await desktopClient.selectSaveFile('Salvar ZIP de DANFSes', defaultName, '*.zip')
-    if (!outPath) return null
-
-    const result = await callWails(() =>
-      ExportDANFSeZIP({
-        ...input,
-        OutPath: outPath,
-        ChavesAcesso: input.ChavesAcesso || [],
       })
     )
     return mapExportResult(result)
