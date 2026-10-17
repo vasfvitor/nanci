@@ -385,6 +385,7 @@ describe('DocumentsPage', () => {
             { label: 'XMLs originais (ZIP)', value: 'zip' },
             { label: 'DANFSes (ZIP)', value: 'danfse-zip' },
           ],
+          initialFormat: '',
         },
       })
     )

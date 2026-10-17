@@ -1,7 +1,9 @@
 import { flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentListActions, type DocumentListActionsOptions } from './useDocumentListActions'
+import { usePreferencesStore } from '@/stores/preferences'
 
 type OkHandler = (payload: unknown) => void
 
@@ -40,6 +42,8 @@ function setup(overrides: Partial<DocumentListActionsOptions> = {}) {
 
 describe('useDocumentListActions', () => {
   beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
     vi.clearAllMocks()
     okHandlers.length = 0
   })
@@ -120,6 +124,7 @@ describe('useDocumentListActions', () => {
           count: 2,
           scope: 'listed',
           formats: [{ label: 'XMLs (ZIP)', value: 'zip', resumos: true }],
+          initialFormat: '',
         },
       })
     )
@@ -127,6 +132,28 @@ describe('useDocumentListActions', () => {
     const choice = { format: 'zip', incremental: true, includeResumos: true }
     okHandlers[0]?.(choice)
     expect(exportList).toHaveBeenCalledWith(['a', 'b'], choice)
+  })
+
+  it('passes the remembered format and saves the chosen one', () => {
+    const formats = [
+      { label: 'Planilha CSV', value: 'csv' },
+      { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
+    ]
+    usePreferencesStore().setExportFormat('nfse', 'xlsx')
+    const { exportList, actions } = setup({ exportFormats: formats })
+
+    actions.openExportDialog()
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({ componentProps: expect.objectContaining({ initialFormat: 'xlsx' }) })
+    )
+
+    const choice = { format: 'csv', incremental: false, includeResumos: false }
+    okHandlers[0]?.(choice)
+    expect(exportList).toHaveBeenCalledWith(['a', 'b'], choice)
+    expect(usePreferencesStore().exportFormat.nfse).toBe('csv')
+    expect(localStorage.getItem('nanci:nfse:exportFormat')).toBe('csv')
+    // The other sources keep their own choice.
+    expect(usePreferencesStore().exportFormat.nfe).toBe('')
   })
 
   it('says the export is of the selection when there is one, and skips an empty scope', () => {

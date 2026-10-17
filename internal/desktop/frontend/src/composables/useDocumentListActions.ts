@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ExportDialog, { type ExportChoice } from '@/components/ExportDialog.vue'
 import { useNotify } from '@/composables/useNotify'
+import { usePreferencesStore } from '@/stores/preferences'
 import { agree, DOCUMENT_SOURCES, type DocumentSource } from '@/utils/documentSources'
 import type { ExportFormatOption } from '@/utils/exportFormats'
 
@@ -35,6 +36,7 @@ function markViewedQuestion(source: DocumentSource, count: number) {
 export function useDocumentListActions(options: DocumentListActionsOptions) {
   const $q = useQuasar()
   const { notifyError, notifySuccess } = useNotify()
+  const preferences = usePreferencesStore()
   const { noun } = DOCUMENT_SOURCES[options.source]
 
   // confirmMarkViewed marks the new documents of the selection right away;
@@ -70,6 +72,7 @@ export function useDocumentListActions(options: DocumentListActionsOptions) {
   }
 
   // openExportDialog exports the scope rows in the format the user picks.
+  // The dialog starts on the format last exported from the source.
   function openExportDialog() {
     const chaves = options.scopeRows.value.map((row) => row.ChaveAcesso)
     if (chaves.length === 0) return
@@ -80,8 +83,10 @@ export function useDocumentListActions(options: DocumentListActionsOptions) {
         count: chaves.length,
         scope: options.selected.value.length > 0 ? 'selected' : 'listed',
         formats: options.exportFormats,
+        initialFormat: preferences.exportFormat[options.source],
       },
     }).onOk((choice: ExportChoice) => {
+      preferences.setExportFormat(options.source, choice.format)
       void options.exportList(chaves, choice)
     })
   }

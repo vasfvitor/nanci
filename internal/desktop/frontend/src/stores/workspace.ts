@@ -4,6 +4,7 @@ import { desktopClient, errorMessage } from '@/platform/wails/client'
 import type { CompanySummary } from '@/types/desktop'
 import { isCompetence } from '@/utils/competence'
 import { latestOnly } from '@/utils/latestOnly'
+import { readStorage, writeStorage } from '@/utils/storage'
 
 // WorkspaceKey is the company and competência a document list was loaded for.
 export type WorkspaceKey = { cnpj: string; competence: string }
@@ -17,8 +18,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   // storedCNPJ is the last company chosen, kept until a company list says
   // whether it still exists. cnpj only takes it from loadCompanies, so cnpj
   // never names a company that is not listed.
-  let storedCNPJ = localStorage.getItem(cnpjKey) ?? ''
-  const savedCompetence = localStorage.getItem(competenceKey) ?? ''
+  let storedCNPJ = readStorage(cnpjKey) ?? ''
+  const savedCompetence = readStorage(competenceKey) ?? ''
 
   // cnpj is a listed company, or '' while the list is not loaded or empty.
   const cnpj = ref('')
@@ -39,11 +40,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(cnpj, (value) => {
     if (!value) return
     storedCNPJ = value
-    localStorage.setItem(cnpjKey, value)
+    writeStorage(cnpjKey, value)
   })
 
   watch(competence, (value) => {
-    localStorage.setItem(competenceKey, value)
+    writeStorage(competenceKey, value)
   })
 
   // loadGate lets only the latest load fill the store.

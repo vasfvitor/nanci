@@ -1,11 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePreferencesStore } from './preferences'
 
 describe('preferences store', () => {
   beforeEach(() => {
     localStorage.clear()
     setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('hydrates initial values from localStorage', () => {
@@ -57,5 +61,42 @@ describe('preferences store', () => {
     expect(localStorage.getItem('nanci:nfse:rowsPerPage')).toBeNull()
     expect(localStorage.getItem('nanci:cte:rowsPerPage')).toBeNull()
     expect(localStorage.getItem('nanci:documents:rowsPerPage')).toBe('50')
+  })
+
+  it('remembers the export format per source', () => {
+    localStorage.setItem('nanci:cte:exportFormat', 'dacte-zip')
+    const store = usePreferencesStore()
+    expect(store.exportFormat).toEqual({ nfse: '', nfe: '', cte: 'dacte-zip' })
+
+    store.setExportFormat('nfe', 'xlsx')
+
+    expect(store.exportFormat).toEqual({ nfse: '', nfe: 'xlsx', cte: 'dacte-zip' })
+    expect(localStorage.getItem('nanci:nfe:exportFormat')).toBe('xlsx')
+    expect(localStorage.getItem('nanci:nfse:exportFormat')).toBeNull()
+
+    setActivePinia(createPinia())
+    expect(usePreferencesStore().exportFormat.nfe).toBe('xlsx')
+  })
+
+  it('falls back to defaults when storage throws', async () => {
+    localStorage.setItem('darkMode', 'true')
+    localStorage.setItem('nanci:nfse:rowsPerPage', '50')
+    vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError')
+    })
+
+    const store = usePreferencesStore()
+    expect(store.darkMode).toBe('auto')
+    expect(store.rowsPerPage).toEqual({ nfse: 25, nfe: 25, cte: 25 })
+    expect(store.exportFormat).toEqual({ nfse: '', nfe: '', cte: '' })
+
+    // The choices still hold for the session.
+    store.darkMode = true
+    store.rowsPerPage.nfe = 100
+    store.setExportFormat('nfe', 'csv')
+    await Promise.resolve()
+    expect(store.darkMode).toBe(true)
+    expect(store.rowsPerPage.nfe).toBe(100)
+    expect(store.exportFormat.nfe).toBe('csv')
   })
 })

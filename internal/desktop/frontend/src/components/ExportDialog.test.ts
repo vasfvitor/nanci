@@ -36,6 +36,7 @@ type Props = {
   count: number
   scope: 'selected' | 'listed'
   formats: ExportFormatOption[]
+  initialFormat: string
 }
 
 function mountDialog(props: Partial<Props> = {}) {
@@ -158,5 +159,22 @@ describe('ExportDialog', () => {
     expect(checkbox(wrapper, 'Incluir resumos')).toBeUndefined()
     await clickExport(wrapper)
     expect(onDialogOK).toHaveBeenLastCalledWith({ format: 'danfe-zip', incremental: false, includeResumos: false })
+  })
+
+  it('starts on the remembered format', async () => {
+    const wrapper = mountDialog({ source: 'nfse', formats: nfseFormats, initialFormat: 'xlsx' })
+    expect(wrapper.getComponent({ name: 'QOptionGroup' }).props('modelValue')).toBe('xlsx')
+
+    await clickExport(wrapper)
+    expect(onDialogOK).toHaveBeenCalledWith(expect.objectContaining({ format: 'xlsx' }))
+  })
+
+  it('ignores an unknown remembered format', async () => {
+    // A format the source no longer offers, or one saved by another source.
+    const wrapper = mountDialog({ source: 'nfse', formats: nfseFormats, initialFormat: 'danfe-zip' })
+    expect(wrapper.getComponent({ name: 'QOptionGroup' }).props('modelValue')).toBe('csv')
+
+    await clickExport(wrapper)
+    expect(onDialogOK).toHaveBeenCalledWith(expect.objectContaining({ format: 'csv' }))
   })
 })

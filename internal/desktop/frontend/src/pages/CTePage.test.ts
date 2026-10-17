@@ -419,6 +419,7 @@ describe('CTePage', () => {
           count: 1,
           scope: 'listed',
           formats: CTE_EXPORT_FORMATS,
+          initialFormat: '',
         },
       })
     )

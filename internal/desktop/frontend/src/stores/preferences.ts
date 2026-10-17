@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import type { DocumentSource } from '@/utils/documentSources'
+import { readStorage, writeStorage } from '@/utils/storage'
 
 export type DocumentTable = 'nfse' | 'nfe' | 'cte'
 
@@ -14,6 +16,10 @@ function rowsPerPageKey(table: DocumentTable) {
   return `nanci:${table}:rowsPerPage`
 }
 
+function exportFormatKey(source: DocumentSource) {
+  return `nanci:${source}:exportFormat`
+}
+
 // parseRowsPerPage accepts a non-negative integer; 0 is Quasar's "Todos".
 function parseRowsPerPage(stored: string | null) {
   if (stored === null) return null
@@ -24,14 +30,14 @@ function parseRowsPerPage(stored: string | null) {
 
 function readRowsPerPage(table: DocumentTable) {
   return (
-    parseRowsPerPage(localStorage.getItem(rowsPerPageKey(table))) ??
-    parseRowsPerPage(localStorage.getItem(legacyRowsPerPageKey)) ??
+    parseRowsPerPage(readStorage(rowsPerPageKey(table))) ??
+    parseRowsPerPage(readStorage(legacyRowsPerPageKey)) ??
     defaultRowsPerPage
   )
 }
 
 export const usePreferencesStore = defineStore('preferences', () => {
-  const savedDark = localStorage.getItem('darkMode')
+  const savedDark = readStorage('darkMode')
   let initialDark: boolean | 'auto' = 'auto'
   if (savedDark === 'true') {
     initialDark = true
@@ -49,8 +55,21 @@ export const usePreferencesStore = defineStore('preferences', () => {
     >
   )
 
+  // exportFormat is the format last exported from each source, or '' before
+  // the first export. The export dialog starts on it.
+  const exportFormat = ref(
+    Object.fromEntries(
+      documentTables.map((source) => [source, readStorage(exportFormatKey(source)) ?? ''])
+    ) as Record<DocumentSource, string>
+  )
+
+  function setExportFormat(source: DocumentSource, format: string) {
+    exportFormat.value[source] = format
+    writeStorage(exportFormatKey(source), format)
+  }
+
   watch(darkMode, (val) => {
-    localStorage.setItem('darkMode', String(val))
+    writeStorage('darkMode', String(val))
   })
 
   // A choice is saved under its table's key once it differs from what
@@ -60,7 +79,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     (choices) => {
       for (const table of documentTables) {
         if (choices[table] !== readRowsPerPage(table)) {
-          localStorage.setItem(rowsPerPageKey(table), String(choices[table]))
+          writeStorage(rowsPerPageKey(table), String(choices[table]))
         }
       }
     },
@@ -70,5 +89,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   return {
     darkMode,
     rowsPerPage,
+    exportFormat,
+    setExportFormat,
   }
 })

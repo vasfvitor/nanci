@@ -72,12 +72,14 @@ import { useDialogPluginComponent } from 'quasar'
 // ExportDialog asks how to export the documents of a page: the format (plain
 // text when there is only one), "Somente não exportados" and, for a format
 // that takes resumos, "Incluir resumos". The page opens it with $q.dialog and
-// gets an ExportChoice in onOk.
+// gets an ExportChoice in onOk. initialFormat is the format to start on,
+// the one last exported; an unknown one starts on the first format.
 const props = defineProps<{
   source: DocumentSource
   count: number
   scope: ExportScope
   formats: ExportFormatOption[]
+  initialFormat?: string
 }>()
 
 defineEmits<{
@@ -87,7 +89,11 @@ defineEmits<{
 
 const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
 
-const format = ref(props.formats[0]?.value ?? '')
+const format = ref(
+  props.formats.find((option) => option.value === props.initialFormat)?.value ??
+    props.formats[0]?.value ??
+    ''
+)
 const incremental = ref(false)
 const includeResumos = ref(false)
 

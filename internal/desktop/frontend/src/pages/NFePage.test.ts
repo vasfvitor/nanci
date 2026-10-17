@@ -482,6 +482,7 @@ describe('NFePage', () => {
           count: 1,
           scope: 'listed',
           formats: NFE_EXPORT_FORMATS,
+          initialFormat: '',
         },
       })
     )
