@@ -3,14 +3,16 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Upstream tests from v0.7.3 for the PBES2 IV length check. The rest of
-// upstream crypto_test.go is not carried. testDecryptable and the
-// EncryptedContent assignment follow the fork's Data() ([]byte, error) and
-// asn1.RawValue EncryptedContent. See README.nanci.md.
+// Upstream tests from v0.7.3 for the PBES2 IV length check and from v0.7.4
+// for the PBKDF2 PRF NULL parameter. The rest of upstream crypto_test.go is
+// not carried. testDecryptable and the EncryptedContent assignment follow the
+// fork's Data() ([]byte, error) and asn1.RawValue EncryptedContent. See
+// README.nanci.md.
 
 package pkcs12
 
 import (
+	"bytes"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"testing"
@@ -109,5 +111,30 @@ func TestDecodeTrustStoreBadPBES2IVLength(t *testing.T) {
 
 	if _, err := DecodeTrustStore(pfxData, ""); err == nil {
 		t.Error("expected an error decoding a file with a malformed PBES2 IV, got nil")
+	}
+}
+
+// The PBKDF2 PRF AlgorithmIdentifier must carry an explicit NULL parameter
+// (RFC 8018 A.2 definition of PBKDF2-PRFs). BoringSSL rejects PKCS#12 files that omit it.
+func TestMakePBES2ParametersPrfHasNullParameter(t *testing.T) {
+	raw, err := makePBES2Parameters(bytes.NewReader(make([]byte, 64)), []byte{1, 2, 3, 4, 5, 6, 7, 8}, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var params pbes2Params
+	if err := unmarshal(raw, &params); err != nil {
+		t.Fatal(err)
+	}
+	var kdfParams pbkdf2Params
+	if err := unmarshal(params.Kdf.Parameters.FullBytes, &kdfParams); err != nil {
+		t.Fatal(err)
+	}
+
+	if !kdfParams.Prf.Algorithm.Equal(oidHmacWithSHA256) {
+		t.Fatalf("prf algorithm = %v, want %v", kdfParams.Prf.Algorithm, oidHmacWithSHA256)
+	}
+	if !bytes.Equal(kdfParams.Prf.Parameters.FullBytes, asn1.NullBytes) {
+		t.Errorf("prf parameters = %x, want ASN.1 NULL (%x)", kdfParams.Prf.Parameters.FullBytes, asn1.NullBytes)
 	}
 }
