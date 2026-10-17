@@ -3,6 +3,7 @@ package sync
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -32,9 +33,13 @@ func (e *BlockedError) Is(target error) bool {
 	return target == ErrSourceBlocked
 }
 
-// checkBlocked returns a *BlockedError when the source state forbids a query at now.
-func checkBlocked(source syncstate.SyncSource, state SourceState, now time.Time) error {
+// checkBlocked returns a *BlockedError when the source state forbids a query
+// at now. With reasons, only a block set for one of them counts.
+func checkBlocked(source syncstate.SyncSource, state SourceState, now time.Time, reasons ...syncstate.SyncStopReason) error {
 	if state.BlockedUntil == nil || !now.Before(*state.BlockedUntil) {
+		return nil
+	}
+	if len(reasons) > 0 && !slices.Contains(reasons, state.BlockedReason) {
 		return nil
 	}
 	return &BlockedError{Source: source, Until: *state.BlockedUntil, Reason: state.BlockedReason}

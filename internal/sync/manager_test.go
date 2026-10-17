@@ -416,3 +416,104 @@ func TestPullRejectsUnconfiguredSources(t *testing.T) {
 		t.Errorf("password prompts = %d, want 0", got)
 	}
 }
+
+func TestBlockedForIgnoresAReasonOutsideTheList(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, syncstate.SyncSourceNFe, comp.Environment, time.Now().Add(time.Hour), syncstate.SyncStopReasonCaughtUp); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mgr.BlockedFor(ctx, comp, syncstate.SyncSourceNFe, syncstate.SyncStopReasonConsumoIndevido, syncstate.SyncStopReasonRateBudget); err != nil {
+		t.Errorf("BlockedFor(consumo_indevido, rate_budget) with caught_up stored = %v, want nil", err)
+	}
+	// With no reasons every block counts, as Pull sees it.
+	if err := mgr.BlockedFor(ctx, comp, syncstate.SyncSourceNFe); !errors.Is(err, ErrSourceBlocked) {
+		t.Errorf("BlockedFor() with caught_up stored = %v, want ErrSourceBlocked", err)
+	}
+}
+
+func TestBlockedForBlocksAListedReason(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, syncstate.SyncSourceNFe, comp.Environment, time.Now().Add(time.Hour), syncstate.SyncStopReasonConsumoIndevido); err != nil {
+		t.Fatal(err)
+	}
+
+	err := mgr.BlockedFor(ctx, comp, syncstate.SyncSourceNFe, syncstate.SyncStopReasonConsumoIndevido, syncstate.SyncStopReasonRateBudget)
+	var blocked *BlockedError
+	if !errors.As(err, &blocked) || !errors.Is(err, ErrSourceBlocked) {
+		t.Fatalf("BlockedFor = %v, want *BlockedError", err)
+	}
+	if blocked.Source != syncstate.SyncSourceNFe || blocked.Reason != syncstate.SyncStopReasonConsumoIndevido || !blocked.Until.After(time.Now()) {
+		t.Errorf("BlockedError = %+v, want nfe consumo_indevido in the future", blocked)
+	}
+	// Another source of the same company is not blocked.
+	if err := mgr.BlockedFor(ctx, comp, syncstate.SyncSourceCTe); err != nil {
+		t.Errorf("BlockedFor(cte) = %v, want nil", err)
+	}
+}
+
+func TestBlockedForIgnoresAnExpiredBlock(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	if err := mgr.SyncRepo.SetBlockedUntil(ctx, comp.ID, syncstate.SyncSourceNFe, comp.Environment, time.Now().Add(-time.Minute), syncstate.SyncStopReasonRateBudget); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.BlockedFor(ctx, comp, syncstate.SyncSourceNFe, syncstate.SyncStopReasonRateBudget); err != nil {
+		t.Errorf("BlockedFor with an expired block = %v, want nil", err)
+	}
+}
+
+func TestSpendRequestCountsAndBlocksAtTheLimit(t *testing.T) {
+	mgr, comp := newPullTestManager(t, &countingProvider{})
+	ctx := context.Background()
+	limit := requestsPerHour(syncstate.SyncSourceNFe)
+	countRequests := func(source syncstate.SyncSource) int {
+		t.Helper()
+		count, _, err := mgr.SyncRepo.RequestsSince(ctx, comp.ID, source, comp.Environment, time.Now().Add(-time.Hour))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return count
+	}
+
+	for i := range limit {
+		ok, err := mgr.SpendRequest(ctx, comp, syncstate.SyncSourceNFe)
+		if err != nil || !ok {
+			t.Fatalf("SpendRequest %d = %v, %v; want true", i+1, ok, err)
+		}
+		if got := countRequests(syncstate.SyncSourceNFe); got != i+1 {
+			t.Fatalf("requests after SpendRequest %d = %d, want %d", i+1, got, i+1)
+		}
+	}
+	if err := mgr.BlockedFor(ctx, comp, syncstate.SyncSourceNFe); err != nil {
+		t.Fatalf("BlockedFor with the budget just spent = %v, want nil", err)
+	}
+
+	ok, err := mgr.SpendRequest(ctx, comp, syncstate.SyncSourceNFe)
+	if err != nil || ok {
+		t.Fatalf("SpendRequest past the limit = %v, %v; want false", ok, err)
+	}
+	if got := countRequests(syncstate.SyncSourceNFe); got != limit {
+		t.Errorf("requests after the refused SpendRequest = %d, want %d", got, limit)
+	}
+	err = mgr.BlockedFor(ctx, comp, syncstate.SyncSourceNFe, syncstate.SyncStopReasonRateBudget)
+	var blocked *BlockedError
+	if !errors.As(err, &blocked) {
+		t.Fatalf("BlockedFor after the budget = %v, want rate_budget", err)
+	}
+	if left := time.Until(blocked.Until); left < 55*time.Minute || left > 61*time.Minute {
+		t.Errorf("blocked for %s, want about an hour after the oldest request", left)
+	}
+
+	// NFS-e has no budget: nothing is counted.
+	for range limit + 1 {
+		if ok, err := mgr.SpendRequest(ctx, comp, syncstate.SyncSourceNFSe); err != nil || !ok {
+			t.Fatalf("SpendRequest(nfse) = %v, %v; want true", ok, err)
+		}
+	}
+	if got := countRequests(syncstate.SyncSourceNFSe); got != 0 {
+		t.Errorf("NFS-e requests = %d, want 0", got)
+	}
+}

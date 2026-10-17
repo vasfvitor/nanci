@@ -164,11 +164,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err := m.checkSource(company, source); err != nil {
 		return PullResult{}, err
 	}
-	sourceState, err := m.SyncRepo.SourceState(ctx, company.ID, source, company.Environment)
-	if err != nil {
-		return PullResult{}, fmt.Errorf("carregar estado da origem: %w", err)
-	}
-	if err := checkBlocked(source, sourceState, time.Now()); err != nil {
+	if err := m.BlockedFor(ctx, company, source); err != nil {
 		return PullResult{}, err
 	}
 	release, err := m.ReserveSource(company.ID, source)
@@ -291,6 +287,29 @@ func (m *Manager) ReserveSource(companyID dfe.CompanyID, source syncstate.SyncSo
 		defer m.runningMu.Unlock()
 		delete(m.running, key)
 	}, nil
+}
+
+// BlockedFor returns a *BlockedError while the company's source, in the
+// company's current environment, must not be queried. With reasons, only a
+// block set for one of them counts, so a lookup outside the distribution can
+// ignore the wait after caught_up and still respect consumo_indevido and
+// rate_budget. With no reasons every block counts, as in Pull.
+func (m *Manager) BlockedFor(ctx context.Context, company *company.Company, source syncstate.SyncSource, reasons ...syncstate.SyncStopReason) error {
+	state, err := m.SyncRepo.SourceState(ctx, company.ID, source, company.Environment)
+	if err != nil {
+		return fmt.Errorf("carregar estado da origem: %w", err)
+	}
+	return checkBlocked(source, state, time.Now(), reasons...)
+}
+
+// SpendRequest spends one request of the source's hourly budget for the
+// company in its current environment, as the pull loop does before each
+// distribution request: the request is recorded before it is sent, so a
+// failed one counts too. When the budget is spent it records nothing, blocks
+// the source with rate_budget until the oldest request of the window expires
+// and returns false. A source without a budget (NFS-e) always returns true.
+func (m *Manager) SpendRequest(ctx context.Context, company *company.Company, source syncstate.SyncSource) (bool, error) {
+	return spendRequest(ctx, m.SyncRepo, m.Log, company, source, requestsPerHour(source))
 }
 
 // SourceLimits is when a source may be queried again and how much of its

@@ -117,8 +117,9 @@ func (s *SyncService) Sync(ctx context.Context, company *company.Company, creden
 		default:
 		}
 
-		budgetLeft, err := s.spendRequest(ctx, company)
+		budgetLeft, err := spendRequest(ctx, s.store, s.log, company, kind, s.source.Policy().RequestsPerHour)
 		if err != nil {
+			err = persistFailure(err)
 			finalStatus, stopReason, errorCode, errorMsg = classifySyncError(err)
 			return err
 		}
@@ -234,37 +235,36 @@ func persistFailure(err error) *syncFailure {
 // spendRequest enforces the source's hourly request budget before a fetch.
 // It records the request before it is sent, so failed attempts count too.
 // It returns false, and blocks the source until the oldest request in the
-// window expires, when the budget is exhausted.
-func (s *SyncService) spendRequest(ctx context.Context, company *company.Company) (bool, error) {
-	limit := s.source.Policy().RequestsPerHour
+// window expires, when the budget is exhausted. A limit of 0 or less means
+// unlimited. The pull loop and Manager.SpendRequest share it.
+func spendRequest(ctx context.Context, store *Store, log *slog.Logger, company *company.Company, source syncstate.SyncSource, limit int) (bool, error) {
 	if limit <= 0 {
 		return true, nil
 	}
-	kind := s.source.Kind()
 
 	now := time.Now().UTC()
-	count, oldest, err := s.store.RequestsSince(ctx, company.ID, kind, company.Environment, now.Add(-time.Hour))
+	count, oldest, err := store.RequestsSince(ctx, company.ID, source, company.Environment, now.Add(-time.Hour))
 	if err != nil {
-		return false, persistFailure(fmt.Errorf("failed to read request budget: %w", err))
+		return false, fmt.Errorf("failed to read request budget: %w", err)
 	}
 	if count >= limit {
 		until := now.Add(time.Hour)
 		if oldest != nil {
 			until = oldest.Add(time.Hour)
 		}
-		if err := s.store.SetBlockedUntil(ctx, company.ID, kind, company.Environment, until, syncstate.SyncStopReasonRateBudget); err != nil {
-			return false, persistFailure(fmt.Errorf("failed to block source after request budget: %w", err))
+		if err := store.SetBlockedUntil(ctx, company.ID, source, company.Environment, until, syncstate.SyncStopReasonRateBudget); err != nil {
+			return false, fmt.Errorf("failed to block source after request budget: %w", err)
 		}
-		s.log.WarnContext(ctx, "Limite de consultas por hora atingido",
-			slog.String("source", string(kind)),
+		log.WarnContext(ctx, "Limite de consultas por hora atingido",
+			slog.String("source", string(source)),
 			slog.Int("requests_last_hour", count),
 			slog.Int("limit", limit),
 			slog.Time("next_allowed_at", until))
 		return false, nil
 	}
 
-	if err := s.store.RecordRequest(ctx, company.ID, kind, company.Environment, now); err != nil {
-		return false, persistFailure(fmt.Errorf("failed to record request: %w", err))
+	if err := store.RecordRequest(ctx, company.ID, source, company.Environment, now); err != nil {
+		return false, fmt.Errorf("failed to record request: %w", err)
 	}
 	return true, nil
 }
