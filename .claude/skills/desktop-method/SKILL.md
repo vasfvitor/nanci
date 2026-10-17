@@ -26,7 +26,7 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 - `services.go`: add the core method to the service interface (`nfeService.ExportXMLZip`). `servicesFrom` wires the real `*app.App`; tests swap fakes.
 - `app_<area>.go` (`app_companies.go`, `app_nfse.go`, `app_nfe.go`, `app_cte.go`; dialogs, folders and logs in `app_runtime.go`; `app.go` keeps the `App` struct, startup and shared helpers): one thin method per action. Validate what the core cannot see (`if input.OutPath == "" { return ..., fmt.Errorf("caminho de saída não especificado") }`, enum parsing such as `dfe.ParseEnvironment` in `AddCompany`), map DTO to app input field by field, call `a.svc.nfe.ExportXMLZip(a.ctx, ...)`, return the zero DTO with the error unchanged, map the result.
 - No path construction in Go beyond what the core does; the user picks the path through `SelectSaveFile`.
-- Errors reach the frontend through `formatError` in `errors.go` as `{Message, Code}`. Codes today: `canceled`, `sefaz_blocked`, `sync_running`. A new code needs `errors.go`, `errors_test.go`, and `WailsErrorCode`/`asErrorCode` in `client.ts`.
+- Errors reach the frontend through `formatError` in `errors.go` as `{Message, Code}`. Codes today: `canceled`, `sefaz_blocked`, `sync_running`. A new code needs `errors.go`, `errors_test.go`, and `WailsErrorCode`/`asErrorCode` in `client/base.ts`.
 - Tests: add the method to the fake in `fakes_test.go` (`f.record("ExportXMLZip", in)`, return a result field). Then in `app_export_test.go` (or `app_documents_test.go`, `app_company_test.go`, `app_sync_test.go` by area):
   - a mapping test (`TestExportNFeZIP`: `assertCalls` sees every input field, result equals the expected DTO);
   - an entry in the table tests: `exportRuns` feeds `TestExportsRequireOutPath` (no core call, zero result) and `TestExportsPassCoreErrors` (`errors.Is(err, errCore)`); document methods go in `TestDocumentMethodsPassCoreErrors`.
@@ -37,10 +37,11 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
 - Same commit: add the method to the `vi.mock('../../../wailsjs/go/main/App', ...)` list in `src/platform/wails/client.test.ts` and to the `window.go.main.App` mock in `scripts/generate-screenshots.ts` (`ExportNFeZIP: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The build does not type-check that script.
 - CI job `bindings` in `.github/workflows/ci.yml` regenerates and fails on any drift in `frontend/wailsjs`.
 
-## 5. Client: `src/types/desktop.ts` and `src/platform/wails/client.ts`
+## 5. Client: `src/types/desktop.ts` and `src/platform/wails/client/`
 
 - Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeZIPInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `wailsjs`.
-- The method goes in `desktopClient` and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `desktopClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
+- The client is split by area under `src/platform/wails/client/`: `base.ts` (`callWails`, error normalization, the `as*` readers, `fileTimestamp`, shared mappers such as `mapExportResult`), `companies.ts` (companies and credentials), `nfse.ts`, `nfe.ts`, `cte.ts`, and `system.ts` (dialogs, logs, data directory, build info). `index.ts` spreads the area objects into `desktopClient` and re-exports the public mappers by name, so importers keep using `@/platform/wails/client`.
+- The method goes in its area object (`nfeClient` in `client/nfe.ts`) and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeZIPInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `systemClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
 - Result mappers read `unknown` through `asString`, `asNumber`, `asBoolean`, `asDate`, `asNullableNumber`, `asStringArray`, and `asEnum` (unknown values become `''`). Example: `mapExportResult`, `mapNFeExportResult`. Exported mappers are tested directly.
 - `client.test.ts`: a success test (dialog title and default-name regex, exact Wails input, mapped result with defaults) and a cancel test (`SelectSaveFile` resolves `''`, result `null`, Wails method not called). See "exports NF-e XML and ZIP to the path chosen in the save dialog".
 
@@ -71,8 +72,8 @@ A user-facing capability usually ships with its CLI command in the same change: 
 ## Decisions already made
 
 - One composable, store and page per source (NFS-e `useDocuments`/`documents`/`DocumentsPage`, NF-e `useNFeDocuments`/`nfeDocuments`/`NFePage`, CT-e `useCTeDocuments`/`cteDocuments`/`CTePage`); shared behaviour goes in `documentListState`, `useExportGuard`, `useMarkViewed`, `useDocumentListActions` and the shared components above, not in a central export layer.
-- Only `src/platform/wails/client.ts`, `events.ts` and `runtime.ts` import `wailsjs`. No `window.go`, no `@ts-expect-error` Wails calls, no raw `EventsOff`, no `v-html`.
-- Wails methods return `desktopapi` DTOs; the default file name is suggested in `client.ts`, the path is chosen by the user, the file is written by the core.
+- Only `src/platform/wails/client/` (its files), `events.ts` and `runtime.ts` import `wailsjs`. No `window.go`, no `@ts-expect-error` Wails calls, no raw `EventsOff`, no `v-html`.
+- Wails methods return `desktopapi` DTOs; the default file name is suggested in the client (`src/platform/wails/client/`), the path is chosen by the user, the file is written by the core.
 - Portuguese fiscal vocabulary stays in every layer: `ChaveAcesso`, `ChavesAcesso`, `Competence`, `Manifestacao`, `tomada`/`prestada`, `destinatario`, `tomador`.
 
 ## Checklist

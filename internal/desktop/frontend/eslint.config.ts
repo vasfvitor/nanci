@@ -111,7 +111,7 @@ export default defineConfig([
   {
     files: ['src/**/*.{ts,vue}'],
     ignores: [
-      'src/platform/wails/client.ts',
+      'src/platform/wails/client/**',
       'src/platform/wails/events.ts',
       'src/platform/wails/runtime.ts',
       'src/platform/wails/client.test.ts',
