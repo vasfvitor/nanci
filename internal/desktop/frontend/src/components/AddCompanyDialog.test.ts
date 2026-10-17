@@ -4,11 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AddCompanyDialog from './AddCompanyDialog.vue'
 import DraftBanner from './DraftBanner.vue'
 import { desktopClient } from '@/platform/wails/client'
+import { useFormDraftsStore } from '@/stores/formDrafts'
+import { dialogDirectives, dialogStubs, submitForm } from '@/test/dialogStubs'
+import { deferred } from '@/test/fixtures'
+
+const notify = vi.hoisted(() => vi.fn())
 
 // Keep Quasar's real date helpers; only useQuasar needs stubbing.
 vi.mock('quasar', async (importOriginal) => {
   const actual = await importOriginal<typeof import('quasar')>()
-  return { ...actual, useQuasar: () => ({ notify: vi.fn() }) }
+  return { ...actual, useQuasar: () => ({ notify }) }
 })
 
 vi.mock('@/platform/wails/client', () => ({
@@ -19,44 +24,12 @@ vi.mock('@/platform/wails/client', () => ({
   },
 }))
 
+const CNPJ = '12345678000195'
+
 function mountDialog() {
   return shallowMount(AddCompanyDialog, {
     props: { modelValue: false },
-    global: {
-      stubs: {
-        'q-dialog': {
-          name: 'QDialog',
-          props: ['noBackdropDismiss', 'persistent'],
-          template: '<div><slot /></div>',
-        },
-        'q-card': { template: '<div><slot /></div>' },
-        'q-card-section': { template: '<div><slot /></div>' },
-        'q-card-actions': { template: '<div><slot /></div>' },
-        'q-separator': { template: '<div />' },
-        'q-btn': { name: 'QBtn', props: ['label'], template: '<button />' },
-        'q-select': {
-          name: 'QSelect',
-          props: ['modelValue', 'label'],
-          emits: ['update:modelValue'],
-          template: '<div />',
-        },
-        'q-option-group': {
-          name: 'QOptionGroup',
-          props: ['modelValue', 'options'],
-          emits: ['update:modelValue'],
-          template: '<div />',
-        },
-        'q-input': {
-          name: 'QInput',
-          props: ['modelValue', 'label'],
-          emits: ['update:modelValue'],
-          template: '<div />',
-        },
-      },
-      directives: {
-        ClosePopup: {},
-      },
-    },
+    global: { stubs: dialogStubs, directives: dialogDirectives },
   })
 }
 
@@ -65,15 +38,35 @@ function cnpjInput(wrapper: ReturnType<typeof mountDialog>) {
   return wrapper.getComponent({ name: 'QInput' })
 }
 
-function credentialSelect(wrapper: ReturnType<typeof mountDialog>) {
+function input(wrapper: ReturnType<typeof mountDialog>, label: string) {
+  return wrapper
+    .findAllComponents({ name: 'QInput' })
+    .find((field) => field.props('label') === label)
+}
+
+function select(wrapper: ReturnType<typeof mountDialog>, label: string) {
   return wrapper
     .findAllComponents({ name: 'QSelect' })
-    .find((select) => select.props('label') === 'Credencial')
+    .find((field) => field.props('label') === label)
+}
+
+function button(wrapper: ReturnType<typeof mountDialog>, label: string) {
+  return wrapper.findAllComponents({ name: 'QBtn' }).find((field) => field.props('label') === label)
+}
+
+async function openDialog(wrapper: ReturnType<typeof mountDialog>) {
+  await wrapper.setProps({ modelValue: true })
+  await flushPromises()
 }
 
 async function reopen(wrapper: ReturnType<typeof mountDialog>) {
   await wrapper.setProps({ modelValue: false })
-  await wrapper.setProps({ modelValue: true })
+  await openDialog(wrapper)
+}
+
+async function fillCompany(wrapper: ReturnType<typeof mountDialog>) {
+  cnpjInput(wrapper).vm.$emit('update:modelValue', CNPJ)
+  input(wrapper, 'Nome / Razão Social')?.vm.$emit('update:modelValue', 'Empresa Um')
   await flushPromises()
 }
 
@@ -81,7 +74,9 @@ describe('AddCompanyDialog', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
+      { ID: 'cred-1', Label: 'Certificado A' },
+    ] as never)
   })
 
   afterEach(() => {
@@ -89,9 +84,6 @@ describe('AddCompanyDialog', () => {
   })
 
   it('anchors a relative sync start to the local date, not the UTC one', async () => {
-    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
-      { ID: 'cred-1', Label: 'Certificado A' },
-    ] as never)
     // Late evening in UTC-3: the UTC calendar date is already the next day.
     // Only Date is faked, so flushPromises' timers keep working.
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -99,21 +91,12 @@ describe('AddCompanyDialog', () => {
 
     const wrapper = mountDialog()
     // Open so credentials load and the form is reset before filling it in.
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
-
-    const inputs = wrapper.findAllComponents({ name: 'QInput' })
-    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
-    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
+    await openDialog(wrapper)
+    await fillCompany(wrapper)
     // The first option group selects the initial-history policy.
     wrapper.getComponent({ name: 'QOptionGroup' }).vm.$emit('update:modelValue', 'last_12_months')
     await flushPromises()
-
-    const saveButton = wrapper
-      .findAllComponents({ name: 'QBtn' })
-      .find((button) => button.props('label') === 'Salvar')
-    await saveButton?.trigger('click')
-    await flushPromises()
+    await submitForm(wrapper)
 
     expect(desktopClient.addCompany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -124,93 +107,57 @@ describe('AddCompanyDialog', () => {
   })
 
   it('sends the selected UF, and an empty one after clearing', async () => {
-    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
-      { ID: 'cred-1', Label: 'Certificado A' },
-    ] as never)
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
+    await fillCompany(wrapper)
+    expect(select(wrapper, 'UF (opcional)')?.props('modelValue')).toBe('')
 
-    const inputs = wrapper.findAllComponents({ name: 'QInput' })
-    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
-    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
-    const ufSelect = wrapper
-      .findAllComponents({ name: 'QSelect' })
-      .find((select) => select.props('label') === 'UF (opcional)')
-    expect(ufSelect?.props('modelValue')).toBe('')
-
-    const save = () =>
-      wrapper
-        .findAllComponents({ name: 'QBtn' })
-        .find((button) => button.props('label') === 'Salvar')
-        ?.trigger('click')
-
-    ufSelect?.vm.$emit('update:modelValue', 'SP')
+    select(wrapper, 'UF (opcional)')?.vm.$emit('update:modelValue', 'SP')
     await flushPromises()
-    await save()
-    await flushPromises()
+    await submitForm(wrapper)
     expect(desktopClient.addCompany).toHaveBeenLastCalledWith(expect.objectContaining({ UF: 'SP' }))
 
     // Saving closes and resets the form; reopen and clear the select.
     await reopen(wrapper)
-    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
-    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
-    ufSelect?.vm.$emit('update:modelValue', null)
+    await fillCompany(wrapper)
+    select(wrapper, 'UF (opcional)')?.vm.$emit('update:modelValue', null)
     await flushPromises()
-    await save()
-    await flushPromises()
+    await submitForm(wrapper)
     expect(desktopClient.addCompany).toHaveBeenLastCalledWith(expect.objectContaining({ UF: '' }))
   })
 
   it('defaults a new company to producao', async () => {
-    vi.mocked(desktopClient.listCredentials).mockResolvedValue([
-      { ID: 'cred-1', Label: 'Certificado A' },
-    ] as never)
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
+    expect(select(wrapper, 'Ambiente da Empresa')?.props('modelValue')).toBe('producao')
 
-    const envSelect = wrapper
-      .findAllComponents({ name: 'QSelect' })
-      .find((select) => select.props('label') === 'Ambiente da Empresa')
-    expect(envSelect?.props('modelValue')).toBe('producao')
-
-    const inputs = wrapper.findAllComponents({ name: 'QInput' })
-    inputs[0]?.vm.$emit('update:modelValue', '12345678000199')
-    inputs[1]?.vm.$emit('update:modelValue', 'Empresa Um')
-    await wrapper
-      .findAllComponents({ name: 'QBtn' })
-      .find((button) => button.props('label') === 'Salvar')
-      ?.trigger('click')
-    await flushPromises()
+    await fillCompany(wrapper)
+    await submitForm(wrapper)
     expect(desktopClient.addCompany).toHaveBeenLastCalledWith(
-      expect.objectContaining({ Environment: 'producao' }),
+      expect.objectContaining({ Environment: 'producao' })
     )
   })
 
   it('keeps an abandoned form as a draft when reopened after cancelling', async () => {
     const wrapper = mountDialog()
-
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
     expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
 
-    cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
+    cnpjInput(wrapper).vm.$emit('update:modelValue', CNPJ)
     await flushPromises()
-    expect(cnpjInput(wrapper).props('modelValue')).toBe('12345678000199')
+    expect(cnpjInput(wrapper).props('modelValue')).toBe(CNPJ)
 
     // Cancel, then reopen.
     await reopen(wrapper)
 
-    expect(cnpjInput(wrapper).props('modelValue')).toBe('12345678000199')
+    expect(cnpjInput(wrapper).props('modelValue')).toBe(CNPJ)
     expect(wrapper.findComponent(DraftBanner).exists()).toBe(true)
   })
 
   it('Limpar starts an empty form', async () => {
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
-    cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
+    await openDialog(wrapper)
+    cnpjInput(wrapper).vm.$emit('update:modelValue', CNPJ)
     await reopen(wrapper)
 
     wrapper.getComponent(DraftBanner).vm.$emit('clear')
@@ -224,8 +171,7 @@ describe('AddCompanyDialog', () => {
 
   it('blocks backdrop dismiss only while dirty', async () => {
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
     const dialog = () => wrapper.getComponent({ name: 'QDialog' })
     expect(dialog().props('noBackdropDismiss')).toBe(false)
 
@@ -244,11 +190,10 @@ describe('AddCompanyDialog', () => {
       { ID: 'cred-2', Label: 'Certificado B' },
     ] as never)
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
-    expect(credentialSelect(wrapper)?.props('modelValue')).toBe('cred-1')
-    credentialSelect(wrapper)?.vm.$emit('update:modelValue', 'cred-2')
-    cnpjInput(wrapper).vm.$emit('update:modelValue', '12345678000199')
+    await openDialog(wrapper)
+    expect(select(wrapper, 'Credencial')?.props('modelValue')).toBe('cred-1')
+    select(wrapper, 'Credencial')?.vm.$emit('update:modelValue', 'cred-2')
+    cnpjInput(wrapper).vm.$emit('update:modelValue', CNPJ)
     await flushPromises()
 
     // cred-2 is deleted while the dialog is closed.
@@ -258,7 +203,82 @@ describe('AddCompanyDialog', () => {
     ] as never)
     await reopen(wrapper)
 
-    expect(cnpjInput(wrapper).props('modelValue')).toBe('12345678000199')
-    expect(credentialSelect(wrapper)?.props('modelValue')).toBe('cred-3')
+    expect(cnpjInput(wrapper).props('modelValue')).toBe(CNPJ)
+    expect(select(wrapper, 'Credencial')?.props('modelValue')).toBe('cred-3')
+  })
+
+  it('a saved company leaves no draft and emits added with the CNPJ', async () => {
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+    await fillCompany(wrapper)
+    await submitForm(wrapper)
+
+    expect(wrapper.emitted('added')).toEqual([[CNPJ]])
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    expect(useFormDraftsStore().get('company:add')).toBeUndefined()
+
+    await reopen(wrapper)
+    expect(cnpjInput(wrapper).props('modelValue')).toBe('')
+    expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
+  })
+
+  it('stays open and disables Cancel while saving', async () => {
+    const save = deferred<undefined>()
+    vi.mocked(desktopClient.addCompany).mockReturnValue(save.promise)
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+    await fillCompany(wrapper)
+    await submitForm(wrapper)
+
+    expect(wrapper.getComponent({ name: 'QDialog' }).props('persistent')).toBe(true)
+    expect(button(wrapper, 'Cancelar')?.props('disable')).toBe(true)
+    expect(button(wrapper, 'Salvar')?.props('loading')).toBe(true)
+    // Enter again while the save is in flight does not send a second one.
+    await submitForm(wrapper)
+    expect(desktopClient.addCompany).toHaveBeenCalledTimes(1)
+
+    save.resolve(undefined)
+    await flushPromises()
+    expect(wrapper.getComponent({ name: 'QDialog' }).props('persistent')).toBe(false)
+    expect(button(wrapper, 'Cancelar')?.props('disable')).toBe(false)
+  })
+
+  it('shows missing fields inline without a toast', async () => {
+    vi.mocked(desktopClient.listCredentials).mockResolvedValue([])
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+    // Nothing is flagged before the first save attempt.
+    expect(cnpjInput(wrapper).props('error')).toBe(false)
+
+    await submitForm(wrapper)
+
+    expect(desktopClient.addCompany).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+    expect(cnpjInput(wrapper).props('error')).toBe(true)
+    expect(cnpjInput(wrapper).props('errorMessage')).toBe('Informe o CNPJ.')
+    const name = input(wrapper, 'Nome / Razão Social')
+    expect(name?.props('error')).toBe(true)
+    expect(name?.props('errorMessage')).toBe('Informe o nome da empresa.')
+    // With no credential, the form starts on a new one and asks for its file.
+    const certPath = input(wrapper, 'Caminho do Certificado (.pfx/.p12)')
+    expect(certPath?.props('errorMessage')).toBe('Selecione um certificado.')
+
+    wrapper.getComponent({ name: 'QOptionGroup' }).vm.$emit('update:modelValue', 'custom_date')
+    await flushPromises()
+    expect(input(wrapper, 'Importar a partir de')?.props('errorMessage')).toBe(
+      'Informe a data inicial de importação.'
+    )
+
+    // The error clears as the field is filled.
+    await fillCompany(wrapper)
+    expect(cnpjInput(wrapper).props('error')).toBe(false)
+  })
+
+  it('autofocuses the CNPJ', async () => {
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+    expect(cnpjInput(wrapper).props('label')).toBe('CNPJ')
+    expect(cnpjInput(wrapper).props('autofocus')).toBe(true)
+    expect(input(wrapper, 'Nome / Razão Social')?.props('autofocus')).toBe(false)
   })
 })

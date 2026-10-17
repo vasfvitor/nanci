@@ -4,10 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DraftBanner from './DraftBanner.vue'
 import EditCredentialDialog from './EditCredentialDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
+import { dialogDirectives, dialogStubs, submitForm } from '@/test/dialogStubs'
 import type { CredentialSummary } from '@/types/desktop'
 
+const notify = vi.hoisted(() => vi.fn())
+
 vi.mock('quasar', () => ({
-  useQuasar: () => ({ notify: vi.fn() }),
+  useQuasar: () => ({ notify }),
 }))
 
 vi.mock('@/platform/wails/client', () => ({
@@ -29,24 +32,7 @@ const credential: CredentialSummary = {
 function mountDialog() {
   return shallowMount(EditCredentialDialog, {
     props: { modelValue: false, credentialData: credential },
-    global: {
-      stubs: {
-        'q-dialog': { template: '<div><slot /></div>' },
-        'q-card': { template: '<div><slot /></div>' },
-        'q-card-section': { template: '<div><slot /></div>' },
-        'q-card-actions': { template: '<div><slot /></div>' },
-        'q-btn': { name: 'QBtn', props: ['label'], template: '<button />' },
-        'q-input': {
-          name: 'QInput',
-          props: ['modelValue', 'label'],
-          emits: ['update:modelValue'],
-          template: '<div />',
-        },
-      },
-      directives: {
-        ClosePopup: {},
-      },
-    },
+    global: { stubs: dialogStubs, directives: dialogDirectives },
   })
 }
 
@@ -54,11 +40,8 @@ function labelInput(wrapper: ReturnType<typeof mountDialog>) {
   return wrapper.getComponent({ name: 'QInput' })
 }
 
-async function save(wrapper: ReturnType<typeof mountDialog>) {
-  await wrapper
-    .findAllComponents({ name: 'QBtn' })
-    .find((button) => button.props('label') === 'Salvar')
-    ?.trigger('click')
+async function openDialog(wrapper: ReturnType<typeof mountDialog>) {
+  await wrapper.setProps({ modelValue: true })
   await flushPromises()
 }
 
@@ -70,13 +53,12 @@ describe('EditCredentialDialog', () => {
 
   it('sends the new label', async () => {
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
     expect(labelInput(wrapper).props('modelValue')).toBe('Certificado A')
 
     labelInput(wrapper).vm.$emit('update:modelValue', 'Certificado B')
     await flushPromises()
-    await save(wrapper)
+    await submitForm(wrapper)
 
     expect(desktopClient.updateCredentialData).toHaveBeenCalledWith({
       CredentialID: 'cred-1',
@@ -87,15 +69,28 @@ describe('EditCredentialDialog', () => {
 
   it('keeps edits as a draft', async () => {
     const wrapper = mountDialog()
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
     labelInput(wrapper).vm.$emit('update:modelValue', 'Rótulo em edição')
 
     await wrapper.setProps({ modelValue: false })
-    await wrapper.setProps({ modelValue: true })
-    await flushPromises()
+    await openDialog(wrapper)
 
     expect(labelInput(wrapper).props('modelValue')).toBe('Rótulo em edição')
     expect(wrapper.findComponent(DraftBanner).exists()).toBe(true)
+  })
+
+  it('shows an empty label inline', async () => {
+    const wrapper = mountDialog()
+    await openDialog(wrapper)
+    expect(labelInput(wrapper).props('autofocus')).toBe(true)
+
+    labelInput(wrapper).vm.$emit('update:modelValue', '')
+    await flushPromises()
+    await submitForm(wrapper)
+
+    expect(desktopClient.updateCredentialData).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+    expect(labelInput(wrapper).props('error')).toBe(true)
+    expect(labelInput(wrapper).props('errorMessage')).toBe('Informe o rótulo da credencial.')
   })
 })

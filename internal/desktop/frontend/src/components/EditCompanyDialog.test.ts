@@ -4,11 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DraftBanner from './DraftBanner.vue'
 import EditCompanyDialog from './EditCompanyDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
+import { dialogDirectives, dialogStubs, submitForm } from '@/test/dialogStubs'
 import type { CompanySummary } from '@/types/desktop'
+
+const notify = vi.hoisted(() => vi.fn())
 
 vi.mock('quasar', async (importOriginal) => {
   const actual = await importOriginal<typeof import('quasar')>()
-  return { ...actual, useQuasar: () => ({ notify: vi.fn(), dark: { isActive: false } }) }
+  return { ...actual, useQuasar: () => ({ notify, dark: { isActive: false } }) }
 })
 
 vi.mock('@/platform/wails/client', () => ({
@@ -36,32 +39,7 @@ const company: CompanySummary = {
 function mountDialog() {
   return shallowMount(EditCompanyDialog, {
     props: { modelValue: false, companyData: company },
-    global: {
-      stubs: {
-        'q-dialog': { template: '<div><slot /></div>' },
-        'q-card': { template: '<div><slot /></div>' },
-        'q-card-section': { template: '<div><slot /></div>' },
-        'q-card-actions': { template: '<div><slot /></div>' },
-        'q-separator': { template: '<div />' },
-        'q-banner': { template: '<div><slot /></div>' },
-        'q-btn': { name: 'QBtn', props: ['label'], template: '<button />' },
-        'q-input': {
-          name: 'QInput',
-          props: ['modelValue', 'label'],
-          emits: ['update:modelValue'],
-          template: '<div />',
-        },
-        'q-select': {
-          name: 'QSelect',
-          props: ['modelValue', 'label'],
-          emits: ['update:modelValue'],
-          template: '<div />',
-        },
-      },
-      directives: {
-        ClosePopup: {},
-      },
-    },
+    global: { stubs: dialogStubs, directives: dialogDirectives },
   })
 }
 
@@ -86,14 +64,6 @@ async function reopen(wrapper: ReturnType<typeof mountDialog>, companyData?: Com
   await flushPromises()
 }
 
-async function save(wrapper: ReturnType<typeof mountDialog>) {
-  await wrapper
-    .findAllComponents({ name: 'QBtn' })
-    .find((button) => button.props('label') === 'Salvar')
-    ?.trigger('click')
-  await flushPromises()
-}
-
 describe('EditCompanyDialog', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -109,7 +79,7 @@ describe('EditCompanyDialog', () => {
 
     ufSelect(wrapper)?.vm.$emit('update:modelValue', 'RJ')
     await flushPromises()
-    await save(wrapper)
+    await submitForm(wrapper)
 
     expect(desktopClient.updateCompany).toHaveBeenCalledWith(
       expect.objectContaining({ CNPJ: '11222333000181', UF: 'RJ' })
@@ -123,7 +93,7 @@ describe('EditCompanyDialog', () => {
 
     ufSelect(wrapper)?.vm.$emit('update:modelValue', null)
     await flushPromises()
-    await save(wrapper)
+    await submitForm(wrapper)
 
     expect(desktopClient.updateCompany).toHaveBeenCalledWith(expect.objectContaining({ UF: '' }))
   })
@@ -158,5 +128,26 @@ describe('EditCompanyDialog', () => {
 
     expect(nameInput(wrapper)?.props('modelValue')).toBe('Empresa Renomeada')
     expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
+  })
+
+  it('shows an empty name inline', async () => {
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    expect(nameInput(wrapper)?.props('autofocus')).toBe(true)
+
+    nameInput(wrapper)?.vm.$emit('update:modelValue', '')
+    await flushPromises()
+    expect(nameInput(wrapper)?.props('error')).toBe(false)
+    await submitForm(wrapper)
+
+    expect(desktopClient.updateCompany).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+    expect(nameInput(wrapper)?.props('error')).toBe(true)
+    expect(nameInput(wrapper)?.props('errorMessage')).toBe('Informe o nome da empresa.')
+
+    // A reopen starts without the error.
+    await reopen(wrapper)
+    expect(nameInput(wrapper)?.props('error')).toBe(false)
   })
 })

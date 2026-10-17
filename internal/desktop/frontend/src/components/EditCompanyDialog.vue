@@ -1,80 +1,92 @@
 <template>
   <q-dialog v-model="isOpen" :no-backdrop-dismiss="dirty" :persistent="loading">
     <q-card style="min-width: 460px">
-      <q-card-section>
-        <div class="text-h6">Editar Empresa</div>
-      </q-card-section>
+      <q-form @submit="submit">
+        <q-card-section>
+          <div class="text-h6">Editar Empresa</div>
+        </q-card-section>
 
-      <q-card-section class="q-pt-none q-gutter-y-md">
-        <DraftBanner v-if="restored" @clear="clear" />
-        <q-input
-          v-model="form.CNPJ"
-          label="CNPJ"
-          outlined
-          dense
-          readonly
-          hint="O CNPJ não pode ser alterado."
-        />
-        <q-input v-model="form.Name" label="Nome / Razão Social" outlined dense />
+        <q-card-section class="q-pt-none q-gutter-y-md">
+          <DraftBanner v-if="restored" @clear="clearDraft" />
+          <q-input
+            v-model="form.CNPJ"
+            label="CNPJ"
+            outlined
+            dense
+            readonly
+            hint="O CNPJ não pode ser alterado."
+          />
+          <q-input
+            v-model="form.Name"
+            label="Nome / Razão Social"
+            outlined
+            dense
+            autofocus
+            :error="submitted && !!errors.Name"
+            :error-message="errors.Name"
+          />
 
-        <q-select
-          v-model="form.Environment"
-          :options="environmentOptions"
-          emit-value
-          map-options
-          label="Ambiente"
-          outlined
-          dense
-        />
+          <q-select
+            v-model="form.Environment"
+            :options="environmentOptions"
+            emit-value
+            map-options
+            label="Ambiente"
+            outlined
+            dense
+          />
 
-        <q-select
-          v-model="form.UF"
-          :options="ufOptions"
-          label="UF (opcional)"
-          hint="Necessária para buscar NF-e na SEFAZ."
-          clearable
-          outlined
-          dense
-        />
+          <q-select
+            v-model="form.UF"
+            :options="ufOptions"
+            label="UF (opcional)"
+            hint="Necessária para buscar NF-e na SEFAZ."
+            clearable
+            outlined
+            dense
+          />
 
-        <q-separator />
+          <q-separator />
 
-        <q-select
-          v-model="form.SyncStartPolicy"
-          :options="syncPolicyOptions"
-          label="Política inicial de histórico"
-          emit-value
-          map-options
-          outlined
-          dense
-          :disable="!canEditSyncPolicy"
-        />
+          <q-select
+            v-model="form.SyncStartPolicy"
+            :options="syncPolicyOptions"
+            label="Política inicial de histórico"
+            emit-value
+            map-options
+            outlined
+            dense
+            :disable="!canEditSyncPolicy"
+          />
 
-        <q-input
-          v-if="form.SyncStartPolicy === 'since_date'"
-          v-model="form.SyncStartDate"
-          label="Importar a partir de"
-          type="date"
-          outlined
-          dense
-          :readonly="!canEditSyncPolicy"
-        />
+          <q-input
+            v-if="form.SyncStartPolicy === 'since_date'"
+            v-model="form.SyncStartDate"
+            label="Importar a partir de"
+            type="date"
+            outlined
+            dense
+            :readonly="!canEditSyncPolicy"
+            :error="submitted && !!errors.SyncStartDate"
+            :error-message="errors.SyncStartDate"
+          />
 
-        <q-banner
-          v-if="!canEditSyncPolicy"
-          dense
-          rounded
-          :class="$q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-grey-2 text-grey-8'"
-        >
-          A política inicial não pode ser alterada depois que a sincronização começou. Para
-          refazer o bootstrap histórico, use uma ação avançada de reset/backfill.
-        </q-banner>
-      </q-card-section>
+          <q-banner
+            v-if="!canEditSyncPolicy"
+            dense
+            rounded
+            :class="$q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-grey-2 text-grey-8'"
+          >
+            A política inicial não pode ser alterada depois que a sincronização começou. Para
+            refazer o bootstrap histórico, use uma ação avançada de reset/backfill.
+          </q-banner>
+        </q-card-section>
 
-      <q-card-actions align="right">
-        <q-btn v-close-popup flat label="Cancelar" color="primary" />
-        <q-btn flat label="Salvar" color="primary" :loading="loading" @click="submit" />
-      </q-card-actions>
+        <q-card-actions align="right">
+          <q-btn v-close-popup flat label="Cancelar" color="primary" :disable="loading" />
+          <q-btn flat type="submit" label="Salvar" color="primary" :loading="loading" />
+        </q-card-actions>
+      </q-form>
     </q-card>
   </q-dialog>
 </template>
@@ -102,6 +114,8 @@ const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)
 const loading = ref(false)
+// submitted turns the inline errors on after the first save attempt.
+const submitted = ref(false)
 const ufOptions = [...UF_SIGLAS]
 
 // companySeed is the form as the company is stored.
@@ -124,6 +138,15 @@ const { form, dirty, restored, open, keep, clear, done } = useFormDraft(
   { dropWhenSeedChanges: true }
 )
 
+const errors = computed(() => {
+  const found: Partial<Record<'Name' | 'SyncStartDate', string>> = {}
+  if (!form.value.Name) found.Name = 'Informe o nome da empresa.'
+  if (form.value.SyncStartPolicy === 'since_date' && !form.value.SyncStartDate) {
+    found.SyncStartDate = 'Informe a data inicial de importação.'
+  }
+  return found
+})
+
 const syncPolicyOptions = [
   { label: 'Todo o histórico disponível', value: 'all' },
   { label: 'A partir de uma data específica', value: 'since_date' },
@@ -140,7 +163,10 @@ watch(
   () => props.modelValue,
   (val) => {
     isOpen.value = val
-    if (val) open()
+    if (val) {
+      submitted.value = false
+      open()
+    }
   }
 )
 
@@ -149,15 +175,15 @@ watch(isOpen, (val) => {
   emit('update:modelValue', val)
 })
 
+function clearDraft() {
+  submitted.value = false
+  clear()
+}
+
 async function submit() {
-  if (!form.value.Name) {
-    $q.notify({ type: 'warning', message: 'Preencha o nome da empresa.' })
-    return
-  }
-  if (form.value.SyncStartPolicy === 'since_date' && !form.value.SyncStartDate) {
-    $q.notify({ type: 'warning', message: 'Informe a data inicial de importação.' })
-    return
-  }
+  if (loading.value) return
+  submitted.value = true
+  if (Object.keys(errors.value).length > 0) return
 
   loading.value = true
   try {
