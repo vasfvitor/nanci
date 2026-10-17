@@ -80,6 +80,13 @@ type Document struct {
 	ParseWarnings []string
 }
 
+// HasDACTE reports whether nanci renders a DACTE for the document. The
+// renderer only has the CT-e layout: CT-e OS, GTV-e and CT-e Simplificado
+// have none.
+func (d Document) HasDACTE() bool {
+	return d.TipoDocumento == TipoDocumentoCTe
+}
+
 // CompanyDocument is one managed company's view of a canonical CT-e.
 type CompanyDocument struct {
 	Document

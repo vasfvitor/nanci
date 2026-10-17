@@ -95,3 +95,17 @@ func TestClassifySchema(t *testing.T) {
 		}
 	}
 }
+
+func TestHasDACTE(t *testing.T) {
+	tests := map[TipoDocumento]bool{
+		TipoDocumentoCTe:             true,
+		TipoDocumentoCTeOS:           false,
+		TipoDocumentoGTVe:            false,
+		TipoDocumentoCTeSimplificado: false,
+	}
+	for tipo, want := range tests {
+		if got := (Document{TipoDocumento: tipo}).HasDACTE(); got != want {
+			t.Errorf("HasDACTE() for %s = %v, want %v", tipo, got, want)
+		}
+	}
+}
