@@ -145,6 +145,7 @@ import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import type { DocumentRow, ExportFormat, ExportResult } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
+import { exportedNoun, NFSE_EXPORT_FORMATS } from '@/utils/exportFormats'
 import { formatCompetence, formatCpfCnpj, formatCurrencyCents } from '@/utils/formatters'
 import { nfseRoleFilterOptions, nfseSyncSummary } from '@/utils/nfseDisplay'
 import { NFSE_LEGEND } from '@/utils/stateLegends'
@@ -175,21 +176,13 @@ const {
 const showEventsDialog = ref(false)
 const eventsDocument = ref({ id: '', chave: '' })
 
-
-const exportFormats = [
-  { label: 'Planilha CSV', value: 'csv' },
-  { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
-  { label: 'XMLs originais (ZIP)', value: 'zip' },
-  { label: 'DANFSes (ZIP)', value: 'danfse-zip' },
-]
-
 const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   source: 'nfse',
   selected,
   scopeRows,
   unviewedChaves,
   markViewed: nfse.markViewed,
-  exportFormats,
+  exportFormats: NFSE_EXPORT_FORMATS,
   exportList,
 })
 
@@ -307,15 +300,12 @@ async function exportDANFSe(chaveAcesso: string) {
 async function exportList(chaves: string[], choice: ExportChoice) {
   try {
     let result: ExportResult | null
-    let noun: string
     if (choice.format === 'danfse-zip') {
       result = await nfse.exportDANFSeZIP(chaves, choice)
-      noun = 'DANFSe'
     } else {
       result = await nfse.exportDocuments(choice.format as ExportFormat, chaves, choice)
-      noun = choice.format === 'zip' ? 'XML' : 'documento'
     }
-    notifyExported(result, noun)
+    notifyExported(result, exportedNoun(choice.format))
   } catch (error) {
     notifyError('Erro ao exportar NFS-e', error)
   }

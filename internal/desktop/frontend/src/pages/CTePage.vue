@@ -205,6 +205,7 @@ import {
   cteSituacaoFilterOptions,
   cteTpServLabel,
 } from '@/utils/cteDisplay'
+import { CTE_EXPORT_FORMATS, exportedNoun } from '@/utils/exportFormats'
 import {
   formatChaveDFe,
   formatCpfCnpj,
@@ -254,7 +255,7 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   scopeRows,
   unviewedChaves,
   markViewed: cte.markViewed,
-  exportFormats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
+  exportFormats: CTE_EXPORT_FORMATS,
   exportList: exportZIP,
 })
 
@@ -396,7 +397,7 @@ async function exportXML(chaveAcesso: string) {
 
 async function exportZIP(chaves: string[], choice: ExportChoice) {
   try {
-    notifyExported(await cte.exportZIP(chaves, choice), 'XML')
+    notifyExported(await cte.exportZIP(chaves, choice), exportedNoun(choice.format))
   } catch (error) {
     notifyError('Erro ao exportar XMLs', error)
   }

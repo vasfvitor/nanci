@@ -230,6 +230,7 @@ import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type { NFeConclusiveTipo, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
+import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
 import {
   formatCpfCnpj,
   formatCurrencyCents,
@@ -306,8 +307,7 @@ const { confirmMarkViewed, openExportDialog } = useDocumentListActions({
   scopeRows,
   unviewedChaves,
   markViewed: nfe.markViewed,
-  exportFormats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
-  showIncludeResumos: true,
+  exportFormats: NFE_EXPORT_FORMATS,
   exportList: exportZIP,
 })
 
@@ -614,7 +614,7 @@ async function exportXML(chaveAcesso: string) {
 async function exportZIP(chaves: string[], choice: ExportChoice) {
   try {
     const result = await nfe.exportZIP(chaves, choice)
-    notifyExported(result, 'XML')
+    notifyExported(result, exportedNoun(choice.format))
     if (result && result.SkippedResumos > 0) {
       notifyInfo(
         result.SkippedResumos === 1

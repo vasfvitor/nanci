@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import ExportDialog, { exportScopeText } from './ExportDialog.vue'
 import type { DocumentSource } from '@/utils/documentSources'
+import type { ExportFormatOption } from '@/utils/exportFormats'
 
 const { onDialogOK } = vi.hoisted(() => ({ onDialogOK: vi.fn() }))
 
@@ -19,18 +20,22 @@ vi.mock('quasar', () => {
   return { useDialogPluginComponent }
 })
 
-const xmlZip = [{ label: 'XMLs (ZIP)', value: 'zip' }]
-const nfseFormats = [
+const xmlZip: ExportFormatOption[] = [{ label: 'XMLs (ZIP)', value: 'zip' }]
+const nfseFormats: ExportFormatOption[] = [
   { label: 'Planilha CSV', value: 'csv' },
   { label: 'Planilha Excel (XLSX)', value: 'xlsx' },
+]
+// One format with resumos and one without, to switch between them.
+const mixedFormats: ExportFormatOption[] = [
+  { label: 'XMLs (ZIP)', value: 'zip', resumos: true },
+  { label: 'DANFEs (ZIP)', value: 'danfe-zip' },
 ]
 
 type Props = {
   source: DocumentSource
   count: number
   scope: 'selected' | 'listed'
-  formats: { label: string; value: string }[]
-  showIncludeResumos?: boolean
+  formats: ExportFormatOption[]
 }
 
 function mountDialog(props: Partial<Props> = {}) {
@@ -131,12 +136,27 @@ describe('ExportDialog', () => {
     expect(onDialogOK).toHaveBeenCalledWith(expect.objectContaining({ incremental: false }))
   })
 
-  it('offers "Incluir resumos" only when asked', async () => {
+  it("offers 'Incluir resumos' only for formats that take resumos", async () => {
     expect(checkbox(mountDialog(), 'Incluir resumos')).toBeUndefined()
 
-    const wrapper = mountDialog({ source: 'nfe', showIncludeResumos: true })
-    checkbox(wrapper, 'Incluir resumos')?.vm.$emit('update:modelValue', true)
+    const wrapper = mountDialog({ source: 'nfe', formats: mixedFormats })
+    const group = wrapper.getComponent({ name: 'QOptionGroup' })
+    // The radios get label and value only.
+    expect(group.props('options')).toEqual([
+      { label: 'XMLs (ZIP)', value: 'zip' },
+      { label: 'DANFEs (ZIP)', value: 'danfe-zip' },
+    ])
+    const resumos = checkbox(wrapper, 'Incluir resumos')
+    expect(resumos).toBeDefined()
+    resumos?.vm.$emit('update:modelValue', true)
     await clickExport(wrapper)
-    expect(onDialogOK).toHaveBeenCalledWith({ format: 'zip', incremental: false, includeResumos: true })
+    expect(onDialogOK).toHaveBeenLastCalledWith({ format: 'zip', incremental: false, includeResumos: true })
+
+    // A format without resumos hides the box and drops the choice made on it.
+    group.vm.$emit('update:modelValue', 'danfe-zip')
+    await wrapper.vm.$nextTick()
+    expect(checkbox(wrapper, 'Incluir resumos')).toBeUndefined()
+    await clickExport(wrapper)
+    expect(onDialogOK).toHaveBeenLastCalledWith({ format: 'danfe-zip', incremental: false, includeResumos: false })
   })
 })

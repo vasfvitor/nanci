@@ -407,7 +407,6 @@ describe('CTePage', () => {
           count: 1,
           scope: 'listed',
           formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
-          showIncludeResumos: false,
         },
       })
     )

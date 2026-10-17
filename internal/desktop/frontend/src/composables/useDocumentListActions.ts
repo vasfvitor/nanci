@@ -3,6 +3,7 @@ import { useQuasar } from 'quasar'
 import ExportDialog, { type ExportChoice } from '@/components/ExportDialog.vue'
 import { useNotify } from '@/composables/useNotify'
 import { agree, DOCUMENT_SOURCES, type DocumentSource } from '@/utils/documentSources'
+import type { ExportFormatOption } from '@/utils/exportFormats'
 
 export type DocumentListActionsOptions = {
   source: DocumentSource
@@ -14,8 +15,7 @@ export type DocumentListActionsOptions = {
   // markViewed returns how many documents were new, or null when nothing
   // was sent.
   markViewed: (chavesAcesso: string[]) => Promise<number | null>
-  exportFormats: { label: string; value: string }[]
-  showIncludeResumos?: boolean
+  exportFormats: ExportFormatOption[]
   // exportList runs the export the user chose in the dialog and reports it.
   exportList: (chavesAcesso: string[], choice: ExportChoice) => Promise<void>
 }
@@ -80,7 +80,6 @@ export function useDocumentListActions(options: DocumentListActionsOptions) {
         count: chaves.length,
         scope: options.selected.value.length > 0 ? 'selected' : 'listed',
         formats: options.exportFormats,
-        showIncludeResumos: options.showIncludeResumos ?? false,
       },
     }).onOk((choice: ExportChoice) => {
       void options.exportList(chaves, choice)

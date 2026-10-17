@@ -472,8 +472,7 @@ describe('NFePage', () => {
           source: 'nfe',
           count: 1,
           scope: 'listed',
-          formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
-          showIncludeResumos: true,
+          formats: [{ label: 'XMLs (ZIP)', value: 'zip', resumos: true }],
         },
       })
     )

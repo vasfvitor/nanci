@@ -107,7 +107,10 @@ describe('useDocumentListActions', () => {
   })
 
   it('opens the export dialog for the scope rows and exports the choice', async () => {
-    const { exportList, actions } = setup({ source: 'nfe', showIncludeResumos: true })
+    const { exportList, actions } = setup({
+      source: 'nfe',
+      exportFormats: [{ label: 'XMLs (ZIP)', value: 'zip', resumos: true }],
+    })
 
     actions.openExportDialog()
     expect(dialog).toHaveBeenCalledWith(
@@ -116,8 +119,7 @@ describe('useDocumentListActions', () => {
           source: 'nfe',
           count: 2,
           scope: 'listed',
-          formats: [{ label: 'XMLs (ZIP)', value: 'zip' }],
-          showIncludeResumos: true,
+          formats: [{ label: 'XMLs (ZIP)', value: 'zip', resumos: true }],
         },
       })
     )

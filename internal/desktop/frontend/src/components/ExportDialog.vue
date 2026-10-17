@@ -10,7 +10,12 @@
 
         <template v-if="formats.length > 1">
           <div class="text-subtitle2 q-mb-xs">Formato</div>
-          <q-option-group v-model="format" :options="formats" color="primary" class="q-mb-sm" />
+          <q-option-group
+            v-model="format"
+            :options="formatOptions"
+            color="primary"
+            class="q-mb-sm"
+          />
         </template>
         <div v-else class="q-mb-sm">
           Formato: <span class="text-weight-medium">{{ formats[0]?.label }}</span>
@@ -19,7 +24,7 @@
         <div class="column">
           <q-checkbox v-model="incremental" label="Somente não exportados" color="primary" />
           <q-checkbox
-            v-if="showIncludeResumos"
+            v-if="offersResumos"
             v-model="includeResumos"
             label="Incluir resumos"
             color="primary"
@@ -37,6 +42,7 @@
 
 <script lang="ts">
 import { agree, DOCUMENT_SOURCES, type DocumentSource } from '@/utils/documentSources'
+import type { ExportFormatOption } from '@/utils/exportFormats'
 
 // ExportChoice is what the user picked in the ExportDialog. The page passes it
 // to its export composable; the dialog never calls the backend.
@@ -64,21 +70,15 @@ import { computed, ref } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
 
 // ExportDialog asks how to export the documents of a page: the format (plain
-// text when there is only one), "Somente não exportados" and, when asked,
-// "Incluir resumos". The page opens it with $q.dialog and gets an
-// ExportChoice in onOk.
-const props = withDefaults(
-  defineProps<{
-    source: DocumentSource
-    count: number
-    scope: ExportScope
-    formats: { label: string; value: string }[]
-    showIncludeResumos?: boolean
-  }>(),
-  {
-    showIncludeResumos: false,
-  }
-)
+// text when there is only one), "Somente não exportados" and, for a format
+// that takes resumos, "Incluir resumos". The page opens it with $q.dialog and
+// gets an ExportChoice in onOk.
+const props = defineProps<{
+  source: DocumentSource
+  count: number
+  scope: ExportScope
+  formats: ExportFormatOption[]
+}>()
 
 defineEmits<{
   ok: [choice: ExportChoice]
@@ -92,12 +92,18 @@ const incremental = ref(false)
 const includeResumos = ref(false)
 
 const scopeText = computed(() => exportScopeText(props.source, props.count, props.scope))
+// The option group gets only label and value: QOptionGroup hands any other
+// key of an option to its radio.
+const formatOptions = computed(() => props.formats.map(({ label, value }) => ({ label, value })))
+const offersResumos = computed(
+  () => props.formats.find((option) => option.value === format.value)?.resumos === true
+)
 
 function onOKClick() {
   const choice: ExportChoice = {
     format: format.value,
     incremental: incremental.value,
-    includeResumos: props.showIncludeResumos && includeResumos.value,
+    includeResumos: offersResumos.value && includeResumos.value,
   }
   onDialogOK(choice)
 }
