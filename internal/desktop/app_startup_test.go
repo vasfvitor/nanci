@@ -49,6 +49,15 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"ExportXML": func(a *App) (any, error) {
 			return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
+		"FetchNFeByChave": func(a *App) (any, error) {
+			return a.FetchNFeByChave(desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
+		},
+		"ImportCTeXML": func(a *App) (any, error) {
+			return a.ImportCTeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
+		},
+		"ImportNFeXML": func(a *App) (any, error) {
+			return a.ImportNFeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
+		},
 		"ListCTe":         func(a *App) (any, error) { return a.ListCTe(desktopapi.ListCTeInput{CNPJ: testCNPJ}) },
 		"ListCTeEvents":   func(a *App) (any, error) { return a.ListCTeEvents(desktopapi.CTeKeyInput{CNPJ: testCNPJ}) },
 		"ListCompanies":   func(a *App) (any, error) { return a.ListCompanies() },
@@ -117,6 +126,7 @@ var withoutCore = map[string]bool{
 	"OpenLogsDirectory":  true,
 	"SelectCertificate":  true,
 	"SelectSaveFile":     true,
+	"SelectXMLFiles":     true,
 	"SetLogLevel":        true,
 	"ShowInFolder":       true,
 	"SubmitCertPassword": true,

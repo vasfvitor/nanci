@@ -294,6 +294,8 @@ type fakeNFe struct {
 	outcome   app.NFeEventOutcome
 	export    app.NFeExportResult
 	reset     app.NFeResetResult
+	imported  app.ImportXMLResult
+	fetched   app.FetchByChaveResult
 	err       error
 }
 
@@ -377,6 +379,16 @@ func (f *fakeNFe) Reset(_ context.Context, cnpj string) (app.NFeResetResult, err
 	return f.reset, f.err
 }
 
+func (f *fakeNFe) ImportXML(_ context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error) {
+	f.record("ImportXML", in)
+	return f.imported, f.err
+}
+
+func (f *fakeNFe) FetchByChave(_ context.Context, in app.FetchByChaveInput) (app.FetchByChaveResult, error) {
+	f.record("FetchByChave", in)
+	return f.fetched, f.err
+}
+
 type fakeCTe struct {
 	recorder
 	pull       app.CTePullResult
@@ -387,6 +399,7 @@ type fakeCTe struct {
 	connection app.ConnectionTestResult
 	export     app.CTeExportResult
 	reset      app.CTeResetResult
+	imported   app.ImportXMLResult
 	err        error
 }
 
@@ -458,4 +471,9 @@ func (f *fakeCTe) PreviewReset(_ context.Context, cnpj string) (app.CTeResetResu
 func (f *fakeCTe) Reset(_ context.Context, cnpj string) (app.CTeResetResult, error) {
 	f.record("Reset", cnpj)
 	return f.reset, f.err
+}
+
+func (f *fakeCTe) ImportXML(_ context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error) {
+	f.record("ImportXML", in)
+	return f.imported, f.err
 }

@@ -1,6 +1,7 @@
 package desktopapi
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ func TestNFeRows(t *testing.T) {
 	cienciaDue := authorized.AddDate(0, 0, nfe.CienciaWarningDays)
 	conclusiveDue := authorized.AddDate(0, 0, nfe.ConclusiveDeadlineDays)
 	viewed := authorized.Add(2 * time.Hour)
+	firstNSU := int64(321)
 	docs := []app.NFeDocument{
 		{
 			CompanyDocument: nfe.CompanyDocument{
@@ -43,6 +45,7 @@ func TestNFeRows(t *testing.T) {
 				Manifestacao: nfe.ManifestacaoCiencia,
 				ViewedAt:     &viewed,
 				EventCount:   2,
+				FirstSeenNSU: &firstNSU,
 			},
 			Deadlines:          nfe.Deadlines{CienciaDue: cienciaDue, ConclusiveDue: conclusiveDue},
 			DaysLeft:           -3,
@@ -99,6 +102,9 @@ func TestNFeRows(t *testing.T) {
 	if row.EventCount != 2 {
 		t.Errorf("EventCount = %d, want 2", row.EventCount)
 	}
+	if row.FirstSeenNSU == nil || *row.FirstSeenNSU != 321 {
+		t.Errorf("FirstSeenNSU = %v, want 321", row.FirstSeenNSU)
+	}
 	if row.ViewedAt == nil || !row.ViewedAt.Equal(viewed) {
 		t.Errorf("ViewedAt = %v, want %v", row.ViewedAt, viewed)
 	}
@@ -113,6 +119,9 @@ func TestNFeRows(t *testing.T) {
 	}
 
 	empty := rows[1]
+	if empty.FirstSeenNSU != nil {
+		t.Errorf("FirstSeenNSU = %v, want nil for an imported NF-e", *empty.FirstSeenNSU)
+	}
 	if empty.ParseWarnings == nil {
 		t.Error("ParseWarnings = nil, want an empty slice so the frontend gets []")
 	}
@@ -491,5 +500,54 @@ func TestCTeResetResultFrom(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("CTeResetResultFrom = %+v, want %+v", got, want)
+	}
+}
+
+func TestImportXMLResultFrom(t *testing.T) {
+	got := ImportXMLResultFrom(app.ImportXMLResult{
+		Files: []app.ImportedFile{
+			{Path: "a.xml", Kind: "resumo", ChaveAcesso: "35260912345678000195550010000123451000123456", Outcome: "imported"},
+			{Path: "b.xml", Outcome: "rejected", Message: "XML ilegível"},
+		},
+		Imported: 1,
+		Rejected: 1,
+	})
+	want := ImportXMLResult{
+		Files: []ImportedFile{
+			{Path: "a.xml", Kind: "resumo", ChaveAcesso: "35260912345678000195550010000123451000123456", Outcome: "imported"},
+			{Path: "b.xml", Outcome: "rejected", Message: "XML ilegível"},
+		},
+		Imported: 1,
+		Rejected: 1,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ImportXMLResultFrom = %+v, want %+v", got, want)
+	}
+}
+
+func TestImportXMLResultFromEmptyFilesIsNotNil(t *testing.T) {
+	got := ImportXMLResultFrom(app.ImportXMLResult{})
+	if got.Files == nil || len(got.Files) != 0 {
+		t.Errorf("Files = %v, want an empty slice", got.Files)
+	}
+}
+
+func TestFetchByChaveResultFrom(t *testing.T) {
+	got := FetchByChaveResultFrom(app.FetchByChaveResult{
+		ChaveAcesso:      "35260912345678000195550010000123451000123456",
+		Outcome:          "not_found",
+		Message:          "A SEFAZ não encontrou a NF-e.",
+		RequestsLastHour: 5,
+		RequestBudget:    20,
+	})
+	want := FetchByChaveResult{
+		ChaveAcesso:      "35260912345678000195550010000123451000123456",
+		Outcome:          "not_found",
+		Message:          "A SEFAZ não encontrou a NF-e.",
+		RequestsLastHour: 5,
+		RequestBudget:    20,
+	}
+	if got != want {
+		t.Errorf("FetchByChaveResultFrom = %+v, want %+v", got, want)
 	}
 }

@@ -74,6 +74,8 @@ type nfeService interface {
 	ExportXLSX(ctx context.Context, in app.NFeExportInput) (app.NFeExportResult, error)
 	ExportDANFEZip(ctx context.Context, in app.NFeExportInput) (app.NFeExportResult, error)
 	Reset(ctx context.Context, cnpj string) (app.NFeResetResult, error)
+	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
+	FetchByChave(ctx context.Context, in app.FetchByChaveInput) (app.FetchByChaveResult, error)
 }
 
 type cteService interface {
@@ -91,6 +93,7 @@ type cteService interface {
 	ExportDACTEZip(ctx context.Context, in app.CTeExportInput) (app.CTeExportResult, error)
 	PreviewReset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 	Reset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
+	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
 }
 
 // services holds the core services App calls.

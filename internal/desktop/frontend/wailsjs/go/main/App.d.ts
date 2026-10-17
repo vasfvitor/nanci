@@ -32,9 +32,15 @@ export function ExportNFeXML(arg1:desktopapi.ExportNFeXMLInput):Promise<desktopa
 
 export function ExportXML(arg1:desktopapi.ExportXMLInput):Promise<desktopapi.ExportResult>;
 
+export function FetchNFeByChave(arg1:desktopapi.FetchByChaveInput):Promise<desktopapi.FetchByChaveResult>;
+
 export function GetBuildInfo():Promise<desktopapi.BuildInfo>;
 
 export function GetDataDirectory():Promise<string>;
+
+export function ImportCTeXML(arg1:desktopapi.ImportXMLInput):Promise<desktopapi.ImportXMLResult>;
+
+export function ImportNFeXML(arg1:desktopapi.ImportXMLInput):Promise<desktopapi.ImportXMLResult>;
 
 export function ListCTe(arg1:desktopapi.ListCTeInput):Promise<Array<desktopapi.CTeRow>>;
 
@@ -89,6 +95,8 @@ export function ResetSyncState(arg1:desktopapi.ResetSyncInput):Promise<void>;
 export function SelectCertificate():Promise<string>;
 
 export function SelectSaveFile(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function SelectXMLFiles():Promise<Array<string>>;
 
 export function SetLogLevel(arg1:string):Promise<void>;
 

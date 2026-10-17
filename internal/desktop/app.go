@@ -287,6 +287,18 @@ func (a *App) SelectCertificate() (string, error) {
 	})
 }
 
+// SelectXMLFiles opens a dialog to pick one or more XML files to import.
+// It returns an empty list when the user cancels.
+func (a *App) SelectXMLFiles() ([]string, error) {
+	return runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Selecione os XMLs",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "XML (*.xml)", Pattern: "*.xml"},
+			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
+		},
+	})
+}
+
 // SelectSaveFile opens a dialog to select an output file path for exports
 func (a *App) SelectSaveFile(title, defaultFilename, pattern string) (string, error) {
 	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
@@ -832,6 +844,56 @@ func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, 
 	}, nil
 }
 
+// ImportNFeXML stores NF-e and NF-e event XML files the company holds,
+// without contacting SEFAZ. It counts as a sync for the close guard, since
+// it writes the company's documents.
+func (a *App) ImportNFeXML(input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
+	if err := a.ready(); err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	if err := validateImport(input); err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	defer a.trackPull()()
+	res, err := a.svc.nfe.ImportXML(a.ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
+	if err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	return desktopapi.ImportXMLResultFrom(res), nil
+}
+
+// validateImport refuses an import without a company or files before the
+// core runs.
+func validateImport(input desktopapi.ImportXMLInput) error {
+	if input.CNPJ == "" {
+		return errors.New("empresa não especificada")
+	}
+	if len(input.Files) == 0 {
+		return errors.New("nenhum arquivo XML selecionado")
+	}
+	return nil
+}
+
+// FetchNFeByChave asks SEFAZ for one NF-e by its chave. It spends one
+// request of the company's NF-e hourly budget.
+func (a *App) FetchNFeByChave(input desktopapi.FetchByChaveInput) (desktopapi.FetchByChaveResult, error) {
+	if err := a.ready(); err != nil {
+		return desktopapi.FetchByChaveResult{}, err
+	}
+	if input.CNPJ == "" {
+		return desktopapi.FetchByChaveResult{}, errors.New("empresa não especificada")
+	}
+	if input.ChaveAcesso == "" {
+		return desktopapi.FetchByChaveResult{}, errors.New("chave de acesso não especificada")
+	}
+	defer a.trackPull()()
+	res, err := a.svc.nfe.FetchByChave(a.ctx, app.FetchByChaveInput{CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso})
+	if err != nil {
+		return desktopapi.FetchByChaveResult{}, err
+	}
+	return desktopapi.FetchByChaveResultFrom(res), nil
+}
+
 func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeStatusResult{}, err
@@ -1097,6 +1159,23 @@ func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, 
 		RequestBudget:    res.RequestBudget,
 		Duration:         res.Duration,
 	}, nil
+}
+
+// ImportCTeXML stores CT-e and CT-e event XML files the company holds,
+// without contacting SEFAZ.
+func (a *App) ImportCTeXML(input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
+	if err := a.ready(); err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	if err := validateImport(input); err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	defer a.trackPull()()
+	res, err := a.svc.cte.ImportXML(a.ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
+	if err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	return desktopapi.ImportXMLResultFrom(res), nil
 }
 
 func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {

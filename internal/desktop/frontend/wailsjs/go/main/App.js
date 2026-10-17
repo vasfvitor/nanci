@@ -62,12 +62,24 @@ export function ExportXML(arg1) {
   return window['go']['main']['App']['ExportXML'](arg1);
 }
 
+export function FetchNFeByChave(arg1) {
+  return window['go']['main']['App']['FetchNFeByChave'](arg1);
+}
+
 export function GetBuildInfo() {
   return window['go']['main']['App']['GetBuildInfo']();
 }
 
 export function GetDataDirectory() {
   return window['go']['main']['App']['GetDataDirectory']();
+}
+
+export function ImportCTeXML(arg1) {
+  return window['go']['main']['App']['ImportCTeXML'](arg1);
+}
+
+export function ImportNFeXML(arg1) {
+  return window['go']['main']['App']['ImportNFeXML'](arg1);
 }
 
 export function ListCTe(arg1) {
@@ -176,6 +188,10 @@ export function SelectCertificate() {
 
 export function SelectSaveFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['SelectSaveFile'](arg1, arg2, arg3);
+}
+
+export function SelectXMLFiles() {
+  return window['go']['main']['App']['SelectXMLFiles']();
 }
 
 export function SetLogLevel(arg1) {

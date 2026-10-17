@@ -903,6 +903,111 @@ export namespace desktopapi {
 	        this.OutPath = source["OutPath"];
 	    }
 	}
+	export class FetchByChaveInput {
+	    CNPJ: string;
+	    ChaveAcesso: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FetchByChaveInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	    }
+	}
+	export class FetchByChaveResult {
+	    ChaveAcesso: string;
+	    Outcome: string;
+	    Message: string;
+	    RequestsLastHour: number;
+	    RequestBudget: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FetchByChaveResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Outcome = source["Outcome"];
+	        this.Message = source["Message"];
+	        this.RequestsLastHour = source["RequestsLastHour"];
+	        this.RequestBudget = source["RequestBudget"];
+	    }
+	}
+	export class ImportXMLInput {
+	    CNPJ: string;
+	    Files: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportXMLInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.CNPJ = source["CNPJ"];
+	        this.Files = source["Files"];
+	    }
+	}
+	export class ImportedFile {
+	    Path: string;
+	    Kind: string;
+	    ChaveAcesso: string;
+	    Outcome: string;
+	    Message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportedFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Path = source["Path"];
+	        this.Kind = source["Kind"];
+	        this.ChaveAcesso = source["ChaveAcesso"];
+	        this.Outcome = source["Outcome"];
+	        this.Message = source["Message"];
+	    }
+	}
+	export class ImportXMLResult {
+	    Files: ImportedFile[];
+	    Imported: number;
+	    Updated: number;
+	    Rejected: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportXMLResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Files = this.convertValues(source["Files"], ImportedFile);
+	        this.Imported = source["Imported"];
+	        this.Updated = source["Updated"];
+	        this.Rejected = source["Rejected"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class ListCTeInput {
 	    CNPJ: string;
 	    Competence: string;
@@ -1045,6 +1150,7 @@ export namespace desktopapi {
 	    ConclusiveDue?: any;
 	    CompanyRole: string;
 	    EventCount: number;
+	    FirstSeenNSU?: number;
 	    // Go type: time
 	    FirstSyncedAt: any;
 	    // Go type: time
@@ -1093,6 +1199,7 @@ export namespace desktopapi {
 	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
 	        this.CompanyRole = source["CompanyRole"];
 	        this.EventCount = source["EventCount"];
+	        this.FirstSeenNSU = source["FirstSeenNSU"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);
@@ -1375,6 +1482,7 @@ export namespace desktopapi {
 	    ConclusiveDue?: any;
 	    CompanyRole: string;
 	    EventCount: number;
+	    FirstSeenNSU?: number;
 	    // Go type: time
 	    FirstSyncedAt: any;
 	    // Go type: time
@@ -1425,6 +1533,7 @@ export namespace desktopapi {
 	        this.ConclusiveDue = this.convertValues(source["ConclusiveDue"], null);
 	        this.CompanyRole = source["CompanyRole"];
 	        this.EventCount = source["EventCount"];
+	        this.FirstSeenNSU = source["FirstSeenNSU"];
 	        this.FirstSyncedAt = this.convertValues(source["FirstSyncedAt"], null);
 	        this.LastSyncedAt = this.convertValues(source["LastSyncedAt"], null);
 	        this.ViewedAt = this.convertValues(source["ViewedAt"], null);

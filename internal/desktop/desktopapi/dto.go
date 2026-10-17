@@ -407,6 +407,7 @@ type NFeRow struct {
 	ConclusiveDue    *time.Time
 	CompanyRole      string
 	EventCount       int
+	FirstSeenNSU     *int64 // nil for an NF-e that came by import, not by the distribution
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
 	ViewedAt         *time.Time // nil while the NF-e is new
@@ -643,6 +644,7 @@ func nfeRow(document app.NFeDocument) NFeRow {
 		ConclusiveDue:         optionalTime(document.ConclusiveDue),
 		CompanyRole:           string(document.CompanyRole),
 		EventCount:            document.EventCount,
+		FirstSeenNSU:          document.FirstSeenNSU,
 		FirstSyncedAt:         document.FirstSyncedAt,
 		LastSyncedAt:          document.LastSyncedAt,
 		ViewedAt:              document.ViewedAt,
@@ -1047,6 +1049,67 @@ func CTeResetResultFrom(res app.CTeResetResult) CTeResetResult {
 		Events:           res.Events,
 		ExportMarks:      res.ExportMarks,
 	}
+}
+
+// --- Import and fetch by chave ---
+
+// ImportXMLInput lists the XML files the user picked to import for the
+// company.
+type ImportXMLInput struct {
+	CNPJ  string
+	Files []string
+}
+
+// ImportedFile is the result of one imported file. Kind and ChaveAcesso are
+// empty when the file was rejected before they were known.
+type ImportedFile struct {
+	Path        string
+	Kind        string // completa | resumo | evento
+	ChaveAcesso string
+	Outcome     string // imported | updated | rejected
+	Message     string
+}
+
+// ImportXMLResult is one ImportedFile per input file, in input order, and
+// the counts per outcome.
+type ImportXMLResult struct {
+	Files    []ImportedFile
+	Imported int
+	Updated  int
+	Rejected int
+}
+
+func ImportXMLResultFrom(res app.ImportXMLResult) ImportXMLResult {
+	files := make([]ImportedFile, len(res.Files))
+	for i, f := range res.Files {
+		files[i] = ImportedFile(f)
+	}
+	return ImportXMLResult{
+		Files:    files,
+		Imported: res.Imported,
+		Updated:  res.Updated,
+		Rejected: res.Rejected,
+	}
+}
+
+// FetchByChaveInput names the NF-e to ask SEFAZ for.
+type FetchByChaveInput struct {
+	CNPJ        string
+	ChaveAcesso string
+}
+
+// FetchByChaveResult is what SEFAZ delivered for the chave and how much of
+// the hourly budget is spent after the request.
+type FetchByChaveResult struct {
+	ChaveAcesso      string
+	Outcome          string // completa | resumo | not_found
+	Message          string
+	RequestsLastHour int
+	RequestBudget    int
+}
+
+func FetchByChaveResultFrom(res app.FetchByChaveResult) FetchByChaveResult {
+	return FetchByChaveResult(res)
 }
 
 // optionalTime returns nil for the zero time.
