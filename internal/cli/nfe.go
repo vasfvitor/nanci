@@ -20,7 +20,7 @@ func newNFeCommand(env CommandEnv) *cobra.Command {
 	var cnpjFlag string
 	nfeCmd := &cobra.Command{
 		Use:   "nfe",
-		Short: "Sincroniza, lista, manifesta, exporta e redefine NF-e (modelo 55) da SEFAZ",
+		Short: "Sincroniza, lista, manifesta, exporta, importa, busca e redefine NF-e (modelo 55) da SEFAZ",
 	}
 	nfeCmd.PersistentFlags().StringVarP(&cnpjFlag, "cnpj", "c", "", "CNPJ da empresa")
 	_ = nfeCmd.MarkPersistentFlagRequired("cnpj")

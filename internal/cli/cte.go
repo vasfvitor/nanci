@@ -14,7 +14,7 @@ func newCTeCommand(env CommandEnv) *cobra.Command {
 	var cnpjFlag string
 	cteCmd := &cobra.Command{
 		Use:   "cte",
-		Short: "Sincroniza, lista, exporta e redefine CT-e (modelos 57, 64 e 67) da SEFAZ",
+		Short: "Sincroniza, lista, exporta, importa e redefine CT-e (modelos 57, 64 e 67) da SEFAZ",
 	}
 	cteCmd.PersistentFlags().StringVarP(&cnpjFlag, "cnpj", "c", "", "CNPJ da empresa")
 	_ = cteCmd.MarkPersistentFlagRequired("cnpj")
