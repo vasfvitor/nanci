@@ -60,6 +60,7 @@ export namespace desktopapi {
 	    version: string;
 	    commit: string;
 	    date: string;
+	    webview2Version: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new BuildInfo(source);
@@ -70,6 +71,7 @@ export namespace desktopapi {
 	        this.version = source["version"];
 	        this.commit = source["commit"];
 	        this.date = source["date"];
+	        this.webview2Version = source["webview2Version"];
 	    }
 	}
 	export class CTeEvent {

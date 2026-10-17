@@ -12,10 +12,13 @@ export type ExportResult = {
 
 export type SyncSource = 'nfse' | 'nfe' | 'cte'
 
+// BuildInfo.webview2Version is empty off Windows or when the runtime version
+// cannot be read.
 export type BuildInfo = {
   version: string
   commit: string
   date: string
+  webview2Version: string
 }
 
 export type ConnectionTestResult = {

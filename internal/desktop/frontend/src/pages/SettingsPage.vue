@@ -175,6 +175,12 @@
             <div class="col-8 text-mono">{{ buildInfo.commit }}</div>
             <div class="col-4 text-weight-bold">Build:</div>
             <div class="col-8 text-mono">{{ buildInfo.date }}</div>
+            <div class="col-4 text-weight-bold">WebView2:</div>
+            <div class="col-8 text-mono" data-testid="webview2-version">{{ webView2Label }}</div>
+            <div class="col-4 text-weight-bold">Escala:</div>
+            <div class="col-8 text-mono" data-testid="display-scale">{{ scaleLabel }}</div>
+            <div class="col-4 text-weight-bold">Monitores:</div>
+            <div class="col-8 text-mono" data-testid="monitors">{{ monitorsLabel }}</div>
             <div class="col-4 text-weight-bold">Pasta de Dados:</div>
             <div class="col-8 text-mono text-caption ellipsis" :title="dataDir">{{ dataDir }}</div>
           </div>
@@ -247,6 +253,7 @@ import { useConsoleStore } from '@/stores/console'
 import { usePreferencesStore } from '@/stores/preferences'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { BuildInfo } from '@/types/desktop'
+import type { DisplayInfo } from '@/composables/useDisplayScale'
 
 const $q = useQuasar()
 const diagnosticsStore = useDiagnosticsStore()
@@ -274,7 +281,21 @@ const darkMode = computed({
   },
 })
 
-const buildInfo = ref<BuildInfo>({ version: '...', commit: '...', date: '...' })
+const buildInfo = ref<BuildInfo>({
+  version: '...',
+  commit: '...',
+  date: '...',
+  webview2Version: '...',
+})
+const displayInfo = ref<DisplayInfo | null>(null)
+const webView2Label = computed(() => buildInfo.value.webview2Version || 'não encontrado')
+const scaleLabel = computed(() => (displayInfo.value ? String(displayInfo.value.scale) : '...'))
+const monitorsLabel = computed(() => {
+  const info = displayInfo.value
+  if (!info) return '...'
+  const count = info.monitors === null ? 'indisponível' : String(info.monitors)
+  return `${count} (atual ${info.screenSize})`
+})
 const dataDir = ref('')
 // selectedCompany starts at the workspace company once one is listed and
 // then stays apart from it, so any company can be tested without switching
@@ -296,6 +317,7 @@ const darkModeOptions = [
 ]
 
 onMounted(async () => {
+  void refreshDisplayInfo()
   try {
     buildInfo.value = await desktopClient.getBuildInfo()
     dataDir.value = await desktopClient.getDataDirectory()
@@ -345,11 +367,16 @@ async function openLogsDir() {
   }
 }
 
+async function refreshDisplayInfo() {
+  displayInfo.value = await displayScale.readDisplayInfo()
+}
+
 // nudgeWindow lets the user test whether a relayout sharpens a soft window
 // even when the display scale did not change.
 async function nudgeWindow() {
   try {
     const result = await displayScale.nudgeOnRequest()
+    void refreshDisplayInfo()
     if (result === 'resized') {
       $q.notify({ type: 'positive', message: 'Janela reajustada.' })
     } else if (result === 'maximised') {

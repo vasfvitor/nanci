@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, vi } from 'vitest'
 import {
   desktopClient,
   errorMessage,
+  mapBuildInfo,
   mapCompanySummary,
   mapCredentialSummary,
   mapCTeEvent,
@@ -31,6 +32,7 @@ import {
   ExportNFeDocuments,
   ExportNFeXML,
   FetchNFeByChave,
+  GetBuildInfo,
   ImportCTeXML,
   ImportNFeXML,
   ListCTe,
@@ -236,6 +238,28 @@ describe('desktop client calls', () => {
     await expect(desktopClient.markDocumentsViewed('123', ['chave-1'])).resolves.toBe(2)
 
     expect(MarkDocumentsViewed).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: ['chave-1'] })
+  })
+
+  it('maps the build info and defaults a missing WebView2 version', async () => {
+    vi.mocked(GetBuildInfo).mockResolvedValue({
+      version: 'v1.2.3',
+      commit: 'abc1234',
+      date: '2026-10-17',
+      webview2Version: '141.0.3537.71',
+    } as never)
+
+    await expect(desktopClient.getBuildInfo()).resolves.toEqual({
+      version: 'v1.2.3',
+      commit: 'abc1234',
+      date: '2026-10-17',
+      webview2Version: '141.0.3537.71',
+    })
+    expect(mapBuildInfo({ version: 'v1.2.3' })).toEqual({
+      version: 'v1.2.3',
+      commit: '',
+      date: '',
+      webview2Version: '',
+    })
   })
 
   it('normalizes cancelled dialogs to null', async () => {

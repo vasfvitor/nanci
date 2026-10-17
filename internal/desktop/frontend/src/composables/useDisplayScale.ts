@@ -10,6 +10,15 @@ export type NudgeResult = 'resized' | 'maximised' | 'busy'
 // together into one window snapshot in the console.
 export const snapshotDelayMs = 250
 
+// DisplayInfo is what the Sobre section shows about the display: the scale
+// of the monitor the window is on, its size, and how many monitors Wails
+// lists (null when the runtime cannot tell).
+export type DisplayInfo = {
+  scale: number
+  screenSize: string
+  monitors: number | null
+}
+
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()))
 }
@@ -64,6 +73,20 @@ export function useDisplayScale() {
       log(`Janela reajustada a pedido (escala ${window.devicePixelRatio})`)
     }
     return result
+  }
+
+  async function readDisplayInfo(): Promise<DisplayInfo> {
+    let monitors: number | null = null
+    try {
+      monitors = (await desktopRuntime.screenGetAll()).length
+    } catch {
+      // Outside the Wails webview the runtime is missing.
+    }
+    return {
+      scale: window.devicePixelRatio,
+      screenSize: `${window.screen.width}x${window.screen.height}`,
+      monitors,
+    }
   }
 
   function start(): Unsubscribe {
@@ -147,5 +170,5 @@ export function useDisplayScale() {
     }
   }
 
-  return { start, nudgeWindow, nudgeOnRequest }
+  return { start, nudgeWindow, nudgeOnRequest, readDisplayInfo }
 }

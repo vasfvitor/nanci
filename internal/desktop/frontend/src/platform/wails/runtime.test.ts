@@ -2,6 +2,7 @@ import { beforeEach, expect, vi } from 'vitest'
 import { desktopRuntime } from './runtime'
 import {
   Quit,
+  ScreenGetAll,
   WindowGetSize,
   WindowIsMaximised,
   WindowMinimise,
@@ -14,6 +15,9 @@ import {
 
 vi.mock('../../../wailsjs/runtime/runtime', () => ({
   Quit: vi.fn(),
+  ScreenGetAll: vi.fn(async () => [
+    { isCurrent: true, isPrimary: true, width: 1920, height: 1080 },
+  ]),
   WindowGetSize: vi.fn(async () => ({ w: 1280, h: 768 })),
   WindowIsMaximised: vi.fn(async () => false),
   WindowMinimise: vi.fn(),
@@ -50,6 +54,11 @@ describe('desktopRuntime', () => {
     expect(WindowGetSize).toHaveBeenCalledOnce()
     expect(WindowIsMaximised).toHaveBeenCalledOnce()
     expect(WindowSetSize).toHaveBeenCalledWith(1281, 768)
+  })
+
+  it('lists the screens', async () => {
+    await expect(desktopRuntime.screenGetAll()).resolves.toHaveLength(1)
+    expect(ScreenGetAll).toHaveBeenCalledOnce()
   })
 
   it('lets a runtime error reach the caller', () => {

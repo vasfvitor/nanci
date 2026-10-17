@@ -9,6 +9,7 @@ vi.mock('@/platform/wails/runtime', () => ({
     windowGetSize: vi.fn(async () => ({ w: 1280, h: 768 })),
     windowSetSize: vi.fn(),
     windowIsMaximised: vi.fn(async () => false),
+    screenGetAll: vi.fn(async () => [{}, {}]),
   },
 }))
 
@@ -177,5 +178,18 @@ describe('useDisplayScale', () => {
     vi.mocked(desktopRuntime.windowIsMaximised).mockResolvedValue(true)
     await expect(displayScale.nudgeOnRequest()).resolves.toBe('maximised')
     expect(desktopRuntime.windowSetSize).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads the scale, screen size and monitor count', async () => {
+    setScale(1.5)
+
+    await expect(useDisplayScale().readDisplayInfo()).resolves.toEqual({
+      scale: 1.5,
+      screenSize: `${window.screen.width}x${window.screen.height}`,
+      monitors: 2,
+    })
+
+    vi.mocked(desktopRuntime.screenGetAll).mockRejectedValue(new Error('no runtime'))
+    await expect(useDisplayScale().readDisplayInfo()).resolves.toMatchObject({ monitors: null })
   })
 })

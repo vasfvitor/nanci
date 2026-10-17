@@ -31,10 +31,14 @@ type ExportResult struct {
 	ExportedCount int
 }
 
+// BuildInfo is the Sobre section and the header of the diagnostic package.
+// WebView2Version is the installed WebView2 runtime, empty off Windows or
+// when it cannot be read.
 type BuildInfo struct {
-	Version string `json:"version"`
-	Commit  string `json:"commit"`
-	Date    string `json:"date"`
+	Version         string `json:"version"`
+	Commit          string `json:"commit"`
+	Date            string `json:"date"`
+	WebView2Version string `json:"webview2Version"`
 }
 
 type ConnectionTestResult struct {

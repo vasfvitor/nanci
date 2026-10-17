@@ -1,5 +1,6 @@
 import {
   Quit,
+  ScreenGetAll,
   WindowGetSize,
   WindowIsMaximised,
   WindowMinimise,
@@ -21,4 +22,5 @@ export const desktopRuntime = {
   windowGetSize: WindowGetSize,
   windowSetSize: WindowSetSize,
   windowIsMaximised: WindowIsMaximised,
+  screenGetAll: ScreenGetAll,
 }

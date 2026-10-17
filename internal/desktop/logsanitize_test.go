@@ -5,8 +5,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
+
+	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
 func TestSanitizeLogContent(t *testing.T) {
@@ -52,7 +55,8 @@ func TestExportRotatedLogsMasksCNPJs(t *testing.T) {
 	}
 
 	zipPath := filepath.Join(dir, "out.zip")
-	if err := exportRotatedLogs(zipPath, logPath); err != nil {
+	summary := []byte("Nanci v1.2.3\nWebView2: 141.0.3537.71\n")
+	if err := exportRotatedLogs(zipPath, logPath, summary); err != nil {
 		t.Fatalf("exportRotatedLogs: %v", err)
 	}
 
@@ -69,8 +73,11 @@ func TestExportRotatedLogsMasksCNPJs(t *testing.T) {
 		t.Fatalf("open zip: %v", err)
 	}
 	defer func() { _ = archive.Close() }()
-	if len(archive.File) != 1 {
-		t.Fatalf("zip has %d entries, want 1", len(archive.File))
+	if len(archive.File) != 2 {
+		t.Fatalf("zip has %d entries, want the log and %s", len(archive.File), diagnosticSummaryName)
+	}
+	if got := readZipEntry(t, archive.File[1]); archive.File[1].Name != diagnosticSummaryName || got != string(summary) {
+		t.Fatalf("second entry %s = %q, want %s with the summary", archive.File[1].Name, got, diagnosticSummaryName)
 	}
 	entry, err := archive.File[0].Open()
 	if err != nil {
@@ -86,5 +93,32 @@ func TestExportRotatedLogsMasksCNPJs(t *testing.T) {
 	}
 	if strings.Count(string(exported), "12.***.***/****-95") != 2 {
 		t.Fatalf("expected both CNPJs masked, got %q", exported)
+	}
+}
+
+func readZipEntry(t *testing.T, file *zip.File) string {
+	t.Helper()
+	entry, err := file.Open()
+	if err != nil {
+		t.Fatalf("open entry %s: %v", file.Name, err)
+	}
+	defer func() { _ = entry.Close() }()
+	content, err := io.ReadAll(entry)
+	if err != nil {
+		t.Fatalf("read entry %s: %v", file.Name, err)
+	}
+	return string(content)
+}
+
+func TestDiagnosticSummary(t *testing.T) {
+	info := desktopapi.BuildInfo{Version: "v1.2.3", Commit: "abc1234", Date: "2026-10-17", WebView2Version: "141.0.3537.71"}
+	want := "Nanci v1.2.3\nCommit: abc1234\nBuild: 2026-10-17\nSistema: " + goruntime.GOOS + "/" + goruntime.GOARCH + "\nWebView2: 141.0.3537.71\n"
+	if got := string(diagnosticSummary(info)); got != want {
+		t.Errorf("summary = %q, want %q", got, want)
+	}
+
+	info.WebView2Version = ""
+	if got := string(diagnosticSummary(info)); !strings.HasSuffix(got, "WebView2: não encontrado\n") {
+		t.Errorf("summary without WebView2 = %q, want it marked as not found", got)
 	}
 }

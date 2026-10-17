@@ -195,10 +195,25 @@ func (a *App) ExportLogs() (string, error) {
 		return "", err
 	}
 
-	return savePath, exportRotatedLogs(savePath, a.logPath)
+	return savePath, exportRotatedLogs(savePath, a.logPath, diagnosticSummary(a.GetBuildInfo()))
 }
 
-func exportRotatedLogs(savePath string, basePath string) error {
+// diagnosticSummaryName is the ZIP entry that opens the diagnostic package
+// with the build and the runtime the logs came from.
+const diagnosticSummaryName = "diagnostico.txt"
+
+func diagnosticSummary(info desktopapi.BuildInfo) []byte {
+	webView2 := info.WebView2Version
+	if webView2 == "" {
+		webView2 = "não encontrado"
+	}
+	return fmt.Appendf(nil, "Nanci %s\nCommit: %s\nBuild: %s\nSistema: %s/%s\nWebView2: %s\n",
+		info.Version, info.Commit, info.Date, goruntime.GOOS, goruntime.GOARCH, webView2)
+}
+
+// exportRotatedLogs writes the rotated logs, masked, to a ZIP at savePath,
+// followed by the summary as diagnostico.txt.
+func exportRotatedLogs(savePath string, basePath string, summary []byte) error {
 	file, err := os.Create(savePath) // #nosec G304 -- the user picks savePath in the save dialog.
 	if err != nil {
 		return fmt.Errorf("criar arquivo de exportação: %w", err)
@@ -240,6 +255,14 @@ func exportRotatedLogs(savePath string, basePath string) error {
 		return fmt.Errorf("arquivo de log não encontrado")
 	}
 
+	entry, err := archive.Create(diagnosticSummaryName)
+	if err != nil {
+		return fmt.Errorf("criar entrada zip %s: %w", diagnosticSummaryName, err)
+	}
+	if _, err := entry.Write(summary); err != nil {
+		return fmt.Errorf("escrever entrada zip %s: %w", diagnosticSummaryName, err)
+	}
+
 	if err := archive.Close(); err != nil {
 		return fmt.Errorf("fechar zip: %w", err)
 	}
@@ -248,9 +271,10 @@ func exportRotatedLogs(savePath string, basePath string) error {
 
 func (a *App) GetBuildInfo() desktopapi.BuildInfo {
 	return desktopapi.BuildInfo{
-		Version: buildinfo.Version,
-		Commit:  buildinfo.Commit,
-		Date:    buildinfo.Date,
+		Version:         buildinfo.Version,
+		Commit:          buildinfo.Commit,
+		Date:            buildinfo.Date,
+		WebView2Version: webView2Version(),
 	}
 }
 

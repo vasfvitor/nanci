@@ -1,6 +1,7 @@
 package desktopapi
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -53,5 +54,17 @@ func TestFetchByChaveResultFrom(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("FetchByChaveResultFrom = %+v, want %+v", got, want)
+	}
+}
+
+// TestBuildInfoJSON pins the keys the Sobre section reads.
+func TestBuildInfoJSON(t *testing.T) {
+	got, err := json.Marshal(BuildInfo{Version: "v1.2.3", Commit: "abc1234", Date: "2026-10-17", WebView2Version: "141.0.3537.71"})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	want := `{"version":"v1.2.3","commit":"abc1234","date":"2026-10-17","webview2Version":"141.0.3537.71"}`
+	if string(got) != want {
+		t.Errorf("BuildInfo JSON = %s, want %s", got, want)
 	}
 }

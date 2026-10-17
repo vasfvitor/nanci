@@ -20,9 +20,12 @@ vi.mock('quasar', () => ({
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
     listCompanies: vi.fn().mockResolvedValue([]),
-    getBuildInfo: vi
-      .fn()
-      .mockResolvedValue({ version: '1.0.0', commit: 'abc', date: '2026-06-21' }),
+    getBuildInfo: vi.fn().mockResolvedValue({
+      version: '1.0.0',
+      commit: 'abc',
+      date: '2026-06-21',
+      webview2Version: '141.0.3537.71',
+    }),
     getDataDirectory: vi.fn().mockResolvedValue('C:\\data'),
     openDataDirectory: vi.fn(),
     openLogsDirectory: vi.fn(),
@@ -42,6 +45,7 @@ vi.mock('@/platform/wails/runtime', () => ({
     windowGetSize: vi.fn(async () => ({ w: 1280, h: 768 })),
     windowSetSize: vi.fn(),
     windowIsMaximised: vi.fn(async () => false),
+    screenGetAll: vi.fn(async () => [{}, {}]),
   },
 }))
 
@@ -268,5 +272,19 @@ describe('SettingsPage', () => {
     ])
     expect(notify).toHaveBeenCalledWith({ type: 'positive', message: 'Janela reajustada.' })
     vi.unstubAllGlobals()
+  })
+
+  it('shows the WebView2 runtime, the display scale and the monitor count', async () => {
+    Object.defineProperty(window, 'devicePixelRatio', { value: 1.25, configurable: true })
+    const wrapper = shallowMount(SettingsPage, {
+      global: { directives: { ripple: {} } },
+    })
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="webview2-version"]').text()).toBe('141.0.3537.71')
+    expect(wrapper.get('[data-testid="display-scale"]').text()).toBe('1.25')
+    expect(wrapper.get('[data-testid="monitors"]').text()).toBe(
+      `2 (atual ${window.screen.width}x${window.screen.height})`
+    )
   })
 })

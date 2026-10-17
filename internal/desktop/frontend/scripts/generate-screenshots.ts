@@ -1326,6 +1326,7 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
               version: 'v0.4.0',
               commit: '296a3d9',
               date: '2026-09-30T12:00:00Z',
+              webview2Version: '141.0.3537.71',
             }),
             GetDataDirectory: async () => 'C:\\Users\\usuario\\AppData\\Roaming\\nanci',
             OpenDataDirectory: async () => undefined,
@@ -1554,6 +1555,10 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
         WindowGetSize: async () => ({ w: 1280, h: 768 }),
         WindowSetSize: () => undefined,
         WindowIsMaximised: async () => false,
+        ScreenGetAll: async () => [
+          { isCurrent: true, isPrimary: true, width: 1920, height: 1080 },
+          { isCurrent: false, isPrimary: false, width: 1920, height: 1080 },
+        ],
         Quit: () => undefined,
 
         WindowSetDarkTheme: () => undefined,

@@ -11,7 +11,17 @@ import {
   ShowInFolder,
 } from '../../../../wailsjs/go/main/App'
 import type { BuildInfo } from '@/types/desktop'
-import { callWails, asStringArray } from './base'
+import { callWails, asString, asStringArray, asRawRecord } from './base'
+
+export function mapBuildInfo(raw: unknown): BuildInfo {
+  const item = asRawRecord(raw)
+  return {
+    version: asString(item['version']),
+    commit: asString(item['commit']),
+    date: asString(item['date']),
+    webview2Version: asString(item['webview2Version']),
+  }
+}
 
 export const systemClient = {
   async selectSaveFile(
@@ -35,8 +45,8 @@ export const systemClient = {
   confirmQuit(): Promise<void> {
     return callWails(() => ConfirmQuit())
   },
-  getBuildInfo(): Promise<BuildInfo> {
-    return callWails(() => GetBuildInfo())
+  async getBuildInfo(): Promise<BuildInfo> {
+    return mapBuildInfo(await callWails(() => GetBuildInfo()))
   },
   getDataDirectory(): Promise<string> {
     return callWails(() => GetDataDirectory())
