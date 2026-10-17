@@ -1,0 +1,38 @@
+{{- /*
+  Every docs page in Markdown, in site order: each section page, then its
+  pages by weight, then its subsections. Each page starts with its title
+  and its URL. Relative links become absolute, as page.markdown.md does for
+  a single copy: ../nfe/ resolves against the page's parent, nfse/ against
+  the page itself. A page opts out with `llms: false`, as in llms.txt.
+*/ -}}
+# {{ .Site.Title }}
+
+> {{ .Site.Params.description | default "" }}
+
+Todas as páginas da documentação em Markdown, na ordem do site. O índice com uma linha por página está em {{ "llms.txt" | absURL }}.
+{{ range where site.Sections "Params.llms" "ne" false }}
+{{- template "llms-full-section" . }}
+{{- end }}
+
+{{- define "llms-full-section" }}
+{{- template "llms-full-page" . }}
+{{- range where .RegularPages "Params.llms" "ne" false }}
+{{- template "llms-full-page" . }}
+{{- end }}
+{{- range where .Sections "Params.llms" "ne" false }}
+{{- template "llms-full-section" . }}
+{{- end }}
+{{- end }}
+
+{{- define "llms-full-page" }}
+{{- $parent := path.Dir (strings.TrimSuffix "/" .RelPermalink) | absURL | strings.TrimSuffix "/" }}
+{{- $body := replace .RawContent "](../" (printf "](%s/" $parent) }}
+{{- $body = replaceRE `\]\(([a-z0-9-]+/[^)]*)\)` (printf "](%s$1)" .Permalink) $body }}
+---
+
+{{ .Title | replaceRE "\n" " " | printf "# %s" }}
+
+URL: {{ .Permalink }}
+
+{{ $body | strings.TrimSpace }}
+{{ end -}}

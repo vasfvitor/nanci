@@ -19,6 +19,12 @@ timeZone = "America/Sao_Paulo"
 [params]
   description = "App desktop e CLI para baixar NFS-e do ADN e NF-e e CT-e da SEFAZ com certificado A1"
 
+# The app as schema.org SoftwareApplication on the home page (_partials/jsonld.html).
+[params.app]
+  operatingSystem = "Windows"
+  license = "https://www.gnu.org/licenses/gpl-3.0.html"
+  downloadUrl = "https://github.com/vasfvitor/nanci/releases/latest"
+
 [params.navbar]
   displayTitle = true
   displayLogo = true
@@ -70,8 +76,14 @@ timeZone = "America/Sao_Paulo"
 [markup.highlight]
   noClasses = false
 
-# llms.txt at the root and a Markdown copy of each docs page, for LLMs.
+# llms.txt and llms-full.txt at the root and a Markdown copy of each docs
+# page, for LLMs. Hextra defines the llms and markdown formats.
+[outputFormats.llms-full]
+  baseName = "llms-full"
+  mediaType = "text/plain"
+  isPlainText = true
+
 [outputs]
-  home = ["html", "rss", "llms"]
+  home = ["html", "rss", "llms", "llms-full"]
   section = ["html", "rss", "markdown"]
   page = ["html", "markdown"]

@@ -1,0 +1,67 @@
+{{- /*
+  schema.org data as JSON-LD: SoftwareApplication on the home page,
+  TechArticle on each docs page, and FAQPage on a page made of faq
+  shortcodes ({{< faq "Pergunta?" >}}Resposta.{{< /faq >}}).
+*/ -}}
+{{- $image := partial "social-image.html" . -}}
+{{- $site := dict "@type" "WebSite" "name" site.Title "url" site.Home.Permalink -}}
+{{- $canonical := .Params.canonical | default .Permalink -}}
+{{- $description := partial "utils/page-description.html" . | strings.TrimSpace -}}
+{{- $app := site.Params.app -}}
+
+{{- if .IsHome }}
+{{- $data := dict
+  "@context" "https://schema.org"
+  "@type" "SoftwareApplication"
+  "name" site.Title
+  "description" site.Params.description
+  "url" site.Home.Permalink
+  "image" $image.url
+  "applicationCategory" "BusinessApplication"
+  "operatingSystem" $app.operatingSystem
+  "license" $app.license
+  "downloadUrl" $app.downloadUrl
+  "softwareHelp" (dict "@type" "CreativeWork" "url" ("docs/" | absURL))
+  "inLanguage" "pt-BR"
+  "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "BRL")
+}}
+<script type="application/ld+json">{{ $data | jsonify | safeJS }}</script>
+{{- end }}
+
+{{- if and (eq .Section "docs") (not .IsHome) }}
+{{- $data := dict
+  "@context" "https://schema.org"
+  "@type" "TechArticle"
+  "headline" .Title
+  "description" $description
+  "url" .Permalink
+  "image" $image.url
+  "inLanguage" "pt-BR"
+  "isPartOf" $site
+  "mainEntityOfPage" (dict "@type" "WebPage" "@id" $canonical)
+}}
+{{- with .Lastmod }}
+{{- $data = merge $data (dict "dateModified" (.Format "2006-01-02T15:04:05-07:00")) }}
+{{- end }}
+<script type="application/ld+json">{{ $data | jsonify | safeJS }}</script>
+{{- end }}
+
+{{- $questions := slice }}
+{{- range findRESubmatch `(?s)\{\{<\s*faq\s+"([^"]+)"\s*>\}\}(.*?)\{\{<\s*/faq\s*>\}\}` .RawContent }}
+{{- $answer := index . 2 | strings.TrimSpace | $.RenderString | plainify | htmlUnescape | strings.TrimSpace }}
+{{- $questions = $questions | append (dict
+  "@type" "Question"
+  "name" (index . 1)
+  "acceptedAnswer" (dict "@type" "Answer" "text" $answer)
+) }}
+{{- end }}
+{{- with $questions }}
+{{- $data := dict
+  "@context" "https://schema.org"
+  "@type" "FAQPage"
+  "url" $.Permalink
+  "inLanguage" "pt-BR"
+  "mainEntity" .
+}}
+<script type="application/ld+json">{{ $data | jsonify | safeJS }}</script>
+{{- end }}

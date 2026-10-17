@@ -3,6 +3,8 @@
 
 > {{ .Site.Params.description | default "" }}
 
+O texto completo de todas as páginas, em Markdown e em um só arquivo: {{ "llms-full.txt" | absURL }}
+
 {{ range where site.Sections "Params.llms" "ne" false }}
 {{- template "llms-section-tree" dict "context" . "level" 2 }}
 {{ end }}

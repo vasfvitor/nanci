@@ -1,0 +1,10 @@
+{{- /*
+  Replaces Hugo's embedded twitter_cards.html: every page has an image
+  (social-image.html), so the card is always the large one.
+*/ -}}
+{{- $image := partial "social-image.html" . -}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ .Title }}">
+<meta name="twitter:description" content="{{ partial "utils/page-description.html" . | strings.TrimSpace }}">
+<meta name="twitter:image" content="{{ $image.url }}">
+<meta name="twitter:image:alt" content="{{ $image.alt }}">

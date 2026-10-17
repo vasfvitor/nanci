@@ -117,3 +117,5 @@ hugo server
 ```
 
 O site é a documentação de uso. Detalhes técnicos ficam em `docs/` e o site aponta para eles; não copie o conteúdo de um para o outro.
+
+Além do HTML, o build gera saídas para buscadores e LLMs: cada página da documentação tem uma cópia em Markdown (`docs/<página>.md`, `layouts/page.markdown.md`); a raiz tem `llms.txt`, uma linha por página a partir do `description` (`layouts/llms.txt`), e `llms-full.txt`, o Markdown de todas as páginas na ordem do site com links absolutos (`layouts/llms-full.txt`); uma página sai das duas listas com `llms: false`. `robots.txt` aponta o `sitemap.xml`. As tags Open Graph e Twitter usam `static/img/og-default.png` (1200×630), ou o primeiro screenshot da página na documentação, e cada página leva JSON-LD (`layouts/_partials/jsonld.html`): `SoftwareApplication` na home, `TechArticle` na documentação e `FAQPage` numa página feita de `{{< faq >}}`.

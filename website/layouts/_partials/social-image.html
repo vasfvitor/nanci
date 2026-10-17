@@ -1,0 +1,40 @@
+{{- /*
+  The image a page shows when shared, as a dict of url, width, height and
+  alt. In order: the first `images` entry in front matter, then on a docs
+  page the light PNG of its first theme-image, then the site card
+  (static/img/og-default.png, 1200x630). Paths are site paths under static/;
+  a file missing from static/ (screenshots are copied in before the build)
+  falls back to the card.
+*/ -}}
+{{- $image := dict
+  "url" ("img/og-default.png" | absURL)
+  "width" 1200
+  "height" 630
+  "alt" (printf "%s: %s" site.Title site.Params.description)
+-}}
+{{- $path := "" -}}
+{{- $alt := .Title -}}
+{{- with .Params.images -}}
+  {{- $path = index . 0 -}}
+{{- else -}}
+  {{- if and (eq .Section "docs") (not .IsHome) -}}
+    {{- with findRESubmatch `\{\{<\s*theme-image\s+([^>]*?)\s*>\}\}` .RawContent 1 -}}
+      {{- $args := index . 0 1 -}}
+      {{- with findRESubmatch `light="([^"]+)"` $args 1 }}{{ $path = index . 0 1 }}{{ end -}}
+      {{- with findRESubmatch `alt="([^"]+)"` $args 1 }}{{ $alt = index . 0 1 }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- with $path -}}
+  {{- $file := path.Join "static" . -}}
+  {{- if os.FileExists $file -}}
+    {{- $config := images.Config $file -}}
+    {{- $image = dict
+      "url" (strings.TrimPrefix "/" . | absURL)
+      "width" $config.Width
+      "height" $config.Height
+      "alt" $alt
+    -}}
+  {{- end -}}
+{{- end -}}
+{{- return $image -}}

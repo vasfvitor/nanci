@@ -15,4 +15,6 @@
 {{- end }}
 {{- if .IsHome }}
 <link rel="alternate" type="text/plain" title="llms.txt" href="{{ "llms.txt" | absURL }}" />
+<link rel="alternate" type="text/plain" title="llms-full.txt" href="{{ "llms-full.txt" | absURL }}" />
 {{- end }}
+{{- partial "jsonld.html" . }}
