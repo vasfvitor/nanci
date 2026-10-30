@@ -93,6 +93,54 @@ Conferido no código da v3.0.0 em 30/10/2026.
 - **Senha do certificado.** Se o contexto termina com o diálogo de senha aberto, `GetCertPassword` devolve `context.Canceled`, e a chamada termina com o código `canceled`. O diálogo é modal, então isso só acontece ao fechar a janela.
 - **Depois do cancelamento.** Até o Go checar o contexto, a origem continua reservada e o guarda de fechamento (`closeguard.go`) continua contando a sincronização. Uma nova sincronização nesse intervalo recebe `sync_running`.
 
+## Atualização automática
+
+Conferido no código da v3.0.0 em 30/10/2026. Os caminhos sem prefixo são de `pkg/updater`.
+
+- **Onde procura.** `CheckForUpdate` (`internal/desktop/updater.go`) chama `app.Updater.Check` com o provider `endpoint` e a URL `https://github.com/vasfvitor/nanci/releases/latest/download/nanci-update.json`. O GitHub redireciona `releases/latest/download/<asset>` para o asset do release mais recente que não é rascunho nem pré-release, então só versões estáveis contam. O provider acrescenta `platform`, `arch` e `version` à URL, e o redirecionamento ignora esses parâmetros. Um release sem o manifesto, como a v0.5.1, responde 404, e o provider lê isso como "sem atualização" (`providers/endpoint/endpoint.go`, `Check`). Os dois comportamentos foram conferidos com `curl` em 30/10/2026.
+- **O que o usuário vê.** O `MainLayout` faz uma checagem por sessão, em segundo plano (store `updates`, `checkOnce`). Se houver versão nova, aparece o aviso "Nova versão X disponível.", com **Atualizar e reiniciar** e **Depois**, que fica na tela até o usuário escolher. Em Configurações › Sobre, a linha "Atualizações" mostra o estado (procurando, disponível, baixando com a porcentagem, instalando, erro, versão mais recente) e o botão **Procurar atualizações**. Quando há versão nova, o botão vira **Atualizar e reiniciar**. Nenhuma janela de atualização do Wails é aberta: `Check` e `DownloadAndInstall` não abrem janela, só `CheckAndInstall` abre (`updater.go:361-405`).
+- **Download e verificação.** `InstallUpdate` chama `DownloadAndInstall` (`updater.go:278-359`). O exe é baixado para uma pasta `wails-update-*` ao lado do exe instalado, para que a troca seja uma renomeação no mesmo volume (`download.go:273-279`), e o SHA-512 é calculado durante o download. Depois o digest e a assinatura são conferidos (`verify.go:80-119`). Com `Config.PublicKey` definido, a assinatura é obrigatória: um release sem assinatura é recusado (`verify.go:87`), e a única chave aceita é a fixada no build, nunca uma indicada pelo manifesto.
+- **Troca e reinício.** `Restart` (`updater.go:421-492`) inicia uma cópia do próprio exe em modo auxiliar (variáveis `WAILS_UPDATER_HELPER*`, `helper.go:28-35`) e espera ela avisar que está pronta. Em seguida chama `App.Quit`. O auxiliar espera o app terminar por até 30 s (`helper.go:152`) e faz um backup `.bak`. Depois move o exe em uso para `.old.<n>` e põe o novo no lugar: o Windows deixa renomear um executável ainda mapeado, mas não apagá-lo (`helper_windows.go:132-163`). Por fim valida o resultado e inicia a versão nova. Qualquer falha devolve o original e o inicia (os códigos de saída estão em `helper.go:110-128`). O `.old.<n>` fica na pasta até a próxima atualização, que o apaga (`sweepRenameAsides`). O auxiliar grava o log em `%TEMP%\wails-update-<pid do app>.log`.
+- **Instância única.** `application.New` chama `updater.HandleHelperMode()` antes de tudo (`pkg/application/application.go:47`), e a instância única só é checada depois (`:204`). O auxiliar, portanto, faz a troca e sai com `os.Exit` sem passar pelo mutex. Antes do `application.New`, `main` só abre o `wails.log` para acrescentar, o mesmo caso da segunda execução descrito em [Tema fixo, escala do monitor e instância única](#tema-fixo-escala-do-monitor-e-instância-única). O auxiliar só inicia a versão nova depois que o processo antigo terminou (`helper.go:152-167`), e nesse ponto o Windows já fechou o mutex nomeado. Se o app antigo não sair em 30 s, o auxiliar não troca nada e reabre o original (código 17). Esse original encontra a instância antiga ainda aberta e só a traz para a frente.
+- **Sincronização em andamento.** `App.Quit` passa pelo `ShouldQuit` e pelo `beforeClose`. Com uma sincronização em andamento, o `beforeClose` seguraria o fechamento para perguntar ao usuário, e o auxiliar desistiria depois de 30 s. Por isso `InstallUpdate` recusa com `sync_running` duas vezes: antes de baixar e antes de reiniciar. O frontend também desliga a ação enquanto houver qualquer sincronização (`companySync.anySyncing`) e mostra o motivo em Sobre. Ainda sobra uma janela de microssegundos entre a segunda checagem e o `ShouldQuit`. Se uma sincronização começar exatamente ali, a pergunta de fechamento aparece e o app continua na versão antiga.
+- **Quando fica desligada.** O updater não é configurado (`setupUpdater` devolve `errUpdatesDisabled`) quando falta a chave em `updater_key.go` ou quando a versão não é `X.Y.Z`, o que inclui `0.0.0-dev`. Nesse caso `CheckForUpdate` devolve `enabled: false` sem fazer requisição, Sobre mostra "indisponíveis nesta versão" e esconde o botão, e `InstallUpdate` responde com o código `update_unavailable`.
+- **Programas e Recursos.** O instalador grava `DisplayVersion` uma única vez em `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\NanciDesktop` (`build/windows/nsis/wails_tools.nsh`, macro `wails.writeUninstaller`). A atualização troca só o exe, então um build de release grava a própria versão ali ao abrir (`internal/desktop/uninstall.go`). Isso só acontece se a chave existir e se o `DisplayIcon` dela for o exe em execução, de modo que uma cópia avulsa em outra pasta não mexe na entrada.
+- **Pasta de instalação.** O instalador é por usuário e instala em `%LOCALAPPDATA%\Programs\Nanci Desktop` (`project.nsi`, `WAILS_INSTALL_SCOPE=user`), uma pasta que o usuário pode gravar sem UAC. Numa instalação por máquina, em Program Files, o updater não conseguiria criar a pasta de staging, e o download falharia com erro.
+- **Por que não o provider `github`.** O provider `github` só preenche um digest, lido de um arquivo de checksums, e nunca uma assinatura (`providers/github/github.go:167-179`). Com a chave fixada, o updater recusaria todos os releases (`verify.go:87`). As ferramentas de publicação do Wails (`wails3 updater genkey`, `sign`, `manifest` e `verify`, em `internal/commands/updater_tool.go`) seguem o protocolo do provider `endpoint`, e o manifesto continua hospedado no próprio release do GitHub.
+- **O que é assinado.** `wails3 updater manifest -key` calcula o SHA-512 do exe e assina esse digest com Ed25519ph (`updater_tool.go`, `signUpdaterArtifact`). O manifesto leva o digest e a assinatura em base64 (`digestAlgo: sha512`, `signatureAlgo: ed25519ph`) e o tamanho do arquivo. O artefato é o exe cru, não um zip: assim o digest cobre exatamente o arquivo instalado. Um zip seria extraído e apagado antes da troca (`extract.go:66-123`), e o digest deixaria de cobrir o que vai para o disco (`validate.go:18-31`).
+- **Artefatos do release.** Além do instalador, `release.yml` publica `nanci-desktop-windows-amd64-vX.Y.Z.exe` (o exe que o instalador empacota) e `nanci-update.json`, cuja URL do exe aponta para a tag. `nanci-checksums.txt` cobre os dois exes. Uma tag para no job `prepare` quando `updater_key.go` não tem chave ou quando falta o segredo `UPDATER_SIGNING_KEY`. Depois de assinar, `wails3 updater verify` confere o manifesto com a chave fixada no app, então um segredo que não corresponde a ela também derruba o release. O `wails3` desses passos é o v3.0.0, do mesmo cache do build.
+- **A primeira versão.** As versões até a v0.6.0 não têm o updater. Quem usa uma delas instala a primeira versão com a chave pelo instalador; daí em diante, as atualizações chegam pelo app.
+
+### Passos do dono (uma vez)
+
+1. Gerar o par de chaves fora do repositório:
+
+   ```
+   wails3 updater genkey -out nanci-updater.key
+   ```
+
+   O comando grava `nanci-updater.key` (chave privada Ed25519 em PEM PKCS#8) e `nanci-updater.key.pub`. Ele também imprime a chave pública em base64 dos 32 bytes da chave crua, abaixo de "Or inline as base64 of the raw key": são 44 caracteres terminados em `=`.
+2. Colar essa linha em `internal/desktop/updater_key.go`, como `var updaterPublicKey = "<base64>"`, e fazer o commit. Em `internal/desktop`, `go test ./...` roda `TestCommittedUpdaterKeyIsValid`, que confere o formato.
+3. Criar o segredo do repositório com o conteúdo inteiro do arquivo PEM:
+
+   ```
+   gh secret set UPDATER_SIGNING_KEY < nanci-updater.key
+   ```
+
+   Também dá para criar pelo GitHub, em Settings › Secrets and variables › Actions. O `wails3` aceita ainda o base64 da chave de 64 bytes ou da semente de 32 bytes (`loadUpdaterPrivateKey`), mas o PEM é o que o `genkey` grava.
+4. Guardar `nanci-updater.key` num cofre de senhas e apagar a cópia local. Quem tem a chave privada pode publicar atualizações para todos os usuários. Se a chave se perder, os apps instalados não aceitam atualizações assinadas com outra, e trocar a chave obriga os usuários a reinstalar pelo instalador uma versão com a chave nova.
+5. Para conferir o par antes de uma tag, opcionalmente: `wails3 updater manifest -version 0.0.1 -key nanci-updater.key -output m.json <um arquivo qualquer>-windows-amd64.exe` e depois `wails3 updater verify -manifest m.json -publickey <base64 do passo 1>`.
+
+### Teste local (30/10/2026)
+
+O teste usou dois builds de produção (`-tags production`, `.syso` do Windows) da mesma árvore: A, com versão `0.0.1`, e B, com `0.0.2`. Os dois recebiam uma chave descartável e a URL de um servidor local por `-ldflags "-X main.updaterPublicKey=... -X main.updateManifestURL=http://127.0.0.1:18765/nanci-update.json"`. Os dois valores são `var` justamente para isso, e nada do teste foi para o repositório. O manifesto de B saiu de `wails3 updater manifest -key`, exatamente como no release. O exe se chamava `nanci-e2e.exe`, para usar uma pasta de dados do WebView2 separada (`%APPDATA%\<nome do exe>`), e a pasta de dados era vazia (`NANCI_DATA_DIR`). O aviso foi acionado por UI Automation, que enxerga o conteúdo do WebView2.
+
+- A abriu, buscou o manifesto (`version=0.0.1` na query) e mostrou "Nova versão 0.0.2 disponível.". Depois do clique em **Atualizar e reiniciar**, A saiu em 867 ms. O auxiliar (filho de A) registrou "swap succeeded on attempt 1" e iniciou B, filho dele. B ficou aberto, sem esbarrar na instância única, e o hash do exe instalado passou a ser o de B. Na checagem dele, B pediu o manifesto com `version=0.0.2`, e Sobre mostrou "Versão 0.0.2", o commit de B e "versão mais recente". O banco na pasta de dados continuou lá, aberto por B. Na pasta de instalação ficaram o exe e um `.old.<n>`.
+- Recusas: com o manifesto assinado por outra chave, o aviso de erro foi "updater: ed25519ph signature did not verify". Com um byte alterado no exe servido, foi "digest mismatch". Com o manifesto sem assinatura, foi "a public key is configured, so the release must carry a signature". Nos três casos A continuou aberto, com o exe intacto e sem pasta `wails-update-*` restante. `wails3 updater verify` também rejeitou o manifesto assinado com a outra chave (código 1).
+- Todas as janelas foram fechadas com `CloseMainWindow`, sem `msedgewebview2.exe` restante. As chaves descartáveis foram apagadas.
+
+Não foi testado: um release real no GitHub (redirecionamento, upload, segredo), a troca dentro de `%LOCALAPPDATA%\Programs\Nanci Desktop` (o teste usou uma pasta na `%TEMP%` do mesmo perfil e do mesmo volume) e a gravação real do `DisplayVersion`, para não mexer na instalação desta máquina.
+
 ## Achados do spike na v3.0.0
 
 | Achado do spike (beta.27) | Na v3.0.0 | O que ficou no código |
@@ -193,6 +241,7 @@ Os jobs do CI no Linux (GTK 4 e WebKitGTK 6.0 com Cgo, gerador com `GOOS=windows
 - [ ] Abrir o Nanci instalado com ele já aberto (inclusive minimizado) traz a janela existente para a frente, sem segunda janela.
 - [ ] Redimensionar pelas duas laterais, arrastar pela barra de título, duplo clique maximiza e restaura, Windows Snap (Win+setas e arrastar para a borda).
 - [ ] Smoke padrão: empresa, credencial, sync, listas de NFS-e/NF-e/CT-e, exportação, consulta direta, senha do certificado e console de logs.
+- [ ] Atualização automática, depois dos [passos do dono](#passos-do-dono-uma-vez) e de duas tags com a chave: a versão anterior instalada mostra o aviso na abertura; **Atualizar e reiniciar** reabre na versão nova; Sobre e Programas e Recursos mostram a versão nova; com uma sincronização em andamento, a ação fica desligada e explica o motivo.
 
 ## Faixas de redimensionamento
 
@@ -207,4 +256,6 @@ Experimento opcional: `WindowsWindow.NonClientRegionSupport: true` liga o suport
 - `minimumReleaseAgeExclude` aceita versões exatas (`nome@versão`): https://pnpm.io/settings/dependency-resolution#minimumreleaseageexclude
 - Issue #6209 (prontidão do `wails3 dev` contra o Vite), fechada em 19/10/2026 pelo PR #6305: https://github.com/wailsapp/wails/issues/6209
 - Código-fonte da v3.0.0: `go mod download github.com/wailsapp/wails/v3@v3.0.0`, arquivos citados acima.
+- Link para o asset do release mais recente (`/releases/latest/download/<asset>`): https://docs.github.com/en/repositories/releasing-projects-on-github/linking-to-releases (conferido em 30/10/2026).
+- "The latest release is the most recent non-prerelease, non-draft release": https://docs.github.com/en/rest/releases/releases#get-the-latest-release (conferido em 30/10/2026).
 - Issue #6052 (`SingleInstance` chama `os.Exit` dentro de `application.New`), aberta em 29/08/2026 e ainda aberta em 30/10/2026: https://github.com/wailsapp/wails/issues/6052

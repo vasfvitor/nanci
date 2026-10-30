@@ -16,6 +16,14 @@ O instalador não tem assinatura de código, então o SmartScreen pode avisar. P
 Get-FileHash .\nanci-desktop-windows-amd64-v0.6.0-installer.exe -Algorithm SHA256
 ```
 
+## Atualizar
+
+O Nanci procura uma versão nova quando abre. Se houver, aparece o aviso **Nova versão disponível**: clique em **Atualizar e reiniciar**, e o Nanci baixa a versão nova, fecha e abre de novo já atualizado. Para procurar a qualquer momento, use **Procurar atualizações** em **Configurações** › **Sobre o Nanci**.
+
+A atualização só é instalada se tiver a assinatura do projeto. Ela não começa enquanto uma sincronização estiver em andamento. Seus dados e as empresas cadastradas continuam onde estavam.
+
+Se o aviso não aparecer, baixe o instalador da última versão e execute por cima da instalação atual; os dados são mantidos.
+
 ## Cadastrar a empresa
 
 Sem empresa cadastrada, a primeira tela mostra os três passos até as primeiras notas, e o botão **Cadastrar primeira empresa** abre o cadastro.
