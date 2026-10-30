@@ -132,9 +132,13 @@ jobs:
           path: ~/go/bin
           key: ${{ runner.os }}-go-bins-wails3-v3.0.0
 
+      # Without cgo the CLI builds on Linux with no GTK headers; the app build
+      # itself targets Windows.
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
+        env:
+          CGO_ENABLED: '0'
         run: |
           go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 
