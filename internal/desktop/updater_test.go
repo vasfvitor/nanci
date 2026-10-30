@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -327,7 +328,9 @@ func serveRelease(t *testing.T, priv ed25519.PrivateKey, payload, served []byte)
 			"version":       "9.9.9",
 			"notes":         "Notas",
 			"artifacts": []manifestArtifact{{
-				URL: base + "/nanci-desktop-windows-amd64-v9.9.9.exe", Platform: "windows", Arch: "amd64",
+				// The updater picks the artifact of the platform it runs on, and
+				// CI runs these tests on Linux.
+				URL: base + "/nanci-desktop-windows-amd64-v9.9.9.exe", Platform: runtime.GOOS, Arch: runtime.GOARCH,
 				Size: int64(len(served)), DigestAlgo: "sha512", Digest: digest,
 				SignatureAlgo: "ed25519ph", Signature: signature,
 			}},
