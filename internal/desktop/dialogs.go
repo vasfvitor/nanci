@@ -6,8 +6,8 @@ package main
 // text can be matched.
 const dialogCanceledMessage = "cancelled by user"
 
-// dialogPath turns a closed file dialog into an empty path, as Wails v2 did,
-// so the frontend keeps treating "" as "nothing picked".
+// dialogPath turns a closed file dialog into an empty path, which the
+// frontend treats as "nothing picked".
 func dialogPath(path string, err error) (string, error) {
 	if err != nil && err.Error() == dialogCanceledMessage {
 		return "", nil

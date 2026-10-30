@@ -25,6 +25,6 @@ Run it after changing `info` in `config.yml`, then delete the `ios/` and `linux/
 - `icon.ico` - the application icon. It is generated from `appicon.png` only when missing.
 - `info.json` - the version information of the executable (right click the exe -> Properties -> Details).
 - `wails.exe.manifest` - the application manifest (per-monitor DPI awareness).
-- `nsis/project.nsi` - the installer script. It keeps the Wails v2 customisations: zlib compression, the `NanciDesktop` uninstall key, a desktop shortcut and no file or protocol associations. `windows:package` installs per user (`INSTALL_SCOPE=user`, no UAC prompt).
+- `nsis/project.nsi` - the installer script, customised for Nanci: zlib compression, the `NanciDesktop` uninstall key, a desktop shortcut and no file or protocol associations. `windows:package` installs per user (`INSTALL_SCOPE=user`, no UAC prompt).
 - `nsis/wails_tools.nsh` - generated helpers for the installer (do not edit).
 - `Taskfile.yml` - `windows:build` (the production `-ldflags` take `EXTRA_LDFLAGS`) and `windows:package`.

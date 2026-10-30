@@ -70,8 +70,8 @@ tasks:
     summary: Generates the Windows `.ico` (and the macOS `.icns`) from build/appicon.png
     run: once
     dir: build
-    # The versioned windows/icon.ico wins, as it did with Wails v2: the icon is
-    # generated only when that file is missing.
+    # The versioned windows/icon.ico wins: the icon is generated only when
+    # that file is missing.
     status:
       - test -f windows/icon.ico
     cmds:

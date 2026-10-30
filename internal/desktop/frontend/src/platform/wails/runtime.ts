@@ -1,8 +1,8 @@
 import { Application, Screens, Window } from '@wailsio/runtime'
 import { SetWindowTheme } from '../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 
-// The window controls are fire-and-forget, as the Wails v2 runtime calls were:
-// a failed call has nothing for the UI to recover.
+// The window controls are fire-and-forget: a failed call has nothing for the
+// UI to recover.
 function ignoreResult(call: () => Promise<unknown>): () => void {
   return () => {
     call().catch(() => undefined)

@@ -4,7 +4,7 @@ version: '3'
 # and signing tasks. Two changes from the template: EXTRA_LDFLAGS is appended
 # to the production -ldflags (the release workflow passes the buildinfo -X
 # flags through it), and the installer is per user by default
-# (INSTALL_SCOPE=user, no UAC prompt), as the Wails v2 installer was.
+# (INSTALL_SCOPE=user, no UAC prompt).
 
 includes:
   common: ../Taskfile.yml
