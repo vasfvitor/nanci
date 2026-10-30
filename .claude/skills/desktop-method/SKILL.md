@@ -31,15 +31,15 @@ Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. W
   - a mapping test (`TestExportNFeDocumentsFormats`: `assertCalls` sees every input field, result equals the expected DTO);
   - an entry in the table tests: `exportRuns` feeds `TestExportsRequireOutPath` (no core call, zero result) and `TestExportsPassCoreErrors` (`errors.Is(err, errCore)`); document methods go in `TestDocumentMethodsPassCoreErrors`.
 
-## 4. Bindings: `internal/desktop/frontend/wailsjs`
+## 4. Bindings: `internal/desktop/frontend/bindings`
 
-- `cd internal/desktop && wails generate module` (copy `frontend/dist` in first, see the `lane` skill). Expect `wailsjs/go/main/App.js` (`window['go']['main']['App']['ExportNFeDocumentsP'](arg1)`), `App.d.ts` (`ExportNFeDocuments(arg1:desktopapi.ExportNFeDocumentsInput):Promise<desktopapi.NFeExportResult>`) and `wailsjs/go/models.ts` (one class per new DTO). Nothing else should change.
-- Same commit: add the method to the `vi.mock('../../../wailsjs/go/main/App', ...)` list in `src/platform/wails/client.test.ts` and to the `window.go.main.App` mock in `scripts/generate-screenshots.ts` (`ExportNFeDocuments: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The build does not type-check that script.
-- CI job `bindings` in `.github/workflows/ci.yml` regenerates and fails on any drift in `frontend/wailsjs`.
+- `cd internal/desktop && wails3 generate bindings -clean=true -ts -i` with the pinned CLI (`wails3` v3.0.0; copy `frontend/dist` in first, see the `lane` skill). Expect `bindings/github.com/vasfvitor/nanci/internal/desktop/app.ts` (`export function ExportNFeDocuments(input: desktopapi$0.ExportNFeDocumentsInput): $CancellablePromise<desktopapi$0.NFeExportResult>`, calling `$Call.ByID(<numeric id>, input)`) and `bindings/.../desktopapi/models.ts` plus its `index.ts` (one interface per new DTO). Nothing else should change. `wails3 build` and `wails3 dev` regenerate the folder too.
+- Same commit: add the method to the `vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', ...)` list in `src/platform/wails/client.test.ts` and to the `App` mock in `installWailsMock` of `scripts/generate-screenshots.ts` (`ExportNFeDocuments: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The script maps the numeric IDs of `app.ts` back to these names, and `vue-tsc -b` type-checks it through `tsconfig.node.json`.
+- CI job `bindings` in `.github/workflows/ci.yml` regenerates (with `GOOS=windows`) and fails on any drift in `frontend/bindings`.
 
 ## 5. Client: `src/types/desktop/` and `src/platform/wails/client/`
 
-- Types live by area in `src/types/desktop/` (`common.ts` for shared types such as `ISODateValue`, `ExportResult` and the import results, then `companies.ts`, `nfse.ts`, `nfe.ts`, `cte.ts`); `index.ts` re-exports them all, so code imports `@/types/desktop`. Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeDocumentsInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `wailsjs`.
+- Types live by area in `src/types/desktop/` (`common.ts` for shared types such as `ISODateValue`, `ExportResult` and the import results, then `companies.ts`, `nfse.ts`, `nfe.ts`, `cte.ts`); `index.ts` re-exports them all, so code imports `@/types/desktop`. Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeDocumentsInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `bindings` or `@wailsio/runtime`.
 - The client is split by area under `src/platform/wails/client/`: `base.ts` (`callWails`, error normalization, the `as*` readers, `fileTimestamp`, shared mappers such as `mapExportResult`), `companies.ts` (companies and credentials), `nfse.ts`, `nfe.ts`, `cte.ts`, and `system.ts` (dialogs, logs, data directory, build info). `index.ts` spreads the area objects into `desktopClient` and re-exports the public mappers by name, so importers keep using `@/platform/wails/client`.
 - The method goes in its area object (`nfeClient` in `client/nfe.ts`) and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `systemClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
 - Result mappers read `unknown` through `asString`, `asNumber`, `asBoolean`, `asDate`, `asNullableNumber`, `asStringArray`, and `asEnum` (unknown values become `''`). Example: `mapExportResult`, `mapNFeExportResult`. Exported mappers are tested directly.
@@ -72,7 +72,7 @@ A user-facing capability usually ships with its CLI command in the same change: 
 ## Decisions already made
 
 - One composable, store and page per source (NFS-e `useDocuments`/`documents`/`DocumentsPage`, NF-e `useNFeDocuments`/`nfeDocuments`/`NFePage`, CT-e `useCTeDocuments`/`cteDocuments`/`CTePage`); shared behaviour goes in `documentListState`, `useExportGuard`, `useMarkViewed`, `useDocumentListActions` and the shared components above, not in a central export layer.
-- Only `src/platform/wails/client/` (its files), `events.ts` and `runtime.ts` import `wailsjs`. No `window.go`, no `@ts-expect-error` Wails calls, no raw `EventsOff`, no `v-html`.
+- Only `src/platform/wails/client/` (its files), `events.ts` and `runtime.ts` import `bindings` or `@wailsio/runtime` (ESLint enforces it). No `window.go`, no `@ts-expect-error` Wails calls, no raw `Events.Off`, no `v-html`.
 - Wails methods return `desktopapi` DTOs; the default file name is suggested in the client (`src/platform/wails/client/`), the path is chosen by the user, the file is written by the core.
 - Portuguese fiscal vocabulary stays in every layer: `ChaveAcesso`, `ChavesAcesso`, `Competence`, `Manifestacao`, `tomada`/`prestada`, `destinatario`, `tomador`.
 
@@ -81,7 +81,7 @@ A user-facing capability usually ships with its CLI command in the same change: 
 - [ ] `internal/app` method, input/result types, tests
 - [ ] `desktopapi` DTOs (+ mapper and `dto_<area>_test.go` when not trivial)
 - [ ] `services.go` interface, `app_<area>.go` method, fake in `fakes_test.go`, mapping test, table entries (out path, core errors)
-- [ ] `wails generate module`; diff shows only the new method and DTOs
+- [ ] `wails3 generate bindings -clean=true -ts -i`; diff shows only the new method and DTOs
 - [ ] `client.test.ts` `vi.mock` list and `scripts/generate-screenshots.ts` mock updated in the same commit
 - [ ] `types/desktop/<area>.ts` type, `client/<area>.ts` method with mapper, success and cancel tests
 - [ ] composable function with guard, store flag set before await and cleared in `finally`, second-instance test
@@ -89,4 +89,4 @@ A user-facing capability usually ships with its CLI command in the same change: 
 - [ ] CLI command and test when user-facing
 - [ ] Go: `go build ./... && go test ./...` at the root and in `internal/desktop`; `golangci-lint run ./...`
 - [ ] Frontend: `pnpm run lint:check && pnpm run test:unit && pnpm run build`; `pnpm run screenshots <route>` when a page changed
-- [ ] Manual smoke test in `wails dev` of the flow touched
+- [ ] Manual smoke test in `wails3 dev` of the flow touched

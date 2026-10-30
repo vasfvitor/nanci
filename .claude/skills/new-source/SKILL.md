@@ -49,7 +49,7 @@ App and entry points:
 Desktop (one method at a time with the `desktop-method` skill):
 16. `desktopapi/dto_<x>.go` (copy `dto_cte.go`): inputs, `<X>Row`, `<X>Event`, status, pull and reset DTOs plus mappers (`CTeRows`, `CTeEvents`, `CTeResetResultFrom`) and tests in `dto_<x>_test.go`.
 17. `services.go` interface + `servicesFrom`; `app_<x>.go` (copy `app_cte.go`) methods `Pull<X>`, `Status<X>`, `List<X>`, `Mark<X>Viewed`, `List<X>Events`, `Test<X>Connection`, `Export<X>XML`, `Export<X>ZIP`, `PreviewReset<X>`, `Reset<X>`; fake in `fakes_test.go`, tests in `app_*_test.go`.
-18. `wails generate module`; `platform/wails/client/<x>.ts` (imports, enum lists, `map<X>*`, the `<x>Client` object spread into `desktopClient` in `client/index.ts`), `types/desktop/<x>.ts` re-exported from `types/desktop/index.ts`, the `vi.mock` list in `client.test.ts`, mocks in `scripts/generate-screenshots.ts`.
+18. `wails3 generate bindings -clean=true -ts -i`; `platform/wails/client/<x>.ts` (imports, enum lists, `map<X>*`, the `<x>Client` object spread into `desktopClient` in `client/index.ts`), `types/desktop/<x>.ts` re-exported from `types/desktop/index.ts`, the `vi.mock` list in `client.test.ts`, mocks in `scripts/generate-screenshots.ts`.
 
 Frontend (copy the CT-e files):
 19. `stores/<x>Documents.ts` on `documentListState`, filter + `listInput` computed; `composables/use<X>Loaders.ts` (`useDocumentLoaders`) and `use<X>Documents.ts` (`useMarkViewed`, `useExportGuard`, `useSefazBlock`, `useRowTextFilter`, `useTablePagination('<x>')`, `companySync.runSync`); `utils/<x>Display.ts`.

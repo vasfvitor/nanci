@@ -49,7 +49,7 @@ The site at https://nanci.abelhaninja.de/ is the user documentation. Technical d
 
 ## Screenshots
 
-- Generated from mocks by `internal/desktop/frontend/scripts/generate-screenshots.ts`: Vite on port 5555 with a fake `window.go`, Playwright Chromium at 1280x800 and `deviceScaleFactor: 2`, one spec per `name` and `theme`, written to `docs/screenshots/<name>-<theme>.png`.
+- Generated from mocks by `internal/desktop/frontend/scripts/generate-screenshots.ts`: Vite on port 5555 with the `POST /wails/runtime` requests of the Wails v3 runtime answered by mocks, Playwright Chromium at 1280x800 and `deviceScaleFactor: 2`, one spec per `name` and `theme`, written to `docs/screenshots/<name>-<theme>.png`.
 - `pnpm run screenshots` (or `make screenshots`) runs all; `pnpm run screenshots nfe cte` limits the run to those router paths (`/`, `documents`, `credentials`, `query`, `settings`, `nfe`, `cte`; leading slash optional). Specs with `fitsWidth: true` fail when the document table scrolls sideways.
 - A new screenshot is a spec in the `screenshots` array, normally a light and a dark entry. `dialogo-ciencia-nfe`, `dialogo-eventos-cte` and `nfe-bloqueada` are light only, so their `theme-image` gets no `dark`. Wails methods the page calls need a mock there (see `desktop-method`).
 - `website/scripts/copy-screenshots.sh` copies `docs/screenshots/*.png` to `website/static/img/screenshots/` (gitignored). The README uses `docs/screenshots/` directly.

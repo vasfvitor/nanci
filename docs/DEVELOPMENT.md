@@ -3,7 +3,7 @@
 O Nanci tem duas frentes que compartilham o mesmo núcleo em Go (`internal/app`, `internal/store`, `internal/sync`):
 
 1. **CLI** (`cmd/nanci`): Go puro.
-2. **Desktop** (`internal/desktop`): [Wails v2](https://wails.io/) com Go no backend e Vue 3 + Quasar no frontend (`internal/desktop/frontend`). É um módulo Go separado.
+2. **Desktop** (`internal/desktop`): [Wails v3](https://v3.wails.io/) com Go no backend e Vue 3 + Quasar no frontend (`internal/desktop/frontend`). É um módulo Go separado. A migração do Wails v2 para o v3 está registrada em [WAILS_V3.md](WAILS_V3.md).
 
 Estrutura de pacotes e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md); padrões de código, commits e testes em [CONTRIBUTING.md](../CONTRIBUTING.md).
 
@@ -14,15 +14,17 @@ Estrutura de pacotes e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md); pad
 | Go | a do `go.mod` (hoje 1.26) | tudo |
 | Node.js | 24 (`internal/desktop/frontend/.node-version`; mínimo 22) | frontend |
 | pnpm | 10 | frontend |
-| Wails CLI | v2.16.0, a mesma do `internal/desktop/go.mod` | desktop |
+| Wails CLI (`wails3`) | v3.0.0, a mesma do `internal/desktop/go.mod` | desktop |
 | NSIS | 3 | só para gerar o instalador |
 | OpenSSL | qualquer | só para recriar o certificado mock |
 
-No Windows não é preciso compilador C: o SQLite é `modernc.org/sqlite` (Go puro) e o Wails v2 não usa Cgo no Windows. O release roda em Linux e usa `mingw-w64` só para a compilação cruzada.
+No Windows não é preciso compilador C: o SQLite é `modernc.org/sqlite` (Go puro) e o Wails v3 não usa Cgo no Windows. O release roda em Linux e compila o executável do Windows sem Cgo; só precisa do NSIS. No Linux, compilar o módulo do desktop (inclusive para os testes) exige Cgo e os cabeçalhos do GTK 4 e do WebKitGTK 6.0 (`libgtk-4-dev` e `libwebkitgtk-6.0-dev` no Ubuntu), como faz o CI.
+
+Instale o CLI na versão exata, nunca `@latest`:
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
-wails doctor
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+wails3 doctor
 ```
 
 Ferramentas usadas pelo `make check`: `goimports`, `golangci-lint`, `govulncheck`, `gosec` e `gitleaks`.
@@ -60,10 +62,10 @@ go build -o nanci.exe ./cmd/nanci
 
 ```bash
 cd internal/desktop
-wails dev
+wails3 dev
 ```
 
-O Wails roda `pnpm install` e o Vite. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. Depois de mudar um método exposto ao frontend, os bindings em `frontend/wailsjs/` são regenerados pelo `wails dev`; o resto do frontend usa só `src/platform/wails/` (veja [AGENTS.md](../AGENTS.md)).
+O `wails3 dev` segue `build/config.yml` e os Taskfiles: compila o app em modo dev (o que regenera os bindings em `frontend/bindings/`), sobe o Vite em `127.0.0.1:9245` e abre a janela. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. O frontend usa só `src/platform/wails/` para falar com o Wails (veja [AGENTS.md](../AGENTS.md)). Se o `wails3 dev` não abrir, [WAILS_V3.md](WAILS_V3.md) mostra como rodar as partes separadamente.
 
 Comandos do frontend, em `internal/desktop/frontend`:
 
@@ -83,16 +85,17 @@ make check    # fmt, vuln, lint, test e security
 
 `make test` roda só `go test ./...`. Para mudanças no frontend, rode também os três comandos acima.
 
-O CI falha se `go.mod`/`go.sum` ou `internal/desktop/frontend/wailsjs` estiverem desatualizados. Para regenerar: `GOWORK=off go mod tidy` na raiz e em `internal/desktop`, e `wails generate module` em `internal/desktop`.
+O CI falha se `go.mod`/`go.sum` ou `internal/desktop/frontend/bindings` estiverem desatualizados. Para regenerar: `GOWORK=off go mod tidy` na raiz e em `internal/desktop`, e `wails3 generate bindings -clean=true -ts -i` em `internal/desktop`.
 
 ## Gerar o instalador
 
 ```bash
 cd internal/desktop
-wails build -platform windows/amd64 -nsis -m
+wails3 build                    # só o executável: bin/nanci-desktop.exe
+wails3 task windows:package     # executável e instalador NSIS
 ```
 
-O instalador sai em `internal/desktop/build/bin/nanci-desktop-amd64-installer.exe`. Os releases são gerados pelo workflow `.github/workflows/release.yml` a partir de uma tag `vX.Y.Z`, com a versão gravada em `internal/foundation/buildinfo` e as notas tiradas da mensagem do commit da tag.
+O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe` e instala por usuário, sem pedir permissão de administrador. Os releases são gerados pelo workflow `.github/workflows/release.yml` a partir de uma tag `vX.Y.Z`: ele grava a versão em `build/config.yml` (de onde saem os metadados do executável e do instalador) e em `internal/foundation/buildinfo` (pela variável `EXTRA_LDFLAGS` do Taskfile), e tira as notas da mensagem do commit da tag.
 
 ## Testes de certificado
 
