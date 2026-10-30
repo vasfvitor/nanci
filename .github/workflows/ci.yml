@@ -19,8 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      # Wails' Linux backend needs cgo and the GTK headers. The desktop app
-      # ships only for Windows, so build and test both modules without cgo.
+      # The root module builds and tests without cgo. Wails v3 on Linux
+      # compiles only with cgo and the GTK 4 and WebKitGTK 6.0 headers, so
+      # the desktop steps turn cgo on.
       CGO_ENABLED: '0'
     steps:
       - name: Checkout Code
@@ -45,11 +46,28 @@ jobs:
           mkdir -p internal/desktop/frontend/dist
           echo '<div></div>' > internal/desktop/frontend/dist/index.html
 
-      - name: Build
-        run: go build ./... ./internal/desktop/...
+      # Package names from the Wails v3.0.0 doctor (apt): GTK 4 and
+      # WebKitGTK 6.0 are the default Linux stack.
+      - name: Install GTK and WebKitGTK headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
 
-      - name: Test
-        run: go test ./... ./internal/desktop/...
+      - name: Build root module
+        run: go build ./...
+
+      - name: Build desktop module
+        env:
+          CGO_ENABLED: '1'
+        run: go build ./internal/desktop/...
+
+      - name: Test root module
+        run: go test ./...
+
+      - name: Test desktop module
+        env:
+          CGO_ENABLED: '1'
+        run: go test ./internal/desktop/...
 
       - name: Lint root module
         uses: golangci/golangci-lint-action@v9
@@ -58,6 +76,8 @@ jobs:
 
       - name: Lint desktop module
         uses: golangci/golangci-lint-action@v9
+        env:
+          CGO_ENABLED: '1'
         with:
           version: v2.12.2
           working-directory: internal/desktop
@@ -79,6 +99,8 @@ jobs:
 
       - name: Vulnerability check desktop module
         working-directory: ./internal/desktop
+        env:
+          CGO_ENABLED: '1'
         run: govulncheck ./...
 
   tidy:
@@ -128,12 +150,12 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-bins-wails-2.16.0
+          key: ${{ runner.os }}-go-bins-wails3-v3.0.0
 
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 
       - name: Create go.work
         run: go work init . ./internal/desktop ./third_party/go-pkcs12
@@ -144,26 +166,27 @@ jobs:
           mkdir -p internal/desktop/frontend/dist
           echo '<div></div>' > internal/desktop/frontend/dist/index.html
 
-      # The bindings build tag leaves out Wails' Linux frontend, so no cgo or
-      # GTK headers are needed.
+      # The generator type-checks the desktop module. Wails v3 on Linux needs
+      # cgo and GTK, and without them the generator finds no service and only
+      # warns, so it analyses the Windows build the app ships.
       - name: Generate bindings
         working-directory: ./internal/desktop
         env:
+          GOOS: windows
           CGO_ENABLED: '0'
-        run: wails generate module
+        run: wails3 generate bindings -clean=true -ts -i
 
       # git status also catches files the generator adds, which git diff misses.
       - name: Check for drift
         run: |
           # Staging runs the .gitattributes normalization, so a CRLF written by
-          # the generator on Linux is not drift; a changed or new file still is.
-          # The generator also writes the files as 0755 on Linux: modes are not
-          # drift either.
+          # the generator is not drift; a changed or new file still is. File
+          # modes are not drift either.
           git config core.fileMode false
-          git add -A -- internal/desktop/frontend/wailsjs
-          if ! git diff --cached --exit-code --stat -- internal/desktop/frontend/wailsjs; then
-            git diff --cached -- internal/desktop/frontend/wailsjs
-            echo "::error::Wails bindings are stale. Run 'wails generate module' in internal/desktop, then commit frontend/wailsjs."
+          git add -A -- internal/desktop/frontend/bindings
+          if ! git diff --cached --exit-code --stat -- internal/desktop/frontend/bindings; then
+            git diff --cached -- internal/desktop/frontend/bindings
+            echo "::error::Wails bindings are stale. Run 'wails3 generate bindings -clean=true -ts -i' in internal/desktop, then commit frontend/bindings."
             exit 1
           fi
 

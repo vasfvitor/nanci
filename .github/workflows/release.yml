@@ -92,17 +92,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Install cross-compilation dependencies
+      # The Windows build is pure Go (no cgo), so NSIS is the only system
+      # package the installer needs.
+      - name: Install NSIS
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends mingw-w64 nsis jq
+          sudo apt-get install -y --no-install-recommends nsis
 
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            internal/desktop/go.sum
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -116,23 +121,30 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'internal/desktop/frontend/pnpm-lock.yaml'
 
+      - name: Install frontend dependencies
+        working-directory: ./internal/desktop/frontend
+        run: pnpm install --frozen-lockfile
+
       - name: Cache Go Binaries
         id: cache-go-bins
         uses: actions/cache@v6
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-bins-wails-2.16.0
+          key: ${{ runner.os }}-go-bins-wails3-v3.0.0
 
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 
-      - name: Build Desktop App
+      - name: Build Desktop Installer
         working-directory: ./internal/desktop
         env:
-          GOFLAGS: -trimpath
+          # The build regenerates frontend/bindings, and the generator only
+          # finds the App service when it analyses the Windows build.
+          GOOS: windows
+          CGO_ENABLED: '0'
         shell: bash
         run: |
           set -euo pipefail
@@ -140,22 +152,29 @@ jobs:
           version="${{ needs.prepare.outputs.version }}"
           commit="${GITHUB_SHA::7}"
           date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # The exe and installer metadata take numbers only: a manual run's
+          # 0.0.0-dev becomes 0.0.0 there and stays whole in buildinfo.
+          asset_version="${version%%-*}"
 
-          echo "Patching wails.json with version $version..."
-          jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.tmp.json
-          mv wails.tmp.json wails.json
+          echo "Writing version $asset_version to build/config.yml..."
+          sed -i -E "s/^  version: \"[^\"]*\"/  version: \"$asset_version\"/" build/config.yml
+          grep -q "^  version: \"$asset_version\"$" build/config.yml
 
-          echo "Building Wails app..."
-          wails build -platform windows/amd64 -nsis -m \
-            -ldflags "-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
+          # Regenerates build/windows/info.json, the manifest and
+          # build/windows/nsis/wails_tools.nsh from config.yml.
+          wails3 task common:update:build-assets
 
-          test -s build/bin/nanci-desktop-amd64-installer.exe
+          echo "Building the installer..."
+          wails3 task windows:package \
+            EXTRA_LDFLAGS="-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
+
+          test -s bin/nanci-desktop-amd64-installer.exe
 
       - name: Upload Desktop Artifact
         uses: actions/upload-artifact@v7
         with:
           name: nanci-desktop-windows-amd64-installer
-          path: internal/desktop/build/bin/nanci-desktop-amd64-installer.exe
+          path: internal/desktop/bin/nanci-desktop-amd64-installer.exe
           if-no-files-found: error
           retention-days: 7
 
