@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"strings"
@@ -394,6 +395,29 @@ func TestSyncServiceFetchFailureFinishesOnceAsFailed(t *testing.T) {
 	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
 	if err == nil {
 		t.Fatal("expected sync failure, got nil")
+	}
+
+	h.assertSingleFinishRun(syncstate.SyncStatusFailed, syncstate.SyncStopReasonFetchError)
+}
+
+// TestSyncServiceFetchTimeoutFinishesAsFailed has the request time out, as
+// the HTTP client does after its timeout. That is a fetch error, not a
+// cancel by the user.
+func TestSyncServiceFetchTimeoutFinishesAsFailed(t *testing.T) {
+	h := newTestHelper(t)
+	h.setSyncState(0, nil, 0)
+
+	fetcher := &mockFetcher{
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			return nil, fmt.Errorf("Get \"https://adn\": %w", context.DeadlineExceeded)
+		},
+	}
+
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
+
+	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want it to wrap context.DeadlineExceeded", err)
 	}
 
 	h.assertSingleFinishRun(syncstate.SyncStatusFailed, syncstate.SyncStopReasonFetchError)
