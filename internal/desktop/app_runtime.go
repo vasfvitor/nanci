@@ -171,13 +171,26 @@ func (a *App) saveFileDialog(options *application.SaveFileDialogOptions) (string
 // "system") to the native window. Wails v3 only sets the window theme when the
 // window is created, and its JS runtime has no theme calls.
 func (a *App) SetWindowTheme(theme string) {
-	switch theme {
-	case "dark":
-		setNativeDarkMode(a.window, true)
-	case "light":
-		setNativeDarkMode(a.window, false)
-	default:
-		setNativeDarkMode(a.window, systemPrefersDark())
+	a.theme.set(theme)
+	dark, fixed := fixedWindowTheme(theme)
+	if !fixed {
+		dark = systemPrefersDark()
+	}
+	setNativeDarkMode(a.window, dark)
+}
+
+// keepFixedTheme is a hook on events.Windows.SystemThemeChanged. With
+// WindowsWindow.Theme set to SystemDefault, Wails listens to that event and
+// sets the window to the new system theme, which would undo a dark or light
+// theme picked in Configurações. Re-applying our theme after Wails cannot be
+// ordered: listeners run each on their own goroutine (EventManager.
+// handleApplicationEvent), so the order of their InvokeAsync calls is not
+// defined. Hooks run first, synchronously, and a cancelled event reaches no
+// listener, so cancelling here keeps the window as it is. The app has no other
+// listener for this event.
+func (a *App) keepFixedTheme(event *application.ApplicationEvent) {
+	if _, fixed := a.theme.fixed(); fixed {
+		event.Cancel()
 	}
 }
 

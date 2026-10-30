@@ -55,6 +55,7 @@ type App struct {
 	logLevel   *slog.LevelVar
 	logWriter  *rotatingFileWriter
 	logPath    string
+	theme      windowTheme
 	guard      closeGuard
 	events     eventEmitter
 	quit       func() // asks Wails to quit; tests replace it

@@ -87,6 +87,7 @@ func main() {
 			event.Cancel()
 		}
 	})
+	wailsApp.Event.RegisterApplicationEventHook(events.Windows.SystemThemeChanged, app.keepFixedTheme)
 
 	if err := wailsApp.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
