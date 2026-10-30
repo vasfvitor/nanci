@@ -188,7 +188,7 @@ func (a *App) ServiceShutdown() error {
 
 // emitLog sends a desktop log record to the console in the frontend.
 func (a *App) emitLog(event desktopLogEvent) {
-	a.events.Emit("backend-log", event)
+	a.events.Emit(eventBackendLog, event)
 }
 
 // validateImport refuses an import without a company or files before the
