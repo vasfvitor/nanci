@@ -13,6 +13,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  # The install steps build the Wails CLI without cgo, which on Linux would
+  # need the GTK 4 and WebKitGTK headers (internal/operatingsystem).
+  WAILS_VERSION: v3.0.0
+
 jobs:
   go:
     name: Go
@@ -150,17 +155,14 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-bins-wails3-v3.0.0
+          key: ${{ runner.os }}-go-bins-wails3-${{ env.WAILS_VERSION }}
 
-      # Built with cgo the CLI needs the GTK 4 and WebKitGTK headers on Linux
-      # (internal/operatingsystem); without cgo it builds, and the generator
-      # analyses the Windows build anyway.
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         env:
           CGO_ENABLED: '0'
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Create go.work
         run: go work init . ./internal/desktop ./third_party/go-pkcs12
