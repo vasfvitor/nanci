@@ -126,9 +126,9 @@ func newAppMenu(app *App) *application.Menu {
 	fileMenu.Add("Exportar Logs").OnClick(func(*application.Context) {
 		path, err := app.ExportLogs()
 		if err == nil && path != "" {
-			app.events.Emit("notify-success", "Logs exportados com sucesso para: "+path)
+			app.events.Emit(eventNotifySuccess, "Logs exportados com sucesso para: "+path)
 		} else if err != nil {
-			app.events.Emit("notify-error", "Erro ao exportar logs: "+err.Error())
+			app.events.Emit(eventNotifyError, "Erro ao exportar logs: "+err.Error())
 		}
 	})
 	fileMenu.AddSeparator()
