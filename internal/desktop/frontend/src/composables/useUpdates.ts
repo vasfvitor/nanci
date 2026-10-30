@@ -47,6 +47,7 @@ export function useUpdates() {
       notifyWarning(updateBlockedBySync)
       return
     }
+    store.replaceNotice(null)
     try {
       await store.install()
     } catch (e) {
@@ -55,9 +56,10 @@ export function useUpdates() {
     }
   }
 
-  // notifyAvailable stays until the user acts on it.
+  // notifyAvailable stays until the user acts on it, an install starts or a
+  // later check replaces it.
   function notifyAvailable(found: UpdateInfo) {
-    $q.notify({
+    const dismiss = $q.notify({
       type: 'info',
       message: `Nova versão ${found.version} disponível.`,
       timeout: 0,
@@ -66,6 +68,7 @@ export function useUpdates() {
         { label: 'Depois', color: 'white' },
       ],
     })
+    store.replaceNotice(dismiss)
   }
 
   // checkAtStartup runs the session's single startup check and offers what
@@ -80,8 +83,12 @@ export function useUpdates() {
     try {
       const found = await store.check()
       if (!found) return
-      if (found.available) notifyAvailable(found)
-      else if (found.enabled) notifySuccess('O Nanci está na versão mais recente.')
+      if (found.available) {
+        notifyAvailable(found)
+        return
+      }
+      store.replaceNotice(null)
+      if (found.enabled) notifySuccess('O Nanci está na versão mais recente.')
     } catch (e) {
       notifyError('Erro ao procurar atualizações', e)
     }

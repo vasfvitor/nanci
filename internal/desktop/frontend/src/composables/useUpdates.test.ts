@@ -8,7 +8,15 @@ import type { UpdateInfo } from '@/types/desktop'
 type NotifyAction = { label: string; handler?: () => void }
 type NotifyOptions = { type: string; message: string; timeout?: number; actions?: NotifyAction[] }
 
-const notify = vi.fn((_options: NotifyOptions) => undefined)
+// notify returns a dismiss function per notice, as Quasar does.
+const notify = vi.fn((_options: NotifyOptions) => vi.fn())
+
+// dismissOf is the dismiss function of the nth notice shown.
+function dismissOf(n: number) {
+  const result = notify.mock.results[n]
+  if (!result) throw new Error(`no notice ${n}`)
+  return result.value as ReturnType<typeof vi.fn>
+}
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({ notify }),
@@ -144,6 +152,42 @@ describe('useUpdates', () => {
       type: 'negative',
       message: 'Erro ao procurar atualizações: sem rede',
     })
+  })
+
+  it('keeps one release notice across checks and instances', async () => {
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValue(found)
+    const layout = useUpdates()
+    const settings = useUpdates()
+
+    await layout.checkAtStartup()
+    await settings.checkNow()
+
+    expect(notify).toHaveBeenCalledTimes(2)
+    expect(dismissOf(0)).toHaveBeenCalledTimes(1)
+    expect(dismissOf(1)).not.toHaveBeenCalled()
+  })
+
+  it('closes the release notice when the install starts', async () => {
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValue(found)
+    vi.mocked(desktopClient.installUpdate).mockResolvedValue(undefined)
+    const updates = useUpdates()
+    await updates.checkNow()
+
+    await updates.installAndRestart()
+
+    expect(dismissOf(0)).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the release notice when a later check finds none', async () => {
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValueOnce(found)
+    const updates = useUpdates()
+    await updates.checkNow()
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValueOnce({ ...found, available: false })
+
+    await updates.checkNow()
+
+    expect(dismissOf(0)).toHaveBeenCalledTimes(1)
+    expect(lastNotice()).toMatchObject({ message: 'O Nanci está na versão mais recente.' })
   })
 
   it('labels a build without updates', async () => {

@@ -19,6 +19,9 @@ export const useUpdatesStore = defineStore('updates', () => {
   const progress = shallowRef<UpdateProgress | null>(null)
   const error = shallowRef('')
   let startupCheck: Promise<UpdateInfo | null> | null = null
+  // dismissNotice closes the "Nova versão" notice on screen. The startup
+  // check and the Sobre section share it, so at most one is open.
+  let dismissNotice: (() => void) | null = null
 
   const busy = computed(
     () =>
@@ -92,6 +95,13 @@ export const useUpdatesStore = defineStore('updates', () => {
     }
   }
 
+  // replaceNotice closes the update notice on screen, if any, and keeps the
+  // dismiss function of the one just shown; null only closes it.
+  function replaceNotice(dismiss: (() => void) | null) {
+    dismissNotice?.()
+    dismissNotice = dismiss
+  }
+
   return {
     status,
     info,
@@ -103,5 +113,6 @@ export const useUpdatesStore = defineStore('updates', () => {
     check,
     checkOnce,
     install,
+    replaceNotice,
   }
 })
