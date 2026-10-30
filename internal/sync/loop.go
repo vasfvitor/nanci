@@ -392,7 +392,8 @@ func (s *SyncService) processBatch(ctx context.Context, company *company.Company
 }
 
 // processItem hands one fresh item to the source and counts the outcome. On
-// failure it checkpoints the error without moving the cursor.
+// failure it checkpoints the error without moving the cursor. A cancelled
+// context is not an item error: it ends the run as interrupted.
 func (s *SyncService) processItem(ctx context.Context, company *company.Company, item Item, runState *syncRuntimeState) error {
 	nextLastFoundNSU := runState.lastFoundNSU
 	if runState.lastFoundNSU == nil || item.NSU > *runState.lastFoundNSU {
@@ -408,6 +409,9 @@ func (s *SyncService) processItem(ctx context.Context, company *company.Company,
 	}
 
 	outcome, err := s.source.ProcessItem(ctx, company, runState.source, item, commit)
+	if errors.Is(err, context.Canceled) {
+		return err
+	}
 	if err != nil {
 		runState.errorsCount++
 		outcome, err = s.skipPoisonItem(ctx, company, item, err, commit)

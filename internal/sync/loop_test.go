@@ -480,6 +480,10 @@ func TestSyncServiceResumesAfterCancelMidBatch(t *testing.T) {
 	h.assertSingleFinishRun(syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
 	h.assertSyncState(1, storetest.Int64Ptr(1), 0)
 	h.assertDocumentsCount(1)
+	// The cancel that failed the second item's commit is not an item error.
+	if n := h.countRows(`SELECT COUNT(*) FROM sync_runs WHERE company_id = ? AND errors_count > 0`, string(h.company.ID)); n != 0 {
+		t.Errorf("runs with errors = %d, want 0", n)
+	}
 
 	fetcher.requests = nil
 	svc = h.newNFSeService(fetcher, &mockXMLStore{})
