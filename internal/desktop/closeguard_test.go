@@ -31,14 +31,14 @@ func guardedApp(t *testing.T) (fakeSet, *App, *fakeEvents, *int) {
 	events := &fakeEvents{emitted: make(chan call, 1)}
 	a.events = events
 	quits := 0
-	a.quit = func(context.Context) { quits++ }
+	a.quit = func() { quits++ }
 	return f, a, events, &quits
 }
 
 func TestBeforeCloseAllowsWhenIdle(t *testing.T) {
 	_, a, events, _ := guardedApp(t)
 
-	if a.beforeClose(a.ctx) {
+	if a.beforeClose() {
 		t.Fatal("beforeClose = true with no sync running, want false")
 	}
 	select {
@@ -60,7 +60,7 @@ func TestBeforeClosePreventsAndAsksDuringPull(t *testing.T) {
 	}()
 	<-sync.started
 
-	if !a.beforeClose(a.ctx) {
+	if !a.beforeClose() {
 		t.Fatal("beforeClose = false during a sync, want true")
 	}
 	select {
@@ -77,7 +77,7 @@ func TestBeforeClosePreventsAndAsksDuringPull(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatalf("Pull: %v", err)
 	}
-	if a.beforeClose(a.ctx) {
+	if a.beforeClose() {
 		t.Error("beforeClose = true after the sync finished, want false")
 	}
 }
@@ -106,7 +106,7 @@ func TestPullReleasesGuardOnError(t *testing.T) {
 			t.Errorf("%s: pulls = %d after the error, want 0", name, n)
 		}
 	}
-	if a.beforeClose(a.ctx) {
+	if a.beforeClose() {
 		t.Error("beforeClose = true after failed syncs, want false")
 	}
 }
@@ -120,7 +120,7 @@ func TestConfirmQuitAllowsClose(t *testing.T) {
 	if *quits != 1 {
 		t.Fatalf("quit called %d times, want 1", *quits)
 	}
-	if a.beforeClose(a.ctx) {
+	if a.beforeClose() {
 		t.Error("beforeClose = true after ConfirmQuit, want false")
 	}
 	select {

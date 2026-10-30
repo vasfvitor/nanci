@@ -1,35 +1,30 @@
 # Build Directory
 
-The build directory is used to house all the build files and assets for your application. 
+Build configuration and assets of Nanci Desktop for Wails v3 (v3.0.0). The app ships for Windows only.
 
-The structure is:
+* `config.yml` - project information (company, product, version, copyright) and the `wails3 dev` settings.
+* `Taskfile.yml` - common tasks: frontend install and build, bindings generation, icons, `update:build-assets`.
+* `windows/` - Windows files and tasks.
+* `darwin/` - macOS plists, kept as `wails3 update build-assets` writes them; there is no macOS build.
+* `appicon.png` - source image for the icons.
 
-* bin - Output directory
-* darwin - macOS specific files
-* windows - Windows specific files
+The build output goes to `../bin` (`nanci-desktop.exe` and the installer).
 
-## Mac
+## Generated from config.yml
 
-The `darwin` directory holds files specific to Mac builds.
-These may be customised and used as part of the build. To return these files to the default state, simply delete them
-and
-build with `wails build`.
+`windows/info.json`, `windows/wails.exe.manifest`, `windows/nsis/wails_tools.nsh` and the `darwin` plists are generated from `config.yml`:
 
-The directory contains the following files:
+```bash
+wails3 task common:update:build-assets
+```
 
-- `Info.plist` - the main plist file used for Mac builds. It is used when building using `wails build`.
-- `Info.dev.plist` - same as the main plist file but used when building using `wails dev`.
+Run it after changing `info` in `config.yml`, then delete the `ios/` and `linux/` folders the command also writes. The release workflow runs it after writing the tag version to `config.yml`.
 
 ## Windows
 
-The `windows` directory contains the manifest and rc files used when building with `wails build`.
-These may be customised for your application. To return these files to the default state, simply delete them and
-build with `wails build`.
-
-- `icon.ico` - The icon used for the application. This is used when building using `wails build`. If you wish to
-  use a different icon, simply replace this file with your own. If it is missing, a new `icon.ico` file
-  will be created using the `appicon.png` file in the build directory.
-- `installer/*` - The files used to create the Windows installer. These are used when building using `wails build`.
-- `info.json` - Application details used for Windows builds. The data here will be used by the Windows installer,
-  as well as the application itself (right click the exe -> properties -> details)
-- `wails.exe.manifest` - The main application manifest file.
+- `icon.ico` - the application icon. It is generated from `appicon.png` only when missing.
+- `info.json` - the version information of the executable (right click the exe -> Properties -> Details).
+- `wails.exe.manifest` - the application manifest (per-monitor DPI awareness).
+- `nsis/project.nsi` - the installer script, customised for Nanci: zlib compression, the `NanciDesktop` uninstall key, a desktop shortcut and no file or protocol associations. `windows:package` installs per user (`INSTALL_SCOPE=user`, no UAC prompt).
+- `nsis/wails_tools.nsh` - generated helpers for the installer (do not edit).
+- `Taskfile.yml` - `windows:build` (the production `-ldflags` take `EXTRA_LDFLAGS`) and `windows:package`.

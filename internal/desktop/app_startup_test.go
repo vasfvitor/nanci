@@ -128,8 +128,16 @@ var withoutCore = map[string]bool{
 	"SelectSaveFile":     true,
 	"SelectXMLFiles":     true,
 	"SetLogLevel":        true,
+	"SetWindowTheme":     true,
 	"ShowInFolder":       true,
 	"SubmitCertPassword": true,
+}
+
+// serviceLifecycle lists the Wails service hooks. Wails calls them and does
+// not bind them for the frontend.
+var serviceLifecycle = map[string]bool{
+	"ServiceStartup":  true,
+	"ServiceShutdown": true,
 }
 
 // TestCoreRunsCoverEveryBoundMethod keeps coreRuns in step with App: a new
@@ -141,7 +149,7 @@ func TestCoreRunsCoverEveryBoundMethod(t *testing.T) {
 	appType := reflect.TypeFor[*App]()
 	for i := range appType.NumMethod() {
 		name := appType.Method(i).Name
-		if _, ok := runs[name]; !ok && !withoutCore[name] {
+		if _, ok := runs[name]; !ok && !withoutCore[name] && !serviceLifecycle[name] {
 			missing = append(missing, name)
 		}
 	}

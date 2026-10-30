@@ -178,11 +178,7 @@ func TestImportAndFetchPassCoreErrors(t *testing.T) {
 				if !reflect.ValueOf(got).IsZero() {
 					t.Errorf("result = %+v, want zero", got)
 				}
-				payload, ok := formatError(err).(desktopapi.ErrorPayload)
-				if !ok {
-					t.Fatalf("formatError returned %T", formatError(err))
-				}
-				if payload.Code != e.code {
+				if payload := formatError(err); payload.Code != e.code {
 					t.Errorf("code = %q, want %q", payload.Code, e.code)
 				}
 				if n := a.guard.pulls.Load(); n != 0 {

@@ -5,10 +5,10 @@ SetCompressor zlib
 ####
 ## Please note: Template replacements don't work in this file. They are provided with default defines like
 ## mentioned underneath.
-## If the keyword is not defined, "wails_tools.nsh" will populate them with the values from ProjectInfo.
-## If they are defined here, "wails_tools.nsh" will not touch them. This allows to use this project.nsi manually
+## If the keyword is not defined, "wails_tools.nsh" will populate them.
+## If they are defined here, "wails_tools.nsh" will not touch them. This allows you to use this project.nsi manually
 ## from outside of Wails for debugging and development of the installer.
-##
+## 
 ## For development first make a wails nsis build to populate the "wails_tools.nsh":
 ## > wails build --target windows/amd64 --nsis
 ## Then you can call makensis on this file with specifying the path to your binary:
@@ -19,64 +19,24 @@ SetCompressor zlib
 ## For a installer with both architectures:
 ## > makensis -DARG_WAILS_AMD64_BINARY=..\..\bin\app-amd64.exe -DARG_WAILS_ARM64_BINARY=..\..\bin\app-arm64.exe
 ####
-## The following information is taken from the ProjectInfo file, but they can be overwritten here.
+## The following information is taken from the wails_tools.nsh file, but they can be overwritten here.
 ####
-## !define INFO_PROJECTNAME    "MyProject" # Default "{{.Name}}"
-## !define INFO_COMPANYNAME    "MyCompany" # Default "{{.Info.CompanyName}}"
-## !define INFO_PRODUCTNAME    "MyProduct" # Default "{{.Info.ProductName}}"
-## !define INFO_PRODUCTVERSION "1.0.0"     # Default "{{.Info.ProductVersion}}"
-## !define INFO_COPYRIGHT      "Copyright" # Default "{{.Info.Copyright}}"
+## !define INFO_PROJECTNAME    "my-project" # Default "ref"
+## !define INFO_COMPANYNAME    "My Company" # Default "My Company"
+## !define INFO_PRODUCTNAME    "My Product Name" # Default "My Product"
+## !define INFO_PRODUCTVERSION "1.0.0"     # Default "0.1.0"
+## !define INFO_COPYRIGHT      "(c) Now, My Company" # Default "© 2026, My Company"
 ###
 ## !define PRODUCT_EXECUTABLE  "Application.exe"      # Default "${INFO_PROJECTNAME}.exe"
 ## !define UNINST_KEY_NAME     "UninstKeyInRegistry"  # Default "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
 !define UNINST_KEY_NAME "NanciDesktop"
 ####
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
-!define REQUEST_EXECUTION_LEVEL "user"
+## !define WAILS_INSTALL_SCOPE     "user"             # Default "machine" - set to "user" for per-user install ($LOCALAPPDATA) without UAC prompt
 ####
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
-
-!macro nanci.writeUninstaller
-    WriteUninstaller "$INSTDIR\uninstall.exe"
-
-    ${If} "${REQUEST_EXECUTION_LEVEL}" == "admin"
-        WriteRegStr HKLM "${UNINST_KEY}" "Publisher" "${INFO_COMPANYNAME}"
-        WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
-        WriteRegStr HKLM "${UNINST_KEY}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
-        WriteRegStr HKLM "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-        WriteRegStr HKLM "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
-        WriteRegStr HKLM "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
-    ${Else}
-        WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "${INFO_COMPANYNAME}"
-        WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
-        WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
-        WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-        WriteRegStr HKCU "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
-        WriteRegStr HKCU "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
-    ${EndIf}
-
-    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
-    IntFmt $0 "0x%08X" $0
-
-    ${If} ${REQUEST_EXECUTION_LEVEL} == "admin"
-        WriteRegDWORD HKLM "${UNINST_KEY}" "EstimatedSize" "$0"
-    ${Else}
-        WriteRegDWORD HKCU "${UNINST_KEY}" "EstimatedSize" "$0"
-    ${EndIf}
-!macroend
-
-!macro nanci.deleteUninstaller
-    Delete "$INSTDIR\uninstall.exe"
-
-    SetRegView 64
-    ${If} ${REQUEST_EXECUTION_LEVEL} == "admin"
-        DeleteRegKey HKLM "${UNINST_KEY}"
-    ${Else}
-        DeleteRegKey HKCU "${UNINST_KEY}"
-    ${EndIf}
-!macroend
 
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
@@ -106,7 +66,7 @@ ManifestDPIAware true
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
 
-!insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
+!insertmacro MUI_UNPAGE_INSTFILES # Uninstalling page
 
 !insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
 
@@ -115,8 +75,12 @@ ManifestDPIAware true
 #!finalize 'signtool --file "%1"'
 
 Name "${INFO_PRODUCTNAME}"
-OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the installer's file.
-InstallDir "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}" # Default installing folder.
+OutFile "..\..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the installer's file.
+!if "${WAILS_INSTALL_SCOPE}" == "user"
+    InstallDir "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}"
+!else
+    InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+!endif
 ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
@@ -129,25 +93,25 @@ Section
     !insertmacro wails.webview2runtime
 
     SetOutPath $INSTDIR
-
+    
     !insertmacro wails.files
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    CreateShortcut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
     ; Enable only if the app actually needs shell integrations.
     ; !insertmacro wails.associateFiles
     ; !insertmacro wails.associateCustomProtocols
-
-    !insertmacro nanci.writeUninstaller
+    
+    !insertmacro wails.writeUninstaller
 SectionEnd
 
-Section "uninstall"
+Section "uninstall" 
     !insertmacro wails.setShellContext
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
-    RMDir /r "$INSTDIR"
+    RMDir /r $INSTDIR
 
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
@@ -155,5 +119,5 @@ Section "uninstall"
     ; !insertmacro wails.unassociateFiles
     ; !insertmacro wails.unassociateCustomProtocols
 
-    !insertmacro nanci.deleteUninstaller
+    !insertmacro wails.deleteUninstaller
 SectionEnd

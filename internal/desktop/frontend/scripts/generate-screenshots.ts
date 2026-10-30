@@ -1,11 +1,12 @@
 import { createServer, type ViteDevServer } from 'vite'
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 type Theme = 'light' | 'dark'
-type EventCallback = (...args: unknown[]) => void
+// MockMethod takes the arguments of the bound method it stands for.
+type MockMethod = (...args: never[]) => Promise<unknown>
 
 type ScreenshotSpec = {
   route: string
@@ -34,19 +35,6 @@ type ScreenshotSpec = {
 
 declare global {
   interface Window {
-    go: unknown
-    runtime: {
-      EventsOnMultiple: (
-        eventName: string,
-        callback: EventCallback,
-        maxCallbacks?: number
-      ) => () => void
-      EventsOnce: (eventName: string, callback: EventCallback) => void
-      EventsOff: (eventName: string) => void
-      EventsOffAll: () => void
-      EventsEmit: (eventName: string, ...args: unknown[]) => void
-      [key: string]: unknown
-    }
     triggerWailsEvent?: (eventName: string, payload: unknown) => void
   }
 }
@@ -55,6 +43,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '../../../..')
 const screenshotsDir = path.resolve(rootDir, 'docs/screenshots')
 const viteConfig = path.resolve(__dirname, '../vite.config.ts')
+const appBindings = path.resolve(
+  __dirname,
+  '../bindings/github.com/vasfvitor/nanci/internal/desktop/app.ts'
+)
 const appUrl = 'http://localhost:5555'
 
 const mockCompanies = [
@@ -1274,308 +1266,313 @@ const screenshots: ScreenshotSpec[] = [
   },
 ]
 
+// loadMethodNames maps the numeric method IDs the Wails v3 bindings send to
+// the App method names the mock is keyed by.
+async function loadMethodNames(): Promise<Record<string, string>> {
+  const source = await readFile(appBindings, 'utf8')
+  const names: Record<string, string> = {}
+  for (const match of source.matchAll(
+    /export function (\w+)\([^)]*\)[^{]*\{\s*return \$Call\.ByID\((\d+)/g
+  )) {
+    const [, name, id] = match
+    if (name && id) {
+      names[id] = name
+    }
+  }
+  if (Object.keys(names).length === 0) {
+    throw new Error(`no bound methods found in ${appBindings}`)
+  }
+  return names
+}
+
+// installWailsMock answers the HTTP requests the Wails v3 runtime sends to
+// /wails/runtime: binding calls go to the mock App, runtime calls get the
+// canned results below.
 async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
+  const methodNames = await loadMethodNames()
   await context.addInitScript(
-    ({ companies, credentials, documents, events, nfe, cte }) => {
-      const listeners: Record<string, EventCallback[]> = {}
-
-      const off = (eventName: string, callback: EventCallback) => {
-        listeners[eventName] = (listeners[eventName] ?? []).filter((item) => item !== callback)
+    ({ companies, credentials, documents, events, nfe, cte, methodNames }) => {
+      const App: Record<string, MockMethod> = {
+        AddCompany: async (input: unknown) => ({
+          ...(input as object),
+          ID: String(Date.now()),
+        }),
+        AddCredential: async (input: unknown) => ({
+          ...(input as object),
+          ID: String(Date.now()),
+        }),
+        AssignCredentialToCompany: async () => undefined,
+        CancelCertPassword: async () => undefined,
+        ConfirmQuit: async () => undefined,
+        ExportDocuments: async () => ({
+          OutPath: 'C:\\exports\\nfs-export.xlsx',
+          Format: 'xlsx',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ExportDANFE: async () => ({
+          OutPath: 'C:\\exports\\danfe.pdf',
+          Format: 'danfe',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ExportDANFSe: async () => ({
+          OutPath: 'C:\\exports\\danfse.pdf',
+          Format: 'danfse',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ExportXML: async () => ({
+          OutPath: 'C:\\exports\\nfs.xml',
+          Format: 'xml',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ExportLogs: async () => undefined,
+        GetBuildInfo: async () => ({
+          version: 'v0.4.0',
+          commit: '296a3d9',
+          date: '2026-09-30T12:00:00Z',
+          webview2Version: '141.0.3537.71',
+        }),
+        GetDataDirectory: async () => 'C:\\Users\\usuario\\AppData\\Roaming\\nanci',
+        OpenDataDirectory: async () => undefined,
+        OpenLogsDirectory: async () => undefined,
+        ExportNFeXML: async () => ({
+          OutPath: 'C:\\exports\\nfe.xml',
+          Format: 'xml',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ExportNFeDocuments: async () => ({
+          OutPath: 'C:\\exports\\nfe.zip',
+          Format: 'xml',
+          Incremental: false,
+          ExportedCount: 4,
+          SkippedResumos: 3,
+        }),
+        FetchNFeByChave: async (input: { ChaveAcesso?: string }) => ({
+          ChaveAcesso: input.ChaveAcesso ?? '',
+          Outcome: 'completa',
+          Message: '',
+          RequestsLastHour: 1,
+          RequestBudget: 20,
+        }),
+        ImportNFeXML: async (input: { Files?: string[] }) => ({
+          Files: (input.Files ?? []).map((Path) => ({
+            Path,
+            Kind: 'completa',
+            ChaveAcesso: '',
+            Outcome: 'imported',
+            Message: '',
+          })),
+          Imported: (input.Files ?? []).length,
+          Updated: 0,
+          Rejected: 0,
+        }),
+        ListNFe: async () => nfe.rows,
+        ListNFeEvents: async () => nfe.events,
+        ListNFePendingManifestacoes: async () => nfe.pending,
+        PlanNFeCiencia: async () => nfe.cienciaPlan,
+        PullNFe: async () => ({
+          CompanyName: nfe.status.CompanyName,
+          CNPJ: nfe.status.CNPJ,
+          Status: 'success',
+        }),
+        RegisterNFeCiencia: async () => ({ Results: [], Skipped: [], Interrupted: '' }),
+        RegisterNFeManifestacao: async () => ({
+          Status: 'registrada',
+          CStat: '135',
+          Protocolo: '135260000000001',
+        }),
+        StatusNFe: async () => nfe.status,
+        ExportCTeXML: async () => ({
+          OutPath: 'C:\\exports\\cte.xml',
+          Format: 'xml',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ExportCTeDocuments: async () => ({
+          OutPath: 'C:\\exports\\cte.zip',
+          Format: 'xml',
+          Incremental: false,
+          ExportedCount: 5,
+          SkippedSemDACTE: 0,
+        }),
+        ExportDACTE: async () => ({
+          OutPath: 'C:\\exports\\dacte.pdf',
+          Format: 'dacte',
+          Incremental: false,
+          ExportedCount: 1,
+        }),
+        ImportCTeXML: async (input: { Files?: string[] }) => ({
+          Files: (input.Files ?? []).map((Path) => ({
+            Path,
+            Kind: 'completa',
+            ChaveAcesso: '',
+            Outcome: 'imported',
+            Message: '',
+          })),
+          Imported: (input.Files ?? []).length,
+          Updated: 0,
+          Rejected: 0,
+        }),
+        ListCTe: async () => cte.rows,
+        ListCTeEvents: async () => cte.events,
+        PreviewResetCTe: async () => ({
+          CompanyName: cte.status.CompanyName,
+          CNPJ: cte.status.CNPJ,
+          CompanyDocuments: 5,
+          Documents: 5,
+          Events: 3,
+          ExportMarks: 0,
+        }),
+        PullCTe: async () => ({
+          CompanyName: cte.status.CompanyName,
+          CNPJ: cte.status.CNPJ,
+          Status: 'success',
+        }),
+        ResetCTe: async () => ({
+          CompanyName: cte.status.CompanyName,
+          CNPJ: cte.status.CNPJ,
+          CompanyDocuments: 5,
+          Documents: 5,
+          Events: 3,
+          ExportMarks: 0,
+        }),
+        StatusCTe: async () => cte.status,
+        MarkCTeViewed: async () => 0,
+        MarkDocumentsViewed: async () => 0,
+        MarkNFeViewed: async () => 0,
+        ListCompanies: async () => companies,
+        ListCredentials: async () => credentials,
+        ListDocuments: async () => documents,
+        ListEventsForDocument: async () => events,
+        Pull: async (input: { CNPJ?: string }) => ({
+          CompanyName: 'ACME Tecnologia e Serviços LTDA',
+          CNPJ: input.CNPJ,
+          CredentialLabel: 'Certificado PFX ACME 2026',
+          CredentialCNPJ: '12345678000100',
+          ConsultationBasis: 'prestador/tomador',
+          Status: 'success',
+          StopReason: 'no-more-nsu',
+          LastProcessedNSU: 1024,
+          LastFoundNSU: 55,
+          EmptyStreak: 0,
+          DocumentsFound: 3,
+          EventsFound: 0,
+          DocumentsSaved: 3,
+          EventsSaved: 0,
+          DocumentsSkippedByPolicy: 0,
+          EventsSkippedByPolicy: 0,
+          Errors: 0,
+          Duration: 1240000000,
+        }),
+        QueryNFSeEvents: async () =>
+          JSON.stringify(
+            { chaveAcesso: '35260912345678000100550010000012341000012345', eventos: [] },
+            null,
+            2
+          ),
+        ResetNFe: async () => ({
+          CompanyName: nfe.status.CompanyName,
+          CNPJ: nfe.status.CNPJ,
+          CompanyDocuments: 4,
+          Documents: 4,
+          Events: 2,
+          ExportMarks: 0,
+          ManifestacoesKept: 1,
+        }),
+        ResetSyncState: async () => undefined,
+        SelectCertificate: async () => 'C:\\Certificados\\mock.pfx',
+        SelectSaveFile: async (_title: string, defaultFilename: string) =>
+          `C:\\exports\\${defaultFilename}`,
+        SelectXMLFiles: async () => ['C:\\XML\\nota-fornecedor.xml'],
+        SetLogLevel: async () => undefined,
+        SetWindowTheme: async () => undefined,
+        ShowInFolder: async () => undefined,
+        Status: async () => ({}),
+        SubmitCertPassword: async () => undefined,
+        UpdateCompany: async () => undefined,
+        UpdateCredentialData: async () => undefined,
+        UpdateCredentialPath: async () => undefined,
+        TestCTeConnection: async () => ({
+          certLoaded: true,
+          certSubject: 'ACME TECNOLOGIA',
+          certExpiration: '2026-01-01T23:59:59Z',
+          mtlsAccepted: true,
+          endpointReached: true,
+          responseCode: '',
+          responseDetail: '',
+          statusExplanation:
+            'Conexão TLS com a SEFAZ (CT-e) estabelecida. Nenhuma consulta foi enviada, para não gastar o limite de consultas por hora; a SEFAZ só valida o certificado na primeira consulta.',
+        }),
+        TestConnection: async () => ({
+          certLoaded: true,
+          certSubject: 'ACME TECNOLOGIA',
+          certExpiration: '2026-01-01T23:59:59Z',
+          mtlsAccepted: true,
+          endpointReached: true,
+          responseCode: '200',
+          responseDetail: 'OK',
+          statusExplanation: 'Conexão estabelecida com sucesso.',
+        }),
       }
 
-      window.go = {
-        main: {
-          App: {
-            AddCompany: async (input: unknown) => ({
-              ...(input as object),
-              ID: String(Date.now()),
-            }),
-            AddCredential: async (input: unknown) => ({
-              ...(input as object),
-              ID: String(Date.now()),
-            }),
-            AssignCredentialToCompany: async () => undefined,
-            CancelCertPassword: async () => undefined,
-            ConfirmQuit: async () => undefined,
-            ExportDocuments: async () => ({
-              OutPath: 'C:\\exports\\nfs-export.xlsx',
-              Format: 'xlsx',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ExportDANFE: async () => ({
-              OutPath: 'C:\\exports\\danfe.pdf',
-              Format: 'danfe',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ExportDANFSe: async () => ({
-              OutPath: 'C:\\exports\\danfse.pdf',
-              Format: 'danfse',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ExportXML: async () => ({
-              OutPath: 'C:\\exports\\nfs.xml',
-              Format: 'xml',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ExportLogs: async () => undefined,
-            GetBuildInfo: async () => ({
-              version: 'v0.4.0',
-              commit: '296a3d9',
-              date: '2026-09-30T12:00:00Z',
-              webview2Version: '141.0.3537.71',
-            }),
-            GetDataDirectory: async () => 'C:\\Users\\usuario\\AppData\\Roaming\\nanci',
-            OpenDataDirectory: async () => undefined,
-            OpenLogsDirectory: async () => undefined,
-            ExportNFeXML: async () => ({
-              OutPath: 'C:\\exports\\nfe.xml',
-              Format: 'xml',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ExportNFeDocuments: async () => ({
-              OutPath: 'C:\\exports\\nfe.zip',
-              Format: 'xml',
-              Incremental: false,
-              ExportedCount: 4,
-              SkippedResumos: 3,
-            }),
-            FetchNFeByChave: async (input: { ChaveAcesso?: string }) => ({
-              ChaveAcesso: input.ChaveAcesso ?? '',
-              Outcome: 'completa',
-              Message: '',
-              RequestsLastHour: 1,
-              RequestBudget: 20,
-            }),
-            ImportNFeXML: async (input: { Files?: string[] }) => ({
-              Files: (input.Files ?? []).map((Path) => ({
-                Path,
-                Kind: 'completa',
-                ChaveAcesso: '',
-                Outcome: 'imported',
-                Message: '',
-              })),
-              Imported: (input.Files ?? []).length,
-              Updated: 0,
-              Rejected: 0,
-            }),
-            ListNFe: async () => nfe.rows,
-            ListNFeEvents: async () => nfe.events,
-            ListNFePendingManifestacoes: async () => nfe.pending,
-            PlanNFeCiencia: async () => nfe.cienciaPlan,
-            PullNFe: async () => ({
-              CompanyName: nfe.status.CompanyName,
-              CNPJ: nfe.status.CNPJ,
-              Status: 'success',
-            }),
-            RegisterNFeCiencia: async () => ({ Results: [], Skipped: [], Interrupted: '' }),
-            RegisterNFeManifestacao: async () => ({
-              Status: 'registrada',
-              CStat: '135',
-              Protocolo: '135260000000001',
-            }),
-            StatusNFe: async () => nfe.status,
-            ExportCTeXML: async () => ({
-              OutPath: 'C:\\exports\\cte.xml',
-              Format: 'xml',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ExportCTeDocuments: async () => ({
-              OutPath: 'C:\\exports\\cte.zip',
-              Format: 'xml',
-              Incremental: false,
-              ExportedCount: 5,
-              SkippedSemDACTE: 0,
-            }),
-            ExportDACTE: async () => ({
-              OutPath: 'C:\\exports\\dacte.pdf',
-              Format: 'dacte',
-              Incremental: false,
-              ExportedCount: 1,
-            }),
-            ImportCTeXML: async (input: { Files?: string[] }) => ({
-              Files: (input.Files ?? []).map((Path) => ({
-                Path,
-                Kind: 'completa',
-                ChaveAcesso: '',
-                Outcome: 'imported',
-                Message: '',
-              })),
-              Imported: (input.Files ?? []).length,
-              Updated: 0,
-              Rejected: 0,
-            }),
-            ListCTe: async () => cte.rows,
-            ListCTeEvents: async () => cte.events,
-            PreviewResetCTe: async () => ({
-              CompanyName: cte.status.CompanyName,
-              CNPJ: cte.status.CNPJ,
-              CompanyDocuments: 5,
-              Documents: 5,
-              Events: 3,
-              ExportMarks: 0,
-            }),
-            PullCTe: async () => ({
-              CompanyName: cte.status.CompanyName,
-              CNPJ: cte.status.CNPJ,
-              Status: 'success',
-            }),
-            ResetCTe: async () => ({
-              CompanyName: cte.status.CompanyName,
-              CNPJ: cte.status.CNPJ,
-              CompanyDocuments: 5,
-              Documents: 5,
-              Events: 3,
-              ExportMarks: 0,
-            }),
-            StatusCTe: async () => cte.status,
-            MarkCTeViewed: async () => 0,
-            MarkDocumentsViewed: async () => 0,
-            MarkNFeViewed: async () => 0,
-            ListCompanies: async () => companies,
-            ListCredentials: async () => credentials,
-            ListDocuments: async () => documents,
-            ListEventsForDocument: async () => events,
-            Pull: async (input: { CNPJ?: string }) => ({
-              CompanyName: 'ACME Tecnologia e Serviços LTDA',
-              CNPJ: input.CNPJ,
-              CredentialLabel: 'Certificado PFX ACME 2026',
-              CredentialCNPJ: '12345678000100',
-              ConsultationBasis: 'prestador/tomador',
-              Status: 'success',
-              StopReason: 'no-more-nsu',
-              LastProcessedNSU: 1024,
-              LastFoundNSU: 55,
-              EmptyStreak: 0,
-              DocumentsFound: 3,
-              EventsFound: 0,
-              DocumentsSaved: 3,
-              EventsSaved: 0,
-              DocumentsSkippedByPolicy: 0,
-              EventsSkippedByPolicy: 0,
-              Errors: 0,
-              Duration: 1240000000,
-            }),
-            QueryNFSeEvents: async () =>
-              JSON.stringify(
-                { chaveAcesso: '35260912345678000100550010000012341000012345', eventos: [] },
-                null,
-                2
-              ),
-            ResetNFe: async () => ({
-              CompanyName: nfe.status.CompanyName,
-              CNPJ: nfe.status.CNPJ,
-              CompanyDocuments: 4,
-              Documents: 4,
-              Events: 2,
-              ExportMarks: 0,
-              ManifestacoesKept: 1,
-            }),
-            ResetSyncState: async () => undefined,
-            SelectCertificate: async () => 'C:\\Certificados\\mock.pfx',
-            SelectSaveFile: async (_title: string, defaultFilename: string) =>
-              `C:\\exports\\${defaultFilename}`,
-            SelectXMLFiles: async () => ['C:\\XML\\nota-fornecedor.xml'],
-            SetLogLevel: async () => undefined,
-            ShowInFolder: async () => undefined,
-            Status: async () => ({}),
-            SubmitCertPassword: async () => undefined,
-            UpdateCompany: async () => undefined,
-            UpdateCredentialData: async () => undefined,
-            UpdateCredentialPath: async () => undefined,
-            TestCTeConnection: async () => ({
-              certLoaded: true,
-              certSubject: 'ACME TECNOLOGIA',
-              certExpiration: '2026-01-01T23:59:59Z',
-              mtlsAccepted: true,
-              endpointReached: true,
-              responseCode: '',
-              responseDetail: '',
-              statusExplanation:
-                'Conexão TLS com a SEFAZ (CT-e) estabelecida. Nenhuma consulta foi enviada, para não gastar o limite de consultas por hora; a SEFAZ só valida o certificado na primeira consulta.',
-            }),
-            TestConnection: async () => ({
-              certLoaded: true,
-              certSubject: 'ACME TECNOLOGIA',
-              certExpiration: '2026-01-01T23:59:59Z',
-              mtlsAccepted: true,
-              endpointReached: true,
-              responseCode: '200',
-              responseDetail: 'OK',
-              statusExplanation: 'Conexão estabelecida com sucesso.',
-            }),
-          },
-        },
-      }
-
-      window.runtime = {
-        EventsOnMultiple: (eventName, callback, maxCallbacks = Number.POSITIVE_INFINITY) => {
-          let calls = 0
-
-          const wrapped: EventCallback = (...args) => {
-            calls += 1
-            callback(...args)
-
-            if (calls >= maxCallbacks) {
-              off(eventName, wrapped)
-            }
-          }
-
-          listeners[eventName] ??= []
-          listeners[eventName].push(wrapped)
-
-          return () => off(eventName, wrapped)
-        },
-
-        EventsOnce: (eventName, callback) => {
-          window.runtime.EventsOnMultiple(eventName, callback, 1)
-        },
-
-        EventsOff: (eventName) => {
-          delete listeners[eventName]
-        },
-
-        EventsOffAll: () => {
-          Object.keys(listeners).forEach((eventName) => delete listeners[eventName])
-        },
-
-        EventsEmit: (eventName, ...args) => {
-          for (const callback of listeners[eventName] ?? []) {
-            callback(...args)
-          }
-        },
-
-        WindowMinimise: () => undefined,
-        WindowToggleMaximise: () => undefined,
-        WindowGetSize: async () => ({ w: 1280, h: 768 }),
-        WindowSetSize: () => undefined,
-        WindowIsMaximised: async () => false,
-        ScreenGetAll: async () => [
-          { isCurrent: true, isPrimary: true, width: 1920, height: 1080 },
-          { isCurrent: false, isPrimary: false, width: 1920, height: 1080 },
+      // Window size and screens answer like the Wails runtime; the other
+      // runtime calls (window controls, quit) resolve empty.
+      const runtimeResults: Record<string, unknown> = {
+        // objectNames.Window = 6: IsMaximised = 14, Size = 37.
+        '6:14': false,
+        '6:37': { width: 1280, height: 768 },
+        // objectNames.Screens = 7: GetAll = 0.
+        '7:0': [
+          { ID: '1', IsPrimary: true, Size: { Width: 1920, Height: 1080 } },
+          { ID: '2', IsPrimary: false, Size: { Width: 1920, Height: 1080 } },
         ],
-        Quit: () => undefined,
+      }
 
-        WindowSetDarkTheme: () => undefined,
-        WindowSetLightTheme: () => undefined,
-        WindowSetSystemDefaultTheme: () => undefined,
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body ?? null), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
 
-        LogPrint: () => undefined,
-        LogTrace: () => undefined,
-        LogDebug: () => undefined,
-        LogInfo: () => undefined,
-        LogWarning: () => undefined,
-        LogError: () => undefined,
-        LogFatal: () => undefined,
+      const originalFetch = window.fetch.bind(window)
+      window.fetch = async (input, init) => {
+        const url = input instanceof Request ? input.url : String(input)
+        if (!url.endsWith('/wails/runtime')) {
+          return originalFetch(input, init)
+        }
+
+        const request = JSON.parse(String(init?.body ?? '{}')) as {
+          object?: number
+          method?: number
+          args?: { methodID?: number; args?: unknown[] }
+        }
+        // Object 0 is a binding call; the rest are runtime calls.
+        if (request.object !== 0) {
+          return json(runtimeResults[`${request.object}:${request.method}`])
+        }
+        const name = methodNames[String(request.args?.methodID)]
+        const method = name ? App[name] : undefined
+        if (!method) {
+          return json(
+            {
+              message: `mock: unknown method ${name ?? request.args?.methodID}`,
+              kind: 'ReferenceError',
+            },
+            422
+          )
+        }
+        return json(await method(...((request.args?.args ?? []) as never[])))
       }
 
       window.triggerWailsEvent = (eventName, payload) => {
-        window.runtime.EventsEmit(eventName, payload)
+        const wails = (
+          window as unknown as { _wails?: { dispatchWailsEvent?: (event: unknown) => void } }
+        )._wails
+        wails?.dispatchWailsEvent?.({ name: eventName, data: payload })
       }
     },
     {
@@ -1595,6 +1592,7 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
         status: mockCTeStatus,
         events: mockCTeEvents,
       },
+      methodNames,
     }
   )
 }

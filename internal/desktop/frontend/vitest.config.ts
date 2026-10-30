@@ -13,6 +13,7 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     include: ['src/**/*.{test,spec}.ts'],
+    setupFiles: ['src/test/wailsRuntime.setup.ts'],
     env: {
       TZ: 'America/Sao_Paulo',
     },

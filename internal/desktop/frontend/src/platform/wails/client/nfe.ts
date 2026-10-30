@@ -16,7 +16,7 @@ import {
   RegisterNFeManifestacao,
   ResetNFe,
   StatusNFe,
-} from '../../../../wailsjs/go/main/App'
+} from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 import type {
   ExportDANFEInput,
   ExportResult,

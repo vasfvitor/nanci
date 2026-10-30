@@ -2,6 +2,11 @@ packages:
   - "."
 
 minimumReleaseAge: 10080
+# The Wails JS runtime must match the Go module version exactly, and 3.0.0 was
+# published on 2026-10-26. Remove this exception after 2026-11-02, when the
+# version is older than minimumReleaseAge.
+minimumReleaseAgeExclude:
+  - "@wailsio/runtime@3.0.0"
 strictPeerDependencies: true
 autoInstallPeers: false
 linkWorkspacePackages: true

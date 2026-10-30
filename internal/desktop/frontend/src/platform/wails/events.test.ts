@@ -1,30 +1,30 @@
 import { beforeEach, expect, vi } from 'vitest'
+import { Events } from '@wailsio/runtime'
 import { onWailsEvent } from './events'
-import { EventsOn } from '../../../wailsjs/runtime/runtime'
 
-vi.mock('../../../wailsjs/runtime/runtime', () => ({
-  EventsOn: vi.fn(),
+vi.mock('@wailsio/runtime', () => ({
+  Events: { On: vi.fn() },
 }))
 
 describe('onWailsEvent', () => {
   beforeEach(() => {
-    vi.mocked(EventsOn).mockReset()
+    vi.mocked(Events.On).mockReset()
   })
 
-  it('returns the unsubscribe function provided by Wails', () => {
+  it('passes the event data to the callback and returns the Wails unsubscribe', () => {
     const unsubscribe = vi.fn()
-    vi.mocked(EventsOn).mockReturnValue(unsubscribe)
+    vi.mocked(Events.On).mockReturnValue(unsubscribe)
 
     const callback = vi.fn()
     const cleanup = onWailsEvent<string>('backend-log', callback)
 
-    expect(EventsOn).toHaveBeenCalledWith('backend-log', expect.any(Function))
+    expect(Events.On).toHaveBeenCalledWith('backend-log', expect.any(Function))
 
-    const firstCall = vi.mocked(EventsOn).mock.calls[0]
+    const firstCall = vi.mocked(Events.On).mock.calls[0]
     expect(firstCall).toBeDefined()
     if (!firstCall) return
     const [, handler] = firstCall
-    handler('payload')
+    handler({ name: 'backend-log', data: 'payload' } as Parameters<typeof handler>[0])
     expect(callback).toHaveBeenCalledWith('payload')
 
     cleanup()

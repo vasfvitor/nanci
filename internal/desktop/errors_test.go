@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
-	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	nsync "github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -34,10 +33,7 @@ func TestFormatError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := formatError(tt.err).(desktopapi.ErrorPayload)
-			if !ok {
-				t.Fatalf("formatError returned %T, want desktopapi.ErrorPayload", formatError(tt.err))
-			}
+			got := formatError(tt.err)
 			if got.Code != tt.wantCode {
 				t.Errorf("Code = %q, want %q", got.Code, tt.wantCode)
 			}
@@ -51,16 +47,13 @@ func TestFormatError(t *testing.T) {
 	}
 }
 
-func TestFormatErrorJSON(t *testing.T) {
-	// The dispatcher marshals the payload into the callback's error field;
-	// client.ts reads these exact keys.
-	data, err := json.Marshal(formatError(app.ErrOperationCanceled))
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestMarshalError(t *testing.T) {
+	// Wails puts these bytes in the cause field of the rejected call;
+	// client/base.ts reads these exact keys.
+	data := marshalError(app.ErrOperationCanceled)
 	var got map[string]string
 	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatal(err)
+		t.Fatalf("marshalError returned invalid JSON %q: %v", data, err)
 	}
 	if len(got) != 2 || got["code"] != "canceled" || got["message"] != app.ErrOperationCanceled.Error() {
 		t.Errorf("json = %s, want code and message keys only", data)

@@ -10,8 +10,9 @@ import type {
 
 type RawRecord = Record<string, unknown>
 
-// WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go. The desktop
-// ErrorFormatter rejects bound-method promises with {code, message}.
+// WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go. Wails v3
+// rejects a bound-method promise with a RuntimeError whose cause is the {code, message}
+// payload marshalError builds.
 const wailsErrorCodes = ['canceled', 'sefaz_blocked', 'sync_running', 'startup_failed'] as const
 export type WailsErrorCode = (typeof wailsErrorCodes)[number] | ''
 
@@ -43,7 +44,15 @@ export function errorMessage(error: unknown): string {
 
 function normalizeError(error: unknown): WailsClientError {
   if (error instanceof WailsClientError) return error
-  if (error instanceof Error) return new WailsClientError(error.message, '', error)
+  if (error instanceof Error) {
+    const cause = error.cause
+    if (cause && typeof cause === 'object' && 'code' in cause) {
+      const payload = asRawRecord(cause)
+      const message = asString(payload['message']) || error.message
+      return new WailsClientError(message, asErrorCode(payload['code']), error)
+    }
+    return new WailsClientError(error.message, '', error)
+  }
   if (error && typeof error === 'object' && 'message' in error) {
     const payload = asRawRecord(error)
     return new WailsClientError(asString(payload['message']), asErrorCode(payload['code']), error)

@@ -3,17 +3,12 @@ package main
 import (
 	"embed"
 	"fmt"
+	"log/slog"
+	"os"
 	"path/filepath"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/logger"
-	"github.com/wailsapp/wails/v2/pkg/menu"
-	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 )
@@ -25,84 +20,106 @@ var icon []byte
 var assets embed.FS
 
 func main() {
-	// Setup file logger
-	logDir, _ := desktopLogDir()
-	wailsLogPath := filepath.Join(logDir, wailsLogFileName)
-	fileLogger := logger.NewFileLogger(wailsLogPath)
+	// Wails system messages go to their own file next to the desktop log.
+	var wailsLog *slog.Logger
+	if logDir, err := desktopLogDir(); err == nil {
+		writer, err := newRotatingFileWriter(filepath.Join(logDir, wailsLogFileName), logFileMaxBytes, logFileMaxBackups)
+		if err == nil {
+			defer func() { _ = writer.Close() }()
+			wailsLog = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		}
+	}
 
-	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application menu
-	AppMenu := menu.NewMenu()
-	FileMenu := AppMenu.AddSubmenu("Arquivo")
-	FileMenu.AddText("Exportar Logs", nil, func(_ *menu.CallbackData) {
+	wailsApp := application.New(application.Options{
+		Name:        "Nanci",
+		Description: fmt.Sprintf("Nanci %s\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version),
+		Icon:        icon,
+		Services: []application.Service{
+			application.NewService(app),
+		},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+		Logger:       wailsLog,
+		LogLevel:     slog.LevelWarn,
+		MarshalError: marshalError,
+		// Application.Quit (the title-bar X), Ctrl+Q and the menu "Sair"
+		// end here; closing the window from the OS goes through the
+		// WindowClosing hook below.
+		ShouldQuit: func() bool { return !app.beforeClose() },
+		// The frameless window has no menu bar on Windows, so the menu
+		// accelerator never fires there. KeyBinding.Add would skip the
+		// accelerator parsing these options get.
+		KeyBindings: map[string]func(application.Window){
+			"CmdOrCtrl+Q": func(application.Window) { app.quit() },
+		},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+	})
+	app.wails = wailsApp
+
+	wailsApp.Menu.Set(newAppMenu(app))
+
+	app.window = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "Nanci",
+		Width:            1280,
+		Height:           768,
+		Frameless:        true,
+		BackgroundType:   application.BackgroundTypeTranslucent,
+		BackgroundColour: application.NewRGBA(0, 0, 0, 0),
+		URL:              "/",
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBar{
+				AppearsTransparent:   true,
+				HideToolbarSeparator: true,
+			},
+		},
+		Windows: application.WindowsWindow{
+			Theme:        application.SystemDefault,
+			BackdropType: application.Mica,
+		},
+	})
+	app.window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		if app.beforeClose() {
+			event.Cancel()
+		}
+	})
+
+	if err := wailsApp.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err.Error())
+	}
+}
+
+// newAppMenu builds the native menu. Windows does not draw a menu bar on a
+// frameless window, so there it is only reachable through its accelerators.
+func newAppMenu(app *App) *application.Menu {
+	menu := application.NewMenu()
+
+	fileMenu := menu.AddSubmenu("Arquivo")
+	fileMenu.Add("Exportar Logs").OnClick(func(*application.Context) {
 		path, err := app.ExportLogs()
 		if err == nil && path != "" {
-			runtime.EventsEmit(app.ctx, "notify-success", "Logs exportados com sucesso para: "+path)
+			app.events.Emit("notify-success", "Logs exportados com sucesso para: "+path)
 		} else if err != nil {
-			runtime.EventsEmit(app.ctx, "notify-error", "Erro ao exportar logs: "+err.Error())
+			app.events.Emit("notify-error", "Erro ao exportar logs: "+err.Error())
 		}
 	})
-	FileMenu.AddSeparator()
-	FileMenu.AddText("Sair", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-		runtime.Quit(app.ctx)
+	fileMenu.AddSeparator()
+	fileMenu.Add("Sair").SetAccelerator("CmdOrCtrl+Q").OnClick(func(*application.Context) {
+		app.quit()
 	})
 
-	HelpMenu := AppMenu.AddSubmenu("Ajuda")
-	HelpMenu.AddText("Sobre", nil, func(_ *menu.CallbackData) {
-		if _, err := runtime.MessageDialog(app.ctx, runtime.MessageDialogOptions{
-			Type:    runtime.InfoDialog,
-			Title:   "Sobre o Nanci",
-			Message: fmt.Sprintf("Nanci %s\nCommit: %s\n\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version, buildinfo.Commit),
-		}); err != nil {
-			runtime.LogErrorf(app.ctx, "abrir diálogo Sobre: %v", err)
-		}
+	helpMenu := menu.AddSubmenu("Ajuda")
+	helpMenu.Add("Sobre").OnClick(func(*application.Context) {
+		app.wails.Dialog.Info().
+			SetTitle("Sobre o Nanci").
+			SetMessage(fmt.Sprintf("Nanci %s\nCommit: %s\n\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version, buildinfo.Commit)).
+			AttachToWindow(app.window).
+			Show()
 	})
 
-	err := wails.Run(&options.App{
-		Title:           "Nanci",
-		Menu:            AppMenu,
-		Width:           1280,
-		Height:          768,
-		Frameless:       true,
-		CSSDragProperty: "--wails-draggable",
-		CSSDragValue:    "drag",
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		Logger:           fileLogger,
-		LogLevel:         logger.WARNING,
-		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
-		Mac: &mac.Options{
-			About: &mac.AboutInfo{
-				Title:   "Sobre o Nanci Desktop",
-				Message: fmt.Sprintf("© 2026 Contribuidores do Nanci\nVersão: %s\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version),
-				Icon:    icon,
-			},
-			TitleBar: &mac.TitleBar{
-				TitlebarAppearsTransparent: true,
-				HideTitle:                  false,
-				HideTitleBar:               false,
-				FullSizeContent:            false,
-				UseToolbar:                 false,
-				HideToolbarSeparator:       true,
-			},
-		},
-		Windows: &windows.Options{
-			Theme:             windows.SystemDefault,
-			BackdropType:      windows.Mica,
-			DisableWindowIcon: false,
-		},
-		OnStartup:      app.startup,
-		OnShutdown:     app.shutdown,
-		OnBeforeClose:  app.beforeClose,
-		ErrorFormatter: formatError,
-		Bind: []any{
-			app,
-		},
-	})
-	if err != nil {
-		println("Error:", err.Error())
-	}
+	return menu
 }

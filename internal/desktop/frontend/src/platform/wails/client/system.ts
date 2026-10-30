@@ -9,7 +9,7 @@ import {
   SelectXMLFiles,
   SetLogLevel,
   ShowInFolder,
-} from '../../../../wailsjs/go/main/App'
+} from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 import type { BuildInfo } from '@/types/desktop'
 import { callWails, asString, asStringArray, asRawRecord } from './base'
 

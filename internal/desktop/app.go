@@ -1,4 +1,4 @@
-// App is the struct bound to the Wails frontend. This file holds its fields,
+// App is the Wails service bound to the frontend. This file holds its fields,
 // the startup that builds the core services, the readiness check every bound
 // method runs, the shutdown, and the helpers shared by several areas.
 
@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
@@ -30,18 +30,24 @@ import (
 // eventEmitter sends an event to the frontend. Tests replace wailsEvents so
 // GetCertPassword runs without the Wails runtime.
 type eventEmitter interface {
-	Emit(ctx context.Context, name string, data ...any)
+	Emit(name string, data ...any)
 }
 
-type wailsEvents struct{}
+// wailsEvents emits through the Wails application main sets on App. Before
+// that, and in tests without Wails, the event is dropped.
+type wailsEvents struct{ app *App }
 
-func (wailsEvents) Emit(ctx context.Context, name string, data ...any) {
-	runtime.EventsEmit(ctx, name, data...)
+func (e wailsEvents) Emit(name string, data ...any) {
+	if e.app.wails != nil {
+		e.app.wails.Event.Emit(name, data...)
+	}
 }
 
 // App struct
 type App struct {
 	ctx        context.Context
+	wails      *application.App           // set by main before Run
+	window     *application.WebviewWindow // the main window, parent of the dialogs
 	svc        services
 	cleanup    func()
 	startupErr error // why startup failed; ready returns it
@@ -51,39 +57,46 @@ type App struct {
 	logPath    string
 	guard      closeGuard
 	events     eventEmitter
-	quit       func(ctx context.Context) // runtime.Quit; tests replace it
+	quit       func() // asks Wails to quit; tests replace it
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{
+	a := &App{
 		cred:     newWailsCredentialProvider(),
 		logLevel: new(slog.LevelVar),
-		events:   wailsEvents{},
-		quit:     runtime.Quit,
 	}
+	a.events = wailsEvents{app: a}
+	a.cred.events = a.events
+	a.quit = func() {
+		if a.wails != nil {
+			a.wails.Quit()
+		}
+	}
+	return a
 }
 
 // errNotStarted is returned by every method that needs the core while
 // startup has failed or has not run.
 var errNotStarted = errors.New("o nanci não iniciou")
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods. A failure is kept in startupErr and
+// ServiceStartup runs when Wails starts the App service. ctx lives until
+// shutdown and bounds every core call. A failure is kept in startupErr and
 // returned by every bound method that needs the core, so the frontend gets
-// an error instead of a call that never settles.
-func (a *App) startup(ctx context.Context) {
+// an error instead of a call that never settles. It never returns an error:
+// that would stop Wails before the window opens.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	a.ctx = ctx
-	a.cred.setCtx(ctx)
 
 	svc, cleanup, err := a.initRuntime(ctx)
 	if err != nil {
 		a.startupErr = err
 		fmt.Printf("failed to start: %v\n", err)
-		return
+		return nil
 	}
 	a.svc = svc
 	a.cleanup = cleanup
+	return nil
 }
 
 // initRuntime configures the logger, opens the database and builds the core
@@ -102,7 +115,7 @@ func (a *App) initRuntime(ctx context.Context) (services, func(), error) {
 	}
 	a.logPath = filepath.Join(logDir, desktopLogFileName)
 
-	log, writer, err := newDesktopLogger(ctx, a.logLevel, a.logPath)
+	log, writer, err := newDesktopLogger(a.emitLog, a.logLevel, a.logPath)
 	if err != nil {
 		return services{}, nil, fmt.Errorf("configurar log: %w", err)
 	}
@@ -161,13 +174,20 @@ func (a *App) ready() error {
 	return nil
 }
 
-func (a *App) shutdown(ctx context.Context) {
+// ServiceShutdown runs when Wails stops the App service.
+func (a *App) ServiceShutdown() error {
 	if a.cleanup != nil {
 		a.cleanup()
 	}
 	if a.logWriter != nil {
 		_ = a.logWriter.Close()
 	}
+	return nil
+}
+
+// emitLog sends a desktop log record to the console in the frontend.
+func (a *App) emitLog(event desktopLogEvent) {
+	a.events.Emit("backend-log", event)
 }
 
 // validateImport refuses an import without a company or files before the

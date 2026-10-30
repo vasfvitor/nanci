@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
@@ -31,20 +31,16 @@ import (
 // WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction.
 // It owns the passwordChans map and its mutex; the App delegates Submit/Cancel calls to it.
 type WailsCredentialProvider struct {
-	ctx           context.Context
-	events        eventEmitter
+	events        eventEmitter // NewApp sets it to the App's emitter
 	passwordChans map[string]chan []byte
 	mu            sync.Mutex
 }
 
 func newWailsCredentialProvider() *WailsCredentialProvider {
 	return &WailsCredentialProvider{
-		events:        wailsEvents{},
 		passwordChans: make(map[string]chan []byte),
 	}
 }
-
-func (p *WailsCredentialProvider) setCtx(ctx context.Context) { p.ctx = ctx }
 
 // GetCertPassword asks the frontend for the certificate password and blocks until one is provided.
 // The caller owns the returned slice and should zero it with cert.ZeroBytes once done.
@@ -62,7 +58,7 @@ func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.C
 	}()
 
 	// Notify the frontend to show the password dialog
-	p.events.Emit(p.ctx, "request-cert-password", req) //nolint:contextcheck // Wails runtime calls need the app context from startup; ctx only bounds the wait.
+	p.events.Emit("request-cert-password", req)
 
 	// Block until the password is submitted by the frontend
 	select {
@@ -126,37 +122,63 @@ func (a *App) CancelCertPassword(reqID string) {
 
 // SelectCertificate opens a file dialog to select a .pfx or .p12 file
 func (a *App) SelectCertificate() (string, error) {
-	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Selecione o Certificado Digital",
-		Filters: []runtime.FileFilter{
+	return dialogPath(a.wails.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title:          "Selecione o Certificado Digital",
+		CanChooseFiles: true,
+		Window:         a.window,
+		Filters: []application.FileFilter{
 			{DisplayName: "Certificados (*.pfx; *.p12)", Pattern: "*.pfx;*.p12"},
 			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
 		},
-	})
+	}).PromptForSingleSelection())
 }
 
 // SelectXMLFiles opens a dialog to pick one or more XML files to import.
 // It returns an empty list when the user cancels.
 func (a *App) SelectXMLFiles() ([]string, error) {
-	return runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Selecione os XMLs",
-		Filters: []runtime.FileFilter{
+	return dialogPaths(a.wails.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title:                   "Selecione os XMLs",
+		CanChooseFiles:          true,
+		AllowsMultipleSelection: true,
+		Window:                  a.window,
+		Filters: []application.FileFilter{
 			{DisplayName: "XML (*.xml)", Pattern: "*.xml"},
 			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
 		},
-	})
+	}).PromptForMultipleSelection())
 }
 
 // SelectSaveFile opens a dialog to select an output file path for exports
 func (a *App) SelectSaveFile(title, defaultFilename, pattern string) (string, error) {
-	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           title,
-		DefaultFilename: defaultFilename,
-		Filters: []runtime.FileFilter{
+	return dialogPath(a.saveFileDialog(&application.SaveFileDialogOptions{
+		Title:    title,
+		Filename: defaultFilename,
+		Filters: []application.FileFilter{
 			{DisplayName: title, Pattern: pattern},
 			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
 		},
-	})
+	}))
+}
+
+// saveFileDialog shows a save dialog attached to the main window.
+func (a *App) saveFileDialog(options *application.SaveFileDialogOptions) (string, error) {
+	options.CanCreateDirectories = true
+	options.Window = a.window
+	return a.wails.Dialog.SaveFileWithOptions(options).PromptForSingleSelection()
+}
+
+// SetWindowTheme applies the theme picked in Configurações ("dark", "light" or
+// "system") to the native window. Wails v3 only sets the window theme when the
+// window is created, and its JS runtime has no theme calls.
+func (a *App) SetWindowTheme(theme string) {
+	switch theme {
+	case "dark":
+		setNativeDarkMode(a.window, true)
+	case "light":
+		setNativeDarkMode(a.window, false)
+	default:
+		setNativeDarkMode(a.window, systemPrefersDark())
+	}
 }
 
 func (a *App) SetLogLevel(level string) {
@@ -183,14 +205,14 @@ func (a *App) ExportLogs() (string, error) {
 		return "", fmt.Errorf("logger de desktop não configurado")
 	}
 
-	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Exportar Logs",
-		DefaultFilename: "nanci_desktop_logs.zip",
-		Filters: []runtime.FileFilter{
+	savePath, err := dialogPath(a.saveFileDialog(&application.SaveFileDialogOptions{
+		Title:    "Exportar Logs",
+		Filename: "nanci_desktop_logs.zip",
+		Filters: []application.FileFilter{
 			{DisplayName: "Arquivos ZIP (*.zip)", Pattern: "*.zip"},
 			{DisplayName: "Todos os Arquivos", Pattern: "*.*"},
 		},
-	})
+	}))
 	if err != nil || savePath == "" {
 		return "", err
 	}
@@ -274,8 +296,21 @@ func (a *App) GetBuildInfo() desktopapi.BuildInfo {
 		Version:         buildinfo.Version,
 		Commit:          buildinfo.Commit,
 		Date:            buildinfo.Date,
-		WebView2Version: webView2Version(),
+		WebView2Version: a.webView2Version(),
 	}
+}
+
+// webView2Version returns the version of the installed WebView2 runtime, as
+// Wails finds it when it starts the webview ("141.0.3537.71", plus the
+// channel name for Beta, Dev or Canary), or "" when it cannot be read, off
+// Windows (macOS and Linux use WebKit) or before main sets up Wails. The app
+// ships no fixed runtime.
+func (a *App) webView2Version() string {
+	if a.wails == nil {
+		return ""
+	}
+	version, _ := a.wails.Env.Info().PlatformInfo["WebView2"].(string)
+	return version
 }
 
 func (a *App) GetDataDirectory() (string, error) {

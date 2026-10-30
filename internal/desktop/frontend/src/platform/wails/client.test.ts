@@ -61,9 +61,9 @@ import {
   StatusCTe,
   StatusNFe,
   TestCTeConnection,
-} from '../../../wailsjs/go/main/App'
+} from '../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 
-vi.mock('../../../wailsjs/go/main/App', () => ({
+vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () => ({
   AddCompany: vi.fn(),
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
@@ -113,6 +113,7 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   SelectSaveFile: vi.fn(),
   SelectXMLFiles: vi.fn(),
   SetLogLevel: vi.fn(),
+  SetWindowTheme: vi.fn(),
   ShowInFolder: vi.fn(),
   Status: vi.fn(),
   StatusCTe: vi.fn(),
@@ -1341,6 +1342,15 @@ describe('import and fetch by chave client calls', () => {
   })
 })
 
+// runtimeError builds what @wailsio/runtime rejects a bound call with when the
+// Go method returns an error: a RuntimeError whose cause is the JSON from
+// marshalError in internal/desktop/errors.go.
+function runtimeError(message: string, cause: unknown) {
+  const error = new Error(message, { cause })
+  error.name = 'RuntimeError'
+  return error
+}
+
 describe('Wails error codes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -1367,6 +1377,28 @@ describe('Wails error codes', () => {
     [{ code: 'unknown', message: 'algo' }, '', 'algo'],
     ['error parsing arguments: boom', '', 'error parsing arguments: boom'],
     [new Error('boom'), '', 'boom'],
+    [
+      runtimeError('carregar certificado: operação cancelada', {
+        code: 'canceled',
+        message: 'carregar certificado: operação cancelada',
+      }),
+      'canceled',
+      'carregar certificado: operação cancelada',
+    ],
+    [
+      runtimeError('NF-e: sincronização já em andamento', {
+        code: 'sync_running',
+        message: 'NF-e: sincronização já em andamento',
+      }),
+      'sync_running',
+      'NF-e: sincronização já em andamento',
+    ],
+    [
+      runtimeError('empresa não encontrada', { code: '', message: 'empresa não encontrada' }),
+      '',
+      'empresa não encontrada',
+    ],
+    [runtimeError('could not parse argument #0', 'not json'), '', 'could not parse argument #0'],
   ])('normalizes %o', async (rejection, code, message) => {
     vi.mocked(PullNFe).mockRejectedValue(rejection)
 
