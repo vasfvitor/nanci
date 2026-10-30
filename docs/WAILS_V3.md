@@ -31,7 +31,7 @@ Os nomes de API e os comportamentos citados aqui foram conferidos no código-fon
 
 No v2, o `ErrorFormatter` virava o valor inteiro da rejeição da promise. No v3:
 
-1. `Options.MarshalError` chama `marshalError` (`errors.go`), que serializa o mesmo `desktopapi.ErrorPayload{Code, Message}` de antes. `Code` é `canceled`, `sefaz_blocked`, `sync_running`, `update_busy`, `startup_failed` ou vazio.
+1. O `MarshalError` das opções do serviço (`application.NewServiceWithOptions` em `main.go`) chama `marshalError` (`errors.go`), que serializa o mesmo `desktopapi.ErrorPayload{Code, Message}` de antes. `Code` é `canceled`, `sefaz_blocked`, `sync_running`, `update_busy`, `startup_failed` ou vazio. Ele precisa ficar no serviço: o Wails v3.0.0 usa só o `MarshalError` do serviço nos métodos e nunca recorre ao `Options.MarshalError` da aplicação (`bindings.go:140`). Sem ele, o padrão serializa o erro como `{}` e o código se perde.
 2. O Wails monta um `CallError{message, cause, kind: "RuntimeError"}`. `message` é o texto do erro Go e `cause` é o JSON do passo 1 (`pkg/application/bindings.go`). A resposta HTTP sai com status 422.
 3. O `@wailsio/runtime` rejeita a promise com um `RuntimeError` (subclasse de `Error`) e copia `cause` (`internal/runtime/desktop/@wailsio/runtime/src/runtime.ts`).
 4. `normalizeError` em `src/platform/wails/client/base.ts` lê `code` e `message` de `error.cause`. Objetos simples com `message` continuam aceitos, e qualquer outro erro vira código vazio.

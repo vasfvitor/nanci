@@ -32,7 +32,7 @@ func formatError(err error) desktopapi.ErrorPayload {
 	return payload
 }
 
-// marshalError is the Wails Options.MarshalError hook. Wails puts the JSON it
+// marshalError is the MarshalError of the App service options. Wails puts the JSON it
 // returns in the cause field of the rejected call, next to message and kind.
 func marshalError(err error) []byte {
 	data, jsonErr := json.Marshal(formatError(err))
