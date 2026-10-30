@@ -11,7 +11,7 @@ require (
 	github.com/sethvargo/go-retry v0.5.0
 	github.com/spf13/cobra v1.10.2
 	github.com/wevertonj/go-danfse-v2 v0.1.0
-	github.com/xuri/excelize/v2 v2.11.0
+	github.com/xuri/excelize/v2 v2.11.1-0.20260915055537-22f76f9acb94
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/term v0.47.0
 	modernc.org/sqlite v1.60.1
@@ -31,7 +31,7 @@ require (
 	github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/richardlehane/mscfb v1.0.7 // indirect
+	github.com/richardlehane/mscfb v1.0.8 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/signintech/gopdf v0.36.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
