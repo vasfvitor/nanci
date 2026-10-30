@@ -82,6 +82,9 @@ export function useDocuments() {
   const canCancelSync = computed(
     () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'nfse')
   )
+  const isCancelling = computed(
+    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'nfse')
+  )
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   // refresh reloads the company list, whose sync fields feed the status line
@@ -116,8 +119,17 @@ export function useDocuments() {
     }
   }
 
-  function cancelSync() {
-    if (cnpj.value) syncStore.cancelSync(cnpj.value, 'nfse')
+  // cancelSync stops the pull. The sync stays "cancelando" in the store until
+  // the company list, which carries the NFS-e run, no longer shows it
+  // running; then the page reloads.
+  async function cancelSync() {
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ) return
+    await syncStore.cancelSync(companyCNPJ, 'nfse', async () => {
+      const companies = await desktopClient.listCompanies()
+      return companies.some((c) => c.CNPJ === companyCNPJ && c.LastRunStatus === 'running')
+    })
+    await refresh(companyCNPJ)
   }
 
   // resetSync restarts the company's NFS-e sync from NSU 0. It moves only
@@ -191,6 +203,7 @@ export function useDocuments() {
     statusLine,
     isSyncing,
     canCancelSync,
+    isCancelling,
     isResetting,
     search,
     syncNFSe,

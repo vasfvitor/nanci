@@ -1,9 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useDocuments } from './useDocuments'
 import { desktopClient, WailsClientError, wailsErrorCode } from '@/platform/wails/client'
-import { useCompanySyncStore } from '@/stores/companySync'
+import { CANCEL_POLL_MS, useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, DocumentRow, ExportResult, PullResult } from '@/types/desktop'
@@ -53,6 +53,10 @@ describe('useDocuments', () => {
     vi.clearAllMocks()
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company()])
     vi.mocked(desktopClient.listDocuments).mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('searches with the store list input', async () => {
@@ -114,7 +118,8 @@ describe('useDocuments', () => {
     expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
   })
 
-  it('cancels a pending sync from a remounted page', async () => {
+  it('cancels a pending sync from a remounted page and waits for the backend', async () => {
+    vi.useFakeTimers()
     vi.mocked(desktopClient.pull).mockImplementation(
       (_input, signal) =>
         new Promise((_resolve, reject) => {
@@ -127,15 +132,31 @@ describe('useDocuments', () => {
     useWorkspaceStore().cnpj = '123'
     expect(firstPage.canCancelSync.value).toBe(false)
 
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
+      company({ LastRunStatus: 'running' }),
+    ])
     const syncing = firstPage.syncNFSe()
     const remountedPage = useDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    remountedPage.cancelSync()
+    const cancelled = remountedPage.cancelSync()
 
     const error = await syncing.catch((err: unknown) => err)
     expect(wailsErrorCode(error)).toBe('canceled')
-    expect(remountedPage.isSyncing.value).toBe(false)
-    expect(remountedPage.canCancelSync.value).toBe(false)
+    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS * 2)
+    const thirdPage = useDocuments()
+    expect(thirdPage.isCancelling.value).toBe(true)
+    expect(thirdPage.isSyncing.value).toBe(true)
+    expect(thirdPage.canCancelSync.value).toBe(false)
+    await expect(thirdPage.syncNFSe()).resolves.toBeNull()
+    expect(desktopClient.pull).toHaveBeenCalledTimes(1)
+
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
+      company({ LastRunStatus: 'interrupted' }),
+    ])
+    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
+    await cancelled
+    expect(thirdPage.isCancelling.value).toBe(false)
+    expect(thirdPage.isSyncing.value).toBe(false)
     expect(desktopClient.listDocuments).toHaveBeenCalled()
   })
 

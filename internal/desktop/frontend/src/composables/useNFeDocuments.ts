@@ -76,6 +76,9 @@ export function useNFeDocuments() {
   const canCancelSync = computed(
     () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'nfe')
   )
+  const isCancelling = computed(
+    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'nfe')
+  )
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
@@ -102,8 +105,17 @@ export function useNFeDocuments() {
     }
   }
 
-  function cancelSync() {
-    if (cnpj.value) syncStore.cancelSync(cnpj.value, 'nfe')
+  // cancelSync stops the pull. The sync stays "cancelando" in the store until
+  // the status no longer shows the run, then the page reloads.
+  async function cancelSync() {
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ) return
+    await syncStore.cancelSync(
+      companyCNPJ,
+      'nfe',
+      async () => (await desktopClient.statusNFe(companyCNPJ)).LastRunStatus === 'running'
+    )
+    await refresh(companyCNPJ)
   }
 
   // syncBusy is true without a company, while a pull, import or fetch of the
@@ -226,6 +238,7 @@ export function useNFeDocuments() {
     idleWarning,
     isSyncing,
     canCancelSync,
+    isCancelling,
     isResetting,
     syncBlockedUntil,
     blockedText,

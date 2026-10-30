@@ -6,17 +6,40 @@ function syncKey(cnpj: string, source: SyncSource) {
   return `${source}:${cnpj}`
 }
 
+function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([other]) => other !== key))
+}
+
+// After a cancel, cancelSync asks every CANCEL_POLL_MS whether the backend
+// still runs the sync, for at most CANCEL_WAIT_MS.
+export const CANCEL_POLL_MS = 500
+export const CANCEL_WAIT_MS = 15_000
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export const useCompanySyncStore = defineStore('companySync', () => {
   const activeSyncs = ref<Record<string, number>>({})
   // cancellers holds the AbortController of each cancellable sync in flight,
   // by the same key, so any screen can cancel it.
   const cancellers = shallowRef<Record<string, AbortController>>({})
+  // cancelling holds, by the same key, the syncs cancelled in the frontend
+  // that the backend may still be running. They count as syncing.
+  const cancelling = ref<Record<string, true>>({})
 
   // anySyncing is true while a sync of any company or source runs.
-  const anySyncing = computed(() => Object.keys(activeSyncs.value).length > 0)
+  const anySyncing = computed(
+    () => Object.keys(activeSyncs.value).length > 0 || Object.keys(cancelling.value).length > 0
+  )
 
   function isSyncing(cnpj: string, source: SyncSource) {
-    return Boolean(activeSyncs.value[syncKey(cnpj, source)])
+    const key = syncKey(cnpj, source)
+    return Boolean(activeSyncs.value[key] || cancelling.value[key])
+  }
+
+  function isCancelling(cnpj: string, source: SyncSource) {
+    return Boolean(cancelling.value[syncKey(cnpj, source)])
   }
 
   function startSync(cnpj: string, source: SyncSource) {
@@ -32,9 +55,7 @@ export const useCompanySyncStore = defineStore('companySync', () => {
     const count = activeSyncs.value[key] ?? 0
 
     if (count <= 1) {
-      activeSyncs.value = Object.fromEntries(
-        Object.entries(activeSyncs.value).filter(([activeKey]) => activeKey !== key)
-      )
+      activeSyncs.value = withoutKey(activeSyncs.value, key)
       return
     }
 
@@ -67,9 +88,7 @@ export const useCompanySyncStore = defineStore('companySync', () => {
       return await runSync(cnpj, source, () => fn(controller.signal))
     } finally {
       if (cancellers.value[key] === controller) {
-        cancellers.value = Object.fromEntries(
-          Object.entries(cancellers.value).filter(([activeKey]) => activeKey !== key)
-        )
+        cancellers.value = withoutKey(cancellers.value, key)
       }
     }
   }
@@ -79,16 +98,37 @@ export const useCompanySyncStore = defineStore('companySync', () => {
   }
 
   // cancelSync cancels the company's cancellable sync of source. The call
-  // rejects at once with the canceled code; the backend stops at its next
-  // check of the context.
-  function cancelSync(cnpj: string, source: SyncSource) {
-    cancellers.value[syncKey(cnpj, source)]?.abort()
+  // rejects at once with the canceled code, but the backend keeps the source
+  // reserved until it sees the cancel and records the run; a sync started
+  // meanwhile would get sync_running. So the pair stays "cancelando", and
+  // syncing, until stillRunning says the backend is done or CANCEL_WAIT_MS
+  // pass. A failed stillRunning counts as still running.
+  async function cancelSync(
+    cnpj: string,
+    source: SyncSource,
+    stillRunning: () => Promise<boolean>
+  ): Promise<void> {
+    const key = syncKey(cnpj, source)
+    const controller = cancellers.value[key]
+    if (!controller || cancelling.value[key]) return
+    cancelling.value = { ...cancelling.value, [key]: true }
+    controller.abort()
+    try {
+      const deadline = Date.now() + CANCEL_WAIT_MS
+      while (Date.now() < deadline) {
+        await delay(CANCEL_POLL_MS)
+        if (!(await stillRunning().catch(() => true))) return
+      }
+    } finally {
+      cancelling.value = withoutKey(cancelling.value, key)
+    }
   }
 
   return {
     activeSyncs,
     anySyncing,
     isSyncing,
+    isCancelling,
     startSync,
     finishSync,
     runSync,

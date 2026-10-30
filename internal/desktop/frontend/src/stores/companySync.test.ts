@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, expect } from 'vitest'
-import { useCompanySyncStore } from './companySync'
+import { afterEach, beforeEach, expect, vi } from 'vitest'
+import { CANCEL_POLL_MS, CANCEL_WAIT_MS, useCompanySyncStore } from './companySync'
 
 describe('company sync store', () => {
   beforeEach(() => {
@@ -99,40 +99,90 @@ describe('company sync store', () => {
     expect(store.isSyncing('123', 'cte')).toBe(false)
   })
 
-  it('cancels a cancellable sync from another consumer and clears it', async () => {
-    const store = useCompanySyncStore()
-    let received: AbortSignal | undefined
-
-    const running = store.runCancellableSync(
-      '123',
-      'nfe',
-      (signal) =>
-        new Promise((_resolve, reject) => {
-          received = signal
-          signal.addEventListener('abort', () => reject(new Error('cancelada')))
-        })
-    )
-    expect(store.isSyncing('123', 'nfe')).toBe(true)
-    expect(store.canCancelSync('123', 'nfe')).toBe(true)
-    expect(store.canCancelSync('123', 'cte')).toBe(false)
-
-    useCompanySyncStore().cancelSync('123', 'nfe')
-
-    expect(received?.aborted).toBe(true)
-    await expect(running).rejects.toThrow('cancelada')
-    expect(store.isSyncing('123', 'nfe')).toBe(false)
-    expect(store.canCancelSync('123', 'nfe')).toBe(false)
-  })
-
-  it('offers no cancel for a plain runSync and ignores a cancel with nothing running', async () => {
-    const store = useCompanySyncStore()
-    let canCancel = true
-
-    await store.runSync('123', 'nfe', async () => {
-      canCancel = store.canCancelSync('123', 'nfe')
+  describe('cancelSync', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
     })
-    store.cancelSync('123', 'nfe')
 
-    expect(canCancel).toBe(false)
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    function runAbortable(store: ReturnType<typeof useCompanySyncStore>) {
+      const signals: AbortSignal[] = []
+      const running = store.runCancellableSync(
+        '123',
+        'nfe',
+        (signal) =>
+          new Promise((_resolve, reject) => {
+            signals.push(signal)
+            signal.addEventListener('abort', () => reject(new Error('cancelada')))
+          })
+      )
+      return { running, signals }
+    }
+
+    it('keeps the sync cancelando, from any consumer, until the backend is done', async () => {
+      const store = useCompanySyncStore()
+      const { running, signals } = runAbortable(store)
+      expect(store.canCancelSync('123', 'nfe')).toBe(true)
+      expect(store.canCancelSync('123', 'cte')).toBe(false)
+      let backendRunning = true
+      const stillRunning = vi.fn(async () => backendRunning)
+
+      const cancelled = useCompanySyncStore().cancelSync('123', 'nfe', stillRunning)
+
+      expect(signals[0]?.aborted).toBe(true)
+      await expect(running).rejects.toThrow('cancelada')
+      const other = useCompanySyncStore()
+      expect(other.canCancelSync('123', 'nfe')).toBe(false)
+      expect(other.isCancelling('123', 'nfe')).toBe(true)
+      expect(other.isSyncing('123', 'nfe')).toBe(true)
+      expect(other.anySyncing).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS * 3)
+      expect(stillRunning).toHaveBeenCalledTimes(3)
+      expect(other.isCancelling('123', 'nfe')).toBe(true)
+
+      backendRunning = false
+      await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
+      await cancelled
+      expect(other.isCancelling('123', 'nfe')).toBe(false)
+      expect(other.isSyncing('123', 'nfe')).toBe(false)
+      expect(other.anySyncing).toBe(false)
+    })
+
+    it('gives up waiting after CANCEL_WAIT_MS, also when the check fails', async () => {
+      const store = useCompanySyncStore()
+      const { running } = runAbortable(store)
+      const stillRunning = vi.fn(async () => {
+        throw new Error('offline')
+      })
+
+      const cancelled = store.cancelSync('123', 'nfe', stillRunning)
+      await expect(running).rejects.toThrow('cancelada')
+
+      await vi.advanceTimersByTimeAsync(CANCEL_WAIT_MS - CANCEL_POLL_MS)
+      expect(store.isCancelling('123', 'nfe')).toBe(true)
+      await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
+      await cancelled
+      expect(store.isCancelling('123', 'nfe')).toBe(false)
+      expect(store.isSyncing('123', 'nfe')).toBe(false)
+    })
+
+    it('offers no cancel for a plain runSync and ignores a cancel with nothing running', async () => {
+      const store = useCompanySyncStore()
+      let canCancel = true
+      const stillRunning = vi.fn(async () => true)
+
+      await store.runSync('123', 'nfe', async () => {
+        canCancel = store.canCancelSync('123', 'nfe')
+      })
+      await store.cancelSync('123', 'nfe', stillRunning)
+
+      expect(canCancel).toBe(false)
+      expect(store.isCancelling('123', 'nfe')).toBe(false)
+      expect(stillRunning).not.toHaveBeenCalled()
+    })
   })
 })

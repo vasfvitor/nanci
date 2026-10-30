@@ -75,6 +75,9 @@ export function useCTeDocuments() {
   const canCancelSync = computed(
     () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'cte')
   )
+  const isCancelling = computed(
+    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'cte')
+  )
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
@@ -101,8 +104,17 @@ export function useCTeDocuments() {
     }
   }
 
-  function cancelSync() {
-    if (cnpj.value) syncStore.cancelSync(cnpj.value, 'cte')
+  // cancelSync stops the pull. The sync stays "cancelando" in the store until
+  // the status no longer shows the run, then the page reloads.
+  async function cancelSync() {
+    const companyCNPJ = cnpj.value
+    if (!companyCNPJ) return
+    await syncStore.cancelSync(
+      companyCNPJ,
+      'cte',
+      async () => (await desktopClient.statusCTe(companyCNPJ)).LastRunStatus === 'running'
+    )
+    await refresh(companyCNPJ)
   }
 
   // syncBusy is true without a company, while a pull, import or fetch of the
@@ -214,6 +226,7 @@ export function useCTeDocuments() {
     idleWarning,
     isSyncing,
     canCancelSync,
+    isCancelling,
     isResetting,
     syncBlockedUntil,
     blockedText,

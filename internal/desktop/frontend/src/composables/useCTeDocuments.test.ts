@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useCTeDocuments } from './useCTeDocuments'
 import { desktopClient } from '@/platform/wails/client'
-import { useCompanySyncStore } from '@/stores/companySync'
+import { CANCEL_POLL_MS, useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type {
@@ -158,13 +158,15 @@ describe('useCTeDocuments', () => {
     expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
   })
 
-  it('cancels a pending CT-e sync from a second instance', async () => {
+  it('cancels a pending CT-e sync from a second instance and waits for the backend', async () => {
+    vi.useFakeTimers()
     vi.mocked(desktopClient.pullCTe).mockImplementation(
       (_cnpj, signal) =>
         new Promise((_resolve, reject) => {
           signal?.addEventListener('abort', () => reject(new Error('cancelada')))
         })
     )
+    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status({ LastRunStatus: 'running' }))
 
     const firstPage = useCTeDocuments()
     useWorkspaceStore().cnpj = '123'
@@ -172,11 +174,22 @@ describe('useCTeDocuments', () => {
 
     const remountedPage = useCTeDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    remountedPage.cancelSync()
+    const cancelled = remountedPage.cancelSync()
 
     await expect(syncing).rejects.toThrow('cancelada')
-    expect(remountedPage.isSyncing.value).toBe(false)
-    expect(remountedPage.canCancelSync.value).toBe(false)
+    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS * 2)
+    const thirdPage = useCTeDocuments()
+    expect(thirdPage.isCancelling.value).toBe(true)
+    expect(thirdPage.isSyncing.value).toBe(true)
+    await expect(thirdPage.syncCTe()).resolves.toBeNull()
+    expect(desktopClient.pullCTe).toHaveBeenCalledTimes(1)
+
+    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status({ LastRunStatus: 'interrupted' }))
+    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
+    await cancelled
+    expect(thirdPage.isCancelling.value).toBe(false)
+    expect(thirdPage.isSyncing.value).toBe(false)
+    expect(thirdPage.canCancelSync.value).toBe(false)
   })
 
   it('keeps the CT-e reset visible to a second instance while it is pending', async () => {
