@@ -120,13 +120,16 @@ func coreRuns() map[string]func(a *App) (any, error) {
 }
 
 // withoutCore lists the bound methods that work without the core services:
-// password prompts, dialogs, log settings and build or path information.
+// password prompts, dialogs, log settings, build or path information and
+// updates.
 var withoutCore = map[string]bool{
 	"CancelCertPassword": true,
+	"CheckForUpdate":     true,
 	"ConfirmQuit":        true,
 	"ExportLogs":         true,
 	"GetBuildInfo":       true,
 	"GetDataDirectory":   true,
+	"InstallUpdate":      true,
 	"OpenDataDirectory":  true,
 	"OpenLogsDirectory":  true,
 	"SelectCertificate":  true,

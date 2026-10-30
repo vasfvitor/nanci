@@ -22,8 +22,10 @@ func formatError(err error) desktopapi.ErrorPayload {
 		payload.Code = "canceled"
 	case errors.Is(err, app.ErrSourceBlocked):
 		payload.Code = "sefaz_blocked"
-	case errors.Is(err, app.ErrSyncRunning):
+	case errors.Is(err, app.ErrSyncRunning), errors.Is(err, errUpdateDuringSync):
 		payload.Code = "sync_running"
+	case errors.Is(err, errUpdatesDisabled):
+		payload.Code = "update_unavailable"
 	case errors.Is(err, errNotStarted):
 		payload.Code = "startup_failed"
 	}

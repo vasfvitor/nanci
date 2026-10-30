@@ -1147,3 +1147,17 @@ export interface UpdateCredentialPathInput {
     "CredentialID": string;
     "CertPath": string;
 }
+
+/**
+ * UpdateInfo answers CheckForUpdate. Enabled is false in a build that does
+ * not update itself (a dev build, or one without the public key), and then
+ * nothing else is set but CurrentVersion. Version and Notes describe the
+ * release found when Available is true.
+ */
+export interface UpdateInfo {
+    "enabled": boolean;
+    "currentVersion": string;
+    "available": boolean;
+    "version": string;
+    "notes": string;
+}

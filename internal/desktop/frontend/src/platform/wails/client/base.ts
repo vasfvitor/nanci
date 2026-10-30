@@ -15,7 +15,13 @@ type RawRecord = Record<string, unknown>
 // WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go. Wails v3
 // rejects a bound-method promise with a RuntimeError whose cause is the {code, message}
 // payload marshalError builds.
-const wailsErrorCodes = ['canceled', 'sefaz_blocked', 'sync_running', 'startup_failed'] as const
+const wailsErrorCodes = [
+  'canceled',
+  'sefaz_blocked',
+  'sync_running',
+  'startup_failed',
+  'update_unavailable',
+] as const
 export type WailsErrorCode = (typeof wailsErrorCodes)[number] | ''
 
 function asErrorCode(value: unknown): WailsErrorCode {

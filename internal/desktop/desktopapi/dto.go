@@ -42,6 +42,18 @@ type BuildInfo struct {
 	WebView2Version string `json:"webview2Version"`
 }
 
+// UpdateInfo answers CheckForUpdate. Enabled is false in a build that does
+// not update itself (a dev build, or one without the public key), and then
+// nothing else is set but CurrentVersion. Version and Notes describe the
+// release found when Available is true.
+type UpdateInfo struct {
+	Enabled        bool   `json:"enabled"`
+	CurrentVersion string `json:"currentVersion"`
+	Available      bool   `json:"available"`
+	Version        string `json:"version"`
+	Notes          string `json:"notes"`
+}
+
 type ConnectionTestResult struct {
 	CertLoaded        bool   `json:"certLoaded"`
 	CertSubject       string `json:"certSubject"`

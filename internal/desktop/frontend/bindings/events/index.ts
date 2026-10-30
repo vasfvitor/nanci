@@ -33,3 +33,8 @@ export const NotifySuccess = "notify-success";
  */
 export const RequestCertPassword = "request-cert-password";
 
+/**
+ * Name of the custom event "wails:updater:download-progress".
+ */
+export const WailsUpdaterDownloadProgress = "wails:updater:download-progress";
+

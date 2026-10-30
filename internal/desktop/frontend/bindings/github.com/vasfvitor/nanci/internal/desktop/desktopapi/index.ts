@@ -62,5 +62,6 @@ export type {
     StatusResult,
     UpdateCompanyInput,
     UpdateCredentialDataInput,
-    UpdateCredentialPathInput
+    UpdateCredentialPathInput,
+    UpdateInfo
 } from "./models.js";

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/updater"
 
 	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
@@ -26,4 +27,7 @@ func init() {
 	application.RegisterEvent[nsync.CertPasswordRequest](eventRequestCertPassword)
 	application.RegisterEvent[string](eventNotifySuccess)
 	application.RegisterEvent[string](eventNotifyError)
+	// The Wails updater emits the download progress itself, as a value
+	// (pkg/updater/download.go, emitNow).
+	application.RegisterEvent[updater.Progress](updater.EventDownloadProgress)
 }

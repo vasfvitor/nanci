@@ -1305,6 +1305,13 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
         }),
         AssignCredentialToCompany: async () => undefined,
         CancelCertPassword: async () => undefined,
+        CheckForUpdate: async () => ({
+          enabled: true,
+          currentVersion: 'v0.4.0',
+          available: false,
+          version: '',
+          notes: '',
+        }),
         ConfirmQuit: async () => undefined,
         ExportDocuments: async () => ({
           OutPath: 'C:\\exports\\nfs-export.xlsx',
@@ -1338,6 +1345,7 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
           webview2Version: '141.0.3537.71',
         }),
         GetDataDirectory: async () => 'C:\\Users\\usuario\\AppData\\Roaming\\nanci',
+        InstallUpdate: async () => undefined,
         OpenDataDirectory: async () => undefined,
         OpenLogsDirectory: async () => undefined,
         ExportNFeXML: async () => ({

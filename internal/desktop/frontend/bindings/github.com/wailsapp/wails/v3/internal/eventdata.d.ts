@@ -11,6 +11,9 @@ import type * as main$0 from "../../../../vasfvitor/nanci/internal/desktop/model
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import type * as sync$0 from "../../../../vasfvitor/nanci/internal/sync/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import type * as updater$0 from "../pkg/updater/models.js";
 
 declare module "@wailsio/runtime" {
     namespace Events {
@@ -20,6 +23,7 @@ declare module "@wailsio/runtime" {
             "notify-error": string;
             "notify-success": string;
             "request-cert-password": sync$0.CertPasswordRequest;
+            "wails:updater:download-progress": updater$0.Progress;
         }
     }
 }
