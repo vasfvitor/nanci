@@ -19,6 +19,7 @@ import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    cancelSync: vi.fn(),
     listCompanies: vi.fn(),
     listCTe: vi.fn(),
     statusCTe: vi.fn(),
@@ -158,13 +159,10 @@ describe('useCTeDocuments', () => {
     expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
   })
 
-  it('cancels a pending CT-e sync from a second instance', async () => {
-    vi.mocked(desktopClient.pullCTe).mockImplementation(
-      (_cnpj, signal) =>
-        new Promise((_resolve, reject) => {
-          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
-        })
-    )
+  it('cancels a pending CT-e sync from a second instance and stays busy until the backend stops', async () => {
+    const pull = deferred<PullCTeResult>()
+    vi.mocked(desktopClient.pullCTe).mockReturnValue(pull.promise)
+    vi.mocked(desktopClient.cancelSync).mockResolvedValue(undefined)
 
     const firstPage = useCTeDocuments()
     useWorkspaceStore().cnpj = '123'
@@ -172,11 +170,24 @@ describe('useCTeDocuments', () => {
 
     const remountedPage = useCTeDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    remountedPage.cancelSync()
+    await remountedPage.cancelSync()
+    expect(desktopClient.cancelSync).toHaveBeenCalledWith('123', 'cte')
 
+    const thirdPage = useCTeDocuments()
+    expect(thirdPage.isCancelling.value).toBe(true)
+    expect(thirdPage.isSyncing.value).toBe(true)
+    expect(thirdPage.canCancelSync.value).toBe(false)
+    await expect(thirdPage.syncCTe()).resolves.toBeNull()
+    expect(desktopClient.pullCTe).toHaveBeenCalledTimes(1)
+
+    vi.mocked(desktopClient.statusCTe).mockClear()
+    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status({ LastRunStatus: 'interrupted' }))
+    pull.reject(new Error('cancelada'))
     await expect(syncing).rejects.toThrow('cancelada')
-    expect(remountedPage.isSyncing.value).toBe(false)
-    expect(remountedPage.canCancelSync.value).toBe(false)
+    expect(thirdPage.isCancelling.value).toBe(false)
+    expect(thirdPage.isSyncing.value).toBe(false)
+    expect(thirdPage.canCancelSync.value).toBe(false)
+    expect(desktopClient.statusCTe).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the CT-e reset visible to a second instance while it is pending', async () => {

@@ -138,11 +138,11 @@ func (a *App) ListCompanies() ([]desktopapi.CompanySummary, error) {
 }
 
 func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (desktopapi.ConnectionTestResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
 	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
+	defer end()
 	res, err := a.svc.query.TestConnection(ctx, companyCNPJ)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
@@ -162,11 +162,11 @@ func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (desktopap
 // TestCTeConnection opens a TLS connection to the CT-e distribution host. It
 // sends no query, so it does not use the hourly budget.
 func (a *App) TestCTeConnection(ctx context.Context, cnpj string) (desktopapi.ConnectionTestResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
 	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
+	defer end()
 	res, err := a.svc.cte.TestConnection(ctx, cnpj)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err

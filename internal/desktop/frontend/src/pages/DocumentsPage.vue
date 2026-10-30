@@ -7,6 +7,7 @@
       :status-line="statusLine"
       :syncing="isSyncing"
       :cancelable="canCancelSync"
+      :cancelling="isCancelling"
       :sync-disabled="!cnpj || isResetting"
       :first-sync="firstSync"
       reset-title="Reinicia a sincronização da NFS-e a partir do NSU 0; os documentos ficam"
@@ -190,6 +191,7 @@ const {
   statusLine,
   isSyncing,
   canCancelSync,
+  isCancelling,
   isResetting,
 } = nfse
 

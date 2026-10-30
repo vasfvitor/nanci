@@ -1,22 +1,34 @@
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { desktopClient } from '@/platform/wails/client'
 import type { SyncSource } from '@/types/desktop'
 
 function syncKey(cnpj: string, source: SyncSource) {
   return `${source}:${cnpj}`
 }
 
+function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([other]) => other !== key))
+}
+
 export const useCompanySyncStore = defineStore('companySync', () => {
   const activeSyncs = ref<Record<string, number>>({})
-  // cancellers holds the AbortController of each cancellable sync in flight,
-  // by the same key, so any screen can cancel it.
-  const cancellers = shallowRef<Record<string, AbortController>>({})
+  // cancellable holds, by the same key, the syncs in flight that the backend
+  // can cancel (CancelSync), so any screen can cancel them.
+  const cancellable = ref<Record<string, true>>({})
+  // cancelling holds the cancellable syncs the user cancelled. The sync stays
+  // in activeSyncs until its call settles, when the backend has stopped.
+  const cancelling = ref<Record<string, true>>({})
 
   // anySyncing is true while a sync of any company or source runs.
   const anySyncing = computed(() => Object.keys(activeSyncs.value).length > 0)
 
   function isSyncing(cnpj: string, source: SyncSource) {
     return Boolean(activeSyncs.value[syncKey(cnpj, source)])
+  }
+
+  function isCancelling(cnpj: string, source: SyncSource) {
+    return Boolean(cancelling.value[syncKey(cnpj, source)])
   }
 
   function startSync(cnpj: string, source: SyncSource) {
@@ -32,9 +44,7 @@ export const useCompanySyncStore = defineStore('companySync', () => {
     const count = activeSyncs.value[key] ?? 0
 
     if (count <= 1) {
-      activeSyncs.value = Object.fromEntries(
-        Object.entries(activeSyncs.value).filter(([activeKey]) => activeKey !== key)
-      )
+      activeSyncs.value = withoutKey(activeSyncs.value, key)
       return
     }
 
@@ -52,43 +62,49 @@ export const useCompanySyncStore = defineStore('companySync', () => {
     }
   }
 
-  // runCancellableSync is runSync for a call that stops when its signal
-  // aborts. The controller is kept before the call starts and dropped when
-  // the call settles, so cancelSync works from any screen while it runs.
+  // runCancellableSync is runSync for a Pull, PullNFe or PullCTe call, which
+  // cancelSync can stop from any screen while it runs.
   async function runCancellableSync<T>(
     cnpj: string,
     source: SyncSource,
-    fn: (signal: AbortSignal) => Promise<T>
+    fn: () => Promise<T>
   ): Promise<T> {
     const key = syncKey(cnpj, source)
-    const controller = new AbortController()
-    cancellers.value = { ...cancellers.value, [key]: controller }
+    cancellable.value = { ...cancellable.value, [key]: true }
     try {
-      return await runSync(cnpj, source, () => fn(controller.signal))
+      return await runSync(cnpj, source, fn)
     } finally {
-      if (cancellers.value[key] === controller) {
-        cancellers.value = Object.fromEntries(
-          Object.entries(cancellers.value).filter(([activeKey]) => activeKey !== key)
-        )
-      }
+      cancellable.value = withoutKey(cancellable.value, key)
+      cancelling.value = withoutKey(cancelling.value, key)
     }
   }
 
   function canCancelSync(cnpj: string, source: SyncSource) {
-    return Boolean(cancellers.value[syncKey(cnpj, source)])
+    const key = syncKey(cnpj, source)
+    return Boolean(cancellable.value[key] && !cancelling.value[key])
   }
 
-  // cancelSync cancels the company's cancellable sync of source. The call
-  // rejects at once with the canceled code; the backend stops at its next
-  // check of the context.
-  function cancelSync(cnpj: string, source: SyncSource) {
-    cancellers.value[syncKey(cnpj, source)]?.abort()
+  // cancelSync asks the backend to stop the company's cancellable sync of
+  // source. The sync call then rejects with the canceled code once the
+  // backend has stopped and recorded the run; until then the pair shows
+  // "cancelando" and stays syncing.
+  async function cancelSync(cnpj: string, source: SyncSource): Promise<void> {
+    const key = syncKey(cnpj, source)
+    if (!canCancelSync(cnpj, source)) return
+    cancelling.value = { ...cancelling.value, [key]: true }
+    try {
+      await desktopClient.cancelSync(cnpj, source)
+    } catch (error) {
+      cancelling.value = withoutKey(cancelling.value, key)
+      throw error
+    }
   }
 
   return {
     activeSyncs,
     anySyncing,
     isSyncing,
+    isCancelling,
     startSync,
     finishSync,
     runSync,

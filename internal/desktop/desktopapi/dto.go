@@ -12,8 +12,8 @@ import (
 
 // ErrorPayload is the cause of the error a bound method's promise rejects
 // with. Code names the errors the frontend branches on ("canceled",
-// "sefaz_blocked", "sync_running", "startup_failed") and is empty for any
-// other error.
+// "sefaz_blocked", "sync_running", "update_busy", "startup_failed") and is
+// empty for any other error.
 type ErrorPayload struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`

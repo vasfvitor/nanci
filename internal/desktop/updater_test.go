@@ -204,9 +204,6 @@ func TestInstallUpdateWhenUpdatesAreOff(t *testing.T) {
 	if !errors.Is(err, errUpdatesDisabled) {
 		t.Fatalf("err = %v, want errUpdatesDisabled", err)
 	}
-	if code := formatError(err).Code; code != "update_unavailable" {
-		t.Errorf("code = %q, want update_unavailable", code)
-	}
 }
 
 func TestInstallUpdateDownloadsThenRestarts(t *testing.T) {
@@ -226,37 +223,102 @@ func TestInstallUpdateRefusesDuringSync(t *testing.T) {
 	_, a := newFakeApp(nil)
 	updates := &fakeUpdates{}
 	a.updates = updates
-	done := a.trackPull()
+	done, err := a.guard.start(true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer done()
 
-	err := a.InstallUpdate(context.Background())
+	err = a.InstallUpdate(context.Background())
 	if !errors.Is(err, errUpdateDuringSync) {
 		t.Fatalf("err = %v, want errUpdateDuringSync", err)
 	}
-	if code := formatError(err).Code; code != "sync_running" {
-		t.Errorf("code = %q, want sync_running", code)
+	if code := formatError(err).Code; code != "update_busy" {
+		t.Errorf("code = %q, want update_busy", code)
 	}
 	if len(updates.calls) != 0 {
 		t.Errorf("calls = %v, want none", updates.calls)
 	}
 }
 
-func TestInstallUpdateDoesNotRestartWhenASyncStartsDuringTheDownload(t *testing.T) {
+func TestInstallUpdateRefusesDuringOtherOperations(t *testing.T) {
 	_, a := newFakeApp(nil)
-	var done func()
-	updates := &fakeUpdates{onDownload: func() { done = a.trackPull() }}
+	updates := &fakeUpdates{}
 	a.updates = updates
-
-	err := a.InstallUpdate(context.Background())
-	done()
-	if !errors.Is(err, errUpdateDuringSync) {
-		t.Fatalf("err = %v, want errUpdateDuringSync", err)
+	done, err := a.guard.start(false)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if want := []string{"DownloadAndInstall"}; !reflect.DeepEqual(updates.calls, want) {
-		t.Errorf("calls = %v, want %v (no restart)", updates.calls, want)
+
+	err = a.InstallUpdate(context.Background())
+	if !errors.Is(err, errUpdateBusy) {
+		t.Fatalf("err = %v, want errUpdateBusy", err)
+	}
+	if code := formatError(err).Code; code != "update_busy" {
+		t.Errorf("code = %q, want update_busy", code)
+	}
+	if len(updates.calls) != 0 {
+		t.Errorf("calls = %v, want none", updates.calls)
+	}
+
+	done()
+	if err := a.InstallUpdate(context.Background()); err != nil {
+		t.Fatalf("InstallUpdate after the operation ended: %v", err)
 	}
 }
 
+// TestInstallUpdateRefusesOperationsWhileItRuns starts a sync and an export
+// during the download: both are refused, so nothing can stop the restart.
+func TestInstallUpdateRefusesOperationsWhileItRuns(t *testing.T) {
+	f, a := newFakeApp(nil)
+	var syncErr, exportErr error
+	updates := &fakeUpdates{onDownload: func() {
+		_, syncErr = a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ})
+		_, exportErr = a.ExportXML(context.Background(), desktopapi.ExportXMLInput{CNPJ: testCNPJ, OutPath: "nota.xml"})
+	}}
+	a.updates = updates
+
+	if err := a.InstallUpdate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for name, err := range map[string]error{"Pull": syncErr, "ExportXML": exportErr} {
+		if !errors.Is(err, errUpdateInstalling) {
+			t.Errorf("%s err = %v, want errUpdateInstalling", name, err)
+		}
+	}
+	f.assertNoCalls(t)
+	if want := []string{"DownloadAndInstall", "Restart"}; !reflect.DeepEqual(updates.calls, want) {
+		t.Errorf("calls = %v, want %v", updates.calls, want)
+	}
+	if err := a.InstallUpdate(context.Background()); !errors.Is(err, errUpdateInstalling) {
+		t.Errorf("second InstallUpdate err = %v, want errUpdateInstalling", err)
+	}
+}
+
+// TestInstallUpdateAndOperationNeverBothStart races an operation against an
+// update. Exactly one of them may start: an update that starts while the
+// operation runs would restart over it.
+func TestInstallUpdateAndOperationNeverBothStart(t *testing.T) {
+	for range 200 {
+		_, a := newFakeApp(nil)
+		a.updates = &fakeUpdates{}
+		start := make(chan struct{})
+		installed := make(chan error, 1)
+		go func() {
+			<-start
+			installed <- a.InstallUpdate(context.Background())
+		}()
+		close(start)
+		done, trackErr := a.guard.start(false)
+		installErr := <-installed
+		if done != nil {
+			done()
+		}
+		if (trackErr == nil) == (installErr == nil) {
+			t.Fatalf("track err = %v, InstallUpdate err = %v; want exactly one to succeed", trackErr, installErr)
+		}
+	}
+}
 func TestInstallUpdateWithoutACheck(t *testing.T) {
 	_, a := newFakeApp(nil)
 	a.updates = &fakeUpdates{installErr: updater.ErrNoPendingRelease}
@@ -283,6 +345,16 @@ func TestInstallUpdatePassesErrors(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tt.updates.calls, tt.calls) {
 				t.Errorf("calls = %v, want %v", tt.updates.calls, tt.calls)
+			}
+			// A failed install lets operations, and a new attempt, start again.
+			done, err := a.guard.start(false)
+			if err != nil {
+				t.Fatalf("track after a failed install: %v", err)
+			}
+			done()
+			tt.updates.installErr, tt.updates.restartErr = nil, nil
+			if err := a.InstallUpdate(context.Background()); err != nil {
+				t.Errorf("InstallUpdate after a failed one: %v", err)
 			}
 		})
 	}

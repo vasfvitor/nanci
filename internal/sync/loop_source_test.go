@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -223,6 +224,38 @@ func TestSourceLoopCancelMidBatchStillRecordsWait(t *testing.T) {
 		t.Fatalf("blocked_until = %v, want %v", state.BlockedUntil, waitUntil)
 	}
 	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
+}
+
+// TestSourceLoopCanceledItemIsNotAnError has ProcessItem report a cancel.
+// The run's own context stays alive, so the checkpoint of an item error
+// would be written if the loop took the cancel for one. The run ends
+// interrupted with no item error, and the sync state records no
+// process_error.
+func TestSourceLoopCanceledItemIsNotAnError(t *testing.T) {
+	h := newTestHelper(t)
+	src := &fakeSource{
+		kind: syncstate.SyncSourceNFe,
+		batches: map[int64]Batch{
+			0: {Items: items(1, 2), UltNSU: 2, MaxNSU: 2, NextCursor: 2},
+		},
+		failures: map[int64]error{2: fmt.Errorf("baixar item: %w", context.Canceled)},
+	}
+
+	err := h.runSource(src)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Sync = %v, want context.Canceled", err)
+	}
+
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
+	if n := h.countRows(`SELECT errors_count FROM sync_runs WHERE company_id = ? AND source = 'nfe'`, string(h.company.ID)); n != 0 {
+		t.Errorf("errors_count = %d, want 0", n)
+	}
+	if n := h.countRows(`SELECT COUNT(*) FROM sync_state WHERE company_id = ? AND source = 'nfe' AND last_error_code IS NOT NULL`, string(h.company.ID)); n != 0 {
+		t.Errorf("sync_state rows with an error code = %d, want 0", n)
+	}
+	if cursor, _ := h.sourceCursor(syncstate.SyncSourceNFe); cursor != 1 {
+		t.Errorf("cursor = %d, want 1 (the last committed item)", cursor)
+	}
 }
 
 func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {

@@ -12,15 +12,17 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func (a *App) PullNFe(ctx context.Context, input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(ctx, true)
+	if err != nil {
 		return desktopapi.PullNFeResult{}, err
 	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	defer a.trackPull()()
+	defer end()
+	ctx, stop := a.guard.cancelable(ctx, syncKey{input.CNPJ, syncstate.SyncSourceNFe})
+	defer stop()
 	res, err := a.svc.nfe.Pull(ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullNFeResult{}, err
@@ -47,15 +49,14 @@ func (a *App) PullNFe(ctx context.Context, input desktopapi.PullNFeInput) (deskt
 // without contacting SEFAZ. It counts as a sync for the close guard, since
 // it writes the company's documents.
 func (a *App) ImportNFeXML(ctx context.Context, input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ImportXMLResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if err := validateImport(input); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
-	defer a.trackPull()()
+	ctx, end, err := a.begin(ctx, true)
+	if err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	defer end()
 	res, err := a.svc.nfe.ImportXML(ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
@@ -66,18 +67,17 @@ func (a *App) ImportNFeXML(ctx context.Context, input desktopapi.ImportXMLInput)
 // FetchNFeByChave asks SEFAZ for one NF-e by its chave. It spends one
 // request of the company's NF-e hourly budget.
 func (a *App) FetchNFeByChave(ctx context.Context, input desktopapi.FetchByChaveInput) (desktopapi.FetchByChaveResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.FetchByChaveResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if input.CNPJ == "" {
 		return desktopapi.FetchByChaveResult{}, errors.New("empresa não especificada")
 	}
 	if input.ChaveAcesso == "" {
 		return desktopapi.FetchByChaveResult{}, errors.New("chave de acesso não especificada")
 	}
-	defer a.trackPull()()
+	ctx, end, err := a.begin(ctx, true)
+	if err != nil {
+		return desktopapi.FetchByChaveResult{}, err
+	}
+	defer end()
 	res, err := a.svc.nfe.FetchByChave(ctx, app.FetchByChaveInput{CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso})
 	if err != nil {
 		return desktopapi.FetchByChaveResult{}, err
@@ -178,10 +178,12 @@ func (a *App) ListNFePendingManifestacoes(input desktopapi.NFePendingInput) ([]d
 // PlanNFeCiencia lists which NF-e RegisterNFeCiencia would send and which it would
 // skip. It sends nothing and asks for no password.
 func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeCienciaPlan, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
 		return desktopapi.NFeCienciaPlan{}, err
 	}
-	plan, err := a.svc.nfe.PlanCiencia(a.ctx, app.NFeCienciaInput{
+	defer end()
+	plan, err := a.svc.nfe.PlanCiencia(ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
 	})
@@ -194,10 +196,12 @@ func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopa
 // RegisterNFeCiencia sends Ciência da Operação for the eligible NF-e. Failures
 // after sending started are reported per chave in the result, not as an error.
 func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopapi.NFeEventBatchResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
 		return desktopapi.NFeEventBatchResult{}, err
 	}
-	summary, err := a.svc.nfe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
+	defer end()
+	summary, err := a.svc.nfe.RegisterCiencia(ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
 	})
@@ -208,10 +212,12 @@ func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desk
 }
 
 func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoInput) (desktopapi.NFeEventResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
 		return desktopapi.NFeEventResult{}, err
 	}
-	outcome, err := a.svc.nfe.RegisterManifestacao(a.ctx, app.NFeManifestacaoInput{
+	defer end()
+	outcome, err := a.svc.nfe.RegisterManifestacao(ctx, app.NFeManifestacaoInput{
 		CNPJ:          input.CNPJ,
 		ChaveAcesso:   input.ChaveAcesso,
 		Tipo:          input.Tipo,
@@ -224,16 +230,16 @@ func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoIn
 }
 
 func (a *App) ExportNFeXML(ctx context.Context, input desktopapi.ExportNFeXMLInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
 
-	err := a.svc.nfe.ExportXML(ctx, app.NFeExportXMLInput{
+	err = a.svc.nfe.ExportXML(ctx, app.NFeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -245,16 +251,16 @@ func (a *App) ExportNFeXML(ctx context.Context, input desktopapi.ExportNFeXMLInp
 }
 
 func (a *App) ExportDANFE(ctx context.Context, input desktopapi.ExportDANFEInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
 
-	err := a.svc.nfe.ExportDANFE(ctx, app.NFeExportDANFEInput{
+	err = a.svc.nfe.ExportDANFE(ctx, app.NFeExportDANFEInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -266,15 +272,15 @@ func (a *App) ExportDANFE(ctx context.Context, input desktopapi.ExportDANFEInput
 }
 
 func (a *App) ExportNFeDocuments(ctx context.Context, input desktopapi.ExportNFeDocumentsInput) (desktopapi.NFeExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.NFeExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.NFeExportResult{}, err
+	}
+	defer end()
+	format := strings.ToLower(strings.TrimSpace(input.Format))
 
 	exportInput := app.NFeExportInput{
 		CNPJ:           input.CNPJ,
@@ -287,7 +293,6 @@ func (a *App) ExportNFeDocuments(ctx context.Context, input desktopapi.ExportNFe
 	}
 
 	var res app.NFeExportResult
-	var err error
 	switch format {
 	case "csv":
 		res, err = a.svc.nfe.ExportCSV(ctx, exportInput)
@@ -312,10 +317,12 @@ func (a *App) ExportNFeDocuments(ctx context.Context, input desktopapi.ExportNFe
 // ResetNFe removes the company's NF-e and resets its NF-e sync, which lets the
 // company environment change again.
 func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
 		return desktopapi.NFeResetResult{}, err
 	}
-	res, err := a.svc.nfe.Reset(a.ctx, cnpj)
+	defer end()
+	res, err := a.svc.nfe.Reset(ctx, cnpj)
 	if err != nil {
 		return desktopapi.NFeResetResult{}, err
 	}

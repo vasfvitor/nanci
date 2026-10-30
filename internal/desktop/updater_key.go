@@ -9,4 +9,4 @@ package main
 //
 // It is a var, not a const, so a local test build can pin a throwaway key
 // with -ldflags "-X main.updaterPublicKey=...".
-var updaterPublicKey = ""
+var updaterPublicKey = "BEVh/oI0xlNQRudPKXw7Y4TA/5DcM96SoMuYoov0Kqo="

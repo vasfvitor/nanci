@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestDialogPath(t *testing.T) {
+func TestDialogResultPath(t *testing.T) {
 	failure := errors.New("dialog failed")
 	tests := []struct {
 		name     string
@@ -21,15 +21,15 @@ func TestDialogPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path, err := dialogPath(tt.path, tt.err)
+			path, err := dialogResult(tt.path, tt.err)
 			if path != tt.wantPath || !errors.Is(err, tt.wantErr) {
-				t.Errorf("dialogPath = (%q, %v), want (%q, %v)", path, err, tt.wantPath, tt.wantErr)
+				t.Errorf("dialogResult = (%q, %v), want (%q, %v)", path, err, tt.wantPath, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestDialogPaths(t *testing.T) {
+func TestDialogResultPaths(t *testing.T) {
 	failure := errors.New("dialog failed")
 	picked := []string{`C:\xml\a.xml`, `C:\xml\b.xml`}
 	tests := []struct {
@@ -45,9 +45,9 @@ func TestDialogPaths(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			paths, err := dialogPaths(tt.paths, tt.err)
+			paths, err := dialogResult(tt.paths, tt.err)
 			if !reflect.DeepEqual(paths, tt.wantPaths) || !errors.Is(err, tt.wantErr) {
-				t.Errorf("dialogPaths = (%q, %v), want (%q, %v)", paths, err, tt.wantPaths, tt.wantErr)
+				t.Errorf("dialogResult = (%q, %v), want (%q, %v)", paths, err, tt.wantPaths, tt.wantErr)
 			}
 		})
 	}

@@ -20,11 +20,12 @@
         @click="emit('reset')"
       />
       <q-btn
-        v-if="syncing && cancelable"
+        v-if="syncing && (cancelable || cancelling)"
         flat
         color="primary"
         icon="close"
-        label="Cancelar"
+        :label="cancelling ? 'Cancelando…' : 'Cancelar'"
+        :disable="cancelling"
         title="Interrompe a sincronização; o que já foi salvo fica, e a próxima continua dali"
         @click="emit('cancel')"
       />
@@ -86,7 +87,8 @@ import { badgeProps, IDLE_WARNING_TOOLTIP } from '@/utils/sefazDisplay'
 // until the company is known; contextLine is '' while no company is
 // selected; resetTitle explains what the reset does; firstSync marks the
 // sync button while the company was never synced; cancelable shows the
-// Cancelar button next to a running sync.
+// Cancelar button next to a running sync, and cancelling turns it into a
+// disabled "Cancelando…" until the backend has stopped.
 withDefaults(
   defineProps<{
     title: string
@@ -102,6 +104,7 @@ withDefaults(
     resetDisabled: boolean
     firstSync?: boolean
     cancelable?: boolean
+    cancelling?: boolean
   }>(),
   {
     statusLine: '',
@@ -109,6 +112,7 @@ withDefaults(
     blockedText: '',
     firstSync: false,
     cancelable: false,
+    cancelling: false,
   }
 )
 

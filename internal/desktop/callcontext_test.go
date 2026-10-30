@@ -114,9 +114,49 @@ func TestPullStopsWithItsCall(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("Pull did not return")
 			}
-			if n := a.guard.pulls.Load(); n != 0 {
+			if n := a.guard.pulls; n != 0 {
 				t.Errorf("%d syncs still tracked, want 0", n)
 			}
 		})
+	}
+}
+
+// TestCancelSyncStopsThatSync cancels a running Pull by company and source,
+// as the frontend's cancel button does: only the matching pair stops, and
+// Pull returns the canceled code once the core has returned.
+func TestCancelSyncStopsThatSync(t *testing.T) {
+	f, a := newFakeApp(nil)
+	sync := &waitingSync{fakeSync: f.sync, started: make(chan struct{})}
+	a.svc.sync = sync
+	a.CancelSync(testCNPJ, "nfse") // none running: no-op
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ})
+		done <- err
+	}()
+	<-sync.started
+
+	a.CancelSync(testCNPJ, "nfe")
+	a.CancelSync("00000000000191", "nfse")
+	select {
+	case err := <-done:
+		t.Fatalf("Pull returned %v after cancelling another sync", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	a.CancelSync(testCNPJ, "nfse")
+	select {
+	case err := <-done:
+		if code := formatError(err).Code; code != "canceled" {
+			t.Errorf("code = %q (err %v), want canceled", code, err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Pull did not return")
+	}
+	a.guard.mu.Lock()
+	defer a.guard.mu.Unlock()
+	if len(a.guard.cancels) != 0 || a.guard.pulls != 0 {
+		t.Errorf("cancels = %v, pulls = %d after the sync, want none", a.guard.cancels, a.guard.pulls)
 	}
 }

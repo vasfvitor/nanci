@@ -214,7 +214,9 @@ func (e *syncFailure) Unwrap() error {
 // classifySyncError maps the error that ended a run to its status, stop
 // reason and error code. A cancelled context interrupts the run wherever it
 // lands: a write it made fail comes back inside a syncFailure, and the
-// cursor stays at the last committed item.
+// cursor stays at the last committed item. A timeout is a failure, not an
+// interruption: no caller gives the run a deadline, so one comes from a
+// request that took too long.
 func classifySyncError(err error) (syncstate.SyncStatus, syncstate.SyncStopReason, string, string) {
 	if errors.Is(err, context.Canceled) {
 		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
@@ -222,9 +224,6 @@ func classifySyncError(err error) (syncstate.SyncStatus, syncstate.SyncStopReaso
 	var syncErr *syncFailure
 	if errors.As(err, &syncErr) {
 		return syncErr.status, syncErr.stopReason, syncErr.code, syncErr.err.Error()
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
 	}
 	return syncstate.SyncStatusFailed, syncstate.SyncStopReasonProcessError, "process_error", err.Error()
 }
@@ -302,7 +301,9 @@ func (s *SyncService) progressParams(company *company.Company, runState *syncRun
 func (s *SyncService) processBatch(ctx context.Context, company *company.Company, cursor int64, runState *syncRuntimeState, progress syncstate.ProgressFunc) (Batch, error) {
 	batch, err := s.source.Fetch(ctx, company, cursor)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		// A request timeout (context.DeadlineExceeded from the HTTP client)
+		// is a fetch error like any other; only a cancel interrupts the run.
+		if errors.Is(err, context.Canceled) {
 			return Batch{}, err
 		}
 		return Batch{}, &syncFailure{
@@ -392,7 +393,8 @@ func (s *SyncService) processBatch(ctx context.Context, company *company.Company
 }
 
 // processItem hands one fresh item to the source and counts the outcome. On
-// failure it checkpoints the error without moving the cursor.
+// failure it checkpoints the error without moving the cursor. A cancelled
+// context is not an item error: it ends the run as interrupted.
 func (s *SyncService) processItem(ctx context.Context, company *company.Company, item Item, runState *syncRuntimeState) error {
 	nextLastFoundNSU := runState.lastFoundNSU
 	if runState.lastFoundNSU == nil || item.NSU > *runState.lastFoundNSU {
@@ -408,6 +410,9 @@ func (s *SyncService) processItem(ctx context.Context, company *company.Company,
 	}
 
 	outcome, err := s.source.ProcessItem(ctx, company, runState.source, item, commit)
+	if errors.Is(err, context.Canceled) {
+		return err
+	}
 	if err != nil {
 		runState.errorsCount++
 		outcome, err = s.skipPoisonItem(ctx, company, item, err, commit)

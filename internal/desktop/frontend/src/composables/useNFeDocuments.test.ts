@@ -22,6 +22,7 @@ import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    cancelSync: vi.fn(),
     listCompanies: vi.fn(),
     listNFe: vi.fn(),
     listNFePendingManifestacoes: vi.fn(),
@@ -139,13 +140,10 @@ describe('useNFeDocuments', () => {
     expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
   })
 
-  it('cancels a pending NF-e sync from a second instance', async () => {
-    vi.mocked(desktopClient.pullNFe).mockImplementation(
-      (_cnpj, signal) =>
-        new Promise((_resolve, reject) => {
-          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
-        })
-    )
+  it('cancels a pending NF-e sync from a second instance and stays busy until the backend stops', async () => {
+    const pull = deferred<PullNFeResult>()
+    vi.mocked(desktopClient.pullNFe).mockReturnValue(pull.promise)
+    vi.mocked(desktopClient.cancelSync).mockResolvedValue(undefined)
 
     const firstPage = useNFeDocuments()
     useWorkspaceStore().cnpj = '123'
@@ -153,12 +151,26 @@ describe('useNFeDocuments', () => {
 
     const remountedPage = useNFeDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    remountedPage.cancelSync()
+    await remountedPage.cancelSync()
+    expect(desktopClient.cancelSync).toHaveBeenCalledWith('123', 'nfe')
 
+    const thirdPage = useNFeDocuments()
+    expect(thirdPage.isCancelling.value).toBe(true)
+    expect(thirdPage.isSyncing.value).toBe(true)
+    expect(thirdPage.canCancelSync.value).toBe(false)
+    await expect(thirdPage.syncNFe()).resolves.toBeNull()
+    expect(desktopClient.pullNFe).toHaveBeenCalledTimes(1)
+
+    vi.mocked(desktopClient.statusNFe).mockClear()
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(
+      status({ LastRunStatus: 'interrupted', LastRunStopReason: 'context_canceled' })
+    )
+    pull.reject(new Error('cancelada'))
     await expect(syncing).rejects.toThrow('cancelada')
-    expect(remountedPage.isSyncing.value).toBe(false)
-    expect(remountedPage.canCancelSync.value).toBe(false)
-    expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+    expect(thirdPage.isCancelling.value).toBe(false)
+    expect(thirdPage.isSyncing.value).toBe(false)
+    expect(desktopClient.statusNFe).toHaveBeenCalledTimes(1)
+    expect(useNFeDocumentsStore().status?.LastRunStatus).toBe('interrupted')
   })
 
   it('keeps the NF-e reset visible to a second instance while it is pending', async () => {

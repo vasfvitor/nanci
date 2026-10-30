@@ -35,8 +35,9 @@ export function useNotify() {
     $q.notify({ ...options, type: 'positive', message })
   }
 
+  // notifyInfo returns the function that dismisses the notice.
   function notifyInfo(message: string, options: NotifyOptions = {}) {
-    $q.notify({ ...options, type: 'info', message })
+    return $q.notify({ ...options, type: 'info', message })
   }
 
   function notifyWarning(message: string, options: NotifyOptions = {}) {

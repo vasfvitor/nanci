@@ -34,6 +34,16 @@ export function CancelCertPassword(reqID: string): $CancellablePromise<void> {
 }
 
 /**
+ * CancelSync stops the company's sync of source ("nfse", "nfe" or "cte"),
+ * if one runs. The Pull call itself returns, with the canceled code, only
+ * once the core has stopped and recorded the run, so the frontend keeps the
+ * source busy exactly as long as the backend does.
+ */
+export function CancelSync(cnpj: string, source: string): $CancellablePromise<void> {
+    return $Call.ByID(2488707540, cnpj, source);
+}
+
+/**
  * CheckForUpdate asks the manifest for a newer release. With updates off it
  * returns Enabled false and makes no request.
  */
@@ -123,13 +133,10 @@ export function ImportNFeXML(input: desktopapi$0.ImportXMLInput): $CancellablePr
 
 /**
  * InstallUpdate downloads the release the last CheckForUpdate found,
- * verifies its signature, stages it beside the exe and restarts into it. A
- * helper copy of the exe waits for this process to exit, swaps the files and
- * starts the new version; on any failure it puts the old exe back.
- * 
- * It refuses while a sync runs, before the download and again before the
- * restart: the restart goes through Options.ShouldQuit, and beforeClose would
- * stop it to ask the user, leaving the helper waiting until it gives up.
+ * verifies its signature and restarts into it. It refuses while a tracked
+ * operation runs (closeguard.go) and blocks new ones until the restart, which
+ * would cut them short and, during a sync, be stopped by beforeClose. A
+ * failed download or restart lets operations start again.
  */
 export function InstallUpdate(): $CancellablePromise<void> {
     return $Call.ByID(2443992793);

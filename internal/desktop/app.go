@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -34,10 +35,16 @@ type eventEmitter interface {
 }
 
 // wailsEvents emits through the Wails application main sets on App. Before
-// that, and in tests without Wails, the event is dropped.
+// that, and in tests without Wails, the event is dropped. It is also dropped
+// once shutdown starts: Wails runs ServiceShutdown on the UI thread and an
+// emit from a goroutine blocks once 64 events are queued, so a stopping sync
+// that logs could block in its own log call while shutdown waits for it.
 type wailsEvents struct{ app *App }
 
 func (e wailsEvents) Emit(name string, data ...any) {
+	if e.app.ctx != nil && e.app.ctx.Err() != nil {
+		return
+	}
 	if e.app.wails != nil {
 		e.app.wails.Event.Emit(name, data...)
 	}
@@ -55,7 +62,7 @@ type App struct {
 	logLevel   *slog.LevelVar
 	logWriter  *rotatingFileWriter
 	logPath    string
-	theme      windowTheme
+	themeFixed atomic.Bool // the theme picked in Configurações is dark or light
 	guard      closeGuard
 	updates    updateEngine // nil when this build does not update itself
 	events     eventEmitter
@@ -178,11 +185,9 @@ func (a *App) ready() error {
 }
 
 // callContext returns the context a long-running bound method passes to the
-// core. It ends when the call ends or when the app shuts down. Wails cancels
-// the call context when the frontend cancels the promise, when the window
-// closes or when the method returns, but it detaches it from the app context
-// (messageprocessor_call.go), so shutdown alone would not stop a sync. The
-// values of callCtx are kept. Defer the returned func.
+// core: callCtx, also cancelled when the app shuts down. Wails detaches the
+// call context from the app context (messageprocessor_call.go), so shutdown
+// alone would not stop a sync. Defer the returned func.
 func (a *App) callContext(callCtx context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(callCtx)
 	if a.ctx == nil {
@@ -195,8 +200,13 @@ func (a *App) callContext(callCtx context.Context) (context.Context, context.Can
 	}
 }
 
-// ServiceShutdown runs when Wails stops the App service.
+// ServiceShutdown runs when Wails stops the App service. Wails cancels the
+// app context and calls it right away. The tracked operations stop on that
+// context, but on their way out they still record how they ended (the sync
+// run, a wait SEFAZ imposed), so the database stays open until they return,
+// for at most shutdownWait.
 func (a *App) ServiceShutdown() error {
+	a.guard.waitIdle(shutdownWait)
 	if a.cleanup != nil {
 		a.cleanup()
 	}

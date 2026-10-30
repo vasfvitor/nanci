@@ -76,13 +76,16 @@ export function useNFeDocuments() {
   const canCancelSync = computed(
     () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'nfe')
   )
+  const isCancelling = computed(
+    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'nfe')
+  )
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
   // syncNFe runs one distribution pull. The in-flight marker and the
-  // controller cancelSync aborts live in the companySync store, so the button
-  // stays busy, and the pull cancellable, after navigating away and back.
+  // cancellable mark live in the companySync store, so the button stays
+  // busy, and the pull cancellable, after navigating away and back.
   async function syncNFe() {
     const companyCNPJ = cnpj.value
     if (
@@ -94,16 +97,18 @@ export function useNFeDocuments() {
     }
 
     try {
-      return await syncStore.runCancellableSync(companyCNPJ, 'nfe', (signal) =>
-        desktopClient.pullNFe(companyCNPJ, signal)
+      return await syncStore.runCancellableSync(companyCNPJ, 'nfe', () =>
+        desktopClient.pullNFe(companyCNPJ)
       )
     } finally {
       await refresh(companyCNPJ)
     }
   }
 
-  function cancelSync() {
-    if (cnpj.value) syncStore.cancelSync(cnpj.value, 'nfe')
+  // cancelSync asks the backend to stop the pull. The pull stays busy until
+  // the backend has stopped; then syncNFe refreshes the page.
+  async function cancelSync() {
+    if (cnpj.value) await syncStore.cancelSync(cnpj.value, 'nfe')
   }
 
   // syncBusy is true without a company, while a pull, import or fetch of the
@@ -226,6 +231,7 @@ export function useNFeDocuments() {
     idleWarning,
     isSyncing,
     canCancelSync,
+    isCancelling,
     isResetting,
     syncBlockedUntil,
     blockedText,

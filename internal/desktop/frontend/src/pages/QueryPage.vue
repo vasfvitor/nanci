@@ -122,11 +122,13 @@ import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { errorMessage, wailsErrorCode } from '@/platform/wails/client'
 import { companyOption } from '@/composables/useCompanies'
+import { useNotify } from '@/composables/useNotify'
 import { useQuery } from '@/composables/useQuery'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { isChaveNFSe } from '@/utils/formatters'
 
 const $q = useQuasar()
+const { notifyWarning } = useNotify()
 const query = useQuery()
 const { form, result, loading, documentOptions } = query
 // The query authenticates as the workspace company.
@@ -159,7 +161,7 @@ async function runQuery() {
     await query.runQuery()
   } catch (err: unknown) {
     if (wailsErrorCode(err) === 'canceled') {
-      $q.notify({ type: 'warning', message: 'Consulta cancelada.' })
+      notifyWarning('Consulta cancelada.')
       return
     }
     $q.notify({ type: 'negative', message: 'Erro na consulta: ' + errorMessage(err) })

@@ -4,7 +4,7 @@ import { useConsoleStore } from '@/stores/console'
 // NudgeResult says what nudgeOnRequest did: resized the window and put it
 // back, left it alone because it is maximised, or skipped a nudge already
 // running.
-export type NudgeResult = 'resized' | 'maximised' | 'busy'
+type NudgeResult = 'resized' | 'maximised' | 'busy'
 
 // DisplayInfo is what the Sobre section shows about the display: the scale
 // of the monitor the window is on, its size, and how many monitors Wails
@@ -27,10 +27,11 @@ export function useDisplayScale() {
   const consoleStore = useConsoleStore()
   let nudging = false
 
-  // nudgeWindow waits a frame, widens the window by 1 px and restores it on
-  // the next frame, which forces a relayout of the webview. A maximised
-  // window is left alone: resizing it would restore it.
-  async function nudgeWindow(): Promise<NudgeResult> {
+  // nudgeOnRequest waits a frame, widens the window by 1 px and restores it
+  // on the next frame, which forces a relayout of the webview, and logs it to
+  // the console. A maximised window is left alone: resizing it would restore
+  // it.
+  async function nudgeOnRequest(): Promise<NudgeResult> {
     if (nudging) return 'busy'
     nudging = true
     try {
@@ -40,25 +41,18 @@ export function useDisplayScale() {
       await desktopRuntime.windowSetSize(w + 1, h)
       await nextFrame()
       await desktopRuntime.windowSetSize(w, h)
-      return 'resized'
     } finally {
       nudging = false
     }
-  }
-
-  async function nudgeOnRequest(): Promise<NudgeResult> {
-    const result = await nudgeWindow()
-    if (result === 'resized') {
-      const msg = `Janela reajustada a pedido (escala ${window.devicePixelRatio})`
-      consoleStore.pushLogEntry({
-        time: new Date().toISOString(),
-        level: 'INFO',
-        msg,
-        attrs: '',
-        raw: msg,
-      })
-    }
-    return result
+    const msg = `Janela reajustada a pedido (escala ${window.devicePixelRatio})`
+    consoleStore.pushLogEntry({
+      time: new Date().toISOString(),
+      level: 'INFO',
+      msg,
+      attrs: '',
+      raw: msg,
+    })
+    return 'resized'
   }
 
   async function readDisplayInfo(): Promise<DisplayInfo> {

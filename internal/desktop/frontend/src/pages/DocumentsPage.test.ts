@@ -538,10 +538,7 @@ describe('DocumentsPage', () => {
     await button(wrapper, 'Sincronizar NFS-e').trigger('click')
     await flushPromises()
 
-    expect(desktopClient.pull).toHaveBeenCalledWith(
-      { CNPJ: acme.CNPJ, Mode: '' },
-      expect.any(AbortSignal)
-    )
+    expect(desktopClient.pull).toHaveBeenCalledWith({ CNPJ: acme.CNPJ, Mode: '' })
     expect(desktopClient.listDocuments).toHaveBeenCalled()
     expect(wrapper.text()).toContain('NSU 28')
     expect(notify).toHaveBeenCalledWith(

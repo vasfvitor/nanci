@@ -49,7 +49,9 @@ func TestEmittedPayloadsMatchRegisteredTypes(t *testing.T) {
 	a.emitLog(desktopLogEvent{Level: "INFO", Msg: "pronto"})
 	checkRegistered(t, receive(t, events))
 
-	a.guard.pulls.Add(1)
+	if _, err := a.guard.start(true); err != nil {
+		t.Fatal(err)
+	}
 	a.beforeClose()
 	checkRegistered(t, receive(t, events))
 

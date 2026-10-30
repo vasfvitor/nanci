@@ -1,6 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, expect } from 'vitest'
+import { beforeEach, expect, vi } from 'vitest'
 import { useCompanySyncStore } from './companySync'
+import { desktopClient } from '@/platform/wails/client'
+import { deferred } from '@/test/fixtures'
+
+vi.mock('@/platform/wails/client', () => ({
+  desktopClient: { cancelSync: vi.fn() },
+}))
 
 describe('company sync store', () => {
   beforeEach(() => {
@@ -99,40 +105,63 @@ describe('company sync store', () => {
     expect(store.isSyncing('123', 'cte')).toBe(false)
   })
 
-  it('cancels a cancellable sync from another consumer and clears it', async () => {
-    const store = useCompanySyncStore()
-    let received: AbortSignal | undefined
-
-    const running = store.runCancellableSync(
-      '123',
-      'nfe',
-      (signal) =>
-        new Promise((_resolve, reject) => {
-          received = signal
-          signal.addEventListener('abort', () => reject(new Error('cancelada')))
-        })
-    )
-    expect(store.isSyncing('123', 'nfe')).toBe(true)
-    expect(store.canCancelSync('123', 'nfe')).toBe(true)
-    expect(store.canCancelSync('123', 'cte')).toBe(false)
-
-    useCompanySyncStore().cancelSync('123', 'nfe')
-
-    expect(received?.aborted).toBe(true)
-    await expect(running).rejects.toThrow('cancelada')
-    expect(store.isSyncing('123', 'nfe')).toBe(false)
-    expect(store.canCancelSync('123', 'nfe')).toBe(false)
-  })
-
-  it('offers no cancel for a plain runSync and ignores a cancel with nothing running', async () => {
-    const store = useCompanySyncStore()
-    let canCancel = true
-
-    await store.runSync('123', 'nfe', async () => {
-      canCancel = store.canCancelSync('123', 'nfe')
+  describe('cancelSync', () => {
+    beforeEach(() => {
+      vi.mocked(desktopClient.cancelSync).mockReset().mockResolvedValue(undefined)
     })
-    store.cancelSync('123', 'nfe')
 
-    expect(canCancel).toBe(false)
+    it('asks the backend to stop and stays cancelando, from any consumer, until the call settles', async () => {
+      const store = useCompanySyncStore()
+      const pull = deferred<string>()
+      const running = store.runCancellableSync('123', 'nfe', () => pull.promise)
+      expect(store.canCancelSync('123', 'nfe')).toBe(true)
+      expect(store.canCancelSync('123', 'cte')).toBe(false)
+
+      await useCompanySyncStore().cancelSync('123', 'nfe')
+
+      expect(desktopClient.cancelSync).toHaveBeenCalledWith('123', 'nfe')
+      const other = useCompanySyncStore()
+      expect(other.canCancelSync('123', 'nfe')).toBe(false)
+      expect(other.isCancelling('123', 'nfe')).toBe(true)
+      expect(other.isSyncing('123', 'nfe')).toBe(true)
+      expect(other.anySyncing).toBe(true)
+
+      await other.cancelSync('123', 'nfe')
+      expect(desktopClient.cancelSync).toHaveBeenCalledTimes(1)
+
+      pull.reject(new Error('cancelada'))
+      await expect(running).rejects.toThrow('cancelada')
+      expect(other.isCancelling('123', 'nfe')).toBe(false)
+      expect(other.isSyncing('123', 'nfe')).toBe(false)
+      expect(other.anySyncing).toBe(false)
+    })
+
+    it('leaves the sync cancellable when the backend call fails', async () => {
+      const store = useCompanySyncStore()
+      const pull = deferred<string>()
+      const running = store.runCancellableSync('123', 'nfe', () => pull.promise)
+      vi.mocked(desktopClient.cancelSync).mockRejectedValueOnce(new Error('offline'))
+
+      await expect(store.cancelSync('123', 'nfe')).rejects.toThrow('offline')
+
+      expect(store.isCancelling('123', 'nfe')).toBe(false)
+      expect(store.canCancelSync('123', 'nfe')).toBe(true)
+      pull.resolve('ok')
+      await expect(running).resolves.toBe('ok')
+    })
+
+    it('offers no cancel for a plain runSync and ignores a cancel with nothing running', async () => {
+      const store = useCompanySyncStore()
+      let canCancel = true
+
+      await store.runSync('123', 'nfe', async () => {
+        canCancel = store.canCancelSync('123', 'nfe')
+      })
+      await store.cancelSync('123', 'nfe')
+
+      expect(canCancel).toBe(false)
+      expect(store.isCancelling('123', 'nfe')).toBe(false)
+      expect(desktopClient.cancelSync).not.toHaveBeenCalled()
+    })
   })
 })

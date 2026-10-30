@@ -21,7 +21,6 @@ export {
   mapPullNFeResult,
 } from './nfe'
 export { mapCTeEvent, mapCTeResetResult, mapCTeRow, mapCTeStatus, mapPullCTeResult } from './cte'
-export { mapBuildInfo, mapUpdateInfo } from './system'
 
 export const desktopClient = {
   ...companiesClient,

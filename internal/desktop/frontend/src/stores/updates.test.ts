@@ -123,7 +123,6 @@ describe('updates store', () => {
     const again = useUpdatesStore()
 
     expect(again.status).toBe('downloading')
-    expect(again.busy).toBe(true)
     await expect(again.install()).resolves.toBe(false)
     await expect(again.check()).resolves.toBeNull()
     expect(desktopClient.installUpdate).toHaveBeenCalledTimes(1)
@@ -166,16 +165,20 @@ describe('updates store', () => {
     await running
   })
 
-  it('puts the release back when a sync runs', async () => {
+  it.each([
+    ['a sync', 'aguarde a sincronização terminar para atualizar'],
+    ['another operation', 'aguarde a operação em andamento terminar para atualizar'],
+  ])('puts the release back when %s runs', async (_operation, message) => {
     const store = await storeWithUpdate()
     vi.mocked(desktopClient.installUpdate).mockRejectedValue(
-      new WailsClientError('aguarde a sincronização terminar para atualizar', 'sync_running')
+      new WailsClientError(message, 'update_busy')
     )
 
     await expect(store.install()).rejects.toThrow('aguarde')
 
     expect(store.status).toBe('available')
     expect(store.error).toBe('')
+    expect(store.canInstall).toBe(true)
     expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
 

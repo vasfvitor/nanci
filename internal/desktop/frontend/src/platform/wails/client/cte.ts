@@ -282,8 +282,8 @@ export const cteClient = {
     const res = await callWails(() => TestCTeConnection(cnpj))
     return mapConnectionTestResult(res)
   },
-  async pullCTe(cnpj: string, signal?: AbortSignal): Promise<PullCTeResult> {
-    const res = await callWails(() => PullCTe({ CNPJ: cnpj }), signal)
+  async pullCTe(cnpj: string): Promise<PullCTeResult> {
+    const res = await callWails(() => PullCTe({ CNPJ: cnpj }))
     return mapPullCTeResult(res)
   },
   async statusCTe(cnpj: string): Promise<CTeStatusResult> {

@@ -19,6 +19,9 @@ export const useUpdatesStore = defineStore('updates', () => {
   const progress = shallowRef<UpdateProgress | null>(null)
   const error = shallowRef('')
   let startupCheck: Promise<UpdateInfo | null> | null = null
+  // dismissNotice closes the "Nova versão" notice on screen. The startup
+  // check and the Sobre section share it, so at most one is open.
+  let dismissNotice: (() => void) | null = null
 
   const busy = computed(
     () =>
@@ -65,7 +68,7 @@ export const useUpdatesStore = defineStore('updates', () => {
   // returns false without a call when there is nothing to install or a check
   // or install runs. The state is marked before the call, so a second
   // screen sees the download. On success the app closes soon after; a
-  // refusal because a sync runs puts the release back as available.
+  // refusal because an operation runs puts the release back as available.
   async function install(): Promise<boolean> {
     if (!canInstall.value) return false
     status.value = 'downloading'
@@ -80,7 +83,7 @@ export const useUpdatesStore = defineStore('updates', () => {
       status.value = 'installing'
       return true
     } catch (e) {
-      if (wailsErrorCode(e) === 'sync_running') {
+      if (wailsErrorCode(e) === 'update_busy') {
         status.value = 'available'
       } else {
         status.value = 'error'
@@ -92,16 +95,23 @@ export const useUpdatesStore = defineStore('updates', () => {
     }
   }
 
+  // replaceNotice closes the update notice on screen, if any, and keeps the
+  // dismiss function of the one just shown; null only closes it.
+  function replaceNotice(dismiss: (() => void) | null) {
+    dismissNotice?.()
+    dismissNotice = dismiss
+  }
+
   return {
     status,
     info,
     progress,
     error,
-    busy,
     canInstall,
     percent,
     check,
     checkOnce,
     install,
+    replaceNotice,
   }
 })

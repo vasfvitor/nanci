@@ -81,6 +81,14 @@ describe('DocumentPageHeader', () => {
     expect(wrapper.emitted('cancel')).toHaveLength(1)
   })
 
+  it('shows a disabled Cancelando… while the backend stops the sync', () => {
+    const wrapper = mountHeader({ syncing: true, cancelling: true })
+
+    expect(wrapper.findAll('button').map((item) => item.text())).not.toContain('Cancelar')
+    expect(button(wrapper, 'Cancelando…').attributes('disabled')).toBeDefined()
+    expect(button(wrapper, 'Sincronizar NF-e').attributes('data-loading')).toBe('true')
+  })
+
   it('shows the reset in flight and asks for it on click', async () => {
     const wrapper = mountHeader({ resetting: true })
 

@@ -42,14 +42,19 @@ func main() {
 		Description: fmt.Sprintf("Nanci %s\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version),
 		Icon:        icon,
 		Services: []application.Service{
-			application.NewService(app),
+			// The marshaler goes on the service: Wails v3.0.0 calls only the
+			// service's MarshalError for bound methods and never falls back to
+			// Options.MarshalError (bindings.go:140), so set there it would
+			// leave every error code out of the payload.
+			application.NewServiceWithOptions(app, application.ServiceOptions{
+				MarshalError: marshalError,
+			}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
-		Logger:       wailsLog,
-		LogLevel:     slog.LevelWarn,
-		MarshalError: marshalError,
+		Logger:   wailsLog,
+		LogLevel: slog.LevelWarn,
 		// Application.Quit (the title-bar X), Ctrl+Q and the menu "Sair"
 		// end here; closing the window from the OS goes through the
 		// WindowClosing hook below.

@@ -60,10 +60,10 @@ onMounted(() => {
   void updates.checkAtStartup()
   unsubscribers.push(
     closeGuard.start(),
-    onWailsEvent<string>('notify-success', (msg) => {
+    onWailsEvent('notify-success', (msg) => {
       $q.notify({ type: 'positive', message: msg })
     }),
-    onWailsEvent<string>('notify-error', (msg) => {
+    onWailsEvent('notify-error', (msg) => {
       $q.notify({ type: 'negative', message: msg })
     })
   )

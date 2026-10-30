@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"strings"
@@ -399,6 +400,29 @@ func TestSyncServiceFetchFailureFinishesOnceAsFailed(t *testing.T) {
 	h.assertSingleFinishRun(syncstate.SyncStatusFailed, syncstate.SyncStopReasonFetchError)
 }
 
+// TestSyncServiceFetchTimeoutFinishesAsFailed has the request time out, as
+// the HTTP client does after its timeout. That is a fetch error, not a
+// cancel by the user.
+func TestSyncServiceFetchTimeoutFinishesAsFailed(t *testing.T) {
+	h := newTestHelper(t)
+	h.setSyncState(0, nil, 0)
+
+	fetcher := &mockFetcher{
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			return nil, fmt.Errorf("Get \"https://adn\": %w", context.DeadlineExceeded)
+		},
+	}
+
+	svc := h.newNFSeService(fetcher, &mockXMLStore{})
+
+	err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want it to wrap context.DeadlineExceeded", err)
+	}
+
+	h.assertSingleFinishRun(syncstate.SyncStatusFailed, syncstate.SyncStopReasonFetchError)
+}
+
 func TestSyncServiceCancellationFinishesOnceAsInterrupted(t *testing.T) {
 	h := newTestHelper(t)
 	h.setSyncState(0, nil, 0)
@@ -480,6 +504,10 @@ func TestSyncServiceResumesAfterCancelMidBatch(t *testing.T) {
 	h.assertSingleFinishRun(syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
 	h.assertSyncState(1, storetest.Int64Ptr(1), 0)
 	h.assertDocumentsCount(1)
+	// The cancel that failed the second item's commit is not an item error.
+	if n := h.countRows(`SELECT COUNT(*) FROM sync_runs WHERE company_id = ? AND errors_count > 0`, string(h.company.ID)); n != 0 {
+		t.Errorf("runs with errors = %d, want 0", n)
+	}
 
 	fetcher.requests = nil
 	svc = h.newNFSeService(fetcher, &mockXMLStore{})

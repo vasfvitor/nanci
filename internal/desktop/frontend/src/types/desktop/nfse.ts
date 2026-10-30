@@ -43,7 +43,7 @@ export type DocumentRow = {
 export type DocumentEvent = {
   ID: string
   Type: string
-  EventAt: string | null
+  EventAt?: ISODateValue
   ReplacementChaveAcesso: string
   Description: string
   RawXMLPath: string

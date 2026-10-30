@@ -2,7 +2,6 @@ import { afterEach, beforeEach, expect, vi } from 'vitest'
 import {
   desktopClient,
   errorMessage,
-  mapUpdateInfo,
   mapCompanySummary,
   mapCredentialSummary,
   mapCTeEvent,
@@ -23,6 +22,7 @@ import {
   WailsClientError,
 } from './client'
 import {
+  CancelSync,
   CheckForUpdate,
   ExportCTeDocuments,
   ExportCTeXML,
@@ -73,6 +73,7 @@ vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () 
   AddCredential: vi.fn(),
   AssignCredentialToCompany: vi.fn(),
   CancelCertPassword: vi.fn(),
+  CancelSync: vi.fn(),
   CheckForUpdate: vi.fn(),
   ConfirmQuit: vi.fn(),
   ExportCTeDocuments: vi.fn(),
@@ -285,23 +286,17 @@ describe('desktop client calls', () => {
     })
   })
 
-  it('reads a malformed update check as no update', () => {
-    expect(
-      mapUpdateInfo({ enabled: 'sim' } as unknown as Parameters<typeof mapUpdateInfo>[0])
-    ).toEqual({ enabled: false, currentVersion: '', available: false, version: '', notes: '' })
-  })
-
   it('installs the update and passes its refusal code', async () => {
     vi.mocked(InstallUpdate).mockResolvedValueOnce(undefined)
     await expect(desktopClient.installUpdate()).resolves.toBeUndefined()
     expect(InstallUpdate).toHaveBeenCalledWith()
 
     vi.mocked(InstallUpdate).mockRejectedValueOnce({
-      code: 'update_unavailable',
-      message: 'atualização automática indisponível nesta versão',
+      code: 'update_busy',
+      message: 'aguarde a sincronização terminar para atualizar',
     })
     const error = await desktopClient.installUpdate().catch((err: unknown) => err)
-    expect(wailsErrorCode(error)).toBe('update_unavailable')
+    expect(wailsErrorCode(error)).toBe('update_busy')
   })
 
   it('normalizes cancelled dialogs to null', async () => {
@@ -1514,34 +1509,34 @@ describe('cancellable client calls', () => {
     vi.clearAllMocks()
   })
 
-  it('binds the sync and query calls to the given signal', async () => {
+  it('binds the direct query to the given signal', async () => {
     const signal = new AbortController().signal
+    const query = cancellableCall('{}')
+    vi.mocked(QueryNFSeEvents).mockReturnValue(query as never)
+
+    await desktopClient.queryNFSeEvents({ CompanyCNPJ: '123', ChaveAcesso: 'x' }, signal)
+
+    expect(query.cancelOn).toHaveBeenCalledWith(signal)
+  })
+
+  it('leaves the syncs to CancelSync instead of a signal', async () => {
     const pull = cancellableCall({ CNPJ: '123' })
     const pullNFe = cancellableCall({ CNPJ: '123' })
     const pullCTe = cancellableCall({ CNPJ: '123' })
-    const query = cancellableCall('{}')
     vi.mocked(Pull).mockReturnValue(pull as never)
     vi.mocked(PullNFe).mockReturnValue(pullNFe as never)
     vi.mocked(PullCTe).mockReturnValue(pullCTe as never)
-    vi.mocked(QueryNFSeEvents).mockReturnValue(query as never)
+    vi.mocked(CancelSync).mockResolvedValue(undefined)
 
-    await desktopClient.pull({ CNPJ: '123', Mode: '' }, signal)
-    await desktopClient.pullNFe('123', signal)
-    await desktopClient.pullCTe('123', signal)
-    await desktopClient.queryNFSeEvents({ CompanyCNPJ: '123', ChaveAcesso: 'x' }, signal)
-
-    for (const call of [pull, pullNFe, pullCTe, query]) {
-      expect(call.cancelOn).toHaveBeenCalledWith(signal)
-    }
-  })
-
-  it('leaves a call without a signal alone', async () => {
-    const pullNFe = cancellableCall({ CNPJ: '123' })
-    vi.mocked(PullNFe).mockReturnValue(pullNFe as never)
-
+    await desktopClient.pull({ CNPJ: '123', Mode: '' })
     await desktopClient.pullNFe('123')
+    await desktopClient.pullCTe('123')
+    await desktopClient.cancelSync('123', 'cte')
 
-    expect(pullNFe.cancelOn).not.toHaveBeenCalled()
+    for (const call of [pull, pullNFe, pullCTe]) {
+      expect(call.cancelOn).not.toHaveBeenCalled()
+    }
+    expect(CancelSync).toHaveBeenCalledWith('123', 'cte')
   })
 })
 
@@ -1562,6 +1557,14 @@ describe('Wails error codes', () => {
       { code: 'sync_running', message: 'sincronização em andamento' },
       'sync_running',
       'sincronização em andamento',
+    ],
+    [
+      {
+        code: 'update_busy',
+        message: 'aguarde a operação em andamento terminar para atualizar',
+      },
+      'update_busy',
+      'aguarde a operação em andamento terminar para atualizar',
     ],
     [
       { code: 'startup_failed', message: 'o nanci não iniciou: abrir banco de dados' },

@@ -26,13 +26,10 @@ const savedDark = readStorage('darkMode')
 let initialDark: boolean | 'auto' = 'auto'
 if (savedDark === 'true') {
   initialDark = true
-  desktopRuntime.setDarkTheme()
 } else if (savedDark === 'false') {
   initialDark = false
-  desktopRuntime.setLightTheme()
-} else {
-  desktopRuntime.setSystemDefaultTheme()
 }
+desktopRuntime.setWindowTheme(initialDark)
 
 myApp.use(Quasar, {
   plugins: {

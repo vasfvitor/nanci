@@ -16,12 +16,13 @@ import (
 )
 
 func (a *App) Pull(ctx context.Context, input desktopapi.PullInput) (desktopapi.PullResult, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(ctx, true)
+	if err != nil {
 		return desktopapi.PullResult{}, err
 	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	defer a.trackPull()()
+	defer end()
+	ctx, stop := a.guard.cancelable(ctx, syncKey{input.CNPJ, syncstate.SyncSourceNFSe})
+	defer stop()
 	res, err := a.svc.sync.Pull(ctx, nsync.PullInput{
 		CNPJ:   input.CNPJ,
 		Mode:   input.Mode,
@@ -53,21 +54,23 @@ func (a *App) Pull(ctx context.Context, input desktopapi.PullInput) (desktopapi.
 }
 
 func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
 		return err
 	}
-	return a.svc.sync.ResetSyncState(a.ctx, nsync.ResetSyncInput{
+	defer end()
+	return a.svc.sync.ResetSyncState(ctx, nsync.ResetSyncInput{
 		CNPJ:   input.CompanyCNPJ,
 		Source: syncstate.SyncSourceNFSe,
 	})
 }
 
 func (a *App) QueryNFSeEvents(ctx context.Context, input desktopapi.QueryNFSeInput) (string, error) {
-	if err := a.ready(); err != nil {
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
 		return "", err
 	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
+	defer end()
 	return a.svc.query.QueryNFSeEvents(ctx, app.QueryNFSeInput{
 		CNPJ:        input.CompanyCNPJ,
 		ChaveAcesso: input.ChaveAcesso,
@@ -127,16 +130,16 @@ func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
 }
 
 func (a *App) ExportDANFSe(ctx context.Context, input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
 
-	err := a.svc.exports.ExportDANFSe(ctx, app.ExportDANFSeInput{
+	err = a.svc.exports.ExportDANFSe(ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -148,16 +151,16 @@ func (a *App) ExportDANFSe(ctx context.Context, input desktopapi.ExportDANFSeInp
 }
 
 func (a *App) ExportXML(ctx context.Context, input desktopapi.ExportXMLInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
 
-	err := a.svc.exports.ExportXML(ctx, app.ExportXMLInput{
+	err = a.svc.exports.ExportXML(ctx, app.ExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -169,15 +172,15 @@ func (a *App) ExportXML(ctx context.Context, input desktopapi.ExportXMLInput) (d
 }
 
 func (a *App) ExportDocuments(ctx context.Context, input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
+	format := strings.ToLower(strings.TrimSpace(input.Format))
 
 	exportInput := app.ExportInput{
 		CNPJ:         input.CNPJ,
@@ -189,7 +192,6 @@ func (a *App) ExportDocuments(ctx context.Context, input desktopapi.ExportDocume
 	}
 
 	var res app.ExportResult
-	var err error
 	switch format {
 	case "csv":
 		res, err = a.svc.exports.ExportCSV(ctx, exportInput)

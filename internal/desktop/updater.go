@@ -16,20 +16,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 )
 
-// updateManifestURL is the update manifest of the latest stable release.
-// GitHub redirects releases/latest/download to the asset of the newest
-// release that is neither a draft nor a prerelease. The release workflow
-// writes the manifest with `wails3 updater manifest`, which signs the exe it
-// lists; a release without the manifest answers 404, which the endpoint
-// provider reads as "up to date".
-//
-// The github provider of Wails cannot be used with a pinned key: it fills
-// only a digest from a checksums file, never a signature
-// (pkg/updater/providers/github/github.go:167-179), and with Config.PublicKey
-// set the updater rejects every release without one (pkg/updater/verify.go:87).
-//
-// It is a var, not a const, so a local test build can point at a test server
-// with -ldflags "-X main.updateManifestURL=...".
+// updateManifestURL is the signed update manifest of the latest stable
+// release; GitHub redirects releases/latest/download to the newest release
+// that is not a draft or a prerelease, and a release without the manifest
+// answers 404, which the endpoint provider reads as "up to date". The github
+// provider of Wails cannot be used: it never fills a signature
+// (pkg/updater/providers/github/github.go:167-179), which a pinned
+// Config.PublicKey requires. It is a var so a local test build can point at
+// a test server with -ldflags "-X main.updateManifestURL=...".
 var updateManifestURL = "https://github.com/vasfvitor/nanci/releases/latest/download/nanci-update.json"
 
 // updateEngine is the part of the Wails updater App uses; tests replace it.
@@ -43,9 +37,7 @@ var (
 	// errUpdatesDisabled: a dev build, a version that is not X.Y.Z or a
 	// build without updaterPublicKey.
 	errUpdatesDisabled = errors.New("atualização automática indisponível nesta versão")
-	// errUpdateDuringSync keeps the restart from cutting a sync short.
-	errUpdateDuringSync = errors.New("aguarde a sincronização terminar para atualizar")
-	errNoUpdate         = errors.New("nenhuma atualização disponível; procure atualizações de novo")
+	errNoUpdate        = errors.New("nenhuma atualização disponível; procure atualizações de novo")
 )
 
 var releaseVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
@@ -107,32 +99,28 @@ func (a *App) CheckForUpdate(ctx context.Context) (desktopapi.UpdateInfo, error)
 }
 
 // InstallUpdate downloads the release the last CheckForUpdate found,
-// verifies its signature, stages it beside the exe and restarts into it. A
-// helper copy of the exe waits for this process to exit, swaps the files and
-// starts the new version; on any failure it puts the old exe back.
-//
-// It refuses while a sync runs, before the download and again before the
-// restart: the restart goes through Options.ShouldQuit, and beforeClose would
-// stop it to ask the user, leaving the helper waiting until it gives up.
+// verifies its signature and restarts into it. It refuses while a tracked
+// operation runs (closeguard.go) and blocks new ones until the restart, which
+// would cut them short and, during a sync, be stopped by beforeClose. A
+// failed download or restart lets operations start again.
 func (a *App) InstallUpdate(ctx context.Context) error {
 	if a.updates == nil {
 		return errUpdatesDisabled
 	}
-	if a.guard.pulls.Load() > 0 {
-		return errUpdateDuringSync
+	if err := a.guard.beginInstall(); err != nil {
+		return err
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
 	if err := a.updates.DownloadAndInstall(ctx); err != nil {
+		a.guard.endInstall()
 		if errors.Is(err, updater.ErrNoPendingRelease) {
 			return errNoUpdate
 		}
 		return fmt.Errorf("baixar atualização: %w", err)
 	}
-	if a.guard.pulls.Load() > 0 {
-		return errUpdateDuringSync
-	}
 	if err := a.updates.Restart(ctx); err != nil {
+		a.guard.endInstall()
 		return fmt.Errorf("reiniciar para atualizar: %w", err)
 	}
 	return nil

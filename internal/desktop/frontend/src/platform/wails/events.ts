@@ -34,19 +34,9 @@ type Fits<
 export function onWailsEvent<E extends DesktopEventName>(
   eventName: E,
   callback: (payload: DesktopEvents[E]) => void
-): Unsubscribe
-// Callers that name the payload type instead of the event still compile;
-// the event name is checked, the payload type is trusted.
-export function onWailsEvent<TPayload>(
-  eventName: DesktopEventName,
-  callback: (payload: TPayload) => void
-): Unsubscribe
-export function onWailsEvent(
-  eventName: DesktopEventName,
-  callback: (payload: unknown) => void
 ): Unsubscribe {
   const unsubscribe = Events.On(eventName, (event) => {
-    callback(event.data)
+    callback(event.data as DesktopEvents[E])
   })
 
   return () => {

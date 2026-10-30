@@ -1,7 +1,6 @@
 import { computed } from 'vue'
-import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
-import { wailsErrorCode } from '@/platform/wails/client'
+import { errorMessage, wailsErrorCode } from '@/platform/wails/client'
 import { useNotify } from '@/composables/useNotify'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useUpdatesStore } from '@/stores/updates'
@@ -11,14 +10,13 @@ export const updateBlockedBySync =
   'Aguarde a sincronização terminar para atualizar: a atualização reinicia o Nanci.'
 
 // useUpdates offers the update at startup and from the Sobre section. The
-// restart never runs during a sync: the action is refused here, and the
-// backend refuses it again.
+// restart never cuts an operation short: the Sobre button is disabled during
+// a sync, and the backend refuses the install while any operation runs.
 export function useUpdates() {
-  const $q = useQuasar()
-  const { notifyError, notifySuccess, notifyWarning } = useNotify()
+  const { notifyError, notifyInfo, notifySuccess, notifyWarning } = useNotify()
   const store = useUpdatesStore()
   const companySync = useCompanySyncStore()
-  const { status, info, error, busy, canInstall, percent } = storeToRefs(store)
+  const { status, info, error, canInstall, percent } = storeToRefs(store)
   const blockedBySync = computed(() => companySync.anySyncing)
   // installing covers the download and the restart.
   const installing = computed(() => status.value === 'downloading' || status.value === 'installing')
@@ -43,29 +41,26 @@ export function useUpdates() {
   })
 
   async function installAndRestart() {
-    if (blockedBySync.value) {
-      notifyWarning(updateBlockedBySync)
-      return
-    }
+    store.replaceNotice(null)
     try {
       await store.install()
     } catch (e) {
-      if (wailsErrorCode(e) === 'sync_running') notifyWarning(updateBlockedBySync)
+      if (wailsErrorCode(e) === 'update_busy') notifyWarning(errorMessage(e))
       else notifyError('Erro ao atualizar', e)
     }
   }
 
-  // notifyAvailable stays until the user acts on it.
+  // notifyAvailable stays until the user acts on it, an install starts or a
+  // later check replaces it.
   function notifyAvailable(found: UpdateInfo) {
-    $q.notify({
-      type: 'info',
-      message: `Nova versão ${found.version} disponível.`,
+    const dismiss = notifyInfo(`Nova versão ${found.version} disponível.`, {
       timeout: 0,
       actions: [
         { label: 'Atualizar e reiniciar', color: 'white', handler: () => void installAndRestart() },
         { label: 'Depois', color: 'white' },
       ],
     })
+    store.replaceNotice(dismiss)
   }
 
   // checkAtStartup runs the session's single startup check and offers what
@@ -80,8 +75,12 @@ export function useUpdates() {
     try {
       const found = await store.check()
       if (!found) return
-      if (found.available) notifyAvailable(found)
-      else if (found.enabled) notifySuccess('O Nanci está na versão mais recente.')
+      if (found.available) {
+        notifyAvailable(found)
+        return
+      }
+      store.replaceNotice(null)
+      if (found.enabled) notifySuccess('O Nanci está na versão mais recente.')
     } catch (e) {
       notifyError('Erro ao procurar atualizações', e)
     }
@@ -89,11 +88,7 @@ export function useUpdates() {
 
   return {
     status,
-    info,
-    error,
-    busy,
     canInstall,
-    percent,
     installing,
     statusLabel,
     blockedBySync,

@@ -73,9 +73,7 @@ function mountWithButtons() {
 
 vi.mock('@/platform/wails/runtime', () => ({
   desktopRuntime: {
-    setDarkTheme: vi.fn(),
-    setLightTheme: vi.fn(),
-    setSystemDefaultTheme: vi.fn(),
+    setWindowTheme: vi.fn(),
     windowGetSize: vi.fn(async () => ({ w: 1280, h: 768 })),
     windowSetSize: vi.fn(),
     windowIsMaximised: vi.fn(async () => false),

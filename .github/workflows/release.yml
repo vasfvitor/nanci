@@ -13,6 +13,11 @@ concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # The install steps build the Wails CLI without cgo, which on Linux would
+  # need the GTK 4 and WebKitGTK headers (internal/operatingsystem).
+  WAILS_VERSION: v3.0.0
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -149,17 +154,15 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-bins-wails3-v3.0.0
+          key: ${{ runner.os }}-go-bins-wails3-${{ env.WAILS_VERSION }}
 
-      # Without cgo the CLI builds on Linux with no GTK headers; the app build
-      # itself targets Windows.
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
         env:
           CGO_ENABLED: '0'
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Build Desktop Installer
         working-directory: ./internal/desktop
@@ -276,16 +279,15 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/go/bin
-          key: ${{ runner.os }}-go-bins-wails3-v3.0.0
+          key: ${{ runner.os }}-go-bins-wails3-${{ env.WAILS_VERSION }}
 
-      # Without cgo the CLI builds on Linux with no GTK headers.
       - name: Install Wails CLI
         if: steps.cache-go-bins.outputs.cache-hit != 'true'
         shell: bash
         env:
           CGO_ENABLED: '0'
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       # The app reads releases/latest/download/nanci-update.json, the Wails
       # update manifest: the exe's URL in this release, its SHA-512 digest
