@@ -20,7 +20,11 @@ var icon []byte
 var assets embed.FS
 
 func main() {
-	// Wails system messages go to their own file next to the desktop log.
+	// Wails system messages go to their own file next to the desktop log. A
+	// second instance opens it too before it exits in application.New. That
+	// is safe for the running instance's log: opening only appends, and
+	// rotation needs a write, which the second instance makes only if it
+	// cannot notify the first (its other startup messages are below warn).
 	var wailsLog *slog.Logger
 	if logDir, err := desktopLogDir(); err == nil {
 		writer, err := newRotatingFileWriter(filepath.Join(logDir, wailsLogFileName), logFileMaxBytes, logFileMaxBackups)
@@ -54,6 +58,13 @@ func main() {
 		// accelerator parsing these options get.
 		KeyBindings: map[string]func(application.Window){
 			"CmdOrCtrl+Q": func(application.Window) { app.quit() },
+		},
+		// A second launch hands its arguments to this instance and exits
+		// inside application.New, so code after New, and the defers above,
+		// never run there.
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID:               singleInstanceID,
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) { focusMainWindow(app) },
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
@@ -92,6 +103,18 @@ func main() {
 	if err := wailsApp.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
 	}
+}
+
+// focusMainWindow brings the main window to the front when Nanci is launched
+// again. Wails calls OnSecondInstanceLaunch on a goroutine, so the window calls
+// go to the UI thread. The notice arrives as a window message, which only the
+// message loop of Run delivers, so main has set app.window by then.
+func focusMainWindow(app *App) {
+	application.InvokeAsync(func() {
+		app.window.UnMinimise()
+		app.window.Show()
+		app.window.Focus()
+	})
 }
 
 // newAppMenu builds the native menu. Windows does not draw a menu bar on a
