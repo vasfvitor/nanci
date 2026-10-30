@@ -1,3 +1,4 @@
+import type { CancellablePromise } from '@wailsio/runtime'
 import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ConnectionTestResult,
@@ -43,8 +44,17 @@ export function errorMessage(error: unknown): string {
   return normalizeError(error).message
 }
 
+// canceledMessage matches app.ErrOperationCanceled in Go.
+const canceledMessage = 'operação cancelada pelo usuário'
+
 function normalizeError(error: unknown): WailsClientError {
   if (error instanceof WailsClientError) return error
+  // The runtime rejects a cancelled call at once with a CancelError, while the
+  // Go method runs until it sees its context end. Its cause is the abort
+  // reason, which is not a payload of formatError.
+  if (error instanceof Error && error.name === 'CancelError') {
+    return new WailsClientError(canceledMessage, 'canceled', error)
+  }
   if (error instanceof Error) {
     const cause = error.cause
     if (cause && typeof cause === 'object' && 'code' in cause) {
@@ -61,9 +71,16 @@ function normalizeError(error: unknown): WailsClientError {
   return new WailsClientError(String(error), '', error)
 }
 
-export async function callWails<T>(operation: () => Promise<T>): Promise<T> {
+// callWails runs a bound-method call and normalizes its error. With a signal,
+// aborting it cancels the call: the promise rejects with the canceled code and
+// the Go method, when it takes a context.Context, sees that context end.
+export async function callWails<T>(
+  operation: () => CancellablePromise<T>,
+  signal?: AbortSignal
+): Promise<T> {
   try {
-    return await operation()
+    const call = operation()
+    return await (signal ? call.cancelOn(signal) : call)
   } catch (error) {
     throw normalizeError(error)
   }

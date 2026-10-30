@@ -70,6 +70,17 @@ describe('DocumentPageHeader', () => {
     expect(wrapper.emitted('sync')).toHaveLength(1)
   })
 
+  it('offers Cancelar only while a cancellable sync runs', async () => {
+    const labels = (wrapper: ReturnType<typeof mountHeader>) =>
+      wrapper.findAll('button').map((item) => item.text())
+    expect(labels(mountHeader({ cancelable: true }))).not.toContain('Cancelar')
+    expect(labels(mountHeader({ syncing: true }))).not.toContain('Cancelar')
+
+    const wrapper = mountHeader({ syncing: true, cancelable: true })
+    await button(wrapper, 'Cancelar').trigger('click')
+    expect(wrapper.emitted('cancel')).toHaveLength(1)
+  })
+
   it('shows the reset in flight and asks for it on click', async () => {
     const wrapper = mountHeader({ resetting: true })
 

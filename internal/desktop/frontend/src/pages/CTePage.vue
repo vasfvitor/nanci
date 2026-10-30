@@ -8,11 +8,13 @@
       :idle-warning="idleWarning"
       :blocked-text="blockedText"
       :syncing="isSyncing"
+      :cancelable="canCancelSync"
       :sync-disabled="!cnpj || isResetting || Boolean(syncBlockedUntil)"
       reset-title="Remove os CT-e da empresa e reinicia a sincronização CT-e"
       :resetting="isResetting || previewingReset"
       :reset-disabled="!cnpj || isSyncing"
       @sync="syncCTe"
+      @cancel="cte.cancelSync"
       @reset="confirmResetCTe"
     />
 
@@ -299,6 +301,7 @@ const {
   idleWarning,
   listError,
   isSyncing,
+  canCancelSync,
   isResetting,
   syncBlockedUntil,
   blockedText,

@@ -20,6 +20,15 @@
         @click="emit('reset')"
       />
       <q-btn
+        v-if="syncing && cancelable"
+        flat
+        color="primary"
+        icon="close"
+        label="Cancelar"
+        title="Interrompe a sincronização; o que já foi salvo fica, e a próxima continua dali"
+        @click="emit('cancel')"
+      />
+      <q-btn
         color="primary"
         icon="sync"
         :label="`Sincronizar ${title}`"
@@ -76,7 +85,8 @@ import { badgeProps, IDLE_WARNING_TOOLTIP } from '@/utils/sefazDisplay'
 // for too long and the banner that explains a blocked sync. ambiente is null
 // until the company is known; contextLine is '' while no company is
 // selected; resetTitle explains what the reset does; firstSync marks the
-// sync button while the company was never synced.
+// sync button while the company was never synced; cancelable shows the
+// Cancelar button next to a running sync.
 withDefaults(
   defineProps<{
     title: string
@@ -91,18 +101,21 @@ withDefaults(
     resetting: boolean
     resetDisabled: boolean
     firstSync?: boolean
+    cancelable?: boolean
   }>(),
   {
     statusLine: '',
     idleWarning: '',
     blockedText: '',
     firstSync: false,
+    cancelable: false,
   }
 )
 
 const emit = defineEmits<{
   sync: []
   reset: []
+  cancel: []
 }>()
 
 const $q = useQuasar()

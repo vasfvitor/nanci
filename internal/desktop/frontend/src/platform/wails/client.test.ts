@@ -48,8 +48,10 @@ import {
   MarkNFeViewed,
   PlanNFeCiencia,
   PreviewResetCTe,
+  Pull,
   PullCTe,
   PullNFe,
+  QueryNFSeEvents,
   RegisterNFeCiencia,
   RegisterNFeManifestacao,
   ResetCTe,
@@ -1446,12 +1448,68 @@ function runtimeError(message: string, cause: unknown) {
   return error
 }
 
+// cancelError builds what a CancellablePromise of @wailsio/runtime rejects
+// with when its call is cancelled through cancelOn: a CancelError whose cause
+// is the abort reason of the signal.
+function cancelError() {
+  const controller = new AbortController()
+  controller.abort()
+  const error = new Error('Promise cancelled.', { cause: controller.signal.reason })
+  error.name = 'CancelError'
+  return error
+}
+
+// cancellableCall stands in for the CancellablePromise a generated binding
+// returns, with cancelOn recorded.
+function cancellableCall<T>(value: T) {
+  const call = Promise.resolve(value) as Promise<T> & { cancelOn: ReturnType<typeof vi.fn> }
+  call.cancelOn = vi.fn(() => call)
+  return call
+}
+
+describe('cancellable client calls', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('binds the sync and query calls to the given signal', async () => {
+    const signal = new AbortController().signal
+    const pull = cancellableCall({ CNPJ: '123' })
+    const pullNFe = cancellableCall({ CNPJ: '123' })
+    const pullCTe = cancellableCall({ CNPJ: '123' })
+    const query = cancellableCall('{}')
+    vi.mocked(Pull).mockReturnValue(pull as never)
+    vi.mocked(PullNFe).mockReturnValue(pullNFe as never)
+    vi.mocked(PullCTe).mockReturnValue(pullCTe as never)
+    vi.mocked(QueryNFSeEvents).mockReturnValue(query as never)
+
+    await desktopClient.pull({ CNPJ: '123', Mode: '' }, signal)
+    await desktopClient.pullNFe('123', signal)
+    await desktopClient.pullCTe('123', signal)
+    await desktopClient.queryNFSeEvents({ CompanyCNPJ: '123', ChaveAcesso: 'x' }, signal)
+
+    for (const call of [pull, pullNFe, pullCTe, query]) {
+      expect(call.cancelOn).toHaveBeenCalledWith(signal)
+    }
+  })
+
+  it('leaves a call without a signal alone', async () => {
+    const pullNFe = cancellableCall({ CNPJ: '123' })
+    vi.mocked(PullNFe).mockReturnValue(pullNFe as never)
+
+    await desktopClient.pullNFe('123')
+
+    expect(pullNFe.cancelOn).not.toHaveBeenCalled()
+  })
+})
+
 describe('Wails error codes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it.each([
+    [cancelError(), 'canceled', 'operação cancelada pelo usuário'],
     [{ code: 'canceled', message: 'operação cancelada' }, 'canceled', 'operação cancelada'],
     [
       { code: 'sefaz_blocked', message: 'consultas bloqueadas até 15:00' },

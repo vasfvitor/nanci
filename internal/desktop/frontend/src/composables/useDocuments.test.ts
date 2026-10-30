@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useDocuments } from './useDocuments'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, WailsClientError, wailsErrorCode } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -104,11 +104,39 @@ describe('useDocuments', () => {
     pull.resolve({ CNPJ: '123', Status: 'success' } as PullResult)
     await expect(syncing).resolves.toMatchObject({ Status: 'success' })
 
-    expect(desktopClient.pull).toHaveBeenCalledWith({ CNPJ: '123', Mode: '' })
+    expect(desktopClient.pull).toHaveBeenCalledWith(
+      { CNPJ: '123', Mode: '' },
+      expect.any(AbortSignal)
+    )
     expect(remountedPage.isSyncing.value).toBe(false)
     expect(desktopClient.listDocuments).toHaveBeenCalled()
     // One reload of the companies, for the status line.
     expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels a pending sync from a remounted page', async () => {
+    vi.mocked(desktopClient.pull).mockImplementation(
+      (_input, signal) =>
+        new Promise((_resolve, reject) => {
+          signal?.addEventListener('abort', () =>
+            reject(new WailsClientError('operação cancelada pelo usuário', 'canceled'))
+          )
+        })
+    )
+    const firstPage = useDocuments()
+    useWorkspaceStore().cnpj = '123'
+    expect(firstPage.canCancelSync.value).toBe(false)
+
+    const syncing = firstPage.syncNFSe()
+    const remountedPage = useDocuments()
+    expect(remountedPage.canCancelSync.value).toBe(true)
+    remountedPage.cancelSync()
+
+    const error = await syncing.catch((err: unknown) => err)
+    expect(wailsErrorCode(error)).toBe('canceled')
+    expect(remountedPage.isSyncing.value).toBe(false)
+    expect(remountedPage.canCancelSync.value).toBe(false)
+    expect(desktopClient.listDocuments).toHaveBeenCalled()
   })
 
   it('clears the sync marker and still refreshes when the pull fails', async () => {

@@ -90,6 +90,14 @@
             :loading="loading"
             :disable="!cnpj"
           />
+          <q-btn
+            v-if="loading"
+            flat
+            color="primary"
+            icon="close"
+            label="Cancelar"
+            @click="query.cancelQuery"
+          />
         </div>
       </q-form>
     </q-card>
@@ -112,7 +120,7 @@
 import { computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
-import { errorMessage } from '@/platform/wails/client'
+import { errorMessage, wailsErrorCode } from '@/platform/wails/client'
 import { companyOption } from '@/composables/useCompanies'
 import { useQuery } from '@/composables/useQuery'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -144,10 +152,16 @@ function filterDocumentsFn(val: string, update: (callback: () => void) => void) 
   })
 }
 
+// A cancelled query, by the Cancelar button or the password dialog, is a
+// warning like a cancelled sync, not an error.
 async function runQuery() {
   try {
     await query.runQuery()
   } catch (err: unknown) {
+    if (wailsErrorCode(err) === 'canceled') {
+      $q.notify({ type: 'warning', message: 'Consulta cancelada.' })
+      return
+    }
     $q.notify({ type: 'negative', message: 'Erro na consulta: ' + errorMessage(err) })
   }
 }

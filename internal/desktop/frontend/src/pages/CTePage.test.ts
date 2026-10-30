@@ -411,7 +411,7 @@ describe('CTePage', () => {
     await sync.trigger('click')
     await flushPromises()
 
-    expect(desktopClient.pullCTe).toHaveBeenCalledWith(company.CNPJ)
+    expect(desktopClient.pullCTe).toHaveBeenCalledWith(company.CNPJ, expect.any(AbortSignal))
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'positive',

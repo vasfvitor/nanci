@@ -681,7 +681,7 @@ describe('NFePage', () => {
     await sync.trigger('click')
     await flushPromises()
 
-    expect(desktopClient.pullNFe).toHaveBeenCalledWith(company.CNPJ)
+    expect(desktopClient.pullNFe).toHaveBeenCalledWith(company.CNPJ, expect.any(AbortSignal))
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'positive',

@@ -158,6 +158,27 @@ describe('useCTeDocuments', () => {
     expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
   })
 
+  it('cancels a pending CT-e sync from a second instance', async () => {
+    vi.mocked(desktopClient.pullCTe).mockImplementation(
+      (_cnpj, signal) =>
+        new Promise((_resolve, reject) => {
+          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
+        })
+    )
+
+    const firstPage = useCTeDocuments()
+    useWorkspaceStore().cnpj = '123'
+    const syncing = firstPage.syncCTe()
+
+    const remountedPage = useCTeDocuments()
+    expect(remountedPage.canCancelSync.value).toBe(true)
+    remountedPage.cancelSync()
+
+    await expect(syncing).rejects.toThrow('cancelada')
+    expect(remountedPage.isSyncing.value).toBe(false)
+    expect(remountedPage.canCancelSync.value).toBe(false)
+  })
+
   it('keeps the CT-e reset visible to a second instance while it is pending', async () => {
     const reset = deferred<CTeResetResult>()
     vi.mocked(desktopClient.resetCTe).mockReturnValue(reset.promise)

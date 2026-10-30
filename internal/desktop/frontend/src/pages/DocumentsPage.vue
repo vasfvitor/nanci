@@ -6,12 +6,14 @@
       :context-line="contextLine"
       :status-line="statusLine"
       :syncing="isSyncing"
+      :cancelable="canCancelSync"
       :sync-disabled="!cnpj || isResetting"
       :first-sync="firstSync"
       reset-title="Reinicia a sincronização da NFS-e a partir do NSU 0; os documentos ficam"
       :resetting="isResetting"
       :reset-disabled="!cnpj || isSyncing"
       @sync="syncNFSe"
+      @cancel="nfse.cancelSync"
       @reset="confirmResetSync"
     />
 
@@ -187,6 +189,7 @@ const {
   ambiente,
   statusLine,
   isSyncing,
+  canCancelSync,
   isResetting,
 } = nfse
 

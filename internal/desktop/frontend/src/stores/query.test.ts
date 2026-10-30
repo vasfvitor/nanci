@@ -34,6 +34,20 @@ describe('query store', () => {
     expect(again.optionsCNPJ).toBe('11111111000111')
   })
 
+  it('cancels the running query from another consumer', () => {
+    const store = useQueryStore()
+
+    const signal = store.startQuery()
+    expect(store.loading).toBe(true)
+    useQueryStore().cancelQuery()
+    expect(signal.aborted).toBe(true)
+
+    store.finishQuery()
+    expect(store.loading).toBe(false)
+    // With nothing running, a cancel does nothing.
+    store.cancelQuery()
+  })
+
   it('clearResult clears only the result', () => {
     const store = useQueryStore()
     store.form.chave = '12345'

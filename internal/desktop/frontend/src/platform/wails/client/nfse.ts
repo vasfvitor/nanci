@@ -172,11 +172,11 @@ export const nfseClient = {
     const result = await callWails(() => ListEventsForDocument(documentID))
     return (result || []).map(mapDocumentEvent)
   },
-  pull(input: PullInput): Promise<PullResult> {
-    return callWails(() => Pull(input)) as Promise<PullResult>
+  pull(input: PullInput, signal?: AbortSignal): Promise<PullResult> {
+    return callWails(() => Pull(input), signal) as Promise<PullResult>
   },
-  queryNFSeEvents(input: QueryNFSeInput) {
-    return callWails(() => QueryNFSeEvents(input))
+  queryNFSeEvents(input: QueryNFSeInput, signal?: AbortSignal) {
+    return callWails(() => QueryNFSeEvents(input), signal)
   },
   resetSyncState(input: ResetSyncInput) {
     return callWails(() => ResetSyncState(input))

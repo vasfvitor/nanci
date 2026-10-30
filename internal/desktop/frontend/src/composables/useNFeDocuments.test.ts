@@ -139,6 +139,28 @@ describe('useNFeDocuments', () => {
     expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
   })
 
+  it('cancels a pending NF-e sync from a second instance', async () => {
+    vi.mocked(desktopClient.pullNFe).mockImplementation(
+      (_cnpj, signal) =>
+        new Promise((_resolve, reject) => {
+          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
+        })
+    )
+
+    const firstPage = useNFeDocuments()
+    useWorkspaceStore().cnpj = '123'
+    const syncing = firstPage.syncNFe()
+
+    const remountedPage = useNFeDocuments()
+    expect(remountedPage.canCancelSync.value).toBe(true)
+    remountedPage.cancelSync()
+
+    await expect(syncing).rejects.toThrow('cancelada')
+    expect(remountedPage.isSyncing.value).toBe(false)
+    expect(remountedPage.canCancelSync.value).toBe(false)
+    expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+  })
+
   it('keeps the NF-e reset visible to a second instance while it is pending', async () => {
     let resolveReset!: (value: NFeResetResult) => void
     vi.mocked(desktopClient.resetNFe).mockReturnValue(

@@ -87,4 +87,41 @@ describe('company sync store', () => {
     ).rejects.toThrow('offline')
     expect(store.isSyncing('123', 'cte')).toBe(false)
   })
+
+  it('cancels a cancellable sync from another consumer and clears it', async () => {
+    const store = useCompanySyncStore()
+    let received: AbortSignal | undefined
+
+    const running = store.runCancellableSync(
+      '123',
+      'nfe',
+      (signal) =>
+        new Promise((_resolve, reject) => {
+          received = signal
+          signal.addEventListener('abort', () => reject(new Error('cancelada')))
+        })
+    )
+    expect(store.isSyncing('123', 'nfe')).toBe(true)
+    expect(store.canCancelSync('123', 'nfe')).toBe(true)
+    expect(store.canCancelSync('123', 'cte')).toBe(false)
+
+    useCompanySyncStore().cancelSync('123', 'nfe')
+
+    expect(received?.aborted).toBe(true)
+    await expect(running).rejects.toThrow('cancelada')
+    expect(store.isSyncing('123', 'nfe')).toBe(false)
+    expect(store.canCancelSync('123', 'nfe')).toBe(false)
+  })
+
+  it('offers no cancel for a plain runSync and ignores a cancel with nothing running', async () => {
+    const store = useCompanySyncStore()
+    let canCancel = true
+
+    await store.runSync('123', 'nfe', async () => {
+      canCancel = store.canCancelSync('123', 'nfe')
+    })
+    store.cancelSync('123', 'nfe')
+
+    expect(canCancel).toBe(false)
+  })
 })

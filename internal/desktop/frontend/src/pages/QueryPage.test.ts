@@ -2,13 +2,16 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QueryPage from './QueryPage.vue'
-import { desktopClient } from '@/platform/wails/client'
+import { desktopClient, WailsClientError } from '@/platform/wails/client'
+import { useQueryStore } from '@/stores/query'
 import { useWorkspaceStore } from '@/stores/workspace'
+
+const notify = vi.hoisted(() => vi.fn())
 
 vi.mock('quasar', () => ({
   useQuasar: () => ({
     dark: { isActive: false },
-    notify: vi.fn(),
+    notify,
   }),
 }))
 
@@ -35,7 +38,9 @@ function mountPage() {
         'q-banner': { template: '<div class="banner"><slot /><slot name="action" /></div>' },
         'q-btn': {
           props: ['label', 'to', 'disable'],
-          template: '<button :data-to="to" :disabled="disable">{{ label }}</button>',
+          emits: ['click'],
+          template:
+            '<button :data-to="to" :disabled="disable" @click="$emit(\'click\')">{{ label }}</button>',
         },
         QInput: {
           name: 'QInput',
@@ -94,5 +99,35 @@ describe('QueryPage', () => {
     expect(button(wrapper, 'Cadastrar empresa').attributes('data-to')).toBe('/')
     expect(button(wrapper, 'Consultar no ADN').attributes('disabled')).toBeDefined()
     expect(wrapper.getComponent({ name: 'QInput' }).props('modelValue')).toBe('')
+  })
+
+  it('offers Cancelar while a query runs and cancels it', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([acme] as never)
+    await useWorkspaceStore().loadCompanies()
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(wrapper.findAll('button').map((item) => item.text())).not.toContain('Cancelar')
+
+    const signal = useQueryStore().startQuery()
+    await flushPromises()
+    await button(wrapper, 'Cancelar').trigger('click')
+
+    expect(signal.aborted).toBe(true)
+  })
+
+  it('reports a cancelled query as a warning, not an error', async () => {
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([acme] as never)
+    vi.mocked(desktopClient.queryNFSeEvents).mockRejectedValue(
+      new WailsClientError('operação cancelada pelo usuário', 'canceled')
+    )
+    await useWorkspaceStore().loadCompanies()
+    useQueryStore().form.chave = '2'.repeat(50)
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(notify).toHaveBeenCalledWith({ type: 'warning', message: 'Consulta cancelada.' })
   })
 })
