@@ -1,8 +1,10 @@
 import {
+  CheckForUpdate,
   ConfirmQuit,
   ExportLogs,
   GetBuildInfo,
   GetDataDirectory,
+  InstallUpdate,
   OpenDataDirectory,
   OpenLogsDirectory,
   SelectSaveFile,
@@ -11,8 +13,8 @@ import {
   ShowInFolder,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
-import type { BuildInfo } from '@/types/desktop'
-import { callWails, asStringArray } from './base'
+import type { BuildInfo, UpdateInfo } from '@/types/desktop'
+import { callWails, asString, asStringArray } from './base'
 
 export function mapBuildInfo(item: desktopapi.BuildInfo): BuildInfo {
   return {
@@ -20,6 +22,16 @@ export function mapBuildInfo(item: desktopapi.BuildInfo): BuildInfo {
     commit: item.commit,
     date: item.date,
     webview2Version: item.webview2Version,
+  }
+}
+
+export function mapUpdateInfo(item: desktopapi.UpdateInfo): UpdateInfo {
+  return {
+    enabled: item.enabled === true,
+    currentVersion: asString(item.currentVersion),
+    available: item.available === true,
+    version: asString(item.version),
+    notes: asString(item.notes),
   }
 }
 
@@ -64,5 +76,13 @@ export const systemClient = {
   async exportLogs(): Promise<string | null> {
     const path = await callWails(() => ExportLogs())
     return path || null
+  },
+  async checkForUpdate(): Promise<UpdateInfo> {
+    return mapUpdateInfo(await callWails(() => CheckForUpdate()))
+  },
+  // installUpdate downloads and verifies the release the last check found,
+  // then restarts into it: on success the app closes soon after it resolves.
+  installUpdate(): Promise<void> {
+    return callWails(() => InstallUpdate())
   },
 }

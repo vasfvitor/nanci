@@ -35,6 +35,7 @@ import { storeToRefs } from 'pinia'
 import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
 import { useNotify } from '@/composables/useNotify'
 import { useCloseGuard } from '@/composables/useCloseGuard'
+import { useUpdates } from '@/composables/useUpdates'
 import { useConsoleStore } from '@/stores/console'
 import { useWorkspaceStore } from '@/stores/workspace'
 import AppTitleBar from '../components/AppTitleBar.vue'
@@ -46,6 +47,7 @@ const consoleStore = useConsoleStore()
 const workspace = useWorkspaceStore()
 const { notifyError } = useNotify()
 const closeGuard = useCloseGuard()
+const updates = useUpdates()
 const leftDrawerOpen = ref(false)
 const { consoleOpen } = storeToRefs(consoleStore)
 const unsubscribers: Unsubscribe[] = []
@@ -54,6 +56,8 @@ onMounted(() => {
   // The layout loads the company list once for every page; a page that
   // mounted first may have started the load already.
   workspace.ensureCompanies().catch((e: unknown) => notifyError('Erro ao carregar empresas', e))
+  // Once per session and in the background; a new version shows a notice.
+  void updates.checkAtStartup()
   unsubscribers.push(
     closeGuard.start(),
     onWailsEvent<string>('notify-success', (msg) => {

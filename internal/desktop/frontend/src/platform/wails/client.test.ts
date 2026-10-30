@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, vi } from 'vitest'
 import {
   desktopClient,
   errorMessage,
+  mapUpdateInfo,
   mapCompanySummary,
   mapCredentialSummary,
   mapCTeEvent,
@@ -22,6 +23,7 @@ import {
   WailsClientError,
 } from './client'
 import {
+  CheckForUpdate,
   ExportCTeDocuments,
   ExportCTeXML,
   ExportDACTE,
@@ -34,6 +36,7 @@ import {
   GetBuildInfo,
   ImportCTeXML,
   ImportNFeXML,
+  InstallUpdate,
   ListCTe,
   ListCTeEvents,
   ListCompanies,
@@ -262,6 +265,43 @@ describe('desktop client calls', () => {
       date: '2026-10-17',
       webview2Version: '141.0.3537.71',
     })
+  })
+
+  it('maps the update check', async () => {
+    vi.mocked(CheckForUpdate).mockResolvedValue({
+      enabled: true,
+      currentVersion: '0.6.0',
+      available: true,
+      version: '0.7.0',
+      notes: 'Novidades',
+    })
+
+    await expect(desktopClient.checkForUpdate()).resolves.toEqual({
+      enabled: true,
+      currentVersion: '0.6.0',
+      available: true,
+      version: '0.7.0',
+      notes: 'Novidades',
+    })
+  })
+
+  it('reads a malformed update check as no update', () => {
+    expect(
+      mapUpdateInfo({ enabled: 'sim' } as unknown as Parameters<typeof mapUpdateInfo>[0])
+    ).toEqual({ enabled: false, currentVersion: '', available: false, version: '', notes: '' })
+  })
+
+  it('installs the update and passes its refusal code', async () => {
+    vi.mocked(InstallUpdate).mockResolvedValueOnce(undefined)
+    await expect(desktopClient.installUpdate()).resolves.toBeUndefined()
+    expect(InstallUpdate).toHaveBeenCalledWith()
+
+    vi.mocked(InstallUpdate).mockRejectedValueOnce({
+      code: 'update_unavailable',
+      message: 'atualização automática indisponível nesta versão',
+    })
+    const error = await desktopClient.installUpdate().catch((err: unknown) => err)
+    expect(wailsErrorCode(error)).toBe('update_unavailable')
   })
 
   it('normalizes cancelled dialogs to null', async () => {

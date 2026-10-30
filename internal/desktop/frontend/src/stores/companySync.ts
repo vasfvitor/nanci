@@ -1,4 +1,4 @@
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { SyncSource } from '@/types/desktop'
 
@@ -11,6 +11,9 @@ export const useCompanySyncStore = defineStore('companySync', () => {
   // cancellers holds the AbortController of each cancellable sync in flight,
   // by the same key, so any screen can cancel it.
   const cancellers = shallowRef<Record<string, AbortController>>({})
+
+  // anySyncing is true while a sync of any company or source runs.
+  const anySyncing = computed(() => Object.keys(activeSyncs.value).length > 0)
 
   function isSyncing(cnpj: string, source: SyncSource) {
     return Boolean(activeSyncs.value[syncKey(cnpj, source)])
@@ -84,6 +87,7 @@ export const useCompanySyncStore = defineStore('companySync', () => {
 
   return {
     activeSyncs,
+    anySyncing,
     isSyncing,
     startSync,
     finishSync,
