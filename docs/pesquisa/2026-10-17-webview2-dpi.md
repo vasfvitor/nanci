@@ -51,15 +51,32 @@ Pelo texto da Microsoft acima, com a detecção desligada o host precisa atualiz
 
 ## O que o Nanci faz
 
+Situação no commit `c4cb1fa`, ainda no Wails v2. Com o Wails v3 o empurrão automático saiu; ver a seção seguinte.
+
 - `useDisplayScale` (`internal/desktop/frontend/src/composables/useDisplayScale.ts`), iniciado pelo `MainLayout`, observa `devicePixelRatio` com `matchMedia("(resolution: Xdppx)")`, refeito a cada mudança, e confere de novo em `focus` e `visibilitychange`. Se a razão mudou, espera um frame, aumenta a janela em 1 px pelo `WindowSetSize` e volta ao tamanho no frame seguinte, o que força um `WM_SIZE` e um `chromium.Resize()`. Janela maximizada não é tocada (redimensionar tiraria a maximização); só fica a linha no console.
 - No console, uma linha por mudança: "Escala do monitor mudou de X para Y; janela reajustada". E uma foto da janela (escala, área visível, tela, tamanho pelo `WindowGetSize`) no início e a cada foco ou mudança de visibilidade, só quando algum valor mudou.
 - Configurações → Sobre o Nanci mostra a versão do WebView2, a escala e o número de monitores, e tem o botão **Reajustar janela**, o mesmo empurrão de 1 px a pedido. Serve para o usuário testar se um relayout resolve mesmo quando a escala não mudou.
 - O pacote de diagnóstico (`ExportLogs`) inclui `diagnostico.txt` com versão, commit, sistema e versão do WebView2, lida com `webviewloader.GetAvailableCoreWebView2BrowserVersionString("")`, a mesma função que o Wails usa (`internal/system/system_windows.go:32`).
 - O empurrão passa por tamanhos lógicos: o Wails converte pela escala da janela na ida e na volta, e com escala fracionária a janela pode perder 1 px físico por empurrão.
 
+## Wails v3.0.0
+
+Lido em 30/10/2026 no cache de módulos (`github.com/wailsapp/wails/v3@v3.0.0`), versão para a qual o desktop migrou. O go-webview2 agora vem embutido no módulo, em `internal/webview2`.
+
+- `internal/webview2/pkg/edge/chromium.go:625-649`: ao criar o controller na hospedagem em janela (a padrão), o v3 mantém `BoundsMode` em `USE_RAW_PIXELS`, mas deixa `ShouldDetectMonitorScaleChanges` no padrão do WebView2, ligado. O comentário cita a issue [wailsapp/wails#5732](https://github.com/wailsapp/wails/issues/5732): com a escala escrita pelo host, cruzar monitores de escalas diferentes podia derrubar o processo da GPU do WebView2.
+- `pkg/application/webview_window_windows.go:2603-2660` (`setupChromium`): liga a detecção de forma explícita com `PutShouldDetectMonitorScaleChanges(true)`, salvo com `Windows.UseVisualHosting`, e guarda em `monitorScaleDetectionOn` o valor que o controller devolve. O Nanci não usa `UseVisualHosting`.
+- `pkg/application/webview_window_windows.go:2041-2110`: em `WM_DPICHANGED`, aplica o retângulo sugerido com `SetWindowPos` (com `SWP_FRAMECHANGED` numa janela sem moldura, como a do Nanci) e, fora do minimizado, chama `resyncWebviewRasterizationScale`. Com a detecção ligada essa função não faz nada (`:2238-2248`): o WebView2 é o único a escrever a escala. Quando ela escreve, o código chama `chromium.Resize()` em seguida, pela issue #5677.
+
+Ou seja, a causa provável apontada acima para o v2 (detecção desligada e nenhuma chamada a `PutRasterizationScale`) não existe no v3: o próprio WebView2 acompanha a escala do monitor.
+
+O que mudou no Nanci com o v3:
+
+- O empurrão automático saiu. `useDisplayScale` não observa mais `devicePixelRatio`, `focus` nem `visibilitychange`, e as linhas "Escala do monitor mudou" e "Janela: escala ..." deixaram de ir para o console.
+- O botão **Reajustar janela** de Configurações → Sobre fica por mais uma versão, como diagnóstico: se o texto ficar borrado no v3, ele diz se um relayout resolve. A escala e o número de monitores continuam na mesma seção.
+
 ## Hipóteses em aberto
 
-- **Mudança de escala (não confirmada para este relato).** Como a janela não muda de monitor, nada indica que a escala mude quando o borrado aparece. As linhas de console e o botão **Reajustar janela** dizem se um relayout resolve; se resolver sem mudança de escala, a causa é outra perda de rasterização do compositor, não o DPI.
+- **Mudança de escala (não confirmada para este relato).** Como a janela não muda de monitor, nada indica que a escala mude quando o borrado aparece. O botão **Reajustar janela** diz se um relayout resolve; se resolver sem mudança de escala, a causa é outra perda de rasterização do compositor, não o DPI.
 - **Mica e fundo transparente (a testar).** O app usa `BackdropType: windows.Mica` e `BackgroundColour` com alfa 0 (`internal/desktop/main.go`). A Mica esmaece quando a janela perde o foco, e o texto sobre fundo transparente tende a sair com antialiasing em tons de cinza em vez de ClearType, o que pode parecer borrado justamente quando o foco vai para outro programa ou um diálogo abre. Teste: build com `BackdropType: windows.None` e fundo opaco, e comparar com o foco dentro e fora da janela. Não testado.
 
 ## Não encontrado
