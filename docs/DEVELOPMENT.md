@@ -3,7 +3,7 @@
 O Nanci tem duas frentes que compartilham o mesmo núcleo em Go (`internal/app`, `internal/store`, `internal/sync`):
 
 1. **CLI** (`cmd/nanci`): Go puro.
-2. **Desktop** (`internal/desktop`): [Wails v3](https://v3.wails.io/) com Go no backend e Vue 3 + Quasar no frontend (`internal/desktop/frontend`). É um módulo Go separado. A migração do Wails v2 para o v3 está registrada em [WAILS_V3.md](WAILS_V3.md).
+2. **Desktop** (`internal/desktop`): [Wails v3](https://v3.wails.io/) com Go no backend e Vue 3 + Quasar no frontend (`internal/desktop/frontend`). É um módulo Go separado.
 
 Estrutura de pacotes e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md); padrões de código, commits e testes em [CONTRIBUTING.md](../CONTRIBUTING.md).
 

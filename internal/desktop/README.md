@@ -1,6 +1,6 @@
 # Nanci Desktop
 
-Aplicativo desktop do Nanci, em [Wails v3](https://v3.wails.io/) (v3.0.0). É um módulo Go separado (`github.com/vasfvitor/nanci/internal/desktop`) que usa o mesmo núcleo do CLI (`internal/app`). A migração do Wails v2 está registrada em [docs/WAILS_V3.md](../../docs/WAILS_V3.md).
+Aplicativo desktop do Nanci, em [Wails v3](https://v3.wails.io/) (v3.0.0). É um módulo Go separado (`github.com/vasfvitor/nanci/internal/desktop`) que usa o mesmo núcleo do CLI (`internal/app`).
 
 - **Backend** (arquivos `.go` desta pasta): `App` é o único serviço do Wails, expõe os métodos chamados pelo frontend e devolve DTOs de `desktopapi/`, nunca structs de domínio.
 - **Frontend** (`frontend/`): Vue 3, Quasar, Pinia e TypeScript. Os bindings gerados ficam em `frontend/bindings/` e, como o `@wailsio/runtime`, só são importados por `frontend/src/platform/wails/`.
