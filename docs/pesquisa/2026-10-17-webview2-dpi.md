@@ -22,14 +22,6 @@ Fonte: Microsoft Learn, referência Win32 `ICoreWebView2Controller3`, SDK 1.0.42
 - Em `COREWEBVIEW2_BOUNDS_MODE_USE_RAW_PIXELS`, os bounds são pixels de tela; mudar a escala de rasterização não muda o tamanho em pixels.
 - O exemplo da página trata `WM_DPICHANGED` atualizando a escala do WebView e depois chamando `SetWindowPos` com o retângulo sugerido.
 
-## WebView2Feedback, issue 58
-
-Fonte: repositório de feedback do WebView2 mantido pela Microsoft, https://github.com/MicrosoftEdge/WebViewFeedback/issues/58 ("Dynamic DPI support may not use the right monitor").
-
-- Aberta em 17/10/2019. Ao arrastar uma janela per-monitor v2 de um monitor de 200% para um de 100%, o WebView redimensionava, mas continuava com a escala do monitor antigo até a maior parte dele passar para o novo. O diagnóstico do autor da issue (consulta de DPI pela janela filha do processo do Edge) é relato de terceiros.
-- Resposta da Microsoft (David Risney, mesma data): bug confirmado. Em 02/2021, Brad Peters (Microsoft) anunciou uma API para o app controlar a escala, que virou `RasterizationScale`.
-- Fechada como concluída em 19/02/2022, sem comentário dizendo qual mudança resolveu.
-
 ## JUCE: o mesmo sintoma em outro host (relato de terceiros)
 
 Fonte: fórum do JUCE, https://forum.juce.com/t/bug-webbrowsercomponent-webview2-backend-ignores-dpi-change/58923
@@ -63,9 +55,9 @@ Situação no commit `c4cb1fa`, ainda no Wails v2. Com o Wails v3 o empurrão au
 
 Lido em 30/10/2026 no cache de módulos (`github.com/wailsapp/wails/v3@v3.0.0`), versão para a qual o desktop migrou. O go-webview2 agora vem embutido no módulo, em `internal/webview2`.
 
-- `internal/webview2/pkg/edge/chromium.go:625-649`: ao criar o controller na hospedagem em janela (a padrão), o v3 mantém `BoundsMode` em `USE_RAW_PIXELS`, mas deixa `ShouldDetectMonitorScaleChanges` no padrão do WebView2, ligado. O comentário cita a issue [wailsapp/wails#5732](https://github.com/wailsapp/wails/issues/5732): com a escala escrita pelo host, cruzar monitores de escalas diferentes podia derrubar o processo da GPU do WebView2.
+- `internal/webview2/pkg/edge/chromium.go:625-649`: ao criar o controller na hospedagem em janela (a padrão), o v3 mantém `BoundsMode` em `USE_RAW_PIXELS`, mas deixa `ShouldDetectMonitorScaleChanges` no padrão do WebView2, ligado. Segundo o comentário no código, com a escala escrita pelo host, cruzar monitores de escalas diferentes podia derrubar o processo da GPU do WebView2.
 - `pkg/application/webview_window_windows.go:2603-2660` (`setupChromium`): liga a detecção de forma explícita com `PutShouldDetectMonitorScaleChanges(true)`, salvo com `Windows.UseVisualHosting`, e guarda em `monitorScaleDetectionOn` o valor que o controller devolve. O Nanci não usa `UseVisualHosting`.
-- `pkg/application/webview_window_windows.go:2041-2110`: em `WM_DPICHANGED`, aplica o retângulo sugerido com `SetWindowPos` (com `SWP_FRAMECHANGED` numa janela sem moldura, como a do Nanci) e, fora do minimizado, chama `resyncWebviewRasterizationScale`. Com a detecção ligada essa função não faz nada (`:2238-2248`): o WebView2 é o único a escrever a escala. Quando ela escreve, o código chama `chromium.Resize()` em seguida, pela issue #5677.
+- `pkg/application/webview_window_windows.go:2041-2110`: em `WM_DPICHANGED`, aplica o retângulo sugerido com `SetWindowPos` (com `SWP_FRAMECHANGED` numa janela sem moldura, como a do Nanci) e, fora do minimizado, chama `resyncWebviewRasterizationScale`. Com a detecção ligada essa função não faz nada (`:2238-2248`): o WebView2 é o único a escrever a escala. Quando ela escreve, o código chama `chromium.Resize()` em seguida.
 
 Ou seja, a causa provável apontada acima para o v2 (detecção desligada e nenhuma chamada a `PutRasterizationScale`) não existe no v3: o próprio WebView2 acompanha a escala do monitor.
 
