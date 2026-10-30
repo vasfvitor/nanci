@@ -1564,6 +1564,14 @@ describe('Wails error codes', () => {
       'sincronização em andamento',
     ],
     [
+      {
+        code: 'update_installing',
+        message: 'o Nanci está instalando uma atualização e vai reiniciar',
+      },
+      'update_installing',
+      'o Nanci está instalando uma atualização e vai reiniciar',
+    ],
+    [
       { code: 'startup_failed', message: 'o nanci não iniciou: abrir banco de dados' },
       'startup_failed',
       'o nanci não iniciou: abrir banco de dados',

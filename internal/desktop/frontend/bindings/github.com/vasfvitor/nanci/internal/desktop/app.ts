@@ -127,9 +127,12 @@ export function ImportNFeXML(input: desktopapi$0.ImportXMLInput): $CancellablePr
  * helper copy of the exe waits for this process to exit, swaps the files and
  * starts the new version; on any failure it puts the old exe back.
  * 
- * It refuses while a sync runs, before the download and again before the
- * restart: the restart goes through Options.ShouldQuit, and beforeClose would
- * stop it to ask the user, leaving the helper waiting until it gives up.
+ * It refuses while a tracked operation runs (closeguard.go), and from its
+ * start until the restart no tracked operation may begin: the restart would
+ * cut a sync, an export or an event sent to SEFAZ short, and it goes through
+ * Options.ShouldQuit, where beforeClose would stop it to ask about a sync,
+ * leaving the helper waiting until it gives up. A failed download or restart
+ * lets operations start again.
  */
 export function InstallUpdate(): $CancellablePromise<void> {
     return $Call.ByID(2443992793);

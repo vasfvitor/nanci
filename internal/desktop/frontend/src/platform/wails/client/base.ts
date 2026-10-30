@@ -21,6 +21,7 @@ const wailsErrorCodes = [
   'sync_running',
   'startup_failed',
   'update_unavailable',
+  'update_installing',
 ] as const
 export type WailsErrorCode = (typeof wailsErrorCodes)[number] | ''
 

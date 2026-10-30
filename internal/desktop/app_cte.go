@@ -18,7 +18,11 @@ func (a *App) PullCTe(ctx context.Context, input desktopapi.PullCTeInput) (deskt
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
-	defer a.trackPull()()
+	done, err := a.trackPull()
+	if err != nil {
+		return desktopapi.PullCTeResult{}, err
+	}
+	defer done()
 	res, err := a.svc.cte.Pull(ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullCTeResult{}, err
@@ -51,7 +55,11 @@ func (a *App) ImportCTeXML(ctx context.Context, input desktopapi.ImportXMLInput)
 	if err := validateImport(input); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
-	defer a.trackPull()()
+	done, err := a.trackPull()
+	if err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	defer done()
 	res, err := a.svc.cte.ImportXML(ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
@@ -139,11 +147,16 @@ func (a *App) ExportCTeXML(ctx context.Context, input desktopapi.ExportCTeXMLInp
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.cte.ExportXML(ctx, app.CTeExportXMLInput{
+	err = a.svc.cte.ExportXML(ctx, app.CTeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -160,11 +173,16 @@ func (a *App) ExportDACTE(ctx context.Context, input desktopapi.ExportDACTEInput
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.cte.ExportDACTE(ctx, app.CTeExportDACTEInput{
+	err = a.svc.cte.ExportDACTE(ctx, app.CTeExportDACTEInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -181,6 +199,11 @@ func (a *App) ExportCTeDocuments(ctx context.Context, input desktopapi.ExportCTe
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.CTeExportResult{}, err
+	}
+	defer done()
 	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.CTeExportResult{}, fmt.Errorf("caminho de saída não especificado")
@@ -196,7 +219,6 @@ func (a *App) ExportCTeDocuments(ctx context.Context, input desktopapi.ExportCTe
 	}
 
 	var res app.CTeExportResult
-	var err error
 	switch format {
 	case "csv":
 		res, err = a.svc.cte.ExportCSV(ctx, exportInput)
@@ -220,6 +242,11 @@ func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.CTeResetResult{}, err
+	}
+	defer done()
 	res, err := a.svc.cte.PreviewReset(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
@@ -233,6 +260,11 @@ func (a *App) ResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.CTeResetResult{}, err
+	}
+	defer done()
 	res, err := a.svc.cte.Reset(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err

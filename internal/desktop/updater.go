@@ -43,9 +43,7 @@ var (
 	// errUpdatesDisabled: a dev build, a version that is not X.Y.Z or a
 	// build without updaterPublicKey.
 	errUpdatesDisabled = errors.New("atualização automática indisponível nesta versão")
-	// errUpdateDuringSync keeps the restart from cutting a sync short.
-	errUpdateDuringSync = errors.New("aguarde a sincronização terminar para atualizar")
-	errNoUpdate         = errors.New("nenhuma atualização disponível; procure atualizações de novo")
+	errNoUpdate        = errors.New("nenhuma atualização disponível; procure atualizações de novo")
 )
 
 var releaseVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
@@ -111,28 +109,30 @@ func (a *App) CheckForUpdate(ctx context.Context) (desktopapi.UpdateInfo, error)
 // helper copy of the exe waits for this process to exit, swaps the files and
 // starts the new version; on any failure it puts the old exe back.
 //
-// It refuses while a sync runs, before the download and again before the
-// restart: the restart goes through Options.ShouldQuit, and beforeClose would
-// stop it to ask the user, leaving the helper waiting until it gives up.
+// It refuses while a tracked operation runs (closeguard.go), and from its
+// start until the restart no tracked operation may begin: the restart would
+// cut a sync, an export or an event sent to SEFAZ short, and it goes through
+// Options.ShouldQuit, where beforeClose would stop it to ask about a sync,
+// leaving the helper waiting until it gives up. A failed download or restart
+// lets operations start again.
 func (a *App) InstallUpdate(ctx context.Context) error {
 	if a.updates == nil {
 		return errUpdatesDisabled
 	}
-	if a.guard.pulls.Load() > 0 {
-		return errUpdateDuringSync
+	if err := a.guard.beginInstall(); err != nil {
+		return err
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
 	if err := a.updates.DownloadAndInstall(ctx); err != nil {
+		a.guard.endInstall()
 		if errors.Is(err, updater.ErrNoPendingRelease) {
 			return errNoUpdate
 		}
 		return fmt.Errorf("baixar atualização: %w", err)
 	}
-	if a.guard.pulls.Load() > 0 {
-		return errUpdateDuringSync
-	}
 	if err := a.updates.Restart(ctx); err != nil {
+		a.guard.endInstall()
 		return fmt.Errorf("reiniciar para atualizar: %w", err)
 	}
 	return nil

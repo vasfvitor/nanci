@@ -31,6 +31,8 @@ func TestFormatError(t *testing.T) {
 		{"sync running", fmt.Errorf("%w (NF-e)", app.ErrSyncRunning), "sync_running", "já em andamento"},
 		{"update during sync", errUpdateDuringSync, "sync_running", "aguarde a sincronização"},
 		{"updates off", errUpdatesDisabled, "update_unavailable", "indisponível"},
+		{"update installing", errUpdateInstalling, "update_installing", "instalando uma atualização"},
+		{"update busy", errUpdateBusy, "", "aguarde a operação em andamento"},
 		{"startup failed", fmt.Errorf("%w: %w", errNotStarted, errors.New("abrir banco de dados: disco cheio")), "startup_failed", "o nanci não iniciou: abrir banco de dados"},
 		{"not started", errNotStarted, "startup_failed", "não iniciou"},
 		{"plain", errors.New("empresa não encontrada"), "", "empresa não encontrada"},

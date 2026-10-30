@@ -143,6 +143,11 @@ func (a *App) TestConnection(ctx context.Context, companyCNPJ string) (desktopap
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ConnectionTestResult{}, err
+	}
+	defer done()
 	res, err := a.svc.query.TestConnection(ctx, companyCNPJ)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err
@@ -167,6 +172,11 @@ func (a *App) TestCTeConnection(ctx context.Context, cnpj string) (desktopapi.Co
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ConnectionTestResult{}, err
+	}
+	defer done()
 	res, err := a.svc.cte.TestConnection(ctx, cnpj)
 	if err != nil {
 		return desktopapi.ConnectionTestResult{}, err

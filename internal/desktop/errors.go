@@ -26,6 +26,8 @@ func formatError(err error) desktopapi.ErrorPayload {
 		payload.Code = "sync_running"
 	case errors.Is(err, errUpdatesDisabled):
 		payload.Code = "update_unavailable"
+	case errors.Is(err, errUpdateInstalling):
+		payload.Code = "update_installing"
 	case errors.Is(err, errNotStarted):
 		payload.Code = "startup_failed"
 	}

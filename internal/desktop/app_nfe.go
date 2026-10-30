@@ -20,7 +20,11 @@ func (a *App) PullNFe(ctx context.Context, input desktopapi.PullNFeInput) (deskt
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
-	defer a.trackPull()()
+	done, err := a.trackPull()
+	if err != nil {
+		return desktopapi.PullNFeResult{}, err
+	}
+	defer done()
 	res, err := a.svc.nfe.Pull(ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullNFeResult{}, err
@@ -55,7 +59,11 @@ func (a *App) ImportNFeXML(ctx context.Context, input desktopapi.ImportXMLInput)
 	if err := validateImport(input); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
-	defer a.trackPull()()
+	done, err := a.trackPull()
+	if err != nil {
+		return desktopapi.ImportXMLResult{}, err
+	}
+	defer done()
 	res, err := a.svc.nfe.ImportXML(ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
@@ -77,7 +85,11 @@ func (a *App) FetchNFeByChave(ctx context.Context, input desktopapi.FetchByChave
 	if input.ChaveAcesso == "" {
 		return desktopapi.FetchByChaveResult{}, errors.New("chave de acesso não especificada")
 	}
-	defer a.trackPull()()
+	done, err := a.trackPull()
+	if err != nil {
+		return desktopapi.FetchByChaveResult{}, err
+	}
+	defer done()
 	res, err := a.svc.nfe.FetchByChave(ctx, app.FetchByChaveInput{CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso})
 	if err != nil {
 		return desktopapi.FetchByChaveResult{}, err
@@ -181,6 +193,11 @@ func (a *App) PlanNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desktopa
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeCienciaPlan{}, err
 	}
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.NFeCienciaPlan{}, err
+	}
+	defer done()
 	plan, err := a.svc.nfe.PlanCiencia(a.ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
@@ -197,6 +214,11 @@ func (a *App) RegisterNFeCiencia(input desktopapi.RegisterNFeCienciaInput) (desk
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeEventBatchResult{}, err
 	}
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.NFeEventBatchResult{}, err
+	}
+	defer done()
 	summary, err := a.svc.nfe.RegisterCiencia(a.ctx, app.NFeCienciaInput{
 		CNPJ:         input.CNPJ,
 		ChavesAcesso: input.ChavesAcesso,
@@ -211,6 +233,11 @@ func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoIn
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeEventResult{}, err
 	}
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.NFeEventResult{}, err
+	}
+	defer done()
 	outcome, err := a.svc.nfe.RegisterManifestacao(a.ctx, app.NFeManifestacaoInput{
 		CNPJ:          input.CNPJ,
 		ChaveAcesso:   input.ChaveAcesso,
@@ -229,11 +256,16 @@ func (a *App) ExportNFeXML(ctx context.Context, input desktopapi.ExportNFeXMLInp
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.nfe.ExportXML(ctx, app.NFeExportXMLInput{
+	err = a.svc.nfe.ExportXML(ctx, app.NFeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -250,11 +282,16 @@ func (a *App) ExportDANFE(ctx context.Context, input desktopapi.ExportDANFEInput
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.nfe.ExportDANFE(ctx, app.NFeExportDANFEInput{
+	err = a.svc.nfe.ExportDANFE(ctx, app.NFeExportDANFEInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -271,6 +308,11 @@ func (a *App) ExportNFeDocuments(ctx context.Context, input desktopapi.ExportNFe
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.NFeExportResult{}, err
+	}
+	defer done()
 	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
@@ -287,7 +329,6 @@ func (a *App) ExportNFeDocuments(ctx context.Context, input desktopapi.ExportNFe
 	}
 
 	var res app.NFeExportResult
-	var err error
 	switch format {
 	case "csv":
 		res, err = a.svc.nfe.ExportCSV(ctx, exportInput)
@@ -315,6 +356,11 @@ func (a *App) ResetNFe(cnpj string) (desktopapi.NFeResetResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeResetResult{}, err
 	}
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.NFeResetResult{}, err
+	}
+	defer done()
 	res, err := a.svc.nfe.Reset(a.ctx, cnpj)
 	if err != nil {
 		return desktopapi.NFeResetResult{}, err

@@ -179,6 +179,19 @@ describe('updates store', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the refusal while another operation runs as an error', async () => {
+    const store = await storeWithUpdate()
+    vi.mocked(desktopClient.installUpdate).mockRejectedValue(
+      new WailsClientError('aguarde a operação em andamento terminar para atualizar')
+    )
+
+    await expect(store.install()).rejects.toThrow('aguarde')
+
+    expect(store.status).toBe('error')
+    expect(store.error).toBe('aguarde a operação em andamento terminar para atualizar')
+    expect(store.canInstall).toBe(true)
+  })
+
   it('keeps a failed install retryable', async () => {
     const store = await storeWithUpdate()
     vi.mocked(desktopClient.installUpdate).mockRejectedValue(

@@ -21,7 +21,11 @@ func (a *App) Pull(ctx context.Context, input desktopapi.PullInput) (desktopapi.
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
-	defer a.trackPull()()
+	done, err := a.trackPull()
+	if err != nil {
+		return desktopapi.PullResult{}, err
+	}
+	defer done()
 	res, err := a.svc.sync.Pull(ctx, nsync.PullInput{
 		CNPJ:   input.CNPJ,
 		Mode:   input.Mode,
@@ -56,6 +60,11 @@ func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
+	done, err := a.track()
+	if err != nil {
+		return err
+	}
+	defer done()
 	return a.svc.sync.ResetSyncState(a.ctx, nsync.ResetSyncInput{
 		CNPJ:   input.CompanyCNPJ,
 		Source: syncstate.SyncSourceNFSe,
@@ -68,6 +77,11 @@ func (a *App) QueryNFSeEvents(ctx context.Context, input desktopapi.QueryNFSeInp
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return "", err
+	}
+	defer done()
 	return a.svc.query.QueryNFSeEvents(ctx, app.QueryNFSeInput{
 		CNPJ:        input.CompanyCNPJ,
 		ChaveAcesso: input.ChaveAcesso,
@@ -132,11 +146,16 @@ func (a *App) ExportDANFSe(ctx context.Context, input desktopapi.ExportDANFSeInp
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.exports.ExportDANFSe(ctx, app.ExportDANFSeInput{
+	err = a.svc.exports.ExportDANFSe(ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -153,11 +172,16 @@ func (a *App) ExportXML(ctx context.Context, input desktopapi.ExportXMLInput) (d
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.exports.ExportXML(ctx, app.ExportXMLInput{
+	err = a.svc.exports.ExportXML(ctx, app.ExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -174,6 +198,11 @@ func (a *App) ExportDocuments(ctx context.Context, input desktopapi.ExportDocume
 	}
 	ctx, cancel := a.callContext(ctx)
 	defer cancel()
+	done, err := a.track()
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer done()
 	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
@@ -189,7 +218,6 @@ func (a *App) ExportDocuments(ctx context.Context, input desktopapi.ExportDocume
 	}
 
 	var res app.ExportResult
-	var err error
 	switch format {
 	case "csv":
 		res, err = a.svc.exports.ExportCSV(ctx, exportInput)
