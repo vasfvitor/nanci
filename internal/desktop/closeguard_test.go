@@ -135,6 +135,84 @@ func TestConfirmQuitAllowsClose(t *testing.T) {
 	}
 }
 
+// unwindingSync is a fakeSync whose Pull, once its context ends, takes a
+// while to record how the run ended, as the sync loop's finishRun does.
+type unwindingSync struct {
+	*fakeSync
+	started  chan struct{}
+	finished chan struct{}
+}
+
+func (s *unwindingSync) Pull(ctx context.Context, _ nsync.PullInput) (nsync.PullResult, error) {
+	close(s.started)
+	<-ctx.Done()
+	time.Sleep(100 * time.Millisecond)
+	close(s.finished)
+	return nsync.PullResult{}, ctx.Err()
+}
+
+// TestServiceShutdownWaitsForTrackedOperations shuts down as Wails does,
+// cancelling the app context and calling ServiceShutdown right away, while
+// a sync runs: the database closes only after the sync has unwound.
+func TestServiceShutdownWaitsForTrackedOperations(t *testing.T) {
+	f, a := newFakeApp(nil)
+	sync := &unwindingSync{fakeSync: f.sync, started: make(chan struct{}), finished: make(chan struct{})}
+	a.svc.sync = sync
+	appCtx, shutdown := context.WithCancel(context.Background())
+	a.ctx = appCtx
+	syncEndedFirst := false
+	a.cleanup = func() {
+		select {
+		case <-sync.finished:
+			syncEndedFirst = true
+		default:
+		}
+	}
+
+	pulled := make(chan error, 1)
+	go func() {
+		_, err := a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ})
+		pulled <- err
+	}()
+	<-sync.started
+
+	shutdown()
+	if err := a.ServiceShutdown(); err != nil {
+		t.Fatal(err)
+	}
+	if !syncEndedFirst {
+		t.Error("the database closed before the sync ended")
+	}
+	if err := <-pulled; !errors.Is(err, context.Canceled) {
+		t.Errorf("Pull err = %v, want context.Canceled", err)
+	}
+}
+
+func TestServiceShutdownStopsWaitingAfterTheBound(t *testing.T) {
+	original := shutdownWait
+	shutdownWait = 50 * time.Millisecond
+	t.Cleanup(func() { shutdownWait = original })
+	_, a := newFakeApp(nil)
+	closed := false
+	a.cleanup = func() { closed = true }
+	done, err := a.track()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer done()
+
+	start := time.Now()
+	if err := a.ServiceShutdown(); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(start); elapsed < shutdownWait || elapsed > 5*time.Second {
+		t.Errorf("ServiceShutdown took %v, want about %v", elapsed, shutdownWait)
+	}
+	if !closed {
+		t.Error("the database stayed open after the bound")
+	}
+}
+
 // TestLongOperationsAreRefusedWhileAnUpdateInstalls checks that every long
 // method is tracked: once an update is installing, each one is refused
 // before it reaches the core.

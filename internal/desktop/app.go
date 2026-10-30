@@ -195,8 +195,13 @@ func (a *App) callContext(callCtx context.Context) (context.Context, context.Can
 	}
 }
 
-// ServiceShutdown runs when Wails stops the App service.
+// ServiceShutdown runs when Wails stops the App service. Wails cancels the
+// app context and calls it right away. The tracked operations stop on that
+// context, but on their way out they still record how they ended (the sync
+// run, a wait SEFAZ imposed), so the database stays open until they return,
+// for at most shutdownWait.
 func (a *App) ServiceShutdown() error {
+	a.guard.waitIdle(shutdownWait)
 	if a.cleanup != nil {
 		a.cleanup()
 	}

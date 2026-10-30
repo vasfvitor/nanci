@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var (
@@ -17,10 +18,15 @@ var (
 	errUpdateBusy = errors.New("aguarde a operação em andamento terminar para atualizar")
 )
 
+// shutdownWait bounds how long ServiceShutdown waits for the tracked
+// operations before it closes the database.
+var shutdownWait = 10 * time.Second
+
 // closeGuard tracks the long operations in flight. The syncs (pulls) keep
 // the window open until the user confirms; every tracked operation holds
-// off an update. Pull, PullNFe, PullCTe and the other tracked methods block
-// until their work ends, so the counts are the operations in flight.
+// off an update and the closing of the database at shutdown. Pull, PullNFe,
+// PullCTe and the other tracked methods block until their work ends, so the
+// counts are the operations in flight.
 type closeGuard struct {
 	pulls atomic.Int32 // syncs, XML imports and fetches by chave
 	allow atomic.Bool
@@ -76,6 +82,20 @@ func (g *closeGuard) endInstall() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.installing = false
+}
+
+// waitIdle returns when no tracked operation runs or when limit passes.
+func (g *closeGuard) waitIdle(limit time.Duration) {
+	deadline := time.Now().Add(limit)
+	for {
+		g.mu.Lock()
+		ops := g.ops
+		g.mu.Unlock()
+		if ops == 0 || time.Now().After(deadline) {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 // track counts a long operation (an export, a query, a reset, an event sent
