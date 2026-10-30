@@ -8,6 +8,12 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+// uninstallKeyPath is the entry the per-user NSIS installer writes for
+// Programs and Features (build/windows/nsis/wails_tools.nsh, macro
+// wails.writeUninstaller, with UNINST_KEY_NAME "NanciDesktop" from
+// project.nsi), under HKEY_CURRENT_USER.
+const uninstallKeyPath = `Software\Microsoft\Windows\CurrentVersion\Uninstall\NanciDesktop`
+
 // openUninstallEntry opens the per-user uninstall key for reading and
 // writing.
 func openUninstallEntry() (uninstallEntry, error) {

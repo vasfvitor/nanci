@@ -6,12 +6,6 @@ import (
 	"strings"
 )
 
-// uninstallKeyPath is the entry the per-user NSIS installer writes for
-// Programs and Features (build/windows/nsis/wails_tools.nsh, macro
-// wails.writeUninstaller, with UNINST_KEY_NAME "NanciDesktop" from
-// project.nsi), under HKEY_CURRENT_USER.
-const uninstallKeyPath = `Software\Microsoft\Windows\CurrentVersion\Uninstall\NanciDesktop`
-
 // errNoUninstallEntry means the key does not exist: a portable copy, a dev
 // build or a system other than Windows.
 var errNoUninstallEntry = errors.New("entrada de desinstalação não encontrada")
