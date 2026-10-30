@@ -55,7 +55,7 @@ func TestBeforeClosePreventsAndAsksDuringPull(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := a.Pull(desktopapi.PullInput{CNPJ: testCNPJ})
+		_, err := a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ})
 		done <- err
 	}()
 	<-sync.started
@@ -86,15 +86,15 @@ func TestPullReleasesGuardOnError(t *testing.T) {
 	_, a := newFakeApp(errCore)
 	runs := map[string]func() error{
 		"Pull": func() error {
-			_, err := a.Pull(desktopapi.PullInput{CNPJ: testCNPJ})
+			_, err := a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ})
 			return err
 		},
 		"PullNFe": func() error {
-			_, err := a.PullNFe(desktopapi.PullNFeInput{CNPJ: testCNPJ})
+			_, err := a.PullNFe(context.Background(), desktopapi.PullNFeInput{CNPJ: testCNPJ})
 			return err
 		},
 		"PullCTe": func() error {
-			_, err := a.PullCTe(desktopapi.PullCTeInput{CNPJ: testCNPJ})
+			_, err := a.PullCTe(context.Background(), desktopapi.PullCTeInput{CNPJ: testCNPJ})
 			return err
 		},
 	}

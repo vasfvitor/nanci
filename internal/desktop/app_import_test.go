@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -44,7 +45,7 @@ func TestImportXML(t *testing.T) {
 		f, a := newFakeApp(nil)
 		f.nfe.imported = core
 
-		got, err := a.ImportNFeXML(input)
+		got, err := a.ImportNFeXML(context.Background(), input)
 		if err != nil {
 			t.Fatalf("ImportNFeXML: %v", err)
 		}
@@ -58,7 +59,7 @@ func TestImportXML(t *testing.T) {
 		f, a := newFakeApp(nil)
 		f.cte.imported = core
 
-		got, err := a.ImportCTeXML(input)
+		got, err := a.ImportCTeXML(context.Background(), input)
 		if err != nil {
 			t.Fatalf("ImportCTeXML: %v", err)
 		}
@@ -80,7 +81,7 @@ func TestFetchNFeByChave(t *testing.T) {
 		RequestBudget:    20,
 	}
 
-	got, err := a.FetchNFeByChave(desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
+	got, err := a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
 	if err != nil {
 		t.Fatalf("FetchNFeByChave: %v", err)
 	}
@@ -105,22 +106,22 @@ func TestImportAndFetchRejectBeforeCore(t *testing.T) {
 		wantErr string
 	}{
 		{"nfe import without company", func(a *App) (any, error) {
-			return a.ImportNFeXML(desktopapi.ImportXMLInput{Files: []string{testXML}})
+			return a.ImportNFeXML(context.Background(), desktopapi.ImportXMLInput{Files: []string{testXML}})
 		}, "empresa não especificada"},
 		{"nfe import without files", func(a *App) (any, error) {
-			return a.ImportNFeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ})
+			return a.ImportNFeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ})
 		}, "nenhum arquivo XML selecionado"},
 		{"cte import without company", func(a *App) (any, error) {
-			return a.ImportCTeXML(desktopapi.ImportXMLInput{Files: []string{testXML}})
+			return a.ImportCTeXML(context.Background(), desktopapi.ImportXMLInput{Files: []string{testXML}})
 		}, "empresa não especificada"},
 		{"cte import without files", func(a *App) (any, error) {
-			return a.ImportCTeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{}})
+			return a.ImportCTeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{}})
 		}, "nenhum arquivo XML selecionado"},
 		{"fetch without company", func(a *App) (any, error) {
-			return a.FetchNFeByChave(desktopapi.FetchByChaveInput{ChaveAcesso: testChave})
+			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{ChaveAcesso: testChave})
 		}, "empresa não especificada"},
 		{"fetch without chave", func(a *App) (any, error) {
-			return a.FetchNFeByChave(desktopapi.FetchByChaveInput{CNPJ: testCNPJ})
+			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ})
 		}, "chave de acesso não especificada"},
 	}
 	for _, tt := range tests {
@@ -148,13 +149,13 @@ func TestImportAndFetchPassCoreErrors(t *testing.T) {
 
 	runs := map[string]func(a *App) (any, error){
 		"ImportNFeXML": func(a *App) (any, error) {
-			return a.ImportNFeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
+			return a.ImportNFeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
 		},
 		"ImportCTeXML": func(a *App) (any, error) {
-			return a.ImportCTeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
+			return a.ImportCTeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
 		},
 		"FetchNFeByChave": func(a *App) (any, error) {
-			return a.FetchNFeByChave(desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
+			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
 		},
 	}
 	errs := []struct {

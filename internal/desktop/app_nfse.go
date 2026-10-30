@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -14,12 +15,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
-func (a *App) Pull(input desktopapi.PullInput) (desktopapi.PullResult, error) {
+func (a *App) Pull(ctx context.Context, input desktopapi.PullInput) (desktopapi.PullResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.PullResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	defer a.trackPull()()
-	res, err := a.svc.sync.Pull(a.ctx, nsync.PullInput{
+	res, err := a.svc.sync.Pull(ctx, nsync.PullInput{
 		CNPJ:   input.CNPJ,
 		Mode:   input.Mode,
 		Source: syncstate.SyncSourceNFSe,
@@ -59,11 +62,13 @@ func (a *App) ResetSyncState(input desktopapi.ResetSyncInput) error {
 	})
 }
 
-func (a *App) QueryNFSeEvents(input desktopapi.QueryNFSeInput) (string, error) {
+func (a *App) QueryNFSeEvents(ctx context.Context, input desktopapi.QueryNFSeInput) (string, error) {
 	if err := a.ready(); err != nil {
 		return "", err
 	}
-	return a.svc.query.QueryNFSeEvents(a.ctx, app.QueryNFSeInput{
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
+	return a.svc.query.QueryNFSeEvents(ctx, app.QueryNFSeInput{
 		CNPJ:        input.CompanyCNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 	})
@@ -121,15 +126,17 @@ func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
 	}, nil
 }
 
-func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportDANFSe(ctx context.Context, input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.exports.ExportDANFSe(a.ctx, app.ExportDANFSeInput{
+	err := a.svc.exports.ExportDANFSe(ctx, app.ExportDANFSeInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -140,15 +147,17 @@ func (a *App) ExportDANFSe(input desktopapi.ExportDANFSeInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfse", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportXML(ctx context.Context, input desktopapi.ExportXMLInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.exports.ExportXML(a.ctx, app.ExportXMLInput{
+	err := a.svc.exports.ExportXML(ctx, app.ExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -159,10 +168,12 @@ func (a *App) ExportXML(input desktopapi.ExportXMLInput) (desktopapi.ExportResul
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportDocuments(ctx context.Context, input desktopapi.ExportDocumentsInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
@@ -181,13 +192,13 @@ func (a *App) ExportDocuments(input desktopapi.ExportDocumentsInput) (desktopapi
 	var err error
 	switch format {
 	case "csv":
-		res, err = a.svc.exports.ExportCSV(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportCSV(ctx, exportInput)
 	case "xlsx":
-		res, err = a.svc.exports.ExportXLSX(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportXLSX(ctx, exportInput)
 	case "zip":
-		res, err = a.svc.exports.ExportZIP(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportZIP(ctx, exportInput)
 	case "danfse-zip":
-		res, err = a.svc.exports.ExportDANFSeZIP(a.ctx, exportInput)
+		res, err = a.svc.exports.ExportDANFSeZIP(ctx, exportInput)
 	default:
 		return desktopapi.ExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}

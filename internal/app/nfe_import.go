@@ -80,8 +80,8 @@ func (r *ImportXMLResult) add(f ImportedFile) {
 // SEFAZ. A file is rejected, and the others still imported, when it cannot
 // be read or parsed, belongs to the other environment, names the company in
 // no role, or is an event for an NF-e the company does not hold and did not
-// author. Imported documents have no NSU. Only a missing company fails the
-// call.
+// author. Imported documents have no NSU. Only a missing company or a
+// cancelled context fails the call.
 func (s *NFeService) ImportXML(ctx context.Context, in ImportXMLInput) (ImportXMLResult, error) {
 	comp, err := company.LookupByCNPJ(ctx, s.CompanyStore, in.CNPJ)
 	if err != nil {
@@ -94,6 +94,11 @@ func (s *NFeService) ImportXML(ctx context.Context, in ImportXMLInput) (ImportXM
 
 	var result ImportXMLResult
 	for _, path := range in.Files {
+		// A cancelled import stops before the next file; the files already
+		// stored stay.
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		file := ImportedFile{Path: path}
 		if err := s.importFile(ctx, comp, tpAmb, path, &file); err != nil {
 			file.Outcome = ImportOutcomeRejected

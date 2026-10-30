@@ -163,6 +163,11 @@ func TestGetCertPasswordStopsWithContext(t *testing.T) {
 	if !errors.Is(res.err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", res.err)
 	}
+	// A cancelled call ends the prompt with the code the frontend shows as
+	// a cancellation, like the Cancelar button of the dialog.
+	if code := formatError(res.err).Code; code != "canceled" {
+		t.Errorf("code = %q, want canceled", code)
+	}
 	if res.pass != nil {
 		t.Errorf("password = %q, want nil", res.pass)
 	}

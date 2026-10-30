@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -11,11 +12,13 @@ import (
 // formatError builds the payload every error a bound method returns reaches
 // the frontend with. platform/wails/client/base.ts reads Code into
 // WailsClientError.code. A blocked source error already names the time the
-// source may be queried again.
+// source may be queried again. context.Canceled means the call ended before
+// the core did: the frontend cancelled it, the window closed or the app shut
+// down (callContext).
 func formatError(err error) desktopapi.ErrorPayload {
 	payload := desktopapi.ErrorPayload{Message: err.Error()}
 	switch {
-	case errors.Is(err, app.ErrOperationCanceled):
+	case errors.Is(err, app.ErrOperationCanceled), errors.Is(err, context.Canceled):
 		payload.Code = "canceled"
 	case errors.Is(err, app.ErrSourceBlocked):
 		payload.Code = "sefaz_blocked"

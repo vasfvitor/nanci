@@ -29,6 +29,11 @@ func (s *CTeService) ImportXML(ctx context.Context, in ImportXMLInput) (ImportXM
 
 	var result ImportXMLResult
 	for _, path := range in.Files {
+		// A cancelled import stops before the next file; the files already
+		// stored stay.
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		file := ImportedFile{Path: path}
 		if err := s.importFile(ctx, comp, tpAmb, path, &file); err != nil {
 			file.Outcome = ImportOutcomeRejected

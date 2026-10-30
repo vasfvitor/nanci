@@ -110,7 +110,7 @@ func testSefazConnection(ctx context.Context, log *slog.Logger, companies *compa
 
 	loaded, err := certs.LoadForCompany(ctx, comp, conn.purpose)
 	if err != nil {
-		if errors.Is(err, ErrOperationCanceled) {
+		if errors.Is(err, ErrOperationCanceled) || errors.Is(err, context.Canceled) {
 			return result, err
 		}
 		result.StatusExplanation = fmt.Sprintf("Erro ao carregar certificado/senha: %v", err)

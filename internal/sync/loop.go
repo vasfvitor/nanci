@@ -211,12 +211,19 @@ func (e *syncFailure) Unwrap() error {
 	return e.err
 }
 
+// classifySyncError maps the error that ended a run to its status, stop
+// reason and error code. A cancelled context interrupts the run wherever it
+// lands: a write it made fail comes back inside a syncFailure, and the
+// cursor stays at the last committed item.
 func classifySyncError(err error) (syncstate.SyncStatus, syncstate.SyncStopReason, string, string) {
+	if errors.Is(err, context.Canceled) {
+		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
+	}
 	var syncErr *syncFailure
 	if errors.As(err, &syncErr) {
 		return syncErr.status, syncErr.stopReason, syncErr.code, syncErr.err.Error()
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
 	}
 	return syncstate.SyncStatusFailed, syncstate.SyncStopReasonProcessError, "process_error", err.Error()

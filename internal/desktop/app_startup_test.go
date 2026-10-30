@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"sort"
@@ -23,40 +24,40 @@ func coreRuns() map[string]func(a *App) (any, error) {
 			return nil, a.AssignCredentialToCompany(desktopapi.AssignCredentialInput{CompanyCNPJ: testCNPJ, CredentialID: "cred-1"})
 		},
 		"ExportCTeXML": func(a *App) (any, error) {
-			return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+			return a.ExportCTeXML(context.Background(), desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"ExportCTeDocuments": func(a *App) (any, error) {
-			return a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
+			return a.ExportCTeDocuments(context.Background(), desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
 		},
 		"ExportDACTE": func(a *App) (any, error) {
-			return a.ExportDACTE(desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+			return a.ExportDACTE(context.Background(), desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"ExportDANFE": func(a *App) (any, error) {
-			return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+			return a.ExportDANFE(context.Background(), desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"ExportDANFSe": func(a *App) (any, error) {
-			return a.ExportDANFSe(desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+			return a.ExportDANFSe(context.Background(), desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"ExportDocuments": func(a *App) (any, error) {
-			return a.ExportDocuments(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
+			return a.ExportDocuments(context.Background(), desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
 		},
 		"ExportNFeXML": func(a *App) (any, error) {
-			return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+			return a.ExportNFeXML(context.Background(), desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"ExportNFeDocuments": func(a *App) (any, error) {
-			return a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
+			return a.ExportNFeDocuments(context.Background(), desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: testOut})
 		},
 		"ExportXML": func(a *App) (any, error) {
-			return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
+			return a.ExportXML(context.Background(), desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut})
 		},
 		"FetchNFeByChave": func(a *App) (any, error) {
-			return a.FetchNFeByChave(desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
+			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
 		},
 		"ImportCTeXML": func(a *App) (any, error) {
-			return a.ImportCTeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
+			return a.ImportCTeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
 		},
 		"ImportNFeXML": func(a *App) (any, error) {
-			return a.ImportNFeXML(desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
+			return a.ImportNFeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
 		},
 		"ListCTe":         func(a *App) (any, error) { return a.ListCTe(desktopapi.ListCTeInput{CNPJ: testCNPJ}) },
 		"ListCTeEvents":   func(a *App) (any, error) { return a.ListCTeEvents(desktopapi.CTeKeyInput{CNPJ: testCNPJ}) },
@@ -80,11 +81,15 @@ func coreRuns() map[string]func(a *App) (any, error) {
 			return a.PlanNFeCiencia(desktopapi.RegisterNFeCienciaInput{CNPJ: testCNPJ})
 		},
 		"PreviewResetCTe": func(a *App) (any, error) { return a.PreviewResetCTe(testCNPJ) },
-		"Pull":            func(a *App) (any, error) { return a.Pull(desktopapi.PullInput{CNPJ: testCNPJ}) },
-		"PullCTe":         func(a *App) (any, error) { return a.PullCTe(desktopapi.PullCTeInput{CNPJ: testCNPJ}) },
-		"PullNFe":         func(a *App) (any, error) { return a.PullNFe(desktopapi.PullNFeInput{CNPJ: testCNPJ}) },
+		"Pull":            func(a *App) (any, error) { return a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ}) },
+		"PullCTe": func(a *App) (any, error) {
+			return a.PullCTe(context.Background(), desktopapi.PullCTeInput{CNPJ: testCNPJ})
+		},
+		"PullNFe": func(a *App) (any, error) {
+			return a.PullNFe(context.Background(), desktopapi.PullNFeInput{CNPJ: testCNPJ})
+		},
 		"QueryNFSeEvents": func(a *App) (any, error) {
-			return a.QueryNFSeEvents(desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ, ChaveAcesso: testChave})
+			return a.QueryNFSeEvents(context.Background(), desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ, ChaveAcesso: testChave})
 		},
 		"RegisterNFeCiencia": func(a *App) (any, error) {
 			return a.RegisterNFeCiencia(desktopapi.RegisterNFeCienciaInput{CNPJ: testCNPJ})
@@ -100,8 +105,8 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"Status":            func(a *App) (any, error) { return a.Status(testCNPJ) },
 		"StatusCTe":         func(a *App) (any, error) { return a.StatusCTe(testCNPJ) },
 		"StatusNFe":         func(a *App) (any, error) { return a.StatusNFe(testCNPJ) },
-		"TestCTeConnection": func(a *App) (any, error) { return a.TestCTeConnection(testCNPJ) },
-		"TestConnection":    func(a *App) (any, error) { return a.TestConnection(testCNPJ) },
+		"TestCTeConnection": func(a *App) (any, error) { return a.TestCTeConnection(context.Background(), testCNPJ) },
+		"TestConnection":    func(a *App) (any, error) { return a.TestConnection(context.Background(), testCNPJ) },
 		"UpdateCompany": func(a *App) (any, error) {
 			return nil, a.UpdateCompany(desktopapi.UpdateCompanyInput{CNPJ: testCNPJ, Environment: "producao"})
 		},

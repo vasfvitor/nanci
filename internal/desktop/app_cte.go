@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -11,12 +12,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
-func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, error) {
+func (a *App) PullCTe(ctx context.Context, input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.PullCTeResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	defer a.trackPull()()
-	res, err := a.svc.cte.Pull(a.ctx, input.CNPJ)
+	res, err := a.svc.cte.Pull(ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullCTeResult{}, err
 	}
@@ -39,15 +42,17 @@ func (a *App) PullCTe(input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, 
 
 // ImportCTeXML stores CT-e and CT-e event XML files the company holds,
 // without contacting SEFAZ.
-func (a *App) ImportCTeXML(input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
+func (a *App) ImportCTeXML(ctx context.Context, input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if err := validateImport(input); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
 	defer a.trackPull()()
-	res, err := a.svc.cte.ImportXML(a.ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
+	res, err := a.svc.cte.ImportXML(ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
@@ -128,15 +133,17 @@ func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent
 	return desktopapi.CTeEvents(events), nil
 }
 
-func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportCTeXML(ctx context.Context, input desktopapi.ExportCTeXMLInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.cte.ExportXML(a.ctx, app.CTeExportXMLInput{
+	err := a.svc.cte.ExportXML(ctx, app.CTeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -147,15 +154,17 @@ func (a *App) ExportCTeXML(input desktopapi.ExportCTeXMLInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportDACTE(input desktopapi.ExportDACTEInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportDACTE(ctx context.Context, input desktopapi.ExportDACTEInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.cte.ExportDACTE(a.ctx, app.CTeExportDACTEInput{
+	err := a.svc.cte.ExportDACTE(ctx, app.CTeExportDACTEInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -166,10 +175,12 @@ func (a *App) ExportDACTE(input desktopapi.ExportDACTEInput) (desktopapi.ExportR
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "dacte", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportCTeDocuments(input desktopapi.ExportCTeDocumentsInput) (desktopapi.CTeExportResult, error) {
+func (a *App) ExportCTeDocuments(ctx context.Context, input desktopapi.ExportCTeDocumentsInput) (desktopapi.CTeExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.CTeExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.CTeExportResult{}, fmt.Errorf("caminho de saída não especificado")
@@ -188,13 +199,13 @@ func (a *App) ExportCTeDocuments(input desktopapi.ExportCTeDocumentsInput) (desk
 	var err error
 	switch format {
 	case "csv":
-		res, err = a.svc.cte.ExportCSV(a.ctx, exportInput)
+		res, err = a.svc.cte.ExportCSV(ctx, exportInput)
 	case "xlsx":
-		res, err = a.svc.cte.ExportXLSX(a.ctx, exportInput)
+		res, err = a.svc.cte.ExportXLSX(ctx, exportInput)
 	case "zip":
-		res, err = a.svc.cte.ExportXMLZip(a.ctx, exportInput)
+		res, err = a.svc.cte.ExportXMLZip(ctx, exportInput)
 	case "dacte-zip":
-		res, err = a.svc.cte.ExportDACTEZip(a.ctx, exportInput)
+		res, err = a.svc.cte.ExportDACTEZip(ctx, exportInput)
 	default:
 		return desktopapi.CTeExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}
