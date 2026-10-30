@@ -19,9 +19,8 @@ const wailsErrorCodes = [
   'canceled',
   'sefaz_blocked',
   'sync_running',
+  'update_busy',
   'startup_failed',
-  'update_unavailable',
-  'update_installing',
 ] as const
 export type WailsErrorCode = (typeof wailsErrorCodes)[number] | ''
 
@@ -93,7 +92,7 @@ export async function callWails<T>(
   }
 }
 
-export function asString(value: unknown) {
+function asString(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
 
@@ -105,7 +104,7 @@ export function asNullableNumber(value: number | null | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-export function asRawRecord(value: unknown): RawRecord {
+function asRawRecord(value: unknown): RawRecord {
   return value && typeof value === 'object' ? (value as RawRecord) : {}
 }
 

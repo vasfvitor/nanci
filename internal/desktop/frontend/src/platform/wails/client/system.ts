@@ -1,4 +1,5 @@
 import {
+  CancelSync,
   CheckForUpdate,
   ConfirmQuit,
   ExportLogs,
@@ -13,8 +14,8 @@ import {
   ShowInFolder,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
-import type { BuildInfo, UpdateInfo } from '@/types/desktop'
-import { callWails, asString, asStringArray } from './base'
+import type { BuildInfo, SyncSource, UpdateInfo } from '@/types/desktop'
+import { callWails, asStringArray } from './base'
 
 export function mapBuildInfo(item: desktopapi.BuildInfo): BuildInfo {
   return {
@@ -27,11 +28,11 @@ export function mapBuildInfo(item: desktopapi.BuildInfo): BuildInfo {
 
 export function mapUpdateInfo(item: desktopapi.UpdateInfo): UpdateInfo {
   return {
-    enabled: item.enabled === true,
-    currentVersion: asString(item.currentVersion),
-    available: item.available === true,
-    version: asString(item.version),
-    notes: asString(item.notes),
+    enabled: item.enabled,
+    currentVersion: item.currentVersion,
+    available: item.available,
+    version: item.version,
+    notes: item.notes,
   }
 }
 
@@ -56,6 +57,11 @@ export const systemClient = {
   // confirmQuit closes the app after the user chose to leave during a sync.
   confirmQuit(): Promise<void> {
     return callWails(() => ConfirmQuit())
+  },
+  // cancelSync asks the backend to stop the company's sync of source. The
+  // sync call itself rejects with the canceled code once the backend stops.
+  cancelSync(cnpj: string, source: SyncSource): Promise<void> {
+    return callWails(() => CancelSync(cnpj, source))
   },
   async getBuildInfo(): Promise<BuildInfo> {
     return mapBuildInfo(await callWails(() => GetBuildInfo()))

@@ -99,7 +99,7 @@ export function mapDocumentEvent(item: desktopapi.DocumentEvent): DocumentEvent 
   return {
     ID: item.ID,
     Type: item.Type,
-    EventAt: item.EventAt ?? null,
+    EventAt: asDate(item.EventAt),
     ReplacementChaveAcesso: item.ReplacementChaveAcesso,
     Description: item.Description,
     RawXMLPath: item.RawXMLPath,
@@ -172,8 +172,8 @@ export const nfseClient = {
     const result = await callWails(() => ListEventsForDocument(documentID))
     return (result || []).map(mapDocumentEvent)
   },
-  pull(input: PullInput, signal?: AbortSignal): Promise<PullResult> {
-    return callWails(() => Pull(input), signal) as Promise<PullResult>
+  pull(input: PullInput): Promise<PullResult> {
+    return callWails(() => Pull(input)) as Promise<PullResult>
   },
   queryNFSeEvents(input: QueryNFSeInput, signal?: AbortSignal) {
     return callWails(() => QueryNFSeEvents(input), signal)

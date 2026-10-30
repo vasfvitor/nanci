@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { updateBlockedBySync, useUpdates } from './useUpdates'
+import { useUpdates } from './useUpdates'
 import { desktopClient, WailsClientError } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import type { UpdateInfo } from '@/types/desktop'
@@ -91,30 +91,29 @@ describe('useUpdates', () => {
     expect(notify).not.toHaveBeenCalled()
   })
 
-  it('refuses the notice action while a sync runs, without a backend call', async () => {
+  it('says a sync blocks the update', () => {
+    const updates = useUpdates()
+    useCompanySyncStore().startSync('12345678000195', 'nfe')
+
+    expect(updates.blockedBySync.value).toBe(true)
+  })
+
+  it('warns with the backend refusal while an operation runs', async () => {
     vi.mocked(desktopClient.checkForUpdate).mockResolvedValue(found)
+    vi.mocked(desktopClient.installUpdate).mockRejectedValue(
+      new WailsClientError('aguarde a operação em andamento terminar para atualizar', 'update_busy')
+    )
     const updates = useUpdates()
     await updates.checkAtStartup()
-    useCompanySyncStore().startSync('12345678000195', 'nfe')
 
     noticeAction('Atualizar e reiniciar')()
 
-    expect(updates.blockedBySync.value).toBe(true)
-    expect(lastNotice()).toMatchObject({ type: 'warning', message: updateBlockedBySync })
-    expect(desktopClient.installUpdate).not.toHaveBeenCalled()
-  })
-
-  it('warns when the backend refuses because a sync started', async () => {
-    vi.mocked(desktopClient.checkForUpdate).mockResolvedValue(found)
-    vi.mocked(desktopClient.installUpdate).mockRejectedValue(
-      new WailsClientError('aguarde a sincronização terminar para atualizar', 'sync_running')
+    await vi.waitFor(() =>
+      expect(lastNotice()).toMatchObject({
+        type: 'warning',
+        message: 'aguarde a operação em andamento terminar para atualizar',
+      })
     )
-    const updates = useUpdates()
-    await updates.checkNow()
-
-    await updates.installAndRestart()
-
-    expect(lastNotice()).toMatchObject({ type: 'warning', message: updateBlockedBySync })
     expect(updates.status.value).toBe('available')
   })
 

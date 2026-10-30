@@ -182,7 +182,7 @@ func TestImportAndFetchPassCoreErrors(t *testing.T) {
 				if payload := formatError(err); payload.Code != e.code {
 					t.Errorf("code = %q, want %q", payload.Code, e.code)
 				}
-				if n := a.guard.pulls.Load(); n != 0 {
+				if n := a.guard.pulls; n != 0 {
 					t.Errorf("pulls = %d after the error, want 0", n)
 				}
 			})

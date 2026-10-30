@@ -122,7 +122,7 @@ func (a *App) CancelCertPassword(reqID string) {
 
 // SelectCertificate opens a file dialog to select a .pfx or .p12 file
 func (a *App) SelectCertificate() (string, error) {
-	return dialogPath(a.wails.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+	return dialogResult(a.wails.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title:          "Selecione o Certificado Digital",
 		CanChooseFiles: true,
 		Window:         a.window,
@@ -136,7 +136,7 @@ func (a *App) SelectCertificate() (string, error) {
 // SelectXMLFiles opens a dialog to pick one or more XML files to import.
 // It returns an empty list when the user cancels.
 func (a *App) SelectXMLFiles() ([]string, error) {
-	return dialogPaths(a.wails.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+	return dialogResult(a.wails.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title:                   "Selecione os XMLs",
 		CanChooseFiles:          true,
 		AllowsMultipleSelection: true,
@@ -150,7 +150,7 @@ func (a *App) SelectXMLFiles() ([]string, error) {
 
 // SelectSaveFile opens a dialog to select an output file path for exports
 func (a *App) SelectSaveFile(title, defaultFilename, pattern string) (string, error) {
-	return dialogPath(a.saveFileDialog(&application.SaveFileDialogOptions{
+	return dialogResult(a.saveFileDialog(&application.SaveFileDialogOptions{
 		Title:    title,
 		Filename: defaultFilename,
 		Filters: []application.FileFilter{
@@ -171,25 +171,21 @@ func (a *App) saveFileDialog(options *application.SaveFileDialogOptions) (string
 // "system") to the native window. Wails v3 only sets the window theme when the
 // window is created, and its JS runtime has no theme calls.
 func (a *App) SetWindowTheme(theme string) {
-	a.theme.set(theme)
 	dark, fixed := fixedWindowTheme(theme)
+	a.themeFixed.Store(fixed)
 	if !fixed {
 		dark = systemPrefersDark()
 	}
 	setNativeDarkMode(a.window, dark)
 }
 
-// keepFixedTheme is a hook on events.Windows.SystemThemeChanged. With
-// WindowsWindow.Theme set to SystemDefault, Wails listens to that event and
-// sets the window to the new system theme, which would undo a dark or light
-// theme picked in Configurações. Re-applying our theme after Wails cannot be
-// ordered: listeners run each on their own goroutine (EventManager.
-// handleApplicationEvent), so the order of their InvokeAsync calls is not
-// defined. Hooks run first, synchronously, and a cancelled event reaches no
-// listener, so cancelling here keeps the window as it is. The app has no other
-// listener for this event.
+// keepFixedTheme is a hook on events.Windows.SystemThemeChanged, which Wails
+// handles by setting the window to the new system theme. Hooks run
+// synchronously before the listeners and a cancelled event reaches none, so
+// cancelling is the only deterministic way to keep a dark or light theme
+// picked in Configurações.
 func (a *App) keepFixedTheme(event *application.ApplicationEvent) {
-	if _, fixed := a.theme.fixed(); fixed {
+	if a.themeFixed.Load() {
 		event.Cancel()
 	}
 }
@@ -218,7 +214,7 @@ func (a *App) ExportLogs() (string, error) {
 		return "", fmt.Errorf("logger de desktop não configurado")
 	}
 
-	savePath, err := dialogPath(a.saveFileDialog(&application.SaveFileDialogOptions{
+	savePath, err := dialogResult(a.saveFileDialog(&application.SaveFileDialogOptions{
 		Title:    "Exportar Logs",
 		Filename: "nanci_desktop_logs.zip",
 		Filters: []application.FileFilter{

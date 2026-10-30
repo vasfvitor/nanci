@@ -10,19 +10,17 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 func (a *App) PullCTe(ctx context.Context, input desktopapi.PullCTeInput) (desktopapi.PullCTeResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.PullCTeResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	done, err := a.trackPull()
+	ctx, end, err := a.begin(ctx, true)
 	if err != nil {
 		return desktopapi.PullCTeResult{}, err
 	}
-	defer done()
+	defer end()
+	ctx, stop := a.guard.cancelable(ctx, syncKey{input.CNPJ, syncstate.SyncSourceCTe})
+	defer stop()
 	res, err := a.svc.cte.Pull(ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullCTeResult{}, err
@@ -47,19 +45,14 @@ func (a *App) PullCTe(ctx context.Context, input desktopapi.PullCTeInput) (deskt
 // ImportCTeXML stores CT-e and CT-e event XML files the company holds,
 // without contacting SEFAZ.
 func (a *App) ImportCTeXML(ctx context.Context, input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ImportXMLResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
 	if err := validateImport(input); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
-	done, err := a.trackPull()
+	ctx, end, err := a.begin(ctx, true)
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
-	defer done()
+	defer end()
 	res, err := a.svc.cte.ImportXML(ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
@@ -142,19 +135,14 @@ func (a *App) ListCTeEvents(input desktopapi.CTeKeyInput) ([]desktopapi.CTeEvent
 }
 
 func (a *App) ExportCTeXML(ctx context.Context, input desktopapi.ExportCTeXMLInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	done, err := a.track()
-	if err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
 
 	err = a.svc.cte.ExportXML(ctx, app.CTeExportXMLInput{
 		CNPJ:        input.CNPJ,
@@ -168,19 +156,14 @@ func (a *App) ExportCTeXML(ctx context.Context, input desktopapi.ExportCTeXMLInp
 }
 
 func (a *App) ExportDACTE(ctx context.Context, input desktopapi.ExportDACTEInput) (desktopapi.ExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	done, err := a.track()
-	if err != nil {
-		return desktopapi.ExportResult{}, err
-	}
-	defer done()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.ExportResult{}, err
+	}
+	defer end()
 
 	err = a.svc.cte.ExportDACTE(ctx, app.CTeExportDACTEInput{
 		CNPJ:        input.CNPJ,
@@ -194,20 +177,15 @@ func (a *App) ExportDACTE(ctx context.Context, input desktopapi.ExportDACTEInput
 }
 
 func (a *App) ExportCTeDocuments(ctx context.Context, input desktopapi.ExportCTeDocumentsInput) (desktopapi.CTeExportResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.CTeExportResult{}, err
-	}
-	ctx, cancel := a.callContext(ctx)
-	defer cancel()
-	done, err := a.track()
-	if err != nil {
-		return desktopapi.CTeExportResult{}, err
-	}
-	defer done()
-	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.CTeExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
+	ctx, end, err := a.begin(ctx, false)
+	if err != nil {
+		return desktopapi.CTeExportResult{}, err
+	}
+	defer end()
+	format := strings.ToLower(strings.TrimSpace(input.Format))
 
 	exportInput := app.CTeExportInput{
 		CNPJ:         input.CNPJ,
@@ -239,15 +217,12 @@ func (a *App) ExportCTeDocuments(ctx context.Context, input desktopapi.ExportCTe
 
 // PreviewResetCTe returns what ResetCTe would remove, changing nothing.
 func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.CTeResetResult{}, err
-	}
-	done, err := a.track()
+	ctx, end, err := a.begin(a.ctx, false)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
-	defer done()
-	res, err := a.svc.cte.PreviewReset(a.ctx, cnpj)
+	defer end()
+	res, err := a.svc.cte.PreviewReset(ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
@@ -257,15 +232,12 @@ func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
 // ResetCTe removes the company's CT-e and resets its CT-e sync, so the next
 // pull starts over from NSU 0.
 func (a *App) ResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.CTeResetResult{}, err
-	}
-	done, err := a.track()
+	ctx, end, err := a.begin(a.ctx, false)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}
-	defer done()
-	res, err := a.svc.cte.Reset(a.ctx, cnpj)
+	defer end()
+	res, err := a.svc.cte.Reset(ctx, cnpj)
 	if err != nil {
 		return desktopapi.CTeResetResult{}, err
 	}

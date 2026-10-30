@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useDocuments } from './useDocuments'
 import { desktopClient, WailsClientError, wailsErrorCode } from '@/platform/wails/client'
-import { CANCEL_POLL_MS, useCompanySyncStore } from '@/stores/companySync'
+import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, DocumentRow, ExportResult, PullResult } from '@/types/desktop'
@@ -12,6 +12,7 @@ import { deferred, makeDocumentRow } from '@/test/fixtures'
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/platform/wails/client')>()),
   desktopClient: {
+    cancelSync: vi.fn(),
     exportDANFSe: vi.fn(),
     exportDocuments: vi.fn(),
     exportXML: vi.fn(),
@@ -108,41 +109,27 @@ describe('useDocuments', () => {
     pull.resolve({ CNPJ: '123', Status: 'success' } as PullResult)
     await expect(syncing).resolves.toMatchObject({ Status: 'success' })
 
-    expect(desktopClient.pull).toHaveBeenCalledWith(
-      { CNPJ: '123', Mode: '' },
-      expect.any(AbortSignal)
-    )
+    expect(desktopClient.pull).toHaveBeenCalledWith({ CNPJ: '123', Mode: '' })
     expect(remountedPage.isSyncing.value).toBe(false)
     expect(desktopClient.listDocuments).toHaveBeenCalled()
     // One reload of the companies, for the status line.
     expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
   })
 
-  it('cancels a pending sync from a remounted page and waits for the backend', async () => {
-    vi.useFakeTimers()
-    vi.mocked(desktopClient.pull).mockImplementation(
-      (_input, signal) =>
-        new Promise((_resolve, reject) => {
-          signal?.addEventListener('abort', () =>
-            reject(new WailsClientError('operação cancelada pelo usuário', 'canceled'))
-          )
-        })
-    )
+  it('cancels a pending sync from a remounted page and stays busy until the backend stops', async () => {
+    const pull = deferred<PullResult>()
+    vi.mocked(desktopClient.pull).mockReturnValue(pull.promise)
+    vi.mocked(desktopClient.cancelSync).mockResolvedValue(undefined)
     const firstPage = useDocuments()
     useWorkspaceStore().cnpj = '123'
     expect(firstPage.canCancelSync.value).toBe(false)
 
-    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
-      company({ LastRunStatus: 'running' }),
-    ])
     const syncing = firstPage.syncNFSe()
     const remountedPage = useDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    const cancelled = remountedPage.cancelSync()
+    await remountedPage.cancelSync()
+    expect(desktopClient.cancelSync).toHaveBeenCalledWith('123', 'nfse')
 
-    const error = await syncing.catch((err: unknown) => err)
-    expect(wailsErrorCode(error)).toBe('canceled')
-    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS * 2)
     const thirdPage = useDocuments()
     expect(thirdPage.isCancelling.value).toBe(true)
     expect(thirdPage.isSyncing.value).toBe(true)
@@ -150,13 +137,13 @@ describe('useDocuments', () => {
     await expect(thirdPage.syncNFSe()).resolves.toBeNull()
     expect(desktopClient.pull).toHaveBeenCalledTimes(1)
 
-    vi.mocked(desktopClient.listCompanies).mockResolvedValue([
-      company({ LastRunStatus: 'interrupted' }),
-    ])
-    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
-    await cancelled
+    vi.mocked(desktopClient.listCompanies).mockClear()
+    pull.reject(new WailsClientError('operação cancelada pelo usuário', 'canceled'))
+    const error = await syncing.catch((err: unknown) => err)
+    expect(wailsErrorCode(error)).toBe('canceled')
     expect(thirdPage.isCancelling.value).toBe(false)
     expect(thirdPage.isSyncing.value).toBe(false)
+    expect(desktopClient.listCompanies).toHaveBeenCalledTimes(1)
     expect(desktopClient.listDocuments).toHaveBeenCalled()
   })
 

@@ -303,8 +303,8 @@ export function mapFetchByChaveResult(item: desktopapi.FetchByChaveResult): Fetc
 }
 
 export const nfeClient = {
-  async pullNFe(cnpj: string, signal?: AbortSignal): Promise<PullNFeResult> {
-    const res = await callWails(() => PullNFe({ CNPJ: cnpj }), signal)
+  async pullNFe(cnpj: string): Promise<PullNFeResult> {
+    const res = await callWails(() => PullNFe({ CNPJ: cnpj }))
     return mapPullNFeResult(res)
   },
   // resetNFe removes the company's NF-e and resets its NF-e sync.

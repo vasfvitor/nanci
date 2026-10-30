@@ -6,20 +6,12 @@ package main
 // text can be matched.
 const dialogCanceledMessage = "cancelled by user"
 
-// dialogPath turns a closed file dialog into an empty path, which the
-// frontend treats as "nothing picked".
-func dialogPath(path string, err error) (string, error) {
+// dialogResult turns a closed file dialog into the zero value and no error:
+// an empty path or no paths, which the frontend treats as "nothing picked".
+func dialogResult[T any](v T, err error) (T, error) {
 	if err != nil && err.Error() == dialogCanceledMessage {
-		return "", nil
+		var zero T
+		return zero, nil
 	}
-	return path, err
-}
-
-// dialogPaths does the same for a multiple selection: a closed dialog is no
-// paths and no error.
-func dialogPaths(paths []string, err error) ([]string, error) {
-	if err != nil && err.Error() == dialogCanceledMessage {
-		return nil, nil
-	}
-	return paths, err
+	return v, err
 }

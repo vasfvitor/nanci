@@ -68,7 +68,7 @@ export const useUpdatesStore = defineStore('updates', () => {
   // returns false without a call when there is nothing to install or a check
   // or install runs. The state is marked before the call, so a second
   // screen sees the download. On success the app closes soon after; a
-  // refusal because a sync runs puts the release back as available.
+  // refusal because an operation runs puts the release back as available.
   async function install(): Promise<boolean> {
     if (!canInstall.value) return false
     status.value = 'downloading'
@@ -83,7 +83,7 @@ export const useUpdatesStore = defineStore('updates', () => {
       status.value = 'installing'
       return true
     } catch (e) {
-      if (wailsErrorCode(e) === 'sync_running') {
+      if (wailsErrorCode(e) === 'update_busy') {
         status.value = 'available'
       } else {
         status.value = 'error'
@@ -107,7 +107,6 @@ export const useUpdatesStore = defineStore('updates', () => {
     info,
     progress,
     error,
-    busy,
     canInstall,
     percent,
     check,

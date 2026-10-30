@@ -100,7 +100,7 @@ export function useDocuments() {
   }
 
   // syncNFSe runs one ADN pull for the selected company. cancelSync stops it
-  // from any screen, since its controller lives in the companySync store.
+  // from any screen, through the companySync store.
   async function syncNFSe() {
     const companyCNPJ = cnpj.value
     if (
@@ -111,25 +111,18 @@ export function useDocuments() {
       return null
     }
     try {
-      return await syncStore.runCancellableSync(companyCNPJ, 'nfse', (signal) =>
-        desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' }, signal)
+      return await syncStore.runCancellableSync(companyCNPJ, 'nfse', () =>
+        desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' })
       )
     } finally {
       await refresh(companyCNPJ)
     }
   }
 
-  // cancelSync stops the pull. The sync stays "cancelando" in the store until
-  // the company list, which carries the NFS-e run, no longer shows it
-  // running; then the page reloads.
+  // cancelSync asks the backend to stop the pull. The pull stays busy until
+  // the backend has stopped; then syncNFSe refreshes the page.
   async function cancelSync() {
-    const companyCNPJ = cnpj.value
-    if (!companyCNPJ) return
-    await syncStore.cancelSync(companyCNPJ, 'nfse', async () => {
-      const companies = await desktopClient.listCompanies()
-      return companies.some((c) => c.CNPJ === companyCNPJ && c.LastRunStatus === 'running')
-    })
-    await refresh(companyCNPJ)
+    if (cnpj.value) await syncStore.cancelSync(cnpj.value, 'nfse')
   }
 
   // resetSync restarts the company's NFS-e sync from NSU 0. It moves only

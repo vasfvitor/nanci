@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useCTeDocuments } from './useCTeDocuments'
 import { desktopClient } from '@/platform/wails/client'
-import { CANCEL_POLL_MS, useCompanySyncStore } from '@/stores/companySync'
+import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type {
@@ -19,6 +19,7 @@ import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    cancelSync: vi.fn(),
     listCompanies: vi.fn(),
     listCTe: vi.fn(),
     statusCTe: vi.fn(),
@@ -158,15 +159,10 @@ describe('useCTeDocuments', () => {
     expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
   })
 
-  it('cancels a pending CT-e sync from a second instance and waits for the backend', async () => {
-    vi.useFakeTimers()
-    vi.mocked(desktopClient.pullCTe).mockImplementation(
-      (_cnpj, signal) =>
-        new Promise((_resolve, reject) => {
-          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
-        })
-    )
-    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status({ LastRunStatus: 'running' }))
+  it('cancels a pending CT-e sync from a second instance and stays busy until the backend stops', async () => {
+    const pull = deferred<PullCTeResult>()
+    vi.mocked(desktopClient.pullCTe).mockReturnValue(pull.promise)
+    vi.mocked(desktopClient.cancelSync).mockResolvedValue(undefined)
 
     const firstPage = useCTeDocuments()
     useWorkspaceStore().cnpj = '123'
@@ -174,22 +170,24 @@ describe('useCTeDocuments', () => {
 
     const remountedPage = useCTeDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    const cancelled = remountedPage.cancelSync()
+    await remountedPage.cancelSync()
+    expect(desktopClient.cancelSync).toHaveBeenCalledWith('123', 'cte')
 
-    await expect(syncing).rejects.toThrow('cancelada')
-    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS * 2)
     const thirdPage = useCTeDocuments()
     expect(thirdPage.isCancelling.value).toBe(true)
     expect(thirdPage.isSyncing.value).toBe(true)
+    expect(thirdPage.canCancelSync.value).toBe(false)
     await expect(thirdPage.syncCTe()).resolves.toBeNull()
     expect(desktopClient.pullCTe).toHaveBeenCalledTimes(1)
 
+    vi.mocked(desktopClient.statusCTe).mockClear()
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(status({ LastRunStatus: 'interrupted' }))
-    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
-    await cancelled
+    pull.reject(new Error('cancelada'))
+    await expect(syncing).rejects.toThrow('cancelada')
     expect(thirdPage.isCancelling.value).toBe(false)
     expect(thirdPage.isSyncing.value).toBe(false)
     expect(thirdPage.canCancelSync.value).toBe(false)
+    expect(desktopClient.statusCTe).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the CT-e reset visible to a second instance while it is pending', async () => {

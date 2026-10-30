@@ -1305,6 +1305,7 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
         }),
         AssignCredentialToCompany: async () => undefined,
         CancelCertPassword: async () => undefined,
+        CancelSync: async () => undefined,
         CheckForUpdate: async () => ({
           enabled: true,
           currentVersion: 'v0.4.0',

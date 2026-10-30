@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeDocuments } from './useNFeDocuments'
 import { desktopClient } from '@/platform/wails/client'
-import { CANCEL_POLL_MS, useCompanySyncStore } from '@/stores/companySync'
+import { useCompanySyncStore } from '@/stores/companySync'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { nfeStateBadges } from '@/utils/nfeDisplay'
@@ -22,6 +22,7 @@ import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    cancelSync: vi.fn(),
     listCompanies: vi.fn(),
     listNFe: vi.fn(),
     listNFePendingManifestacoes: vi.fn(),
@@ -139,15 +140,10 @@ describe('useNFeDocuments', () => {
     expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
   })
 
-  it('cancels a pending NF-e sync from a second instance and waits for the backend', async () => {
-    vi.useFakeTimers()
-    vi.mocked(desktopClient.pullNFe).mockImplementation(
-      (_cnpj, signal) =>
-        new Promise((_resolve, reject) => {
-          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
-        })
-    )
-    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ LastRunStatus: 'running' }))
+  it('cancels a pending NF-e sync from a second instance and stays busy until the backend stops', async () => {
+    const pull = deferred<PullNFeResult>()
+    vi.mocked(desktopClient.pullNFe).mockReturnValue(pull.promise)
+    vi.mocked(desktopClient.cancelSync).mockResolvedValue(undefined)
 
     const firstPage = useNFeDocuments()
     useWorkspaceStore().cnpj = '123'
@@ -155,10 +151,9 @@ describe('useNFeDocuments', () => {
 
     const remountedPage = useNFeDocuments()
     expect(remountedPage.canCancelSync.value).toBe(true)
-    const cancelled = remountedPage.cancelSync()
+    await remountedPage.cancelSync()
+    expect(desktopClient.cancelSync).toHaveBeenCalledWith('123', 'nfe')
 
-    await expect(syncing).rejects.toThrow('cancelada')
-    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS * 2)
     const thirdPage = useNFeDocuments()
     expect(thirdPage.isCancelling.value).toBe(true)
     expect(thirdPage.isSyncing.value).toBe(true)
@@ -166,13 +161,15 @@ describe('useNFeDocuments', () => {
     await expect(thirdPage.syncNFe()).resolves.toBeNull()
     expect(desktopClient.pullNFe).toHaveBeenCalledTimes(1)
 
+    vi.mocked(desktopClient.statusNFe).mockClear()
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(
       status({ LastRunStatus: 'interrupted', LastRunStopReason: 'context_canceled' })
     )
-    await vi.advanceTimersByTimeAsync(CANCEL_POLL_MS)
-    await cancelled
+    pull.reject(new Error('cancelada'))
+    await expect(syncing).rejects.toThrow('cancelada')
     expect(thirdPage.isCancelling.value).toBe(false)
     expect(thirdPage.isSyncing.value).toBe(false)
+    expect(desktopClient.statusNFe).toHaveBeenCalledTimes(1)
     expect(useNFeDocumentsStore().status?.LastRunStatus).toBe('interrupted')
   })
 

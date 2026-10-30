@@ -103,7 +103,7 @@ func TestPullReleasesGuardOnError(t *testing.T) {
 		if err := run(); err == nil {
 			t.Errorf("%s: err = nil, want %v", name, errCore)
 		}
-		if n := a.guard.pulls.Load(); n != 0 {
+		if n := a.guard.pulls; n != 0 {
 			t.Errorf("%s: pulls = %d after the error, want 0", name, n)
 		}
 	}
@@ -114,7 +114,7 @@ func TestPullReleasesGuardOnError(t *testing.T) {
 
 func TestConfirmQuitAllowsClose(t *testing.T) {
 	_, a, events, quits := guardedApp(t)
-	done, err := a.trackPull()
+	done, err := a.guard.start(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func TestServiceShutdownStopsWaitingAfterTheBound(t *testing.T) {
 	_, a := newFakeApp(nil)
 	closed := false
 	a.cleanup = func() { closed = true }
-	done, err := a.track()
+	done, err := a.guard.start(false)
 	if err != nil {
 		t.Fatal(err)
 	}

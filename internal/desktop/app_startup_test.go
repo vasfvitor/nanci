@@ -124,6 +124,7 @@ func coreRuns() map[string]func(a *App) (any, error) {
 // updates.
 var withoutCore = map[string]bool{
 	"CancelCertPassword": true,
+	"CancelSync":         true,
 	"CheckForUpdate":     true,
 	"ConfirmQuit":        true,
 	"ExportLogs":         true,

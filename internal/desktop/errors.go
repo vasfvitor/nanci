@@ -13,8 +13,8 @@ import (
 // the frontend with. platform/wails/client/base.ts reads Code into
 // WailsClientError.code. A blocked source error already names the time the
 // source may be queried again. context.Canceled means the call ended before
-// the core did: the frontend cancelled it, the window closed or the app shut
-// down (callContext).
+// the core did: the frontend cancelled it (CancelSync for a sync), the window
+// closed or the app shut down (callContext).
 func formatError(err error) desktopapi.ErrorPayload {
 	payload := desktopapi.ErrorPayload{Message: err.Error()}
 	switch {
@@ -22,12 +22,10 @@ func formatError(err error) desktopapi.ErrorPayload {
 		payload.Code = "canceled"
 	case errors.Is(err, app.ErrSourceBlocked):
 		payload.Code = "sefaz_blocked"
-	case errors.Is(err, app.ErrSyncRunning), errors.Is(err, errUpdateDuringSync):
+	case errors.Is(err, app.ErrSyncRunning):
 		payload.Code = "sync_running"
-	case errors.Is(err, errUpdatesDisabled):
-		payload.Code = "update_unavailable"
-	case errors.Is(err, errUpdateInstalling):
-		payload.Code = "update_installing"
+	case errors.Is(err, errUpdateDuringSync), errors.Is(err, errUpdateBusy):
+		payload.Code = "update_busy"
 	case errors.Is(err, errNotStarted):
 		payload.Code = "startup_failed"
 	}
