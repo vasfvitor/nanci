@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ func TestFormatError(t *testing.T) {
 		wantText string
 	}{
 		{"canceled", fmt.Errorf("carregar certificado: %w", app.ErrOperationCanceled), "canceled", "operação cancelada"},
+		{"call canceled", fmt.Errorf("sincronização: %w", context.Canceled), "canceled", "context canceled"},
 		{"blocked", fmt.Errorf("pull: %w", blocked), "sefaz_blocked", "bloqueada até 23/09/2026 14:32"},
 		{"blocked sentinel", app.ErrSourceBlocked, "sefaz_blocked", "bloqueada"},
 		{"sync running", fmt.Errorf("%w (NF-e)", app.ErrSyncRunning), "sync_running", "já em andamento"},

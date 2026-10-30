@@ -17,6 +17,7 @@ import {
   ResetNFe,
   StatusNFe,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
+import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ExportDANFEInput,
   ExportResult,
@@ -49,11 +50,7 @@ import type {
 } from '@/types/desktop'
 import {
   callWails,
-  asString,
-  asNumber,
-  asBoolean,
   asNullableNumber,
-  asRawRecord,
   asStringArray,
   asArray,
   asDate,
@@ -123,202 +120,191 @@ function nfeListRequest(input: ListNFeInput) {
   return { ...input, ChavesAcesso: input.ChavesAcesso ?? [], OnlyUnread: input.OnlyUnread ?? false }
 }
 
-export function mapNFeRow(raw: unknown): NFeRow {
-  const item = asRawRecord(raw)
+export function mapNFeRow(item: desktopapi.NFeRow): NFeRow {
   return {
-    ID: asString(item['ID']),
-    DocumentID: asString(item['DocumentID']),
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    Serie: asString(item['Serie']),
-    Numero: asString(item['Numero']),
-    IssueDate: asDate(item['IssueDate']),
-    AuthorizedAt: asDate(item['AuthorizedAt']),
-    Protocolo: asString(item['Protocolo']),
-    TpNF: asString(item['TpNF']),
-    TpAmb: asString(item['TpAmb']),
-    NatOp: asString(item['NatOp']),
-    EmitenteCNPJ: asString(item['EmitenteCNPJ']),
-    EmitenteName: asString(item['EmitenteName']),
-    EmitenteIE: asString(item['EmitenteIE']),
-    EmitenteUF: asString(item['EmitenteUF']),
-    DestinatarioCNPJ: asString(item['DestinatarioCNPJ']),
-    DestinatarioName: asString(item['DestinatarioName']),
-    TotalValue: asNumber(item['TotalValue']),
-    ICMSValue: asNumber(item['ICMSValue']),
-    IPIValue: asNumber(item['IPIValue']),
-    Situacao: asEnum(item['Situacao'], nfeSituacoes),
-    Completeness: asEnum(item['Completeness'], nfeCompletenesses),
-    LayoutVersion: asString(item['LayoutVersion']),
-    ParseWarnings: asStringArray(item['ParseWarnings']),
-    Manifestacao: asEnum(item['Manifestacao'], nfeManifestacoes),
-    ManifestacaoAt: asDate(item['ManifestacaoAt']),
-    CienciaDue: asDate(item['CienciaDue']),
-    ConclusiveDue: asDate(item['ConclusiveDue']),
-    CompanyRole: asEnum(item['CompanyRole'], nfeRoles),
-    EventCount: asNumber(item['EventCount']),
-    FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
-    FirstSyncedAt: asDate(item['FirstSyncedAt']),
-    LastSyncedAt: asDate(item['LastSyncedAt']),
-    ViewedAt: asDate(item['ViewedAt']),
-    DaysLeft: asNullableNumber(item['DaysLeft']),
-    CienciaDaysLeft: asNullableNumber(item['CienciaDaysLeft']),
-    TacitlyConfirmed: asBoolean(item['TacitlyConfirmed']),
-    CienciaBlockReason: asString(item['CienciaBlockReason']),
-    ConclusiveBlockReason: asString(item['ConclusiveBlockReason']),
+    ID: item.ID,
+    DocumentID: item.DocumentID,
+    ChaveAcesso: item.ChaveAcesso,
+    Serie: item.Serie,
+    Numero: item.Numero,
+    IssueDate: item.IssueDate,
+    AuthorizedAt: asDate(item.AuthorizedAt),
+    Protocolo: item.Protocolo,
+    TpNF: item.TpNF,
+    TpAmb: item.TpAmb,
+    NatOp: item.NatOp,
+    EmitenteCNPJ: item.EmitenteCNPJ,
+    EmitenteName: item.EmitenteName,
+    EmitenteIE: item.EmitenteIE,
+    EmitenteUF: item.EmitenteUF,
+    DestinatarioCNPJ: item.DestinatarioCNPJ,
+    DestinatarioName: item.DestinatarioName,
+    TotalValue: item.TotalValue,
+    ICMSValue: item.ICMSValue,
+    IPIValue: item.IPIValue,
+    Situacao: asEnum(item.Situacao, nfeSituacoes),
+    Completeness: asEnum(item.Completeness, nfeCompletenesses),
+    LayoutVersion: item.LayoutVersion,
+    ParseWarnings: asStringArray(item.ParseWarnings),
+    Manifestacao: asEnum(item.Manifestacao, nfeManifestacoes),
+    ManifestacaoAt: asDate(item.ManifestacaoAt),
+    CienciaDue: asDate(item.CienciaDue),
+    ConclusiveDue: asDate(item.ConclusiveDue),
+    CompanyRole: asEnum(item.CompanyRole, nfeRoles),
+    EventCount: item.EventCount,
+    FirstSeenNSU: asNullableNumber(item.FirstSeenNSU),
+    FirstSyncedAt: item.FirstSyncedAt,
+    LastSyncedAt: item.LastSyncedAt,
+    ViewedAt: asDate(item.ViewedAt),
+    DaysLeft: asNullableNumber(item.DaysLeft),
+    CienciaDaysLeft: asNullableNumber(item.CienciaDaysLeft),
+    TacitlyConfirmed: item.TacitlyConfirmed,
+    CienciaBlockReason: item.CienciaBlockReason,
+    ConclusiveBlockReason: item.ConclusiveBlockReason,
   }
 }
 
-export function mapNFePendingRow(raw: unknown): NFePendingRow {
-  const item = asRawRecord(raw)
+export function mapNFePendingRow(item: desktopapi.NFePendingRow): NFePendingRow {
   return {
     ...mapNFeRow(item),
-    Kind: asEnum(item['Kind'], nfePendingKinds),
-    CienciaOverdue: asBoolean(item['CienciaOverdue']),
+    Kind: asEnum(item.Kind, nfePendingKinds),
+    CienciaOverdue: item.CienciaOverdue,
   }
 }
 
-export function mapNFeEvent(raw: unknown): NFeEvent {
-  const item = asRawRecord(raw)
+export function mapNFeEvent(item: desktopapi.NFeEvent): NFeEvent {
   return {
-    ID: asString(item['ID']),
-    TpEvento: asString(item['TpEvento']),
-    NSeqEvento: asNumber(item['NSeqEvento']),
-    Description: asString(item['Description']),
-    EventAt: asDate(item['EventAt']),
-    RegisteredAt: asDate(item['RegisteredAt']),
-    Protocolo: asString(item['Protocolo']),
-    CStat: asString(item['CStat']),
-    XMotivo: asString(item['XMotivo']),
-    Justificativa: asString(item['Justificativa']),
-    Correcao: asString(item['Correcao']),
-    AutorCNPJ: asString(item['AutorCNPJ']),
-    Completeness: asEnum(item['Completeness'], nfeCompletenesses),
-    Registered: asBoolean(item['Registered']),
-    SentByNanci: asBoolean(item['SentByNanci']),
+    ID: item.ID,
+    TpEvento: item.TpEvento,
+    NSeqEvento: item.NSeqEvento,
+    Description: item.Description,
+    EventAt: asDate(item.EventAt),
+    RegisteredAt: asDate(item.RegisteredAt),
+    Protocolo: item.Protocolo,
+    CStat: item.CStat,
+    XMotivo: item.XMotivo,
+    Justificativa: item.Justificativa,
+    Correcao: item.Correcao,
+    AutorCNPJ: item.AutorCNPJ,
+    Completeness: asEnum(item.Completeness, nfeCompletenesses),
+    Registered: item.Registered,
+    SentByNanci: item.SentByNanci,
   }
 }
 
-export function mapNFeEventResult(raw: unknown): NFeEventResult {
-  const item = asRawRecord(raw)
+export function mapNFeEventResult(item: desktopapi.NFeEventResult): NFeEventResult {
   return {
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    TpEvento: asString(item['TpEvento']),
-    Status: asEnum(item['Status'], nfeOutcomes),
-    CStat: asString(item['CStat']),
-    XMotivo: asString(item['XMotivo']),
-    Protocolo: asString(item['Protocolo']),
-    RegisteredAt: asDate(item['RegisteredAt']),
+    ChaveAcesso: item.ChaveAcesso,
+    TpEvento: item.TpEvento,
+    Status: asEnum(item.Status, nfeOutcomes),
+    CStat: item.CStat,
+    XMotivo: item.XMotivo,
+    Protocolo: item.Protocolo,
+    RegisteredAt: asDate(item.RegisteredAt),
   }
 }
 
-function mapNFeSkipped(raw: unknown): NFeSkipped {
-  const item = asRawRecord(raw)
+function mapNFeSkipped(item: desktopapi.NFeSkipped): NFeSkipped {
   return {
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    Reason: asString(item['Reason']),
+    ChaveAcesso: item.ChaveAcesso,
+    Reason: item.Reason,
   }
 }
 
-export function mapNFeEventBatchResult(raw: unknown): NFeEventBatchResult {
-  const item = asRawRecord(raw)
+export function mapNFeEventBatchResult(item: desktopapi.NFeEventBatchResult): NFeEventBatchResult {
   return {
-    Results: asArray(item['Results']).map(mapNFeEventResult),
-    Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
-    Interrupted: asString(item['Interrupted']),
+    Results: asArray(item.Results).map(mapNFeEventResult),
+    Skipped: asArray(item.Skipped).map(mapNFeSkipped),
+    Interrupted: item.Interrupted,
   }
 }
 
-export function mapNFeCienciaPlan(raw: unknown): NFeCienciaPlan {
-  const item = asRawRecord(raw)
+export function mapNFeCienciaPlan(item: desktopapi.NFeCienciaPlan): NFeCienciaPlan {
   return {
-    Eligible: asArray(item['Eligible']).map(mapNFeRow),
-    Skipped: asArray(item['Skipped']).map(mapNFeSkipped),
+    Eligible: asArray(item.Eligible).map(mapNFeRow),
+    Skipped: asArray(item.Skipped).map(mapNFeSkipped),
   }
 }
 
-export function mapNFeStatus(raw: unknown): NFeStatusResult {
-  const item = asRawRecord(raw)
+export function mapNFeStatus(item: desktopapi.NFeStatusResult): NFeStatusResult {
   return {
-    CompanyName: asString(item['CompanyName']),
-    CNPJ: asString(item['CNPJ']),
-    UF: asString(item['UF']),
-    TpAmb: asString(item['TpAmb']),
-    LastNSU: asNumber(item['LastNSU']),
-    MaxNSU: asNullableNumber(item['MaxNSU']),
-    LastSyncAt: asDate(item['LastSyncAt']),
-    LastRunStatus: asString(item['LastRunStatus']),
-    LastRunStopReason: asString(item['LastRunStopReason']),
-    InitialSyncDoneAt: asDate(item['InitialSyncDoneAt']),
-    NextAllowedAt: asDate(item['NextAllowedAt']),
-    BlockedReason: asEnum(item['BlockedReason'], nfeBlockedReasons),
-    RequestsLastHour: asNumber(item['RequestsLastHour']),
-    RequestBudget: asNumber(item['RequestBudget']),
-    IdleDays: asNumber(item['IdleDays']),
-    TotalDestinatario: asNumber(item['TotalDestinatario']),
-    TotalEmitente: asNumber(item['TotalEmitente']),
-    TotalOutros: asNumber(item['TotalOutros']),
-    TotalResumos: asNumber(item['TotalResumos']),
-    TotalCompletas: asNumber(item['TotalCompletas']),
-    PendingCiencia: asNumber(item['PendingCiencia']),
-    PendingConclusiva: asNumber(item['PendingConclusiva']),
-    CienciaOverdue: asNumber(item['CienciaOverdue']),
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    UF: item.UF,
+    TpAmb: item.TpAmb,
+    LastNSU: item.LastNSU,
+    MaxNSU: asNullableNumber(item.MaxNSU),
+    LastSyncAt: asDate(item.LastSyncAt),
+    LastRunStatus: item.LastRunStatus,
+    LastRunStopReason: item.LastRunStopReason,
+    InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
+    NextAllowedAt: asDate(item.NextAllowedAt),
+    BlockedReason: asEnum(item.BlockedReason, nfeBlockedReasons),
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
+    IdleDays: item.IdleDays,
+    TotalDestinatario: item.TotalDestinatario,
+    TotalEmitente: item.TotalEmitente,
+    TotalOutros: item.TotalOutros,
+    TotalResumos: item.TotalResumos,
+    TotalCompletas: item.TotalCompletas,
+    PendingCiencia: item.PendingCiencia,
+    PendingConclusiva: item.PendingConclusiva,
+    CienciaOverdue: item.CienciaOverdue,
   }
 }
 
-export function mapPullNFeResult(raw: unknown): PullNFeResult {
-  const item = asRawRecord(raw)
+export function mapPullNFeResult(item: desktopapi.PullNFeResult): PullNFeResult {
   return {
-    CompanyName: asString(item['CompanyName']),
-    CNPJ: asString(item['CNPJ']),
-    Status: asString(item['Status']),
-    StopReason: asString(item['StopReason']),
-    LastNSU: asNumber(item['LastNSU']),
-    MaxNSU: asNullableNumber(item['MaxNSU']),
-    CompletasSaved: asNumber(item['CompletasSaved']),
-    ResumosSaved: asNumber(item['ResumosSaved']),
-    EventsSaved: asNumber(item['EventsSaved']),
-    Errors: asNumber(item['Errors']),
-    NextAllowedAt: asDate(item['NextAllowedAt']),
-    RequestsLastHour: asNumber(item['RequestsLastHour']),
-    RequestBudget: asNumber(item['RequestBudget']),
-    Duration: asNumber(item['Duration']),
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    Status: item.Status,
+    StopReason: item.StopReason,
+    LastNSU: item.LastNSU,
+    MaxNSU: asNullableNumber(item.MaxNSU),
+    CompletasSaved: item.CompletasSaved,
+    ResumosSaved: item.ResumosSaved,
+    EventsSaved: item.EventsSaved,
+    Errors: item.Errors,
+    NextAllowedAt: asDate(item.NextAllowedAt),
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
+    Duration: item.Duration,
   }
 }
 
-function mapNFeExportResult(raw: unknown): NFeExportResult {
+function mapNFeExportResult(item: desktopapi.NFeExportResult): NFeExportResult {
   return {
-    ...mapExportResult(raw),
-    SkippedResumos: asNumber(asRawRecord(raw)['SkippedResumos']),
+    ...mapExportResult(item),
+    SkippedResumos: item.SkippedResumos,
   }
 }
 
-export function mapNFeResetResult(raw: unknown): NFeResetResult {
-  const item = asRawRecord(raw)
+export function mapNFeResetResult(item: desktopapi.NFeResetResult): NFeResetResult {
   return {
-    CompanyName: asString(item['CompanyName']),
-    CNPJ: asString(item['CNPJ']),
-    CompanyDocuments: asNumber(item['CompanyDocuments']),
-    Documents: asNumber(item['Documents']),
-    Events: asNumber(item['Events']),
-    ExportMarks: asNumber(item['ExportMarks']),
-    ManifestacoesKept: asNumber(item['ManifestacoesKept']),
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    CompanyDocuments: item.CompanyDocuments,
+    Documents: item.Documents,
+    Events: item.Events,
+    ExportMarks: item.ExportMarks,
+    ManifestacoesKept: item.ManifestacoesKept,
   }
 }
 
-export function mapFetchByChaveResult(raw: unknown): FetchByChaveResult {
-  const item = asRawRecord(raw)
+export function mapFetchByChaveResult(item: desktopapi.FetchByChaveResult): FetchByChaveResult {
   return {
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    Outcome: asEnum(item['Outcome'], fetchOutcomes),
-    Message: asString(item['Message']),
-    RequestsLastHour: asNumber(item['RequestsLastHour']),
-    RequestBudget: asNumber(item['RequestBudget']),
+    ChaveAcesso: item.ChaveAcesso,
+    Outcome: asEnum(item.Outcome, fetchOutcomes),
+    Message: item.Message,
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
   }
 }
 
 export const nfeClient = {
-  async pullNFe(cnpj: string): Promise<PullNFeResult> {
-    const res = await callWails(() => PullNFe({ CNPJ: cnpj }))
+  async pullNFe(cnpj: string, signal?: AbortSignal): Promise<PullNFeResult> {
+    const res = await callWails(() => PullNFe({ CNPJ: cnpj }), signal)
     return mapPullNFeResult(res)
   },
   // resetNFe removes the company's NF-e and resets its NF-e sync.

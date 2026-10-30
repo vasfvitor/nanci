@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
-import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
+import { onWailsEvent, type DesktopEvents, type Unsubscribe } from '@/platform/wails/events'
 import { readStorage, writeStorage } from '@/utils/storage'
 
 export type LogFilterLevel = 'info' | 'warn' | 'debug' | 'trace'
@@ -44,26 +44,21 @@ function readLogFilterLevel(): LogFilterLevel {
   return 'info'
 }
 
-function normalizeLogLevel(level: unknown): string {
-  if (typeof level !== 'string' || level.trim() === '') return 'INFO'
+function normalizeLogLevel(level: string): string {
+  if (level.trim() === '') return 'INFO'
   return level.trim().toUpperCase()
 }
 
-export function coerceLogEntry(payload: unknown): LogEntry | null {
-  if (!payload || typeof payload !== 'object') return null
-  const rawPayload = payload as Record<string, unknown>
-  const level = normalizeLogLevel(rawPayload['level'])
-  const raw = typeof rawPayload['raw'] === 'string' ? rawPayload['raw'] : ''
-
+// toLogEntry fills the fields a backend-log record may leave empty: no level
+// reads as INFO, no time takes the current one and no raw line falls back to
+// the message.
+function toLogEntry(payload: DesktopEvents['backend-log']): LogEntry {
   return {
-    time:
-      typeof rawPayload['time'] === 'string' && rawPayload['time']
-        ? rawPayload['time']
-        : new Date().toISOString(),
-    level,
-    msg: typeof rawPayload['msg'] === 'string' ? rawPayload['msg'] : raw,
-    attrs: typeof rawPayload['attrs'] === 'string' ? rawPayload['attrs'] : '',
-    raw: raw || String(rawPayload['msg'] || ''),
+    time: payload.time || new Date().toISOString(),
+    level: normalizeLogLevel(payload.level),
+    msg: payload.msg,
+    attrs: payload.attrs,
+    raw: payload.raw || payload.msg,
   }
 }
 
@@ -128,10 +123,8 @@ export const useConsoleStore = defineStore('console', () => {
     if (logListenersInitialised.value) return
     logListenersInitialised.value = true
 
-    logUnsubscribe.value = onWailsEvent<unknown>('backend-log', (payload) => {
-      const entry = coerceLogEntry(payload)
-      if (!entry) return
-      pushLogEntry(entry)
+    logUnsubscribe.value = onWailsEvent('backend-log', (payload) => {
+      pushLogEntry(toLogEntry(payload))
     })
   }
 

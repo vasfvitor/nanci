@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -33,7 +34,7 @@ func TestExportDocumentsFormats(t *testing.T) {
 			f, a := newFakeApp(nil)
 			f.exports.result = app.ExportResult{OutPath: testOut + ".csv", Format: "csv", Incremental: true, ExportedCount: 3}
 
-			got, err := a.ExportDocuments(desktopapi.ExportDocumentsInput{
+			got, err := a.ExportDocuments(context.Background(), desktopapi.ExportDocumentsInput{
 				CNPJ:         testCNPJ,
 				Competence:   "2026-09",
 				Direction:    "tomada",
@@ -79,7 +80,7 @@ func TestExportDocumentsRejectsBeforeCore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f, a := newFakeApp(nil)
 
-			got, err := a.ExportDocuments(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
+			got, err := a.ExportDocuments(context.Background(), desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
 			if err == nil || err.Error() != tt.wantErr {
 				t.Fatalf("err = %v, want %q", err, tt.wantErr)
 			}
@@ -104,7 +105,7 @@ func TestSingleDocumentExports(t *testing.T) {
 		{
 			name: "ExportDANFSe",
 			run: func(a *App) (desktopapi.ExportResult, error) {
-				return a.ExportDANFSe(desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
+				return a.ExportDANFSe(context.Background(), desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
 			},
 			recorder: func(f fakeSet) *recorder { return &f.exports.recorder },
 			want:     call{"ExportDANFSe", []any{app.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
@@ -113,7 +114,7 @@ func TestSingleDocumentExports(t *testing.T) {
 		{
 			name: "ExportXML",
 			run: func(a *App) (desktopapi.ExportResult, error) {
-				return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
+				return a.ExportXML(context.Background(), desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
 			},
 			recorder: func(f fakeSet) *recorder { return &f.exports.recorder },
 			want:     call{"ExportXML", []any{app.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
@@ -122,7 +123,7 @@ func TestSingleDocumentExports(t *testing.T) {
 		{
 			name: "ExportNFeXML",
 			run: func(a *App) (desktopapi.ExportResult, error) {
-				return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
+				return a.ExportNFeXML(context.Background(), desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
 			},
 			recorder: func(f fakeSet) *recorder { return &f.nfe.recorder },
 			want:     call{"ExportXML", []any{app.NFeExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
@@ -131,7 +132,7 @@ func TestSingleDocumentExports(t *testing.T) {
 		{
 			name: "ExportDANFE",
 			run: func(a *App) (desktopapi.ExportResult, error) {
-				return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
+				return a.ExportDANFE(context.Background(), desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
 			},
 			recorder: func(f fakeSet) *recorder { return &f.nfe.recorder },
 			want:     call{"ExportDANFE", []any{app.NFeExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
@@ -140,7 +141,7 @@ func TestSingleDocumentExports(t *testing.T) {
 		{
 			name: "ExportDACTE",
 			run: func(a *App) (desktopapi.ExportResult, error) {
-				return a.ExportDACTE(desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
+				return a.ExportDACTE(context.Background(), desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"})
 			},
 			recorder: func(f fakeSet) *recorder { return &f.cte.recorder },
 			want:     call{"ExportDACTE", []any{app.CTeExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".pdf"}}},
@@ -149,7 +150,7 @@ func TestSingleDocumentExports(t *testing.T) {
 		{
 			name: "ExportCTeXML",
 			run: func(a *App) (desktopapi.ExportResult, error) {
-				return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
+				return a.ExportCTeXML(context.Background(), desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"})
 			},
 			recorder: func(f fakeSet) *recorder { return &f.cte.recorder },
 			want:     call{"ExportXML", []any{app.CTeExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: testOut + ".xml"}}},
@@ -191,7 +192,7 @@ func TestExportNFeDocumentsFormats(t *testing.T) {
 				SkippedResumos: 2,
 			}
 
-			got, err := a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{
+			got, err := a.ExportNFeDocuments(context.Background(), desktopapi.ExportNFeDocumentsInput{
 				CNPJ:           testCNPJ,
 				Competence:     "2026-09",
 				Role:           "destinatario",
@@ -240,7 +241,7 @@ func TestExportNFeDocumentsRejectsBeforeCore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f, a := newFakeApp(nil)
 
-			got, err := a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
+			got, err := a.ExportNFeDocuments(context.Background(), desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
 			if err == nil || err.Error() != tt.wantErr {
 				t.Fatalf("err = %v, want %q", err, tt.wantErr)
 			}
@@ -271,7 +272,7 @@ func TestExportCTeDocumentsFormats(t *testing.T) {
 				SkippedSemDACTE: 2,
 			}
 
-			got, err := a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{
+			got, err := a.ExportCTeDocuments(context.Background(), desktopapi.ExportCTeDocumentsInput{
 				CNPJ:         testCNPJ,
 				Competence:   "2026-09",
 				Role:         "tomador",
@@ -318,7 +319,7 @@ func TestExportCTeDocumentsRejectsBeforeCore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f, a := newFakeApp(nil)
 
-			got, err := a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
+			got, err := a.ExportCTeDocuments(context.Background(), desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: tt.format, OutPath: tt.outPath})
 			if err == nil || err.Error() != tt.wantErr {
 				t.Fatalf("err = %v, want %q", err, tt.wantErr)
 			}
@@ -334,31 +335,31 @@ func TestExportCTeDocumentsRejectsBeforeCore(t *testing.T) {
 func exportRuns(outPath string) map[string]func(a *App) (any, error) {
 	return map[string]func(a *App) (any, error){
 		"ExportDocuments": func(a *App) (any, error) {
-			return a.ExportDocuments(desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
+			return a.ExportDocuments(context.Background(), desktopapi.ExportDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
 		},
 		"ExportDANFSe": func(a *App) (any, error) {
-			return a.ExportDANFSe(desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
+			return a.ExportDANFSe(context.Background(), desktopapi.ExportDANFSeInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 		"ExportXML": func(a *App) (any, error) {
-			return a.ExportXML(desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
+			return a.ExportXML(context.Background(), desktopapi.ExportXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 		"ExportNFeXML": func(a *App) (any, error) {
-			return a.ExportNFeXML(desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
+			return a.ExportNFeXML(context.Background(), desktopapi.ExportNFeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 		"ExportNFeDocuments": func(a *App) (any, error) {
-			return a.ExportNFeDocuments(desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
+			return a.ExportNFeDocuments(context.Background(), desktopapi.ExportNFeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
 		},
 		"ExportDANFE": func(a *App) (any, error) {
-			return a.ExportDANFE(desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
+			return a.ExportDANFE(context.Background(), desktopapi.ExportDANFEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 		"ExportCTeXML": func(a *App) (any, error) {
-			return a.ExportCTeXML(desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
+			return a.ExportCTeXML(context.Background(), desktopapi.ExportCTeXMLInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 		"ExportCTeDocuments": func(a *App) (any, error) {
-			return a.ExportCTeDocuments(desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
+			return a.ExportCTeDocuments(context.Background(), desktopapi.ExportCTeDocumentsInput{CNPJ: testCNPJ, Format: "csv", OutPath: outPath})
 		},
 		"ExportDACTE": func(a *App) (any, error) {
-			return a.ExportDACTE(desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
+			return a.ExportDACTE(context.Background(), desktopapi.ExportDACTEInput{CNPJ: testCNPJ, ChaveAcesso: testChave, OutPath: outPath})
 		},
 	}
 }

@@ -2,11 +2,11 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentsPage from './DocumentsPage.vue'
-import { desktopClient, mapDocumentRow } from '@/platform/wails/client'
+import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { DocumentRow, PullResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
-import { company, deferred } from '@/test/fixtures'
+import { company, deferred, makeDocumentRow } from '@/test/fixtures'
 
 type OkHandler = (payload: unknown) => void
 
@@ -51,7 +51,7 @@ const acme = company('12345678000100', 'ACME', syncFields)
 const outra = company('98765432000199', 'Outra', syncFields)
 
 function documentRow(chave: string, fields: Partial<DocumentRow> = {}): DocumentRow {
-  return mapDocumentRow({
+  return makeDocumentRow({
     ID: `doc-${chave}`,
     ChaveAcesso: chave,
     Competence: '2026-07',
@@ -538,7 +538,10 @@ describe('DocumentsPage', () => {
     await button(wrapper, 'Sincronizar NFS-e').trigger('click')
     await flushPromises()
 
-    expect(desktopClient.pull).toHaveBeenCalledWith({ CNPJ: acme.CNPJ, Mode: '' })
+    expect(desktopClient.pull).toHaveBeenCalledWith(
+      { CNPJ: acme.CNPJ, Mode: '' },
+      expect.any(AbortSignal)
+    )
     expect(desktopClient.listDocuments).toHaveBeenCalled()
     expect(wrapper.text()).toContain('NSU 28')
     expect(notify).toHaveBeenCalledWith(

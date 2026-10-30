@@ -7,7 +7,7 @@ import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
 import NFeEventResultsDialog from '@/components/NFeEventResultsDialog.vue'
 import NFeFetchDialog from '@/components/NFeFetchDialog.vue'
 import NFeManifestacaoDialog from '@/components/NFeManifestacaoDialog.vue'
-import { desktopClient, mapNFeRow } from '@/platform/wails/client'
+import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
@@ -21,6 +21,7 @@ import type {
 } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 import { NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
+import { makeNFeRow } from '@/test/fixtures'
 
 type OkHandler = (payload: unknown) => void
 
@@ -85,7 +86,7 @@ const company = {
 const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
 
 function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
-  return mapNFeRow({
+  return makeNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,
@@ -680,7 +681,7 @@ describe('NFePage', () => {
     await sync.trigger('click')
     await flushPromises()
 
-    expect(desktopClient.pullNFe).toHaveBeenCalledWith(company.CNPJ)
+    expect(desktopClient.pullNFe).toHaveBeenCalledWith(company.CNPJ, expect.any(AbortSignal))
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'positive',

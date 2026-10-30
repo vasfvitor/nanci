@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -21,7 +22,7 @@ func TestQueryNFSeEvents(t *testing.T) {
 	f, a := newFakeApp(nil)
 	f.query.events = `{"eventos":[]}`
 
-	got, err := a.QueryNFSeEvents(desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ, ChaveAcesso: testChave})
+	got, err := a.QueryNFSeEvents(context.Background(), desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ, ChaveAcesso: testChave})
 	if err != nil {
 		t.Fatalf("QueryNFSeEvents: %v", err)
 	}
@@ -58,9 +59,13 @@ func TestConnectionTests(t *testing.T) {
 		run      func(a *App) (desktopapi.ConnectionTestResult, error)
 		recorder func(f fakeSet) *recorder
 	}{
-		{"TestConnection", func(a *App) (desktopapi.ConnectionTestResult, error) { return a.TestConnection(testCNPJ) },
+		{"TestConnection", func(a *App) (desktopapi.ConnectionTestResult, error) {
+			return a.TestConnection(context.Background(), testCNPJ)
+		},
 			func(f fakeSet) *recorder { return &f.query.recorder }},
-		{"TestCTeConnection", func(a *App) (desktopapi.ConnectionTestResult, error) { return a.TestCTeConnection(testCNPJ) },
+		{"TestCTeConnection", func(a *App) (desktopapi.ConnectionTestResult, error) {
+			return a.TestCTeConnection(context.Background(), testCNPJ)
+		},
 			func(f fakeSet) *recorder { return &f.cte.recorder }},
 	}
 	for _, tt := range tests {
@@ -106,7 +111,7 @@ func TestPullNFSe(t *testing.T) {
 		Duration:                 2 * time.Second,
 	}
 
-	got, err := a.Pull(desktopapi.PullInput{CNPJ: testCNPJ, Mode: "incremental"})
+	got, err := a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ, Mode: "incremental"})
 	if err != nil {
 		t.Fatalf("Pull: %v", err)
 	}
@@ -214,7 +219,7 @@ func TestPullNFe(t *testing.T) {
 		Duration:         time.Minute,
 	}
 
-	got, err := a.PullNFe(desktopapi.PullNFeInput{CNPJ: testCNPJ})
+	got, err := a.PullNFe(context.Background(), desktopapi.PullNFeInput{CNPJ: testCNPJ})
 	if err != nil {
 		t.Fatalf("PullNFe: %v", err)
 	}
@@ -258,7 +263,7 @@ func TestPullCTe(t *testing.T) {
 		Duration:         3 * time.Second,
 	}
 
-	got, err := a.PullCTe(desktopapi.PullCTeInput{CNPJ: testCNPJ})
+	got, err := a.PullCTe(context.Background(), desktopapi.PullCTeInput{CNPJ: testCNPJ})
 	if err != nil {
 		t.Fatalf("PullCTe: %v", err)
 	}
@@ -291,16 +296,22 @@ func TestSyncErrorsReachFormatError(t *testing.T) {
 	canceled := fmt.Errorf("carregar certificado: %w", app.ErrOperationCanceled)
 
 	runs := map[string]func(a *App) (any, error){
-		"Pull": func(a *App) (any, error) { return a.Pull(desktopapi.PullInput{CNPJ: testCNPJ}) },
+		"Pull": func(a *App) (any, error) { return a.Pull(context.Background(), desktopapi.PullInput{CNPJ: testCNPJ}) },
 		"ResetSyncState": func(a *App) (any, error) {
 			return nil, a.ResetSyncState(desktopapi.ResetSyncInput{CompanyCNPJ: testCNPJ})
 		},
-		"Status":            func(a *App) (any, error) { return a.Status(testCNPJ) },
-		"PullNFe":           func(a *App) (any, error) { return a.PullNFe(desktopapi.PullNFeInput{CNPJ: testCNPJ}) },
-		"PullCTe":           func(a *App) (any, error) { return a.PullCTe(desktopapi.PullCTeInput{CNPJ: testCNPJ}) },
-		"QueryNFSeEvents":   func(a *App) (any, error) { return a.QueryNFSeEvents(desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ}) },
-		"TestConnection":    func(a *App) (any, error) { return a.TestConnection(testCNPJ) },
-		"TestCTeConnection": func(a *App) (any, error) { return a.TestCTeConnection(testCNPJ) },
+		"Status": func(a *App) (any, error) { return a.Status(testCNPJ) },
+		"PullNFe": func(a *App) (any, error) {
+			return a.PullNFe(context.Background(), desktopapi.PullNFeInput{CNPJ: testCNPJ})
+		},
+		"PullCTe": func(a *App) (any, error) {
+			return a.PullCTe(context.Background(), desktopapi.PullCTeInput{CNPJ: testCNPJ})
+		},
+		"QueryNFSeEvents": func(a *App) (any, error) {
+			return a.QueryNFSeEvents(context.Background(), desktopapi.QueryNFSeInput{CompanyCNPJ: testCNPJ})
+		},
+		"TestConnection":    func(a *App) (any, error) { return a.TestConnection(context.Background(), testCNPJ) },
+		"TestCTeConnection": func(a *App) (any, error) { return a.TestCTeConnection(context.Background(), testCNPJ) },
 	}
 	errs := []struct {
 		err  error

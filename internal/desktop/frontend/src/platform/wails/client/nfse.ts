@@ -10,6 +10,7 @@ import {
   ResetSyncState,
   TestConnection,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
+import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ConnectionTestResult,
   DocumentEvent,
@@ -27,10 +28,7 @@ import type {
 } from '@/types/desktop'
 import {
   callWails,
-  asString,
-  asNumber,
   asNullableNumber,
-  asRawRecord,
   asStringArray,
   asDate,
   type SaveDialog,
@@ -55,58 +53,56 @@ function nfseExportDialog(format: ExportFormat, cnpj: string): SaveDialog {
   }
 }
 
-export function mapDocumentRow(raw: unknown): DocumentRow {
-  const item = asRawRecord(raw)
+export function mapDocumentRow(item: desktopapi.DocumentRow): DocumentRow {
   return {
-    ID: asString(item['ID']),
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    IssueDate: asDate(item['IssueDate']),
-    Competence: asString(item['Competence']),
-    PrestadorCNPJ: asString(item['PrestadorCNPJ']),
-    PrestadorName: asString(item['PrestadorName']),
-    TomadorCNPJ: asString(item['TomadorCNPJ']),
-    TomadorName: asString(item['TomadorName']),
-    IntermediarioCNPJ: asString(item['IntermediarioCNPJ']),
-    IntermediarioName: asString(item['IntermediarioName']),
-    ServiceValue: asNumber(item['ServiceValue']),
-    ISSValue: asNumber(item['ISSValue']),
-    IRRFValue: asNumber(item['IRRFValue']),
-    INSSValue: asNumber(item['INSSValue']),
-    PISValue: asNumber(item['PISValue']),
-    COFINSValue: asNumber(item['COFINSValue']),
-    CSLLValue: asNumber(item['CSLLValue']),
-    TotalRetentions: asNumber(item['TotalRetentions']),
-    Status: asString(item['Status']),
-    LayoutVersion: asString(item['LayoutVersion']),
-    XMLPath: asString(item['XMLPath']),
-    RawHash: asString(item['RawHash']),
-    ParseWarnings: asStringArray(item['ParseWarnings']),
-    NFSeNumber: asString(item['NFSeNumber']),
-    ServiceDescription: asString(item['ServiceDescription']),
-    CreatedAt: asDate(item['CreatedAt']),
-    UpdatedAt: asDate(item['UpdatedAt']),
-    RelationID: asString(item['RelationID']),
-    CompanyID: asString(item['CompanyID']),
-    DocumentID: asString(item['DocumentID']),
-    CompanyRole: asString(item['CompanyRole']),
-    VisibilityReason: asString(item['VisibilityReason']),
-    FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
-    LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
-    FirstSyncedAt: asDate(item['FirstSyncedAt']),
-    LastSyncedAt: asDate(item['LastSyncedAt']),
-    ViewedAt: asDate(item['ViewedAt']),
+    ID: item.ID,
+    ChaveAcesso: item.ChaveAcesso,
+    IssueDate: item.IssueDate,
+    Competence: item.Competence,
+    PrestadorCNPJ: item.PrestadorCNPJ,
+    PrestadorName: item.PrestadorName,
+    TomadorCNPJ: item.TomadorCNPJ,
+    TomadorName: item.TomadorName,
+    IntermediarioCNPJ: item.IntermediarioCNPJ,
+    IntermediarioName: item.IntermediarioName,
+    ServiceValue: item.ServiceValue,
+    ISSValue: item.ISSValue,
+    IRRFValue: item.IRRFValue,
+    INSSValue: item.INSSValue,
+    PISValue: item.PISValue,
+    COFINSValue: item.COFINSValue,
+    CSLLValue: item.CSLLValue,
+    TotalRetentions: item.TotalRetentions,
+    Status: item.Status,
+    LayoutVersion: item.LayoutVersion,
+    XMLPath: item.XMLPath,
+    RawHash: item.RawHash,
+    ParseWarnings: asStringArray(item.ParseWarnings),
+    NFSeNumber: item.NFSeNumber,
+    ServiceDescription: item.ServiceDescription,
+    CreatedAt: item.CreatedAt,
+    UpdatedAt: item.UpdatedAt,
+    RelationID: item.RelationID,
+    CompanyID: item.CompanyID,
+    DocumentID: item.DocumentID,
+    CompanyRole: item.CompanyRole,
+    VisibilityReason: item.VisibilityReason,
+    FirstSeenNSU: asNullableNumber(item.FirstSeenNSU),
+    LastSeenNSU: asNullableNumber(item.LastSeenNSU),
+    FirstSyncedAt: item.FirstSyncedAt,
+    LastSyncedAt: item.LastSyncedAt,
+    ViewedAt: asDate(item.ViewedAt),
   }
 }
 
-export function mapDocumentEvent(raw: unknown): DocumentEvent {
-  const item = asRawRecord(raw)
+export function mapDocumentEvent(item: desktopapi.DocumentEvent): DocumentEvent {
   return {
-    ID: asString(item['ID']),
-    Type: asString(item['Type']),
-    EventAt: item['EventAt'] as DocumentEvent['EventAt'],
-    ReplacementChaveAcesso: asString(item['ReplacementChaveAcesso']),
-    Description: asString(item['Description']),
-    RawXMLPath: asString(item['RawXMLPath']),
+    ID: item.ID,
+    Type: item.Type,
+    EventAt: item.EventAt ?? null,
+    ReplacementChaveAcesso: item.ReplacementChaveAcesso,
+    Description: item.Description,
+    RawXMLPath: item.RawXMLPath,
   }
 }
 
@@ -176,11 +172,11 @@ export const nfseClient = {
     const result = await callWails(() => ListEventsForDocument(documentID))
     return (result || []).map(mapDocumentEvent)
   },
-  pull(input: PullInput): Promise<PullResult> {
-    return callWails(() => Pull(input)) as Promise<PullResult>
+  pull(input: PullInput, signal?: AbortSignal): Promise<PullResult> {
+    return callWails(() => Pull(input), signal) as Promise<PullResult>
   },
-  queryNFSeEvents(input: QueryNFSeInput) {
-    return callWails(() => QueryNFSeEvents(input))
+  queryNFSeEvents(input: QueryNFSeInput, signal?: AbortSignal) {
+    return callWails(() => QueryNFSeEvents(input), signal)
   },
   resetSyncState(input: ResetSyncInput) {
     return callWails(() => ResetSyncState(input))

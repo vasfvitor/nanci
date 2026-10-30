@@ -98,7 +98,7 @@ function onCancel() {
 }
 
 onMounted(() => {
-  unsubscribe.value = onWailsEvent<CertPasswordRequest>('request-cert-password', handleRequest)
+  unsubscribe.value = onWailsEvent('request-cert-password', handleRequest)
 })
 
 onUnmounted(() => {

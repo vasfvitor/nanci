@@ -11,6 +11,7 @@ import {
   UpdateCredentialData,
   UpdateCredentialPath,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
+import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   AddCompanyInput,
   AddCredentialInput,
@@ -21,47 +22,45 @@ import type {
   UpdateCredentialDataInput,
   UpdateCredentialPathInput,
 } from '@/types/desktop'
-import { callWails, asString, asNullableNumber, asRawRecord, asDate } from './base'
+import { callWails, asNullableNumber, asDate } from './base'
 
-export function mapCompanySummary(raw: unknown): CompanySummary {
-  const item = asRawRecord(raw)
+export function mapCompanySummary(item: desktopapi.CompanySummary): CompanySummary {
   return {
-    ID: asString(item['ID']),
-    CNPJ: asString(item['CNPJ']),
-    CNPJRoot: asString(item['CNPJRoot']),
-    Name: asString(item['Name']),
-    CredentialID: asString(item['CredentialID']),
-    CredentialLabel: asString(item['CredentialLabel']),
-    CredentialCertPath: asString(item['CredentialCertPath']),
-    Environment: asString(item['Environment']),
-    UF: asString(item['UF']),
-    LastFoundNSU: asNullableNumber(item['LastFoundNSU']),
-    LastSyncAt: asDate(item['LastSyncAt']),
-    SyncStartPolicy: asString(item['SyncStartPolicy']) as CompanySummary['SyncStartPolicy'],
-    SyncStartDate: asDate(item['SyncStartDate']),
-    InitialSyncDoneAt: asDate(item['InitialSyncDoneAt']),
-    LastRunStatus: asString(item['LastRunStatus']),
-    LastRunStopReason: asString(item['LastRunStopReason']),
-    CreatedAt: asDate(item['CreatedAt']),
-    UpdatedAt: asDate(item['UpdatedAt']),
+    ID: item.ID,
+    CNPJ: item.CNPJ,
+    CNPJRoot: item.CNPJRoot,
+    Name: item.Name,
+    CredentialID: item.CredentialID,
+    CredentialLabel: item.CredentialLabel,
+    CredentialCertPath: item.CredentialCertPath,
+    Environment: item.Environment,
+    UF: item.UF,
+    LastFoundNSU: asNullableNumber(item.LastFoundNSU),
+    LastSyncAt: asDate(item.LastSyncAt),
+    SyncStartPolicy: item.SyncStartPolicy as CompanySummary['SyncStartPolicy'],
+    SyncStartDate: asDate(item.SyncStartDate),
+    InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
+    LastRunStatus: item.LastRunStatus,
+    LastRunStopReason: item.LastRunStopReason,
+    CreatedAt: item.CreatedAt,
+    UpdatedAt: item.UpdatedAt,
   }
 }
 
-export function mapCredentialSummary(raw: unknown): CredentialSummary {
-  const item = asRawRecord(raw)
+export function mapCredentialSummary(item: desktopapi.CredentialSummary): CredentialSummary {
   return {
-    ID: asString(item['ID']),
-    Label: asString(item['Label']),
-    CertPath: asString(item['CertPath']),
-    OwnerCNPJ: asString(item['OwnerCNPJ']),
-    OwnerCNPJRoot: asString(item['OwnerCNPJRoot']),
-    FingerprintSHA256: asString(item['FingerprintSHA256']),
-    SubjectName: asString(item['SubjectName']),
-    NotBefore: asDate(item['NotBefore']),
-    NotAfter: asDate(item['NotAfter']),
-    InspectedAt: asDate(item['InspectedAt']),
-    CreatedAt: asDate(item['CreatedAt']),
-    UpdatedAt: asDate(item['UpdatedAt']),
+    ID: item.ID,
+    Label: item.Label,
+    CertPath: item.CertPath,
+    OwnerCNPJ: item.OwnerCNPJ,
+    OwnerCNPJRoot: item.OwnerCNPJRoot,
+    FingerprintSHA256: item.FingerprintSHA256,
+    SubjectName: item.SubjectName,
+    NotBefore: asDate(item.NotBefore),
+    NotAfter: asDate(item.NotAfter),
+    InspectedAt: asDate(item.InspectedAt),
+    CreatedAt: item.CreatedAt,
+    UpdatedAt: item.UpdatedAt,
   }
 }
 

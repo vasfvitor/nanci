@@ -31,7 +31,7 @@ export function useCloseGuard() {
   }
 
   function start(): Unsubscribe {
-    return onWailsEvent<number>('app:before-close', ask)
+    return onWailsEvent('app:before-close', ask)
   }
 
   return { start }

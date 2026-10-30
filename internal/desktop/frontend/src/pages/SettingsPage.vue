@@ -371,8 +371,7 @@ async function refreshDisplayInfo() {
   displayInfo.value = await displayScale.readDisplayInfo()
 }
 
-// nudgeWindow lets the user test whether a relayout sharpens a soft window
-// even when the display scale did not change.
+// nudgeWindow lets the user test whether a relayout sharpens a soft window.
 async function nudgeWindow() {
   try {
     const result = await displayScale.nudgeOnRequest()

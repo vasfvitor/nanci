@@ -347,7 +347,9 @@ const syncLogs = [
   { level: 'INFO', msg: 'Documento 5678 salvo no banco local', time: '2026-06-18T14:30:04Z' },
   { level: 'INFO', msg: 'Documento 1235 salvo no banco local', time: '2026-06-18T14:30:04Z' },
   { level: 'INFO', msg: 'Sincronização concluída em 1.24s', time: '2026-06-18T14:30:05Z' },
-]
+  // The backend always sends attrs and raw; the console fills an empty raw
+  // from the message.
+].map((log) => ({ ...log, attrs: '', raw: '' }))
 
 const mockEvents = [
   {

@@ -55,6 +55,7 @@ type App struct {
 	logLevel   *slog.LevelVar
 	logWriter  *rotatingFileWriter
 	logPath    string
+	theme      windowTheme
 	guard      closeGuard
 	events     eventEmitter
 	quit       func() // asks Wails to quit; tests replace it
@@ -81,7 +82,8 @@ func NewApp() *App {
 var errNotStarted = errors.New("o nanci não iniciou")
 
 // ServiceStartup runs when Wails starts the App service. ctx lives until
-// shutdown and bounds every core call. A failure is kept in startupErr and
+// shutdown and bounds every core call; the long-running methods also stop
+// with their own call (callContext). A failure is kept in startupErr and
 // returned by every bound method that needs the core, so the frontend gets
 // an error instead of a call that never settles. It never returns an error:
 // that would stop Wails before the window opens.
@@ -174,6 +176,24 @@ func (a *App) ready() error {
 	return nil
 }
 
+// callContext returns the context a long-running bound method passes to the
+// core. It ends when the call ends or when the app shuts down. Wails cancels
+// the call context when the frontend cancels the promise, when the window
+// closes or when the method returns, but it detaches it from the app context
+// (messageprocessor_call.go), so shutdown alone would not stop a sync. The
+// values of callCtx are kept. Defer the returned func.
+func (a *App) callContext(callCtx context.Context) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(callCtx)
+	if a.ctx == nil {
+		return ctx, cancel
+	}
+	stop := context.AfterFunc(a.ctx, cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
+}
+
 // ServiceShutdown runs when Wails stops the App service.
 func (a *App) ServiceShutdown() error {
 	if a.cleanup != nil {
@@ -187,7 +207,7 @@ func (a *App) ServiceShutdown() error {
 
 // emitLog sends a desktop log record to the console in the frontend.
 func (a *App) emitLog(event desktopLogEvent) {
-	a.events.Emit("backend-log", event)
+	a.events.Emit(eventBackendLog, event)
 }
 
 // validateImport refuses an import without a company or files before the

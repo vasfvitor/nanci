@@ -9,6 +9,17 @@ vi.mock('@/platform/wails/client', () => ({
   },
 }))
 
+type Handler = (payload: unknown) => void
+
+const handlers: Record<string, Handler> = {}
+
+vi.mock('@/platform/wails/events', () => ({
+  onWailsEvent: (eventName: string, callback: Handler) => {
+    handlers[eventName] = callback
+    return vi.fn()
+  },
+}))
+
 describe('console store', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -71,6 +82,63 @@ describe('console store', () => {
     expect(store.logFilterLevel).toBe('debug')
     expect(localStorage.getItem('nanci:logLevel')).toBe('debug')
     expect(desktopClient.setLogLevel).toHaveBeenCalledWith('debug')
+  })
+
+  it('adds backend-log records to the console', () => {
+    const store = useConsoleStore()
+    store.initLogListeners()
+
+    handlers['backend-log']?.({
+      time: '2026-06-18T14:30:01Z',
+      level: 'INFO',
+      msg: 'Sincronização concluída',
+      attrs: 'cnpj=11222333000181',
+      raw: 'time=2026-06-18T14:30:01Z level=INFO msg="Sincronização concluída"',
+    })
+
+    expect(store.logEntries).toEqual([
+      {
+        time: '2026-06-18T14:30:01Z',
+        level: 'INFO',
+        msg: 'Sincronização concluída',
+        attrs: 'cnpj=11222333000181',
+        raw: 'time=2026-06-18T14:30:01Z level=INFO msg="Sincronização concluída"',
+      },
+    ])
+  })
+
+  it('fills the empty fields of a backend-log record', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-18T15:00:00Z'))
+    const store = useConsoleStore()
+    store.initLogListeners()
+
+    handlers['backend-log']?.({
+      time: '',
+      level: ' warning ',
+      msg: 'Alíquota incomum',
+      attrs: '',
+      raw: '',
+    })
+    handlers['backend-log']?.({ time: '', level: '', msg: 'sem nível', attrs: '', raw: '' })
+    vi.useRealTimers()
+
+    expect(store.logEntries).toEqual([
+      {
+        time: '2026-06-18T15:00:00.000Z',
+        level: 'WARNING',
+        msg: 'Alíquota incomum',
+        attrs: '',
+        raw: 'Alíquota incomum',
+      },
+      {
+        time: '2026-06-18T15:00:00.000Z',
+        level: 'INFO',
+        msg: 'sem nível',
+        attrs: '',
+        raw: 'sem nível',
+      },
+    ])
   })
 
   it('rolls back the log level when the backend update fails', async () => {

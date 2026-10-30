@@ -33,7 +33,7 @@ func (a *App) beforeClose() bool {
 	if pulls == 0 {
 		return false
 	}
-	go a.events.Emit("app:before-close", int(pulls))
+	go a.events.Emit(eventBeforeClose, int(pulls))
 	return true
 }
 

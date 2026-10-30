@@ -35,7 +35,6 @@ import { storeToRefs } from 'pinia'
 import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
 import { useNotify } from '@/composables/useNotify'
 import { useCloseGuard } from '@/composables/useCloseGuard'
-import { useDisplayScale } from '@/composables/useDisplayScale'
 import { useConsoleStore } from '@/stores/console'
 import { useWorkspaceStore } from '@/stores/workspace'
 import AppTitleBar from '../components/AppTitleBar.vue'
@@ -47,7 +46,6 @@ const consoleStore = useConsoleStore()
 const workspace = useWorkspaceStore()
 const { notifyError } = useNotify()
 const closeGuard = useCloseGuard()
-const displayScale = useDisplayScale()
 const leftDrawerOpen = ref(false)
 const { consoleOpen } = storeToRefs(consoleStore)
 const unsubscribers: Unsubscribe[] = []
@@ -58,7 +56,6 @@ onMounted(() => {
   workspace.ensureCompanies().catch((e: unknown) => notifyError('Erro ao carregar empresas', e))
   unsubscribers.push(
     closeGuard.start(),
-    displayScale.start(),
     onWailsEvent<string>('notify-success', (msg) => {
       $q.notify({ type: 'positive', message: msg })
     }),

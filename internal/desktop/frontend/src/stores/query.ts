@@ -22,6 +22,27 @@ export const useQueryStore = defineStore('query', () => {
   // optionsGate lets only the latest suggestion fetch fill chaveOptions.
   const optionsGate = latestOnly()
 
+  // controller aborts the query in flight. It lives here, next to loading, so
+  // the query can be cancelled after leaving the page and coming back.
+  let controller: AbortController | null = null
+
+  // startQuery marks a query as running and returns the signal that cancels
+  // it; finishQuery ends it, whatever its outcome.
+  function startQuery(): AbortSignal {
+    controller = new AbortController()
+    loading.value = true
+    return controller.signal
+  }
+
+  function finishQuery() {
+    controller = null
+    loading.value = false
+  }
+
+  function cancelQuery() {
+    controller?.abort()
+  }
+
   function clearResult() {
     result.value = ''
   }
@@ -34,6 +55,9 @@ export const useQueryStore = defineStore('query', () => {
     chaveOptions,
     optionsCNPJ,
     optionsGate,
+    startQuery,
+    finishQuery,
+    cancelQuery,
     clearResult,
   }
 })

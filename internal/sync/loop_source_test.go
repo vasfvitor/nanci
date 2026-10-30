@@ -23,6 +23,7 @@ type fakeSource struct {
 	outcomes map[int64]ItemOutcome // per NSU; missing means a plain insert
 	failures map[int64]error       // per NSU; ProcessItem returns it every time
 	onFetch  func(cursor int64)
+	onItem   func(nsu int64) // runs before the item is committed
 	cursors  []int64
 }
 
@@ -42,6 +43,9 @@ func (f *fakeSource) Fetch(_ context.Context, _ *company.Company, cursor int64) 
 }
 
 func (f *fakeSource) ProcessItem(ctx context.Context, _ *company.Company, _ SourceState, item Item, commit CommitFunc) (ItemOutcome, error) {
+	if f.onItem != nil {
+		f.onItem(item.NSU)
+	}
 	if err := f.failures[item.NSU]; err != nil {
 		return ItemOutcome{}, err
 	}
@@ -186,6 +190,39 @@ func TestSourceLoopWaitUntilBlocksNextSyncWithoutRun(t *testing.T) {
 	if blocked.Source != syncstate.SyncSourceNFe || !blocked.Until.Equal(waitUntil) || blocked.Reason != syncstate.SyncStopReasonConsumoIndevido {
 		t.Errorf("BlockedError = %+v", blocked)
 	}
+}
+
+func TestSourceLoopCancelMidBatchStillRecordsWait(t *testing.T) {
+	h := newTestHelper(t)
+	waitUntil := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	src := &fakeSource{
+		kind: syncstate.SyncSourceNFe,
+		batches: map[int64]Batch{
+			// ultNSU equal to maxNSU: SEFAZ asks for an hour before the next query.
+			0: {Items: items(1, 2), UltNSU: 2, MaxNSU: 2, NextCursor: 2, Done: true, StopReason: syncstate.SyncStopReasonCaughtUp, WaitUntil: &waitUntil},
+		},
+		onItem: func(nsu int64) {
+			if nsu == 2 {
+				cancel()
+			}
+		},
+	}
+
+	err := NewSyncService(h.store, src, discardLogger()).Sync(ctx, h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Sync = %v, want context.Canceled", err)
+	}
+
+	state, err := h.store.SourceState(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.BlockedUntil == nil || !state.BlockedUntil.Equal(waitUntil) {
+		t.Fatalf("blocked_until = %v, want %v", state.BlockedUntil, waitUntil)
+	}
+	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
 }
 
 func TestSourceLoopRequestBudgetStopsAtLimit(t *testing.T) {

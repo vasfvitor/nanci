@@ -79,6 +79,9 @@ export function useDocuments() {
   )
 
   const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'nfse'))
+  const canCancelSync = computed(
+    () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'nfse')
+  )
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   // refresh reloads the company list, whose sync fields feed the status line
@@ -93,7 +96,8 @@ export function useDocuments() {
     ])
   }
 
-  // syncNFSe runs one ADN pull for the selected company.
+  // syncNFSe runs one ADN pull for the selected company. cancelSync stops it
+  // from any screen, since its controller lives in the companySync store.
   async function syncNFSe() {
     const companyCNPJ = cnpj.value
     if (
@@ -104,12 +108,16 @@ export function useDocuments() {
       return null
     }
     try {
-      return await syncStore.runSync(companyCNPJ, 'nfse', () =>
-        desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' })
+      return await syncStore.runCancellableSync(companyCNPJ, 'nfse', (signal) =>
+        desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' }, signal)
       )
     } finally {
       await refresh(companyCNPJ)
     }
+  }
+
+  function cancelSync() {
+    if (cnpj.value) syncStore.cancelSync(cnpj.value, 'nfse')
   }
 
   // resetSync restarts the company's NFS-e sync from NSU 0. It moves only
@@ -182,9 +190,11 @@ export function useDocuments() {
     ambiente,
     statusLine,
     isSyncing,
+    canCancelSync,
     isResetting,
     search,
     syncNFSe,
+    cancelSync,
     resetSync,
     exportXML,
     exportDANFSe,

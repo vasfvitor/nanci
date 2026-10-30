@@ -8,11 +8,13 @@
       :idle-warning="idleWarning"
       :blocked-text="blockedText"
       :syncing="isSyncing"
+      :cancelable="canCancelSync"
       :sync-disabled="!cnpj || isResetting || Boolean(syncBlockedUntil)"
       reset-title="Remove as NF-e da empresa e reinicia a sincronização NF-e"
       :resetting="isResetting"
       :reset-disabled="!cnpj || isSyncing"
       @sync="syncNFe"
+      @cancel="nfe.cancelSync"
       @reset="confirmResetNFe"
     />
 
@@ -381,6 +383,7 @@ const {
   statusLine,
   idleWarning,
   isSyncing,
+  canCancelSync,
   isResetting,
   syncBlockedUntil,
   blockedText,

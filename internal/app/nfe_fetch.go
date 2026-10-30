@@ -112,8 +112,13 @@ func (s *NFeService) FetchByChave(ctx context.Context, in FetchByChaveInput) (Fe
 	result := FetchByChaveResult{ChaveAcesso: chave.String()}
 	switch resp.CStat {
 	case sefaz.CStatConsumoIndevido:
+		// SEFAZ already imposed the block, so a cancel arriving now must not
+		// keep it from being recorded.
 		until := s.now().UTC().Add(fetchBlockWait)
-		if err := s.SyncRepo.SetBlockedUntil(ctx, comp.ID, source, comp.Environment, until, syncstate.SyncStopReasonConsumoIndevido); err != nil {
+		blockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		err := s.SyncRepo.SetBlockedUntil(blockCtx, comp.ID, source, comp.Environment, until, syncstate.SyncStopReasonConsumoIndevido)
+		cancel()
+		if err != nil {
 			return FetchByChaveResult{}, fmt.Errorf("bloquear consultas de NF-e: %w", err)
 		}
 		return FetchByChaveResult{}, &sync.BlockedError{Source: source, Until: until, Reason: syncstate.SyncStopReasonConsumoIndevido}

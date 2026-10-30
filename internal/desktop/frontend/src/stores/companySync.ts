@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { SyncSource } from '@/types/desktop'
 
@@ -8,6 +8,9 @@ function syncKey(cnpj: string, source: SyncSource) {
 
 export const useCompanySyncStore = defineStore('companySync', () => {
   const activeSyncs = ref<Record<string, number>>({})
+  // cancellers holds the AbortController of each cancellable sync in flight,
+  // by the same key, so any screen can cancel it.
+  const cancellers = shallowRef<Record<string, AbortController>>({})
 
   function isSyncing(cnpj: string, source: SyncSource) {
     return Boolean(activeSyncs.value[syncKey(cnpj, source)])
@@ -46,11 +49,47 @@ export const useCompanySyncStore = defineStore('companySync', () => {
     }
   }
 
+  // runCancellableSync is runSync for a call that stops when its signal
+  // aborts. The controller is kept before the call starts and dropped when
+  // the call settles, so cancelSync works from any screen while it runs.
+  async function runCancellableSync<T>(
+    cnpj: string,
+    source: SyncSource,
+    fn: (signal: AbortSignal) => Promise<T>
+  ): Promise<T> {
+    const key = syncKey(cnpj, source)
+    const controller = new AbortController()
+    cancellers.value = { ...cancellers.value, [key]: controller }
+    try {
+      return await runSync(cnpj, source, () => fn(controller.signal))
+    } finally {
+      if (cancellers.value[key] === controller) {
+        cancellers.value = Object.fromEntries(
+          Object.entries(cancellers.value).filter(([activeKey]) => activeKey !== key)
+        )
+      }
+    }
+  }
+
+  function canCancelSync(cnpj: string, source: SyncSource) {
+    return Boolean(cancellers.value[syncKey(cnpj, source)])
+  }
+
+  // cancelSync cancels the company's cancellable sync of source. The call
+  // rejects at once with the canceled code; the backend stops at its next
+  // check of the context.
+  function cancelSync(cnpj: string, source: SyncSource) {
+    cancellers.value[syncKey(cnpj, source)]?.abort()
+  }
+
   return {
     activeSyncs,
     isSyncing,
     startSync,
     finishSync,
     runSync,
+    runCancellableSync,
+    canCancelSync,
+    cancelSync,
   }
 })

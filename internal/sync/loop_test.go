@@ -421,6 +421,89 @@ func TestSyncServiceCancellationFinishesOnceAsInterrupted(t *testing.T) {
 	h.assertSingleFinishRun(syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
 }
 
+// cancelOnStore cancels the sync on its nth Store call, after the item was
+// decoded and before its commit.
+type cancelOnStore struct {
+	mockXMLStore
+	n      int
+	cancel context.CancelFunc
+}
+
+func (s *cancelOnStore) Store(hash string, data []byte) error {
+	s.n--
+	if s.n == 0 {
+		s.cancel()
+	}
+	return s.mockXMLStore.Store(hash, data)
+}
+
+// TestSyncServiceResumesAfterCancelMidBatch cancels a run while it writes the
+// second item of a batch, as the desktop Cancelar button can. The run ends as
+// interrupted, the cursor stays at the first item, and the next run asks for
+// what comes after it.
+func TestSyncServiceResumesAfterCancelMidBatch(t *testing.T) {
+	h := newTestHelper(t)
+	h.setSyncState(0, nil, 0)
+
+	doc := func(nsu int64, lastDigit string) adn.DocumentEnvelope {
+		key := "1234567890123456789012345678901234567890123456789" + lastDigit
+		return adn.DocumentEnvelope{NSU: nsu, Schema: "procNFSe_v1.00.xsd", XMLGZipBase64: mustEncodeGzipBase64(t, strings.ReplaceAll(validDocumentXML, "12345678901234567890123456789012345678901234567890", key))}
+	}
+	fetcher := &mockFetcher{
+		handler: func(req adn.DistributionRequest) (*adn.DocumentResponse, error) {
+			switch req.LastNSU {
+			case 0:
+				return &adn.DocumentResponse{Docs: []adn.DocumentEnvelope{doc(1, "1"), doc(2, "2"), doc(3, "3")}}, nil
+			case 1:
+				return &adn.DocumentResponse{Docs: []adn.DocumentEnvelope{doc(2, "2"), doc(3, "3")}}, nil
+			case 3:
+				return &adn.DocumentResponse{}, nil
+			default:
+				t.Fatalf("unexpected LastNSU request %d", req.LastNSU)
+				return nil, errors.New("unreachable")
+			}
+		},
+	}
+
+	originalDelay := syncRequestDelay
+	syncRequestDelay = 0
+	defer func() { syncRequestDelay = originalDelay }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc := h.newNFSeService(fetcher, &cancelOnStore{n: 2, cancel: cancel})
+
+	err := svc.Sync(ctx, h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	h.assertSingleFinishRun(syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled)
+	h.assertSyncState(1, storetest.Int64Ptr(1), 0)
+	h.assertDocumentsCount(1)
+
+	fetcher.requests = nil
+	svc = h.newNFSeService(fetcher, &mockXMLStore{})
+	if err := svc.Sync(context.Background(), h.company, h.credential, "exact_certificate_cnpj", syncstate.SyncModeNormal, nil); err != nil {
+		t.Fatalf("resumed sync: %v", err)
+	}
+	if len(fetcher.requests) == 0 || fetcher.requests[0].LastNSU != 1 {
+		t.Fatalf("resumed run requests = %+v, want the first after NSU 1", fetcher.requests)
+	}
+	h.assertSyncState(3, storetest.Int64Ptr(3), 1)
+	h.assertDocumentsCount(3)
+	// Both runs start in the same second, so pick the second one by status.
+	var resumed int
+	if err := h.db.QueryRowContext(context.Background(), `
+		SELECT COUNT(*) FROM sync_runs
+		WHERE company_id = ? AND status = ? AND stop_reason = ? AND documents_found = 2
+	`, string(h.company.ID), syncstate.SyncStatusCompleted, syncstate.SyncStopReasonEmptyLimit).Scan(&resumed); err != nil {
+		t.Fatal(err)
+	}
+	if resumed != 1 {
+		t.Errorf("completed runs with 2 documents = %d, want 1", resumed)
+	}
+}
+
 func TestSyncServiceProcessingFailurePersistsConsultedCheckpointBeforeFailing(t *testing.T) {
 	h := newTestHelper(t)
 	h.setSyncState(0, nil, 0)

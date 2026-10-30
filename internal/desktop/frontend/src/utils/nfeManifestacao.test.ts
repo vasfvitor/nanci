@@ -9,10 +9,10 @@ import {
   noEligibleCienciaMessage,
   validateJustificativa,
 } from './nfeManifestacao'
-import { mapNFeRow } from '@/platform/wails/client'
+import { makeNFeRow } from '@/test/fixtures'
 
 function row(overrides: Partial<NFeRow> = {}): NFeRow {
-  return mapNFeRow({
+  return makeNFeRow({
     ID: 'rel-1',
     DocumentID: 'doc-1',
     ChaveAcesso: '35240912345678000199550010000123451123456789',

@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,12 +14,14 @@ import (
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
-func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
+func (a *App) PullNFe(ctx context.Context, input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.PullNFeResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	defer a.trackPull()()
-	res, err := a.svc.nfe.Pull(a.ctx, input.CNPJ)
+	res, err := a.svc.nfe.Pull(ctx, input.CNPJ)
 	if err != nil {
 		return desktopapi.PullNFeResult{}, err
 	}
@@ -43,15 +46,17 @@ func (a *App) PullNFe(input desktopapi.PullNFeInput) (desktopapi.PullNFeResult, 
 // ImportNFeXML stores NF-e and NF-e event XML files the company holds,
 // without contacting SEFAZ. It counts as a sync for the close guard, since
 // it writes the company's documents.
-func (a *App) ImportNFeXML(input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
+func (a *App) ImportNFeXML(ctx context.Context, input desktopapi.ImportXMLInput) (desktopapi.ImportXMLResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if err := validateImport(input); err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
 	defer a.trackPull()()
-	res, err := a.svc.nfe.ImportXML(a.ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
+	res, err := a.svc.nfe.ImportXML(ctx, app.ImportXMLInput{CNPJ: input.CNPJ, Files: input.Files})
 	if err != nil {
 		return desktopapi.ImportXMLResult{}, err
 	}
@@ -60,10 +65,12 @@ func (a *App) ImportNFeXML(input desktopapi.ImportXMLInput) (desktopapi.ImportXM
 
 // FetchNFeByChave asks SEFAZ for one NF-e by its chave. It spends one
 // request of the company's NF-e hourly budget.
-func (a *App) FetchNFeByChave(input desktopapi.FetchByChaveInput) (desktopapi.FetchByChaveResult, error) {
+func (a *App) FetchNFeByChave(ctx context.Context, input desktopapi.FetchByChaveInput) (desktopapi.FetchByChaveResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.FetchByChaveResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.CNPJ == "" {
 		return desktopapi.FetchByChaveResult{}, errors.New("empresa não especificada")
 	}
@@ -71,7 +78,7 @@ func (a *App) FetchNFeByChave(input desktopapi.FetchByChaveInput) (desktopapi.Fe
 		return desktopapi.FetchByChaveResult{}, errors.New("chave de acesso não especificada")
 	}
 	defer a.trackPull()()
-	res, err := a.svc.nfe.FetchByChave(a.ctx, app.FetchByChaveInput{CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso})
+	res, err := a.svc.nfe.FetchByChave(ctx, app.FetchByChaveInput{CNPJ: input.CNPJ, ChaveAcesso: input.ChaveAcesso})
 	if err != nil {
 		return desktopapi.FetchByChaveResult{}, err
 	}
@@ -216,15 +223,17 @@ func (a *App) RegisterNFeManifestacao(input desktopapi.RegisterNFeManifestacaoIn
 	return desktopapi.NFeEventResultFrom(outcome), nil
 }
 
-func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportNFeXML(ctx context.Context, input desktopapi.ExportNFeXMLInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.nfe.ExportXML(a.ctx, app.NFeExportXMLInput{
+	err := a.svc.nfe.ExportXML(ctx, app.NFeExportXMLInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -235,15 +244,17 @@ func (a *App) ExportNFeXML(input desktopapi.ExportNFeXMLInput) (desktopapi.Expor
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "xml", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportDANFE(input desktopapi.ExportDANFEInput) (desktopapi.ExportResult, error) {
+func (a *App) ExportDANFE(ctx context.Context, input desktopapi.ExportDANFEInput) (desktopapi.ExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.ExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")
 	}
 
-	err := a.svc.nfe.ExportDANFE(a.ctx, app.NFeExportDANFEInput{
+	err := a.svc.nfe.ExportDANFE(ctx, app.NFeExportDANFEInput{
 		CNPJ:        input.CNPJ,
 		ChaveAcesso: input.ChaveAcesso,
 		OutPath:     input.OutPath,
@@ -254,10 +265,12 @@ func (a *App) ExportDANFE(input desktopapi.ExportDANFEInput) (desktopapi.ExportR
 	return desktopapi.ExportResult{OutPath: input.OutPath, Format: "danfe", ExportedCount: 1}, nil
 }
 
-func (a *App) ExportNFeDocuments(input desktopapi.ExportNFeDocumentsInput) (desktopapi.NFeExportResult, error) {
+func (a *App) ExportNFeDocuments(ctx context.Context, input desktopapi.ExportNFeDocumentsInput) (desktopapi.NFeExportResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeExportResult{}, err
 	}
+	ctx, cancel := a.callContext(ctx)
+	defer cancel()
 	format := strings.ToLower(strings.TrimSpace(input.Format))
 	if input.OutPath == "" {
 		return desktopapi.NFeExportResult{}, fmt.Errorf("caminho de saída não especificado")
@@ -277,13 +290,13 @@ func (a *App) ExportNFeDocuments(input desktopapi.ExportNFeDocumentsInput) (desk
 	var err error
 	switch format {
 	case "csv":
-		res, err = a.svc.nfe.ExportCSV(a.ctx, exportInput)
+		res, err = a.svc.nfe.ExportCSV(ctx, exportInput)
 	case "xlsx":
-		res, err = a.svc.nfe.ExportXLSX(a.ctx, exportInput)
+		res, err = a.svc.nfe.ExportXLSX(ctx, exportInput)
 	case "zip":
-		res, err = a.svc.nfe.ExportXMLZip(a.ctx, exportInput)
+		res, err = a.svc.nfe.ExportXMLZip(ctx, exportInput)
 	case "danfe-zip":
-		res, err = a.svc.nfe.ExportDANFEZip(a.ctx, exportInput)
+		res, err = a.svc.nfe.ExportDANFEZip(ctx, exportInput)
 	default:
 		return desktopapi.NFeExportResult{}, fmt.Errorf("formato de exportação desconhecido: %s", format)
 	}

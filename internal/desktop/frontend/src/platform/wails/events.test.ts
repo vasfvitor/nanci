@@ -16,15 +16,15 @@ describe('onWailsEvent', () => {
     vi.mocked(Events.On).mockReturnValue(unsubscribe)
 
     const callback = vi.fn()
-    const cleanup = onWailsEvent<string>('backend-log', callback)
+    const cleanup = onWailsEvent('notify-success', callback)
 
-    expect(Events.On).toHaveBeenCalledWith('backend-log', expect.any(Function))
+    expect(Events.On).toHaveBeenCalledWith('notify-success', expect.any(Function))
 
     const firstCall = vi.mocked(Events.On).mock.calls[0]
     expect(firstCall).toBeDefined()
     if (!firstCall) return
     const [, handler] = firstCall
-    handler({ name: 'backend-log', data: 'payload' } as Parameters<typeof handler>[0])
+    handler({ name: 'notify-success', data: 'payload' } as Parameters<typeof handler>[0])
     expect(callback).toHaveBeenCalledWith('payload')
 
     cleanup()

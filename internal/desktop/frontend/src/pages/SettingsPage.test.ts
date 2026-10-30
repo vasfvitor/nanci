@@ -274,6 +274,34 @@ describe('SettingsPage', () => {
     vi.unstubAllGlobals()
   })
 
+  it('asks to restore a maximised window before nudging it', async () => {
+    vi.mocked(desktopRuntime.windowIsMaximised).mockResolvedValueOnce(true)
+    const wrapper = shallowMount(SettingsPage, {
+      global: {
+        stubs: {
+          'q-btn': {
+            props: ['label'],
+            emits: ['click'],
+            template: `<button @click="$emit('click')">{{ label }}</button>`,
+          },
+        },
+        directives: { ripple: {} },
+      },
+    })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Reajustar janela')
+    if (!button) throw new Error('no Reajustar janela button')
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(desktopRuntime.windowSetSize).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith({
+      type: 'info',
+      message: 'A janela está maximizada. Restaure o tamanho dela e tente de novo.',
+    })
+  })
+
   it('shows the WebView2 runtime, the display scale and the monitor count', async () => {
     Object.defineProperty(window, 'devicePixelRatio', { value: 1.25, configurable: true })
     const wrapper = shallowMount(SettingsPage, {

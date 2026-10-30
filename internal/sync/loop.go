@@ -211,12 +211,19 @@ func (e *syncFailure) Unwrap() error {
 	return e.err
 }
 
+// classifySyncError maps the error that ended a run to its status, stop
+// reason and error code. A cancelled context interrupts the run wherever it
+// lands: a write it made fail comes back inside a syncFailure, and the
+// cursor stays at the last committed item.
 func classifySyncError(err error) (syncstate.SyncStatus, syncstate.SyncStopReason, string, string) {
+	if errors.Is(err, context.Canceled) {
+		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
+	}
 	var syncErr *syncFailure
 	if errors.As(err, &syncErr) {
 		return syncErr.status, syncErr.stopReason, syncErr.code, syncErr.err.Error()
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return syncstate.SyncStatusInterrupted, syncstate.SyncStopReasonContextCanceled, "context_canceled", err.Error()
 	}
 	return syncstate.SyncStatusFailed, syncstate.SyncStopReasonProcessError, "process_error", err.Error()
@@ -313,6 +320,18 @@ func (s *SyncService) processBatch(ctx context.Context, company *company.Company
 		runState.maxNSU = &maxNSU
 	}
 
+	// The wait the source imposes holds whatever happens to the items, so it
+	// is recorded first and outside the caller's context: a cancel while the
+	// batch is processed must not let the next sync query too early.
+	if batch.WaitUntil != nil {
+		waitCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		err := s.store.SetBlockedUntil(waitCtx, company.ID, s.source.Kind(), company.Environment, *batch.WaitUntil, batch.StopReason)
+		cancel()
+		if err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to record source wait: %w", err))
+		}
+	}
+
 	processedAny := false
 	for _, item := range batch.Items {
 		if item.NSU <= cursor {
@@ -343,12 +362,6 @@ func (s *SyncService) processBatch(ctx context.Context, company *company.Company
 	if needsCheckpoint {
 		if err := s.store.PersistProgress(ctx, s.progressParams(company, runState)); err != nil {
 			return Batch{}, persistFailure(fmt.Errorf("failed to persist batch checkpoint: %w", err))
-		}
-	}
-
-	if batch.WaitUntil != nil {
-		if err := s.store.SetBlockedUntil(ctx, company.ID, s.source.Kind(), company.Environment, *batch.WaitUntil, batch.StopReason); err != nil {
-			return Batch{}, persistFailure(fmt.Errorf("failed to record source wait: %w", err))
 		}
 	}
 

@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useNFeDocumentsStore } from './nfeDocuments'
 import { useWorkspaceStore } from './workspace'
 import type { NFeRow } from '@/types/desktop'
-import { mapNFeRow } from '@/platform/wails/client'
+import { makeNFeRow } from '@/test/fixtures'
 
 function nfeRow(chave: string, overrides: Partial<NFeRow> = {}): NFeRow {
-  return mapNFeRow({
+  return makeNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,

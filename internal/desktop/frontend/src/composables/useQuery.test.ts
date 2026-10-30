@@ -119,10 +119,13 @@ describe('useQuery', () => {
     query.form.value = { chave: '2'.repeat(50) }
 
     await expect(query.runQuery()).resolves.toBe('{"events":[]}')
-    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({
-      CompanyCNPJ: '123',
-      ChaveAcesso: '2'.repeat(50),
-    })
+    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith(
+      {
+        CompanyCNPJ: '123',
+        ChaveAcesso: '2'.repeat(50),
+      },
+      expect.any(AbortSignal)
+    )
   })
 
   it('queries a chave with an alphanumeric CNPJ, upper-cased', async () => {
@@ -134,10 +137,13 @@ describe('useQuery', () => {
     query.form.value = { chave: ` ${chave.toLowerCase()} ` }
 
     await expect(query.runQuery()).resolves.toBe('{}')
-    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith({
-      CompanyCNPJ: '123',
-      ChaveAcesso: chave,
-    })
+    expect(desktopClient.queryNFSeEvents).toHaveBeenCalledWith(
+      {
+        CompanyCNPJ: '123',
+        ChaveAcesso: chave,
+      },
+      expect.any(AbortSignal)
+    )
   })
 
   it('rejects letters outside the inscrição federal before calling Wails', async () => {
@@ -228,5 +234,26 @@ describe('useQuery', () => {
     resolveQuery('{"ok":true}')
     await expect(pending).resolves.toBe('{"ok":true}')
     expect(second.loading.value).toBe(false)
+  })
+
+  it('cancels a pending query from a second composable instance', async () => {
+    vi.mocked(desktopClient.queryNFSeEvents).mockImplementation(
+      (_input, signal) =>
+        new Promise<string>((_resolve, reject) => {
+          signal?.addEventListener('abort', () => reject(new Error('cancelada')))
+        })
+    )
+
+    const first = useQuery()
+    useWorkspaceStore().cnpj = '123'
+    first.form.value = { chave: '1'.repeat(50) }
+    const pending = first.runQuery()
+
+    const second = useQuery()
+    second.cancelQuery()
+
+    await expect(pending).rejects.toThrow('cancelada')
+    expect(second.loading.value).toBe(false)
+    expect(second.result.value).toBe('')
   })
 })

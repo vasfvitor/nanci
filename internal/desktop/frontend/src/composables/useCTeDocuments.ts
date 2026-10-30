@@ -72,12 +72,16 @@ export function useCTeDocuments() {
   const idleWarning = computed(() => idleWarningText(status.value))
 
   const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'cte'))
+  const canCancelSync = computed(
+    () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'cte')
+  )
   const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
 
   const { syncBlockedUntil, blockedText } = useSefazBlock(status)
 
-  // syncCTe runs one distribution pull. The in-flight marker lives in the
-  // companySync store so the button stays busy after navigating away and back.
+  // syncCTe runs one distribution pull. The in-flight marker and the
+  // controller cancelSync aborts live in the companySync store, so the button
+  // stays busy, and the pull cancellable, after navigating away and back.
   async function syncCTe() {
     const companyCNPJ = cnpj.value
     if (
@@ -89,10 +93,16 @@ export function useCTeDocuments() {
     }
 
     try {
-      return await syncStore.runSync(companyCNPJ, 'cte', () => desktopClient.pullCTe(companyCNPJ))
+      return await syncStore.runCancellableSync(companyCNPJ, 'cte', (signal) =>
+        desktopClient.pullCTe(companyCNPJ, signal)
+      )
     } finally {
       await refresh(companyCNPJ)
     }
+  }
+
+  function cancelSync() {
+    if (cnpj.value) syncStore.cancelSync(cnpj.value, 'cte')
   }
 
   // syncBusy is true without a company, while a pull, import or fetch of the
@@ -203,12 +213,14 @@ export function useCTeDocuments() {
     statusLine,
     idleWarning,
     isSyncing,
+    canCancelSync,
     isResetting,
     syncBlockedUntil,
     blockedText,
     search,
     loadStatus,
     syncCTe,
+    cancelSync,
     importXML,
     previewReset,
     resetCTe,

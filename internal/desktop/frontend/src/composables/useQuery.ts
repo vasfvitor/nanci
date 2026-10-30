@@ -91,18 +91,24 @@ export function useQuery() {
     const companyCNPJ = cnpj.value
     if (!companyCNPJ || !isChaveNFSe(chaveVal)) return ''
 
-    loading.value = true
     queryStore.clearResult()
+    const signal = queryStore.startQuery()
     try {
       const input = {
         CompanyCNPJ: companyCNPJ,
         ChaveAcesso: chaveVal,
       }
-      result.value = await desktopClient.queryNFSeEvents(input)
+      result.value = await desktopClient.queryNFSeEvents(input, signal)
       return result.value
     } finally {
-      loading.value = false
+      queryStore.finishQuery()
     }
+  }
+
+  // cancelQuery cancels the running query; runQuery then rejects with the
+  // canceled code.
+  function cancelQuery() {
+    queryStore.cancelQuery()
   }
 
   return {
@@ -113,5 +119,6 @@ export function useQuery() {
     documentOptions,
     filterDocuments,
     runQuery,
+    cancelQuery,
   }
 }
