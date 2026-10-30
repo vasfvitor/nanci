@@ -1,3 +1,8 @@
 build/bin
 node_modules
 frontend/dist
+bin
+.task
+*.syso
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+build/darwin/icons.icns

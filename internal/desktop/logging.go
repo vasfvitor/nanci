@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
 )
@@ -232,17 +230,15 @@ func newDesktopLogEvent(record slog.Record) desktopLogEvent {
 	}
 }
 
-func newDesktopLogger(ctx context.Context, level slog.Leveler, basePath string) (*slog.Logger, *rotatingFileWriter, error) {
+// newDesktopLogger writes to the rotating log at basePath and hands every
+// record to emit, which sends it to the console in the frontend.
+func newDesktopLogger(emit func(event desktopLogEvent), level slog.Leveler, basePath string) (*slog.Logger, *rotatingFileWriter, error) {
 	writer, err := newRotatingFileWriter(basePath, logFileMaxBytes, logFileMaxBackups)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	handler := newDesktopLogHandler(writer, level, func(event desktopLogEvent) {
-		if ctx != nil {
-			runtime.EventsEmit(ctx, "backend-log", event)
-		}
-	})
+	handler := newDesktopLogHandler(writer, level, emit)
 
 	return slog.New(handler), writer, nil
 }

@@ -1,17 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
-// formatError is the Wails ErrorFormatter: every error a bound method returns
-// reaches the frontend as the payload built here. platform/wails/client.ts
-// reads Code into WailsClientError.code. A blocked source error already names
-// the time the source may be queried again.
-func formatError(err error) any {
+// formatError builds the payload every error a bound method returns reaches
+// the frontend with. platform/wails/client/base.ts reads Code into
+// WailsClientError.code. A blocked source error already names the time the
+// source may be queried again.
+func formatError(err error) desktopapi.ErrorPayload {
 	payload := desktopapi.ErrorPayload{Message: err.Error()}
 	switch {
 	case errors.Is(err, app.ErrOperationCanceled):
@@ -24,4 +25,14 @@ func formatError(err error) any {
 		payload.Code = "startup_failed"
 	}
 	return payload
+}
+
+// marshalError is the Wails Options.MarshalError hook. Wails puts the JSON it
+// returns in the cause field of the rejected call, next to message and kind.
+func marshalError(err error) []byte {
+	data, jsonErr := json.Marshal(formatError(err))
+	if jsonErr != nil {
+		return nil
+	}
+	return data
 }

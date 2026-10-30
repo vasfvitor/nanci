@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"sync/atomic"
 )
 
@@ -19,12 +18,14 @@ func (a *App) trackPull() (done func()) {
 	return func() { a.guard.pulls.Add(-1) }
 }
 
-// beforeClose runs for every close: the title-bar X, the menu "Sair" and the
-// OS close. Returning true keeps the window open. During a sync it asks the
-// frontend to confirm through the app:before-close event, which carries the
-// number of syncs in flight. On Windows it runs on the UI thread, so the
-// event is sent from a goroutine and nothing here waits.
-func (a *App) beforeClose(ctx context.Context) bool {
+// beforeClose runs for every close: the title-bar X, Ctrl+Q and the menu
+// "Sair" reach it through Options.ShouldQuit, the OS close through the
+// window's WindowClosing hook (main.go). Returning true keeps the window
+// open. During a sync it asks the frontend to confirm through the
+// app:before-close event, which carries the number of syncs in flight.
+// ShouldQuit runs on the UI thread, so the event is sent from a goroutine
+// and nothing here waits.
+func (a *App) beforeClose() bool {
 	if a.guard.allow.Load() {
 		return false
 	}
@@ -32,12 +33,12 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	if pulls == 0 {
 		return false
 	}
-	go a.events.Emit(ctx, "app:before-close", int(pulls))
+	go a.events.Emit("app:before-close", int(pulls))
 	return true
 }
 
 // ConfirmQuit closes the app after the user chose to leave during a sync.
 func (a *App) ConfirmQuit() {
 	a.guard.allow.Store(true)
-	a.quit(a.ctx)
+	a.quit()
 }

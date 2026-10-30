@@ -1,0 +1,44 @@
+# Wails v3 project configuration for Nanci Desktop.
+# After changing `info`, run `wails3 task common:update:build-assets` to
+# regenerate build/windows/info.json, the manifest, build/windows/nsis/wails_tools.nsh
+# and the darwin plists. That task also writes ios/ and linux/ assets, which
+# this Windows-only app does not keep: delete them afterwards.
+version: '3'
+
+info:
+  companyName: "Nanci"
+  productName: "Nanci Desktop"
+  productIdentifier: "com.wails.nanci-desktop"
+  # FileDescription of the exe: the name Task Manager shows for the process.
+  description: "Nanci Desktop"
+  copyright: "© 2026 Contribuidores do Nanci"
+  comments: "Baixa NFS-e, NF-e e CT-e com certificado A1."
+  # The release workflow writes the tag version here before building.
+  version: "0.0.0"
+
+dev_mode:
+  root_path: .
+  log_level: warn
+  debounce: 1000
+  ignore:
+    dir:
+      - .git
+      - node_modules
+      - frontend
+      - bin
+    file:
+      - .DS_Store
+      - .gitignore
+      - .gitkeep
+      - "*_test.go"
+    watched_extension:
+      - "*.go"
+    git_ignore: true
+  executes:
+    - cmd: wails3 build DEV=true
+      type: blocking
+    - cmd: wails3 task common:dev:frontend
+      type: background
+    - cmd: wails3 task run
+      type: primary
+      exit_policy: shutdown

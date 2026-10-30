@@ -323,11 +323,7 @@ func TestSyncErrorsReachFormatError(t *testing.T) {
 				if got != nil && !reflect.ValueOf(got).IsZero() {
 					t.Errorf("result = %+v, want zero", got)
 				}
-				payload, ok := formatError(err).(desktopapi.ErrorPayload)
-				if !ok {
-					t.Fatalf("formatError returned %T", formatError(err))
-				}
-				if payload.Code != e.code || payload.Message != e.err.Error() {
+				if payload := formatError(err); payload.Code != e.code || payload.Message != e.err.Error() {
 					t.Errorf("payload = %+v, want code %q and message %q", payload, e.code, e.err.Error())
 				}
 			})

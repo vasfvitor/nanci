@@ -113,7 +113,7 @@ type fakeEvents struct {
 	emitted chan call
 }
 
-func (f *fakeEvents) Emit(_ context.Context, name string, data ...any) {
+func (f *fakeEvents) Emit(name string, data ...any) {
 	f.emitted <- call{method: name, args: data}
 }
 
