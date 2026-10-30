@@ -39,7 +39,7 @@ Em **Empresas**, clique em **Adicionar** e informe CNPJ, nome e certificado. Pre
 
 ## Sincronizar
 
-Escolha a empresa no menu lateral, abra **NFS-e**, **NF-e** ou **CT-e** e clique em **Sincronizar**. A senha do certificado é pedida uma vez e fica guardada no Windows.
+Escolha a empresa no menu lateral, abra **NFS-e**, **NF-e** ou **CT-e** e clique em **Sincronizar**. A senha do certificado é pedida uma vez e fica guardada no Windows. Para interromper, clique em **Cancelar** ao lado do botão; a próxima sincronização continua de onde esta parou.
 
 Na **NFS-e**, o botão **Sincronizar NFS-e** traz a marca **Primeira sincronização** até a empresa sincronizar pela primeira vez.
 
