@@ -2,12 +2,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useDocuments } from './useDocuments'
-import { desktopClient, mapDocumentRow } from '@/platform/wails/client'
+import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useDocumentsStore } from '@/stores/documents'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CompanySummary, DocumentRow, ExportResult, PullResult } from '@/types/desktop'
-import { deferred } from '@/test/fixtures'
+import { deferred, makeDocumentRow } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/platform/wails/client')>()),
@@ -24,7 +24,7 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
 }))
 
 function documentRow(chave: string, fields: Partial<DocumentRow> = {}): DocumentRow {
-  return mapDocumentRow({
+  return makeDocumentRow({
     ChaveAcesso: chave,
     NFSeNumber: '1',
     PrestadorCNPJ: '11222333000181',

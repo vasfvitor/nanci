@@ -1,3 +1,4 @@
+import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ConnectionTestResult,
   ExportResult,
@@ -72,15 +73,10 @@ export function asString(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
 
-export function asNumber(value: unknown) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0
-}
-
-export function asBoolean(value: unknown) {
-  return typeof value === 'boolean' ? value : false
-}
-
-export function asNullableNumber(value: unknown) {
+// asNullableNumber, asStringArray, asArray and asDate read the fields of the
+// generated models that may be null: a Go pointer or a nil slice. They also
+// check the value at runtime, so a malformed payload still yields a usable row.
+export function asNullableNumber(value: number | null | undefined) {
   if (value === null || value === undefined) return null
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
@@ -89,19 +85,18 @@ export function asRawRecord(value: unknown): RawRecord {
   return value && typeof value === 'object' ? (value as RawRecord) : {}
 }
 
-export function asStringArray(value: unknown) {
+export function asStringArray(value: string[] | null | undefined) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : []
 }
 
-export function asArray(value: unknown): unknown[] {
+export function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : []
 }
 
-export function asDate(value: unknown): ISODateValue {
-  if (typeof value === 'string' || value instanceof Date) return value
-  return null
+export function asDate(value: string | null | undefined): ISODateValue {
+  return typeof value === 'string' ? value : null
 }
 
 // asEnum keeps only known values. An unknown fiscal state becomes '' so the UI
@@ -129,47 +124,45 @@ export function fileTimestamp(now = new Date()) {
   return `${y}_${m}_${d}_${h}${min}${s}`
 }
 
-export function mapExportResult(raw: unknown): ExportResult {
-  const item = asRawRecord(raw)
+export function mapExportResult(item: desktopapi.ExportResult): ExportResult {
   return {
-    OutPath: asString(item['OutPath']),
-    Format: asString(item['Format']) as ExportResult['Format'],
-    Incremental: asBoolean(item['Incremental']),
-    ExportedCount: asNumber(item['ExportedCount']),
+    OutPath: item.OutPath,
+    Format: item.Format as ExportResult['Format'],
+    Incremental: item.Incremental,
+    ExportedCount: item.ExportedCount,
   }
 }
 
-function mapImportedFile(raw: unknown): ImportedFile {
-  const item = asRawRecord(raw)
+function mapImportedFile(item: desktopapi.ImportedFile): ImportedFile {
   return {
-    Path: asString(item['Path']),
-    Kind: asEnum(item['Kind'], importKinds),
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    Outcome: asEnum(item['Outcome'], importOutcomes),
-    Message: asString(item['Message']),
+    Path: item.Path,
+    Kind: asEnum(item.Kind, importKinds),
+    ChaveAcesso: item.ChaveAcesso,
+    Outcome: asEnum(item.Outcome, importOutcomes),
+    Message: item.Message,
   }
 }
 
-export function mapImportXMLResult(raw: unknown): ImportXMLResult {
-  const item = asRawRecord(raw)
+export function mapImportXMLResult(item: desktopapi.ImportXMLResult): ImportXMLResult {
   return {
-    Files: asArray(item['Files']).map(mapImportedFile),
-    Imported: asNumber(item['Imported']),
-    Updated: asNumber(item['Updated']),
-    Rejected: asNumber(item['Rejected']),
+    Files: asArray(item.Files).map(mapImportedFile),
+    Imported: item.Imported,
+    Updated: item.Updated,
+    Rejected: item.Rejected,
   }
 }
 
-export function mapConnectionTestResult(raw: unknown): ConnectionTestResult {
-  const item = asRawRecord(raw)
+export function mapConnectionTestResult(
+  item: desktopapi.ConnectionTestResult
+): ConnectionTestResult {
   return {
-    certLoaded: asBoolean(item['certLoaded']),
-    certSubject: asString(item['certSubject']),
-    certExpiration: asString(item['certExpiration']),
-    mtlsAccepted: asBoolean(item['mtlsAccepted']),
-    endpointReached: asBoolean(item['endpointReached']),
-    responseCode: asString(item['responseCode']),
-    responseDetail: asString(item['responseDetail']),
-    statusExplanation: asString(item['statusExplanation']),
+    certLoaded: item.certLoaded,
+    certSubject: item.certSubject,
+    certExpiration: item.certExpiration,
+    mtlsAccepted: item.mtlsAccepted,
+    endpointReached: item.endpointReached,
+    responseCode: item.responseCode,
+    responseDetail: item.responseDetail,
+    statusExplanation: item.statusExplanation,
   }
 }

@@ -1,11 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeManifestacao } from './useNFeManifestacao'
-import { desktopClient, mapNFeRow } from '@/platform/wails/client'
+import { desktopClient } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { NFeCienciaPlan, NFeEventBatchResult, NFeEventResult, NFeRow } from '@/types/desktop'
-import { deferred } from '@/test/fixtures'
+import { deferred, makeNFeRow } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/platform/wails/client')>()),
@@ -20,7 +20,7 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
 }))
 
 function nfeRow(chave: string): NFeRow {
-  return mapNFeRow({
+  return makeNFeRow({
     ID: `rel-${chave}`,
     DocumentID: `doc-${chave}`,
     ChaveAcesso: chave,

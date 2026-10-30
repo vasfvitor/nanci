@@ -2,7 +2,6 @@ import { afterEach, beforeEach, expect, vi } from 'vitest'
 import {
   desktopClient,
   errorMessage,
-  mapBuildInfo,
   mapCompanySummary,
   mapCredentialSummary,
   mapCTeEvent,
@@ -62,6 +61,7 @@ import {
   StatusNFe,
   TestCTeConnection,
 } from '../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
+import type * as desktopapi from '../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 
 vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () => ({
   AddCompany: vi.fn(),
@@ -139,12 +139,13 @@ describe('desktop client mappers', () => {
       LastRunStatus: 'completed',
       LastRunStopReason: 'empty_limit',
       UF: 'SP',
-    })
+    } as unknown as desktopapi.CompanySummary)
 
     expect(company.ID).toBe('company-1')
     expect(company.UF).toBe('SP')
-    expect(mapCompanySummary({ ID: 'company-2' }).UF).toBe('')
-    expect(mapCompanySummary({ ID: 'company-2' }).LastSyncAt).toBeNull()
+    expect(
+      mapCompanySummary({ ID: 'company-2' } as unknown as desktopapi.CompanySummary).LastSyncAt
+    ).toBeNull()
     expect(company.LastSyncAt).toBeNull()
     expect(company.LastFoundNSU).toBe(55)
     expect(company.SyncStartPolicy).toBe('since_date')
@@ -160,7 +161,7 @@ describe('desktop client mappers', () => {
       OwnerCNPJ: '123',
       NotAfter: '2027-01-01T00:00:00Z',
       InspectedAt: null,
-    })
+    } as unknown as desktopapi.CredentialSummary)
 
     expect(credential.ID).toBe('cred-1')
     expect(credential.OwnerCNPJ).toBe('123')
@@ -181,7 +182,7 @@ describe('desktop client mappers', () => {
       VisibilityReason: 'exact_tomador',
       FirstSyncedAt: '2026-01-02T03:04:05Z',
       ParseWarnings: ['warn'],
-    })
+    } as unknown as desktopapi.DocumentRow)
 
     expect(row.ID).toBe('canonical-doc')
     expect(row.DocumentID).toBe('doc-1')
@@ -197,7 +198,9 @@ describe('desktop client mappers', () => {
   })
 
   it('maps document events', () => {
-    expect(mapDocumentEvent({ ID: 'evt-1', Type: 'cancelamento' })).toMatchObject({
+    expect(
+      mapDocumentEvent({ ID: 'evt-1', Type: 'cancelamento' } as unknown as desktopapi.DocumentEvent)
+    ).toMatchObject({
       ID: 'evt-1',
       Type: 'cancelamento',
     })
@@ -241,25 +244,19 @@ describe('desktop client calls', () => {
     expect(MarkDocumentsViewed).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: ['chave-1'] })
   })
 
-  it('maps the build info and defaults a missing WebView2 version', async () => {
+  it('maps the build info', async () => {
     vi.mocked(GetBuildInfo).mockResolvedValue({
       version: 'v1.2.3',
       commit: 'abc1234',
       date: '2026-10-17',
       webview2Version: '141.0.3537.71',
-    } as never)
+    })
 
     await expect(desktopClient.getBuildInfo()).resolves.toEqual({
       version: 'v1.2.3',
       commit: 'abc1234',
       date: '2026-10-17',
       webview2Version: '141.0.3537.71',
-    })
-    expect(mapBuildInfo({ version: 'v1.2.3' })).toEqual({
-      version: 'v1.2.3',
-      commit: '',
-      date: '',
-      webview2Version: '',
     })
   })
 
@@ -272,7 +269,9 @@ describe('desktop client calls', () => {
     vi.mocked(ExportDANFSe).mockResolvedValue({
       OutPath: 'C:\\exports\\danfse.pdf',
       Format: 'danfse',
-    } as never)
+      Incremental: false,
+      ExportedCount: 0,
+    })
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\mock\\save\\path.ext')
 
     await expect(
@@ -335,8 +334,9 @@ describe('desktop client calls', () => {
       vi.mocked(ExportDocuments).mockResolvedValue({
         OutPath: 'C:\\exports\\saida',
         Format: 'csv',
+        Incremental: false,
         ExportedCount: 2,
-      } as never)
+      })
 
       await expect(
         desktopClient.exportDocuments({
@@ -434,7 +434,7 @@ describe('NF-e mappers', () => {
       IPIValue: 5050,
       LayoutVersion: '4.00',
       ParseWarnings: ['aviso'],
-    })
+    } as unknown as desktopapi.NFeRow)
 
     expect(row).toMatchObject({
       ID: 'rel-1',
@@ -460,12 +460,12 @@ describe('NF-e mappers', () => {
     })
     expect(row.ManifestacaoAt).toBeNull()
     expect(row.CienciaDue).toBeNull()
-    expect(mapNFeRow({ ViewedAt: null, ParseWarnings: null })).toMatchObject({
+    expect(
+      mapNFeRow({ ViewedAt: null, ParseWarnings: null } as unknown as desktopapi.NFeRow)
+    ).toMatchObject({
       ViewedAt: null,
       FirstSeenNSU: null,
       ParseWarnings: [],
-      ICMSValue: 0,
-      IPIValue: 0,
     })
   })
 
@@ -475,16 +475,21 @@ describe('NF-e mappers', () => {
       Completeness: 42,
       Manifestacao: 'ciente',
       CompanyRole: 'tomador',
-    })
+    } as unknown as desktopapi.NFeRow)
 
     expect(row.Situacao).toBe('')
     expect(row.Completeness).toBe('')
     expect(row.Manifestacao).toBe('')
     expect(row.CompanyRole).toBe('')
-    expect(mapNFeStatus({ BlockedReason: 'sem_documentos' }).BlockedReason).toBe('')
-    expect(mapNFeEventBatchResult({ Results: [{ Status: 'registered' }] }).Results[0]?.Status).toBe(
-      ''
-    )
+    expect(
+      mapNFeStatus({ BlockedReason: 'sem_documentos' } as unknown as desktopapi.NFeStatusResult)
+        .BlockedReason
+    ).toBe('')
+    expect(
+      mapNFeEventBatchResult({
+        Results: [{ Status: 'registered' }],
+      } as unknown as desktopapi.NFeEventBatchResult).Results[0]?.Status
+    ).toBe('')
   })
 
   it('maps flat pending rows with their deadline fields', () => {
@@ -499,7 +504,7 @@ describe('NF-e mappers', () => {
       CienciaOverdue: true,
       CienciaBlockReason: '',
       ConclusiveBlockReason: '',
-    })
+    } as unknown as desktopapi.NFePendingRow)
 
     expect(pending).toMatchObject({
       ID: 'rel-1',
@@ -512,9 +517,9 @@ describe('NF-e mappers', () => {
       CienciaOverdue: true,
       CienciaBlockReason: '',
     })
-    expect(mapNFePendingRow({ Kind: 'outro' }).Kind).toBe('')
-    expect(mapNFePendingRow({}).DaysLeft).toBeNull()
-    expect(mapNFePendingRow({}).CienciaDaysLeft).toBeNull()
+    expect(mapNFePendingRow({ Kind: 'outro' } as unknown as desktopapi.NFePendingRow).Kind).toBe('')
+    expect(mapNFePendingRow({} as unknown as desktopapi.NFePendingRow).DaysLeft).toBeNull()
+    expect(mapNFePendingRow({} as unknown as desktopapi.NFePendingRow).CienciaDaysLeft).toBeNull()
   })
 
   it('maps events, batch results, plans, status, and pull results', () => {
@@ -528,7 +533,7 @@ describe('NF-e mappers', () => {
         Completeness: 'completa',
         Registered: true,
         SentByNanci: true,
-      })
+      } as unknown as desktopapi.NFeEvent)
     ).toMatchObject({
       ID: 'evt-1',
       TpEvento: '210210',
@@ -542,7 +547,17 @@ describe('NF-e mappers', () => {
 
     expect(
       mapNFeEventBatchResult({
-        Results: [{ ChaveAcesso: chave, TpEvento: '210210', Status: 'rejeitada', CStat: '596' }],
+        Results: [
+          {
+            ChaveAcesso: chave,
+            TpEvento: '210210',
+            Status: 'rejeitada',
+            CStat: '596',
+            XMotivo: '',
+            Protocolo: '',
+            RegisteredAt: null,
+          },
+        ],
         Skipped: [{ ChaveAcesso: 'x', Reason: 'emitente' }],
         Interrupted: '',
       })
@@ -561,7 +576,12 @@ describe('NF-e mappers', () => {
       Skipped: [{ ChaveAcesso: 'x', Reason: 'emitente' }],
       Interrupted: '',
     })
-    expect(mapNFeEventBatchResult({ Results: null, Skipped: null })).toMatchObject({
+    expect(
+      mapNFeEventBatchResult({
+        Results: null,
+        Skipped: null,
+      } as unknown as desktopapi.NFeEventBatchResult)
+    ).toMatchObject({
       Results: [],
       Skipped: [],
     })
@@ -569,7 +589,7 @@ describe('NF-e mappers', () => {
     const plan = mapNFeCienciaPlan({
       Eligible: [{ ChaveAcesso: chave, TotalValue: 100, Numero: '12345' }],
       Skipped: [{ ChaveAcesso: 'y', Reason: 'já possui manifestação' }],
-    })
+    } as unknown as desktopapi.NFeCienciaPlan)
     expect(plan.Eligible).toHaveLength(1)
     expect(plan.Eligible[0]).toMatchObject({ ChaveAcesso: chave, TotalValue: 100, Numero: '12345' })
     expect(plan.Skipped).toEqual([{ ChaveAcesso: 'y', Reason: 'já possui manifestação' }])
@@ -583,7 +603,7 @@ describe('NF-e mappers', () => {
       PendingCiencia: 4,
       PendingConclusiva: 2,
       IdleDays: 47,
-    })
+    } as unknown as desktopapi.NFeStatusResult)
     expect(status).toMatchObject({
       TpAmb: '2',
       LastNSU: 10,
@@ -594,13 +614,19 @@ describe('NF-e mappers', () => {
       PendingConclusiva: 2,
       IdleDays: 47,
     })
-    expect(mapNFeStatus({ MaxNSU: 99 }).MaxNSU).toBe(99)
-    expect(mapNFeStatus({})).toMatchObject({ IdleDays: 0 })
+    expect(mapNFeStatus({ MaxNSU: 99 } as unknown as desktopapi.NFeStatusResult).MaxNSU).toBe(99)
 
     expect(
-      mapPullNFeResult({ LastNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
+      mapPullNFeResult({
+        LastNSU: 5,
+        MaxNSU: 9,
+        ResumosSaved: 3,
+        NextAllowedAt: null,
+      } as unknown as desktopapi.PullNFeResult)
     ).toMatchObject({ LastNSU: 5, MaxNSU: 9, ResumosSaved: 3, NextAllowedAt: null })
-    expect(mapPullNFeResult({ MaxNSU: null }).MaxNSU).toBeNull()
+    expect(
+      mapPullNFeResult({ MaxNSU: null } as unknown as desktopapi.PullNFeResult).MaxNSU
+    ).toBeNull()
   })
 })
 
@@ -612,7 +638,15 @@ describe('NF-e client calls', () => {
   it('passes the Wails DTOs for NF-e calls', async () => {
     vi.mocked(PullNFe).mockResolvedValue({ CNPJ: '123', ResumosSaved: 2 } as never)
     vi.mocked(StatusNFe).mockResolvedValue({ CNPJ: '123' } as never)
-    vi.mocked(ResetNFe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
+    vi.mocked(ResetNFe).mockResolvedValue({
+      CompanyName: '',
+      CNPJ: '123',
+      CompanyDocuments: 3,
+      Documents: 0,
+      Events: 0,
+      ExportMarks: 0,
+      ManifestacoesKept: 0,
+    })
     vi.mocked(ListNFe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
     vi.mocked(ListNFeEvents).mockResolvedValue(null as never)
     vi.mocked(ListNFePendingManifestacoes).mockResolvedValue([{ ChaveAcesso: chave }] as never)
@@ -699,12 +733,18 @@ describe('NF-e client calls', () => {
 
   it('exports the NF-e XML and DANFE of a row to the path chosen in the save dialog', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
-    vi.mocked(ExportNFeXML).mockResolvedValue({ OutPath: 'C:\\out\\file', Format: 'xml' } as never)
+    vi.mocked(ExportNFeXML).mockResolvedValue({
+      OutPath: 'C:\\out\\file',
+      Format: 'xml',
+      Incremental: false,
+      ExportedCount: 0,
+    })
     vi.mocked(ExportDANFE).mockResolvedValue({
       OutPath: 'C:\\out\\file',
       Format: 'danfe',
+      Incremental: false,
       ExportedCount: 1,
-    } as never)
+    })
 
     const xml = await desktopClient.exportNFeXML({ CNPJ: '123', ChaveAcesso: chave })
     const danfe = await desktopClient.exportDANFE({ CNPJ: '123', ChaveAcesso: chave })
@@ -781,9 +821,10 @@ describe('NF-e client calls', () => {
       vi.mocked(ExportNFeDocuments).mockResolvedValue({
         OutPath: 'C:\\out\\file',
         Format: 'xml',
+        Incremental: false,
         ExportedCount: 3,
         SkippedResumos: 2,
-      } as never)
+      })
 
       await expect(
         desktopClient.exportNFeDocuments({
@@ -844,6 +885,7 @@ describe('NF-e client calls', () => {
 
 describe('CT-e mappers', () => {
   const cteChave = '35240911111111000111570010000000011000000011'
+  const noMunicipio = { Codigo: '', Nome: '', UF: '' }
 
   it('keeps cents, arrays, municípios, nullable fields, and known enum values of a row', () => {
     const row = mapCTeRow({
@@ -857,6 +899,7 @@ describe('CT-e mappers', () => {
       TpServ: '2',
       Modal: '01',
       MunIni: { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' },
+      MunFim: noMunicipio,
       TomadorCNPJ: '22222222000122',
       TomadorIE: '123',
       TomadorUF: 'SP',
@@ -871,7 +914,7 @@ describe('CT-e mappers', () => {
       FirstSeenNSU: 42,
       ViewedAt: '2024-09-02T08:00:00Z',
       EventCount: 3,
-    })
+    } as unknown as desktopapi.CTeRow)
 
     expect(row).toMatchObject({
       ID: 'rel-1',
@@ -891,7 +934,6 @@ describe('CT-e mappers', () => {
       TotalValue: 123456,
       ICMSValue: 14815,
       CargaValue: 9990000,
-      ReceivableValue: 0,
       NFeChaves: [chave],
       Situacao: 'cancelada',
       CompanyRole: 'tomador',
@@ -903,9 +945,15 @@ describe('CT-e mappers', () => {
       EventCount: 3,
     })
     expect(
-      mapCTeRow({ NFeChaves: null, Papeis: null, ParseWarnings: null, ViewedAt: null })
+      mapCTeRow({
+        MunIni: noMunicipio,
+        MunFim: noMunicipio,
+        NFeChaves: null,
+        Papeis: null,
+        ParseWarnings: null,
+        ViewedAt: null,
+      } as unknown as desktopapi.CTeRow)
     ).toMatchObject({
-      HasDACTE: false,
       NFeChaves: [],
       Papeis: [],
       ParseWarnings: [],
@@ -920,15 +968,20 @@ describe('CT-e mappers', () => {
       Situacao: 'suspensa',
       CompanyRole: 'transportador',
       Papeis: ['tomador', 'transportador', 42, 'recebedor'],
-    })
+      MunIni: noMunicipio,
+      MunFim: noMunicipio,
+    } as unknown as desktopapi.CTeRow)
 
     expect(row.Modelo).toBe('')
     expect(row.TipoDocumento).toBe('')
     expect(row.Situacao).toBe('')
     expect(row.CompanyRole).toBe('')
     expect(row.Papeis).toEqual(['tomador', 'recebedor'])
-    expect(mapCTeEvent({ Type: 'manifestacao' }).Type).toBe('')
-    expect(mapCTeStatus({ BlockedReason: 'sem_documentos' }).BlockedReason).toBe('')
+    expect(mapCTeEvent({ Type: 'manifestacao' } as unknown as desktopapi.CTeEvent).Type).toBe('')
+    expect(
+      mapCTeStatus({ BlockedReason: 'sem_documentos' } as unknown as desktopapi.CTeStatusResult)
+        .BlockedReason
+    ).toBe('')
   })
 
   it('maps events, status, pull, and reset results', () => {
@@ -938,10 +991,17 @@ describe('CT-e mappers', () => {
         TpEvento: '110180',
         Type: 'comprovante_entrega',
         NSeqEvento: 1,
-        Protocolo: '135',
-        Observacao: 'entregue',
-        Registered: true,
+        Description: '',
         EventAt: null,
+        RegisteredAt: null,
+        Protocolo: '135',
+        CStat: '',
+        XMotivo: '',
+        AutorCNPJ: '',
+        Justificativa: '',
+        Observacao: 'entregue',
+        Correcao: '',
+        Registered: true,
       })
     ).toEqual({
       ID: 'evt-1',
@@ -974,7 +1034,7 @@ describe('CT-e mappers', () => {
         TotalRemetente: 2,
         TotalOutros: 1,
         IdleDays: 45,
-      })
+      } as unknown as desktopapi.CTeStatusResult)
     ).toMatchObject({
       TpAmb: '1',
       LastNSU: 10,
@@ -990,7 +1050,12 @@ describe('CT-e mappers', () => {
     })
 
     expect(
-      mapPullCTeResult({ LastNSU: 5, MaxNSU: 9, DocumentsSaved: 3, EventsSaved: 1 })
+      mapPullCTeResult({
+        LastNSU: 5,
+        MaxNSU: 9,
+        DocumentsSaved: 3,
+        EventsSaved: 1,
+      } as unknown as desktopapi.PullCTeResult)
     ).toMatchObject({
       LastNSU: 5,
       MaxNSU: 9,
@@ -998,9 +1063,20 @@ describe('CT-e mappers', () => {
       EventsSaved: 1,
       NextAllowedAt: null,
     })
-    expect(mapPullCTeResult({ MaxNSU: null }).MaxNSU).toBeNull()
+    expect(
+      mapPullCTeResult({ MaxNSU: null } as unknown as desktopapi.PullCTeResult).MaxNSU
+    ).toBeNull()
 
-    expect(mapCTeResetResult({ CNPJ: '123', CompanyDocuments: 5, Events: 7 })).toEqual({
+    expect(
+      mapCTeResetResult({
+        CompanyName: '',
+        CNPJ: '123',
+        CompanyDocuments: 5,
+        Documents: 0,
+        Events: 7,
+        ExportMarks: 0,
+      })
+    ).toEqual({
       CompanyName: '',
       CNPJ: '123',
       CompanyDocuments: 5,
@@ -1021,7 +1097,10 @@ describe('CT-e client calls', () => {
   it('passes the Wails DTOs for CT-e calls', async () => {
     vi.mocked(PullCTe).mockResolvedValue({ CNPJ: '123', DocumentsSaved: 2 } as never)
     vi.mocked(StatusCTe).mockResolvedValue({ CNPJ: '123', TotalTomador: 1 } as never)
-    vi.mocked(ListCTe).mockResolvedValue([{ ID: 'rel-1', Situacao: 'autorizada' }] as never)
+    const noMunicipio = { Codigo: '', Nome: '', UF: '' }
+    vi.mocked(ListCTe).mockResolvedValue([
+      { ID: 'rel-1', Situacao: 'autorizada', MunIni: noMunicipio, MunFim: noMunicipio },
+    ] as never)
     vi.mocked(ListCTeEvents).mockResolvedValue(null as never)
     vi.mocked(PreviewResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
     vi.mocked(ResetCTe).mockResolvedValue({ CNPJ: '123', CompanyDocuments: 3 } as never)
@@ -1080,10 +1159,13 @@ describe('CT-e client calls', () => {
     vi.mocked(TestCTeConnection).mockResolvedValue({
       certLoaded: true,
       certSubject: 'ACME',
+      certExpiration: '',
       mtlsAccepted: true,
       endpointReached: true,
+      responseCode: '',
+      responseDetail: '',
       statusExplanation: 'Conexão TLS com a SEFAZ (CT-e) estabelecida.',
-    } as never)
+    })
 
     await expect(desktopClient.testCTeConnection('123')).resolves.toEqual({
       certLoaded: true,
@@ -1100,12 +1182,18 @@ describe('CT-e client calls', () => {
 
   it('exports the CT-e XML and DACTE of a row to the path chosen in the save dialog', async () => {
     vi.mocked(SelectSaveFile).mockResolvedValue('C:\\out\\file')
-    vi.mocked(ExportCTeXML).mockResolvedValue({ OutPath: 'C:\\out\\file', Format: 'xml' } as never)
+    vi.mocked(ExportCTeXML).mockResolvedValue({
+      OutPath: 'C:\\out\\file',
+      Format: 'xml',
+      Incremental: false,
+      ExportedCount: 0,
+    })
     vi.mocked(ExportDACTE).mockResolvedValue({
       OutPath: 'C:\\out\\file',
       Format: 'dacte',
+      Incremental: false,
       ExportedCount: 1,
-    } as never)
+    })
 
     const xml = await desktopClient.exportCTeXML({ CNPJ: '123', ChaveAcesso: cteChave })
     const dacte = await desktopClient.exportDACTE({ CNPJ: '123', ChaveAcesso: cteChave })
@@ -1270,7 +1358,7 @@ describe('import and fetch by chave client calls', () => {
   })
 
   it('imports NF-e and CT-e XML files and maps the result', async () => {
-    const raw = {
+    const raw: desktopapi.ImportXMLResult = {
       Files: [
         {
           Path: 'a.xml',
@@ -1279,13 +1367,20 @@ describe('import and fetch by chave client calls', () => {
           Outcome: 'imported',
           Message: '',
         },
-        { Path: 'b.xml', Kind: 'outro', Outcome: 'rejected', Message: 'XML ilegível' },
+        {
+          Path: 'b.xml',
+          Kind: 'outro',
+          ChaveAcesso: '',
+          Outcome: 'rejected',
+          Message: 'XML ilegível',
+        },
       ],
       Imported: 1,
+      Updated: 0,
       Rejected: 1,
     }
-    vi.mocked(ImportNFeXML).mockResolvedValue(raw as never)
-    vi.mocked(ImportCTeXML).mockResolvedValue({ Files: null } as never)
+    vi.mocked(ImportNFeXML).mockResolvedValue(raw)
+    vi.mocked(ImportCTeXML).mockResolvedValue({ Files: null, Imported: 0, Updated: 0, Rejected: 0 })
 
     await expect(desktopClient.importNFeXML('123', ['a.xml', 'b.xml'])).resolves.toEqual({
       Files: [

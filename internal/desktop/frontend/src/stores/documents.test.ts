@@ -2,11 +2,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect } from 'vitest'
 import { useDocumentsStore } from './documents'
 import { useWorkspaceStore } from './workspace'
-import { mapDocumentRow } from '@/platform/wails/client'
 import type { DocumentRow } from '@/types/desktop'
+import { makeDocumentRow } from '@/test/fixtures'
 
 function documentRow(chave: string, overrides: Partial<DocumentRow> = {}): DocumentRow {
-  return mapDocumentRow({ ID: `doc-${chave}`, ChaveAcesso: chave, Status: 'normal', ...overrides })
+  return makeDocumentRow({ ID: `doc-${chave}`, ChaveAcesso: chave, Status: 'normal', ...overrides })
 }
 
 describe('documents store', () => {

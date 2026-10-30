@@ -3,11 +3,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CTePage from './CTePage.vue'
 import ImportResultDialog from '@/components/ImportResultDialog.vue'
-import { desktopClient, mapCTeRow } from '@/platform/wails/client'
+import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult, ImportXMLResult } from '@/types/desktop'
 import { DOCUMENT_COLUMN_NAMES } from '@/utils/documentColumns'
 import { CTE_EXPORT_FORMATS } from '@/utils/exportFormats'
+import { makeCTeRow } from '@/test/fixtures'
 
 type OkHandler = (payload: unknown) => void
 
@@ -68,7 +69,7 @@ const company = {
 const nfeChave = '35260911222333000181550010000045121418273651'
 const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
 
-const tomada = mapCTeRow({
+const tomada = makeCTeRow({
   ChaveAcesso: '35260811222333000181570010000012341000012345',
   Modelo: '57',
   TipoDocumento: 'cte',
@@ -81,7 +82,7 @@ const tomada = mapCTeRow({
   Situacao: 'autorizada',
   NFeChaves: [nfeChave],
 })
-const servico = mapCTeRow({
+const servico = makeCTeRow({
   ChaveAcesso: '35260811222333000181670010000000561000000567',
   Modelo: '67',
   TipoDocumento: 'cte_os',
@@ -815,8 +816,8 @@ describe('CTePage import', () => {
   })
 
   it('marks an imported CT-e next to its chave', async () => {
-    const imported = mapCTeRow({ ChaveAcesso: 'imp', FirstSeenNSU: null })
-    const distributed = mapCTeRow({ ChaveAcesso: 'dist', FirstSeenNSU: 7 })
+    const imported = makeCTeRow({ ChaveAcesso: 'imp', FirstSeenNSU: null })
+    const distributed = makeCTeRow({ ChaveAcesso: 'dist', FirstSeenNSU: 7 })
     vi.mocked(desktopClient.listCTe).mockResolvedValue([imported, distributed])
     const wrapper = mountPage({
       'q-table': {

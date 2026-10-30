@@ -10,16 +10,16 @@ import {
   SetLogLevel,
   ShowInFolder,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
+import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type { BuildInfo } from '@/types/desktop'
-import { callWails, asString, asStringArray, asRawRecord } from './base'
+import { callWails, asStringArray } from './base'
 
-export function mapBuildInfo(raw: unknown): BuildInfo {
-  const item = asRawRecord(raw)
+export function mapBuildInfo(item: desktopapi.BuildInfo): BuildInfo {
   return {
-    version: asString(item['version']),
-    commit: asString(item['commit']),
-    date: asString(item['date']),
-    webview2Version: asString(item['webview2Version']),
+    version: item.version,
+    commit: item.commit,
+    date: item.date,
+    webview2Version: item.webview2Version,
   }
 }
 

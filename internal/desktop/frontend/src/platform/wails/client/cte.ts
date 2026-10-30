@@ -14,6 +14,7 @@ import {
   StatusCTe,
   TestCTeConnection,
 } from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
+import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ConnectionTestResult,
   CTeBlockedReason,
@@ -39,11 +40,7 @@ import type {
 } from '@/types/desktop'
 import {
   callWails,
-  asString,
-  asNumber,
-  asBoolean,
   asNullableNumber,
-  asRawRecord,
   asStringArray,
   asArray,
   asDate,
@@ -124,163 +121,157 @@ function cteListRequest(input: ListCTeInput) {
   }
 }
 
-function mapCTeExportResult(raw: unknown): CTeExportResult {
+function mapCTeExportResult(item: desktopapi.CTeExportResult): CTeExportResult {
   return {
-    ...mapExportResult(raw),
-    SkippedSemDACTE: asNumber(asRawRecord(raw)['SkippedSemDACTE']),
+    ...mapExportResult(item),
+    SkippedSemDACTE: item.SkippedSemDACTE,
   }
 }
 
-function mapCTeMunicipio(raw: unknown): CTeMunicipio {
-  const item = asRawRecord(raw)
+function mapCTeMunicipio(item: desktopapi.CTeMunicipio): CTeMunicipio {
   return {
-    Codigo: asString(item['Codigo']),
-    Nome: asString(item['Nome']),
-    UF: asString(item['UF']),
+    Codigo: item.Codigo,
+    Nome: item.Nome,
+    UF: item.UF,
   }
 }
 
 // mapCTePapeis keeps the known roles in their order and drops the rest.
-function mapCTePapeis(value: unknown): CTePapel[] {
+function mapCTePapeis(value: string[] | null): CTePapel[] {
   return asArray(value)
     .map((papel) => asEnum(papel, ctePapeis))
     .filter((papel): papel is CTePapel => papel !== '')
 }
 
-export function mapCTeRow(raw: unknown): CTeRow {
-  const item = asRawRecord(raw)
+export function mapCTeRow(item: desktopapi.CTeRow): CTeRow {
   return {
-    ID: asString(item['ID']),
-    DocumentID: asString(item['DocumentID']),
-    ChaveAcesso: asString(item['ChaveAcesso']),
-    TpAmb: asString(item['TpAmb']),
-    Modelo: asEnum(item['Modelo'], cteModelos),
-    TipoDocumento: asEnum(item['TipoDocumento'], cteTiposDocumento),
-    HasDACTE: asBoolean(item['HasDACTE']),
-    Serie: asString(item['Serie']),
-    Numero: asString(item['Numero']),
-    CFOP: asString(item['CFOP']),
-    NatOp: asString(item['NatOp']),
-    IssueDate: asDate(item['IssueDate']),
-    Competence: asString(item['Competence']),
-    AuthorizedAt: asDate(item['AuthorizedAt']),
-    Protocolo: asString(item['Protocolo']),
-    TpCTe: asString(item['TpCTe']),
-    TpServ: asString(item['TpServ']),
-    Modal: asString(item['Modal']),
-    MunIni: mapCTeMunicipio(item['MunIni']),
-    MunFim: mapCTeMunicipio(item['MunFim']),
-    EmitenteCNPJ: asString(item['EmitenteCNPJ']),
-    EmitenteName: asString(item['EmitenteName']),
-    RemetenteCNPJ: asString(item['RemetenteCNPJ']),
-    RemetenteName: asString(item['RemetenteName']),
-    DestinatarioCNPJ: asString(item['DestinatarioCNPJ']),
-    DestinatarioName: asString(item['DestinatarioName']),
-    ExpedidorCNPJ: asString(item['ExpedidorCNPJ']),
-    ExpedidorName: asString(item['ExpedidorName']),
-    RecebedorCNPJ: asString(item['RecebedorCNPJ']),
-    RecebedorName: asString(item['RecebedorName']),
-    TomadorCNPJ: asString(item['TomadorCNPJ']),
-    TomadorName: asString(item['TomadorName']),
-    TomadorIE: asString(item['TomadorIE']),
-    TomadorUF: asString(item['TomadorUF']),
-    TomadorIndicador: asString(item['TomadorIndicador']),
-    TotalValue: asNumber(item['TotalValue']),
-    ReceivableValue: asNumber(item['ReceivableValue']),
-    ICMSValue: asNumber(item['ICMSValue']),
-    TotTribValue: asNumber(item['TotTribValue']),
-    CargaValue: asNumber(item['CargaValue']),
-    ProdutoPredominante: asString(item['ProdutoPredominante']),
-    NFeChaves: asStringArray(item['NFeChaves']),
-    Situacao: asEnum(item['Situacao'], cteSituacoes),
-    CompanyRole: asEnum(item['CompanyRole'], ctePapeis),
-    Papeis: mapCTePapeis(item['Papeis']),
-    VisibilityReason: asString(item['VisibilityReason']),
-    EventCount: asNumber(item['EventCount']),
-    FirstSeenNSU: asNullableNumber(item['FirstSeenNSU']),
-    LastSeenNSU: asNullableNumber(item['LastSeenNSU']),
-    FirstSyncedAt: asDate(item['FirstSyncedAt']),
-    LastSyncedAt: asDate(item['LastSyncedAt']),
-    ViewedAt: asDate(item['ViewedAt']),
-    LayoutVersion: asString(item['LayoutVersion']),
-    ParseWarnings: asStringArray(item['ParseWarnings']),
+    ID: item.ID,
+    DocumentID: item.DocumentID,
+    ChaveAcesso: item.ChaveAcesso,
+    TpAmb: item.TpAmb,
+    Modelo: asEnum(item.Modelo, cteModelos),
+    TipoDocumento: asEnum(item.TipoDocumento, cteTiposDocumento),
+    HasDACTE: item.HasDACTE,
+    Serie: item.Serie,
+    Numero: item.Numero,
+    CFOP: item.CFOP,
+    NatOp: item.NatOp,
+    IssueDate: item.IssueDate,
+    Competence: item.Competence,
+    AuthorizedAt: asDate(item.AuthorizedAt),
+    Protocolo: item.Protocolo,
+    TpCTe: item.TpCTe,
+    TpServ: item.TpServ,
+    Modal: item.Modal,
+    MunIni: mapCTeMunicipio(item.MunIni),
+    MunFim: mapCTeMunicipio(item.MunFim),
+    EmitenteCNPJ: item.EmitenteCNPJ,
+    EmitenteName: item.EmitenteName,
+    RemetenteCNPJ: item.RemetenteCNPJ,
+    RemetenteName: item.RemetenteName,
+    DestinatarioCNPJ: item.DestinatarioCNPJ,
+    DestinatarioName: item.DestinatarioName,
+    ExpedidorCNPJ: item.ExpedidorCNPJ,
+    ExpedidorName: item.ExpedidorName,
+    RecebedorCNPJ: item.RecebedorCNPJ,
+    RecebedorName: item.RecebedorName,
+    TomadorCNPJ: item.TomadorCNPJ,
+    TomadorName: item.TomadorName,
+    TomadorIE: item.TomadorIE,
+    TomadorUF: item.TomadorUF,
+    TomadorIndicador: item.TomadorIndicador,
+    TotalValue: item.TotalValue,
+    ReceivableValue: item.ReceivableValue,
+    ICMSValue: item.ICMSValue,
+    TotTribValue: item.TotTribValue,
+    CargaValue: item.CargaValue,
+    ProdutoPredominante: item.ProdutoPredominante,
+    NFeChaves: asStringArray(item.NFeChaves),
+    Situacao: asEnum(item.Situacao, cteSituacoes),
+    CompanyRole: asEnum(item.CompanyRole, ctePapeis),
+    Papeis: mapCTePapeis(item.Papeis),
+    VisibilityReason: item.VisibilityReason,
+    EventCount: item.EventCount,
+    FirstSeenNSU: asNullableNumber(item.FirstSeenNSU),
+    LastSeenNSU: asNullableNumber(item.LastSeenNSU),
+    FirstSyncedAt: item.FirstSyncedAt,
+    LastSyncedAt: item.LastSyncedAt,
+    ViewedAt: asDate(item.ViewedAt),
+    LayoutVersion: item.LayoutVersion,
+    ParseWarnings: asStringArray(item.ParseWarnings),
   }
 }
 
-export function mapCTeEvent(raw: unknown): CTeEvent {
-  const item = asRawRecord(raw)
+export function mapCTeEvent(item: desktopapi.CTeEvent): CTeEvent {
   return {
-    ID: asString(item['ID']),
-    TpEvento: asString(item['TpEvento']),
-    Type: asEnum(item['Type'], cteEventTypes),
-    NSeqEvento: asNumber(item['NSeqEvento']),
-    Description: asString(item['Description']),
-    EventAt: asDate(item['EventAt']),
-    RegisteredAt: asDate(item['RegisteredAt']),
-    Protocolo: asString(item['Protocolo']),
-    CStat: asString(item['CStat']),
-    XMotivo: asString(item['XMotivo']),
-    AutorCNPJ: asString(item['AutorCNPJ']),
-    Justificativa: asString(item['Justificativa']),
-    Observacao: asString(item['Observacao']),
-    Correcao: asString(item['Correcao']),
-    Registered: asBoolean(item['Registered']),
+    ID: item.ID,
+    TpEvento: item.TpEvento,
+    Type: asEnum(item.Type, cteEventTypes),
+    NSeqEvento: item.NSeqEvento,
+    Description: item.Description,
+    EventAt: asDate(item.EventAt),
+    RegisteredAt: asDate(item.RegisteredAt),
+    Protocolo: item.Protocolo,
+    CStat: item.CStat,
+    XMotivo: item.XMotivo,
+    AutorCNPJ: item.AutorCNPJ,
+    Justificativa: item.Justificativa,
+    Observacao: item.Observacao,
+    Correcao: item.Correcao,
+    Registered: item.Registered,
   }
 }
 
-export function mapCTeStatus(raw: unknown): CTeStatusResult {
-  const item = asRawRecord(raw)
+export function mapCTeStatus(item: desktopapi.CTeStatusResult): CTeStatusResult {
   return {
-    CompanyName: asString(item['CompanyName']),
-    CNPJ: asString(item['CNPJ']),
-    UF: asString(item['UF']),
-    TpAmb: asString(item['TpAmb']),
-    LastNSU: asNumber(item['LastNSU']),
-    MaxNSU: asNullableNumber(item['MaxNSU']),
-    LastSyncAt: asDate(item['LastSyncAt']),
-    LastRunStatus: asString(item['LastRunStatus']),
-    LastRunStopReason: asString(item['LastRunStopReason']),
-    InitialSyncDoneAt: asDate(item['InitialSyncDoneAt']),
-    NextAllowedAt: asDate(item['NextAllowedAt']),
-    BlockedReason: asEnum(item['BlockedReason'], cteBlockedReasons),
-    RequestsLastHour: asNumber(item['RequestsLastHour']),
-    RequestBudget: asNumber(item['RequestBudget']),
-    IdleDays: asNumber(item['IdleDays']),
-    TotalTomador: asNumber(item['TotalTomador']),
-    TotalDestinatario: asNumber(item['TotalDestinatario']),
-    TotalRemetente: asNumber(item['TotalRemetente']),
-    TotalOutros: asNumber(item['TotalOutros']),
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    UF: item.UF,
+    TpAmb: item.TpAmb,
+    LastNSU: item.LastNSU,
+    MaxNSU: asNullableNumber(item.MaxNSU),
+    LastSyncAt: asDate(item.LastSyncAt),
+    LastRunStatus: item.LastRunStatus,
+    LastRunStopReason: item.LastRunStopReason,
+    InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
+    NextAllowedAt: asDate(item.NextAllowedAt),
+    BlockedReason: asEnum(item.BlockedReason, cteBlockedReasons),
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
+    IdleDays: item.IdleDays,
+    TotalTomador: item.TotalTomador,
+    TotalDestinatario: item.TotalDestinatario,
+    TotalRemetente: item.TotalRemetente,
+    TotalOutros: item.TotalOutros,
   }
 }
 
-export function mapPullCTeResult(raw: unknown): PullCTeResult {
-  const item = asRawRecord(raw)
+export function mapPullCTeResult(item: desktopapi.PullCTeResult): PullCTeResult {
   return {
-    CompanyName: asString(item['CompanyName']),
-    CNPJ: asString(item['CNPJ']),
-    Status: asString(item['Status']),
-    StopReason: asString(item['StopReason']),
-    LastNSU: asNumber(item['LastNSU']),
-    MaxNSU: asNullableNumber(item['MaxNSU']),
-    DocumentsSaved: asNumber(item['DocumentsSaved']),
-    EventsSaved: asNumber(item['EventsSaved']),
-    Errors: asNumber(item['Errors']),
-    NextAllowedAt: asDate(item['NextAllowedAt']),
-    RequestsLastHour: asNumber(item['RequestsLastHour']),
-    RequestBudget: asNumber(item['RequestBudget']),
-    Duration: asNumber(item['Duration']),
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    Status: item.Status,
+    StopReason: item.StopReason,
+    LastNSU: item.LastNSU,
+    MaxNSU: asNullableNumber(item.MaxNSU),
+    DocumentsSaved: item.DocumentsSaved,
+    EventsSaved: item.EventsSaved,
+    Errors: item.Errors,
+    NextAllowedAt: asDate(item.NextAllowedAt),
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
+    Duration: item.Duration,
   }
 }
 
-export function mapCTeResetResult(raw: unknown): CTeResetResult {
-  const item = asRawRecord(raw)
+export function mapCTeResetResult(item: desktopapi.CTeResetResult): CTeResetResult {
   return {
-    CompanyName: asString(item['CompanyName']),
-    CNPJ: asString(item['CNPJ']),
-    CompanyDocuments: asNumber(item['CompanyDocuments']),
-    Documents: asNumber(item['Documents']),
-    Events: asNumber(item['Events']),
-    ExportMarks: asNumber(item['ExportMarks']),
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    CompanyDocuments: item.CompanyDocuments,
+    Documents: item.Documents,
+    Events: item.Events,
+    ExportMarks: item.ExportMarks,
   }
 }
 
