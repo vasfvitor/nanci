@@ -1,5 +1,5 @@
 import { Events } from '@wailsio/runtime'
-import type { CertPasswordRequest } from '@/types/desktop'
+import type { CertPasswordRequest, UpdateProgress } from '@/types/desktop'
 
 export type Unsubscribe = () => void
 
@@ -15,6 +15,7 @@ export type DesktopEvents = Fits<
     'request-cert-password': CertPasswordRequest
     'notify-success': string
     'notify-error': string
+    'wails:updater:download-progress': UpdateProgress
   }
 >
 

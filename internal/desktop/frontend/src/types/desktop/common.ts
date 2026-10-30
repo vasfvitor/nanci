@@ -21,6 +21,26 @@ export type BuildInfo = {
   webview2Version: string
 }
 
+// UpdateInfo answers checkForUpdate. enabled is false in a build that does
+// not update itself (a dev build, or one without the public key); version and
+// notes describe the release found when available is true.
+export type UpdateInfo = {
+  enabled: boolean
+  currentVersion: string
+  available: boolean
+  version: string
+  notes: string
+}
+
+// UpdateProgress is the download progress the Wails updater emits, in bytes;
+// total is 0 when the size is unknown.
+export type UpdateProgress = {
+  written: number
+  total: number
+  rate: number
+  provider?: string
+}
+
 export type ConnectionTestResult = {
   certLoaded: boolean
   certSubject: string

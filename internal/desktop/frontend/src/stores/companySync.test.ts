@@ -17,6 +17,17 @@ describe('company sync store', () => {
     expect(secondConsumer.activeSyncs).toEqual({ 'nfse:123': 1 })
   })
 
+  it('says whether any sync runs', () => {
+    const store = useCompanySyncStore()
+    expect(store.anySyncing).toBe(false)
+
+    store.startSync('123', 'nfe')
+    expect(store.anySyncing).toBe(true)
+
+    store.finishSync('123', 'nfe')
+    expect(store.anySyncing).toBe(false)
+  })
+
   it('keeps a company marked as syncing until all matching runs finish', () => {
     const store = useCompanySyncStore()
 

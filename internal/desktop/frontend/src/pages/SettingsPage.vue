@@ -181,6 +181,8 @@
             <div class="col-8 text-mono" data-testid="display-scale">{{ scaleLabel }}</div>
             <div class="col-4 text-weight-bold">Monitores:</div>
             <div class="col-8 text-mono" data-testid="monitors">{{ monitorsLabel }}</div>
+            <div class="col-4 text-weight-bold">Atualizações:</div>
+            <div class="col-8" data-testid="update-status">{{ updateLabel }}</div>
             <div class="col-4 text-weight-bold">Pasta de Dados:</div>
             <div class="col-8 text-mono text-caption ellipsis" :title="dataDir">{{ dataDir }}</div>
           </div>
@@ -210,6 +212,38 @@
                 class="full-width text-body2"
                 @click="openLogsDir"
               />
+            </div>
+            <div v-if="updateStatus !== 'unavailable'" class="col-12">
+              <q-btn
+                v-if="canInstall || installingUpdate"
+                color="primary"
+                icon="system_update"
+                label="Atualizar e reiniciar"
+                class="full-width"
+                data-testid="install-update"
+                :loading="installingUpdate"
+                :disable="updateBlockedNow"
+                @click="installAndRestart"
+              />
+              <q-btn
+                v-else
+                flat
+                bordered
+                dense
+                icon="update"
+                label="Procurar atualizações"
+                class="full-width text-body2"
+                data-testid="check-update"
+                :loading="updateStatus === 'checking'"
+                @click="checkUpdatesNow"
+              />
+              <div
+                v-if="canInstall && updateBlockedNow"
+                class="text-caption text-grey-6 q-mt-xs"
+                data-testid="update-blocked"
+              >
+                {{ updateBlockedBySync }}
+              </div>
             </div>
             <div class="col-12">
               <q-btn
@@ -248,6 +282,7 @@ import { desktopRuntime } from '@/platform/wails/runtime'
 import { desktopClient, errorMessage } from '@/platform/wails/client'
 import { companyOption } from '@/composables/useCompanies'
 import { useDisplayScale } from '@/composables/useDisplayScale'
+import { updateBlockedBySync, useUpdates } from '@/composables/useUpdates'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
 import { useConsoleStore } from '@/stores/console'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -268,6 +303,15 @@ const testedService = computed(() => (testSource.value === 'cte' ? 'SEFAZ' : 'AD
 
 const consoleStore = useConsoleStore()
 const displayScale = useDisplayScale()
+const {
+  status: updateStatus,
+  statusLabel: updateLabel,
+  canInstall,
+  installing: installingUpdate,
+  blockedBySync: updateBlockedNow,
+  installAndRestart,
+  checkNow: checkUpdatesNow,
+} = useUpdates()
 const preferencesStore = usePreferencesStore()
 const workspace = useWorkspaceStore()
 const updatingDebug = ref(false)

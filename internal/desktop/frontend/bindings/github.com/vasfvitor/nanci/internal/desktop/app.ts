@@ -34,6 +34,14 @@ export function CancelCertPassword(reqID: string): $CancellablePromise<void> {
 }
 
 /**
+ * CheckForUpdate asks the manifest for a newer release. With updates off it
+ * returns Enabled false and makes no request.
+ */
+export function CheckForUpdate(): $CancellablePromise<desktopapi$0.UpdateInfo> {
+    return $Call.ByID(2347956003);
+}
+
+/**
  * ConfirmQuit closes the app after the user chose to leave during a sync.
  */
 export function ConfirmQuit(): $CancellablePromise<void> {
@@ -111,6 +119,20 @@ export function ImportCTeXML(input: desktopapi$0.ImportXMLInput): $CancellablePr
  */
 export function ImportNFeXML(input: desktopapi$0.ImportXMLInput): $CancellablePromise<desktopapi$0.ImportXMLResult> {
     return $Call.ByID(394650748, input);
+}
+
+/**
+ * InstallUpdate downloads the release the last CheckForUpdate found,
+ * verifies its signature, stages it beside the exe and restarts into it. A
+ * helper copy of the exe waits for this process to exit, swaps the files and
+ * starts the new version; on any failure it puts the old exe back.
+ * 
+ * It refuses while a sync runs, before the download and again before the
+ * restart: the restart goes through Options.ShouldQuit, and beforeClose would
+ * stop it to ask the user, leaving the helper waiting until it gives up.
+ */
+export function InstallUpdate(): $CancellablePromise<void> {
+    return $Call.ByID(2443992793);
 }
 
 export function ListCTe(input: desktopapi$0.ListCTeInput): $CancellablePromise<desktopapi$0.CTeRow[] | null> {

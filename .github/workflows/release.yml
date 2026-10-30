@@ -79,6 +79,25 @@ jobs:
 
           echo "Validation passed: $tag is greater than $prev_tag."
 
+      # A release ships an app that installs updates only when they carry a
+      # signature from this key, so a tag never builds without the public key
+      # pinned in the app or the private key that signs for it. See
+      # docs/WAILS_V3.md, "Atualização automática".
+      - name: Require the updater keys
+        if: steps.version.outputs.is_release == 'true'
+        shell: bash
+        env:
+          UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
+        run: |
+          if ! grep -Eq '^var updaterPublicKey = "[A-Za-z0-9+/]{43}="$' internal/desktop/updater_key.go; then
+            echo "::error::internal/desktop/updater_key.go has no updater public key (base64 of the raw 32-byte Ed25519 key)."
+            exit 1
+          fi
+          if [ -z "$UPDATER_SIGNING_KEY" ]; then
+            echo "::error::The UPDATER_SIGNING_KEY secret is missing."
+            exit 1
+          fi
+
   checks:
     uses: ./.github/workflows/ci.yml
 
@@ -173,12 +192,22 @@ jobs:
             EXTRA_LDFLAGS="-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
 
           test -s bin/nanci-desktop-amd64-installer.exe
+          test -s bin/nanci-desktop.exe
 
       - name: Upload Desktop Artifact
         uses: actions/upload-artifact@v7
         with:
           name: nanci-desktop-windows-amd64-installer
           path: internal/desktop/bin/nanci-desktop-amd64-installer.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      # The exe the installer packs, which the automatic update downloads.
+      - name: Upload Desktop Executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: nanci-desktop-windows-amd64-exe
+          path: internal/desktop/bin/nanci-desktop.exe
           if-no-files-found: error
           retention-days: 7
 
@@ -202,6 +231,12 @@ jobs:
           name: nanci-desktop-windows-amd64-installer
           path: artifacts/desktop
 
+      - name: Download Desktop Executable
+        uses: actions/download-artifact@v7
+        with:
+          name: nanci-desktop-windows-amd64-exe
+          path: artifacts/desktop-exe
+
       - name: Stage Release Assets
         shell: bash
         run: |
@@ -211,14 +246,17 @@ jobs:
 
           tag="${{ needs.prepare.outputs.tag }}"
           installer_name="nanci-desktop-windows-amd64-${tag}-installer.exe"
+          exe_name="nanci-desktop-windows-amd64-${tag}.exe"
 
           cp artifacts/desktop/nanci-desktop-amd64-installer.exe "release/$installer_name"
+          cp artifacts/desktop-exe/nanci-desktop.exe "release/$exe_name"
 
           test -s "release/$installer_name"
+          test -s "release/$exe_name"
 
           (
             cd release
-            sha256sum "$installer_name" > nanci-checksums.txt
+            sha256sum "$installer_name" "$exe_name" > nanci-checksums.txt
           )
 
           echo "Release assets:"
@@ -227,18 +265,87 @@ jobs:
           echo "Checksums:"
           cat release/nanci-checksums.txt
 
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go Binaries
+        id: cache-go-bins
+        uses: actions/cache@v6
+        with:
+          path: ~/go/bin
+          key: ${{ runner.os }}-go-bins-wails3-v3.0.0
+
+      # Without cgo the CLI builds on Linux with no GTK headers.
+      - name: Install Wails CLI
+        if: steps.cache-go-bins.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+
+      # The app reads releases/latest/download/nanci-update.json, the Wails
+      # update manifest: the exe's URL in this release, its SHA-512 digest
+      # and an Ed25519ph signature of that digest. verify checks the manifest
+      # with the public key pinned in the app, so a secret that does not
+      # match it fails the release instead of shipping an update nobody can
+      # install.
+      - name: Sign Update Manifest
+        shell: bash
+        env:
+          UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+
+          tag="${{ needs.prepare.outputs.tag }}"
+          version="${{ needs.prepare.outputs.version }}"
+          exe_name="nanci-desktop-windows-amd64-${tag}.exe"
+          key_file="$RUNNER_TEMP/updater.key"
+          notes_file="$RUNNER_TEMP/update-notes.md"
+          trap 'rm -f "$key_file"' EXIT
+
+          if [ -z "$UPDATER_SIGNING_KEY" ]; then
+            echo "::error::The UPDATER_SIGNING_KEY secret is missing."
+            exit 1
+          fi
+          public_key="$(sed -nE 's/^var updaterPublicKey = "([A-Za-z0-9+/]{43}=)"$/\1/p' internal/desktop/updater_key.go)"
+          if [ -z "$public_key" ]; then
+            echo "::error::internal/desktop/updater_key.go has no updater public key."
+            exit 1
+          fi
+
+          (umask 077 && printf '%s\n' "$UPDATER_SIGNING_KEY" > "$key_file")
+          git log -1 --format='%b' > "$notes_file"
+
+          wails3 updater manifest \
+            -version "$version" \
+            -key "$key_file" \
+            -url-prefix "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/" \
+            -notes-file "$notes_file" \
+            -output release/nanci-update.json \
+            "release/$exe_name"
+
+          wails3 updater verify -manifest release/nanci-update.json -publickey "$public_key"
+
+          cat release/nanci-update.json
+
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             release/*.exe
             release/nanci-checksums.txt
+            release/nanci-update.json
 
       - name: Generate Release Notes
         shell: bash
         run: |
           tag="${{ needs.prepare.outputs.tag }}"
           installer_name="nanci-desktop-windows-amd64-${tag}-installer.exe"
+          exe_name="nanci-desktop-windows-amd64-${tag}.exe"
           commit_desc=$(git log -1 --format='%b')
           
           cat <<EOF > release_notes.md
@@ -253,6 +360,8 @@ jobs:
           ## Download
 
           - \`$installer_name\`
+
+          A atualização automática do app usa \`$exe_name\` e \`nanci-update.json\` (assinado com Ed25519); não é preciso baixá-los.
 
           Checksum SHA-256:
 
@@ -271,5 +380,6 @@ jobs:
           files: |
             release/*.exe
             release/nanci-checksums.txt
+            release/nanci-update.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

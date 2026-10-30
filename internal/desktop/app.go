@@ -57,6 +57,7 @@ type App struct {
 	logPath    string
 	theme      windowTheme
 	guard      closeGuard
+	updates    updateEngine // nil when this build does not update itself
 	events     eventEmitter
 	quit       func() // asks Wails to quit; tests replace it
 }

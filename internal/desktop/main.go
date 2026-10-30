@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -72,6 +73,22 @@ func main() {
 	})
 	app.wails = wailsApp
 
+	// The updater's swap helper is this exe started again with its own
+	// environment; application.New runs it (updater.HandleHelperMode) and
+	// exits before the single-instance check, so it never meets the lock.
+	updates, err := setupUpdater(wailsApp.Updater, buildinfo.Version, updaterPublicKey, updateManifestURL)
+	if err != nil && !errors.Is(err, errUpdatesDisabled) {
+		logWarn(wailsLog, "atualização automática desligada", err)
+	}
+	app.updates = updates
+	if version, ok := updatableVersion(buildinfo.Version); ok {
+		if exe, err := os.Executable(); err == nil {
+			if err := recordInstalledVersion(openUninstallEntry, exe, version); err != nil {
+				logWarn(wailsLog, "atualizar a versão na entrada de desinstalação", err)
+			}
+		}
+	}
+
 	wailsApp.Menu.Set(newAppMenu(app))
 
 	app.window = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -102,6 +119,13 @@ func main() {
 
 	if err := wailsApp.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
+	}
+}
+
+// logWarn writes to the Wails log file when main could open it.
+func logWarn(log *slog.Logger, msg string, err error) {
+	if log != nil {
+		log.Warn(msg, "error", err)
 	}
 }
 

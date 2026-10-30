@@ -3,6 +3,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsPage from './SettingsPage.vue'
 import { useConsoleStore } from '@/stores/console'
+import { useCompanySyncStore } from '@/stores/companySync'
+import { useUpdatesStore } from '@/stores/updates'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { desktopClient } from '@/platform/wails/client'
 import { desktopRuntime } from '@/platform/wails/runtime'
@@ -33,9 +35,41 @@ vi.mock('@/platform/wails/client', () => ({
     testConnection: vi.fn(),
     testCTeConnection: vi.fn(),
     setLogLevel: vi.fn(),
+    checkForUpdate: vi.fn(),
+    installUpdate: vi.fn(),
   },
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  wailsErrorCode: () => '',
 }))
+
+vi.mock('@/platform/wails/events', () => ({
+  onWailsEvent: () => vi.fn(),
+}))
+
+const updateFound = {
+  enabled: true,
+  currentVersion: '1.0.0',
+  available: true,
+  version: '1.1.0',
+  notes: '',
+}
+
+// mountWithButtons renders each q-btn as a button with its label, disable
+// state and test id.
+function mountWithButtons() {
+  return shallowMount(SettingsPage, {
+    global: {
+      stubs: {
+        'q-btn': {
+          props: ['label', 'disable'],
+          emits: ['click'],
+          template: `<button :disabled="disable" @click="$emit('click')">{{ label }}</button>`,
+        },
+      },
+      directives: { ripple: {} },
+    },
+  })
+}
 
 vi.mock('@/platform/wails/runtime', () => ({
   desktopRuntime: {
@@ -300,6 +334,65 @@ describe('SettingsPage', () => {
       type: 'info',
       message: 'A janela está maximizada. Restaure o tamanho dela e tente de novo.',
     })
+  })
+
+  it('checks for updates from Sobre and shows the result', async () => {
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValue({
+      ...updateFound,
+      available: false,
+      version: '',
+    })
+    const wrapper = mountWithButtons()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="check-update"]').trigger('click')
+    await flushPromises()
+
+    expect(desktopClient.checkForUpdate).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('[data-testid="update-status"]').text()).toBe('versão mais recente')
+    expect(notify).toHaveBeenCalledWith({
+      type: 'positive',
+      message: 'O Nanci está na versão mais recente.',
+    })
+  })
+
+  it('offers the found update and holds it while a sync runs', async () => {
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValue(updateFound)
+    await useUpdatesStore().check()
+    useCompanySyncStore().startSync('11111111000111', 'nfse')
+    const wrapper = mountWithButtons()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="update-status"]').text()).toBe('versão 1.1.0 disponível')
+    expect(wrapper.find('[data-testid="check-update"]').exists()).toBe(false)
+    const install = wrapper.get('[data-testid="install-update"]')
+    expect(install.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="update-blocked"]').text()).toContain(
+      'Aguarde a sincronização terminar'
+    )
+
+    useCompanySyncStore().finishSync('11111111000111', 'nfse')
+    await flushPromises()
+    expect(install.attributes('disabled')).toBeUndefined()
+    await install.trigger('click')
+    await flushPromises()
+    expect(desktopClient.installUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the update button in a build that does not update itself', async () => {
+    vi.mocked(desktopClient.checkForUpdate).mockResolvedValue({
+      ...updateFound,
+      enabled: false,
+      available: false,
+      version: '',
+    })
+    await useUpdatesStore().check()
+    const wrapper = mountWithButtons()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="update-status"]').text()).toBe('indisponíveis nesta versão')
+    expect(wrapper.find('[data-testid="check-update"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="install-update"]').exists()).toBe(false)
   })
 
   it('shows the WebView2 runtime, the display scale and the monitor count', async () => {
