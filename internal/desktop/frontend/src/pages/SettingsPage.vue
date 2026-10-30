@@ -375,13 +375,7 @@ onMounted(async () => {
 
 function updateDarkMode(val: 'auto' | boolean) {
   $q.dark.set(val)
-  if (val === true) {
-    desktopRuntime.setDarkTheme()
-  } else if (val === false) {
-    desktopRuntime.setLightTheme()
-  } else {
-    desktopRuntime.setSystemDefaultTheme()
-  }
+  desktopRuntime.setWindowTheme(val)
 }
 
 async function handleDebugToggle(val: boolean) {

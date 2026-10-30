@@ -37,11 +37,11 @@ describe('desktopRuntime', () => {
   })
 
   it.each([
-    ['setDarkTheme', 'dark'],
-    ['setLightTheme', 'light'],
-    ['setSystemDefaultTheme', 'system'],
-  ] as const)('%s sends %s to App.SetWindowTheme', (name, theme) => {
-    desktopRuntime[name]()
+    [true, 'dark'],
+    [false, 'light'],
+    ['auto', 'system'],
+  ] as const)('setWindowTheme(%s) sends %s to App.SetWindowTheme', (dark, theme) => {
+    desktopRuntime.setWindowTheme(dark)
 
     expect(SetWindowTheme).toHaveBeenCalledWith(theme)
   })
