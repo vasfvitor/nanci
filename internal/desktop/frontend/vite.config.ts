@@ -5,6 +5,11 @@ import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // The Wails v3 dev proxy dials localhost over IPv4 only, while Vite's
+  // default "localhost" may bind to ::1 alone on Windows.
+  server: {
+    host: '127.0.0.1',
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

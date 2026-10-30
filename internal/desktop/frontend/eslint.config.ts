@@ -10,7 +10,7 @@ export default defineConfig([
     ignores: [
       'dist/**',
       'node_modules/**',
-      'wailsjs/**',
+      'bindings/**',
       'src/vite-env.d.ts',
       '*.tsbuildinfo',
       'package.json.md5',
@@ -115,6 +115,8 @@ export default defineConfig([
       'src/platform/wails/events.ts',
       'src/platform/wails/runtime.ts',
       'src/platform/wails/client.test.ts',
+      'src/platform/wails/events.test.ts',
+      'src/platform/wails/runtime.test.ts',
     ],
     rules: {
       'no-restricted-imports': [
@@ -122,9 +124,9 @@ export default defineConfig([
         {
           patterns: [
             {
-              group: ['**/wailsjs/go/**', '@/wailsjs/go/**'],
+              group: ['**/bindings/**', '@wailsio/runtime', '@wailsio/runtime/**'],
               message:
-                'Do not import generated Wails bindings directly. Use the wrappers in src/platform/wails/ instead.',
+                'Do not import generated Wails bindings or the Wails runtime directly. Use the wrappers in src/platform/wails/ instead.',
             },
           ],
         },

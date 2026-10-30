@@ -9,7 +9,7 @@ import {
   QueryNFSeEvents,
   ResetSyncState,
   TestConnection,
-} from '../../../../wailsjs/go/main/App'
+} from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 import type {
   ConnectionTestResult,
   DocumentEvent,

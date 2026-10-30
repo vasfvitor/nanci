@@ -13,7 +13,7 @@ import {
   ResetCTe,
   StatusCTe,
   TestCTeConnection,
-} from '../../../../wailsjs/go/main/App'
+} from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app'
 import type {
   ConnectionTestResult,
   CTeBlockedReason,

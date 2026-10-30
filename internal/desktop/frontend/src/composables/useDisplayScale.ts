@@ -58,9 +58,9 @@ export function useDisplayScale() {
       if (await desktopRuntime.windowIsMaximised()) return 'maximised'
       await nextFrame()
       const { w, h } = await desktopRuntime.windowGetSize()
-      desktopRuntime.windowSetSize(w + 1, h)
+      await desktopRuntime.windowSetSize(w + 1, h)
       await nextFrame()
-      desktopRuntime.windowSetSize(w, h)
+      await desktopRuntime.windowSetSize(w, h)
       return 'resized'
     } finally {
       nudging = false
