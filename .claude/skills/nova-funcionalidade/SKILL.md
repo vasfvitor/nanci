@@ -62,7 +62,7 @@ bash scripts/verify.sh
 Roda o mesmo que o CI: frontend, Go nos dois módulos, lint, `go.mod`, bindings do Wails e o teste de arquitetura. Rode antes de cada commit que mexe em código e sempre antes do fast-forward. Quando algo falhar, corrija o código. Não:
 
 - apague, pule (`t.Skip`) ou afrouxe um teste para ele passar, a não ser que o comportamento tenha mudado de propósito e a pessoa tenha aprovado;
-- mude `.golangci.yml`, `eslint.config.ts`, o `frozenMigrations` de `internal/store/migrations_frozen_test.go` ou o teste `TestBoundMethodsCrossOnlyDTOs` para a verificação passar;
+- mude `.golangci.yml`, `eslint.config.ts`, o `frozenMigrations` de `internal/store/migrations_frozen_test.go` ou o `frontendPackages` de `internal/desktop/architecture_test.go` para a verificação passar;
 - use `--no-verify`, `//nolint` ou `eslint-disable` sem um motivo escrito ao lado que a pessoa aprovou.
 
 Quando a tela mudou, teste também no app de verdade (veja "Como testar" abaixo) e gere as capturas da página (`pnpm run screenshots <rota>` em `internal/desktop/frontend`).

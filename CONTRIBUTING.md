@@ -87,7 +87,7 @@ O skill tem uma lista de coisas que o agente não faz sem perguntar, entre elas 
 
 Duas verificações automáticas seguram a arquitetura mesmo que ninguém revise o código:
 
-- `TestBoundMethodsCrossOnlyDTOs` ([internal/desktop/architecture_test.go](internal/desktop/architecture_test.go)) falha se um método chamado pela tela passar a receber ou devolver um tipo interno em vez de um DTO de `desktopapi`;
+- `TestOnlyDesktopAPITypesReachTheFrontend` ([internal/desktop/architecture_test.go](internal/desktop/architecture_test.go)) falha se um tipo interno, em vez de um DTO de `desktopapi`, passar a chegar à tela por um método ou por um evento;
 - `TestMigrationsAreFrozen` ([internal/store/migrations_frozen_test.go](internal/store/migrations_frozen_test.go)) falha se uma migration já existente mudar.
 
 ### Receber as atualizações do original
