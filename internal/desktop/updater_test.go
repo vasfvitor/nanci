@@ -93,17 +93,19 @@ func TestUpdatableVersion(t *testing.T) {
 	}
 }
 
-func TestSetupUpdaterIsOffForDevBuildsAndWithoutKey(t *testing.T) {
+func TestSetupUpdaterIsOffForDevBuildsAndWithoutKeyOrURL(t *testing.T) {
 	_, _, key := testKey(t)
-	for _, tt := range []struct{ version, key string }{
-		{"0.0.0-dev", key},
-		{"1.2.3-beta", key},
-		{"1.2.3", ""},
+	const url = "http://127.0.0.1/m.json"
+	for _, tt := range []struct{ version, key, url string }{
+		{"0.0.0-dev", key, url},
+		{"1.2.3-beta", key, url},
+		{"1.2.3", "", url},
+		{"1.2.3", key, ""},
 	} {
 		u := updater.New(nopHost{})
-		engine, err := setupUpdater(u, tt.version, tt.key, "http://127.0.0.1/m.json")
+		engine, err := setupUpdater(u, tt.version, tt.key, tt.url)
 		if !errors.Is(err, errUpdatesDisabled) || engine != nil {
-			t.Errorf("setupUpdater(%q, key %q) = %v, %v; want nil, errUpdatesDisabled", tt.version, tt.key, engine, err)
+			t.Errorf("setupUpdater(%q, key %q, url %q) = %v, %v; want nil, errUpdatesDisabled", tt.version, tt.key, tt.url, engine, err)
 		}
 		if u.State() != updater.StateUnconfigured {
 			t.Errorf("version %q: updater state %q, want it left unconfigured", tt.version, u.State())

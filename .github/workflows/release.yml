@@ -199,8 +199,7 @@ jobs:
 
           test -s bin/nanci-desktop-amd64-installer.exe
           test -s bin/nanci-desktop.exe
-          # The default URL stays in the binary as unused data, so check that
-          # the injected one made it in rather than that the default is gone.
+          # Without the URL the app turns updates off.
           grep -q -a -F "$update_url" bin/nanci-desktop.exe
 
       - name: Upload Desktop Artifact

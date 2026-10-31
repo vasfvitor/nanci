@@ -22,12 +22,11 @@ import (
 // answers 404, which the endpoint provider reads as "up to date". The github
 // provider of Wails cannot be used: it never fills a signature
 // (pkg/updater/providers/github/github.go:167-179), which a pinned
-// Config.PublicKey requires. It is a var set with -ldflags
-// "-X main.updateManifestURL=...": the release workflow points it at the
-// releases of the repository that builds it, so a fork follows its own
-// releases, and a local test build can point it at a test server. The
-// default here is what local builds get; they are 0.0.0-dev and never check.
-var updateManifestURL = "https://github.com/vasfvitor/nanci/releases/latest/download/nanci-update.json"
+// Config.PublicKey requires. Builds set it with -ldflags
+// "-X main.updateManifestURL=...": release.yml points it at the releases of
+// the repository that builds it, a local test build at a test server. Left
+// empty, updates are off.
+var updateManifestURL string
 
 // updateEngine is the part of the Wails updater App uses; tests replace it.
 type updateEngine interface {
@@ -59,7 +58,7 @@ func updatableVersion(version string) (string, bool) {
 // frontend shows its own notice.
 func setupUpdater(u *updater.Updater, version, publicKey, manifestURL string) (updateEngine, error) {
 	current, ok := updatableVersion(version)
-	if !ok || publicKey == "" {
+	if !ok || publicKey == "" || manifestURL == "" {
 		return nil, errUpdatesDisabled
 	}
 	key, err := base64.StdEncoding.DecodeString(publicKey)
