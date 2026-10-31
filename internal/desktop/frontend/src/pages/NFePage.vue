@@ -184,34 +184,12 @@
                   :cnpj="rowProps.row.DestinatarioCNPJ"
                 />
 
-                <StateBadges
+                <NFeStateBadges
                   v-else-if="col.name === 'estados'"
+                  :row="rowProps.row"
                   :badges="badgesByChave.get(rowProps.row.ChaveAcesso) ?? []"
-                >
-                  <template
-                    v-if="
-                      isChaveBusy(rowProps.row.ChaveAcesso) || showsConclusiveDeadline(rowProps.row)
-                    "
-                    #default
-                  >
-                    <q-spinner
-                      v-if="isChaveBusy(rowProps.row.ChaveAcesso)"
-                      size="xs"
-                      color="primary"
-                    />
-                    <q-chip
-                      v-if="showsConclusiveDeadline(rowProps.row)"
-                      dense
-                      square
-                      outline
-                      size="sm"
-                      class="q-ma-none"
-                      :color="deadlineColor(rowProps.row.DaysLeft, 'conclusiva')"
-                      :label="conclusiveDeadlineLabel(rowProps.row.DaysLeft)"
-                      :title="`Prazo da manifestação conclusiva: ${formatDate(rowProps.row.ConclusiveDue)}`"
-                    />
-                  </template>
-                </StateBadges>
+                  :busy="isChaveBusy(rowProps.row.ChaveAcesso)"
+                />
 
                 <template v-else>{{ col.value }}</template>
               </q-td>
@@ -272,10 +250,10 @@ import type { ExportChoice } from '../components/ExportDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NFeRowMenu from '../components/NFeRowMenu.vue'
+import NFeStateBadges from '../components/NFeStateBadges.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
-import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
@@ -291,7 +269,6 @@ import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
 import {
   formatCpfCnpj,
   formatCurrencyCents,
-  formatDate,
   formatDateTime,
   formatNFeNumber,
 } from '@/utils/formatters'
@@ -299,13 +276,10 @@ import { ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
 import { NFE_LEGEND, NFE_PENDING_LEGEND } from '@/utils/stateLegends'
 import {
   completenessFilterOptions,
-  conclusiveDeadlineLabel,
-  deadlineColor,
   manifestacaoFilterOptions,
   nfeRoleFilterOptions,
   situacaoFilterOptions,
   situacaoLabel,
-  showsConclusiveDeadline,
 } from '@/utils/nfeDisplay'
 
 const $q = useQuasar()
