@@ -10,32 +10,15 @@ Tudo aqui é barato e reduz o custo de todas as fases seguintes.
 
 **Estado em 07/10/2026 (branch `chore/fase-0`, 21 commits):** feito o portão de CI (`ci.yml`, `release.yml` depende dele; primeira execução real só no PR), a faxina (branches locais, sobras do spike v3, `.gitattributes` com renormalização, `.gitignore`, docs desatualizadas, comentários nos métodos `sefaz` sem chamador, `Makefile`), as dependências Go (x/crypto 0.57, sqlite 1.60, cobra, goose, go-retry) e do frontend (menores + vitest 5, pinia 4, vue-router 5, @quasar/vite-plugin 2, @eslint/css 2), o aviso de 45 dias de NSU, o teste de reuso do `ultNSU`, a auditoria do CNPJ alfanumérico (corrigiu `nfse.ParseAccessKey`, que rejeitava chaves com letras), o backport de segurança do fork do go-pkcs12 (GO-2026-5052 e IV do PBES2, issue #4) e os links relativos das cópias Markdown do site (#14). Também caiu um bug antigo do `make seeddev`.
 
-Ficou para o dono: publicar o branch e abrir o PR; colar os comentários prontos nas issues #4, #10, #12, #14 e #15 (texto no scratchpad da sessão de 07/10); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); o `prettier --check` já acusava 67 arquivos antes, `lint:check` não roda prettier; os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
-
-### Portão de CI [M]
-
-Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:check`/`test:unit`/`build` em PR. O `release.yml` compila sem testar. Criar `ci.yml` em push/PR para `main` com dois jobs: Go (Ubuntu, módulo raiz e `internal/desktop` com `dist/` de mentira como o `codeql.yml` já faz) e frontend. Rodar o lint no Linux também faz a regra `depguard` valer, já que os globs `**/internal/{nfse,nfe,dfe,cte}/**/*.go` nunca casam no Windows. Fazer o `release.yml` depender desse workflow.
+Ficou para o dono: colar os comentários prontos nas issues #4, #10, #12, #14 e #15 (texto no scratchpad da sessão de 07/10); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
 
 ### Issues [P/M]
 
 - **#10** (senha na memória): fechar com comentário listando o residual que não dá para zerar (string do `keyring.Set`, `NANCI_CERT_PASSWORD`, string JS do Wails, chaves derivadas no fork do pkcs12).
 - **#14** (links do site): rodar um verificador de links no HTML do Hugo e fechar ou corrigir.
-- **#4** (fork do go-pkcs12): upstream está em v0.7.3; verificar se ganhou suporte a BER indefinido (`third_party/go-pkcs12/README.nanci.md`). O fork também carrega `DecodeChainBytes` (#10), então voltar ao upstream exige levar isso para o chamador. [M]
+- **#4** (fork do go-pkcs12): o fork já tem os backports até a v0.7.4 do upstream (`third_party/go-pkcs12/README.nanci.md`); falta verificar se o upstream ganhou suporte a BER indefinido. O fork também carrega `DecodeChainBytes` (#10), então voltar ao upstream exige levar isso para o chamador. [M]
 - **#15** (assinatura Windows): depende de aprovação externa (SignPath). Abrir o pedido; o passo no workflow é pequeno. [M]
 - **#12** (criptografia em repouso): `modernc.org/sqlite` não tem SEE/SQLCipher e os blobs são arquivos simples. **Estacionado** (decisão de 07/10/2026): fica aberto, sem plano, até o driver mudar ou surgir um pedido concreto. Comentar na issue.
-
-### Dependências [M]
-
-- Go, menores: `modernc.org/sqlite` 1.49 → 1.60 (11 menores, rodar a suíte de migrações), `cobra` 1.10, `goose` 3.28, `sethvargo/go-retry` 0.3 → 0.5 (pré-1.0, conferir API), `x/term`.
-- Frontend, menores primeiro: `quasar` 2.19 → 2.34 (conferir `pnpm run screenshots`), `vue`, `vite`, `eslint`, `vue-tsc`.
-- Frontend, maiores, um PR cada, nesta ordem: `vitest` 5, `typescript` 7, `pinia` 4 (+ `@pinia/testing` 2), `vue-router` 5, `@quasar/vite-plugin` 2. `@types/node` fica em 24 (Node da CI).
-
-### Comportamentos do Ambiente Nacional que o app ainda não trata [M]
-
-- **Regra dos 60 dias.** A SEFAZ só gera NSU para raízes de CNPJ que consultaram o `distNSU` nos últimos 60 dias; uma empresa parada por mais tempo perde o intervalo para sempre (NT 2014.002 v1.10, em produção desde 10/11/2021; confirmado só por relatos de terceiros, conferir o texto da NT). Como todo software que usa o mesmo CNPJ compartilha a mesma sequência de NSU, o ERP do contador e o nanci também podem colidir no 656. O app não avisa. Mostrar aviso na Empresa e no `company status` quando o último sync de NF-e/CT-e passar de **45 dias** (limiar aceito em 07/10/2026), e explicar na doc.
-- **Reuso do `ultNSU`.** Conferir em `internal/sync/source_nfe.go` e `source_cte.go` que o cursor gravado é sempre o `ultNSU` devolvido, mesmo em lote vazio.
-- **CNPJ alfanumérico em produção desde 10/08/2026** (NT 009 NFS-e). O dígito verificador já está feito; conferir o que ainda assume só dígitos: `ParseAccessKey` em `internal/nfse` e a regex da Consulta Direta.
-- **DANFSe nacional.** A NT 008/2026 desliga a API de geração de DANFSe do ADN (prazo 03/08/2026). O app renderiza localmente com `go-danfse-v2`, então não é afetado; registrar na doc para ninguém propor usar a API.
 
 ## Fase 1: dívida estrutural (1 a 2 meses)
 
