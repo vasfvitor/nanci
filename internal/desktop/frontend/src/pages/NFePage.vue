@@ -140,49 +140,19 @@
                 <q-checkbox v-model="rowProps.selected" dense />
               </q-td>
               <q-td v-for="col in rowProps.cols" :key="col.name" :props="rowProps">
-                <RowActionsMenu
+                <NFeRowMenu
                   v-if="col.name === 'acoes'"
                   v-model:expanded="rowProps.expand"
-                  source="nfe"
-                >
-                  <RowMenuItem
-                    label="Manifestar…"
-                    :caption="manifestarCaption(rowProps.row)"
-                    :disable="!canManifest(rowProps.row)"
-                    @click="openManifestacao(rowProps.row)"
-                  />
-                  <RowMenuItem
-                    label="Registrar ciência"
-                    :caption="cienciaCaption(rowProps.row)"
-                    :disable="!canRegisterCiencia(rowProps.row)"
-                    @click="startCiencia([rowProps.row.ChaveAcesso])"
-                  />
-                  <RowMenuItem
-                    :label="`Eventos (${rowProps.row.EventCount})`"
-                    :disable="rowProps.row.EventCount === 0"
-                    @click="openEvents(rowProps.row.ChaveAcesso)"
-                  />
-                  <RowMenuItem
-                    label="Exportar XML"
-                    :caption="
-                      nfeRowActions(rowProps.row).canExportXML
-                        ? ''
-                        : 'XML completo ainda não baixado'
-                    "
-                    :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
-                    @click="exportXML(rowProps.row.ChaveAcesso)"
-                  />
-                  <RowMenuItem
-                    label="Exportar DANFE"
-                    :caption="
-                      nfeRowActions(rowProps.row).canExportXML
-                        ? ''
-                        : 'XML completo ainda não baixado'
-                    "
-                    :disable="exporting || !nfeRowActions(rowProps.row).canExportXML"
-                    @click="exportDANFE(rowProps.row.ChaveAcesso)"
-                  />
-                </RowActionsMenu>
+                  :row="rowProps.row"
+                  :busy="isChaveBusy(rowProps.row.ChaveAcesso)"
+                  :ciencia-in-flight="Boolean(cienciaInFlight)"
+                  :exporting="exporting"
+                  @manifest="openManifestacao(rowProps.row)"
+                  @ciencia="startCiencia([rowProps.row.ChaveAcesso])"
+                  @events="openEvents(rowProps.row.ChaveAcesso)"
+                  @export-xml="exportXML(rowProps.row.ChaveAcesso)"
+                  @export-danfe="exportDANFE(rowProps.row.ChaveAcesso)"
+                />
 
                 <NumeroCell
                   v-else-if="col.name === 'numero'"
@@ -301,11 +271,10 @@ import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
+import NFeRowMenu from '../components/NFeRowMenu.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
-import RowActionsMenu from '../components/RowActionsMenu.vue'
-import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
@@ -338,7 +307,6 @@ import {
   situacaoLabel,
   showsConclusiveDeadline,
 } from '@/utils/nfeDisplay'
-import { nfeRowActions } from '@/utils/nfeManifestacao'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
@@ -403,31 +371,6 @@ const columns = documentColumns<NFeRow>({
   destinatario: (row) => row.DestinatarioName || row.DestinatarioCNPJ,
   valor: (row) => row.TotalValue,
 })
-
-// A note with an event being sent takes no other; its menu says why.
-const SENDING_CAPTION = 'Envio em andamento'
-
-function canManifest(row: NFeRow) {
-  return nfeRowActions(row).conclusiveBlockReason === null && !isChaveBusy(row.ChaveAcesso)
-}
-
-function manifestarCaption(row: NFeRow) {
-  if (isChaveBusy(row.ChaveAcesso)) return SENDING_CAPTION
-  return nfeRowActions(row).conclusiveBlockReason ?? ''
-}
-
-function canRegisterCiencia(row: NFeRow) {
-  return (
-    nfeRowActions(row).cienciaBlockReason === null &&
-    !cienciaInFlight.value &&
-    !isChaveBusy(row.ChaveAcesso)
-  )
-}
-
-function cienciaCaption(row: NFeRow) {
-  if (isChaveBusy(row.ChaveAcesso)) return SENDING_CAPTION
-  return nfeRowActions(row).cienciaBlockReason ?? ''
-}
 
 function notaItems(row: NFeRow): DetailItem[] {
   return [

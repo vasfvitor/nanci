@@ -845,6 +845,7 @@ describe('NFePage row menu', () => {
         <slot name="body" :row="row" :cols="[{ name: 'acoes' }]" :expand="false" />
       </div></div>`,
     },
+    NFeRowMenu: false,
     RowActionsMenu: { template: '<div><slot /></div>' },
     RowMenuItem: {
       name: 'RowMenuItem',
