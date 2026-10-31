@@ -47,7 +47,7 @@ func (s *QueryService) QueryNFSeEvents(ctx context.Context, input QueryNFSeInput
 		return "", err
 	}
 
-	apiClient, err := s.buildClient(ctx, input.CNPJ, "Consulta direta")
+	apiClient, _, err := s.buildClient(ctx, input.CNPJ, "Consulta direta")
 	if err != nil {
 		return "", err
 	}
@@ -81,16 +81,17 @@ func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path strin
 }
 
 // buildClient loads the company certificate, asking for its password with
-// purpose, and returns an ADN client that consults with it.
-func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose string) (*adn.Client, error) {
+// purpose, and returns an ADN client that consults with it and the
+// credential as the certificate itself describes it.
+func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose string) (*adn.Client, *credential.Credential, error) {
 	company, err := company.LookupByCNPJ(ctx, s.CompanyStore, companyCNPJ)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	loaded, err := s.Certificates.LoadForCompany(ctx, company, purpose)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	newClient := s.newADNClient
@@ -103,9 +104,9 @@ func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose str
 		Log:         s.Log,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("configurar cliente ADN: %w", err)
+		return nil, nil, fmt.Errorf("configurar cliente ADN: %w", err)
 	}
-	return apiClient, nil
+	return apiClient, loaded.Credential, nil
 }
 
 // ConnectionTestResult contains the diagnostics returned by TestConnection.
@@ -138,29 +139,28 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 		return result, fmt.Errorf("buscar credencial: %w", err)
 	}
 
+	// A certificate inspected before and already expired stops here, without
+	// asking for its password. One never loaded has no inspection yet: the
+	// check runs again on what loading it reads.
 	result.CertLoaded = true
-	result.CertSubject = cred.SubjectName
-	if cred.NotAfter != nil {
-		result.CertExpiration = formatCertExpiration(*cred.NotAfter)
-		if cred.NotAfter.Before(time.Now()) {
-			result.StatusExplanation = "Certificado digital expirado."
-			return result, nil
-		}
+	if expired := describeCertificate(&result, cred); expired {
+		return result, nil
 	}
 
-	apiClient, err := s.buildClient(ctx, companyCNPJ, "Teste de conexão")
+	apiClient, loaded, err := s.buildClient(ctx, companyCNPJ, "Teste de conexão")
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Erro ao carregar certificado/senha: %v", err)
 		return result, nil
 	}
-
-	result.MTLSAccepted = true
+	if expired := describeCertificate(&result, loaded); expired {
+		return result, nil
+	}
 
 	docResp, err := apiClient.FetchDocuments(ctx, adn.DistributionRequest{
 		LastNSU:          0,
 		ConsultationCNPJ: company.CNPJ,
 	})
-
+	result.MTLSAccepted = true
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Conexão falhou: %v", err)
 		return result, nil
@@ -177,6 +177,21 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 	}
 
 	return result, nil
+}
+
+// describeCertificate fills the subject and expiry of result from cred and
+// reports whether the certificate has expired, setting the explanation then.
+func describeCertificate(result *ConnectionTestResult, cred *credential.Credential) bool {
+	result.CertSubject = cred.SubjectName
+	if cred.NotAfter == nil {
+		return false
+	}
+	result.CertExpiration = formatCertExpiration(*cred.NotAfter)
+	if !cred.NotAfter.Before(time.Now()) {
+		return false
+	}
+	result.StatusExplanation = "Certificado digital expirado."
+	return true
 }
 
 // formatCertExpiration shows a certificate's expiry in the user's local time.

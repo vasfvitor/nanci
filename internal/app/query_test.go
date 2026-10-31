@@ -116,18 +116,10 @@ func TestTestConnectionSuccess(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			// The credential was never inspected: subject and expiry must come
+			// from the certificate the test loads.
 			env := newNFeTestEnv(t)
 			ctx := context.Background()
-			cred, err := env.app.Query.CredentialStore.CredentialByID(ctx, env.company.CredentialID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			notAfter := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
-			cred.SubjectName = "CN=EMPRESA MOCK:70860312000150"
-			cred.NotAfter = &notAfter
-			if err := env.app.Query.CredentialStore.UpdateCredential(ctx, cred); err != nil {
-				t.Fatal(err)
-			}
 			asked := pointQueryAtFakeADN(t, env, func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/contribuintes/DFe/0" || r.URL.Query().Get("cnpjConsulta") != nfeTestCNPJ {
 					t.Errorf("request = %s, want /contribuintes/DFe/0?cnpjConsulta=%s", r.URL, nfeTestCNPJ)
@@ -140,10 +132,17 @@ func TestTestConnectionSuccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("TestConnection: %v", err)
 			}
+			cred, err := env.app.Query.CredentialStore.CredentialByID(ctx, env.company.CredentialID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cred.SubjectName == "" || cred.NotAfter == nil {
+				t.Fatalf("credential after the test = %+v, want the inspection of the loaded certificate", cred)
+			}
 			want := ConnectionTestResult{
 				CertLoaded:        true,
 				CertSubject:       cred.SubjectName,
-				CertExpiration:    formatCertExpiration(notAfter),
+				CertExpiration:    formatCertExpiration(*cred.NotAfter),
 				MTLSAccepted:      true,
 				EndpointReached:   true,
 				ResponseCode:      "Sucesso",
