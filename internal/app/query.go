@@ -26,6 +26,10 @@ type QueryService struct {
 	CompanyStore    *company.Store
 	CredentialStore *credential.Store
 	Certificates    *sync.CertificateLoader
+
+	// newADNClient builds the ADN client; nil means adn.NewClient. Tests set
+	// it to point the client at a fake server.
+	newADNClient func(adn.ClientConfig) (*adn.Client, error)
 }
 
 func NewQueryService(d Dependencies, certificates *sync.CertificateLoader) *QueryService {
@@ -89,7 +93,11 @@ func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose str
 		return nil, err
 	}
 
-	apiClient, err := adn.NewClient(adn.ClientConfig{
+	newClient := s.newADNClient
+	if newClient == nil {
+		newClient = adn.NewClient
+	}
+	apiClient, err := newClient(adn.ClientConfig{
 		BaseURL:     sync.ResolveEnvironmentURL(company.Environment),
 		Certificate: &loaded.TLS,
 		Log:         s.Log,
