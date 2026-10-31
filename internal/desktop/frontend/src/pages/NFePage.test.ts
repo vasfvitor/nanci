@@ -161,6 +161,7 @@ function mountPage(stubs: Record<string, unknown> = {}) {
         DocumentPageHeader: false,
         DocumentTableTop: false,
         DocumentFilterSelect: false,
+        NFeListActions: false,
         'q-page': { template: '<div><slot /></div>' },
         'q-tabs': {
           name: 'QTabs',

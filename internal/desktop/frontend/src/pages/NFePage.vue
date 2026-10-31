@@ -78,37 +78,14 @@
           />
 
           <template #actions>
-            <q-btn
-              color="primary"
-              icon="task_alt"
-              :label="`Registrar ciência (${eligibleSelection.length})`"
-              :disable="
-                eligibleSelection.length === 0 || planningCiencia || Boolean(cienciaInFlight)
-              "
-              :loading="planningCiencia"
-              dense
-              flat
-              @click="registerSelectedCiencia"
-            />
-            <q-btn
-              color="primary"
-              icon="upload_file"
-              label="Importar XML"
-              title="Importa XMLs que a empresa já tem, sem consultar a SEFAZ"
-              :disable="importDisabled"
-              dense
-              flat
-              @click="importXML"
-            />
-            <q-btn
-              color="primary"
-              icon="travel_explore"
-              label="Buscar pela chave"
-              title="Pede uma NF-e à SEFAZ pela chave de acesso"
-              :disable="importDisabled"
-              dense
-              flat
-              @click="openFetchDialog"
+            <NFeListActions
+              :eligible-count="eligibleSelection.length"
+              :planning-ciencia="planningCiencia"
+              :ciencia-in-flight="Boolean(cienciaInFlight)"
+              :import-disabled="importDisabled"
+              @ciencia="registerSelectedCiencia"
+              @import="importXML"
+              @fetch="openFetchDialog"
             />
           </template>
         </DocumentFilterBar>
@@ -231,6 +208,7 @@ import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
 import NFeDetails from '../components/NFeDetails.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
+import NFeListActions from '../components/NFeListActions.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NFeRowMenu from '../components/NFeRowMenu.vue'
 import NFeStateBadges from '../components/NFeStateBadges.vue'
