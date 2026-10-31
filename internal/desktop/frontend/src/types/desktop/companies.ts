@@ -17,6 +17,7 @@ export type CompanySummary = {
   InitialSyncDoneAt?: ISODateValue
   LastRunStatus: string
   LastRunStopReason: string
+  LastRunError: string // set only when LastRunStatus is 'failed'
   CreatedAt?: ISODateValue
   UpdatedAt?: ISODateValue
 }

@@ -81,6 +81,7 @@ const company = {
   SyncStartPolicy: 'from_now' as const,
   LastRunStatus: '',
   LastRunStopReason: '',
+  LastRunError: '',
 }
 
 const placeholder = 'Filtrar por chave, número, nome ou CNPJ...'
@@ -124,6 +125,7 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     MaxNSU: 10,
     LastRunStatus: 'completed',
     LastRunStopReason: '',
+    LastRunError: '',
     NextAllowedAt: null,
     BlockedReason: '',
     RequestsLastHour: 1,

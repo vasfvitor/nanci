@@ -51,6 +51,7 @@ import type {
 import {
   callWails,
   asNullableNumber,
+  asString,
   asStringArray,
   asArray,
   asDate,
@@ -237,6 +238,7 @@ export function mapNFeStatus(item: desktopapi.NFeStatusResult): NFeStatusResult 
     LastSyncAt: asDate(item.LastSyncAt),
     LastRunStatus: item.LastRunStatus,
     LastRunStopReason: item.LastRunStopReason,
+    LastRunError: asString(item.LastRunError),
     InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
     NextAllowedAt: asDate(item.NextAllowedAt),
     BlockedReason: asEnum(item.BlockedReason, nfeBlockedReasons),

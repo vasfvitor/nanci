@@ -28,6 +28,7 @@ type CompanySummary struct {
 	InitialSyncDoneAt  *time.Time
 	LastRunStatus      string
 	LastRunStopReason  string
+	LastRunError       string // message of the last NFS-e run, set only when it failed
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -108,6 +109,7 @@ func CompanySummaries(companies []company.Company) []CompanySummary {
 			InitialSyncDoneAt:  company.InitialSyncDoneAt,
 			LastRunStatus:      string(company.LastRunStatus),
 			LastRunStopReason:  string(company.LastRunStopReason),
+			LastRunError:       company.LastRunError,
 			CreatedAt:          company.CreatedAt,
 			UpdatedAt:          company.UpdatedAt,
 		}

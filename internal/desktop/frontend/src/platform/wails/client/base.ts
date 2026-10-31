@@ -92,7 +92,7 @@ export async function callWails<T>(
   }
 }
 
-function asString(value: unknown) {
+export function asString(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
 

@@ -244,6 +244,11 @@ export interface CTeStatusResult {
     "LastSyncAt": string | null;
     "LastRunStatus": string;
     "LastRunStopReason": string;
+
+    /**
+     * message of the last run, set only when it failed
+     */
+    "LastRunError": string;
     "InitialSyncDoneAt": string | null;
     "NextAllowedAt": string | null;
 
@@ -304,6 +309,11 @@ export interface CompanySummary {
     "InitialSyncDoneAt": string | null;
     "LastRunStatus": string;
     "LastRunStopReason": string;
+
+    /**
+     * message of the last NFS-e run, set only when it failed
+     */
+    "LastRunError": string;
     "CreatedAt": string;
     "UpdatedAt": string;
 }
@@ -965,6 +975,11 @@ export interface NFeStatusResult {
     "LastSyncAt": string | null;
     "LastRunStatus": string;
     "LastRunStopReason": string;
+
+    /**
+     * message of the last run, set only when it failed
+     */
+    "LastRunError": string;
     "InitialSyncDoneAt": string | null;
     "NextAllowedAt": string | null;
 

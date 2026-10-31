@@ -22,7 +22,7 @@ import type {
   UpdateCredentialDataInput,
   UpdateCredentialPathInput,
 } from '@/types/desktop'
-import { callWails, asNullableNumber, asDate } from './base'
+import { callWails, asNullableNumber, asDate, asString } from './base'
 
 export function mapCompanySummary(item: desktopapi.CompanySummary): CompanySummary {
   return {
@@ -42,6 +42,7 @@ export function mapCompanySummary(item: desktopapi.CompanySummary): CompanySumma
     InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
     LastRunStatus: item.LastRunStatus,
     LastRunStopReason: item.LastRunStopReason,
+    LastRunError: asString(item.LastRunError),
     CreatedAt: item.CreatedAt,
     UpdatedAt: item.UpdatedAt,
   }

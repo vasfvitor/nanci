@@ -52,6 +52,7 @@ const company = {
   SyncStartPolicy: 'from_now' as const,
   LastRunStatus: '',
   LastRunStopReason: '',
+  LastRunError: '',
 }
 
 // Render only the credential cell slot by default, which is what most tests drive.

@@ -78,6 +78,7 @@ func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
 		LastSyncAt:        res.LastSyncAt,
 		LastRunStatus:     res.LastRunStatus,
 		LastRunStopReason: res.LastRunStopReason,
+		LastRunError:      res.LastRunError,
 		InitialSyncDoneAt: res.InitialSyncDoneAt,
 		NextAllowedAt:     res.NextAllowedAt,
 		BlockedReason:     res.BlockedReason,

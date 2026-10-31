@@ -144,8 +144,9 @@ describe('desktop client mappers', () => {
       SyncStartPolicy: 'since_date',
       SyncStartDate: '2025-01-01T00:00:00Z',
       InitialSyncDoneAt: null,
-      LastRunStatus: 'completed',
-      LastRunStopReason: 'empty_limit',
+      LastRunStatus: 'failed',
+      LastRunStopReason: 'fetch_error',
+      LastRunError: 'falha de conexão',
       UF: 'SP',
     } as unknown as desktopapi.CompanySummary)
 
@@ -159,8 +160,12 @@ describe('desktop client mappers', () => {
     expect(company.SyncStartPolicy).toBe('since_date')
     expect(company.SyncStartDate).toBe('2025-01-01T00:00:00Z')
     expect(company.InitialSyncDoneAt).toBeNull()
-    expect(company.LastRunStatus).toBe('completed')
-    expect(company.LastRunStopReason).toBe('empty_limit')
+    expect(company.LastRunStatus).toBe('failed')
+    expect(company.LastRunStopReason).toBe('fetch_error')
+    expect(company.LastRunError).toBe('falha de conexão')
+    expect(
+      mapCompanySummary({ ID: 'company-2' } as unknown as desktopapi.CompanySummary).LastRunError
+    ).toBe('')
   })
 
   it('preserves credential dates and ownership fields', () => {
@@ -642,6 +647,8 @@ describe('NF-e mappers', () => {
       PendingCiencia: 4,
       PendingConclusiva: 2,
       IdleDays: 47,
+      LastRunStatus: 'failed',
+      LastRunError: 'falha de conexão',
     } as unknown as desktopapi.NFeStatusResult)
     expect(status).toMatchObject({
       TpAmb: '2',
@@ -652,8 +659,11 @@ describe('NF-e mappers', () => {
       PendingCiencia: 4,
       PendingConclusiva: 2,
       IdleDays: 47,
+      LastRunStatus: 'failed',
+      LastRunError: 'falha de conexão',
     })
     expect(mapNFeStatus({ MaxNSU: 99 } as unknown as desktopapi.NFeStatusResult).MaxNSU).toBe(99)
+    expect(mapNFeStatus({} as unknown as desktopapi.NFeStatusResult).LastRunError).toBe('')
 
     expect(
       mapPullNFeResult({
@@ -1073,8 +1083,12 @@ describe('CT-e mappers', () => {
         TotalRemetente: 2,
         TotalOutros: 1,
         IdleDays: 45,
+        LastRunStatus: 'failed',
+        LastRunError: 'falha de conexão',
       } as unknown as desktopapi.CTeStatusResult)
     ).toMatchObject({
+      LastRunStatus: 'failed',
+      LastRunError: 'falha de conexão',
       TpAmb: '1',
       LastNSU: 10,
       MaxNSU: null,

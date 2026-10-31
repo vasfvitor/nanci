@@ -49,6 +49,7 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     MaxNSU: null,
     LastRunStatus: '',
     LastRunStopReason: '',
+    LastRunError: '',
     NextAllowedAt: null,
     BlockedReason: '',
     RequestsLastHour: 0,

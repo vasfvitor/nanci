@@ -34,6 +34,7 @@ const company: CompanySummary = {
   SyncStartPolicy: 'from_now',
   LastRunStatus: '',
   LastRunStopReason: '',
+  LastRunError: '',
 }
 
 function mountDialog() {

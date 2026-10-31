@@ -175,6 +175,7 @@ export type CTeStatusResult = {
   LastSyncAt?: ISODateValue
   LastRunStatus: string
   LastRunStopReason: string
+  LastRunError: string // set only when LastRunStatus is 'failed'
   InitialSyncDoneAt?: ISODateValue
   NextAllowedAt?: ISODateValue
   BlockedReason: CTeBlockedReason | ''

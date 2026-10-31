@@ -194,6 +194,7 @@ type NFeStatusResult struct {
 	LastSyncAt        *time.Time
 	LastRunStatus     string
 	LastRunStopReason string
+	LastRunError      string // message of the last run, set only when it failed
 	InitialSyncDoneAt *time.Time
 	NextAllowedAt     *time.Time
 	BlockedReason     string // caught_up | consumo_indevido | rate_budget; empty when not blocked

@@ -33,6 +33,7 @@ export function company(
     SyncStartPolicy: 'all',
     LastRunStatus: '',
     LastRunStopReason: '',
+    LastRunError: '',
     ...fields,
   }
 }

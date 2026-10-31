@@ -64,6 +64,7 @@ const company = {
   SyncStartPolicy: 'from_now' as const,
   LastRunStatus: '',
   LastRunStopReason: '',
+  LastRunError: '',
 }
 
 const nfeChave = '35260911222333000181550010000045121418273651'
@@ -104,6 +105,7 @@ function status(overrides: Partial<CTeStatusResult> = {}): CTeStatusResult {
     MaxNSU: 10,
     LastRunStatus: 'completed',
     LastRunStopReason: '',
+    LastRunError: '',
     NextAllowedAt: null,
     BlockedReason: '',
     RequestsLastHour: 1,

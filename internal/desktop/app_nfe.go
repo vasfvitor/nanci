@@ -103,6 +103,7 @@ func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 		LastSyncAt:        res.LastSyncAt,
 		LastRunStatus:     res.LastRunStatus,
 		LastRunStopReason: res.LastRunStopReason,
+		LastRunError:      res.LastRunError,
 		InitialSyncDoneAt: res.InitialSyncDoneAt,
 		NextAllowedAt:     res.NextAllowedAt,
 		BlockedReason:     res.BlockedReason,
