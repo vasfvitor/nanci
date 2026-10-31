@@ -423,8 +423,7 @@ func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 func TestLatestSyncSnapshotReadsTheRunError(t *testing.T) {
 	t.Parallel()
 
-	// Each run gets its own database: started_at has one-second resolution,
-	// so two runs started in the same second have no defined order.
+	// Each run gets its own database, so the snapshot reads that run.
 	finishedRun := func(status syncstate.SyncStatus, code, msg string) *syncstate.SyncRun {
 		t.Helper()
 		db := storetest.OpenTestDB(t)
@@ -464,6 +463,49 @@ func TestLatestSyncSnapshotReadsTheRunError(t *testing.T) {
 	// A run finished without an error stores NULL in both columns.
 	if run := finishedRun(syncstate.SyncStatusCompleted, "", ""); run.ErrorCode != "" || run.ErrorMessage != "" {
 		t.Errorf("completed run error = (%q, %q), want empty", run.ErrorCode, run.ErrorMessage)
+	}
+}
+
+func TestLatestSyncSnapshotTakesTheLastInsertedRunOfTheSameSecond(t *testing.T) {
+	t.Parallel()
+	db := storetest.OpenTestDB(t)
+	syncRepo := sync.NewStore(db)
+	company := seedCompany(t, db, "company-1", "11222333000181")
+	ctx := context.Background()
+
+	run := func(status syncstate.SyncStatus, id string) {
+		t.Helper()
+		started, err := syncRepo.StartRun(ctx, syncstate.StartRunParams{
+			CompanyID:         company.ID,
+			Source:            syncstate.SyncSourceNFe,
+			CredentialID:      company.CredentialID,
+			Environment:       company.Environment,
+			CredentialCNPJ:    company.CNPJ,
+			ConsultationCNPJ:  company.CNPJ,
+			ConsultationBasis: syncstate.ConsultationBasisExactCertificateCNPJ,
+			Mode:              syncstate.SyncModeNormal,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := syncRepo.FinishRun(ctx, syncstate.FinishRunParams{RunID: started.ID, Status: status}); err != nil {
+			t.Fatal(err)
+		}
+		// Same second for both runs, and an id that sorts the earlier run
+		// last, which is what a random UUID can do.
+		if _, err := db.ExecContext(ctx, `UPDATE sync_runs SET id = ?, started_at = '2026-10-31T10:00:00Z' WHERE id = ?`, id, string(started.ID)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run(syncstate.SyncStatusFailed, "run-z")
+	run(syncstate.SyncStatusCompleted, "run-a")
+
+	snapshot, err := syncRepo.LatestSyncSnapshot(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment, company.CNPJ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Run == nil || snapshot.Run.Status != syncstate.SyncStatusCompleted {
+		t.Errorf("latest run = %+v, want the completed run inserted last", snapshot.Run)
 	}
 }
 

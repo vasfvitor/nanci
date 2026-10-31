@@ -790,7 +790,9 @@ func (r *Store) latestRun(ctx context.Context, companyID dfe.CompanyID, source s
 			errors_count, last_found_nsu, status, stop_reason, error_code, error_message
 		FROM sync_runs
 		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
-		ORDER BY started_at DESC, id DESC
+		-- started_at has one-second resolution and id is a random UUID, so
+		-- runs started in the same second fall back to insertion order.
+		ORDER BY started_at DESC, rowid DESC
 		LIMIT 1
 	`,
 		string(companyID),
