@@ -25,6 +25,7 @@ type SefazSourceStatus struct {
 	LastSyncAt        *time.Time
 	LastRunStatus     string
 	LastRunStopReason string
+	LastRunError      string // message of the last run, set only when it failed
 	InitialSyncDoneAt *time.Time
 	NextAllowedAt     *time.Time // set while SEFAZ must not be queried
 	BlockedReason     string     // caught_up | consumo_indevido | rate_budget; empty when not blocked
@@ -69,6 +70,9 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 	if snapshot.Run != nil {
 		status.LastRunStatus = string(snapshot.Run.Status)
 		status.LastRunStopReason = string(snapshot.Run.StopReason)
+		if snapshot.Run.Status == syncstate.SyncStatusFailed {
+			status.LastRunError = snapshot.Run.ErrorMessage
+		}
 		if snapshot.Run.FinishedAt != nil {
 			status.LastSyncAt = snapshot.Run.FinishedAt
 		}

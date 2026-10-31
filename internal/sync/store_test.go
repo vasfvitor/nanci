@@ -420,6 +420,53 @@ func TestSyncStateAndRunsAreKeyedBySource(t *testing.T) {
 	}
 }
 
+func TestLatestSyncSnapshotReadsTheRunError(t *testing.T) {
+	t.Parallel()
+
+	// Each run gets its own database: started_at has one-second resolution,
+	// so two runs started in the same second have no defined order.
+	finishedRun := func(status syncstate.SyncStatus, code, msg string) *syncstate.SyncRun {
+		t.Helper()
+		db := storetest.OpenTestDB(t)
+		syncRepo := sync.NewStore(db)
+		company := seedCompany(t, db, "company-1", "11222333000181")
+		ctx := context.Background()
+		run, err := syncRepo.StartRun(ctx, syncstate.StartRunParams{
+			CompanyID:         company.ID,
+			Source:            syncstate.SyncSourceNFe,
+			CredentialID:      company.CredentialID,
+			Environment:       company.Environment,
+			CredentialCNPJ:    company.CNPJ,
+			ConsultationCNPJ:  company.CNPJ,
+			ConsultationBasis: syncstate.ConsultationBasisExactCertificateCNPJ,
+			Mode:              syncstate.SyncModeNormal,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := syncRepo.FinishRun(ctx, syncstate.FinishRunParams{RunID: run.ID, Status: status, ErrorCode: code, ErrorMsg: msg}); err != nil {
+			t.Fatal(err)
+		}
+		snapshot, err := syncRepo.LatestSyncSnapshot(ctx, company.ID, syncstate.SyncSourceNFe, company.Environment, company.CNPJ)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if snapshot.Run == nil {
+			t.Fatal("snapshot has no run")
+		}
+		return snapshot.Run
+	}
+
+	if run := finishedRun(syncstate.SyncStatusFailed, "fetch_error", "falha de conexão"); run.ErrorCode != "fetch_error" || run.ErrorMessage != "falha de conexão" {
+		t.Errorf("failed run error = (%q, %q), want (fetch_error, falha de conexão)", run.ErrorCode, run.ErrorMessage)
+	}
+
+	// A run finished without an error stores NULL in both columns.
+	if run := finishedRun(syncstate.SyncStatusCompleted, "", ""); run.ErrorCode != "" || run.ErrorMessage != "" {
+		t.Errorf("completed run error = (%q, %q), want empty", run.ErrorCode, run.ErrorMessage)
+	}
+}
+
 func TestResetSyncStateResetsOnlyTheSourceAndKeepsTheBlock(t *testing.T) {
 	t.Parallel()
 

@@ -138,6 +138,9 @@ func (m *Manager) ListCompanies(ctx context.Context) ([]Company, error) {
 		if snapshot.Run != nil {
 			companies[i].LastRunStatus = snapshot.Run.Status
 			companies[i].LastRunStopReason = snapshot.Run.StopReason
+			if snapshot.Run.Status == syncstate.SyncStatusFailed {
+				companies[i].LastRunError = snapshot.Run.ErrorMessage
+			}
 			if snapshot.Run.FinishedAt != nil {
 				companies[i].LastSyncAt = snapshot.Run.FinishedAt
 			}

@@ -56,6 +56,63 @@ func TestSefazStatusWarnsWhenDistributionIdle(t *testing.T) {
 	}
 }
 
+func TestSefazStatusShowsTheErrorOfAFailedRun(t *testing.T) {
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
+		t.Run(string(source), func(t *testing.T) {
+			// Each run gets its own environment: started_at has one-second
+			// resolution, so two runs started in the same second have no
+			// defined order.
+			finish := func(status syncstate.SyncStatus) SefazSourceStatus {
+				t.Helper()
+				env := newNFeTestEnv(t)
+				ctx := context.Background()
+				run, err := env.app.NFe.SyncRepo.StartRun(ctx, syncstate.StartRunParams{
+					CompanyID:         env.company.ID,
+					Source:            source,
+					CredentialID:      env.company.CredentialID,
+					Environment:       env.company.Environment,
+					CredentialCNPJ:    env.company.CNPJ,
+					ConsultationCNPJ:  env.company.CNPJ,
+					ConsultationBasis: syncstate.ConsultationBasisExactCertificateCNPJ,
+					Mode:              syncstate.SyncModeNormal,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = env.app.NFe.SyncRepo.FinishRun(ctx, syncstate.FinishRunParams{
+					RunID:     run.ID,
+					Status:    status,
+					ErrorCode: "fetch_error",
+					ErrorMsg:  "falha de conexão",
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if source == syncstate.SyncSourceNFe {
+					res, err := env.app.NFe.Status(ctx, nfeTestCNPJ)
+					if err != nil {
+						t.Fatal(err)
+					}
+					return res.SefazSourceStatus
+				}
+				res, err := env.app.CTe.Status(ctx, nfeTestCNPJ)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return res.SefazSourceStatus
+			}
+
+			if got := finish(syncstate.SyncStatusFailed); got.LastRunStatus != "failed" || got.LastRunError != "falha de conexão" {
+				t.Errorf("failed run = (%q, %q), want (failed, falha de conexão)", got.LastRunStatus, got.LastRunError)
+			}
+			// A cancelled run is not a failure, even with a message stored.
+			if got := finish(syncstate.SyncStatusInterrupted); got.LastRunError != "" {
+				t.Errorf("interrupted run: LastRunError = %q, want empty", got.LastRunError)
+			}
+		})
+	}
+}
+
 // failingPassword answers every prompt with err.
 type failingPassword struct{ err error }
 

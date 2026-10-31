@@ -25,6 +25,7 @@ type Company struct {
 	InitialSyncDoneAt  *time.Time // NFS-e source; read from company_sync_sources
 	LastRunStatus      syncstate.SyncStatus
 	LastRunStopReason  syncstate.SyncStopReason
+	LastRunError       string // message of the last NFS-e run, set only when it failed
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

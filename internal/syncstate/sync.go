@@ -68,6 +68,8 @@ type SyncRun struct {
 	LastFoundNSU          *int64
 	Status                SyncStatus // "running" | "completed" | "failed" | "interrupted"
 	StopReason            SyncStopReason
+	ErrorCode             string // set by FinishRun when the run failed
+	ErrorMessage          string
 }
 
 // SyncState represents the persisted sync cursor and audit state for a company/source/environment/CNPJ key.

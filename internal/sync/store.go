@@ -787,7 +787,7 @@ func (r *Store) latestRun(ctx context.Context, companyID dfe.CompanyID, source s
 			id, company_id, source, credential_id, environment, credential_cnpj, consultation_cnpj,
 			consultation_basis, mode, started_at, finished_at, from_nsu, to_nsu,
 			checked_count, documents_found, empty_count, consecutive_empty_count,
-			errors_count, last_found_nsu, status, stop_reason
+			errors_count, last_found_nsu, status, stop_reason, error_code, error_message
 		FROM sync_runs
 		WHERE company_id = ? AND source = ? AND environment = ? AND consultation_cnpj = ?
 		ORDER BY started_at DESC, id DESC
@@ -802,7 +802,7 @@ func (r *Store) latestRun(ctx context.Context, companyID dfe.CompanyID, source s
 	var run syncstate.SyncRun
 	var finishedAt sql.NullString
 	var lastFound sql.NullInt64
-	var stopReason sql.NullString
+	var stopReason, errorCode, errorMessage sql.NullString
 	var consultationBasis, mode, status string
 	var startedAt string
 	if err := row.Scan(
@@ -827,6 +827,8 @@ func (r *Store) latestRun(ctx context.Context, companyID dfe.CompanyID, source s
 		&lastFound,
 		&status,
 		&stopReason,
+		&errorCode,
+		&errorMessage,
 	); err != nil {
 		return nil, err
 	}
@@ -840,6 +842,8 @@ func (r *Store) latestRun(ctx context.Context, companyID dfe.CompanyID, source s
 	run.StartedAt, _ = time.Parse(time.RFC3339, startedAt)
 	run.FinishedAt = store.ParseNullableTime(finishedAt)
 	run.LastFoundNSU = store.PtrFromNullInt64(lastFound)
+	run.ErrorCode = errorCode.String
+	run.ErrorMessage = errorMessage.String
 	return &run, nil
 }
 

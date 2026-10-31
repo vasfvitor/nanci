@@ -314,6 +314,29 @@ func TestManager_ListCompanies(t *testing.T) {
 		}
 	})
 
+	t.Run("the run error is kept only when the run failed", func(t *testing.T) {
+		for _, tt := range []struct {
+			status syncstate.SyncStatus
+			want   string
+		}{
+			{syncstate.SyncStatusFailed, "falha de conexão"},
+			{syncstate.SyncStatusInterrupted, ""},
+			{syncstate.SyncStatusCompleted, ""},
+		} {
+			syncs := &stubSyncs{snapshot: syncstate.SyncSnapshot{
+				Run: &syncstate.SyncRun{Status: tt.status, ErrorCode: "fetch_error", ErrorMessage: "falha de conexão"},
+			}}
+			m := company.NewManager(&stubStore{company: storedCompany()}, &stubCreds{}, syncs)
+			got, err := m.ListCompanies(ctx)
+			if err != nil {
+				t.Fatalf("ListCompanies: %v", err)
+			}
+			if got[0].LastRunError != tt.want {
+				t.Errorf("%s run: LastRunError = %q, want %q", tt.status, got[0].LastRunError, tt.want)
+			}
+		}
+	})
+
 	t.Run("store error", func(t *testing.T) {
 		m := company.NewManager(&stubStore{listErr: errDB}, &stubCreds{}, &stubSyncs{})
 		_, err := m.ListCompanies(ctx)
