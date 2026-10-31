@@ -388,6 +388,116 @@ func TestExportDANFSe_FailuresWriteNothing(t *testing.T) {
 	}
 }
 
+// TestExportDANFSe_WriteFailureLeavesNothing: a PDF that cannot be written
+// or moved into place leaves no file behind, temp included, and the
+// document still pending.
+func TestExportDANFSe_WriteFailureLeavesNothing(t *testing.T) {
+	tests := []struct {
+		name string
+		// outPath returns the destination inside dir, the test's output
+		// directory.
+		outPath func(t *testing.T, dir string) string
+		// wantLeft is what dir must hold after the failure.
+		wantLeft []string
+		wantErr  string
+	}{
+		{
+			name: "missing output directory",
+			outPath: func(_ *testing.T, dir string) string {
+				return filepath.Join(dir, "faltando", "nota.pdf")
+			},
+			wantErr: "gravar DANFSe temp",
+		},
+		{
+			name: "destination is a directory",
+			outPath: func(t *testing.T, dir string) string {
+				out := filepath.Join(dir, "nota.pdf")
+				if err := os.Mkdir(out, 0o750); err != nil {
+					t.Fatal(err)
+				}
+				return out
+			},
+			wantLeft: []string{"nota.pdf"},
+			wantErr:  "mover DANFSe temp",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newNFeTestEnv(t)
+			seedNFSe(t, env, "simple-prestada")
+			env.app.Exports.DANFSeRenderer = fakeDANFSeRenderer{}
+			ctx := context.Background()
+			dir := t.TempDir()
+			out := tc.outPath(t, dir)
+
+			err := env.app.Exports.ExportDANFSe(ctx, ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada, OutPath: out})
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want %q", err, tc.wantErr)
+			}
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var left []string
+			for _, e := range entries {
+				left = append(left, e.Name())
+			}
+			if !slices.Equal(left, tc.wantLeft) {
+				t.Errorf("output dir holds %v, want %v", left, tc.wantLeft)
+			}
+			pending, err := env.app.Exports.DocumentRepo.ListPendingExportDocuments(ctx, env.company.ID, nfse.DocumentFilter{}, nfse.ExportKindDANFSe)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(pending) != 1 {
+				t.Errorf("pending DANFSe exports = %d, want 1 (no marks after a failure)", len(pending))
+			}
+		})
+	}
+}
+
+// TestExportDANFSe_MarkFailureKeepsThePDF pins what a failed export mark
+// does today: the PDF is already in place and stays, the error is returned,
+// and the document is still pending, so the next incremental export
+// includes it again.
+func TestExportDANFSe_MarkFailureKeepsThePDF(t *testing.T) {
+	env := newNFeTestEnv(t)
+	xml := seedNFSe(t, env, "simple-prestada")
+	env.app.Exports.DANFSeRenderer = fakeDANFSeRenderer{}
+	ctx := context.Background()
+	if _, err := env.db.ExecContext(ctx, `CREATE TRIGGER fail_export_marks BEFORE INSERT ON company_document_export_marks BEGIN SELECT RAISE(ABORT, 'disk full'); END`); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	out := filepath.Join(dir, "nota.pdf")
+
+	err := env.app.Exports.ExportDANFSe(ctx, ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada, OutPath: out})
+	if err == nil || !strings.HasPrefix(err.Error(), "marcar danfse exportado: ") || !strings.Contains(err.Error(), "disk full") {
+		t.Fatalf("err = %v, want the wrapped mark error", err)
+	}
+	got, err := os.ReadFile(out) // #nosec G304 -- test temp file.
+	if err != nil {
+		t.Fatalf("PDF after a failed mark: %v", err)
+	}
+	if want := "pdf:" + string(xml[:10]); string(got) != want {
+		t.Errorf("PDF = %q, want %q", got, want)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("files in the output dir = %v, want only the PDF", entries)
+	}
+	pending, err := env.app.Exports.DocumentRepo.ListPendingExportDocuments(ctx, env.company.ID, nfse.DocumentFilter{}, nfse.ExportKindDANFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pending) != 1 {
+		t.Errorf("pending DANFSe exports = %d, want 1 (the mark failed)", len(pending))
+	}
+}
+
 func TestExportDANFSe_RequiresOutPath(t *testing.T) {
 	env := newNFeTestEnv(t)
 	err := env.app.Exports.ExportDANFSe(context.Background(), ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada})
