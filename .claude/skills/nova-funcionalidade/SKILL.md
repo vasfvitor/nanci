@@ -1,6 +1,6 @@
 ---
 name: nova-funcionalidade
-description: Start here for any new feature, change or fix in nanci, especially when the person asking is not a developer ("quero que o app faça...", "adiciona um botão", "muda a tela de...", "corrige..."). Turns the request into a plain-Portuguese plan for approval, picks the area skill, works on a local branch in small commits, runs scripts/verify.sh, stops before anything risky (SEFAZ events, production, real certificate, applied migrations, generated files, weakening checks) and explains the result without jargon.
+description: Start here for any new feature, change or fix in nanci, especially when the person asking is not a developer ("quero que o app faça...", "adiciona um botão", "muda a tela de...", "corrige..."). Plain-Portuguese plan for approval, local branch, scripts/verify.sh, and a list of things to stop and ask about.
 ---
 
 # Nova funcionalidade: do pedido ao commit
@@ -44,7 +44,7 @@ Não precisa de PR. O trabalho fica numa branch local e entra na `main` por fast
 
 ```bash
 git switch main
-git switch -c feat/<nome-curto>        # ou: git worktree add ../nanci-<nome> -b feat/<nome-curto>
+git switch -c feat/<nome-curto>
 ```
 
 - Um commit por passo, e cada commit compila e passa nos testes sozinho. A ordem costuma ser de baixo para cima: domínio e banco, depois `internal/app`, depois Wails e frontend, depois docs.
@@ -59,13 +59,9 @@ git switch -c feat/<nome-curto>        # ou: git worktree add ../nanci-<nome> -b
 bash scripts/verify.sh
 ```
 
-Roda o mesmo que o CI: frontend, Go nos dois módulos, lint, `go.mod`, bindings do Wails e o teste de arquitetura. Rode antes de cada commit que mexe em código e sempre antes do fast-forward. Quando algo falhar, corrija o código. Não:
+Roda o mesmo que o CI; o que cada etapa confere está em `docs/DEVELOPMENT.md`, "Verificar antes do PR". Rode antes de cada commit que mexe em código e sempre antes do fast-forward. Quando algo falhar, corrija o código, nunca a verificação (veja "Mudar as regras" abaixo). Se o `verify.sh` listar arquivos de regra que mudaram, mostre a lista à pessoa e explique cada um.
 
-- apague, pule (`t.Skip`) ou afrouxe um teste para ele passar, a não ser que o comportamento tenha mudado de propósito e a pessoa tenha aprovado;
-- mude `.golangci.yml`, `eslint.config.ts`, o `frozenMigrations` de `internal/store/migrations_frozen_test.go` ou o `frontendPackages` de `internal/desktop/architecture_test.go` para a verificação passar;
-- use `--no-verify`, `//nolint` ou `eslint-disable` sem um motivo escrito ao lado que a pessoa aprovou.
-
-Quando a tela mudou, teste também no app de verdade (veja "Como testar" abaixo) e gere as capturas da página (`pnpm run screenshots <rota>` em `internal/desktop/frontend`).
+Quando a tela mudou, teste também no app de verdade (seção 7).
 
 ## 6. Pare e pergunte antes de
 
@@ -74,7 +70,7 @@ Quando a tela mudou, teste também no app de verdade (veja "Como testar" abaixo)
 - **Usar um certificado real ou uma senha**, ou pôr um deles, um XML fiscal real ou o banco em arquivo, log ou commit.
 - **Editar uma migration que já existe** em `internal/store/migrations_v2/`: mudança no banco é sempre uma migration nova (`migration`).
 - **Editar à mão arquivo gerado**: `internal/desktop/frontend/bindings/` (gere com `wails3 generate bindings -clean=true -ts -i`) e `internal/store/sqlgen/` (gere com sqlc, veja `migration`).
-- **Mudar as regras**: `AGENTS.md`, os skills, a configuração de lint, os testes de arquitetura.
+- **Mudar as regras**: `AGENTS.md`, os skills, `.golangci.yml`, `eslint.config.ts`, a lista `frontendPackages` de `internal/desktop/architecture_test.go` ou uma linha existente de `frozenMigrations` (a linha de uma migration nova entra normalmente). Afrouxar uma verificação também é mudar as regras: apagar ou pular (`t.Skip`) um teste, usar `--no-verify`, `//nolint` ou `eslint-disable`.
 - **Adicionar uma dependência nova** (Go ou npm) ou trocar a versão do Wails.
 - **Apagar dados, telas, comandos ou testes** que existem.
 - **Mexer em muitas áreas ao mesmo tempo** sem o plano ter previsto.
@@ -87,7 +83,7 @@ go run ./cmd/seeddev                    # cria devdata/ com uma empresa e o cert
 NANCI_DATA_DIR="$PWD/devdata" bash -c 'cd internal/desktop && wails3 dev'
 ```
 
-O certificado de teste não passa numa SEFAZ ou ADN de verdade: sincronizar com ele falha, e isso é o esperado. Para ver uma tela com dados, use as capturas de tela (`pnpm run screenshots`), que usam dados de mentira.
+O certificado de teste não passa numa SEFAZ ou ADN de verdade: sincronizar com ele falha, e isso é o esperado. Para ver uma tela com dados de mentira, e sempre que uma tela mudar, gere as capturas: `pnpm run screenshots <rota>` em `internal/desktop/frontend`.
 
 ## 8. Explicar o resultado
 

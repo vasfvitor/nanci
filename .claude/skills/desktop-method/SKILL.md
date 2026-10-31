@@ -87,6 +87,5 @@ A user-facing capability usually ships with its CLI command in the same change: 
 - [ ] composable function with guard, store flag set before await and cleared in `finally`, second-instance test
 - [ ] page wiring with `useNotify`, dialog typed props/emits, page test
 - [ ] CLI command and test when user-facing
-- [ ] Go: `go build ./... && go test ./...` at the root and in `internal/desktop`; `golangci-lint run ./...`
-- [ ] Frontend: `pnpm run lint:check && pnpm run test:unit && pnpm run build`; `pnpm run screenshots <route>` when a page changed
+- [ ] `bash scripts/verify.sh`; `pnpm run screenshots <route>` when a page changed
 - [ ] Manual smoke test in `wails3 dev` of the flow touched

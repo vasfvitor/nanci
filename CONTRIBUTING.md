@@ -43,7 +43,6 @@ As regras completas, inclusive as do frontend, estão em [AGENTS.md](AGENTS.md).
 - Quando o teste precisar gravar arquivos ou criar banco, use `t.TempDir()`.
 - Mudanças em parser, armazenamento ou caminhos de arquivo pedem teste de regressão.
 - Rode `bash scripts/verify.sh` (ou `make verify`) antes de cada commit: ele confere Go e frontend como o CI ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#verificar-antes-do-pr)). `make check` também formata e roda `gosec` e `gitleaks`. Para rodar só os testes com o detector de corrida: `go test -race ./...`.
-- No frontend (`internal/desktop/frontend`): `pnpm run lint:check`, `pnpm run test:unit` e `pnpm run build`.
 
 ## Commits e PRs
 
@@ -65,7 +64,7 @@ Para quem vai mudar o Nanci pedindo a um agente (Claude Code, por exemplo), mesm
 
 ### Preparar uma vez
 
-1. Instale as ferramentas da tabela de [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#requisitos) e o `golangci-lint` na versão do CI (`v2.12.2`, em [.github/workflows/ci.yml](.github/workflows/ci.yml)): `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2`.
+1. Instale as ferramentas da tabela de [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#requisitos). O `scripts/verify.sh` mostra o comando de instalação de cada uma que faltar ou estiver na versão errada.
 2. Clone o seu fork e aponte para o repositório original, para receber as atualizações:
 
    ```bash
@@ -102,7 +101,7 @@ Os seus commits são reaplicados por cima dos novos do original. Se aparecer con
 
 ### CI no GitHub (opcional)
 
-A verificação principal é a local, com o `scripts/verify.sh`. Se quiser o mesmo no GitHub, habilite o Actions no fork: "Workflows don't run in forked repositories by default. You must enable GitHub Actions in the Actions tab of the forked repository" ([GitHub Docs, Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), consultado em 30/10/2026). O workflow útil é o **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)). Desabilite **Website**, que publica o site do projeto original, e **Release**, que precisa da chave de assinatura do original e falha sem o segredo `UPDATER_SIGNING_KEY` ([.github/workflows/release.yml](.github/workflows/release.yml), job `prepare`): na aba Actions, clique no workflow e em **Disable workflow** ([GitHub Docs, Disabling and enabling a workflow](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows), consultado em 30/10/2026).
+A verificação principal é a local, com o `scripts/verify.sh`. Para ter o mesmo no GitHub, habilite o Actions na aba **Actions** do fork, porque num fork ele vem desligado ([GitHub Docs](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), conferido em 30/10/2026). Deixe ligado o **CI** e desabilite **Website**, que publica o site do original, e **Release**, que falha sem o segredo `UPDATER_SIGNING_KEY` ([.github/workflows/release.yml](.github/workflows/release.yml)): clique no workflow e em **Disable workflow** ([GitHub Docs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows)).
 
 ### Se você for publicar versões suas
 

@@ -36,11 +36,11 @@ looks like a pre-existing bug (do not fix it unless asked).
 
 ## Verification blocks
 
-- Go root: `go build ./... && go vet ./... && go test ./...`; `golangci-lint run --allow-parallel-runners ./...` with a private `GOLANGCI_LINT_CACHE` (the shared cache reports findings from other worktrees with foreign paths); `govulncheck ./...` when `go.mod` changed; `GOWORK=off go mod tidy` with no diff.
-- Desktop Go: `cd internal/desktop && go build ./... && go test ./...` with `frontend/dist` present (built or stubbed, see the setup above). Any change to an exported `app` API needs this even if the lane did not touch `internal/desktop`.
-- Bindings: `cd internal/desktop && wails3 generate bindings -clean=true -ts -i` (CLI pinned: `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0`), then `git status frontend/bindings` shows only the expected methods and models, and the `vi.mock` list in `src/platform/wails/client.test.ts` plus the mocks in `scripts/generate-screenshots.ts` are updated in the same commit (`vue-tsc -b` type-checks that script through `tsconfig.node.json`).
-- Frontend: `pnpm run lint:check && pnpm run test:unit && pnpm run build`; `pnpm run screenshots` when a page or Quasar changed.
-- Store: `go test ./internal/store -run Migration -v`; after a migration regenerate sqlc (it reads the goose Up sections of `migrations_v2`) with `CGO_ENABLED=0 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` (`CGO_ENABLED=0` avoids needing a C compiler, and the cgo link fails with some Windows toolchains) and commit `sqlgen`. Never edit an applied migration; add a new one.
+- Every lane: `bash scripts/verify.sh` (what CI checks, Go and frontend), with `GOLANGCI_LINT_CACHE` set to a private directory first: the shared cache reports findings from other worktrees with foreign paths.
+- Quick loops while working: `go test ./<package>/...`, `pnpm run test:unit <file>`.
+- Bindings: after regenerating (`cd internal/desktop && wails3 generate bindings -clean=true -ts -i`), `git status frontend/bindings` shows only the expected methods and models, and the `vi.mock` list in `src/platform/wails/client.test.ts` plus the mocks in `scripts/generate-screenshots.ts` change in the same commit.
+- Pages: `pnpm run screenshots <route>` when a page or Quasar changed.
+- Store: the `migration` skill (sqlc regeneration, the `frozenMigrations` line).
 - Docs: every factual claim about an external system carries its source URL and the date checked; third-party-only claims say so.
 
 ## Rules the agent must not relearn

@@ -15,6 +15,7 @@ Estrutura de pacotes e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md); pad
 | Node.js | 24 (`internal/desktop/frontend/.node-version`; mínimo 22) | frontend |
 | pnpm | 10 | frontend |
 | Wails CLI (`wails3`) | v3.0.0, a mesma do `internal/desktop/go.mod` | desktop |
+| golangci-lint | a do CI (`version:` em `.github/workflows/ci.yml`, hoje v2.12.2) | `scripts/verify.sh` |
 | NSIS | 3 | só para gerar o instalador |
 | OpenSSL | qualquer | só para recriar o certificado mock |
 
@@ -83,7 +84,7 @@ pnpm run build
 bash scripts/verify.sh    # ou: make verify
 ```
 
-O `verify.sh` roda na sua máquina o que o CI confere: lint, testes e build do frontend; `go vet`, testes e `golangci-lint` nos dois módulos Go; `go.mod` arrumado; bindings do Wails em dia; e o `govulncheck`, quando instalado. Ele não altera arquivos (só o `frontend/dist`, que o build gera), cria o `go.work` se faltar, roda todas as etapas mesmo depois de uma falha e termina com a lista do que falhou. Leva uns 3 minutos.
+O `verify.sh` roda na sua máquina o que o CI confere, com as versões das ferramentas lidas do `ci.yml`: lint, testes e build do frontend; testes e `golangci-lint` nos dois módulos Go (que incluem os testes de arquitetura); `go.mod` arrumado; bindings do Wails e código do sqlc em dia; e o `govulncheck`. Roda todas as etapas mesmo depois de uma falha, termina com a lista do que falhou e avisa quando um arquivo de regra (skills, lint, testes de arquitetura, migrations) mudou desde a `main`. Leva uns 2 minutos.
 
 `make check` (fmt, vuln, lint, test e security) também formata o código e roda o `gosec` e o `gitleaks`; `make test` roda só `go test ./...`.
 

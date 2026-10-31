@@ -29,19 +29,19 @@ Desktop Go methods exposed to Wails should return DTOs from `internal/desktop/de
 Do not hardcode style colors or use Tailwind-style theme selectors (such as `dark:bg-grey-9`). For dark theme styling adaptations, use Quasar-native dynamic class bindings based on `$q.dark.isActive` (e.g. `:class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"`) or leverage Quasar's built-in CSS variables (e.g. `var(--q-separator-color)`).
 
 ## Testing Guidelines
-Place Go tests next to the code they cover using `*_test.go`. Existing examples include `internal/store/nfe_test.go` and `internal/foundation/cnpj/cnpj_test.go`. Run `make test` before opening a PR; use `go test ./...` for quick iteration. Add regression tests for parser, storage, and path-handling changes.
+Place Go tests next to the code they cover using `*_test.go`. Existing examples include `internal/store/nfe_test.go` and `internal/foundation/cnpj/cnpj_test.go`. Use `go test ./...` for quick iteration and `bash scripts/verify.sh` before committing. Add regression tests for parser, storage, and path-handling changes.
 
-For the desktop frontend, use Vitest with happy-dom, Vue Test Utils, and Pinia test setup. Add focused tests for Wails client mapping/error normalization, event cleanup wrappers, Pinia stores, composables that build Wails requests, formatter utilities, and route-remount behavior for long-running operations. Run `pnpm run lint:check`, `pnpm run test:unit`, and `pnpm run build` in `internal/desktop/frontend` before handing off frontend changes. Also smoke-test key Wails flows manually when behavior crosses the desktop runtime: add company, add credential, sync, list documents, export, direct query, password prompt, and logs console.
+For the desktop frontend, use Vitest with happy-dom, Vue Test Utils, and Pinia test setup. Add focused tests for Wails client mapping/error normalization, event cleanup wrappers, Pinia stores, composables that build Wails requests, formatter utilities, and route-remount behavior for long-running operations. `scripts/verify.sh` runs their lint, tests and build. Also smoke-test key Wails flows manually when behavior crosses the desktop runtime: add company, add credential, sync, list documents, export, direct query, password prompt, and logs console.
 
 ## Commit & Pull Request Guidelines
 Prefer scoped, imperative commit subjects in the form `scope: change`, for example `frontend: fix company dialog spacing`, `cli: validate --competencia input`, `frontend,cli: align export flow`, or `wails: wire new desktop command`. Use repo areas as scopes: `frontend`, `cli`, `app`, `store`, `sync`, `nfse`, `adn`, `nfe`, `sefaz`, `wails`, or a small combination when one change truly spans layers. Keep commits narrow and descriptive; add an issue reference when relevant. PRs should explain the behavioral change, list verification commands, and include screenshots for desktop/frontend UI changes. Note any schema, migration, or certificate-handling impact explicitly.
 
 ## Working With Agents
-A new feature, change or fix starts with `.claude/skills/nova-funcionalidade`: plan in plain Portuguese for approval, a local branch with one commit per step, `scripts/verify.sh`, and the list of things to stop and ask about. It applies to anyone driving an agent, developer or not.
+A new feature, change or fix starts with `.claude/skills/nova-funcionalidade`, whoever drives the agent.
 
 Larger work can be delegated to subagents, one per lane, each in its own git worktree with disjoint files; the orchestrator integrates afterwards. The executable checklists live in `.claude/skills/lane` (how to brief a lane) and `.claude/skills/integrate` (how to land it). The rules they encode:
 
-- A worktree may start at a stale commit: reset to the base tip before any edit. `go.work` and `internal/desktop/frontend/dist` are gitignored; copy them in, never commit them.
+- A worktree may start at a stale commit: reset to the base tip before any edit. `go.work` and `internal/desktop/frontend/dist` are gitignored and never committed; the lane skill says how to create them.
 - Every file is LF. `.gitattributes` normalizes on commit, but scripts that write files on Windows must still write LF (Python: `newline='\n'`).
 - Commits carry no attribution trailer. When the clone signs commits (the upstream repo does), keep them signed: a history rewrite drops signatures, so re-sign before handing off.
 - A change to Wails bindings regenerates `frontend/bindings` (`wails3 generate bindings -clean=true -ts -i` in `internal/desktop`, with the pinned `wails3` v3.0.0) and updates the `vi.mock` list in `src/platform/wails/client.test.ts` and the mocks in `scripts/generate-screenshots.ts` in the same commit. CI fails on stale bindings or a stale `go.mod`.
