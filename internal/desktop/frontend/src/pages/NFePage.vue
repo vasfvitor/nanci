@@ -300,11 +300,8 @@ import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
 import ImportResultDialog from '../components/ImportResultDialog.vue'
-import NFeCienciaConfirmDialog from '../components/NFeCienciaConfirmDialog.vue'
-import NFeEventResultsDialog from '../components/NFeEventResultsDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFeFetchDialog from '../components/NFeFetchDialog.vue'
-import NFeManifestacaoDialog from '../components/NFeManifestacaoDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
@@ -316,18 +313,11 @@ import StateLegend from '../components/StateLegend.vue'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
+import { useNFeManifestacaoActions } from '@/composables/useNFeManifestacaoActions'
 import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type {
-  FetchByChaveResult,
-  ImportXMLResult,
-  NFeConclusiveTipo,
-  NFeEventBatchResult,
-  NFeEventResult,
-  NFeExportFormat,
-  NFeRow,
-} from '@/types/desktop'
+import type { FetchByChaveResult, ImportXMLResult, NFeExportFormat, NFeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
 import { importSummary } from '@/utils/importDisplay'
@@ -350,12 +340,7 @@ import {
   situacaoLabel,
   showsConclusiveDeadline,
 } from '@/utils/nfeDisplay'
-import {
-  countOutcomes,
-  isProblemOutcome,
-  nfeRowActions,
-  noEligibleCienciaMessage,
-} from '@/utils/nfeManifestacao'
+import { nfeRowActions } from '@/utils/nfeManifestacao'
 
 const $q = useQuasar()
 const nfe = useNFeDocuments()
@@ -502,6 +487,13 @@ const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   },
 })
 
+const { registerSelectedCiencia, startCiencia, openManifestacao } = useNFeManifestacaoActions({
+  cnpj,
+  companyName,
+  tpAmb: computed(() => status.value?.TpAmb ?? ''),
+  syncNFe,
+})
+
 async function search() {
   try {
     await nfe.search()
@@ -636,134 +628,6 @@ async function resetNFe() {
     } else {
       notifyError('Erro ao redefinir NF-e', error)
     }
-  }
-}
-
-function registerSelectedCiencia() {
-  if (eligibleSelection.value.length === 0) return
-  void startCiencia(selected.value.map((row) => row.ChaveAcesso))
-}
-
-// startCiencia asks the backend which notes can receive ciência, then asks
-// the user to confirm exactly those notes.
-async function startCiencia(chavesAcesso: string[]) {
-  let plan
-  try {
-    plan = await manifestacao.planCiencia(chavesAcesso)
-  } catch (error) {
-    notifyError('Erro ao preparar a ciência', error)
-    return
-  }
-  if (!plan) return
-
-  const noEligible = noEligibleCienciaMessage(plan)
-  if (noEligible) {
-    notifyWarning(noEligible)
-    return
-  }
-
-  $q.dialog({
-    component: NFeCienciaConfirmDialog,
-    componentProps: {
-      companyName: companyName.value,
-      cnpj: cnpj.value,
-      tpAmb: status.value?.TpAmb ?? '',
-      plan,
-    },
-  }).onOk((eligible: string[]) => {
-    void sendCiencia(eligible)
-  })
-}
-
-async function sendCiencia(chavesAcesso: string[]) {
-  try {
-    const result = await manifestacao.registerCiencia(chavesAcesso)
-    if (!result) {
-      notifyWarning('Já existe um envio de ciência em andamento.')
-      return
-    }
-    notifyCienciaResult(result)
-  } catch (error) {
-    if (wailsErrorCode(error) === 'canceled') {
-      notifyWarning('Envio de ciência cancelado.')
-    } else {
-      notifyError('Erro ao registrar ciência', error)
-    }
-  }
-}
-
-function notifyCienciaResult(result: NFeEventBatchResult) {
-  const counts = countOutcomes(result.Results)
-  const hasProblems = result.Results.some(isProblemOutcome) || Boolean(result.Interrupted)
-  const notify = hasProblems ? notifyWarning : notifySuccess
-  notify(
-    `Ciência: ${counts.registrada} registradas, ${counts.ja_registrada} já registradas, ${counts.rejeitada} rejeitadas, ${counts.nao_enviada} não enviadas.`,
-    {
-      caption: 'O XML completo chega na próxima sincronização.',
-      timeout: 10000,
-      actions: [
-        {
-          label: 'Sincronizar agora',
-          handler: () => {
-            void syncNFe()
-          },
-        },
-      ],
-    }
-  )
-
-  if (hasProblems) {
-    $q.dialog({ component: NFeEventResultsDialog, componentProps: { result } })
-  }
-}
-
-function openManifestacao(row: NFeRow) {
-  $q.dialog({
-    component: NFeManifestacaoDialog,
-    componentProps: {
-      note: row,
-      tpAmb: status.value?.TpAmb ?? '',
-    },
-  }).onOk((payload: { tipo: NFeConclusiveTipo; justificativa: string }) => {
-    void sendManifestacao(row.ChaveAcesso, payload.tipo, payload.justificativa)
-  })
-}
-
-async function sendManifestacao(
-  chaveAcesso: string,
-  tipo: NFeConclusiveTipo,
-  justificativa: string
-) {
-  try {
-    const result = await manifestacao.registerManifestacao(chaveAcesso, tipo, justificativa)
-    if (!result) {
-      notifyWarning('Esta nota já tem um envio em andamento.')
-      return
-    }
-    notifyManifestacaoResult(result)
-  } catch (error) {
-    if (wailsErrorCode(error) === 'canceled') {
-      notifyWarning('Envio da manifestação cancelado.')
-    } else {
-      notifyError('Erro ao registrar manifestação', error)
-    }
-  }
-}
-
-function notifyManifestacaoResult(result: NFeEventResult) {
-  const detail = [result.CStat, result.XMotivo].filter(Boolean).join(' - ')
-  switch (result.Status) {
-    case 'registrada':
-      notifySuccess(`Manifestação registrada. Protocolo ${result.Protocolo || '—'}.`)
-      return
-    case 'ja_registrada':
-      notifyInfo('A manifestação já estava registrada na SEFAZ.')
-      return
-    case 'rejeitada':
-      notifyError('Manifestação rejeitada pela SEFAZ', detail)
-      return
-    default:
-      notifyWarning(`Manifestação não enviada. ${detail}`.trim())
   }
 }
 
