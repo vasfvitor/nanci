@@ -370,12 +370,16 @@ jobs:
           - \`nanci-checksums.txt\`
           EOF
 
+      # The app looks for updates at releases/latest/download/nanci-update.json.
+      # The release starts as a draft, so "latest" moves to it only after every
+      # file is uploaded, and a failed upload leaves the previous release as
+      # latest instead of one without the manifest.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Release ${{ needs.prepare.outputs.tag }}
-          draft: false
+          draft: true
           target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true
           body_path: release_notes.md
@@ -385,3 +389,9 @@ jobs:
             release/nanci-update.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
