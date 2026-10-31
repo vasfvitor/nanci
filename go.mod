@@ -11,7 +11,7 @@ require (
 	github.com/sethvargo/go-retry v0.5.0
 	github.com/spf13/cobra v1.10.2
 	github.com/wevertonj/go-danfse-v2 v0.1.0
-	github.com/xuri/excelize/v2 v2.11.1-0.20260915055537-22f76f9acb94
+	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/term v0.47.0
 	modernc.org/sqlite v1.61.0
@@ -37,7 +37,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
-	github.com/xuri/efp v0.0.1 // indirect
+	github.com/xuri/efp v0.0.2 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.58.0 // indirect

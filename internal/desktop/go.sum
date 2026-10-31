@@ -65,10 +65,10 @@ github.com/wailsapp/wails/v3 v3.0.0 h1:lBe89kFu23bVz1dc1H9v0srkHQgWsy7BAKpH4sLQu
 github.com/wailsapp/wails/v3 v3.0.0/go.mod h1:U3p3/QfSer2XxXM3XWhwis9O7LvvuNKN/AcGoEFD+K8=
 github.com/wevertonj/go-danfse-v2 v0.1.0 h1:AF5v8nqW5S3FTnOySS3kJomsFccwDBODMn+7RKgPJ2Q=
 github.com/wevertonj/go-danfse-v2 v0.1.0/go.mod h1:UF9ObiBhezhcpZSxVEpDTCuEAiKIqoD4KfRub03nmNw=
-github.com/xuri/efp v0.0.1 h1:fws5Rv3myXyYni8uwj2qKjVaRP30PdjeYe2Y6FDsCL8=
-github.com/xuri/efp v0.0.1/go.mod h1:ybY/Jr0T0GTCnYjKqmdwxyxn2BQf2RcQIIvex5QldPI=
-github.com/xuri/excelize/v2 v2.11.1-0.20260915055537-22f76f9acb94 h1:yPdJeJLC1uTN8zQBHE2nqHjZ15PfxU9xsX75vNcyy/c=
-github.com/xuri/excelize/v2 v2.11.1-0.20260915055537-22f76f9acb94/go.mod h1:WnwweQUkWv/3Y6OBVy0bgqN0zHAbn2N+i2zPUAXF1SI=
+github.com/xuri/efp v0.0.2 h1:74yhBh0nfIWLOrN76wtShYVse94pADGYS0/c86jOp8Q=
+github.com/xuri/efp v0.0.2/go.mod h1:ybY/Jr0T0GTCnYjKqmdwxyxn2BQf2RcQIIvex5QldPI=
+github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2 h1:YJqtDi2ShO2fh/qMNO0MyPHXiki9h1OH3i3zGRunGRQ=
+github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2/go.mod h1:d2KG/tW81cIhSeC3S7wENv3qRnOC3MDcrjDicKuZa6U=
 github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 h1:+C0TIdyyYmzadGaL/HBLbf3WdLgC29pgyhTjAT/0nuE=
 github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9/go.mod h1:WwHg+CVyzlv/TX9xqBFXEZAuxOPxn2k1GNHwG41IIUQ=
 github.com/zalando/go-keyring v0.2.8 h1:6sD/Ucpl7jNq10rM2pgqTs0sZ9V3qMrqfIIy5YPccHs=

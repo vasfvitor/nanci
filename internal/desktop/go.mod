@@ -34,8 +34,8 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/wevertonj/go-danfse-v2 v0.1.0 // indirect
-	github.com/xuri/efp v0.0.1 // indirect
-	github.com/xuri/excelize/v2 v2.11.1-0.20260915055537-22f76f9acb94 // indirect
+	github.com/xuri/efp v0.0.2 // indirect
+	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
