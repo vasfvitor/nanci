@@ -179,7 +179,7 @@ func TestTestConnectionExpiredCertificate(t *testing.T) {
 	want := ConnectionTestResult{
 		CertLoaded:        true,
 		CertSubject:       cred.SubjectName,
-		CertExpiration:    "01/03/2024 12:30:00",
+		CertExpiration:    formatCertExpiration(expired),
 		StatusExplanation: "Certificado digital expirado.",
 	}
 	if result != want {
@@ -295,4 +295,16 @@ func TestTestConnectionCredentialLookup(t *testing.T) {
 			t.Errorf("password prompts = %d, want 0", len(env.passwords.requests))
 		}
 	})
+}
+
+// Not parallel: it replaces time.Local, which parallel tests would read.
+func TestFormatCertExpirationUsesLocalTime(t *testing.T) {
+	saved := time.Local
+	t.Cleanup(func() { time.Local = saved })
+	time.Local = time.FixedZone("BRT", -3*60*60)
+
+	got := formatCertExpiration(time.Date(2027, 1, 1, 2, 0, 0, 0, time.UTC))
+	if want := "31/12/2026 23:00:00"; got != want {
+		t.Errorf("formatCertExpiration = %q, want %q (UTC 02:00 is 23:00 the day before in Brazil)", got, want)
+	}
 }

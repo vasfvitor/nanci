@@ -130,7 +130,7 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 	result.CertLoaded = true
 	result.CertSubject = cred.SubjectName
 	if cred.NotAfter != nil {
-		result.CertExpiration = cred.NotAfter.Format("02/01/2006 15:04:05")
+		result.CertExpiration = formatCertExpiration(*cred.NotAfter)
 		if cred.NotAfter.Before(time.Now()) {
 			result.StatusExplanation = "Certificado digital expirado."
 			return result, nil
@@ -166,4 +166,11 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 	}
 
 	return result, nil
+}
+
+// formatCertExpiration shows a certificate's expiry in the user's local time.
+// The credential store keeps NotAfter in UTC, so formatting it as is would
+// put the expiry three hours ahead for a user in Brazil.
+func formatCertExpiration(notAfter time.Time) string {
+	return notAfter.Local().Format("02/01/2006 15:04:05")
 }

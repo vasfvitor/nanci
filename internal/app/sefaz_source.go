@@ -119,7 +119,7 @@ func testSefazConnection(ctx context.Context, log *slog.Logger, companies *compa
 	result.CertLoaded = true
 	result.CertSubject = loaded.Credential.SubjectName
 	if loaded.Credential.NotAfter != nil {
-		result.CertExpiration = loaded.Credential.NotAfter.Format("02/01/2006 15:04:05")
+		result.CertExpiration = formatCertExpiration(*loaded.Credential.NotAfter)
 	}
 
 	client, err := newSEFAZClient(sefaz.ClientConfig{
