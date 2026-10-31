@@ -40,6 +40,9 @@ func newCTeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				}
 				_, _ = fmt.Fprintln(out)
 			}
+			if result.LastRunError != "" {
+				_, _ = fmt.Fprintf(out, "  Última execução falhou: %s\n", result.LastRunError)
+			}
 			if result.InitialSyncDoneAt != nil {
 				_, _ = fmt.Fprintf(out, "  Carga inicial concluída em: %s\n", formatDateTime(*result.InitialSyncDoneAt))
 			} else {

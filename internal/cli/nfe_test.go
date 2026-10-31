@@ -463,6 +463,55 @@ func TestSefazStatus_WarnsWhenDistributionIdle(t *testing.T) {
 	}
 }
 
+func TestSefazStatus_PrintsWhyTheLastRunFailed(t *testing.T) {
+	const line = "  Última execução falhou: falha de conexão\n"
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
+		for _, tt := range []struct {
+			status    syncstate.SyncStatus
+			wantPrint bool
+		}{
+			{syncstate.SyncStatusFailed, true},
+			{syncstate.SyncStatusInterrupted, false},
+		} {
+			t.Run(string(source)+"/"+string(tt.status), func(t *testing.T) {
+				env := newNFeTestRoot(t)
+				ctx := context.Background()
+				syncRepo := sync.NewStore(env.db)
+				run, err := syncRepo.StartRun(ctx, syncstate.StartRunParams{
+					CompanyID:         env.company.ID,
+					Source:            source,
+					CredentialID:      env.company.CredentialID,
+					Environment:       env.company.Environment,
+					CredentialCNPJ:    env.company.CNPJ,
+					ConsultationCNPJ:  env.company.CNPJ,
+					ConsultationBasis: syncstate.ConsultationBasisExactCertificateCNPJ,
+					Mode:              syncstate.SyncModeNormal,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = syncRepo.FinishRun(ctx, syncstate.FinishRunParams{
+					RunID:     run.ID,
+					Status:    tt.status,
+					ErrorCode: "fetch_error",
+					ErrorMsg:  "falha de conexão",
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if err := env.run(string(source), "status", "-c", nfeTestCNPJ); err != nil {
+					t.Fatalf("status: %v", err)
+				}
+				got := env.out.String()
+				if strings.Contains(got, line) != tt.wantPrint {
+					t.Errorf("output contains %q = %t, want %t:\n%s", line, !tt.wantPrint, tt.wantPrint, got)
+				}
+			})
+		}
+	}
+}
+
 func TestPendingAlert(t *testing.T) {
 	tests := []struct {
 		name string

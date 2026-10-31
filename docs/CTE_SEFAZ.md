@@ -180,7 +180,7 @@ nanci.exe cte reset --cnpj 12345678000199
 nanci.exe cte reset --cnpj 12345678000199 --confirmar
 ```
 
-- `cte status` mostra cursor, bloqueio, consultas da última hora e os totais do ambiente atual por papel principal: tomador, destinatário, remetente e os demais.
+- `cte status` mostra cursor, bloqueio, consultas da última hora e os totais do ambiente atual por papel principal: tomador, destinatário, remetente e os demais. Quando a última sincronização falhou, mostra a mensagem guardada (`sync_runs.error_message`) em "Última execução falhou: ...", e a linha de situação da página de CT-e termina em "Falhou: ..."; uma sincronização interrompida, como a cancelada pelo usuário, não mostra nada.
 - `cte list` mostra chave, modelo, número e série, emissão, emitente, tomador, papel, valor da prestação e situação. `--papel` casa com o papel principal ou com qualquer outro papel da empresa no documento; `--modelo` aceita 57, 64 ou 67; `--chave` pode repetir.
 - `cte export zip` grava `<competencia>/<papel>/<chave>-procCTe.xml` (`-procCTeOS`, `-procGTVe` ou `-procCTeSimp` conforme o tipo) e os eventos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (padrão `cte.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível); `--incremental` exporta só o que ainda não foi exportado, mudou ou cuja quantidade de eventos mudou desde a última exportação (por exemplo, depois de um cancelamento); o documento volta com todos os seus eventos.
 - `cte export xml` grava o XML do documento da `--chave` em `--out` (`-o`), por padrão `<chave>.xml`.

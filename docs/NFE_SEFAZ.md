@@ -177,6 +177,7 @@ nanci.exe nfe reset --cnpj 12345678000199
 nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 ```
 
+- Quando a última sincronização falhou, `nfe status` mostra a mensagem guardada (`sync_runs.error_message`) em "Última execução falhou: ...", e a linha de situação da página de NF-e termina em "Falhou: ...". Uma sincronização interrompida, como a cancelada pelo usuário, não mostra nada.
 - `nfe ciencia` aceita `--chave` (repetível) ou `--todos-resumos`, nunca os dois. `--todos-resumos` seleciona os resumos autorizados em que a empresa é destinatária e que ainda não têm manifestação. A simulação lista as notas elegíveis, as ignoradas com o motivo e os prazos de cada uma.
 - `nfe manifestar` também é simulação sem `--confirmar`. `nao-realizada` continua aceito como sinônimo de `nao_realizada`. Depois de uma manifestação conclusiva, nenhuma outra conclusiva é aceita para a mesma nota.
 - `nfe reset` sem `--confirmar` mostra quantas notas, eventos e marcas de exportação seriam removidos e não altera nada.
