@@ -41,15 +41,7 @@ func main() {
 		Name:        "Nanci",
 		Description: fmt.Sprintf("Nanci %s\nSistema de sincronização de documentos fiscais (NFS-e, NF-e e CT-e).", buildinfo.Version),
 		Icon:        icon,
-		Services: []application.Service{
-			// The marshaler goes on the service: Wails v3.0.0 calls only the
-			// service's MarshalError for bound methods and never falls back to
-			// Options.MarshalError (bindings.go:140), so set there it would
-			// leave every error code out of the payload.
-			application.NewServiceWithOptions(app, application.ServiceOptions{
-				MarshalError: marshalError,
-			}),
-		},
+		Services:    appServices(app),
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
@@ -124,6 +116,19 @@ func main() {
 
 	if err := wailsApp.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
+	}
+}
+
+// appServices binds App. The marshaler goes on the service: Wails v3.0.0
+// calls only the service's MarshalError for bound methods and never falls
+// back to Options.MarshalError (bindings.go:140), so set there it would
+// leave every error code out of the payload. TestBoundErrorCarriesCode
+// calls a method through the Wails bindings to keep it that way.
+func appServices(app *App) []application.Service {
+	return []application.Service{
+		application.NewServiceWithOptions(app, application.ServiceOptions{
+			MarshalError: marshalError,
+		}),
 	}
 }
 
