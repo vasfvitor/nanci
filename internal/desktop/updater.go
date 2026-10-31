@@ -22,8 +22,11 @@ import (
 // answers 404, which the endpoint provider reads as "up to date". The github
 // provider of Wails cannot be used: it never fills a signature
 // (pkg/updater/providers/github/github.go:167-179), which a pinned
-// Config.PublicKey requires. It is a var so a local test build can point at
-// a test server with -ldflags "-X main.updateManifestURL=...".
+// Config.PublicKey requires. It is a var set with -ldflags
+// "-X main.updateManifestURL=...": the release workflow points it at the
+// releases of the repository that builds it, so a fork follows its own
+// releases, and a local test build can point it at a test server. The
+// default here is what local builds get; they are 0.0.0-dev and never check.
 var updateManifestURL = "https://github.com/vasfvitor/nanci/releases/latest/download/nanci-update.json"
 
 // updateEngine is the part of the Wails updater App uses; tests replace it.

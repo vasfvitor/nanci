@@ -181,6 +181,9 @@ jobs:
           # The exe and installer metadata take numbers only: a manual run's
           # 0.0.0-dev becomes 0.0.0 there and stays whole in buildinfo.
           asset_version="${version%%-*}"
+          # The app looks for updates in the releases of the repository that
+          # built it, so a fork's build follows the fork's releases, not these.
+          update_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/latest/download/nanci-update.json"
 
           echo "Writing version $asset_version to build/config.yml..."
           sed -i -E "s/^  version: \"[^\"]*\"/  version: \"$asset_version\"/" build/config.yml
@@ -192,10 +195,13 @@ jobs:
 
           echo "Building the installer..."
           wails3 task windows:package \
-            EXTRA_LDFLAGS="-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
+            EXTRA_LDFLAGS="-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date' -X 'main.updateManifestURL=$update_url'"
 
           test -s bin/nanci-desktop-amd64-installer.exe
           test -s bin/nanci-desktop.exe
+          # The default URL stays in the binary as unused data, so check that
+          # the injected one made it in rather than that the default is gone.
+          grep -q -a -F "$update_url" bin/nanci-desktop.exe
 
       - name: Upload Desktop Artifact
         uses: actions/upload-artifact@v7
