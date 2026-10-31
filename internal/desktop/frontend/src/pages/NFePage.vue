@@ -299,9 +299,7 @@ import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
-import ImportResultDialog from '../components/ImportResultDialog.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
-import NFeFetchDialog from '../components/NFeFetchDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
@@ -312,15 +310,15 @@ import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
+import { useNFeImportActions } from '@/composables/useNFeImportActions'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNFeManifestacaoActions } from '@/composables/useNFeManifestacaoActions'
 import { useNotify } from '@/composables/useNotify'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type { FetchByChaveResult, ImportXMLResult, NFeExportFormat, NFeRow } from '@/types/desktop'
+import type { NFeExportFormat, NFeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
-import { importSummary } from '@/utils/importDisplay'
 import {
   formatCpfCnpj,
   formatCurrencyCents,
@@ -494,6 +492,13 @@ const { registerSelectedCiencia, startCiencia, openManifestacao } = useNFeManife
   syncNFe,
 })
 
+const { importXML, openFetchDialog } = useNFeImportActions({
+  cnpj,
+  status,
+  importXML: nfe.importXML,
+  fetchByChave: nfe.fetchByChave,
+})
+
 async function search() {
   try {
     await nfe.search()
@@ -535,66 +540,6 @@ async function syncNFe() {
 const importDisabled = computed(
   () => exporting.value || isSyncing.value || isResetting.value || !cnpj.value
 )
-
-async function importXML() {
-  try {
-    const result = await nfe.importXML()
-    if (result) notifyImportResult(result, 'nfe')
-  } catch (error) {
-    notifyError('Erro ao importar XML', error)
-  }
-}
-
-// notifyImportResult counts the files and, when some were rejected, lists
-// every file with its reason.
-function notifyImportResult(result: ImportXMLResult, source: 'nfe' | 'cte') {
-  const notify = result.Rejected > 0 ? notifyWarning : notifySuccess
-  notify(`Importação: ${importSummary(result)}.`)
-  if (result.Rejected > 0) {
-    $q.dialog({ component: ImportResultDialog, componentProps: { result, source } })
-  }
-}
-
-function openFetchDialog() {
-  if (!cnpj.value) return
-  $q.dialog({
-    component: NFeFetchDialog,
-    componentProps: {
-      requestsLastHour: status.value?.RequestsLastHour ?? 0,
-      requestBudget: status.value?.RequestBudget ?? 0,
-    },
-  }).onOk((chave: string) => {
-    void fetchByChave(chave)
-  })
-}
-
-async function fetchByChave(chave: string) {
-  try {
-    const result = await nfe.fetchByChave(chave)
-    if (result) notifyFetchResult(result)
-  } catch (error) {
-    notifySyncError('Erro ao buscar a NF-e', error)
-  }
-}
-
-// The backend message is a lowercase clause ("a SEFAZ entregou só o
-// resumo: ..."); the notice shows it as a sentence.
-function sentence(message: string) {
-  return message ? `${message.charAt(0).toUpperCase()}${message.slice(1)}.` : ''
-}
-
-function notifyFetchResult(result: FetchByChaveResult) {
-  switch (result.Outcome) {
-    case 'completa':
-      notifySuccess('NF-e completa salva.')
-      return
-    case 'resumo':
-      notifyInfo(sentence(result.Message) || 'A SEFAZ entregou só o resumo da NF-e.')
-      return
-    default:
-      notifyWarning(sentence(result.Message) || 'A SEFAZ não encontrou a NF-e.')
-  }
-}
 
 function confirmResetNFe() {
   if (!cnpj.value) return
