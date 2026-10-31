@@ -11,6 +11,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/adn"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/nfse"
 	"github.com/vasfvitor/nanci/internal/sync"
 )
@@ -160,7 +161,11 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 		LastNSU:          0,
 		ConsultationCNPJ: company.CNPJ,
 	})
-	result.MTLSAccepted = true
+	// Any HTTP answer, even an error status, means the TLS handshake with the
+	// client certificate went through. httpclient reports a transport failure
+	// as a StatusError too, with StatusCode 0.
+	var statusErr *httpclient.StatusError
+	result.MTLSAccepted = err == nil || (errors.As(err, &statusErr) && statusErr.StatusCode != 0)
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Conexão falhou: %v", err)
 		return result, nil

@@ -425,3 +425,43 @@ func TestFormatCertExpirationUsesLocalTime(t *testing.T) {
 		t.Errorf("formatCertExpiration = %q, want %q (UTC 02:00 is 23:00 the day before in Brazil)", got, want)
 	}
 }
+
+// TestTestConnectionReportsMTLSOnlyAfterAnAnswer: an HTTP answer, even an
+// error status, proves the TLS handshake with the certificate; a connection
+// that never got an answer does not.
+func TestTestConnectionReportsMTLSOnlyAfterAnAnswer(t *testing.T) {
+	t.Parallel()
+	t.Run("error status", func(t *testing.T) {
+		t.Parallel()
+		env := newNFeTestEnv(t)
+		pointQueryAtFakeADN(t, env, func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		})
+		result, err := env.app.Query.TestConnection(context.Background(), nfeTestCNPJ)
+		if err != nil {
+			t.Fatalf("TestConnection: %v", err)
+		}
+		if !result.MTLSAccepted || result.EndpointReached || !strings.HasPrefix(result.StatusExplanation, "Conexão falhou") {
+			t.Errorf("result = %+v, want MTLSAccepted, not EndpointReached, Conexão falhou", result)
+		}
+	})
+	t.Run("no answer", func(t *testing.T) {
+		t.Parallel()
+		env := newNFeTestEnv(t)
+		srv := httptest.NewServer(http.NotFoundHandler())
+		url := srv.URL
+		srv.Close() // nothing listens there any more
+		env.app.Query.newADNClient = func(cfg adn.ClientConfig) (*adn.Client, error) {
+			cfg.BaseURL = url
+			cfg.Retry = adn.RetryConfig{MaxRetries: 1, Initial: time.Millisecond, MaxDelay: time.Millisecond}
+			return adn.NewClient(cfg)
+		}
+		result, err := env.app.Query.TestConnection(context.Background(), nfeTestCNPJ)
+		if err != nil {
+			t.Fatalf("TestConnection: %v", err)
+		}
+		if result.MTLSAccepted || result.EndpointReached || !strings.HasPrefix(result.StatusExplanation, "Conexão falhou") {
+			t.Errorf("result = %+v, want neither MTLSAccepted nor EndpointReached, Conexão falhou", result)
+		}
+	})
+}
