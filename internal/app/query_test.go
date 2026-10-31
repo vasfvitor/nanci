@@ -28,8 +28,7 @@ func (p *failingPasswords) GetCertPassword(_ context.Context, req CertPasswordRe
 }
 
 // newFakeADNClient returns an ADN client whose base URL is a local server
-// running handler. buildClient always uses the real ADN URL, so tests of
-// queryGenericEndpoint build the client themselves.
+// running handler, for tests of queryGenericEndpoint alone.
 func newFakeADNClient(t *testing.T, handler http.HandlerFunc) *adn.Client {
 	t.Helper()
 	srv := httptest.NewServer(handler)
@@ -43,6 +42,125 @@ func newFakeADNClient(t *testing.T, handler http.HandlerFunc) *adn.Client {
 		t.Fatal(err)
 	}
 	return client
+}
+
+// pointQueryAtFakeADN makes env's direct query and connection test call a
+// local server running handler instead of the ADN. It returns the config
+// buildClient passed, before the base URL is swapped.
+func pointQueryAtFakeADN(t *testing.T, env *nfeTestEnv, handler http.HandlerFunc) *adn.ClientConfig {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	var asked adn.ClientConfig
+	env.app.Query.newADNClient = func(cfg adn.ClientConfig) (*adn.Client, error) {
+		asked = cfg
+		cfg.BaseURL = srv.URL + "/contribuintes"
+		return adn.NewClient(cfg)
+	}
+	return &asked
+}
+
+func TestQueryNFSeEventsReturnsIndentedJSON(t *testing.T) {
+	t.Parallel()
+	env := newNFeTestEnv(t)
+	wantPath := "/contribuintes/NFSe/" + nfseChavePrestada + "/Eventos"
+	asked := pointQueryAtFakeADN(t, env, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != wantPath {
+			t.Errorf("request = %s %s, want GET %s", r.Method, r.URL.Path, wantPath)
+		}
+		_, _ = w.Write([]byte(`{"eventos":[{"tipo":"101101"}]}`))
+	})
+
+	got, err := env.app.Query.QueryNFSeEvents(context.Background(), QueryNFSeInput{CNPJ: nfeTestCNPJ, ChaveAcesso: nfseChavePrestada})
+	if err != nil {
+		t.Fatalf("QueryNFSeEvents: %v", err)
+	}
+	want := "{\n  \"eventos\": [\n    {\n      \"tipo\": \"101101\"\n    }\n  ]\n}"
+	if got != want {
+		t.Errorf("output = %q, want %q", got, want)
+	}
+	if asked.BaseURL != adn.BaseURLProduction || asked.Certificate == nil {
+		t.Errorf("client config = BaseURL %q, Certificate %v; want the production ADN URL and the loaded certificate", asked.BaseURL, asked.Certificate)
+	}
+	if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Consulta direta" {
+		t.Errorf("password requests = %+v, want one for Consulta direta", env.passwords.requests)
+	}
+}
+
+// TestTestConnectionSuccess: once the ADN answers the distribution query,
+// the result says whether the company has documents at NSU 0.
+func TestTestConnectionSuccess(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name            string
+		status          int
+		body            string
+		wantDetail      string
+		wantExplanation string
+	}{
+		{
+			name:            "documents",
+			status:          http.StatusOK,
+			body:            `{"UltNSU":7,"MaxNSU":7,"LoteDFe":[{"NSU":6},{"NSU":7}]}`,
+			wantDetail:      "Documentos retornados: 2. Último NSU: 7",
+			wantExplanation: "Conexão OK, documentos localizados com sucesso.",
+		},
+		{
+			name:            "empty queue",
+			status:          http.StatusNotFound,
+			body:            `{"StatusProcessamento":"NENHUM_DOCUMENTO_LOCALIZADO","Erros":[{"Codigo":"E2220"}]}`,
+			wantDetail:      "Nenhum documento localizado para o NSU 0 (Erro E2220 / fila vazia).",
+			wantExplanation: "Conexão OK, sem novos documentos disponíveis para este NSU.",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			env := newNFeTestEnv(t)
+			ctx := context.Background()
+			cred, err := env.app.Query.CredentialStore.CredentialByID(ctx, env.company.CredentialID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			notAfter := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
+			cred.SubjectName = "CN=EMPRESA MOCK:70860312000150"
+			cred.NotAfter = &notAfter
+			if err := env.app.Query.CredentialStore.UpdateCredential(ctx, cred); err != nil {
+				t.Fatal(err)
+			}
+			asked := pointQueryAtFakeADN(t, env, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/contribuintes/DFe/0" || r.URL.Query().Get("cnpjConsulta") != nfeTestCNPJ {
+					t.Errorf("request = %s, want /contribuintes/DFe/0?cnpjConsulta=%s", r.URL, nfeTestCNPJ)
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			})
+
+			result, err := env.app.Query.TestConnection(ctx, nfeTestCNPJ)
+			if err != nil {
+				t.Fatalf("TestConnection: %v", err)
+			}
+			want := ConnectionTestResult{
+				CertLoaded:        true,
+				CertSubject:       cred.SubjectName,
+				CertExpiration:    formatCertExpiration(notAfter),
+				MTLSAccepted:      true,
+				EndpointReached:   true,
+				ResponseCode:      "Sucesso",
+				ResponseDetail:    tc.wantDetail,
+				StatusExplanation: tc.wantExplanation,
+			}
+			if result != want {
+				t.Errorf("result = %+v, want %+v", result, want)
+			}
+			if asked.BaseURL != adn.BaseURLProduction || asked.Certificate == nil {
+				t.Errorf("client config = BaseURL %q, Certificate %v; want the production ADN URL and the loaded certificate", asked.BaseURL, asked.Certificate)
+			}
+			if len(env.passwords.requests) != 1 || env.passwords.requests[0].Purpose != "Teste de conexão" {
+				t.Errorf("password requests = %+v, want one for Teste de conexão", env.passwords.requests)
+			}
+		})
+	}
 }
 
 func TestQueryGenericEndpointIndentsJSON(t *testing.T) {
