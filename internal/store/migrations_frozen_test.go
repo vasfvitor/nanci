@@ -12,10 +12,7 @@ import (
 // frozenMigrations is the SHA-256 of every migration file. goose records the
 // version it applied and never runs a file again, so editing one leaves
 // existing databases with the old schema while new ones get the new (a
-// dev database once lost cte_documents.masked_keys that way). Only append:
-// a new migration adds its line here, and an existing line never changes.
-// If this test fails for a file you edited, revert the edit and write the
-// change as a new migration (see the migration skill).
+// dev database once lost cte_documents.masked_keys that way).
 var frozenMigrations = map[string]string{
 	"001_v2_schema.sql":                             "cce11d17459071db73a33134610e58977fef6c7587c23bc30b3eef848e8e5083",
 	"002_drop_environment.sql":                      "9cf0f8200232547ab9136f4e4ccb38c200a0b60b0febdaebd22f2d6629ba63ff",
