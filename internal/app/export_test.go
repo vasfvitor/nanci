@@ -13,7 +13,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vasfvitor/nanci/internal/company"
+	"github.com/vasfvitor/nanci/internal/credential"
+	"github.com/vasfvitor/nanci/internal/dfe"
+	"github.com/vasfvitor/nanci/internal/files"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/store/storetest"
 	"github.com/vasfvitor/nanci/internal/sync"
 )
 
@@ -234,5 +239,159 @@ func TestExportDANFSeZIP_WritesOnePDFPerDocument(t *testing.T) {
 	}
 	if len(pending) != 0 {
 		t.Errorf("pending DANFSe exports = %d after the export, want 0", len(pending))
+	}
+}
+
+func TestExportDANFSe_WritesOnePDF(t *testing.T) {
+	env := newNFeTestEnv(t)
+	xml := seedNFSe(t, env, "simple-prestada")
+	env.app.Exports.DANFSeRenderer = fakeDANFSeRenderer{}
+	ctx := context.Background()
+	dir := t.TempDir()
+	out := filepath.Join(dir, "nota.pdf")
+
+	if err := env.app.Exports.ExportDANFSe(ctx, ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada, OutPath: out}); err != nil {
+		t.Fatalf("ExportDANFSe: %v", err)
+	}
+	got, err := os.ReadFile(out) // #nosec G304 -- test temp file.
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "pdf:" + string(xml[:10]); string(got) != want {
+		t.Errorf("PDF = %q, want %q", got, want)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("files in the output dir = %v, want only the PDF", entries)
+	}
+	pending, err := env.app.Exports.DocumentRepo.ListPendingExportDocuments(ctx, env.company.ID, nfse.DocumentFilter{}, nfse.ExportKindDANFSe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pending) != 0 {
+		t.Errorf("pending DANFSe exports = %d after the export, want 0", len(pending))
+	}
+}
+
+// TestExportDANFSe_FailuresWriteNothing: every failure before the write
+// leaves the output directory empty and the document still pending.
+func TestExportDANFSe_FailuresWriteNothing(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T, env *nfeTestEnv) ExportDANFSeInput
+		wantErr string
+	}{
+		{
+			name: "no renderer",
+			setup: func(_ *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				env.app.Exports.DANFSeRenderer = nil
+				return ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada}
+			},
+			wantErr: "DANFSe não configurado",
+		},
+		{
+			name: "render failure",
+			setup: func(_ *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				env.app.Exports.DANFSeRenderer = fakeDANFSeRenderer{err: errors.New("layout quebrado")}
+				return ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada}
+			},
+			wantErr: "renderizar DANFSe: layout quebrado",
+		},
+		{
+			name: "stored XML missing",
+			setup: func(t *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				env.app.Exports.XMLStore = files.NewBlobStore(t.TempDir())
+				return ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada}
+			},
+			wantErr: "ler XML original da chave " + nfseChavePrestada,
+		},
+		{
+			name: "document without raw hash",
+			setup: func(t *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				if _, err := env.db.ExecContext(context.Background(), `UPDATE documents SET raw_hash = '' WHERE chave_acesso = ?`, nfseChavePrestada); err != nil {
+					t.Fatal(err)
+				}
+				return ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada}
+			},
+			wantErr: "XML original não encontrado para a chave " + nfseChavePrestada,
+		},
+		{
+			name: "document not found",
+			setup: func(_ *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				return ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChaveTomada}
+			},
+			wantErr: "localizar documento",
+		},
+		{
+			name: "document of another company",
+			setup: func(t *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				ctx := context.Background()
+				cred := &credential.Credential{ID: "cred-other", Label: "Outra", CertPath: env.company.CredentialCertPath}
+				if err := credential.NewStore(env.db).CreateCredential(ctx, cred); err != nil {
+					t.Fatal(err)
+				}
+				other := storetest.TestCompany("comp-other", "11222333000181", dfe.EnvironmentProduction, cred)
+				if err := company.NewStore(env.db).CreateCompany(ctx, other); err != nil {
+					t.Fatal(err)
+				}
+				return ExportDANFSeInput{CNPJ: other.CNPJ, ChaveAcesso: nfseChavePrestada}
+			},
+			wantErr: "localizar documento",
+		},
+		{
+			name: "unknown company",
+			setup: func(_ *testing.T, _ *nfeTestEnv) ExportDANFSeInput {
+				return ExportDANFSeInput{CNPJ: "11222333000181", ChaveAcesso: nfseChavePrestada}
+			},
+			wantErr: "empresa não encontrada",
+		},
+		{
+			name: "empty chave",
+			setup: func(_ *testing.T, env *nfeTestEnv) ExportDANFSeInput {
+				return ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: "  "}
+			},
+			wantErr: "chave de acesso não especificada",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newNFeTestEnv(t)
+			seedNFSe(t, env, "simple-prestada")
+			env.app.Exports.DANFSeRenderer = fakeDANFSeRenderer{}
+			input := tc.setup(t, env)
+			dir := t.TempDir()
+			input.OutPath = filepath.Join(dir, "nota.pdf")
+			ctx := context.Background()
+
+			err := env.app.Exports.ExportDANFSe(ctx, input)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want %q", err, tc.wantErr)
+			}
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 0 {
+				t.Errorf("files left after a failed export: %v", entries)
+			}
+			pending, err := env.app.Exports.DocumentRepo.ListPendingExportDocuments(ctx, env.company.ID, nfse.DocumentFilter{}, nfse.ExportKindDANFSe)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(pending) != 1 {
+				t.Errorf("pending DANFSe exports = %d, want 1 (no marks after a failure)", len(pending))
+			}
+		})
+	}
+}
+
+func TestExportDANFSe_RequiresOutPath(t *testing.T) {
+	env := newNFeTestEnv(t)
+	err := env.app.Exports.ExportDANFSe(context.Background(), ExportDANFSeInput{CNPJ: env.company.CNPJ, ChaveAcesso: nfseChavePrestada})
+	if err == nil || !strings.Contains(err.Error(), "caminho de saída não especificado") {
+		t.Fatalf("err = %v, want the missing output path error", err)
 	}
 }
