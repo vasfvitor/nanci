@@ -80,10 +80,12 @@ pnpm run build
 ## Verificar antes do PR
 
 ```bash
-make check    # fmt, vuln, lint, test e security
+bash scripts/verify.sh    # ou: make verify
 ```
 
-`make test` roda só `go test ./...`. Para mudanças no frontend, rode também os três comandos acima.
+O `verify.sh` roda na sua máquina o que o CI confere: lint, testes e build do frontend; `go vet`, testes e `golangci-lint` nos dois módulos Go; `go.mod` arrumado; bindings do Wails em dia; e o `govulncheck`, quando instalado. Ele não altera arquivos (só o `frontend/dist`, que o build gera), cria o `go.work` se faltar, roda todas as etapas mesmo depois de uma falha e termina com a lista do que falhou. Leva uns 3 minutos.
+
+`make check` (fmt, vuln, lint, test e security) também formata o código e roda o `gosec` e o `gitleaks`; `make test` roda só `go test ./...`.
 
 O CI falha se `go.mod`/`go.sum` ou `internal/desktop/frontend/bindings` estiverem desatualizados. Para regenerar: `GOWORK=off go mod tidy` na raiz e em `internal/desktop`, e `wails3 generate bindings -clean=true -ts -i` em `internal/desktop`.
 

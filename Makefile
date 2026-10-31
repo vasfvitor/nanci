@@ -1,4 +1,4 @@
-.PHONY: fmt lint vuln test security check seeddev mockcert screenshots
+.PHONY: fmt lint vuln test security check verify seeddev mockcert screenshots
 
 # `go install` puts tools in GOBIN, or GOPATH/bin when GOBIN is unset, and that
 # directory is not always on PATH. go_tool returns the installed copy when it
@@ -31,6 +31,10 @@ security:
 	$(GITLEAKS) detect --source .
 
 check: fmt vuln lint test security
+
+# verify runs what CI checks, Go and frontend, without changing files.
+verify:
+	bash scripts/verify.sh
 
 seeddev:
 	go run ./cmd/seeddev
