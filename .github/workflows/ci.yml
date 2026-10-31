@@ -108,6 +108,57 @@ jobs:
           CGO_ENABLED: '1'
         run: govulncheck ./...
 
+  # The app ships only for Windows. This job runs the Windows-only files
+  # (theme_windows.go, uninstall_windows.go) and the path and file handling
+  # through vet, tests and lint, which the Linux job never compiles.
+  go-windows:
+    name: Go (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      # Wails v3 on Windows and the SQLite driver are pure Go.
+      CGO_ENABLED: '0'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            internal/desktop/go.sum
+
+      - name: Create go.work
+        run: go work init . ./internal/desktop ./third_party/go-pkcs12
+
+      # Satisfy Wails' go:embed frontend/dist.
+      - name: Stub frontend dist
+        run: |
+          mkdir -p internal/desktop/frontend/dist
+          echo '<div></div>' > internal/desktop/frontend/dist/index.html
+
+      - name: Vet
+        run: go vet ./... ./internal/desktop/...
+
+      - name: Test root module
+        run: go test ./...
+
+      - name: Test desktop module
+        run: go test ./internal/desktop/...
+
+      # The root module has no Windows-only files; the Linux job lints it.
+      - name: Lint desktop module
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: internal/desktop
+
   tidy:
     name: Go mod tidy
     runs-on: ubuntu-latest
