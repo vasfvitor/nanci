@@ -10,7 +10,7 @@ Tudo aqui é barato e reduz o custo de todas as fases seguintes.
 
 **Estado em 07/10/2026 (branch `chore/fase-0`, 21 commits):** feito o portão de CI (`ci.yml`, `release.yml` depende dele; primeira execução real só no PR), a faxina (branches locais, sobras do spike v3, `.gitattributes` com renormalização, `.gitignore`, docs desatualizadas, comentários nos métodos `sefaz` sem chamador, `Makefile`), as dependências Go (x/crypto 0.57, sqlite 1.60, cobra, goose, go-retry) e do frontend (menores + vitest 5, pinia 4, vue-router 5, @quasar/vite-plugin 2, @eslint/css 2), o aviso de 45 dias de NSU, o teste de reuso do `ultNSU`, a auditoria do CNPJ alfanumérico (corrigiu `nfse.ParseAccessKey`, que rejeitava chaves com letras), o backport de segurança do fork do go-pkcs12 (GO-2026-5052 e IV do PBES2, issue #4) e os links relativos das cópias Markdown do site (#14). Também caiu um bug antigo do `make seeddev`.
 
-Ficou para o dono: publicar o branch e abrir o PR; colar os comentários prontos nas issues #4, #10, #12, #14 e #15 (texto no scratchpad da sessão de 07/10); decidir o `histoire` (ninguém roda; `story:build` quebrou com o Quasar 2.34, stub de `screen.orientation` resolve, ou remover os 5 `*.story.vue`, config e scripts); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); o `prettier --check` já acusava 67 arquivos antes, `lint:check` não roda prettier; os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
+Ficou para o dono: publicar o branch e abrir o PR; colar os comentários prontos nas issues #4, #10, #12, #14 e #15 (texto no scratchpad da sessão de 07/10); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); o `prettier --check` já acusava 67 arquivos antes, `lint:check` não roda prettier; os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
 
 ### Portão de CI [M]
 
@@ -29,7 +29,6 @@ Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:ch
 - Go, menores: `modernc.org/sqlite` 1.49 → 1.60 (11 menores, rodar a suíte de migrações), `cobra` 1.10, `goose` 3.28, `sethvargo/go-retry` 0.3 → 0.5 (pré-1.0, conferir API), `x/term`.
 - Frontend, menores primeiro: `quasar` 2.19 → 2.34 (conferir `pnpm run screenshots`), `vue`, `vite`, `eslint`, `vue-tsc`.
 - Frontend, maiores, um PR cada, nesta ordem: `vitest` 5, `typescript` 7, `pinia` 4 (+ `@pinia/testing` 2), `vue-router` 5, `@quasar/vite-plugin` 2. `@types/node` fica em 24 (Node da CI).
-- `histoire` está em `1.0.0-beta.1`; decidir se fica.
 
 ### Comportamentos do Ambiente Nacional que o app ainda não trata [M]
 

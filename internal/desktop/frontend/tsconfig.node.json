@@ -10,7 +10,6 @@
   "include": [
     "vite.config.ts",
     "vitest.config.ts",
-    "histoire.config.ts",
     "eslint.config.ts",
     "scripts/**/*.ts"
   ]

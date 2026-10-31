@@ -14,7 +14,6 @@ export default defineConfig([
       'src/vite-env.d.ts',
       '*.tsbuildinfo',
       'package.json.md5',
-      '.histoire/**',
     ],
   },
 
@@ -65,7 +64,6 @@ export default defineConfig([
       'eslint.config.ts',
       'vite.config.ts',
       'vitest.config.ts',
-      'histoire.config.ts',
       'scripts/**/*.ts',
     ],
     languageOptions: {
