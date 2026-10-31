@@ -13,10 +13,14 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# scripts/verify.sh runs these checks locally and reads WAILS_VERSION,
+# SQLC_VERSION, the golangci-lint version and the govulncheck version from
+# this file: keep it in step when a job changes.
 env:
   # The install steps build the Wails CLI without cgo, which on Linux would
   # need the GTK 4 and WebKitGTK headers (internal/operatingsystem).
   WAILS_VERSION: v3.0.0
+  SQLC_VERSION: v1.27.0
 
 jobs:
   go:
@@ -179,6 +183,13 @@ jobs:
       - name: Tidy desktop module
         working-directory: ./internal/desktop
         run: GOWORK=off go mod tidy
+
+      # sqlc reads the queries and the migrations; diff exits non-zero when
+      # internal/store/sqlgen does not match them.
+      - name: Check sqlc output
+        env:
+          CGO_ENABLED: '0'
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }} diff
 
       - name: Check for drift
         run: |

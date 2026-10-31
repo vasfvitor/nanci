@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# verify.sh runs on your machine what CI checks in .github/workflows/ci.yml:
-# frontend lint, tests and build; Go vet, tests and lint in both modules;
-# go.mod tidiness; Wails bindings drift; govulncheck when installed. Run it
-# before every commit (`make verify`, or `bash scripts/verify.sh` where make
-# is missing). It does not stop at the first failure: the summary at the end
-# lists every step that failed. Exit code 0 means everything passed.
+# verify.sh runs on your machine what .github/workflows/ci.yml checks, with
+# the tool versions read from that file. It runs every step and lists the
+# failures at the end; exit code 0 means everything passed. What each step
+# does: docs/DEVELOPMENT.md, "Verificar antes do PR".
 set -u
 cd "$(dirname "$0")/.."
+
+ci=.github/workflows/ci.yml
+wails_version=$(sed -nE 's/^ *WAILS_VERSION: *(v[0-9.]+) *$/\1/p' "$ci" | head -1)
+sqlc_version=$(sed -nE 's/^ *SQLC_VERSION: *(v[0-9.]+) *$/\1/p' "$ci" | head -1)
+lint_version=$(sed -nE 's/^ *version: *(v[0-9.]+) *$/\1/p' "$ci" | head -1)
+vuln_version=$(sed -nE 's/.*govulncheck@(v[0-9.]+).*/\1/p' "$ci" | head -1)
 
 failed=()
 
@@ -23,9 +27,15 @@ step() {
 	fi
 }
 
-need() {
-	if ! command -v "$1" >/dev/null 2>&1; then
-		echo "    falta a ferramenta '$1'. Instale com: $2"
+# tool checks that the installed tool is the version CI uses.
+tool() {
+	local name=$1 want=$2 install=$3
+	if ! command -v "$name" >/dev/null 2>&1; then
+		echo "    falta '$name' $want. Instale com: $install"
+		return 1
+	fi
+	if ! "$name" version 2>&1 | grep -qF "${want#v}"; then
+		echo "    '$name' não está na versão $want do CI. Instale com: $install"
 		return 1
 	fi
 }
@@ -37,7 +47,10 @@ if [ ! -f go.work ]; then
 fi
 
 frontend_deps() {
-	need pnpm "corepack enable (pnpm 10, veja docs/DEVELOPMENT.md)" || return 1
+	if ! command -v pnpm >/dev/null 2>&1; then
+		echo "    falta 'pnpm' (versão 10, veja docs/DEVELOPMENT.md)"
+		return 1
+	fi
 	[ -d internal/desktop/frontend/node_modules ] || (cd internal/desktop/frontend && pnpm install --frozen-lockfile)
 }
 
@@ -46,7 +59,7 @@ frontend() {
 }
 
 lint() {
-	need golangci-lint "go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2" || return 1
+	tool golangci-lint "$lint_version" "go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$lint_version" || return 1
 	golangci-lint run ./... && (cd internal/desktop && golangci-lint run ./...)
 }
 
@@ -54,10 +67,9 @@ tidy() {
 	(export GOWORK=off && go mod tidy -diff && cd internal/desktop && go mod tidy -diff)
 }
 
-# The generator analyses the Windows build the app ships, as in CI. A change
-# here means a Go method or DTO changed without regenerating the bindings.
+# The generator analyses the Windows build the app ships, as in CI.
 bindings() {
-	need wails3 "go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0" || return 1
+	tool wails3 "$wails_version" "go install github.com/wailsapp/wails/v3/cmd/wails3@$wails_version" || return 1
 	(cd internal/desktop && GOOS=windows CGO_ENABLED=0 wails3 generate bindings -clean=true -ts -i >/dev/null) || return 1
 	local dir=internal/desktop/frontend/bindings
 	if ! git -c core.fileMode=false diff --quiet -- "$dir" || [ -n "$(git ls-files --others --exclude-standard -- "$dir")" ]; then
@@ -66,12 +78,11 @@ bindings() {
 	fi
 }
 
-vuln() {
-	if ! command -v govulncheck >/dev/null 2>&1; then
-		echo "    pulado: govulncheck não está instalado (go install golang.org/x/vuln/cmd/govulncheck@v1.1.4)"
-		return 0
-	fi
-	govulncheck ./... && (cd internal/desktop && govulncheck ./...)
+sqlc() {
+	CGO_ENABLED=0 go run "github.com/sqlc-dev/sqlc/cmd/sqlc@$sqlc_version" diff || {
+		echo "    internal/store/sqlgen não bate com as queries e migrations: regenere (skill migration)"
+		return 1
+	}
 }
 
 step "dependências do frontend" frontend_deps
@@ -79,15 +90,28 @@ step "frontend: lint" frontend lint:check
 step "frontend: testes" frontend test:unit
 # The build writes frontend/dist, which the desktop Go module embeds.
 step "frontend: build" frontend build
-step "go vet" go vet ./... ./internal/desktop/...
-step "go test (raiz)" go test ./...
-step "go test (desktop)" go test ./internal/desktop/...
+step "go test" go test ./... ./internal/desktop/...
 step "golangci-lint" lint
 step "go.mod arrumado" tidy
 step "bindings do Wails" bindings
-step "govulncheck" vuln
+step "código do sqlc" sqlc
+step "govulncheck" go run "golang.org/x/vuln/cmd/govulncheck@$vuln_version" ./... ./internal/desktop/...
+
+# A change to the rules is not a failure, but whoever asked for the work
+# must approve it: the agent that changed them cannot be the one to judge.
+rules=$(
+	base=$(git merge-base HEAD main 2>/dev/null) || exit 0
+	git diff --name-only "$base" -- AGENTS.md .claude/skills .golangci.yml .github/workflows scripts/verify.sh \
+		internal/desktop/frontend/eslint.config.ts internal/desktop/architecture_test.go internal/store/migrations_frozen_test.go
+	git diff --name-only --diff-filter=MDR "$base" -- internal/store/migrations_v2
+)
 
 echo
+if [ -n "$rules" ]; then
+	echo "Atenção: estes arquivos de regra mudaram desde a main. Confirme com quem pediu o trabalho:"
+	echo "$rules" | sed 's/^/  - /'
+	echo
+fi
 if [ ${#failed[@]} -eq 0 ]; then
 	echo "Tudo certo: todas as verificações passaram."
 	exit 0
