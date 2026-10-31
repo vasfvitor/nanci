@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 	"testing"
@@ -1018,7 +1017,7 @@ func TestSyncServiceApplyDocumentAndProgressIsAtomic(t *testing.T) {
 }
 
 func discardLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil)) //nolint:sloglint
+	return slog.New(slog.DiscardHandler)
 }
 
 func mustEncodeGzipBase64(t *testing.T, xml string) string {

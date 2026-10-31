@@ -53,7 +53,7 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 	companyStore := company.NewStore(db)
 	credentialStore := credential.NewStore(db)
 
-	comp := &company.Company{ //nolint:gosec
+	comp := &company.Company{ //nolint:gosec // G101 reads CredentialID as a secret; it is a fixture ID
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",
@@ -187,7 +187,7 @@ func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *
 	companyStore := company.NewStore(db)
 	credentialStore := credential.NewStore(db)
 
-	comp := &company.Company{ //nolint:gosec
+	comp := &company.Company{ //nolint:gosec // G101 reads CredentialID as a secret; it is a fixture ID
 		ID:           "company-1",
 		CNPJ:         "11222333000181",
 		CNPJRoot:     "11222333",

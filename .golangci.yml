@@ -76,6 +76,12 @@ linters:
             - pkg: "database/sql"
               desc: "Domain models cannot depend on SQL."
 
+    # A suppression names the linter it silences and says why, so an agent
+    # cannot quiet a finding without leaving a reason a person can read.
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
     misspell:
       ignore-rules:
         - adn
