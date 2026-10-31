@@ -29,7 +29,7 @@ Desktop Go methods exposed to Wails should return DTOs from `internal/desktop/de
 Do not hardcode style colors or use Tailwind-style theme selectors (such as `dark:bg-grey-9`). For dark theme styling adaptations, use Quasar-native dynamic class bindings based on `$q.dark.isActive` (e.g. `:class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"`) or leverage Quasar's built-in CSS variables (e.g. `var(--q-separator-color)`).
 
 ## Testing Guidelines
-Place Go tests next to the code they cover using `*_test.go`. Existing examples include `internal/store/companies_test.go` and `internal/foundation/cnpj/cnpj_test.go`. Run `make test` before opening a PR; use `go test ./...` for quick iteration. Add regression tests for parser, storage, and path-handling changes.
+Place Go tests next to the code they cover using `*_test.go`. Existing examples include `internal/store/nfe_test.go` and `internal/foundation/cnpj/cnpj_test.go`. Run `make test` before opening a PR; use `go test ./...` for quick iteration. Add regression tests for parser, storage, and path-handling changes.
 
 For the desktop frontend, use Vitest with happy-dom, Vue Test Utils, and Pinia test setup. Add focused tests for Wails client mapping/error normalization, event cleanup wrappers, Pinia stores, composables that build Wails requests, formatter utilities, and route-remount behavior for long-running operations. Run `pnpm run lint:check`, `pnpm run test:unit`, and `pnpm run build` in `internal/desktop/frontend` before handing off frontend changes. Also smoke-test key Wails flows manually when behavior crosses the desktop runtime: add company, add credential, sync, list documents, export, direct query, password prompt, and logs console.
 
@@ -41,11 +41,11 @@ Implementation is delegated to subagents, one per lane, each in its own git work
 
 - A worktree may start at a stale commit: reset to the base tip before any edit. `go.work` and `internal/desktop/frontend/dist` are gitignored; copy them in, never commit them.
 - Every file is LF. `.gitattributes` normalizes on commit, but scripts that write files on Windows must still write LF (Python: `newline='\n'`).
-- Commits are signed (`gpg.program` points at Gpg4win) and carry no attribution trailer. A history rewrite drops signatures: re-sign before handing off.
+- Commits carry no attribution trailer. When the clone signs commits (the upstream repo does), keep them signed: a history rewrite drops signatures, so re-sign before handing off.
 - A change to Wails bindings regenerates `frontend/bindings` (`wails3 generate bindings -clean=true -ts -i` in `internal/desktop`, with the pinned `wails3` v3.0.0) and updates the `vi.mock` list in `src/platform/wails/client.test.ts` and the mocks in `scripts/generate-screenshots.ts` in the same commit. CI fails on stale bindings or a stale `go.mod`.
 - Exported `app` API changes must keep `internal/desktop` building; run its build and tests even when the lane did not touch it.
 - `docs/ROADMAP.md` and `docs/PENDENCIAS.md` are edited by the orchestrator only; a resolved item is deleted, not left behind. Facts about external systems go to `docs/pesquisa/` with source URL and date.
-- Maintenance lands on `main` as individual commits, no PR, no squash. Features that need review go through a PR. The push is the owner's step.
+- Maintenance lands on `main` as individual commits, no PR, no squash. Features that need review go through a PR. Agents do not push; the person running the session does.
 
 ## Security & Configuration Tips
 Do not commit certificate files, passwords, SQLite data, or exported fiscal documents. Prefer `NANCI_CERT_PASSWORD` for local runs instead of hardcoding secrets. Review `make security` output before merging changes that touch networking, storage, or auth flows.

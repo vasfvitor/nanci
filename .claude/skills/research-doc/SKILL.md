@@ -57,7 +57,7 @@ Todas as fontes foram consultadas em 07/10/2026. Afirmações marcadas "(relato 
 
 ## Memory versus repo
 
-A Claude memory (`~/.claude/projects/V---code-v-nanci/memory/`) holds session pointers, never the only copy of a fact. Anything a contributor needs (a source, a rule, a decision, a known bug) goes in the repo doc that owns it, and the memory points there.
+A Claude memory (kept per user, outside the repo) holds session pointers, never the only copy of a fact. Anything a contributor needs (a source, a rule, a decision, a known bug) goes in the repo doc that owns it, and the memory points there.
 
 ## Verify before asserting
 

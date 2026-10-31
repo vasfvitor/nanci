@@ -9,7 +9,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 
 - Migrations are goose SQL files in `internal/store/migrations_v2/`, embedded by `//go:embed migrations_v2/*.sql` in `internal/store/db.go`. `store.OpenDB(ctx, path, true)` runs `provider.Up` on every CLI run (`internal/cli/runtime.go`) and desktop startup (`internal/desktop/app.go`), so a release migrates the user's database on first launch.
 - The connection has `_pragma=foreign_keys(1)` and WAL (`db.go`). goose runs each file in a transaction.
-- The latest is `021_export_kinds.sql`; the next is `022`. Check `ls internal/store/migrations_v2` and open branches first.
+- The next number is the highest in `ls internal/store/migrations_v2` plus one. Check open branches too: two branches that pick the same number collide.
 
 ## Rules
 
@@ -37,7 +37,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 ## sqlc
 
 - The `schema:` input of `sqlc.yaml` is `internal/store/migrations_v2/` itself. sqlc reads the goose files in order, Up sections only, and follows the table rebuilds (`x_new` + `RENAME`), `DROP COLUMN` and scratch tables, so there is no separate schema file to keep in sync. An added column lands last in the generated struct, where `ADD COLUMN` puts it.
-- Regenerate from the repo root: `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` (on Windows with TDM-GCC prefix `CGO_ENABLED=0`, or the link fails). Commit `internal/store/sqlgen/` with it; never edit it by hand. `rename` in `sqlc.yaml` fixes inflections (`nfe_manifestaco` -> `NfeManifestacao`).
+- Regenerate from the repo root: `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate` (prefix `CGO_ENABLED=0`: no C compiler is needed, and the cgo link fails with some Windows toolchains). Commit `internal/store/sqlgen/` with it; never edit it by hand. `rename` in `sqlc.yaml` fixes inflections (`nfe_manifestaco` -> `NfeManifestacao`).
 - Queries live in `internal/store/queries/*.sql` (`companies`, `credentials`, `nfe`, `cte`, `sync`).
 
 ## SQL that sqlc does not check
