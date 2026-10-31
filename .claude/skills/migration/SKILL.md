@@ -13,7 +13,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 
 ## Rules
 
-1. Never edit a migration that has been applied anywhere, even only on your dev database. goose records the version and never reruns it. Editing `015_cte.sql` after it ran left a dev database without `cte_documents.masked_keys`, and the first real CT-e failed until it was fixed by hand. A new number, always.
+1. Never edit a migration that has been applied anywhere, even only on your dev database. goose records the version and never reruns it. Editing `015_cte.sql` after it ran left a dev database without `cte_documents.masked_keys`, and the first real CT-e failed until it was fixed by hand. A new number, always. `TestMigrationsAreFrozen` (`internal/store/migrations_frozen_test.go`) holds the SHA-256 of every file and fails on an edit, a removal or a rename; never change one of its lines to make it pass.
 2. One file per change, `NNN_snake_case.sql`, with `-- +goose Up` and `-- +goose Down`. Comments in English say why (see 013, 018, 019, 020).
 3. Down undoes Up. Every schema change since 006 has a real Down (001 and 003 have no Down section, 002 and 005 a no-op one; do not copy them). A data-only migration whose input cannot be rebuilt says so in a comment instead of pretending (`020`: "Nothing to undo: ... which rows had the prefix is not kept").
 4. SQLite cannot add, drop or change a CHECK or a primary key on an existing table: rebuild it. Adding a new column that carries a CHECK works with `ALTER TABLE ... ADD COLUMN` (`016`).
@@ -60,6 +60,8 @@ Add `TestMigrationNNN<What>` to `internal/store/migrations_test.go` (copy `TestM
 4. `provider.DownTo(ctx, NNN-1)`, assert the old shape is back, or that kept data survived.
 
 Repository tests use `storetest.OpenTestDB(t)` (`internal/store/storetest`), which opens a temp database with every migration applied.
+
+Append the new file's line to `frozenMigrations` (the failing test prints it).
 
 Run: `go test ./internal/store -run Migration -v`, then `go test ./...` (`sync`, `app`, `cli`, `company` and `credential` tests open migrated databases too).
 
