@@ -1,6 +1,6 @@
 import type { CTeEvent, CTeMunicipio, CTeRow, CTeStatusResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
-import { displayTable, type StateBadge } from '@/utils/sefazDisplay'
+import { displayTable, failedRunSegment, type StateBadge } from '@/utils/sefazDisplay'
 
 export const cteSituacao = displayTable({
   autorizada: {
@@ -222,12 +222,14 @@ export function cteDocumentCount(status: CTeStatusCounts | null) {
   )
 }
 
-// cteStatusLine sums up the last sync, the NSU cursor and the CT-e count.
+// cteStatusLine sums up the last sync, the NSU cursor, the CT-e count and
+// why the last sync failed.
 export function cteStatusLine(status: CTeStatusResult) {
   return [
     `Última sincronização: ${formatDateTime(status.LastSyncAt, 'nunca')}`,
     `NSU ${status.LastNSU}/${status.MaxNSU ?? '—'}`,
     `CT-e: ${cteDocumentCount(status)}`,
+    ...failedRunSegment(status),
   ].join(' · ')
 }
 

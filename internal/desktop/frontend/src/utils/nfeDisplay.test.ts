@@ -194,6 +194,21 @@ describe('nfeDisplay', () => {
     expect(nfeStatusLine({ ...status, MaxNSU: 12 })).toContain('NSU 10/12')
   })
 
+  it('says in the status line why the last sync failed, and only when it failed', () => {
+    const base = 'Última sincronização: nunca · NSU 10/— · Pendências: 0'
+    const failed = {
+      LastSyncAt: null,
+      LastNSU: 10,
+      MaxNSU: null,
+      LastRunStatus: 'failed',
+      LastRunError: 'falha de conexão',
+    } as unknown as NFeStatusResult
+    expect(nfeStatusLine(failed)).toBe(`${base} · Falhou: falha de conexão`)
+    expect(nfeStatusLine({ ...failed, LastRunError: '' })).toBe(base)
+    expect(nfeStatusLine({ ...failed, LastRunStatus: 'interrupted' })).toBe(base)
+    expect(nfeStatusLine({ ...failed, LastRunStatus: 'completed' })).toBe(base)
+  })
+
   it('shows the conclusive deadline only for notes with ciência', () => {
     const due = '2026-12-01T00:00:00Z'
     expect(showsConclusiveDeadline({ Manifestacao: 'ciencia', ConclusiveDue: due })).toBe(true)

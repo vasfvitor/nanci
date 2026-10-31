@@ -137,14 +137,37 @@ describe('nfseDisplay utility functions', () => {
   })
 
   describe('nfseStatusLine', () => {
+    const neverSynced = { LastFoundNSU: null, LastRunStatus: '', LastRunError: '' }
+
     it('sums up the last sync and NSU', () => {
-      const line = nfseStatusLine({ LastSyncAt: '2026-01-02T03:04:05Z', LastFoundNSU: 42 })
+      const line = nfseStatusLine({
+        LastSyncAt: '2026-01-02T03:04:05Z',
+        LastFoundNSU: 42,
+        LastRunStatus: 'completed',
+        LastRunError: '',
+      })
       expect(line).toMatch(/^Última sincronização: .+ · NSU 42$/u)
       expect(line).not.toContain('nunca')
     })
 
     it('says when the company never synced', () => {
-      expect(nfseStatusLine({ LastFoundNSU: null })).toBe('Última sincronização: nunca · NSU —')
+      expect(nfseStatusLine(neverSynced)).toBe('Última sincronização: nunca · NSU —')
+    })
+
+    it('says why the last sync failed, and only when it failed', () => {
+      const failed = { ...neverSynced, LastRunStatus: 'failed', LastRunError: 'falha de conexão' }
+      expect(nfseStatusLine(failed)).toBe(
+        'Última sincronização: nunca · NSU — · Falhou: falha de conexão'
+      )
+      expect(nfseStatusLine({ ...failed, LastRunError: '' })).toBe(
+        'Última sincronização: nunca · NSU —'
+      )
+      expect(nfseStatusLine({ ...failed, LastRunStatus: 'interrupted' })).toBe(
+        'Última sincronização: nunca · NSU —'
+      )
+      expect(nfseStatusLine({ ...failed, LastRunStatus: 'completed' })).toBe(
+        'Última sincronização: nunca · NSU —'
+      )
     })
   })
 

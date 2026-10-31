@@ -198,6 +198,21 @@ describe('cteDisplay', () => {
     expect(cteStatusLine({ ...status, MaxNSU: 12 })).toContain('NSU 10/12')
   })
 
+  it('says in the status line why the last sync failed, and only when it failed', () => {
+    const base = 'Última sincronização: nunca · NSU 10/— · CT-e: 0'
+    const failed = {
+      LastSyncAt: null,
+      LastNSU: 10,
+      MaxNSU: null,
+      LastRunStatus: 'failed',
+      LastRunError: 'falha de conexão',
+    } as unknown as CTeStatusResult
+    expect(cteStatusLine(failed)).toBe(`${base} · Falhou: falha de conexão`)
+    expect(cteStatusLine({ ...failed, LastRunError: '' })).toBe(base)
+    expect(cteStatusLine({ ...failed, LastRunStatus: 'interrupted' })).toBe(base)
+    expect(cteStatusLine({ ...failed, LastRunStatus: 'completed' })).toBe(base)
+  })
+
   it('names municípios and the percurso', () => {
     const saoPaulo = { Codigo: '3550308', Nome: 'São Paulo', UF: 'SP' }
     expect(cteMunicipioLabel(saoPaulo)).toBe('São Paulo/SP')

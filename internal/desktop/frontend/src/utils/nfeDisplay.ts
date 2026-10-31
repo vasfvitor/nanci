@@ -1,6 +1,6 @@
 import type { NFeRow, NFeStatusResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
-import { displayTable, type StateBadge } from '@/utils/sefazDisplay'
+import { displayTable, failedRunSegment, type StateBadge } from '@/utils/sefazDisplay'
 
 export type DeadlineKind = 'ciencia' | 'conclusiva'
 
@@ -215,11 +215,13 @@ export function nfeNoteCount(status: NFeStatusCounts | null) {
   )
 }
 
-// nfeStatusLine sums up the last sync, the NSU cursor and the pendências.
+// nfeStatusLine sums up the last sync, the NSU cursor, the pendências and
+// why the last sync failed.
 export function nfeStatusLine(status: NFeStatusResult) {
   return [
     `Última sincronização: ${formatDateTime(status.LastSyncAt, 'nunca')}`,
     `NSU ${status.LastNSU}/${status.MaxNSU ?? '—'}`,
     `Pendências: ${nfePendingCount(status)}`,
+    ...failedRunSegment(status),
   ].join(' · ')
 }

@@ -3,6 +3,7 @@ import { formatDateTime } from '@/utils/formatters'
 import {
   ambienteColor,
   displayTable,
+  failedRunSegment,
   type FilterOption,
   type StateBadge,
 } from '@/utils/sefazDisplay'
@@ -139,11 +140,14 @@ export function nfseSyncSummary(result: PullResult) {
   return `Sincronização ${result.Status || 'completed'} (${result.StopReason || 'sem motivo'}). Último NSU: ${result.LastProcessedNSU}, último com documento: ${lastFound}, credencial: ${credentialCNPJ}`
 }
 
-// nfseStatusLine sums up the company's last NFS-e sync and the last NSU that
-// brought a document.
-export function nfseStatusLine(company: Pick<CompanySummary, 'LastSyncAt' | 'LastFoundNSU'>) {
+// nfseStatusLine sums up the company's last NFS-e sync, the last NSU that
+// brought a document and why the last sync failed.
+export function nfseStatusLine(
+  company: Pick<CompanySummary, 'LastSyncAt' | 'LastFoundNSU' | 'LastRunStatus' | 'LastRunError'>
+) {
   return [
     `Última sincronização: ${formatDateTime(company.LastSyncAt, 'nunca')}`,
     `NSU ${company.LastFoundNSU ?? '—'}`,
+    ...failedRunSegment(company),
   ].join(' · ')
 }

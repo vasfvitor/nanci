@@ -162,3 +162,12 @@ export function idleWarning(info: SefazIdleInfo | null) {
   if (!info?.IdleDays) return ''
   return `Sem consulta há ${info.IdleDays} dias`
 }
+
+export type LastRunInfo = { LastRunStatus: string; LastRunError: string }
+
+// failedRunSegment is the status line segment that says why the last sync
+// failed, or nothing when it did not fail or stored no message. An
+// interrupted run, such as one the user cancelled, is not a failure.
+export function failedRunSegment(run: LastRunInfo): string[] {
+  return run.LastRunStatus === 'failed' && run.LastRunError ? [`Falhou: ${run.LastRunError}`] : []
+}
