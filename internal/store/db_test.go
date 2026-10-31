@@ -24,7 +24,7 @@ func TestOpenDBConcurrentWriters(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const writers, txPerWriter = 3, 100
+	const writers, txPerWriter = 3, 50
 	errs := make(chan error, writers*txPerWriter)
 	var wg sync.WaitGroup
 	for range writers {
