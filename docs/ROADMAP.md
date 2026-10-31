@@ -10,20 +10,11 @@ Tudo aqui é barato e reduz o custo de todas as fases seguintes.
 
 **Estado em 07/10/2026 (branch `chore/fase-0`, 21 commits):** feito o portão de CI (`ci.yml`, `release.yml` depende dele; primeira execução real só no PR), a faxina (branches locais, sobras do spike v3, `.gitattributes` com renormalização, `.gitignore`, docs desatualizadas, comentários nos métodos `sefaz` sem chamador, `Makefile`), as dependências Go (x/crypto 0.57, sqlite 1.60, cobra, goose, go-retry) e do frontend (menores + vitest 5, pinia 4, vue-router 5, @quasar/vite-plugin 2, @eslint/css 2), o aviso de 45 dias de NSU, o teste de reuso do `ultNSU`, a auditoria do CNPJ alfanumérico (corrigiu `nfse.ParseAccessKey`, que rejeitava chaves com letras), o backport de segurança do fork do go-pkcs12 (GO-2026-5052 e IV do PBES2, issue #4) e os links relativos das cópias Markdown do site (#14). Também caiu um bug antigo do `make seeddev`.
 
-Ficou para o dono: publicar o branch e abrir o PR; colar os comentários prontos nas issues #4, #10, #12, #14 e #15 e apagar os cinco branches remotos (texto no scratchpad da sessão de 07/10); decidir o `histoire` (ninguém roda; `story:build` quebrou com o Quasar 2.34, stub de `screen.orientation` resolve, ou remover os 5 `*.story.vue`, config e scripts); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); o `prettier --check` já acusava 67 arquivos antes, `lint:check` não roda prettier; os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
+Ficou para o dono: publicar o branch e abrir o PR; colar os comentários prontos nas issues #4, #10, #12, #14 e #15 (texto no scratchpad da sessão de 07/10); decidir o `histoire` (ninguém roda; `story:build` quebrou com o Quasar 2.34, stub de `screen.orientation` resolve, ou remover os 5 `*.story.vue`, config e scripts); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); o `prettier --check` já acusava 67 arquivos antes, `lint:check` não roda prettier; os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
 
 ### Portão de CI [M]
 
 Nenhum workflow roda `go test`, `golangci-lint`, `govulncheck` nem `pnpm lint:check`/`test:unit`/`build` em PR. O `release.yml` compila sem testar. Criar `ci.yml` em push/PR para `main` com dois jobs: Go (Ubuntu, módulo raiz e `internal/desktop` com `dist/` de mentira como o `codeql.yml` já faz) e frontend. Rodar o lint no Linux também faz a regra `depguard` valer, já que os globs `**/internal/{nfse,nfe,dfe,cte}/**/*.go` nunca casam no Windows. Fazer o `release.yml` depender desse workflow.
-
-### Faxina [P cada]
-
-- Branches remotos que sobraram: `origin/eslint`, `origin/improve-log-and-keyring`, `origin/feat/export-selected-documents`, `origin/refact`, `origin/refact-b`, apagar só com aprovação; o `eslint` carrega um `.golangci.yml` regredido e nunca deve ser aproveitado.
-- `.gitattributes` diz `* text=LF`, valor que o git não reconhece (o certo é `* text=auto eol=lf`), então nada normaliza fim de linha hoje; corrigir e renormalizar (`git add --renormalize .`) num commit só disso, para não misturar churn de EOL com mudança de conteúdo. Padrão do repositório: LF.
-- `golang.org/x/crypto` 0.55 → 0.56+ (GO-2026-6354 e GO-2026-6355 corrigidos; o govulncheck não os alcança hoje, mas o bump é grátis).
-- `Makefile`: `.PHONY` sem `seeddev`, `mockcert`, `screenshots`; o `where … 2>NUL` só funciona no Windows.
-- Docs desatualizadas: `docs/NFSE_ADN.md:21-23` diz que o app consome `GET NFSe/{chave}` (só chama `NFSe/{chave}/Eventos`); mensagem de skip em `internal/foundation/cert/pfx_test.go:88,137` aponta para `gen/mock_cert.go` (hoje é `make mockcert`); `AGENTS.md` e `docs/ARCHITECTURE.md` não listam `internal/cte`, `dfe`, `company`, `credential`, `danfse`, `files`, `cmd/mockcert`, `cmd/seeddev` nem os stores `nfeDocuments`, `cteDocuments`, `diagnostics`, `preferences`, `documentListState`.
-- `internal/sefaz`: `ConsNSU`, `ConsChNFe` e `ConsCTeNSU` existem sem chamador. Não apagar: a Fase 2 usa os dois primeiros. Anotar no código.
 
 ### Issues [P/M]
 
