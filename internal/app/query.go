@@ -59,6 +59,9 @@ func validateQueryAccessKey(raw string) (nfse.AccessKey, error) {
 	return accessKey, nil
 }
 
+// queryGenericEndpoint returns the ADN answer for path as indented JSON.
+// RawGet already rejects a body that is not JSON, so indenting cannot fail on
+// what it returns.
 func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path string) (string, error) {
 	var response json.RawMessage
 	err := apiClient.RawGet(ctx, path, &response)
@@ -68,7 +71,7 @@ func queryGenericEndpoint(ctx context.Context, apiClient *adn.Client, path strin
 
 	pretty, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		return string(response), nil //nolint:nilerr // intentional: return raw response if formatting fails
+		return "", fmt.Errorf("formatar resposta da API ADN: %w", err)
 	}
 	return string(pretty), nil
 }
