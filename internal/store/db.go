@@ -29,7 +29,12 @@ func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, er
 	if strings.Contains(dbPath, "?") {
 		separator = "&"
 	}
-	dsn := fmt.Sprintf("%s%s_pragma=journal_mode(wal)&_pragma=foreign_keys(1)", dbPath, separator)
+	// Syncs of different sources, the UI and the CLI write at the same time.
+	// busy_timeout makes a writer wait for the lock instead of failing with
+	// SQLITE_BUSY, and _txlock=immediate takes the write lock at BEGIN: a
+	// deferred transaction that reads first and then writes fails at once
+	// when another connection wrote in between, whatever the timeout.
+	dsn := fmt.Sprintf("%s%s_pragma=journal_mode(wal)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate", dbPath, separator)
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
