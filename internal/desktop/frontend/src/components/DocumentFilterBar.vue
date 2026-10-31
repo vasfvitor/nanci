@@ -12,7 +12,7 @@
 
     <q-space />
 
-    <div class="row no-wrap items-center q-gutter-sm">
+    <div class="row items-center justify-end q-gutter-sm">
       <q-btn
         color="primary"
         icon="search"
@@ -53,7 +53,9 @@ import { computed } from 'vue'
 // DocumentFilterBar is the filter row of a document page, in the standard
 // order: the source's own filters (default slot), "Somente não vistos",
 // then Buscar, the source's actions (#actions), "Marcar vistos (n)" and
-// Exportar. The company and competência live in the left drawer. Changing
+// Exportar. The buttons wrap to a second line when they do not fit, instead
+// of squeezing until each label drops under its icon. The company and
+// competência live in the left drawer. Changing
 // the toggle searches; the default slot gets search to bind on its own text
 // fields.
 const props = withDefaults(
