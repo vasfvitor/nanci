@@ -196,24 +196,7 @@
             </q-tr>
 
             <DocumentDetailRow v-if="rowProps.expand" :row-props="rowProps">
-              <div class="row q-col-gutter-md">
-                <DetailList class="col-12 col-md-5" title="Nota" :items="notaItems(rowProps.row)" />
-                <DetailList
-                  class="col-12 col-md-4"
-                  title="Emitente"
-                  :items="emitenteItems(rowProps.row)"
-                />
-                <div class="col-12 col-md-3">
-                  <DetailList
-                    title="Destinatário"
-                    :items="destinatarioItems(rowProps.row)"
-                    class="q-mb-md"
-                  />
-                  <DetailList title="Valores" :items="valoresItems(rowProps.row)" />
-                </div>
-
-                <ParseWarnings class="col-12" :warnings="rowProps.row.ParseWarnings" />
-              </div>
+              <NFeDetails :row="rowProps.row" />
             </DocumentDetailRow>
           </template>
         </q-table>
@@ -240,19 +223,18 @@
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
-import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
+import NFeDetails from '../components/NFeDetails.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NFeRowMenu from '../components/NFeRowMenu.vue'
 import NFeStateBadges from '../components/NFeStateBadges.vue'
 import NumeroCell from '../components/NumeroCell.vue'
-import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
@@ -266,20 +248,14 @@ import { wailsErrorCode } from '@/platform/wails/client'
 import type { NFeExportFormat, NFeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
-import {
-  formatCpfCnpj,
-  formatCurrencyCents,
-  formatDateTime,
-  formatNFeNumber,
-} from '@/utils/formatters'
-import { ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { formatNFeNumber } from '@/utils/formatters'
+import { badgeProps } from '@/utils/sefazDisplay'
 import { NFE_LEGEND, NFE_PENDING_LEGEND } from '@/utils/stateLegends'
 import {
   completenessFilterOptions,
   manifestacaoFilterOptions,
   nfeRoleFilterOptions,
   situacaoFilterOptions,
-  situacaoLabel,
 } from '@/utils/nfeDisplay'
 
 const $q = useQuasar()
@@ -345,45 +321,6 @@ const columns = documentColumns<NFeRow>({
   destinatario: (row) => row.DestinatarioName || row.DestinatarioCNPJ,
   valor: (row) => row.TotalValue,
 })
-
-function notaItems(row: NFeRow): DetailItem[] {
-  return [
-    { label: 'Número', value: formatNFeNumber(row.Numero), mono: true },
-    { label: 'Série', value: row.Serie, mono: true },
-    { label: 'Natureza da operação', value: row.NatOp },
-    { label: 'Layout', value: row.LayoutVersion, mono: true },
-    { label: 'Ambiente', value: row.TpAmb ? ambienteLabel(row.TpAmb) : '' },
-    { label: 'Situação', value: row.Situacao ? situacaoLabel(row.Situacao) : '' },
-    { label: 'Protocolo', value: row.Protocolo, mono: true },
-    { label: 'Autorizada em', value: formatDateTime(row.AuthorizedAt, '') },
-  ]
-}
-
-function emitenteItems(row: NFeRow): DetailItem[] {
-  return [
-    { label: 'Nome', value: row.EmitenteName },
-    { label: 'CNPJ', value: formatCpfCnpj(row.EmitenteCNPJ), mono: true },
-    { label: 'IE', value: row.EmitenteIE, mono: true },
-    { label: 'UF', value: row.EmitenteUF },
-  ]
-}
-
-function destinatarioItems(row: NFeRow): DetailItem[] {
-  return [
-    { label: 'Nome', value: row.DestinatarioName },
-    { label: 'CNPJ', value: formatCpfCnpj(row.DestinatarioCNPJ), mono: true },
-  ]
-}
-
-// A resumo carries only the total, so its taxes show as "—".
-function valoresItems(row: NFeRow): DetailItem[] {
-  const completa = row.Completeness === 'completa'
-  return [
-    { label: 'Total', value: formatCurrencyCents(row.TotalValue), mono: true },
-    { label: 'ICMS', value: completa ? formatCurrencyCents(row.ICMSValue) : '', mono: true },
-    { label: 'IPI', value: completa ? formatCurrencyCents(row.IPIValue) : '', mono: true },
-  ]
-}
 
 // The page lists the workspace company and competência. A new company also
 // reloads the status and the pendências; a new competência only the list.
