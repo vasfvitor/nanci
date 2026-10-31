@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
 // waitingProvider returns a provider with one pending request, plus the channel
@@ -97,7 +98,7 @@ func askPassword(t *testing.T, ctx context.Context, a *App, req app.CertPassword
 
 	select {
 	case got := <-events.emitted:
-		want := call{"request-cert-password", []any{req}}
+		want := call{"request-cert-password", []any{desktopapi.CertPasswordRequestFrom(req)}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("emitted %#v, want %#v", got, want)
 		}

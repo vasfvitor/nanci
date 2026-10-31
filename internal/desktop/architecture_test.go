@@ -21,9 +21,6 @@ var frontendPackages = []string{
 	"events", // the event name to payload map the generator writes
 	"github.com/vasfvitor/nanci/internal/desktop",
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi",
-	// The request-cert-password event still carries sync.CertPasswordRequest
-	// (events.go); moving it to a desktopapi DTO removes this line.
-	"github.com/vasfvitor/nanci/internal/sync",
 	"github.com/wailsapp/wails/v3/internal",
 	"github.com/wailsapp/wails/v3/pkg/updater",
 	"time",

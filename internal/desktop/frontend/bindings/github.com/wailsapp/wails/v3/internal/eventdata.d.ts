@@ -10,7 +10,7 @@ import type { Events } from "@wailsio/runtime";
 import type * as main$0 from "../../../../vasfvitor/nanci/internal/desktop/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import type * as sync$0 from "../../../../vasfvitor/nanci/internal/sync/models.js";
+import type * as desktopapi$0 from "../../../../vasfvitor/nanci/internal/desktop/desktopapi/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import type * as updater$0 from "../pkg/updater/models.js";
@@ -22,7 +22,7 @@ declare module "@wailsio/runtime" {
             "backend-log": main$0.desktopLogEvent;
             "notify-error": string;
             "notify-success": string;
-            "request-cert-password": sync$0.CertPasswordRequest;
+            "request-cert-password": desktopapi$0.CertPasswordRequest;
             "wails:updater:download-progress": updater$0.Progress;
         }
     }

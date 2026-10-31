@@ -68,3 +68,29 @@ func TestBuildInfoJSON(t *testing.T) {
 		t.Errorf("BuildInfo JSON = %s, want %s", got, want)
 	}
 }
+
+func TestCertPasswordRequestFrom(t *testing.T) {
+	req := app.CertPasswordRequest{ //nolint:gosec // G101 reads CredentialID as a secret; it is a fixture ID
+		RequestID:       "req-1",
+		CompanyID:       "company-1",
+		CompanyName:     "Empresa Teste",
+		TargetCNPJ:      "12345678000195",
+		CredentialID:    "credential-1",
+		CredentialLabel: "Certificado A1",
+		CertPath:        `C:\certs\a1.pfx`,
+		Purpose:         "Sincronização NFS-e",
+	}
+	want := CertPasswordRequest{ //nolint:gosec // G101 reads CredentialID as a secret; it is a fixture ID
+		RequestID:       "req-1",
+		CompanyID:       "company-1",
+		CompanyName:     "Empresa Teste",
+		TargetCNPJ:      "12345678000195",
+		CredentialID:    "credential-1",
+		CredentialLabel: "Certificado A1",
+		CertPath:        `C:\certs\a1.pfx`,
+		Purpose:         "Sincronização NFS-e",
+	}
+	if got := CertPasswordRequestFrom(req); got != want {
+		t.Errorf("CertPasswordRequestFrom = %+v, want %+v", got, want)
+	}
+}

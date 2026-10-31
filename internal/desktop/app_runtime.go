@@ -58,7 +58,7 @@ func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.C
 	}()
 
 	// Notify the frontend to show the password dialog
-	p.events.Emit(eventRequestCertPassword, req)
+	p.events.Emit(eventRequestCertPassword, desktopapi.CertPasswordRequestFrom(req))
 
 	// Block until the password is submitted by the frontend
 	select {

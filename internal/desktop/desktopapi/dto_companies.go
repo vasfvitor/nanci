@@ -6,6 +6,7 @@ package desktopapi
 import (
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
 )
@@ -133,4 +134,30 @@ func CredentialSummaries(credentials []credential.Credential) []CredentialSummar
 		}
 	}
 	return out
+}
+
+// CertPasswordRequest is the payload of the request-cert-password event: what
+// the password dialog shows, and the RequestID the answer goes back with.
+type CertPasswordRequest struct {
+	RequestID       string
+	CompanyID       string
+	CompanyName     string
+	TargetCNPJ      string
+	CredentialID    string
+	CredentialLabel string
+	CertPath        string
+	Purpose         string // e.g. "Sincronização NFS-e"
+}
+
+func CertPasswordRequestFrom(req app.CertPasswordRequest) CertPasswordRequest {
+	return CertPasswordRequest{
+		RequestID:       req.RequestID,
+		CompanyID:       req.CompanyID,
+		CompanyName:     req.CompanyName,
+		TargetCNPJ:      req.TargetCNPJ,
+		CredentialID:    req.CredentialID,
+		CredentialLabel: req.CredentialLabel,
+		CertPath:        req.CertPath,
+		Purpose:         req.Purpose,
+	}
 }

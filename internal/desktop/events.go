@@ -4,7 +4,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 
-	nsync "github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 )
 
 // Names of the events the backend sends to the frontend.
@@ -24,7 +24,7 @@ const (
 func init() {
 	application.RegisterEvent[desktopLogEvent](eventBackendLog)
 	application.RegisterEvent[int](eventBeforeClose) // number of syncs in flight
-	application.RegisterEvent[nsync.CertPasswordRequest](eventRequestCertPassword)
+	application.RegisterEvent[desktopapi.CertPasswordRequest](eventRequestCertPassword)
 	application.RegisterEvent[string](eventNotifySuccess)
 	application.RegisterEvent[string](eventNotifyError)
 	// The Wails updater emits the download progress itself, as a value

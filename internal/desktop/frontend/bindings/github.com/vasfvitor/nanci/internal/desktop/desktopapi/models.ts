@@ -268,6 +268,25 @@ export interface CTeStatusResult {
     "TotalOutros": number;
 }
 
+/**
+ * CertPasswordRequest is the payload of the request-cert-password event: what
+ * the password dialog shows, and the RequestID the answer goes back with.
+ */
+export interface CertPasswordRequest {
+    "RequestID": string;
+    "CompanyID": string;
+    "CompanyName": string;
+    "TargetCNPJ": string;
+    "CredentialID": string;
+    "CredentialLabel": string;
+    "CertPath": string;
+
+    /**
+     * e.g. "Sincronização NFS-e"
+     */
+    "Purpose": string;
+}
+
 export interface CompanySummary {
     "ID": string;
     "CNPJ": string;

@@ -13,6 +13,7 @@ export type {
     CTeResetResult,
     CTeRow,
     CTeStatusResult,
+    CertPasswordRequest,
     CompanySummary,
     ConnectionTestResult,
     CredentialSummary,
