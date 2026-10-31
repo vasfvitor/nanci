@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,6 +113,24 @@ func (h *testHelper) assertSourceRun(source syncstate.SyncSource, wantStatus syn
 	}
 }
 
+// assertRunError checks the error code and message stored on the source's
+// latest run; an empty wantCode means none.
+func (h *testHelper) assertRunError(source syncstate.SyncSource, wantCode, wantMsg string) {
+	h.t.Helper()
+	var code, msg sql.NullString
+	err := h.db.QueryRowContext(context.Background(), `
+		SELECT error_code, error_message FROM sync_runs
+		WHERE company_id = ? AND source = ?
+		ORDER BY rowid DESC LIMIT 1
+	`, string(h.company.ID), string(source)).Scan(&code, &msg)
+	if err != nil {
+		h.t.Fatalf("failed to query %s run error: %v", source, err)
+	}
+	if code.String != wantCode || !strings.Contains(msg.String, wantMsg) || (wantMsg == "" && msg.Valid) {
+		h.t.Errorf("%s run error = (%q, %q), want (%q, containing %q)", source, code.String, msg.String, wantCode, wantMsg)
+	}
+}
+
 func TestSourceLoopCursorFollowsNextCursorPastLastItem(t *testing.T) {
 	h := newTestHelper(t)
 	src := &fakeSource{
@@ -137,6 +156,7 @@ func TestSourceLoopCursorFollowsNextCursorPastLastItem(t *testing.T) {
 		t.Errorf("max_nsu = %v, want 20", maxNSU)
 	}
 	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusCompleted, syncstate.SyncStopReasonCaughtUp)
+	h.assertRunError(syncstate.SyncSourceNFe, "", "")
 }
 
 func TestSourceLoopCaughtUpMarksInitialSyncOnlyForThatSource(t *testing.T) {

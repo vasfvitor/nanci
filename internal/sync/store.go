@@ -506,7 +506,9 @@ func (r *Store) FinishRun(ctx context.Context, params syncstate.FinishRunParams)
 			empty_count = ?,
 			consecutive_empty_count = ?,
 			errors_count = ?,
-			last_found_nsu = ?
+			last_found_nsu = ?,
+			error_code = ?,
+			error_message = ?
 		WHERE id = ?
 	`,
 		now,
@@ -518,6 +520,8 @@ func (r *Store) FinishRun(ctx context.Context, params syncstate.FinishRunParams)
 		params.ConsecutiveEmptyCount,
 		params.ErrorsCount,
 		store.NullInt64FromPtr(params.LastFoundNSU),
+		nullString(params.ErrorCode),
+		nullString(params.ErrorMsg),
 		string(params.RunID),
 	)
 	return err

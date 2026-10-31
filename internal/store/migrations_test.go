@@ -952,6 +952,34 @@ func TestMigration021WidensExportKinds(t *testing.T) {
 	}
 }
 
+func TestMigration022AddsSyncRunErrors(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 21)
+
+	errorColumns := func() int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('sync_runs') WHERE name IN ('error_code', 'error_message')`).Scan(&n); err != nil {
+			t.Fatalf("read sync_runs columns: %v", err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 22); err != nil {
+		t.Fatalf("migrate to version 22: %v", err)
+	}
+	if n := errorColumns(); n != 2 {
+		t.Errorf("sync_runs error columns after up = %d, want 2", n)
+	}
+
+	if _, err := provider.DownTo(ctx, 21); err != nil {
+		t.Fatalf("migrate down to version 21: %v", err)
+	}
+	if n := errorColumns(); n != 0 {
+		t.Errorf("sync_runs error columns after down = %d, want 0", n)
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()

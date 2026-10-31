@@ -60,6 +60,7 @@ func TestSourceLoopFailedWaitWriteFailsRunBeforeItems(t *testing.T) {
 
 	assertPersistError(t, err, "failed to record source wait")
 	h.assertSourceRun(syncstate.SyncSourceNFe, syncstate.SyncStatusFailed, syncstate.SyncStopReasonProcessError)
+	h.assertRunError(syncstate.SyncSourceNFe, "persist_error", "disk full")
 	if processed != 0 {
 		t.Errorf("items processed = %d, want 0: the wait is recorded before any item", processed)
 	}

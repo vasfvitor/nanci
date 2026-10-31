@@ -355,6 +355,8 @@ type SyncRun struct {
 	ConsecutiveEmptyCount int64
 	LastFoundNsu          sql.NullInt64
 	Source                string
+	ErrorCode             sql.NullString
+	ErrorMessage          sql.NullString
 }
 
 type SyncState struct {

@@ -194,7 +194,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `021` em `internal/store/migrations_v2/`:
+Migrações `007` a `022` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -211,6 +211,7 @@ Migrações `007` a `021` em `internal/store/migrations_v2/`:
 - `019`: recria `company_sync_sources` e `sync_requests` com a coluna `environment`, que entra na chave de `company_sync_sources` e no índice `idx_sync_requests_window`. As linhas existentes recebem o ambiente atual da empresa.
 - `020`: tira o prefixo `NFS` da chave das NFS-e guardadas com o `Id` do `infNFSe`, liga os seus eventos e recalcula o status, descrita em [NFSE_ADN.md](NFSE_ADN.md#chave-de-acesso).
 - `021`: recria `company_nfe_export_marks` e `company_cte_export_marks` para aceitar os tipos de exportação `csv`, `xlsx` e o PDF de cada origem (`danfe` na NF-e, `dacte` no CT-e), além de `xml`. As marcas existentes, todas `xml`, são mantidas com o seu `exported_events`.
+- `022`: acrescenta `error_code` e `error_message` a `sync_runs`, para a execução que termina em erro guardar o código (`persist_error`, `fetch_error`, `process_error`...) e a mensagem. As execuções antigas ficam com `NULL`.
 
 Tabelas de NF-e:
 
