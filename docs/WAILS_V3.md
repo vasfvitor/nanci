@@ -4,12 +4,14 @@ Registro da migração do desktop (`internal/desktop`) do Wails v2.16.0 para o W
 
 | Peça | Versão |
 | --- | --- |
-| Módulo Go `github.com/wailsapp/wails/v3` | `v3.0.0` |
-| Pacote npm `@wailsio/runtime` | `3.0.0` (versão exata) |
-| CLI `wails3` | `v3.0.0` (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0`, nunca `@latest`) |
+| Módulo Go `github.com/wailsapp/wails/v3` | `v3.1.0` |
+| Pacote npm `@wailsio/runtime` | `3.1.0` (versão exata) |
+| CLI `wails3` | `v3.1.0` (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`, nunca `@latest`) |
 | Go | 1.26 ou mais novo (exigência do v3) |
 
 Os nomes de API e os comportamentos citados aqui foram conferidos no código-fonte da v3.0.0 no cache de módulos (`github.com/wailsapp/wails/v3@v3.0.0`), não no guia de migração. Os caminhos de arquivo sem prefixo são desse módulo.
+
+**Atualização para a v3.1.0 (18/11/2026).** A v3.1.0 saiu em 01/11/2026 (notas em https://github.com/wailsapp/wails/releases/tag/v3.1.0). O Wails v3 passou a ter release semanal: o número menor avança com o tempo, não com funcionalidades. As notas não listam quebra de API. Os bindings gerados saíram idênticos aos da v3.0.0, e o `MarshalError` da aplicação continua ignorado nos métodos dos serviços (`pkg/application/bindings.go:140` na v3.1.0). O resto deste documento não foi conferido de novo na v3.1.0.
 
 ## O que mudou em cada camada
 
@@ -31,7 +33,7 @@ Os nomes de API e os comportamentos citados aqui foram conferidos no código-fon
 
 No v2, o `ErrorFormatter` virava o valor inteiro da rejeição da promise. No v3:
 
-1. O `MarshalError` das opções do serviço (`application.NewServiceWithOptions` em `main.go`) chama `marshalError` (`errors.go`), que serializa o mesmo `desktopapi.ErrorPayload{Code, Message}` de antes. `Code` é `canceled`, `sefaz_blocked`, `sync_running`, `update_busy`, `startup_failed` ou vazio. Ele precisa ficar no serviço: o Wails v3.0.0 usa só o `MarshalError` do serviço nos métodos e nunca recorre ao `Options.MarshalError` da aplicação (`bindings.go:140`). Sem ele, o padrão serializa o erro como `{}` e o código se perde.
+1. O `MarshalError` das opções do serviço (`application.NewServiceWithOptions` em `main.go`) chama `marshalError` (`errors.go`), que serializa o mesmo `desktopapi.ErrorPayload{Code, Message}` de antes. `Code` é `canceled`, `sefaz_blocked`, `sync_running`, `update_busy`, `startup_failed` ou vazio. Ele precisa ficar no serviço: o Wails (v3.0.0 e v3.1.0) usa só o `MarshalError` do serviço nos métodos e nunca recorre ao `Options.MarshalError` da aplicação (`bindings.go:140`). Sem ele, o padrão serializa o erro como `{}` e o código se perde.
 2. O Wails monta um `CallError{message, cause, kind: "RuntimeError"}`. `message` é o texto do erro Go e `cause` é o JSON do passo 1 (`pkg/application/bindings.go`). A resposta HTTP sai com status 422.
 3. O `@wailsio/runtime` rejeita a promise com um `RuntimeError` (subclasse de `Error`) e copia `cause` (`internal/runtime/desktop/@wailsio/runtime/src/runtime.ts`).
 4. `normalizeError` em `src/platform/wails/client/base.ts` lê `code` e `message` de `error.cause`. Objetos simples com `message` continuam aceitos, e qualquer outro erro vira código vazio.
@@ -39,7 +41,7 @@ No v2, o `ErrorFormatter` virava o valor inteiro da rejeição da promise. No v3
 ### Frontend (`internal/desktop/frontend`)
 
 - `wailsjs/` foi apagado. `bindings/` é gerado por `wails3 generate bindings -clean=true -ts -i` (interfaces TypeScript, chamadas por ID numérico) e versionado. `wails3 build` e `wails3 dev` regeneram a pasta; com as flags do build de produção o conteúdo é o mesmo.
-- `@wailsio/runtime` fica fixo em `3.0.0`. O `pnpm-workspace.yaml` exige 7 dias de publicação (`minimumReleaseAge: 10080`) e essa versão saiu em 26/10/2026, então `minimumReleaseAgeExclude` abre exceção só para `@wailsio/runtime@3.0.0`. Remova a exceção depois de 02/11/2026.
+- `@wailsio/runtime` fica fixo na mesma versão do módulo Go. O `pnpm-workspace.yaml` exige 7 dias de publicação (`minimumReleaseAge: 10080`): ao atualizar o Wails, escolha uma versão publicada há mais de 7 dias ou abra em `minimumReleaseAgeExclude` uma exceção só para ela, com data para remover.
 - Os mapeadores de `client/*.ts` recebem o modelo gerado em `bindings/.../desktopapi/models.ts`, então renomear ou remover um campo de um DTO em Go quebra o `vue-tsc` no mapeador (conferido renomeando `UF` e `LastSyncAt` de `CompanySummary`). Os helpers `as*` de `base.ts` ficaram só para os campos que o tipo gerado admite nulos (ponteiros e slices) e para restringir um texto a uma união de valores conhecidos (`asEnum`); os testes que alimentam um mapeador com dados parciais fazem o cast explícito, e os testes das telas montam linhas com `makeNFeRow`, `makeCTeRow` e `makeDocumentRow` de `src/test/fixtures.ts`.
 - `events.ts`: no v3, o callback recebe um `WailsEvent`, e o dado emitido pelo backend está em `.data`. O gerador escreve o tipo do dado de cada evento registrado em `bindings/github.com/wailsapp/wails/v3/internal/eventdata.d.ts`, que aumenta `Events.CustomEvents` do `@wailsio/runtime` e entra no `vue-tsc` pelo `include` de `bindings/**/*.ts`. `onWailsEvent('nome', cb)` entrega o dado tipado; `DesktopEvents` troca o tipo gerado pelo de `@/types/desktop` quando ele existe (`CertPasswordRequest`) e quebra o build se o tipo gerado deixar de caber nele.
 - `runtime.ts` usa `Window.Minimise`, `Window.ToggleMaximise`, `Application.Quit`, `Window.Size`, `Window.SetSize`, `Window.IsMaximised` e `Screens.GetAll`; o tema vai para `SetWindowTheme`. Os controles da janela e o tema continuam "dispare e esqueça", como no v2. `windowGetSize` ainda devolve `{w, h}` (o v3 devolve `{width, height}`), em pixels lógicos. `windowSetSize` agora devolve uma promise e `useDisplayScale` espera cada chamada: no v3 cada chamada do runtime é uma requisição HTTP separada, e o reajuste de 1 px depende da ordem.
@@ -63,7 +65,7 @@ No v2, o `ErrorFormatter` virava o valor inteiro da rejeição da promise. No v3
 ### CI e release
 
 - No Linux, o v3 só compila com Cgo e os cabeçalhos do GTK 4 e do WebKitGTK 6.0 (`pkg/application/linux_cgo.go`: `#cgo linux pkg-config: gtk4 webkitgtk-6.0`; a pilha GTK 3 só com `-tags gtk3`, até a v3.1). O v2 compilava sem Cgo. O job Go do CI instala `libgtk-4-dev` e `libwebkitgtk-6.0-dev` (nomes do `wails3 doctor` para apt, `internal/doctor/packagemanager/apt.go`) e liga o Cgo nos passos do desktop. O módulo raiz continua sem Cgo.
-- O job de bindings instala o `wails3` v3.0.0 e roda o gerador com `GOOS=windows`. No Linux sem Cgo o pacote `application` não compila, e o gerador termina com "0 Services" e só um aviso, em vez de falhar. Conferido aqui com `GOOS=linux CGO_ENABLED=0`.
+- O job de bindings instala o `wails3` fixado em `WAILS_VERSION` e roda o gerador com `GOOS=windows`. No Linux sem Cgo o pacote `application` não compila, e o gerador termina com "0 Services" e só um aviso, em vez de falhar. Conferido aqui com `GOOS=linux CGO_ENABLED=0`.
 - O job `build-desktop` do release grava a versão da tag (só a parte numérica, para os metadados do Windows) em `build/config.yml`, roda `wails3 task common:update:build-assets` e `wails3 task windows:package EXTRA_LDFLAGS="-X ..."`, com `GOOS=windows` pelo mesmo motivo do gerador. O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe`. O `mingw-w64` e o `jq` saíram: o executável do Windows é Go puro.
 
 ## Tema fixo, escala do monitor e instância única
@@ -108,7 +110,7 @@ Conferido no código da v3.0.0 em 30/10/2026. Os caminhos sem prefixo são de `p
 - **Pasta de instalação.** O instalador é por usuário e instala em `%LOCALAPPDATA%\Programs\Nanci Desktop` (`project.nsi`, `WAILS_INSTALL_SCOPE=user`), uma pasta que o usuário pode gravar sem UAC. Numa instalação por máquina, em Program Files, o updater não conseguiria criar a pasta de staging, e o download falharia com erro.
 - **Por que não o provider `github`.** O provider `github` só preenche um digest, lido de um arquivo de checksums, e nunca uma assinatura (`providers/github/github.go:167-179`). Com a chave fixada, o updater recusaria todos os releases (`verify.go:87`). As ferramentas de publicação do Wails (`wails3 updater genkey`, `sign`, `manifest` e `verify`, em `internal/commands/updater_tool.go`) seguem o protocolo do provider `endpoint`, e o manifesto continua hospedado no próprio release do GitHub.
 - **O que é assinado.** `wails3 updater manifest -key` calcula o SHA-512 do exe e assina esse digest com Ed25519ph (`updater_tool.go`, `signUpdaterArtifact`). O manifesto leva o digest e a assinatura em base64 (`digestAlgo: sha512`, `signatureAlgo: ed25519ph`) e o tamanho do arquivo. O artefato é o exe cru, não um zip: assim o digest cobre exatamente o arquivo instalado. Um zip seria extraído e apagado antes da troca (`extract.go:66-123`), e o digest deixaria de cobrir o que vai para o disco (`validate.go:18-31`).
-- **Artefatos do release.** Além do instalador, `release.yml` publica `nanci-desktop-windows-amd64-vX.Y.Z.exe` (o exe que o instalador empacota) e `nanci-update.json`, cuja URL do exe aponta para a tag. `nanci-checksums.txt` cobre os dois exes. Uma tag para no job `prepare` quando `updater_key.go` não tem chave ou quando falta o segredo `UPDATER_SIGNING_KEY`. Depois de assinar, `wails3 updater verify` confere o manifesto com a chave fixada no app, então um segredo que não corresponde a ela também derruba o release. O `wails3` desses passos é o v3.0.0, do mesmo cache do build.
+- **Artefatos do release.** Além do instalador, `release.yml` publica `nanci-desktop-windows-amd64-vX.Y.Z.exe` (o exe que o instalador empacota) e `nanci-update.json`, cuja URL do exe aponta para a tag. `nanci-checksums.txt` cobre os dois exes. Uma tag para no job `prepare` quando `updater_key.go` não tem chave ou quando falta o segredo `UPDATER_SIGNING_KEY`. Depois de assinar, `wails3 updater verify` confere o manifesto com a chave fixada no app, então um segredo que não corresponde a ela também derruba o release. O `wails3` desses passos é o de `WAILS_VERSION`, do mesmo cache do build.
 - **A primeira versão.** As versões até a v0.6.0 não têm o updater. Quem usa uma delas instala a primeira versão com a chave pelo instalador; daí em diante, as atualizações chegam pelo app.
 
 ### Passos do dono (uma vez)

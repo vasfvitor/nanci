@@ -14,7 +14,7 @@ Estrutura de pacotes e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md); pad
 | Go | a do `go.mod` (hoje 1.26) | tudo |
 | Node.js | 24 (`internal/desktop/frontend/.node-version`; mínimo 22) | frontend |
 | pnpm | 10 | frontend |
-| Wails CLI (`wails3`) | v3.0.0, a mesma do `internal/desktop/go.mod` | desktop |
+| Wails CLI (`wails3`) | v3.1.0, a mesma do `internal/desktop/go.mod` | desktop |
 | golangci-lint | a do CI (`version:` em `.github/workflows/ci.yml`, hoje v2.12.2) | `scripts/verify.sh` |
 | NSIS | 3 | só para gerar o instalador |
 | OpenSSL | qualquer | só para recriar o certificado mock |
@@ -24,7 +24,7 @@ No Windows não é preciso compilador C: o SQLite é `modernc.org/sqlite` (Go pu
 Instale o CLI na versão exata, nunca `@latest`:
 
 ```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 wails3 doctor
 ```
 
