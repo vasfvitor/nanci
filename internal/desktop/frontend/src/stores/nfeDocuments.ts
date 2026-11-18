@@ -1,5 +1,6 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
+import { chaveFocusState } from '@/stores/chaveFocusState'
 import { documentListState } from '@/stores/documentListState'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ListNFeInput, NFePendingRow, NFeRow, NFeStatusResult } from '@/types/desktop'
@@ -23,10 +24,29 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     OnlyUnread: false,
   })
 
+  const focus = chaveFocusState(workspace)
+
   // listInput is the only place the ListNFe request is built from the
   // workspace and the filter. Clearable inputs set null, so every field is
-  // normalized here.
-  const listInput = computed<ListNFeInput>(() => ({
+  // normalized here. A focused note is listed alone, from any competência
+  // and whatever the filter says.
+  const listInput = computed<ListNFeInput>(() => {
+    const chave = focus.chaveFocus.value
+    if (!chave) return filteredInput.value
+    return {
+      CNPJ: workspace.cnpj,
+      Competence: '',
+      Situacao: '',
+      Completeness: '',
+      Manifestacao: '',
+      Role: '',
+      EmitenteCNPJ: '',
+      ChavesAcesso: [chave],
+      OnlyUnread: false,
+    }
+  })
+
+  const filteredInput = computed<ListNFeInput>(() => ({
     CNPJ: workspace.cnpj,
     Competence: workspace.competence,
     Situacao: filter.value.Situacao || '',
@@ -80,6 +100,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
   return {
     filter,
     listInput,
+    ...focus,
     ...list,
     status,
     statusGate,

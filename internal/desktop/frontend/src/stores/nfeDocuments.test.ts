@@ -69,6 +69,34 @@ describe('nfeDocuments store', () => {
     expect(store.listInput.OnlyUnread).toBe(false)
   })
 
+  it('lists only the focused note, from every competência, until the workspace moves', () => {
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = '123'
+    workspace.competence = '2026-05'
+    const store = useNFeDocumentsStore()
+    store.filter.Situacao = 'cancelada'
+    store.filter.OnlyUnread = true
+
+    store.focusChave('NFE-KEY')
+
+    expect(store.listInput).toEqual({
+      CNPJ: '123',
+      Competence: '',
+      Situacao: '',
+      Completeness: '',
+      Manifestacao: '',
+      Role: '',
+      EmitenteCNPJ: '',
+      ChavesAcesso: ['NFE-KEY'],
+      OnlyUnread: false,
+    })
+
+    workspace.competence = '2026-06'
+    expect(store.chaveFocus).toBe('')
+    expect(store.listInput.Situacao).toBe('cancelada')
+    expect(store.listInput.Competence).toBe('2026-06')
+  })
+
   it('patches one row and the selection, or drops it when it no longer matches', () => {
     const store = useNFeDocumentsStore()
     store.setRows([nfeRow('a'), nfeRow('b')])

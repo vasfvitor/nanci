@@ -1,5 +1,6 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
+import { chaveFocusState } from '@/stores/chaveFocusState'
 import { documentListState } from '@/stores/documentListState'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
@@ -29,10 +30,30 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     OnlyUnread: false,
   })
 
+  const focus = chaveFocusState(workspace)
+
   // listInput is the only place the ListCTe request is built from the
   // workspace and the filter. Clearable inputs set null, so every field is
-  // normalized here.
-  const listInput = computed<ListCTeInput>(() => ({
+  // normalized here. A focused CT-e is listed alone, from any competência
+  // and whatever the filter says.
+  const listInput = computed<ListCTeInput>(() => {
+    const chave = focus.chaveFocus.value
+    if (!chave) return filteredInput.value
+    return {
+      CNPJ: workspace.cnpj,
+      Competence: '',
+      Situacao: '',
+      Role: '',
+      Modelo: '',
+      EmitenteCNPJ: '',
+      TomadorCNPJ: '',
+      NFeChave: '',
+      ChavesAcesso: [chave],
+      OnlyUnread: false,
+    }
+  })
+
+  const filteredInput = computed<ListCTeInput>(() => ({
     CNPJ: workspace.cnpj,
     Competence: workspace.competence,
     Situacao: filter.value.Situacao || '',
@@ -58,6 +79,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     filter,
     listInput,
     listError,
+    ...focus,
     ...documentListState<CTeRow>(),
     status,
     statusGate,
