@@ -1,6 +1,6 @@
 module github.com/vasfvitor/nanci
 
-go 1.26.10
+go 1.26.11
 
 replace software.sslmate.com/src/go-pkcs12 => ./third_party/go-pkcs12
 
