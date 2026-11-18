@@ -224,6 +224,16 @@
                     aria-label="Copiar chave da NF-e"
                     @click.stop="copyChave(chave)"
                   />
+                  <q-btn
+                    dense
+                    flat
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    label="Ver NF-e"
+                    title="Abre esta NF-e na página NF-e, de qualquer competência"
+                    @click.stop="openNFe(chave)"
+                  />
                 </div>
               </div>
             </div>
@@ -241,6 +251,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
+import { useRouter } from 'vue-router'
 import ChaveCell from '../components/ChaveCell.vue'
 import ChaveFocusChip from '../components/ChaveFocusChip.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
@@ -288,6 +299,7 @@ import {
 import { CTE_LEGEND } from '@/utils/stateLegends'
 
 const $q = useQuasar()
+const router = useRouter()
 const cte = useCTeDocuments()
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()
@@ -500,6 +512,11 @@ async function resetCTe() {
       notifyError('Erro ao redefinir CT-e', error)
     }
   }
+}
+
+// openNFe shows one transported note on the NF-e page.
+function openNFe(chave: string) {
+  void router.push({ path: '/nfe', query: { chave } })
 }
 
 function openEvents(chaveAcesso: string) {

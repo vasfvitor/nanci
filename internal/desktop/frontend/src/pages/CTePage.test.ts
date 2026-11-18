@@ -39,9 +39,10 @@ let route = reactive<{ query: Record<string, string> }>({ query: {} })
 const replace = vi.fn((to: { query: Record<string, string> }) => {
   route.query = to.query
 })
+const push = vi.fn()
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn(), replace }),
+  useRouter: () => ({ push, replace }),
   useRoute: () => route,
 }))
 
@@ -950,5 +951,31 @@ describe('CTePage import', () => {
 
     expect(wrapper.find('.row-imp .badge').text()).toBe('Importado')
     expect(wrapper.find('.row-dist .badge').exists()).toBe(false)
+  })
+
+  it('opens a transported NF-e on the NF-e page', async () => {
+    vi.mocked(desktopClient.listCTe).mockResolvedValue([tomada])
+    const wrapper = mountPage({
+      'q-table': {
+        name: 'QTable',
+        props: ['rows'],
+        template: `<div><div v-for="row in rows" :key="row.ChaveAcesso">
+          <slot name="body" :row="row" :cols="[]" :expand="true" />
+        </div></div>`,
+      },
+      DocumentDetailRow: { template: '<div><slot /></div>' },
+      // The link stops the click with .stop, so the stub passes the event on.
+      'q-btn': {
+        name: 'QBtn',
+        props: ['label'],
+        emits: ['click'],
+        template: `<button @click="$emit('click', $event)">{{ label }}</button>`,
+      },
+    })
+    await flushPromises()
+
+    await button(wrapper, 'Ver NF-e').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({ path: '/nfe', query: { chave: nfeChave } })
   })
 })
