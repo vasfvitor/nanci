@@ -5,7 +5,6 @@ Itens anotados durante as entregas de NF-e (v0.4.0) e CT-e (v0.5.0), em 24/09/20
 ## Funcionalidade
 
 - **Prestação do serviço em desacordo (CT-e, evento 610110).** Só o tomador envia, em até 45 dias da autorização (relato de terceiros; ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`), com uma observação, à SEFAZ autorizadora do CT-e (não ao Ambiente Nacional). Precisa de: tabela UF → serviço de recepção de eventos por ambiente (SVRS para a maioria; SP, MT, MS, MG e PR com endpoint próprio), assinatura do `eventoCTe` reaproveitando `internal/sefaz/xmldsig.go` com o namespace do CT-e, tabela de auditoria dos envios (espelho de `nfe_manifestacoes`), confirmação explícita como na ciência da NF-e. Ver `docs/CTE_SEFAZ.md`, "Próximos passos".
-- **Ligação CT-e ↔ NF-e nas telas.** As chaves de NF-e transportadas já ficam em `cte_documents.nfe_chaves` e servem de filtro (`cte list --nfe`, campo na página CT-e). Falta mostrar, na NF-e, o CT-e do frete, e, no CT-e, as notas que ele transporta, com navegação entre as duas páginas.
 - **Notas emitidas pela própria empresa.** A distribuição não devolve ao emitente os próprios documentos (e `consChNFe` responde 641); desde 17/10/2026 entram por importação do XML (`nfe import`, botão Importar XML). Buscar na SEFAZ pelo emitente continua fora.
 
 ## Comportamento conhecido

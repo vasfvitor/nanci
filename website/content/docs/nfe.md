@@ -41,6 +41,10 @@ A aba **Pendências** mostra as notas sem manifestação conclusiva e o prazo de
 
 **Buscar pela chave** pede uma NF-e à SEFAZ pela chave de acesso. Funciona para a destinatária, a transportadora e quem foi autorizado no XML, dentro dos 90 dias; a SEFAZ não entrega ao emitente a própria nota, que só entra pela importação. Cada busca gasta 1 das 20 consultas da hora ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)). Enquanto a empresa não manifesta a nota, a SEFAZ entrega só o resumo: registre a Ciência da Operação e busque de novo, ou espere a próxima sincronização.
 
+## Achar o frete
+
+Na linha aberta de uma NF-e, **CT-e do frete** lista os CT-e da empresa que levaram a nota, de qualquer competência, e **Ver CT-e** abre a página [CT-e](../cte/#achar-o-frete-de-uma-nf-e) só com aquele CT-e. Se a nota aberta por um link não estiver guardada para a empresa, use **Buscar pela chave**.
+
 ## Exportar
 
 **Exportar** gera, da lista filtrada ou da seleção, uma planilha Excel ou CSV, um ZIP com os XMLs e eventos, ou um ZIP com os DANFE em PDF. Cada nota também pode ser salva sozinha em XML ou DANFE. Resumos (notas sem o XML completo) entram na planilha e no ZIP de XML só com **Incluir resumos**, e nunca têm DANFE: o ZIP de DANFE avisa quantos ficaram de fora. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.

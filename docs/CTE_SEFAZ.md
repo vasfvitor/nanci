@@ -125,7 +125,7 @@ As chaves das NF-e transportadas ficam em `nfe_chaves`: `infCTeNorm/infDoc/infNF
 
 O CT-e é guardado uma vez por chave, para todas as empresas que o recebem. Quando uma empresa recebe o documento completo e outra, terceira do `autXML`, recebe a cópia mascarada, o Nanci fica com o completo: a cópia mascarada nunca substitui o completo (só a situação pode mudar, para a mais grave), e o completo substitui a cópia mascarada quando chega depois. A ligação com a NF-e e a exportação usam sempre o XML completo quando alguma empresa o recebeu.
 
-`nanci cte list --nfe <CHAVE_NFE>` (e o filtro de chave de NF-e no aplicativo) encontra os CT-e que transportaram uma NF-e. As telas ainda não mostram a ligação entre um CT-e e as notas dele.
+`nanci cte list --nfe <CHAVE_NFE>` (e o filtro de chave de NF-e no aplicativo) encontra os CT-e que transportaram uma NF-e. No aplicativo, a linha aberta de um CT-e lista as NF-e transportadas com **Ver NF-e**, e a linha aberta de uma NF-e lista os CT-e da empresa que a levaram (`ListCTe` com `NFeChave`) com **Ver CT-e**. O link abre a outra página só com aquele documento (`?chave=`), de qualquer competência, sem mudar a competência escolhida; a página diz quando o documento não está guardado para a empresa.
 
 ## Exportação
 
@@ -211,12 +211,11 @@ Um CT-e recebido de novo substitui o anterior (não há resumo a preservar), man
 - Envio da prestação do serviço em desacordo (610110) e do seu cancelamento.
 - MDF-e: os documentos em si e os eventos de MDF-e sobre CT-e que a empresa não tem.
 - Recuperar pela SEFAZ os CT-e emitidos pela própria empresa; o XML deles pode ser importado (ver "Importação de XML").
-- Ligação visual entre CT-e, NF-e e NFS-e nas telas.
+- Ligação visual entre CT-e e NFS-e nas telas.
 
 ## Próximos passos
 
 - Prestação do serviço em desacordo: tabela UF → SEFAZ autorizadora do CT-e por ambiente (SVRS para a maioria das UF; SP, MT, MS, MG e PR com endpoint próprio), com a UF tirada da chave; generalizar o assinador de `internal/sefaz/xmldsig.go` para o `eventoCTe` 4.00; tabela de auditoria dos envios, como `nfe_manifestacoes`; confirmação explícita no CLI e no aplicativo, com o prazo exibido.
-- Mostrar a ligação CT-e ↔ NF-e nas telas das duas origens, a partir de `nfe_chaves`.
 
 ## Atribuição
 

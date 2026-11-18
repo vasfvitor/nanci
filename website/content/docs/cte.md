@@ -26,4 +26,4 @@ Não há busca pela chave para o CT-e: a distribuição do CT-e só entrega pela
 
 ## Achar o frete de uma NF-e
 
-Filtre por **Chave de NF-e transportada** para ver os CT-e que levaram aquela nota.
+Filtre por **Chave de NF-e transportada** para ver os CT-e que levaram aquela nota. Na linha aberta de um CT-e, **Ver NF-e** abre a página NF-e só com a nota transportada, de qualquer competência; o mesmo vale ao contrário pela página [NF-e](../nfe/#achar-o-frete). Remova o filtro da chave para voltar à lista da competência.
