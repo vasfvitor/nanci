@@ -20,7 +20,7 @@
     "@fontsource/inter": "5.3.0",
     "@quasar/extras": "2.1.0",
     "@vue/devtools-api": "8.2.1",
-    "@wailsio/runtime": "3.0.0",
+    "@wailsio/runtime": "3.1.0",
     "pinia": "^4.1.0",
     "quasar": "2.35.2",
     "vue": "3.5.44",

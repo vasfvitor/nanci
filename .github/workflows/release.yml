@@ -16,7 +16,7 @@ concurrency:
 env:
   # The install steps build the Wails CLI without cgo, which on Linux would
   # need the GTK 4 and WebKitGTK headers (internal/operatingsystem).
-  WAILS_VERSION: v3.0.0
+  WAILS_VERSION: v3.1.0
 
 jobs:
   prepare:
