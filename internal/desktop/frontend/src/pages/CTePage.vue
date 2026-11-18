@@ -26,7 +26,7 @@
       :export-disabled="scopeRows.length === 0"
       :search-disabled="!cnpj || Boolean(listError)"
       :mark-viewed-count="unviewedChaves.length"
-      @search="search"
+      @search="searchWithoutFocus"
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
     >
@@ -88,6 +88,13 @@
       </template>
     </DocumentFilterBar>
 
+    <ChaveFocusChip
+      v-if="chaveFocus"
+      :chave="chaveFocus"
+      noun="o CT-e"
+      @clear="searchWithoutFocus"
+    />
+
     <StateLegend :sections="CTE_LEGEND" class="q-mb-md" />
 
     <q-table
@@ -98,7 +105,7 @@
       row-key="ChaveAcesso"
       selection="multiple"
       :loading="loading"
-      :no-data-label="cnpj ? 'Nenhum CT-e encontrado.' : noCompanyLabel"
+      :no-data-label="noDataLabel"
       class="document-table"
       binary-state-sort
       flat
@@ -235,6 +242,7 @@
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
+import ChaveFocusChip from '../components/ChaveFocusChip.vue'
 import CTeEventsDialog from '../components/CTeEventsDialog.vue'
 import DetailList, { type DetailItem } from '../components/DetailList.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
@@ -254,6 +262,7 @@ import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { copyChave, useNotify } from '@/composables/useNotify'
+import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type { CTeExportFormat, CTeResetResult, CTeRow, ImportXMLResult } from '@/types/desktop'
@@ -301,6 +310,7 @@ const {
   statusLine,
   idleWarning,
   listError,
+  chaveFocus,
   isSyncing,
   canCancelSync,
   isCancelling,
@@ -364,6 +374,10 @@ function valoresItems(row: CTeRow): DetailItem[] {
   ]
 }
 
+// A link from the NF-e page opens one CT-e; it must be read before the
+// first search.
+useRouteChaveFocus(cte.focusChave, search)
+
 // The page lists the workspace company and competência. A new company also
 // reloads the status; a new competência only the list.
 const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
@@ -383,6 +397,19 @@ async function search() {
     notifyError('Erro ao buscar CT-e', error)
   }
 }
+
+// searchWithoutFocus goes back from one focused CT-e to the filter and the
+// competência: a search from the filter bar does it, and so does the chip.
+function searchWithoutFocus() {
+  cte.clearChaveFocus()
+  void search()
+}
+
+const noDataLabel = computed(() => {
+  if (!cnpj.value) return noCompanyLabel.value
+  if (chaveFocus.value) return 'Este CT-e não está guardado para esta empresa.'
+  return 'Nenhum CT-e encontrado.'
+})
 
 async function loadStatus() {
   try {

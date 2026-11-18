@@ -1,6 +1,7 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import CTePage from './CTePage.vue'
 import ImportResultDialog from '@/components/ImportResultDialog.vue'
 import { desktopClient } from '@/platform/wails/client'
@@ -29,6 +30,19 @@ vi.mock('quasar', () => ({
   useDialogPluginComponent: vi.fn(),
   copyToClipboard: vi.fn(),
   date: { formatDate: vi.fn(() => '2026-08') },
+}))
+
+// route is the current route; replace swaps its query as the router would.
+// Each test gets a new one, so a page an earlier test left mounted does not
+// react to this test's query.
+let route = reactive<{ query: Record<string, string> }>({ query: {} })
+const replace = vi.fn((to: { query: Record<string, string> }) => {
+  route.query = to.query
+})
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn(), replace }),
+  useRoute: () => route,
 }))
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
@@ -212,6 +226,7 @@ describe('CTePage', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    route = reactive({ query: {} })
     okHandlers.length = 0
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listCTe).mockResolvedValue([tomada, servico])
@@ -258,6 +273,99 @@ describe('CTePage', () => {
       expect.objectContaining({ CNPJ: company.CNPJ, Competence: '2024-08' })
     )
     expect(desktopClient.statusCTe).not.toHaveBeenCalled()
+  })
+
+  describe('one CT-e opened from the NF-e page', () => {
+    const focusedInput = {
+      CNPJ: company.CNPJ,
+      Competence: '',
+      Situacao: '',
+      Role: '',
+      Modelo: '',
+      EmitenteCNPJ: '',
+      TomadorCNPJ: '',
+      NFeChave: '',
+      ChavesAcesso: [tomada.ChaveAcesso],
+      OnlyUnread: false,
+    }
+
+    function chip(wrapper: Page) {
+      return wrapper.findComponent({ name: 'ChaveFocusChip' })
+    }
+
+    beforeEach(() => {
+      useWorkspaceStore().competence = '2026-08'
+      route.query = { chave: tomada.ChaveAcesso }
+    })
+
+    it('lists only that CT-e, from every competência, and drops the query', async () => {
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(desktopClient.listCTe).toHaveBeenCalledTimes(1)
+      expect(desktopClient.listCTe).toHaveBeenCalledWith(focusedInput)
+      expect(replace).toHaveBeenCalledWith({ query: {} })
+      expect(chip(wrapper).props('chave')).toBe(tomada.ChaveAcesso)
+      expect(useWorkspaceStore().competence).toBe('2026-08')
+    })
+
+    it('keeps the focus after leaving the page and coming back', async () => {
+      mountPage().unmount()
+      await flushPromises()
+      vi.mocked(desktopClient.listCTe).mockClear()
+
+      const second = mountPage()
+      await flushPromises()
+
+      expect(desktopClient.listCTe).toHaveBeenLastCalledWith(focusedInput)
+      expect(chip(second).exists()).toBe(true)
+    })
+
+    it('goes back to the filter and the competência from the chip or the filter bar', async () => {
+      const wrapper = mountPage()
+      await flushPromises()
+
+      chip(wrapper).vm.$emit('clear')
+      await flushPromises()
+      expect(desktopClient.listCTe).toHaveBeenLastCalledWith(
+        expect.objectContaining({ Competence: '2026-08', NFeChave: '' })
+      )
+      expect(vi.mocked(desktopClient.listCTe).mock.lastCall?.[0]).not.toHaveProperty('ChavesAcesso')
+      expect(chip(wrapper).exists()).toBe(false)
+
+      route.query = { chave: tomada.ChaveAcesso }
+      await flushPromises()
+      expect(desktopClient.listCTe).toHaveBeenLastCalledWith(focusedInput)
+
+      await button(wrapper, 'Buscar').trigger('click')
+      await flushPromises()
+      expect(desktopClient.listCTe).toHaveBeenLastCalledWith(
+        expect.objectContaining({ Competence: '2026-08' })
+      )
+      expect(chip(wrapper).exists()).toBe(false)
+    })
+
+    it('says when the CT-e is not stored for the company', async () => {
+      vi.mocked(desktopClient.listCTe).mockResolvedValue([])
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(table(wrapper).props('noDataLabel')).toBe(
+        'Este CT-e não está guardado para esta empresa.'
+      )
+    })
+
+    it('ignores a malformed key', async () => {
+      route.query = { chave: '1234' }
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(desktopClient.listCTe).toHaveBeenCalledWith(
+        expect.objectContaining({ Competence: '2026-08' })
+      )
+      expect(replace).toHaveBeenCalledWith({ query: {} })
+      expect(chip(wrapper).exists()).toBe(false)
+    })
   })
 
   it('clears the selection when the company changes', async () => {
@@ -675,6 +783,7 @@ describe('CTePage row menu', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    route = reactive({ query: {} })
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.statusCTe).mockResolvedValue(status())
     await useWorkspaceStore().loadCompanies()
@@ -754,6 +863,7 @@ describe('CTePage import', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    route = reactive({ query: {} })
     okHandlers.length = 0
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listCTe).mockResolvedValue([tomada])

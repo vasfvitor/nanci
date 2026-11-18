@@ -24,6 +24,7 @@ export function useCTeDocuments() {
   const {
     filter,
     listError,
+    chaveFocus,
     rows,
     selected,
     rowsFor,
@@ -197,6 +198,9 @@ export function useCTeDocuments() {
   return {
     filter,
     listError,
+    chaveFocus,
+    focusChave: (chave: string) => store.focusChave(chave),
+    clearChaveFocus: () => store.clearChaveFocus(),
     rows,
     selected,
     rowsFor,

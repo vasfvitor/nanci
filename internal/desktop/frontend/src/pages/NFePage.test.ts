@@ -1,6 +1,7 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import NFePage from './NFePage.vue'
 import ImportResultDialog from '@/components/ImportResultDialog.vue'
 import NFeCienciaConfirmDialog from '@/components/NFeCienciaConfirmDialog.vue'
@@ -42,6 +43,19 @@ vi.mock('quasar', () => ({
   useDialogPluginComponent: vi.fn(),
   copyToClipboard: vi.fn(),
   date: { formatDate: vi.fn(() => '2024-09') },
+}))
+
+// route is the current route; replace swaps its query as the router would.
+// Each test gets a new one, so a page an earlier test left mounted does not
+// react to this test's query.
+let route = reactive<{ query: Record<string, string> }>({ query: {} })
+const replace = vi.fn((to: { query: Record<string, string> }) => {
+  route.query = to.query
+})
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn(), replace }),
+  useRoute: () => route,
 }))
 
 vi.mock('@/platform/wails/client', async (importOriginal) => ({
@@ -266,6 +280,7 @@ describe('NFePage', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    route = reactive({ query: {} })
     okHandlers.length = 0
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario, emitida])
@@ -286,6 +301,65 @@ describe('NFePage', () => {
     expect(table(wrapper).props('noDataLabel')).toBe('Nenhuma NF-e encontrada.')
     expect(wrapper.find('h5').text()).toBe('NF-e')
     expect(wrapper.text()).toContain('NSU 10/10 · Pendências: 0')
+  })
+
+  describe('one note opened from the CT-e page', () => {
+    const chave = '35260911222333000181550010000045121418273651'
+
+    function chip(wrapper: Page) {
+      return wrapper.findComponent({ name: 'ChaveFocusChip' })
+    }
+
+    beforeEach(() => {
+      useWorkspaceStore().competence = '2026-08'
+      useNFeDocumentsStore().activeTab = 'pendencias'
+      route.query = { chave }
+    })
+
+    it('lists only that note on the Notas tab, from every competência', async () => {
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(desktopClient.listNFe).toHaveBeenCalledTimes(1)
+      expect(desktopClient.listNFe).toHaveBeenCalledWith({
+        CNPJ: company.CNPJ,
+        Competence: '',
+        Situacao: '',
+        Completeness: '',
+        Manifestacao: '',
+        Role: '',
+        EmitenteCNPJ: '',
+        ChavesAcesso: [chave],
+        OnlyUnread: false,
+      })
+      expect(replace).toHaveBeenCalledWith({ query: {} })
+      expect(useNFeDocumentsStore().activeTab).toBe('notas')
+      expect(chip(wrapper).props('chave')).toBe(chave)
+      expect(useWorkspaceStore().competence).toBe('2026-08')
+    })
+
+    it('points to "Buscar pela chave" when the note is not stored', async () => {
+      vi.mocked(desktopClient.listNFe).mockResolvedValue([])
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(table(wrapper).props('noDataLabel')).toBe(
+        'Esta NF-e não está guardada para esta empresa. Use "Buscar pela chave" para trazê-la da SEFAZ.'
+      )
+    })
+
+    it('goes back to the filter and the competência from the chip', async () => {
+      const wrapper = mountPage()
+      await flushPromises()
+
+      chip(wrapper).vm.$emit('clear')
+      await flushPromises()
+
+      expect(desktopClient.listNFe).toHaveBeenLastCalledWith(
+        expect.objectContaining({ Competence: '2026-08' })
+      )
+      expect(chip(wrapper).exists()).toBe(false)
+    })
   })
 
   it('asks for a company when there is none', async () => {
@@ -864,6 +938,7 @@ describe('NFePage row menu', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    route = reactive({ query: {} })
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
     vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
@@ -946,6 +1021,7 @@ describe('NFePage import and fetch by chave', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    route = reactive({ query: {} })
     okHandlers.length = 0
     vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
     vi.mocked(desktopClient.listNFe).mockResolvedValue([destinatario])

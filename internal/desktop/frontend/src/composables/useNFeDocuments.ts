@@ -23,6 +23,7 @@ export function useNFeDocuments() {
   const { cnpj, selectedCompany } = storeToRefs(workspace)
   const {
     filter,
+    chaveFocus,
     rows,
     selected,
     rowsFor,
@@ -207,6 +208,9 @@ export function useNFeDocuments() {
 
   return {
     filter,
+    chaveFocus,
+    focusChave: (chave: string) => store.focusChave(chave),
+    clearChaveFocus: () => store.clearChaveFocus(),
     rows,
     selected,
     rowsFor,

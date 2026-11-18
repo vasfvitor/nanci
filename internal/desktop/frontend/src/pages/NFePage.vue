@@ -48,7 +48,7 @@
           :export-disabled="scopeRows.length === 0"
           :search-disabled="!cnpj"
           :mark-viewed-count="unviewedChaves.length"
-          @search="search"
+          @search="searchWithoutFocus"
           @mark-viewed="confirmMarkViewed"
           @export="openExportDialog"
         >
@@ -90,6 +90,13 @@
           </template>
         </DocumentFilterBar>
 
+        <ChaveFocusChip
+          v-if="chaveFocus"
+          :chave="chaveFocus"
+          noun="a NF-e"
+          @clear="searchWithoutFocus"
+        />
+
         <StateLegend :sections="NFE_LEGEND" class="q-mb-md" />
 
         <q-table
@@ -100,7 +107,7 @@
           row-key="ChaveAcesso"
           selection="multiple"
           :loading="loading"
-          :no-data-label="cnpj ? 'Nenhuma NF-e encontrada.' : noCompanyLabel"
+          :no-data-label="noDataLabel"
           class="document-table"
           binary-state-sort
           flat
@@ -200,6 +207,7 @@
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import ChaveCell from '../components/ChaveCell.vue'
+import ChaveFocusChip from '../components/ChaveFocusChip.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
 import DocumentFilterBar from '../components/DocumentFilterBar.vue'
 import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
@@ -221,6 +229,7 @@ import { useNFeImportActions } from '@/composables/useNFeImportActions'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNFeManifestacaoActions } from '@/composables/useNFeManifestacaoActions'
 import { useNotify } from '@/composables/useNotify'
+import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
 import type { NFeExportFormat, NFeRow } from '@/types/desktop'
@@ -244,6 +253,7 @@ const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, n
 
 const {
   filter,
+  chaveFocus,
   selected,
   loading,
   exporting,
@@ -300,6 +310,13 @@ const columns = documentColumns<NFeRow>({
   valor: (row) => row.TotalValue,
 })
 
+// A link from the CT-e page opens one note on the Notas tab; it must be
+// read before the first search.
+useRouteChaveFocus((chave) => {
+  nfe.focusChave(chave)
+  activeTab.value = 'notas'
+}, search)
+
 // The page lists the workspace company and competência. A new company also
 // reloads the status and the pendências; a new competência only the list.
 // The pendências are loaded with the status, so they go with it.
@@ -338,6 +355,23 @@ async function search() {
     notifyError('Erro ao buscar NF-e', error)
   }
 }
+
+// searchWithoutFocus goes back from one focused note to the filter and the
+// competência: a search from the filter bar does it, and so does the chip.
+function searchWithoutFocus() {
+  nfe.clearChaveFocus()
+  void search()
+}
+
+// A focused note that is not listed was never stored for this company;
+// "Buscar pela chave" can bring it from the SEFAZ.
+const noDataLabel = computed(() => {
+  if (!cnpj.value) return noCompanyLabel.value
+  if (chaveFocus.value) {
+    return 'Esta NF-e não está guardada para esta empresa. Use "Buscar pela chave" para trazê-la da SEFAZ.'
+  }
+  return 'Nenhuma NF-e encontrada.'
+})
 
 async function loadStatus() {
   try {
