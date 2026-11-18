@@ -27,15 +27,15 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose/v3 v3.29.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/richardlehane/mscfb v1.0.8 // indirect
+	github.com/richardlehane/mscfb v1.0.9 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/sethvargo/go-retry v0.5.0 // indirect
 	github.com/signintech/gopdf v0.36.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/wevertonj/go-danfse-v2 v0.1.0 // indirect
-	github.com/xuri/efp v0.0.2 // indirect
-	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2 // indirect
+	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
+	github.com/xuri/excelize/v2 v2.11.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
