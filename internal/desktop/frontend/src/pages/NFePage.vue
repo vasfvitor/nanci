@@ -181,6 +181,12 @@
 
             <DocumentDetailRow v-if="rowProps.expand" :row-props="rowProps">
               <NFeDetails :row="rowProps.row" />
+              <NFeLinkedCTe
+                class="q-mt-md"
+                :cnpj="cnpj"
+                :chave="rowProps.row.ChaveAcesso"
+                @open="openCTe"
+              />
             </DocumentDetailRow>
           </template>
         </q-table>
@@ -206,6 +212,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
+import { useRouter } from 'vue-router'
 import ChaveCell from '../components/ChaveCell.vue'
 import ChaveFocusChip from '../components/ChaveFocusChip.vue'
 import DocumentDetailRow from '../components/DocumentDetailRow.vue'
@@ -216,6 +223,7 @@ import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
 import NFeDetails from '../components/NFeDetails.vue'
 import NFeEventsDialog from '../components/NFeEventsDialog.vue'
+import NFeLinkedCTe from '../components/NFeLinkedCTe.vue'
 import NFeListActions from '../components/NFeListActions.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NFeRowMenu from '../components/NFeRowMenu.vue'
@@ -246,6 +254,7 @@ import {
 } from '@/utils/nfeDisplay'
 
 const $q = useQuasar()
+const router = useRouter()
 const nfe = useNFeDocuments()
 const manifestacao = useNFeManifestacao()
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
@@ -440,6 +449,11 @@ async function resetNFe() {
       notifyError('Erro ao redefinir NF-e', error)
     }
   }
+}
+
+// openCTe shows one CT-e that transported a note on the CT-e page.
+function openCTe(chave: string) {
+  void router.push({ path: '/cte', query: { chave } })
 }
 
 function openEvents(chaveAcesso: string) {

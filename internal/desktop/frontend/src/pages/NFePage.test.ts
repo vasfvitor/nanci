@@ -52,9 +52,10 @@ let route = reactive<{ query: Record<string, string> }>({ query: {} })
 const replace = vi.fn((to: { query: Record<string, string> }) => {
   route.query = to.query
 })
+const push = vi.fn()
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn(), replace }),
+  useRouter: () => ({ push, replace }),
   useRoute: () => route,
 }))
 
@@ -360,6 +361,30 @@ describe('NFePage', () => {
       )
       expect(chip(wrapper).exists()).toBe(false)
     })
+  })
+
+  it('opens a CT-e that transported the note on the CT-e page', async () => {
+    const wrapper = mountPage({
+      'q-table': {
+        name: 'QTable',
+        props: ['rows'],
+        template: `<div><div v-for="row in rows" :key="row.ChaveAcesso">
+          <slot name="body" :row="row" :cols="[]" :expand="true" />
+        </div></div>`,
+      },
+      DocumentDetailRow: { template: '<div><slot /></div>' },
+    })
+    await flushPromises()
+
+    const linked = wrapper.findAllComponents({ name: 'NFeLinkedCTe' })
+    expect(linked.map((block) => block.props('chave'))).toEqual([
+      destinatario.ChaveAcesso,
+      emitida.ChaveAcesso,
+    ])
+    expect(linked[0]?.props('cnpj')).toBe(company.CNPJ)
+
+    linked[0]?.vm.$emit('open', 'cte-1')
+    expect(push).toHaveBeenCalledWith({ path: '/cte', query: { chave: 'cte-1' } })
   })
 
   it('asks for a company when there is none', async () => {
