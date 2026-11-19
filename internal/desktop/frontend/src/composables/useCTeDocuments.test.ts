@@ -51,6 +51,7 @@ function status(overrides: Partial<CTeStatusResult> = {}): CTeStatusResult {
     RequestsLastHour: 0,
     RequestBudget: 20,
     IdleDays: 0,
+    NSUFaltantes: 0,
     TotalTomador: 0,
     TotalDestinatario: 0,
     TotalRemetente: 0,

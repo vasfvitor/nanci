@@ -158,7 +158,8 @@ type CTeStatusResult struct {
 	BlockedReason     string // caught_up | consumo_indevido | rate_budget; empty when not blocked
 	RequestsLastHour  int
 	RequestBudget     int
-	IdleDays          int // days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
+	IdleDays          int   // days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
+	NSUFaltantes      int64 // NSUs the distribution skipped that RecoverNFeNSU/RecoverCTeNSU can still ask for
 	TotalTomador      int
 	TotalDestinatario int
 	TotalRemetente    int

@@ -126,6 +126,41 @@ func FetchByChaveResultFrom(res app.FetchByChaveResult) FetchByChaveResult {
 	return FetchByChaveResult(res)
 }
 
+// RecoverNSUInput names the company whose missing NSUs to ask SEFAZ for.
+type RecoverNSUInput struct {
+	CNPJ string
+}
+
+// RecoverNSUResult counts what one NSU recovery did and how much of the
+// hourly budget is spent after it.
+type RecoverNSUResult struct {
+	Asked            int    // consNSU requests answered
+	Recovered        int    // NSUs that brought a document
+	Empty            int    // NSUs SEFAZ never generated, to disregard
+	Unreadable       int    // NSUs whose document could not be read; see the log
+	Expired          int64  // NSUs closed unasked, past the 90-day window
+	Missing          int64  // NSUs still missing after the run
+	StopReason       string // limit | rate_budget | consumo_indevido; empty when nothing is left to ask
+	NextAllowedAt    *time.Time
+	RequestsLastHour int
+	RequestBudget    int
+}
+
+func RecoverNSUResultFrom(res app.RecoverNSUResult) RecoverNSUResult {
+	return RecoverNSUResult{
+		Asked:            res.Asked,
+		Recovered:        res.Recovered,
+		Empty:            res.Empty,
+		Unreadable:       res.Unreadable,
+		Expired:          res.Expired,
+		Missing:          res.Missing,
+		StopReason:       res.StopReason,
+		NextAllowedAt:    res.NextAllowedAt,
+		RequestsLastHour: res.RequestsLastHour,
+		RequestBudget:    res.RequestBudget,
+	}
+}
+
 // optionalTime returns nil for the zero time.
 func optionalTime(t time.Time) *time.Time {
 	if t.IsZero() {

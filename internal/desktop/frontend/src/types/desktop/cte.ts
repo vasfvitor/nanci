@@ -184,6 +184,9 @@ export type CTeStatusResult = {
   // IdleDays is the number of days since the last successful distribution
   // query, set only when it nears the 60-day NSU rule; 0 otherwise.
   IdleDays: number
+  // NSUFaltantes is how many NSUs the distribution skipped without a
+  // document that a recovery can still ask SEFAZ for.
+  NSUFaltantes: number
   TotalTomador: number
   TotalDestinatario: number
   TotalRemetente: number

@@ -55,6 +55,8 @@ import {
   PullCTe,
   PullNFe,
   QueryNFSeEvents,
+  RecoverCTeNSU,
+  RecoverNFeNSU,
   RegisterNFeCiencia,
   RegisterNFeManifestacao,
   ResetCTe,
@@ -112,6 +114,8 @@ vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () 
   PullCTe: vi.fn(),
   PullNFe: vi.fn(),
   QueryNFSeEvents: vi.fn(),
+  RecoverCTeNSU: vi.fn(),
+  RecoverNFeNSU: vi.fn(),
   RegisterNFeCiencia: vi.fn(),
   RegisterNFeManifestacao: vi.fn(),
   ResetCTe: vi.fn(),
@@ -647,6 +651,7 @@ describe('NF-e mappers', () => {
       PendingCiencia: 4,
       PendingConclusiva: 2,
       IdleDays: 47,
+      NSUFaltantes: 12,
       LastRunStatus: 'failed',
       LastRunError: 'falha de conexão',
     } as unknown as desktopapi.NFeStatusResult)
@@ -659,6 +664,7 @@ describe('NF-e mappers', () => {
       PendingCiencia: 4,
       PendingConclusiva: 2,
       IdleDays: 47,
+      NSUFaltantes: 12,
       LastRunStatus: 'failed',
       LastRunError: 'falha de conexão',
     })
@@ -1083,6 +1089,7 @@ describe('CT-e mappers', () => {
         TotalRemetente: 2,
         TotalOutros: 1,
         IdleDays: 45,
+        NSUFaltantes: 3,
         LastRunStatus: 'failed',
         LastRunError: 'falha de conexão',
       } as unknown as desktopapi.CTeStatusResult)
@@ -1100,6 +1107,7 @@ describe('CT-e mappers', () => {
       TotalRemetente: 2,
       TotalOutros: 1,
       IdleDays: 45,
+      NSUFaltantes: 3,
     })
 
     expect(
@@ -1478,6 +1486,34 @@ describe('import and fetch by chave client calls', () => {
       RequestBudget: 20,
     })
     expect(FetchNFeByChave).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: nfeChave })
+  })
+
+  it('recovers the missing NSUs of NF-e and CT-e and maps the result', async () => {
+    const answer = {
+      Asked: 5,
+      Recovered: 2,
+      Empty: 2,
+      Unreadable: 1,
+      Expired: 0,
+      Missing: 3,
+      StopReason: 'limit',
+      NextAllowedAt: null,
+      RequestsLastHour: 18,
+      RequestBudget: 20,
+    }
+    vi.mocked(RecoverNFeNSU).mockResolvedValue(answer as never)
+    vi.mocked(RecoverCTeNSU).mockResolvedValue({ ...answer, StopReason: 'novo' } as never)
+
+    await expect(desktopClient.recoverNFeNSU('123')).resolves.toMatchObject({
+      Asked: 5,
+      Recovered: 2,
+      Missing: 3,
+      StopReason: 'limit',
+      RequestsLastHour: 18,
+    })
+    expect(RecoverNFeNSU).toHaveBeenCalledWith({ CNPJ: '123' })
+    await expect(desktopClient.recoverCTeNSU('123')).resolves.toMatchObject({ StopReason: '' })
+    expect(RecoverCTeNSU).toHaveBeenCalledWith({ CNPJ: '123' })
   })
 
   it('keeps the error code of a blocked fetch', async () => {

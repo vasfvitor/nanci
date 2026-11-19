@@ -12,6 +12,24 @@ export type ExportResult = {
 
 export type SyncSource = 'nfse' | 'nfe' | 'cte'
 
+// RecoverNSUStopReason says why an NSU recovery stopped with NSUs left to ask
+// for: its share of the hour, the hour's budget, or a SEFAZ block (656).
+export type RecoverNSUStopReason = 'limit' | 'rate_budget' | 'consumo_indevido'
+
+// RecoverNSUResult counts what one NF-e or CT-e NSU recovery (consNSU) did.
+export type RecoverNSUResult = {
+  Asked: number
+  Recovered: number // NSUs that brought a document
+  Empty: number // NSUs SEFAZ never generated, to disregard
+  Unreadable: number // NSUs whose document could not be read; see the log
+  Expired: number // NSUs closed unasked, past the 90-day window
+  Missing: number // NSUs still missing after the run
+  StopReason: RecoverNSUStopReason | ''
+  NextAllowedAt?: ISODateValue
+  RequestsLastHour: number
+  RequestBudget: number
+}
+
 // BuildInfo.webview2Version is empty off Windows or when the runtime version
 // cannot be read.
 export type BuildInfo = {

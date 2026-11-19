@@ -242,6 +242,22 @@ export function QueryNFSeEvents(input: desktopapi$0.QueryNFSeInput): $Cancellabl
 }
 
 /**
+ * RecoverCTeNSU asks SEFAZ for each CT-e NSU the distribution skipped
+ * (consNSU). It spends the hour's budget, leaving the reserve for the pull.
+ */
+export function RecoverCTeNSU(input: desktopapi$0.RecoverNSUInput): $CancellablePromise<desktopapi$0.RecoverNSUResult> {
+    return $Call.ByID(3128344083, input);
+}
+
+/**
+ * RecoverNFeNSU asks SEFAZ for each NF-e NSU the distribution skipped
+ * (consNSU). It spends the hour's budget, leaving the reserve for the pull.
+ */
+export function RecoverNFeNSU(input: desktopapi$0.RecoverNSUInput): $CancellablePromise<desktopapi$0.RecoverNSUResult> {
+    return $Call.ByID(3245484176, input);
+}
+
+/**
  * RegisterNFeCiencia sends Ciência da Operação for the eligible NF-e. Failures
  * after sending started are reported per chave in the result, not as an error.
  */

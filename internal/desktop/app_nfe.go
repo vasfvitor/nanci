@@ -1,6 +1,6 @@
-// NF-e methods of App: sync, XML import, fetch by chave, status and reset,
-// list and events, viewed marks, ciência and manifestação, and the XML,
-// DANFE and document exports.
+// NF-e methods of App: sync, XML import, fetch by chave, NSU recovery,
+// status and reset, list and events, viewed marks, ciência and
+// manifestação, and the XML, DANFE and document exports.
 
 package main
 
@@ -85,6 +85,24 @@ func (a *App) FetchNFeByChave(ctx context.Context, input desktopapi.FetchByChave
 	return desktopapi.FetchByChaveResultFrom(res), nil
 }
 
+// RecoverNFeNSU asks SEFAZ for each NF-e NSU the distribution skipped
+// (consNSU). It spends the hour's budget, leaving the reserve for the pull.
+func (a *App) RecoverNFeNSU(ctx context.Context, input desktopapi.RecoverNSUInput) (desktopapi.RecoverNSUResult, error) {
+	if input.CNPJ == "" {
+		return desktopapi.RecoverNSUResult{}, errors.New("empresa não especificada")
+	}
+	ctx, end, err := a.begin(ctx, true)
+	if err != nil {
+		return desktopapi.RecoverNSUResult{}, err
+	}
+	defer end()
+	res, err := a.svc.nfe.RecoverNSU(ctx, app.RecoverNSUInput{CNPJ: input.CNPJ})
+	if err != nil {
+		return desktopapi.RecoverNSUResult{}, err
+	}
+	return desktopapi.RecoverNSUResultFrom(res), nil
+}
+
 func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeStatusResult{}, err
@@ -110,6 +128,7 @@ func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 		RequestsLastHour:  res.RequestsLastHour,
 		RequestBudget:     res.RequestBudget,
 		IdleDays:          res.IdleDays,
+		NSUFaltantes:      res.NSUFaltantes,
 		TotalDestinatario: res.TotalDestinatario,
 		TotalEmitente:     res.TotalEmitente,
 		TotalOutros:       res.TotalOutros,

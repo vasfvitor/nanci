@@ -1,10 +1,11 @@
 // CT-e methods of App: sync, XML import, status and reset, list and events,
-// viewed marks, and the XML, DACTE and document exports.
+// viewed marks, NSU recovery, and the XML, DACTE and document exports.
 
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -60,6 +61,24 @@ func (a *App) ImportCTeXML(ctx context.Context, input desktopapi.ImportXMLInput)
 	return desktopapi.ImportXMLResultFrom(res), nil
 }
 
+// RecoverCTeNSU asks SEFAZ for each CT-e NSU the distribution skipped
+// (consNSU). It spends the hour's budget, leaving the reserve for the pull.
+func (a *App) RecoverCTeNSU(ctx context.Context, input desktopapi.RecoverNSUInput) (desktopapi.RecoverNSUResult, error) {
+	if input.CNPJ == "" {
+		return desktopapi.RecoverNSUResult{}, errors.New("empresa não especificada")
+	}
+	ctx, end, err := a.begin(ctx, true)
+	if err != nil {
+		return desktopapi.RecoverNSUResult{}, err
+	}
+	defer end()
+	res, err := a.svc.cte.RecoverNSU(ctx, app.RecoverNSUInput{CNPJ: input.CNPJ})
+	if err != nil {
+		return desktopapi.RecoverNSUResult{}, err
+	}
+	return desktopapi.RecoverNSUResultFrom(res), nil
+}
+
 func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.CTeStatusResult{}, err
@@ -85,6 +104,7 @@ func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
 		RequestsLastHour:  res.RequestsLastHour,
 		RequestBudget:     res.RequestBudget,
 		IdleDays:          res.IdleDays,
+		NSUFaltantes:      res.NSUFaltantes,
 		TotalTomador:      res.TotalTomador,
 		TotalDestinatario: res.TotalDestinatario,
 		TotalRemetente:    res.TotalRemetente,

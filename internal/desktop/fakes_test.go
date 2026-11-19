@@ -296,6 +296,7 @@ type fakeNFe struct {
 	reset     app.NFeResetResult
 	imported  app.ImportXMLResult
 	fetched   app.FetchByChaveResult
+	recovered app.RecoverNSUResult
 	err       error
 }
 
@@ -389,6 +390,11 @@ func (f *fakeNFe) FetchByChave(_ context.Context, in app.FetchByChaveInput) (app
 	return f.fetched, f.err
 }
 
+func (f *fakeNFe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error) {
+	f.record("RecoverNSU", in)
+	return f.recovered, f.err
+}
+
 type fakeCTe struct {
 	recorder
 	pull       app.CTePullResult
@@ -400,6 +406,7 @@ type fakeCTe struct {
 	export     app.CTeExportResult
 	reset      app.CTeResetResult
 	imported   app.ImportXMLResult
+	recovered  app.RecoverNSUResult
 	err        error
 }
 
@@ -476,4 +483,9 @@ func (f *fakeCTe) Reset(_ context.Context, cnpj string) (app.CTeResetResult, err
 func (f *fakeCTe) ImportXML(_ context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error) {
 	f.record("ImportXML", in)
 	return f.imported, f.err
+}
+
+func (f *fakeCTe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error) {
+	f.record("RecoverNSU", in)
+	return f.recovered, f.err
 }

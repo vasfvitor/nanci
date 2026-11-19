@@ -99,6 +99,59 @@ func TestFetchNFeByChave(t *testing.T) {
 	}
 }
 
+func TestRecoverNSU(t *testing.T) {
+	until := time.Date(2026, 11, 18, 15, 0, 0, 0, time.UTC)
+	res := app.RecoverNSUResult{
+		Source:           syncstate.SyncSourceNFe,
+		CNPJ:             testCNPJ,
+		Asked:            5,
+		Recovered:        2,
+		Empty:            2,
+		Unreadable:       1,
+		Expired:          4,
+		Missing:          9,
+		StopReason:       nsync.RecoverStopConsumoIndevido,
+		NextAllowedAt:    &until,
+		RequestsLastHour: 18,
+		RequestBudget:    20,
+	}
+	want := desktopapi.RecoverNSUResult{
+		Asked:            5,
+		Recovered:        2,
+		Empty:            2,
+		Unreadable:       1,
+		Expired:          4,
+		Missing:          9,
+		StopReason:       "consumo_indevido",
+		NextAllowedAt:    &until,
+		RequestsLastHour: 18,
+		RequestBudget:    20,
+	}
+	in := desktopapi.RecoverNSUInput{CNPJ: testCNPJ}
+
+	f, a := newFakeApp(nil)
+	f.nfe.recovered = res
+	got, err := a.RecoverNFeNSU(context.Background(), in)
+	if err != nil {
+		t.Fatalf("RecoverNFeNSU: %v", err)
+	}
+	assertCalls(t, &f.nfe.recorder, call{"RecoverNSU", []any{app.RecoverNSUInput{CNPJ: testCNPJ}}})
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("NF-e result = %+v, want %+v", got, want)
+	}
+
+	f, a = newFakeApp(nil)
+	f.cte.recovered = res
+	got, err = a.RecoverCTeNSU(context.Background(), in)
+	if err != nil {
+		t.Fatalf("RecoverCTeNSU: %v", err)
+	}
+	assertCalls(t, &f.cte.recorder, call{"RecoverNSU", []any{app.RecoverNSUInput{CNPJ: testCNPJ}}})
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("CT-e result = %+v, want %+v", got, want)
+	}
+}
+
 func TestImportAndFetchRejectBeforeCore(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -123,6 +176,12 @@ func TestImportAndFetchRejectBeforeCore(t *testing.T) {
 		{"fetch without chave", func(a *App) (any, error) {
 			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ})
 		}, "chave de acesso não especificada"},
+		{"nfe recovery without company", func(a *App) (any, error) {
+			return a.RecoverNFeNSU(context.Background(), desktopapi.RecoverNSUInput{})
+		}, "empresa não especificada"},
+		{"cte recovery without company", func(a *App) (any, error) {
+			return a.RecoverCTeNSU(context.Background(), desktopapi.RecoverNSUInput{})
+		}, "empresa não especificada"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -156,6 +215,12 @@ func TestImportAndFetchPassCoreErrors(t *testing.T) {
 		},
 		"FetchNFeByChave": func(a *App) (any, error) {
 			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
+		},
+		"RecoverNFeNSU": func(a *App) (any, error) {
+			return a.RecoverNFeNSU(context.Background(), desktopapi.RecoverNSUInput{CNPJ: testCNPJ})
+		},
+		"RecoverCTeNSU": func(a *App) (any, error) {
+			return a.RecoverCTeNSU(context.Background(), desktopapi.RecoverNSUInput{CNPJ: testCNPJ})
 		},
 	}
 	errs := []struct {

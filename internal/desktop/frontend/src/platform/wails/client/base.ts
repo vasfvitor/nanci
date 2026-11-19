@@ -8,6 +8,8 @@ import type {
   ImportOutcome,
   ImportXMLResult,
   ISODateValue,
+  RecoverNSUResult,
+  RecoverNSUStopReason,
 } from '@/types/desktop'
 
 type RawRecord = Record<string, unknown>
@@ -153,6 +155,27 @@ export function mapExportResult(item: desktopapi.ExportResult): ExportResult {
     Format: item.Format as ExportResult['Format'],
     Incremental: item.Incremental,
     ExportedCount: item.ExportedCount,
+  }
+}
+
+const recoverNSUStopReasons: readonly RecoverNSUStopReason[] = [
+  'limit',
+  'rate_budget',
+  'consumo_indevido',
+]
+
+export function mapRecoverNSUResult(item: desktopapi.RecoverNSUResult): RecoverNSUResult {
+  return {
+    Asked: item.Asked,
+    Recovered: item.Recovered,
+    Empty: item.Empty,
+    Unreadable: item.Unreadable,
+    Expired: item.Expired,
+    Missing: item.Missing,
+    StopReason: asEnum(item.StopReason, recoverNSUStopReasons),
+    NextAllowedAt: asDate(item.NextAllowedAt),
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
   }
 }
 

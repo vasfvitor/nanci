@@ -263,6 +263,11 @@ export interface CTeStatusResult {
      * days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
      */
     "IdleDays": number;
+
+    /**
+     * NSUs the distribution skipped that RecoverNFeNSU/RecoverCTeNSU can still ask for
+     */
+    "NSUFaltantes": number;
     "TotalTomador": number;
     "TotalDestinatario": number;
     "TotalRemetente": number;
@@ -994,6 +999,11 @@ export interface NFeStatusResult {
      * days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
      */
     "IdleDays": number;
+
+    /**
+     * NSUs the distribution skipped that RecoverNFeNSU/RecoverCTeNSU can still ask for
+     */
+    "NSUFaltantes": number;
     "TotalDestinatario": number;
     "TotalEmitente": number;
     "TotalOutros": number;
@@ -1098,6 +1108,57 @@ export interface PullResult {
 export interface QueryNFSeInput {
     "CompanyCNPJ": string;
     "ChaveAcesso": string;
+}
+
+/**
+ * RecoverNSUInput names the company whose missing NSUs to ask SEFAZ for.
+ */
+export interface RecoverNSUInput {
+    "CNPJ": string;
+}
+
+/**
+ * RecoverNSUResult counts what one NSU recovery did and how much of the
+ * hourly budget is spent after it.
+ */
+export interface RecoverNSUResult {
+    /**
+     * consNSU requests answered
+     */
+    "Asked": number;
+
+    /**
+     * NSUs that brought a document
+     */
+    "Recovered": number;
+
+    /**
+     * NSUs SEFAZ never generated, to disregard
+     */
+    "Empty": number;
+
+    /**
+     * NSUs whose document could not be read; see the log
+     */
+    "Unreadable": number;
+
+    /**
+     * NSUs closed unasked, past the 90-day window
+     */
+    "Expired": number;
+
+    /**
+     * NSUs still missing after the run
+     */
+    "Missing": number;
+
+    /**
+     * limit | rate_budget | consumo_indevido; empty when nothing is left to ask
+     */
+    "StopReason": string;
+    "NextAllowedAt": string | null;
+    "RequestsLastHour": number;
+    "RequestBudget": number;
 }
 
 /**

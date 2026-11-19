@@ -1301,6 +1301,18 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
   const methodNames = await loadMethodNames()
   await context.addInitScript(
     ({ companies, credentials, documents, events, nfe, cte, methodNames }) => {
+      const recoveredNSUs = {
+        Asked: 0,
+        Recovered: 0,
+        Empty: 0,
+        Unreadable: 0,
+        Expired: 0,
+        Missing: 0,
+        StopReason: '',
+        NextAllowedAt: null,
+        RequestsLastHour: 0,
+        RequestBudget: 20,
+      }
       const App: Record<string, MockMethod> = {
         AddCompany: async (input: unknown) => ({
           ...(input as object),
@@ -1376,6 +1388,8 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
           RequestsLastHour: 1,
           RequestBudget: 20,
         }),
+        RecoverNFeNSU: async () => recoveredNSUs,
+        RecoverCTeNSU: async () => recoveredNSUs,
         ImportNFeXML: async (input: { Files?: string[] }) => ({
           Files: (input.Files ?? []).map((Path) => ({
             Path,

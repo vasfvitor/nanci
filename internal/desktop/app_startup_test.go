@@ -53,6 +53,12 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"FetchNFeByChave": func(a *App) (any, error) {
 			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
 		},
+		"RecoverCTeNSU": func(a *App) (any, error) {
+			return a.RecoverCTeNSU(context.Background(), desktopapi.RecoverNSUInput{CNPJ: testCNPJ})
+		},
+		"RecoverNFeNSU": func(a *App) (any, error) {
+			return a.RecoverNFeNSU(context.Background(), desktopapi.RecoverNSUInput{CNPJ: testCNPJ})
+		},
 		"ImportCTeXML": func(a *App) (any, error) {
 			return a.ImportCTeXML(context.Background(), desktopapi.ImportXMLInput{CNPJ: testCNPJ, Files: []string{testXML}})
 		},

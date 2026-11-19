@@ -57,6 +57,8 @@ export type {
     PullNFeResult,
     PullResult,
     QueryNFSeInput,
+    RecoverNSUInput,
+    RecoverNSUResult,
     RegisterNFeCienciaInput,
     RegisterNFeManifestacaoInput,
     ResetSyncInput,

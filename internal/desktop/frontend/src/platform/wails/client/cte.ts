@@ -10,6 +10,7 @@ import {
   MarkCTeViewed,
   PreviewResetCTe,
   PullCTe,
+  RecoverCTeNSU,
   ResetCTe,
   StatusCTe,
   TestCTeConnection,
@@ -37,6 +38,7 @@ import type {
   ImportXMLResult,
   ListCTeInput,
   PullCTeResult,
+  RecoverNSUResult,
 } from '@/types/desktop'
 import {
   callWails,
@@ -51,6 +53,7 @@ import {
   mapExportResult,
   mapConnectionTestResult,
   mapImportXMLResult,
+  mapRecoverNSUResult,
 } from './base'
 import { systemClient } from './system'
 
@@ -241,6 +244,7 @@ export function mapCTeStatus(item: desktopapi.CTeStatusResult): CTeStatusResult 
     RequestsLastHour: item.RequestsLastHour,
     RequestBudget: item.RequestBudget,
     IdleDays: item.IdleDays,
+    NSUFaltantes: item.NSUFaltantes,
     TotalTomador: item.TotalTomador,
     TotalDestinatario: item.TotalDestinatario,
     TotalRemetente: item.TotalRemetente,
@@ -309,6 +313,12 @@ export const cteClient = {
   async importCTeXML(cnpj: string, files: string[]): Promise<ImportXMLResult> {
     const res = await callWails(() => ImportCTeXML({ CNPJ: cnpj, Files: files }))
     return mapImportXMLResult(res)
+  },
+  // recoverCTeNSU asks SEFAZ for each CT-e NSU the distribution skipped; it
+  // spends the hour's budget and leaves 2 requests for the pull.
+  async recoverCTeNSU(cnpj: string): Promise<RecoverNSUResult> {
+    const res = await callWails(() => RecoverCTeNSU({ CNPJ: cnpj }))
+    return mapRecoverNSUResult(res)
   },
   // previewResetCTe counts what resetCTe would remove, changing nothing.
   async previewResetCTe(cnpj: string): Promise<CTeResetResult> {

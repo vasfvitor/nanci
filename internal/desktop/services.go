@@ -76,6 +76,7 @@ type nfeService interface {
 	Reset(ctx context.Context, cnpj string) (app.NFeResetResult, error)
 	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
 	FetchByChave(ctx context.Context, in app.FetchByChaveInput) (app.FetchByChaveResult, error)
+	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error)
 }
 
 type cteService interface {
@@ -94,6 +95,7 @@ type cteService interface {
 	PreviewReset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 	Reset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
+	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error)
 }
 
 // services holds the core services App calls.

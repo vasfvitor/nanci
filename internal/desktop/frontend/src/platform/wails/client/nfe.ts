@@ -12,6 +12,7 @@ import {
   MarkNFeViewed,
   PlanNFeCiencia,
   PullNFe,
+  RecoverNFeNSU,
   RegisterNFeCiencia,
   RegisterNFeManifestacao,
   ResetNFe,
@@ -46,6 +47,7 @@ import type {
   NFeSkipped,
   NFeStatusResult,
   PullNFeResult,
+  RecoverNSUResult,
   RegisterNFeManifestacaoInput,
 } from '@/types/desktop'
 import {
@@ -60,6 +62,7 @@ import {
   fileTimestamp,
   mapExportResult,
   mapImportXMLResult,
+  mapRecoverNSUResult,
 } from './base'
 import { systemClient } from './system'
 
@@ -245,6 +248,7 @@ export function mapNFeStatus(item: desktopapi.NFeStatusResult): NFeStatusResult 
     RequestsLastHour: item.RequestsLastHour,
     RequestBudget: item.RequestBudget,
     IdleDays: item.IdleDays,
+    NSUFaltantes: item.NSUFaltantes,
     TotalDestinatario: item.TotalDestinatario,
     TotalEmitente: item.TotalEmitente,
     TotalOutros: item.TotalOutros,
@@ -358,6 +362,12 @@ export const nfeClient = {
   async fetchNFeByChave(cnpj: string, chaveAcesso: string): Promise<FetchByChaveResult> {
     const res = await callWails(() => FetchNFeByChave({ CNPJ: cnpj, ChaveAcesso: chaveAcesso }))
     return mapFetchByChaveResult(res)
+  },
+  // recoverNFeNSU asks SEFAZ for each NF-e NSU the distribution skipped; it
+  // spends the hour's budget and leaves 2 requests for the pull.
+  async recoverNFeNSU(cnpj: string): Promise<RecoverNSUResult> {
+    const res = await callWails(() => RecoverNFeNSU({ CNPJ: cnpj }))
+    return mapRecoverNSUResult(res)
   },
   async registerNFeManifestacao(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
     const res = await callWails(() => RegisterNFeManifestacao(input))
