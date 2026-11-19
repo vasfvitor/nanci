@@ -207,7 +207,13 @@ export function useNFeDocuments() {
     )
   }
 
+  // listEvents loads the events of one note of the company.
+  function listEvents(chaveAcesso: string) {
+    return desktopClient.listNFeEvents(cnpj.value, chaveAcesso)
+  }
+
   return {
+    listEvents,
     filter,
     chaveFocus,
     focusChave: (chave: string) => store.focusChave(chave),

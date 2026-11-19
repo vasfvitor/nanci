@@ -217,7 +217,11 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <NFeEventsDialog v-model="showEventsDialog" :cnpj="cnpj" :chave-acesso="eventsChave" />
+    <NFeEventsDialog
+      v-model="showEventsDialog"
+      :chave-acesso="eventsChave"
+      :load="() => nfe.listEvents(eventsChave)"
+    />
   </q-page>
 </template>
 

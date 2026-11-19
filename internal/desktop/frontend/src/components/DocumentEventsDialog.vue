@@ -55,7 +55,6 @@ import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar'
 import EventsDialogFrame, { eventDateColumn } from './EventsDialogFrame.vue'
 import { useEventList } from '@/composables/useEventList'
 import { useNotify } from '@/composables/useNotify'
-import { desktopClient } from '@/platform/wails/client'
 import type { DocumentEvent } from '@/types/desktop'
 import { formatChaveAcesso } from '@/utils/formatters'
 import { nfseEvent } from '@/utils/nfseDisplay'
@@ -63,16 +62,15 @@ import { badgeProps } from '@/utils/sefazDisplay'
 
 const open = defineModel<boolean>({ required: true })
 
-// documentId loads the events; chaveAcesso is the key the frame shows.
+// load fetches the events of the document; the page passes it from its
+// composable. chaveAcesso is the key the frame shows.
 const props = defineProps<{
-  documentId: string
   chaveAcesso: string
+  load: () => Promise<DocumentEvent[]>
 }>()
 
 const $q = useQuasar()
-const { rows, loading, load } = useEventList(() =>
-  desktopClient.listEventsForDocument(props.documentId)
-)
+const { rows, loading, load } = useEventList(() => props.load())
 const { notifyError, notifyInfo } = useNotify()
 
 const columns: QTableColumn<DocumentEvent>[] = [

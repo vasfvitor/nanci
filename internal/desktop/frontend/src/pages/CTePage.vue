@@ -257,7 +257,11 @@
       </template>
     </q-table>
 
-    <CTeEventsDialog v-model="showEventsDialog" :cnpj="cnpj" :chave-acesso="eventsChave" />
+    <CTeEventsDialog
+      v-model="showEventsDialog"
+      :chave-acesso="eventsChave"
+      :load="() => cte.listEvents(eventsChave)"
+    />
   </q-page>
 </template>
 

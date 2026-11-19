@@ -18,6 +18,7 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     exportXML: vi.fn(),
     listCompanies: vi.fn(),
     listDocuments: vi.fn(),
+    listEventsForDocument: vi.fn(),
     markDocumentsViewed: vi.fn(),
     pull: vi.fn(),
     resetSyncState: vi.fn(),
@@ -58,6 +59,14 @@ describe('useDocuments', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('lists the events of one NFS-e by its document id', async () => {
+    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValue([])
+
+    await useDocuments().listEvents('doc-1')
+
+    expect(desktopClient.listEventsForDocument).toHaveBeenCalledWith('doc-1')
   })
 
   it('searches with the store list input', async () => {

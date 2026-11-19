@@ -134,7 +134,7 @@
 
     <DocumentEventsDialog
       v-model="showEventsDialog"
-      :document-id="eventsDocument.id"
+      :load="() => nfse.listEvents(eventsDocument.id)"
       :chave-acesso="eventsDocument.chave"
     />
   </q-page>

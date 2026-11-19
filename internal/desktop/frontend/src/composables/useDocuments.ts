@@ -176,7 +176,13 @@ export function useDocuments() {
     )
   }
 
+  // listEvents loads the events of one NFS-e.
+  function listEvents(documentId: string) {
+    return desktopClient.listEventsForDocument(documentId)
+  }
+
   return {
+    listEvents,
     filter,
     rows,
     selected,

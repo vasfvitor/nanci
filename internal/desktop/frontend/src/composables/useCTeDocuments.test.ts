@@ -32,6 +32,7 @@ vi.mock('@/platform/wails/client', () => ({
     markCTeViewed: vi.fn(),
     selectXMLFiles: vi.fn(),
     importCTeXML: vi.fn(),
+    listCTeEvents: vi.fn(),
   },
 }))
 
@@ -99,6 +100,16 @@ describe('useCTeDocuments', () => {
     expect(desktopClient.listCTe).toHaveBeenCalledWith(
       expect.objectContaining({ CNPJ: '123', Competence: '2026-08', Modelo: '57', Role: 'tomador' })
     )
+  })
+
+  it('lists the events of a CT-e of the selected company', async () => {
+    vi.mocked(desktopClient.listCTeEvents).mockResolvedValue([])
+    const cte = useCTeDocuments()
+    useWorkspaceStore().cnpj = '123'
+
+    await cte.listEvents('chave-1')
+
+    expect(desktopClient.listCTeEvents).toHaveBeenCalledWith('123', 'chave-1')
   })
 
   it('does not search without a company', async () => {

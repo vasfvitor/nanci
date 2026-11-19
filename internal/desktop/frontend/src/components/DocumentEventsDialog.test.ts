@@ -1,7 +1,6 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentEventsDialog from './DocumentEventsDialog.vue'
-import { desktopClient } from '@/platform/wails/client'
 import type { DocumentEvent } from '@/types/desktop'
 import { deferred } from '@/test/fixtures'
 
@@ -12,10 +11,8 @@ vi.mock('quasar', () => ({
   copyToClipboard: vi.fn(),
 }))
 
-vi.mock('@/platform/wails/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
-  desktopClient: { listEventsForDocument: vi.fn() },
-}))
+// listEvents stands for the page's composable call, by document.
+const listEvents = vi.fn<(documentId: string) => Promise<DocumentEvent[]>>()
 
 function documentEvent(id: string): DocumentEvent {
   return {
@@ -30,7 +27,7 @@ function documentEvent(id: string): DocumentEvent {
 
 function mountDialog() {
   return shallowMount(DocumentEventsDialog, {
-    props: { modelValue: false, documentId: '', chaveAcesso: '' },
+    props: { modelValue: false, chaveAcesso: '', load: () => listEvents('') },
     global: {
       renderStubDefaultSlot: true,
       directives: { closePopup: {} },
@@ -54,7 +51,11 @@ function rows(wrapper: Dialog) {
 }
 
 async function openFor(wrapper: Dialog, documentId: string) {
-  await wrapper.setProps({ documentId, chaveAcesso: `chave-${documentId}`, modelValue: true })
+  await wrapper.setProps({
+    load: () => listEvents(documentId),
+    chaveAcesso: `chave-${documentId}`,
+    modelValue: true,
+  })
   await flushPromises()
 }
 
@@ -74,24 +75,24 @@ describe('DocumentEventsDialog', () => {
   })
 
   it('loads the events of the document each time it opens', async () => {
-    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValue([documentEvent('evt-a')])
+    listEvents.mockResolvedValue([documentEvent('evt-a')])
     const wrapper = mountDialog()
-    expect(desktopClient.listEventsForDocument).not.toHaveBeenCalled()
+    expect(listEvents).not.toHaveBeenCalled()
 
     await openFor(wrapper, 'doc-a')
 
-    expect(desktopClient.listEventsForDocument).toHaveBeenCalledWith('doc-a')
+    expect(listEvents).toHaveBeenCalledWith('doc-a')
     expect(rows(wrapper).map((event) => event.ID)).toEqual(['evt-a'])
   })
 
   it('does not keep the previous document events when the next load fails', async () => {
-    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValueOnce([documentEvent('evt-a')])
+    listEvents.mockResolvedValueOnce([documentEvent('evt-a')])
     const wrapper = mountDialog()
     await openFor(wrapper, 'doc-a')
     expect(rows(wrapper)).toHaveLength(1)
 
     await wrapper.setProps({ modelValue: false })
-    vi.mocked(desktopClient.listEventsForDocument).mockRejectedValueOnce(new Error('boom'))
+    listEvents.mockRejectedValueOnce(new Error('boom'))
     await openFor(wrapper, 'doc-b')
 
     expect(rows(wrapper)).toEqual([])
@@ -102,15 +103,15 @@ describe('DocumentEventsDialog', () => {
   })
 
   it('does not show the previous document events while the next load is pending', async () => {
-    vi.mocked(desktopClient.listEventsForDocument).mockResolvedValueOnce([documentEvent('evt-a')])
+    listEvents.mockResolvedValueOnce([documentEvent('evt-a')])
     const wrapper = mountDialog()
     await openFor(wrapper, 'doc-a')
 
     await wrapper.setProps({ modelValue: false })
     const pending = deferred<DocumentEvent[]>()
-    vi.mocked(desktopClient.listEventsForDocument).mockReturnValueOnce(pending.promise)
+    listEvents.mockReturnValueOnce(pending.promise)
 
-    await wrapper.setProps({ documentId: 'doc-b', modelValue: true })
+    await wrapper.setProps({ load: () => listEvents('doc-b'), modelValue: true })
     expect(rows(wrapper)).toEqual([])
 
     pending.resolve([documentEvent('evt-b')])

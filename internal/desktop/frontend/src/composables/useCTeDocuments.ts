@@ -196,7 +196,13 @@ export function useCTeDocuments() {
     )
   }
 
+  // listEvents loads the events of one CT-e of the company.
+  function listEvents(chaveAcesso: string) {
+    return desktopClient.listCTeEvents(cnpj.value, chaveAcesso)
+  }
+
   return {
+    listEvents,
     filter,
     listError,
     chaveFocus,

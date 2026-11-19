@@ -36,6 +36,7 @@ vi.mock('@/platform/wails/client', () => ({
     selectXMLFiles: vi.fn(),
     importNFeXML: vi.fn(),
     fetchNFeByChave: vi.fn(),
+    listNFeEvents: vi.fn(),
   },
 }))
 
@@ -107,6 +108,16 @@ describe('useNFeDocuments', () => {
     expect(desktopClient.listNFe).toHaveBeenCalledWith(
       expect.objectContaining({ CNPJ: '123', Competence: '2024-09', Manifestacao: 'nenhuma' })
     )
+  })
+
+  it('lists the events of a note of the selected company', async () => {
+    vi.mocked(desktopClient.listNFeEvents).mockResolvedValue([])
+    const nfe = useNFeDocuments()
+    useWorkspaceStore().cnpj = '123'
+
+    await nfe.listEvents('chave-1')
+
+    expect(desktopClient.listNFeEvents).toHaveBeenCalledWith('123', 'chave-1')
   })
 
   it('does not search without a company', async () => {

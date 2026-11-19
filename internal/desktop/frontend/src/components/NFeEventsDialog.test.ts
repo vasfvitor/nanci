@@ -1,7 +1,6 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NFeEventsDialog from './NFeEventsDialog.vue'
-import { desktopClient } from '@/platform/wails/client'
 import type { NFeEvent } from '@/types/desktop'
 
 const notify = vi.fn()
@@ -10,14 +9,12 @@ vi.mock('quasar', () => ({
   useQuasar: () => ({ dark: { isActive: false }, notify }),
 }))
 
-vi.mock('@/platform/wails/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/platform/wails/client')>()),
-  desktopClient: { listNFeEvents: vi.fn() },
-}))
+// load stands for the page's composable call.
+const load = vi.fn<() => Promise<NFeEvent[]>>()
 
 function mountDialog() {
   return shallowMount(NFeEventsDialog, {
-    props: { modelValue: false, cnpj: '123', chaveAcesso: 'chave-1' },
+    props: { modelValue: false, chaveAcesso: 'chave-1', load },
     global: {
       renderStubDefaultSlot: true,
       directives: { closePopup: {} },
@@ -41,14 +38,14 @@ describe('NFeEventsDialog', () => {
 
   it('loads the note events each time it opens', async () => {
     const event = { ID: 'evt-1', TpEvento: '210210' } as NFeEvent
-    vi.mocked(desktopClient.listNFeEvents).mockResolvedValue([event])
+    load.mockResolvedValue([event])
     const wrapper = mountDialog()
-    expect(desktopClient.listNFeEvents).not.toHaveBeenCalled()
+    expect(load).not.toHaveBeenCalled()
 
     await wrapper.setProps({ modelValue: true })
     await flushPromises()
 
-    expect(desktopClient.listNFeEvents).toHaveBeenCalledWith('123', 'chave-1')
+    expect(load).toHaveBeenCalledTimes(1)
     expect(wrapper.getComponent({ name: 'QTable' }).props('rows')).toEqual([event])
   })
 
@@ -61,7 +58,7 @@ describe('NFeEventsDialog', () => {
   })
 
   it('reports a failed load', async () => {
-    vi.mocked(desktopClient.listNFeEvents).mockRejectedValue(new Error('boom'))
+    load.mockRejectedValue(new Error('boom'))
     const wrapper = mountDialog()
 
     await wrapper.setProps({ modelValue: true })

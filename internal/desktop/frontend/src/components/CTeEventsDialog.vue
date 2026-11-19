@@ -51,7 +51,6 @@
 import { useQuasar, type QTableColumn } from 'quasar'
 import EventsDialogFrame, { eventDateColumn } from './EventsDialogFrame.vue'
 import { useEventList } from '@/composables/useEventList'
-import { desktopClient } from '@/platform/wails/client'
 import type { CTeEvent } from '@/types/desktop'
 import { cteEventColor, cteEventTitle } from '@/utils/cteDisplay'
 import { formatCpfCnpj, formatDateTime } from '@/utils/formatters'
@@ -59,15 +58,15 @@ import { badgeProps } from '@/utils/sefazDisplay'
 
 const open = defineModel<boolean>({ required: true })
 
+// load fetches the events of the document; the page passes it from its
+// composable. chaveAcesso is the key the frame shows.
 const props = defineProps<{
-  cnpj: string
   chaveAcesso: string
+  load: () => Promise<CTeEvent[]>
 }>()
 
 const $q = useQuasar()
-const { rows, loading, load } = useEventList(() =>
-  desktopClient.listCTeEvents(props.cnpj, props.chaveAcesso)
-)
+const { rows, loading, load } = useEventList(() => props.load())
 
 const columns: QTableColumn<CTeEvent>[] = [
   eventDateColumn,
