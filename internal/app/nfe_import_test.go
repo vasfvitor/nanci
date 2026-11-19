@@ -3,12 +3,14 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/nfe"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // writeImportFile writes the content to a file named name in a temp dir and
@@ -198,5 +200,31 @@ func TestNFeImportXMLCounts(t *testing.T) {
 
 	if _, err := env.app.NFe.ImportXML(context.Background(), ImportXMLInput{CNPJ: "11222333000181"}); err == nil {
 		t.Error("ImportXML of an unknown company: want an error")
+	}
+}
+
+// TestImportXMLRefusesDuringAPull checks that an import does not run while the
+// same company's source is reserved, as by a pull in this process or in
+// another nanci process.
+func TestImportXMLRefusesDuringAPull(t *testing.T) {
+	env := newNFeTestEnv(t)
+	ctx := context.Background()
+	release, err := env.app.SyncManager.ReserveSource(ctx, env.company.ID, syncstate.SyncSourceNFe)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = env.app.NFe.ImportXML(ctx, ImportXMLInput{CNPJ: nfeTestCNPJ, Files: []string{nfeFixtureFile(t, "procnfe.xml")}})
+	if !errors.Is(err, ErrSyncRunning) {
+		t.Fatalf("NF-e import during a pull = %v, want ErrSyncRunning", err)
+	}
+	// The CT-e source is free.
+	if _, err := env.app.CTe.ImportXML(ctx, ImportXMLInput{CNPJ: nfeTestCNPJ, Files: []string{cteFixtureFile(t, "procte.xml")}}); err != nil {
+		t.Fatalf("CT-e import during an NF-e pull: %v", err)
+	}
+
+	release()
+	if _, err := env.app.NFe.ImportXML(ctx, ImportXMLInput{CNPJ: nfeTestCNPJ, Files: []string{nfeFixtureFile(t, "procnfe.xml")}}); err != nil {
+		t.Fatalf("NF-e import after the pull: %v", err)
 	}
 }

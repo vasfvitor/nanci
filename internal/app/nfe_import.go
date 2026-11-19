@@ -18,6 +18,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // importMaxBytes bounds one imported XML file, the same decoded size the
@@ -91,6 +92,13 @@ func (s *NFeService) ImportXML(ctx context.Context, in ImportXMLInput) (ImportXM
 	if err != nil {
 		return ImportXMLResult{}, err
 	}
+	// The import writes the source's documents, so it never runs alongside a
+	// pull or a reset of the same company, in this process or another one.
+	release, err := s.SyncManager.ReserveSource(ctx, comp.ID, syncstate.SyncSourceNFe)
+	if err != nil {
+		return ImportXMLResult{}, err
+	}
+	defer release()
 
 	var result ImportXMLResult
 	for _, path := range in.Files {

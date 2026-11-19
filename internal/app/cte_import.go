@@ -12,6 +12,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // ImportXML stores CT-e (CT-e, CT-e OS, GTV-e, CT-e Simplificado) and CT-e
@@ -26,6 +27,13 @@ func (s *CTeService) ImportXML(ctx context.Context, in ImportXMLInput) (ImportXM
 	if err != nil {
 		return ImportXMLResult{}, err
 	}
+	// The import writes the source's documents, so it never runs alongside a
+	// pull or a reset of the same company, in this process or another one.
+	release, err := s.SyncManager.ReserveSource(ctx, comp.ID, syncstate.SyncSourceCTe)
+	if err != nil {
+		return ImportXMLResult{}, err
+	}
+	defer release()
 
 	var result ImportXMLResult
 	for _, path := range in.Files {
