@@ -10,7 +10,7 @@ The CLI is a thin Cobra adapter over `internal/app`. A command parses flags, val
 ## Registration
 
 - `NewRootCommand(env CommandEnv)` in `internal/cli/root_factory.go` builds a fresh tree per call and adds each top-level command (`newNFeCommand(env)`, `newCTeCommand(env)`, ...). A new top-level command goes there; a new subcommand goes in its group constructor (`newNFeCommand` in `nfe.go`, `newCTeCommand` in `cte.go`, `newExportCommand` in `export.go`).
-- `CommandEnv` (`env.go`) carries `Stdin`/`Stderr` (`*os.File`, for the password prompt), `Stdout io.Writer`, `AppFactory`, `Verbose`, `Trace`. Never read package globals; take everything from `env`.
+- `CommandEnv` (`env.go`) carries `Stdin`/`Stderr` (`*os.File`, for the password prompt), `Stdout io.Writer`, `AppFactory`, `Verbose`, `Trace`, `JSON` (the persistent `--json`; read it through `env.jsonOutput()`). Never read package globals; take everything from `env`.
 - `AppFactory func(ctx) (*app.App, func(), error)`: production is `prodAppFactory` in `runtime.go` (opens SQLite, wires stores, keyring credential provider with `TerminalCredentialProvider` fallback). Every `RunE` does:
   ```go
   application, cleanup, err := env.AppFactory(cmd.Context())
@@ -20,7 +20,7 @@ The CLI is a thin Cobra adapter over `internal/app`. A command parses flags, val
   defer cleanup()
   ```
 - One constructor per leaf, `newNFeXxxCmd(env CommandEnv, cnpjFlag *string) *cobra.Command`, one file per leaf or small group (`nfe_pull.go`, `nfe_export.go`, `cte_reset.go`). Flag variables are locals of the constructor.
-- The root sets `SilenceUsage`/`SilenceErrors`; `cmd/nanci/main.go` is the only place that prints the returned error and picks the exit code. Do not print errors yourself; return them.
+- The root sets `SilenceUsage`/`SilenceErrors`; `cli.Execute` (`root.go`) is the only place that prints the returned error (text, or the JSON envelope with `--json`) and returns the exit code to `cmd/nanci/main.go`. Do not print errors yourself; return them.
 
 ## Flag conventions
 
@@ -44,7 +44,17 @@ Flag names and values are Portuguese and snake_case for enum values (`nao_realiz
 - Print to `cmd.OutOrStdout()` only, with `_, _ = fmt.Fprint...`. Tables use `text/tabwriter` with an UPPERCASE header row and a dashes row (`nfe_list.go`), dates through `formatDate`/`formatDateTime`, CNPJ through `cnpj.Format`, money through `.FormatBRL()`, long names through `truncateText(s, 30)`, empties through `dashIfEmpty` (helpers in `nfe.go`).
 - Empty results print one line and return nil: "Nenhum documento encontrado.", "Nenhuma NF-e encontrada.", "Nenhum CT-e encontrado.", "Nenhuma manifestação pendente.". Lists end with "Total de N ... listado(s).".
 - Exports print a progress line ("Gerando arquivo ZIP...") then reuse `printExportResult` (`export.go`), which already handles the empty and incremental-empty cases.
-- SEFAZ pulls reuse `pullError` (prints "Próxima consulta permitida após: ..." for a `*sync.BlockedError`); connection tests reuse `printConnectionTest`; status output reuses `printIdleWarning`.
+- SEFAZ pulls reuse `env.pullError` (prints "Próxima consulta permitida após: ..." for a `*sync.BlockedError`); connection tests reuse `printConnectionTest`; status output reuses `printIdleWarning`.
+
+## `--json` output
+
+Every command that prints data also prints it as JSON, for scripts and AI agents (the `nanci-cli-agente` skill teaches them to use it). A new data command ships with its JSON output and a test in the same change.
+
+- The type goes in `internal/cli/output_types.go`: unexported `xxxOutput` with a `newXxxOutput(result)` mapper. Go field names, no JSON tags; money as `int64` cents; optional times as `*time.Time` through `optionalTime` (null, never `0001-01-01`); lists never nil (`nonNilStrings`, `make([]T, 0, n)`); no internal fields (hashes, row IDs, local file paths, `CompanyID`). Reuse an existing type when the shape is the same (`fileOutput{OutPath}` for single-file exports, `exportOutput` for batches).
+- In `RunE`, branch once on the same result: `if env.jsonOutput() { return printJSON(out, newXxxOutput(result)) }`, then the text path. Progress lines go through `env.progress(out, "...")`, which is silent with `--json`, so stdout holds exactly one JSON value.
+- A dry run prints its plan as JSON too (`nfeCienciaPlanOutput`, `nfeResetOutput` with `Confirmed: false`); `--confirmar` keeps the same rule.
+- A batch with failed items prints its JSON on stdout and still returns the error, so stderr gets the envelope and the exit is 1.
+- A new sentinel error that an agent should react to gets a code in `app.ErrorCode` (`internal/app/errorcode.go`), not a CLI-only mapping; the desktop uses the same codes.
 
 ## Errors and validation
 
@@ -73,6 +83,7 @@ Tests are white-box (`package cli`) next to the command (`nfe_test.go`, `cte_tes
 - Seed with `env.seed("procnfe.xml", nsu)` (fixtures in `internal/nfe/testdata`), `env.seedCTe("procte.xml", nsu)` / `env.seedListFixtures()` (`internal/cte/testdata`), `env.seedNFSe(id, chave)` (`list_test.go`), `env.setLastQuery(source, at)` for idle warnings; read back with helpers like `env.manifestacaoCount()`.
 - Flag values stick to a command tree: Cobra does not reset a flag that a later invocation leaves out, and `RunE` may write to its flag variable (the `<chave>.xml` default). Build a fresh root per invocation inside table-driven loops, with the comment `// flag values stick to a command tree` (`TestCTeList_RejectsInvalidFlags`).
 - For a `--confirmar` command test three things: the dry run prints the plan and "Nada foi ...", `env.passwords.requests == 0` and nothing was recorded; the confirmed path changes state (`TestNFeReset_DryRunThenConfirm`).
+- `--json` test: run with `"--json"` first, `decodeJSONOutput(t, env.out, &v)` (fails if stdout is not exactly one JSON value), assert the key fields, and `assertNoJSONKeys(t, v, internalJSONKeys...)` (helpers in `output_test.go`; `TestNFeList_JSON` in `nfe_test.go`).
 - Run `go test ./internal/cli/` and `golangci-lint run ./internal/cli/...`.
 
 ## Docs to update in the same change
@@ -80,6 +91,7 @@ Tests are white-box (`package cli`) next to the command (`nfe_test.go`, `cte_tes
 - `website/content/docs/cli.md`: the "Comandos" table (one row per command group) and the `--confirmar` callout when the command has side effects; "Primeiros passos" or "Rotina agendada" when the command belongs in a routine.
 - `docs/NFE_SEFAZ.md` or `docs/CTE_SEFAZ.md`, section "Uso pela linha de comando": the numbered example block and the bullet that explains the flags and defaults. NFS-e commands have no such section in `docs/NFSE_ADN.md`; describe behavior there only if it changes the ADN contract.
 - `README.md` has no command examples, only the build line and a link to the CLI page; touch it only if that changes.
+- `.claude/skills/nanci-cli-agente/SKILL.md` when the command is one an agent would run: its recipe, its JSON fields and any new error code.
 - If the command mirrors a desktop action, keep the wording of both aligned (button label, confirmation text).
 
 ## Checklist
@@ -91,5 +103,6 @@ Tests are white-box (`package cli`) next to the command (`nfe_test.go`, `cte_tes
 - [ ] `defer cleanup()` right after the factory; errors wrapped with `%w`, no printing of errors.
 - [ ] Side effects behind `--confirmar`, with a dry-run plan that asks no password.
 - [ ] Non-zero exit when any item of a batch failed.
+- [ ] `--json` output type in `output_types.go`, progress through `env.progress`, and a `--json` test with `decodeJSONOutput` and `assertNoJSONKeys`.
 - [ ] Tests with a fresh root per invocation; dry-run test asserts zero password requests.
 - [ ] `cli.md` table, `docs/<SOURCE>_SEFAZ.md` command section updated.
