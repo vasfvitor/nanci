@@ -325,6 +325,22 @@ type NfeManifestacao struct {
 	TpAmb           string
 }
 
+type SyncNsuGap struct {
+	ID          int64
+	CompanyID   string
+	Source      string
+	Environment string
+	FirstNsu    int64
+	LastNsu     int64
+	NextNsu     int64
+	Cause       string
+	Status      string
+	Recovered   int64
+	Empty       int64
+	DetectedAt  string
+	FinishedAt  sql.NullString
+}
+
 type SyncRequest struct {
 	ID          int64
 	CompanyID   string

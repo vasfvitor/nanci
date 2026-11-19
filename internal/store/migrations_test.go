@@ -980,6 +980,49 @@ func TestMigration022AddsSyncRunErrors(t *testing.T) {
 	}
 }
 
+func TestMigration023AddsSyncNSUGaps(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 22)
+
+	tableCount := func() int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'sync_nsu_gaps'`).Scan(&n); err != nil {
+			t.Fatalf("read sqlite_master: %v", err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 23); err != nil {
+		t.Fatalf("migrate to version 23: %v", err)
+	}
+	if n := tableCount(); n != 1 {
+		t.Fatalf("sync_nsu_gaps tables after up = %d, want 1", n)
+	}
+	const now = "2026-11-18T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	mustExec(t, db, `
+		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, detected_at)
+		VALUES ('comp-1', 'nfe', 'producao', 11, 20, 11, 'consumo_indevido', ?)
+	`, now)
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, detected_at)
+		VALUES ('comp-1', 'nfse', 'producao', 1, 2, 1, 'batch_hole', ?)
+	`, now); err == nil {
+		t.Error("sync_nsu_gaps accepted the nfse source")
+	}
+
+	if _, err := provider.DownTo(ctx, 22); err != nil {
+		t.Fatalf("migrate down to version 22: %v", err)
+	}
+	if n := tableCount(); n != 0 {
+		t.Errorf("sync_nsu_gaps tables after down = %d, want 0", n)
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()
