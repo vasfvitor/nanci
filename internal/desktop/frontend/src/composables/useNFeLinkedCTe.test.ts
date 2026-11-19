@@ -74,6 +74,24 @@ describe('useNFeLinkedCTe', () => {
     expect(loading.value).toBe(false)
   })
 
+  it('stops loading when the company goes away while a load is pending', async () => {
+    const pending = deferred<CTeRow[]>()
+    vi.mocked(desktopClient.listCTe).mockReturnValueOnce(pending.promise)
+    const cnpj = ref('123')
+
+    const { loading } = useNFeLinkedCTe(
+      () => cnpj.value,
+      () => 'nfe-1'
+    )
+    expect(loading.value).toBe(true)
+    cnpj.value = ''
+    await flushPromises()
+    pending.resolve([frete])
+    await flushPromises()
+
+    expect(loading.value).toBe(false)
+  })
+
   it('says when the CT-e could not be loaded', async () => {
     vi.mocked(desktopClient.listCTe).mockRejectedValue(new Error('banco ocupado'))
     const { rows, error, loading } = useNFeLinkedCTe(

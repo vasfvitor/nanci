@@ -24,7 +24,12 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     OnlyUnread: false,
   })
 
-  const focus = chaveFocusState(workspace)
+  const list = documentListState<NFeRow>()
+  const { rows, selected } = list
+  // A focused note must not be hidden by the text typed for the list.
+  const focus = chaveFocusState(workspace, () => {
+    list.filterText.value = ''
+  })
 
   // listInput is the only place the ListNFe request is built from the
   // workspace and the filter. Clearable inputs set null, so every field is
@@ -57,8 +62,6 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
     OnlyUnread: Boolean(filter.value.OnlyUnread),
   }))
 
-  const list = documentListState<NFeRow>()
-  const { rows, selected } = list
   const status = shallowRef<NFeStatusResult | null>(null)
   // statusGate lets only the latest status load fill status.
   const statusGate = latestOnly()

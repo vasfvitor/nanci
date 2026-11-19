@@ -124,10 +124,35 @@ describe('cteDocuments store', () => {
     expect(store.chaveFocus).toBe('')
     expect(store.listInput.Competence).toBe('2026-06')
 
+    // Coming back to the same competência does not bring the focus back.
     workspace.competence = '2026-05'
+    expect(store.chaveFocus).toBe('')
+
     store.focusChave('CTE-KEY')
     workspace.cnpj = '456'
     expect(store.chaveFocus).toBe('')
+    workspace.cnpj = '123'
+    expect(store.chaveFocus).toBe('')
+  })
+
+  it('clears the text filter when a CT-e is focused, so it cannot hide it', () => {
+    const store = useCTeDocumentsStore()
+    store.filterText = 'ACME'
+
+    store.focusChave('CTE-KEY')
+
+    expect(store.filterText).toBe('')
+  })
+
+  it('keeps the rows of a focused search on the workspace key', () => {
+    const workspace = useWorkspaceStore()
+    workspace.cnpj = '123'
+    workspace.competence = '2026-05'
+    const store = useCTeDocumentsStore()
+    store.focusChave('CTE-KEY')
+
+    expect(store.listInput.Competence).toBe('')
+    expect(store.rowsKey).toEqual({ cnpj: '123', competence: '2026-05' })
   })
 
   it('flags an NF-e key filter that is not 44 characters', () => {

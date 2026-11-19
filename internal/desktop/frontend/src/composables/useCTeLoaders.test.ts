@@ -27,6 +27,19 @@ describe('useCTeLoaders', () => {
     useWorkspaceStore().cnpj = '123'
   })
 
+  it('records a focused search under the workspace key, so a remount keeps its rows', async () => {
+    useWorkspaceStore().competence = '2026-05'
+    const store = useCTeDocumentsStore()
+    store.focusChave('CTE-KEY')
+
+    await useCTeLoaders().search()
+
+    expect(desktopClient.listCTe).toHaveBeenCalledWith(
+      expect.objectContaining({ Competence: '', ChavesAcesso: ['CTE-KEY'] })
+    )
+    expect(store.rowsFor).toEqual({ cnpj: '123', competence: '2026-05' })
+  })
+
   it('refreshes the CT-e list and status of the selected company', async () => {
     const store = useCTeDocumentsStore()
 

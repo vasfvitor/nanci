@@ -13,6 +13,9 @@ export type LoaderStore<Input extends { CNPJ: string; Competence: string }, Row>
   // rowsFor is the company and competência of the search that filled the
   // rows, or null.
   rowsFor: WorkspaceKey | null
+  // rowsKey, when set, is the workspace key a search's rows belong to; a
+  // store without it uses the company and competência of listInput.
+  readonly rowsKey?: WorkspaceKey
   // searchGate lets only the latest search fill the rows.
   readonly searchGate: LatestGate
   setRows: (rows: Row[]) => void
@@ -48,6 +51,7 @@ export function useDocumentLoaders<
   async function search(): Promise<Row[]> {
     const input = store.listInput
     if (!input.CNPJ || store.listError) return []
+    const key = store.rowsKey ?? { cnpj: input.CNPJ, competence: input.Competence }
     // Quick changes, such as stepping through competências, start searches
     // that may end out of order; the latest one owns the rows and loading.
     const isLatest = store.searchGate.begin()
@@ -56,7 +60,7 @@ export function useDocumentLoaders<
       const result = await list(input)
       if (isLatest() && isSelected(input.CNPJ)) {
         store.setRows(result)
-        store.rowsFor = { cnpj: input.CNPJ, competence: input.Competence }
+        store.rowsFor = { ...key }
       }
       return result
     } finally {

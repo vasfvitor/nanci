@@ -30,7 +30,11 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     OnlyUnread: false,
   })
 
-  const focus = chaveFocusState(workspace)
+  const list = documentListState<CTeRow>()
+  // A focused CT-e must not be hidden by the text typed for the list.
+  const focus = chaveFocusState(workspace, () => {
+    list.filterText.value = ''
+  })
 
   // listInput is the only place the ListCTe request is built from the
   // workspace and the filter. Clearable inputs set null, so every field is
@@ -80,7 +84,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     listInput,
     listError,
     ...focus,
-    ...documentListState<CTeRow>(),
+    ...list,
     status,
     statusGate,
   }

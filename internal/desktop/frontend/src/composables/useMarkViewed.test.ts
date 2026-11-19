@@ -57,6 +57,17 @@ describe('useMarkViewed', () => {
     expect(rows.value).toEqual([{ ChaveAcesso: 'b' }])
   })
 
+  it('keeps the marked documents when the list was searched past the toggle', async () => {
+    const { rows, options } = setup()
+    const { onlyUnviewed, markViewed } = useMarkViewed({ ...options, listsOnlyUnread: () => false })
+    onlyUnviewed.value = true
+
+    await markViewed(['a'])
+
+    expect(rows.value.map((row) => row.ChaveAcesso)).toEqual(['a', 'b'])
+    expect(rows.value[0]?.ViewedAt).toBeInstanceOf(Date)
+  })
+
   it('acts on the selection, or else on the rows the grid shows', () => {
     const { filteredRows, selected, options } = setup()
     const viewed = { ChaveAcesso: 'c', ViewedAt: new Date() }

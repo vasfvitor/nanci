@@ -17,7 +17,10 @@ export function useNFeLinkedCTe(cnpj: () => string, chave: () => string) {
     const isLatest = gate.begin()
     rows.value = []
     error.value = ''
-    if (!companyCNPJ || !nfeChave) return
+    if (!companyCNPJ || !nfeChave) {
+      loading.value = false
+      return
+    }
     loading.value = true
     try {
       const result = await desktopClient.listCTe({
