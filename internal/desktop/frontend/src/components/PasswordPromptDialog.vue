@@ -47,20 +47,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { desktopClient } from '@/platform/wails/client'
-import { onWailsEvent, type Unsubscribe } from '@/platform/wails/events'
-import type { CertPasswordRequest } from '@/types/desktop'
+import { computed, ref, watch } from 'vue'
+import { useCertPasswordPrompt } from '@/composables/useCertPasswordPrompt'
 
-const requests = ref<CertPasswordRequest[]>([])
+// The dialog shows the oldest certificate password request; the composable
+// holds the queue and sends the answers.
+const { current: requestData, submitting, submit, cancel } = useCertPasswordPrompt()
 const password = ref('')
 const show = ref(false)
-// submitting is set while the answer to the current request is sent, so a
-// second click cannot answer it twice.
-const submitting = ref(false)
-const isOpen = computed(() => requests.value.length > 0)
-const requestData = computed(() => requests.value[0])
-const unsubscribe = ref<Unsubscribe | null>(null)
+const isOpen = computed(() => Boolean(requestData.value))
 
 // Every request starts with an empty, hidden password.
 watch(
@@ -71,38 +66,11 @@ watch(
   }
 )
 
-function handleRequest(req: CertPasswordRequest) {
-  requests.value.push(req)
-}
-
-// answer sends the answer to the current request and moves to the next one.
-async function answer(send: (req: CertPasswordRequest) => Promise<void>) {
-  const req = requests.value[0]
-  if (!req || submitting.value) return
-  submitting.value = true
-  try {
-    await send(req)
-    password.value = ''
-    requests.value.shift()
-  } finally {
-    submitting.value = false
-  }
-}
-
-function onSubmit() {
-  return answer((req) => desktopClient.submitCertPassword(req.RequestID, password.value))
+async function onSubmit() {
+  if (await submit(password.value)) password.value = ''
 }
 
 function onCancel() {
-  return answer((req) => desktopClient.cancelCertPassword(req.RequestID))
+  return cancel()
 }
-
-onMounted(() => {
-  unsubscribe.value = onWailsEvent('request-cert-password', handleRequest)
-})
-
-onUnmounted(() => {
-  unsubscribe.value?.()
-  unsubscribe.value = null
-})
 </script>
