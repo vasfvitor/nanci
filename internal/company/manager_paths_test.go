@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -572,15 +573,16 @@ func TestParseSyncStartPolicyInput(t *testing.T) {
 			if policy != tt.wantPolicy {
 				t.Errorf("policy = %q, want %q", policy, tt.wantPolicy)
 			}
-			// today was read before the call; a run across midnight may
-			// get the next day, which is just as right.
-			sameDate := func(got string) bool {
-				return got == tt.wantDate || (tt.wantDate == today && got == time.Now().Format("2006-01-02"))
+			// today was read before the call, so a run across midnight may
+			// get the next day: read it again and accept either.
+			wantDates := []string{tt.wantDate}
+			if tt.wantDate == today {
+				wantDates = append(wantDates, time.Now().Format("2006-01-02"))
 			}
 			switch {
 			case tt.wantDate == "" && date != nil:
 				t.Errorf("date = %v, want nil", date)
-			case tt.wantDate != "" && (date == nil || !sameDate(date.Format("2006-01-02"))):
+			case tt.wantDate != "" && (date == nil || !slices.Contains(wantDates, date.Format("2006-01-02"))):
 				t.Errorf("date = %v, want %s", date, tt.wantDate)
 			}
 		})

@@ -203,10 +203,10 @@ func (s *CTeService) ListEvents(ctx context.Context, cnpj, chave string) ([]cte.
 // TestConnection checks the TLS connection to the CT-e distribution host.
 func (s *CTeService) TestConnection(ctx context.Context, cnpj string) (ConnectionTestResult, error) {
 	return testSefazConnection(ctx, s.Log, s.CompanyStore, s.Certificates, cnpj, sefazConnection{
-		purpose:   "Teste de conexão CT-e",
-		target:    "SEFAZ (CT-e)",
-		check:     sefazClient.CheckTLSCTe,
-		endpoints: s.SyncManager.SEFAZEndpoints,
+		purpose: "Teste de conexão CT-e",
+		target:  "SEFAZ (CT-e)",
+		check:   sefazClient.CheckTLSCTe,
+		manager: s.SyncManager,
 	})
 }
 

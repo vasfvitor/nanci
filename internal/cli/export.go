@@ -146,11 +146,12 @@ func newExportXMLCmd(env CommandEnv, cnpj *string) *cobra.Command {
 }
 
 // parseNFSeChave checks a --chave value before the database is opened and
-// returns it trimmed. The message matches the one app gives.
+// returns it as the app stores it (nfse.NormalizeInfNFSeID). The message
+// matches the one app gives.
 func parseNFSeChave(raw string) (string, error) {
-	chave := strings.TrimSpace(raw)
-	if _, err := nfse.ParseInfNFSeID(chave); err != nil {
-		return "", fmt.Errorf("chave de acesso inválida %q: %w", chave, err)
+	chave, err := nfse.NormalizeInfNFSeID(raw)
+	if err != nil {
+		return "", fmt.Errorf("chave de acesso inválida %q: %w", strings.TrimSpace(raw), err)
 	}
 	return chave, nil
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/company"
-	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -115,9 +114,8 @@ type sefazConnection struct {
 	target  string // "SEFAZ" or "SEFAZ (CT-e)" in the result texts
 	// check is the method expression sefazClient.CheckTLS or CheckTLSCTe.
 	check func(client sefazClient, ctx context.Context) error
-	// endpoints overrides the SEFAZ URLs, as the sync manager's do; nil uses
-	// the URLs of the company's environment.
-	endpoints *sefaz.Endpoints
+	// manager gives the SEFAZ endpoints every client of the app uses.
+	manager *sync.Manager
 }
 
 // testSefazConnection loads the certificate and opens a TLS connection with
@@ -144,12 +142,7 @@ func testSefazConnection(ctx context.Context, log *slog.Logger, companies *compa
 		result.CertExpiration = formatCertExpiration(*loaded.Credential.NotAfter)
 	}
 
-	client, err := newSEFAZClient(sefaz.ClientConfig{
-		Environment: comp.Environment,
-		Certificate: &loaded.TLS,
-		Log:         log,
-		Endpoints:   conn.endpoints,
-	})
+	client, err := companySEFAZClient(comp, &loaded.TLS, log, conn.manager)
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Erro ao configurar cliente SEFAZ: %v", err)
 		return result, nil

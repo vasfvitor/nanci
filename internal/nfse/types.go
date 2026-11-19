@@ -46,6 +46,18 @@ func ParseInfNFSeID(id string) (AccessKey, error) {
 	return ParseAccessKey(strings.TrimPrefix(id, InfNFSeIDPrefix))
 }
 
+// NormalizeInfNFSeID trims and upper-cases a chave, with or without the
+// "NFS" prefix of the infNFSe Id, checks it with ParseInfNFSeID and returns
+// it as stored: uppercase, keeping a prefix the input had (migration 020
+// kept some prefixed rows).
+func NormalizeInfNFSeID(raw string) (string, error) {
+	normalized := strings.ToUpper(strings.TrimSpace(raw))
+	if _, err := ParseInfNFSeID(normalized); err != nil {
+		return "", err
+	}
+	return normalized, nil
+}
+
 type DocumentID string
 
 // --- Enums ---

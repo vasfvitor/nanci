@@ -91,12 +91,7 @@ func (s *NFeService) FetchByChave(ctx context.Context, in FetchByChaveInput) (Fe
 		}
 		return FetchByChaveResult{}, errors.New("limite de consultas por hora de NF-e atingido")
 	}
-	client, err := newSEFAZClient(sefaz.ClientConfig{
-		Environment: comp.Environment,
-		Certificate: &loaded.TLS,
-		Log:         s.Log,
-		Endpoints:   s.SyncManager.SEFAZEndpoints,
-	})
+	client, err := companySEFAZClient(comp, &loaded.TLS, s.Log, s.SyncManager)
 	if err != nil {
 		return FetchByChaveResult{}, fmt.Errorf("configurar cliente SEFAZ: %w", err)
 	}

@@ -3,6 +3,7 @@ package app
 import (
 	"cmp"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -31,6 +32,18 @@ type sefazClient interface {
 // newSEFAZClient builds the SEFAZ client; tests swap it.
 var newSEFAZClient = func(cfg sefaz.ClientConfig) (sefazClient, error) {
 	return sefaz.NewClient(cfg)
+}
+
+// companySEFAZClient builds the SEFAZ client for comp with its loaded
+// certificate, on the sync manager's endpoints like the pull, so a test
+// server set there serves every SEFAZ call of the app.
+func companySEFAZClient(comp *company.Company, cert *tls.Certificate, log *slog.Logger, manager *sync.Manager) (sefazClient, error) {
+	return newSEFAZClient(sefaz.ClientConfig{
+		Environment: comp.Environment,
+		Certificate: cert,
+		Log:         log,
+		Endpoints:   manager.SEFAZEndpoints,
+	})
 }
 
 // Kinds of pending manifestação.
@@ -350,10 +363,10 @@ func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.Com
 // TestConnection checks the TLS connection to the NF-e distribution host.
 func (s *NFeService) TestConnection(ctx context.Context, cnpj string) (ConnectionTestResult, error) {
 	return testSefazConnection(ctx, s.Log, s.CompanyStore, s.Certificates, cnpj, sefazConnection{
-		purpose:   "Teste de conexão NF-e",
-		target:    "SEFAZ",
-		check:     sefazClient.CheckTLS,
-		endpoints: s.SyncManager.SEFAZEndpoints,
+		purpose: "Teste de conexão NF-e",
+		target:  "SEFAZ",
+		check:   sefazClient.CheckTLS,
+		manager: s.SyncManager,
 	})
 }
 

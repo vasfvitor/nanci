@@ -41,15 +41,7 @@ func parseAccessKeys(raw []string) ([]string, error) {
 // migration 020 leaves a prefixed row whose digits another document already
 // has, and a chave must match the row as stored.
 func parseNFSeAccessKeys(raw []string) ([]string, error) {
-	// Stored chaves are uppercase, so a lowercase letter of an alphanumeric
-	// CNPJ is uppercased to match the row.
-	return parseKeys(raw, func(r string) (string, error) {
-		normalized := strings.ToUpper(strings.TrimSpace(r))
-		if _, err := nfse.ParseInfNFSeID(normalized); err != nil {
-			return "", err
-		}
-		return normalized, nil
-	})
+	return parseKeys(raw, nfse.NormalizeInfNFSeID)
 }
 
 // tempPathFor names the file an export is written to before it replaces

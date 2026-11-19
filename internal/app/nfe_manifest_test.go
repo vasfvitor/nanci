@@ -18,8 +18,7 @@ import (
 // cStat per chave (135 when not scripted).
 type fakeSEFAZ struct {
 	t           *testing.T
-	clients     int                // clients created through newSEFAZClient
-	endpoints   []*sefaz.Endpoints // Endpoints of each client created
+	endpoints   []*sefaz.Endpoints // Endpoints of each client created through newSEFAZClient
 	tlsErr      error
 	tlsCalls    int
 	cteTLSCalls int
@@ -100,7 +99,6 @@ func useFakeSEFAZ(t *testing.T) *fakeSEFAZ {
 		if cfg.Certificate == nil || cfg.Environment != dfe.EnvironmentProduction {
 			t.Errorf("client config = %+v", cfg)
 		}
-		fake.clients++
 		fake.endpoints = append(fake.endpoints, cfg.Endpoints)
 		return fake, nil
 	}
@@ -186,8 +184,8 @@ func TestNFePlanCienciaNeedsNoNetworkOrPassword(t *testing.T) {
 	if len(all.Eligible) != 1 || string(all.Eligible[0].ChaveAcesso) != eligible {
 		t.Errorf("all resumos = %+v, want only %s", all.Eligible, eligible)
 	}
-	if len(env.passwords.requests) != 0 || fake.clients != 0 {
-		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), fake.clients)
+	if len(env.passwords.requests) != 0 || len(fake.endpoints) != 0 {
+		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), len(fake.endpoints))
 	}
 }
 
@@ -457,8 +455,8 @@ func TestNFePlanManifestacaoNeedsNoNetworkOrPassword(t *testing.T) {
 		t.Errorf("BlockReason = %q, want %q", blocked.BlockReason, want)
 	}
 
-	if len(env.passwords.requests) != 0 || fake.clients != 0 {
-		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), fake.clients)
+	if len(env.passwords.requests) != 0 || len(fake.endpoints) != 0 {
+		t.Errorf("password prompts = %d, SEFAZ clients = %d; want none", len(env.passwords.requests), len(fake.endpoints))
 	}
 }
 
