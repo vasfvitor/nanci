@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { desktopClient } from '@/platform/wails/client'
-import type { CredentialSummary } from '@/types/desktop'
+import type { AddCredentialInput, CredentialSummary } from '@/types/desktop'
 
 export function useCredentials() {
   const credentials = ref<CredentialSummary[]>([])
@@ -25,9 +25,14 @@ export function useCredentials() {
     await loadCredentials()
   }
 
-  async function updateCredentialData(credentialID: string, label: string) {
-    await desktopClient.updateCredentialData({ CredentialID: credentialID, Label: label })
-    await loadCredentials()
+  // addCredential and updateCredentialData only save: the page lists the
+  // credentials again when the form dialog says it saved.
+  function addCredential(input: AddCredentialInput) {
+    return desktopClient.addCredential(input)
+  }
+
+  function updateCredentialData(credentialID: string, label: string) {
+    return desktopClient.updateCredentialData({ CredentialID: credentialID, Label: label })
   }
 
   return {
@@ -36,6 +41,7 @@ export function useCredentials() {
     loadCredentials,
     selectCertificate,
     updateCredentialPath,
+    addCredential,
     updateCredentialData,
   }
 }

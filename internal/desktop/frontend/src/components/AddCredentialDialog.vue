@@ -39,7 +39,8 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import DraftBanner from '@/components/DraftBanner.vue'
 import { useFormDraft } from '@/composables/useFormDraft'
-import { desktopClient, errorMessage } from '@/platform/wails/client'
+import { useCredentials } from '@/composables/useCredentials'
+import { errorMessage } from '@/platform/wails/client'
 
 const props = defineProps<{
   modelValue: boolean
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 }>()
 const $q = useQuasar()
 const isOpen = ref(props.modelValue)
+const { selectCertificate, addCredential } = useCredentials()
 const loading = ref(false)
 // submitted turns the inline errors on after the first save attempt.
 const submitted = ref(false)
@@ -90,7 +92,7 @@ function clearDraft() {
 
 async function selectCert() {
   try {
-    const path = await desktopClient.selectCertificate()
+    const path = await selectCertificate()
     if (path) {
       form.value.CertPath = path
       if (!form.value.Label) {
@@ -109,7 +111,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await desktopClient.addCredential(form.value)
+    await addCredential(form.value)
     $q.notify({ type: 'positive', message: 'Credencial adicionada com sucesso!' })
     emit('added')
     done()

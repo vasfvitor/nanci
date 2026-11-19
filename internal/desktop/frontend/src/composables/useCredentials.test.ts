@@ -6,6 +6,7 @@ import type { CredentialSummary } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    addCredential: vi.fn(),
     listCredentials: vi.fn(),
     selectCertificate: vi.fn(),
     updateCredentialData: vi.fn(),
@@ -73,15 +74,22 @@ describe('useCredentials', () => {
     expect(api.credentials.value).toEqual([credential])
   })
 
-  it('updates the label and reloads the list', async () => {
+  // The form dialogs save through these; the page lists the credentials
+  // again when the dialog says it saved.
+  it('updates the label and adds a credential without reloading the list', async () => {
     const api = useCredentials()
     await api.updateCredentialData('cred-1', 'A1 filial')
+    await api.addCredential({ Label: 'A1 matriz', CertPath: 'C:\\certs\\a1.pfx' } as never)
 
     expect(desktopClient.updateCredentialData).toHaveBeenCalledWith({
       CredentialID: 'cred-1',
       Label: 'A1 filial',
     })
-    expect(desktopClient.listCredentials).toHaveBeenCalledOnce()
+    expect(desktopClient.addCredential).toHaveBeenCalledWith({
+      Label: 'A1 matriz',
+      CertPath: 'C:\\certs\\a1.pfx',
+    })
+    expect(desktopClient.listCredentials).not.toHaveBeenCalled()
   })
 
   it('does not reload the list when an update fails', async () => {

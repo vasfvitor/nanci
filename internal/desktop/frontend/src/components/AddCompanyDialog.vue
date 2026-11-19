@@ -129,7 +129,9 @@ import { computed, ref, watch } from 'vue'
 import { date, useQuasar } from 'quasar'
 import DraftBanner from '@/components/DraftBanner.vue'
 import { useFormDraft } from '@/composables/useFormDraft'
-import { desktopClient, errorMessage } from '@/platform/wails/client'
+import { useCompanies } from '@/composables/useCompanies'
+import { useCredentials } from '@/composables/useCredentials'
+import { errorMessage } from '@/platform/wails/client'
 import type { SyncStartPolicy } from '@/types/desktop'
 import { cnpjError, normalizeCNPJInput } from '@/utils/cnpj'
 import { environmentOptions } from '@/utils/nfseDisplay'
@@ -149,6 +151,8 @@ const emit = defineEmits<{
 const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)
+const companiesApi = useCompanies()
+const { selectCertificate } = useCredentials()
 const loading = ref(false)
 // submitted turns the inline errors on after the first save attempt.
 const submitted = ref(false)
@@ -233,7 +237,7 @@ function clearDraft() {
 
 async function loadCredentials() {
   try {
-    const credentials = await desktopClient.listCredentials()
+    const credentials = await companiesApi.loadCredentials()
     credentialOptions.value = credentials.map((credential) => ({
       label: `${credential.Label}`,
       value: credential.ID,
@@ -254,7 +258,7 @@ function keepCredentialInList() {
 
 async function selectCert() {
   try {
-    const path = await desktopClient.selectCertificate()
+    const path = await selectCertificate()
     if (path) {
       form.value.CertPath = path
       if (!form.value.CredentialLabel) {
@@ -276,7 +280,7 @@ async function submit() {
   try {
     const cnpj = form.value.CNPJ
     const existing = form.value.credentialMode === 'existing'
-    await desktopClient.addCompany({
+    await companiesApi.addCompany({
       CNPJ: cnpj,
       Name: form.value.Name,
       CredentialID: existing ? form.value.CredentialID : '',

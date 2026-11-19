@@ -33,7 +33,8 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import DraftBanner from '@/components/DraftBanner.vue'
 import { useFormDraft } from '@/composables/useFormDraft'
-import { desktopClient, errorMessage } from '@/platform/wails/client'
+import { useCredentials } from '@/composables/useCredentials'
+import { errorMessage } from '@/platform/wails/client'
 import type { CredentialSummary } from '@/types/desktop'
 
 const props = defineProps<{
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)
+const { updateCredentialData } = useCredentials()
 const loading = ref(false)
 // submitted turns the inline errors on after the first save attempt.
 const submitted = ref(false)
@@ -95,10 +97,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await desktopClient.updateCredentialData({
-      CredentialID: form.value.CredentialID,
-      Label: form.value.Label,
-    })
+    await updateCredentialData(form.value.CredentialID, form.value.Label)
     $q.notify({ type: 'positive', message: 'Credencial atualizada com sucesso!' })
     emit('updated')
     done()

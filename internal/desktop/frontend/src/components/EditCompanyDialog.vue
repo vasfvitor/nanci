@@ -96,7 +96,8 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import DraftBanner from '@/components/DraftBanner.vue'
 import { useFormDraft } from '@/composables/useFormDraft'
-import { desktopClient, errorMessage } from '@/platform/wails/client'
+import { useCompanies } from '@/composables/useCompanies'
+import { errorMessage } from '@/platform/wails/client'
 import type { CompanySummary, SyncStartPolicy } from '@/types/desktop'
 import { environmentOptions } from '@/utils/nfseDisplay'
 import { UF_SIGLAS } from '@/utils/uf'
@@ -113,6 +114,7 @@ const emit = defineEmits<{
 const $q = useQuasar()
 
 const isOpen = ref(props.modelValue)
+const { updateCompany } = useCompanies()
 const loading = ref(false)
 // submitted turns the inline errors on after the first save attempt.
 const submitted = ref(false)
@@ -187,7 +189,7 @@ async function submit() {
 
   loading.value = true
   try {
-    await desktopClient.updateCompany({
+    await updateCompany({
       CNPJ: form.value.CNPJ,
       Name: form.value.Name,
       Environment: form.value.Environment,

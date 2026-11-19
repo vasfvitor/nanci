@@ -7,8 +7,10 @@ import type { CompanySummary } from '@/types/desktop'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
+    addCompany: vi.fn(),
     assignCredential: vi.fn(),
     listCompanies: vi.fn(),
+    updateCompany: vi.fn(),
     listCredentials: vi.fn(),
   },
 }))
@@ -17,6 +19,19 @@ describe('useCompanies', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+  })
+
+  it('saves a new or edited company without listing the companies again', async () => {
+    const api = useCompanies()
+    const added = { CNPJ: '12345678000195', Name: 'Nova' } as never
+    const updated = { CNPJ: '12345678000195', Name: 'Renomeada' } as never
+
+    await api.addCompany(added)
+    await api.updateCompany(updated)
+
+    expect(desktopClient.addCompany).toHaveBeenCalledWith(added)
+    expect(desktopClient.updateCompany).toHaveBeenCalledWith(updated)
+    expect(desktopClient.listCompanies).not.toHaveBeenCalled()
   })
 
   it('reports loading for a single list load', async () => {

@@ -2,7 +2,12 @@ import { computed, ref, shallowRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { desktopClient } from '@/platform/wails/client'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { CompanySummary, CredentialSummary } from '@/types/desktop'
+import type {
+  AddCompanyInput,
+  CompanySummary,
+  CredentialSummary,
+  UpdateCompanyInput,
+} from '@/types/desktop'
 import { formatCpfCnpj } from '@/utils/formatters'
 
 export function useCompanies() {
@@ -43,6 +48,16 @@ export function useCompanies() {
     await loadCompanies()
   }
 
+  // addCompany and updateCompany only save: the page lists the companies
+  // again when the form dialog says it saved.
+  function addCompany(input: AddCompanyInput) {
+    return desktopClient.addCompany(input)
+  }
+
+  function updateCompany(input: UpdateCompanyInput) {
+    return desktopClient.updateCompany(input)
+  }
+
   return {
     companies,
     credentials,
@@ -50,6 +65,8 @@ export function useCompanies() {
     loadCompanies,
     loadCredentials,
     assignCredential,
+    addCompany,
+    updateCompany,
   }
 }
 
