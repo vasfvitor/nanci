@@ -279,9 +279,10 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { desktopRuntime } from '@/platform/wails/runtime'
-import { desktopClient, errorMessage } from '@/platform/wails/client'
+import { errorMessage } from '@/platform/wails/client'
 import { companyOption } from '@/composables/useCompanies'
 import { useDisplayScale } from '@/composables/useDisplayScale'
+import { useSystemInfo } from '@/composables/useSystemInfo'
 import { updateBlockedBySync, useUpdates } from '@/composables/useUpdates'
 import { useDiagnosticsStore } from '@/stores/diagnostics'
 import { useConsoleStore } from '@/stores/console'
@@ -301,6 +302,7 @@ const testSourceOptions = [
 // SEFAZ for CT-e. Changing the service clears the result.
 const testedService = computed(() => (testSource.value === 'cte' ? 'SEFAZ' : 'ADN'))
 
+const systemInfo = useSystemInfo()
 const consoleStore = useConsoleStore()
 const displayScale = useDisplayScale()
 const {
@@ -363,8 +365,9 @@ const darkModeOptions = [
 onMounted(async () => {
   void refreshDisplayInfo()
   try {
-    buildInfo.value = await desktopClient.getBuildInfo()
-    dataDir.value = await desktopClient.getDataDirectory()
+    const info = await systemInfo.loadSystemInfo()
+    buildInfo.value = info.buildInfo
+    dataDir.value = info.dataDir
   } catch (err) {
     $q.notify({
       type: 'negative',
@@ -391,7 +394,7 @@ async function handleDebugToggle(val: boolean) {
 
 async function openDataDir() {
   try {
-    await desktopClient.openDataDirectory()
+    await systemInfo.openDataDirectory()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de dados: ' + errorMessage(err) })
   }
@@ -399,7 +402,7 @@ async function openDataDir() {
 
 async function openLogsDir() {
   try {
-    await desktopClient.openLogsDirectory()
+    await systemInfo.openLogsDirectory()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Erro ao abrir pasta de logs: ' + errorMessage(err) })
   }
@@ -429,7 +432,7 @@ async function nudgeWindow() {
 
 async function exportDiagnosticLogs() {
   try {
-    const result = await desktopClient.exportLogs()
+    const result = await systemInfo.exportLogs()
     if (result) {
       $q.notify({ type: 'positive', message: 'Logs exportados com sucesso para ' + result })
     }
@@ -439,21 +442,13 @@ async function exportDiagnosticLogs() {
 }
 
 async function runConnectionTest() {
-  if (!selectedCompany.value) return
-  testing.value = true
-  diagnosticsStore.clearResult()
   try {
-    testResult.value =
-      testSource.value === 'cte'
-        ? await desktopClient.testCTeConnection(selectedCompany.value)
-        : await desktopClient.testConnection(selectedCompany.value)
+    await diagnosticsStore.runConnectionTest(selectedCompany.value)
   } catch (err) {
     $q.notify({
       type: 'negative',
       message: 'Falha ao executar teste de conexão: ' + errorMessage(err),
     })
-  } finally {
-    testing.value = false
   }
 }
 </script>
