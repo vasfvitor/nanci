@@ -58,7 +58,7 @@ func TestCTeReset(t *testing.T) {
 		t.Fatalf("documents after the preview = %d, %v; want 3", len(docs), err)
 	}
 
-	release, err := env.app.CTe.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceCTe)
+	release, err := env.app.CTe.SyncManager.ReserveSource(context.Background(), env.company.ID, syncstate.SyncSourceCTe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestCTeReset(t *testing.T) {
 	release()
 
 	// An NF-e pull does not hold the CT-e source.
-	releaseNFe, err := env.app.CTe.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceNFe)
+	releaseNFe, err := env.app.CTe.SyncManager.ReserveSource(context.Background(), env.company.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

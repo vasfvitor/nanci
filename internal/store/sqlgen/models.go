@@ -325,6 +325,16 @@ type NfeManifestacao struct {
 	TpAmb           string
 }
 
+type SourceLock struct {
+	CompanyID  string
+	Source     string
+	Owner      string
+	Holder     string
+	Pid        int64
+	AcquiredAt string
+	ExpiresAt  string
+}
+
 type SyncNsuGap struct {
 	ID          int64
 	CompanyID   string

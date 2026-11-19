@@ -12,8 +12,8 @@ import (
 // ErrSourceBlocked matches every *BlockedError through errors.Is.
 var ErrSourceBlocked = errors.New("consulta bloqueada temporariamente")
 
-// ErrSyncRunning means a pull of the same company and source is already
-// running in this process.
+// ErrSyncRunning means the same company and source is already reserved, in
+// this process or in another nanci process (ReserveSource).
 var ErrSyncRunning = errors.New("sincronização já em andamento para esta empresa")
 
 // BlockedError says the source must not be queried for the company before

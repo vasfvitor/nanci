@@ -361,7 +361,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	}
 
 	// An NFS-e pull holds the reservation for its whole run.
-	release, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFSe)
+	release, err := mgr.ReserveSource(context.Background(), comp.ID, syncstate.SyncSourceNFSe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +378,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	release()
 
 	// An NF-e pull does not hold the NFS-e cursor.
-	releaseNFe, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
+	releaseNFe, err := mgr.ReserveSource(context.Background(), comp.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +395,7 @@ func TestResetSyncStateIsRefusedDuringAPullOfTheSameSource(t *testing.T) {
 	}
 
 	// The reset gives the reservation back.
-	releaseAgain, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFSe)
+	releaseAgain, err := mgr.ReserveSource(context.Background(), comp.ID, syncstate.SyncSourceNFSe)
 	if err != nil {
 		t.Fatalf("reserve after reset: %v", err)
 	}

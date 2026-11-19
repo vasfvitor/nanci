@@ -67,7 +67,7 @@ func (s *NFeService) FetchByChave(ctx context.Context, in FetchByChaveInput) (Fe
 	}
 
 	source := syncstate.SyncSourceNFe
-	release, err := s.SyncManager.ReserveSource(comp.ID, source)
+	release, err := s.SyncManager.ReserveSource(ctx, comp.ID, source)
 	if err != nil {
 		return FetchByChaveResult{}, err
 	}

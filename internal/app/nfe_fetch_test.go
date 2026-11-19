@@ -280,7 +280,7 @@ func TestNFeFetchByChaveRefusesBeforeSending(t *testing.T) {
 	env := newNFeTestEnv(t)
 	fake := env.useFakeNFeDistribuicao(nfeRetDistDFeInt(t, 137, "Nenhum documento localizado"))
 
-	release, err := env.app.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceNFe)
+	release, err := env.app.SyncManager.ReserveSource(context.Background(), env.company.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

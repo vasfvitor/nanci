@@ -45,7 +45,7 @@ func TestNFeReset(t *testing.T) {
 		t.Fatalf("documents after the preview = %d, %v; want 3", len(docs), err)
 	}
 
-	release, err := env.app.NFe.SyncManager.ReserveSource(env.company.ID, syncstate.SyncSourceNFe)
+	release, err := env.app.NFe.SyncManager.ReserveSource(context.Background(), env.company.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

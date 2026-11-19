@@ -42,7 +42,7 @@ func (s *CTeService) Reset(ctx context.Context, cnpj string) (CTeResetResult, er
 	if err != nil {
 		return CTeResetResult{}, err
 	}
-	release, err := s.SyncManager.ReserveSource(comp.ID, syncstate.SyncSourceCTe)
+	release, err := s.SyncManager.ReserveSource(ctx, comp.ID, syncstate.SyncSourceCTe)
 	if err != nil {
 		return CTeResetResult{}, err
 	}

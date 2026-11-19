@@ -63,6 +63,9 @@ type Dependencies struct {
 	// leaves those exports unavailable.
 	DANFERenderer danfe.Renderer
 	DACTERenderer dacte.Renderer
+	// Holder names the process in the source leases ("aplicativo", "CLI"),
+	// so the other process can say who holds a source.
+	Holder string
 }
 
 // New constructs an App and rejects incomplete dependency graphs.
@@ -106,6 +109,7 @@ func New(deps Dependencies) (*App, error) {
 		Certificates:       certificates,
 		NFeRepo:            deps.NFeRepo,
 		CTeRepo:            deps.CTeRepo,
+		Holder:             deps.Holder,
 	}
 
 	return &App{

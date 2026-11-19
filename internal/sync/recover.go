@@ -91,7 +91,7 @@ func (m *Manager) RecoverNSU(ctx context.Context, input RecoverNSUInput) (Recove
 	if err := m.checkSource(comp, source); err != nil {
 		return RecoverNSUResult{}, err
 	}
-	release, err := m.ReserveSource(comp.ID, source)
+	release, err := m.ReserveSource(ctx, comp.ID, source)
 	if err != nil {
 		return RecoverNSUResult{}, err
 	}
@@ -388,7 +388,7 @@ func (m *Manager) DiscardNSU(ctx context.Context, input DiscardNSUInput) (int64,
 	if err != nil {
 		return 0, err
 	}
-	release, err := m.ReserveSource(comp.ID, source)
+	release, err := m.ReserveSource(ctx, comp.ID, source)
 	if err != nil {
 		return 0, err
 	}

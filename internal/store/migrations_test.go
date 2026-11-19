@@ -1061,6 +1061,49 @@ func TestMigration024AllowsDiscardedNSUGaps(t *testing.T) {
 	}
 }
 
+func TestMigration025AddsSourceLocks(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 24)
+
+	tableCount := func() int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'source_locks'`).Scan(&n); err != nil {
+			t.Fatalf("read sqlite_master: %v", err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 25); err != nil {
+		t.Fatalf("migrate to version 25: %v", err)
+	}
+	if n := tableCount(); n != 1 {
+		t.Fatalf("source_locks tables after up = %d, want 1", n)
+	}
+	const now = "2026-11-19T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	mustExec(t, db, `
+		INSERT INTO source_locks (company_id, source, owner, holder, pid, acquired_at, expires_at)
+		VALUES ('comp-1', 'nfe', 'token', 'aplicativo', 42, ?, ?)
+	`, now, now)
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO source_locks (company_id, source, owner, holder, pid, acquired_at, expires_at)
+		VALUES ('comp-1', 'nfe', 'other', 'CLI', 43, ?, ?)
+	`, now, now); err == nil {
+		t.Error("source_locks accepted a second lease for the same company and source")
+	}
+
+	if _, err := provider.DownTo(ctx, 24); err != nil {
+		t.Fatalf("migrate down to version 24: %v", err)
+	}
+	if n := tableCount(); n != 0 {
+		t.Errorf("source_locks tables after down = %d, want 0", n)
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()

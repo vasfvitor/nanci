@@ -219,7 +219,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `024` em `internal/store/migrations_v2/`:
+Migrações `007` a `025` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -239,6 +239,7 @@ Migrações `007` a `024` em `internal/store/migrations_v2/`:
 - `022`: acrescenta `error_code` e `error_message` a `sync_runs`, para a execução que termina em erro guardar o código (`persist_error`, `fetch_error`, `process_error`...) e a mensagem. As execuções antigas ficam com `NULL`.
 - `023`: cria `sync_nsu_gaps`, os intervalos de NSU que a distribuição de NF-e ou CT-e pulou sem entregar documento, por empresa, origem e ambiente, com o próximo NSU a pedir na recuperação (ver [Recuperar NSUs faltantes](#recuperar-nsus-faltantes)). Começa vazia: os saltos anteriores não ficaram registrados.
 - `024`: reconstrói `sync_nsu_gaps` para aceitar o status `discarded` (lacuna descartada pelo usuário). As linhas existentes ficam como estão; o Down transforma as descartadas em `expired`.
+- `025`: cria `source_locks`, a reserva de cada empresa e origem entre processos do nanci (o aplicativo e a linha de comando): quem consulta ou altera uma origem guarda uma linha com prazo de 1 minuto e a renova enquanto trabalha; outro processo é recusado com "em andamento em outro processo do nanci", e a reserva de um processo que caiu vence sozinha.
 
 Tabelas de NF-e:
 

@@ -46,7 +46,7 @@ Cada serviço de distribuição por NSU é uma implementação da interface `Sou
 - `Fetch()` busca a página seguinte ao cursor e traduz a resposta em um `Batch`: itens, próximo cursor, se deve parar e até quando esperar (`WaitUntil`).
 - `ProcessItem()` decodifica e grava um item e chama `commit` exatamente uma vez, para que o checkpoint avance na mesma transação.
 
-O loop (`internal/sync/loop.go`) é o mesmo para todas as origens. Ele desconta o orçamento antes de cada requisição, grava o bloqueio pedido pela origem e pula, como não suportado, um item que falha ao ser interpretado três vezes seguidas no mesmo NSU. O `Manager` recusa o pull de uma origem bloqueada antes de pedir a senha, e não deixa dois pulls da mesma empresa e origem rodarem ao mesmo tempo.
+O loop (`internal/sync/loop.go`) é o mesmo para todas as origens. Ele desconta o orçamento antes de cada requisição, grava o bloqueio pedido pela origem e pula, como não suportado, um item que falha ao ser interpretado três vezes seguidas no mesmo NSU. O `Manager` recusa o pull de uma origem bloqueada antes de pedir a senha, e não deixa duas operações da mesma empresa e origem (pull, busca pela chave, recuperação de NSU, redefinição) rodarem ao mesmo tempo: `ReserveSource` marca a origem em memória, contra o mesmo processo, e em `source_locks`, contra outro processo do nanci (o aplicativo e a linha de comando usam o mesmo banco). A reserva no banco vale 1 minuto e é renovada enquanto a operação roda, então a de um processo que caiu vence sozinha.
 
 O estado é separado por empresa, origem e ambiente:
 

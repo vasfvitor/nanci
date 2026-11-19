@@ -194,7 +194,7 @@ func TestRecoverNSUReportsWhatItDidWhenCancelled(t *testing.T) {
 
 func TestRecoverNSURefusesWhileThePullRuns(t *testing.T) {
 	mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
-	release, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
+	release, err := mgr.ReserveSource(context.Background(), comp.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +382,7 @@ func TestDiscardNSUCountsThenClosesEveryOpenGap(t *testing.T) {
 
 func TestDiscardNSURefusesWhileThePullRuns(t *testing.T) {
 	mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
-	release, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
+	release, err := mgr.ReserveSource(context.Background(), comp.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		t.Fatal(err)
 	}

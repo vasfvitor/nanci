@@ -67,6 +67,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 			DANFSeRenderer: godanfsev2.New(),
 			DANFERenderer:  danferenderer.New(),
 			DACTERenderer:  dacterenderer.New(),
+			Holder:         "CLI",
 		})
 		if err != nil {
 			cleanup()

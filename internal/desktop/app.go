@@ -163,6 +163,7 @@ func (a *App) initRuntime(ctx context.Context) (services, func(), error) {
 		DANFSeRenderer: godanfsev2.New(),
 		DANFERenderer:  danferenderer.New(),
 		DACTERenderer:  dacterenderer.New(),
+		Holder:         "aplicativo",
 	})
 	if err != nil {
 		_ = db.Close()

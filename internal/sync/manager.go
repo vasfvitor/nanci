@@ -102,6 +102,10 @@ type Manager struct {
 	// uses the URLs of the company's environment.
 	SEFAZEndpoints *sefaz.Endpoints
 
+	// Holder names this process in the source leases, so a refusal in the
+	// other process says who holds the source: "aplicativo" or "CLI".
+	Holder string
+
 	runningMu gosync.Mutex
 	running   map[string]bool // "companyID:source" pulls in flight in this process
 }
@@ -167,7 +171,7 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	if err := m.BlockedFor(ctx, company, source); err != nil {
 		return PullResult{}, err
 	}
-	release, err := m.ReserveSource(company.ID, source)
+	release, err := m.ReserveSource(ctx, company.ID, source)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -263,29 +267,44 @@ func (m *Manager) Pull(ctx context.Context, input PullInput) (PullResult, error)
 	return result, nil
 }
 
-// ReserveSource marks the (company, source) pair as busy in this process, as
-// a running pull does, and returns the func that clears the mark. Pull holds
-// it for the whole run; callers that change the source's data hold it to keep
-// pulls out. A second reservation of the same pair gets ErrSyncRunning
-// instead of interrupting the first. This does not guard against another
-// process; StartRun cleans up after a crashed one.
-func (m *Manager) ReserveSource(companyID dfe.CompanyID, source syncstate.SyncSource) (func(), error) {
+// ReserveSource marks the (company, source) pair as busy, as a running pull
+// does, and returns the func that clears the mark. Pull holds it for the
+// whole run; callers that change the source's data hold it to keep pulls out.
+// A second reservation of the same pair gets ErrSyncRunning instead of
+// interrupting the first: in this process through the in-memory mark, across
+// processes (the desktop app and the CLI) through a lease in source_locks.
+// Holding the lease also means any 'running' sync_runs row of the pair is a
+// crashed run, which StartRun closes.
+func (m *Manager) ReserveSource(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource) (func(), error) {
 	key := string(companyID) + ":" + string(source)
 
 	m.runningMu.Lock()
-	defer m.runningMu.Unlock()
 	if m.running[key] {
+		m.runningMu.Unlock()
 		return nil, fmt.Errorf("%w (%s)", ErrSyncRunning, sourceLabel(source))
 	}
 	if m.running == nil {
 		m.running = make(map[string]bool)
 	}
 	m.running[key] = true
+	m.runningMu.Unlock()
 
-	return func() {
+	unmark := func() {
 		m.runningMu.Lock()
 		defer m.runningMu.Unlock()
 		delete(m.running, key)
+	}
+	if m.SyncRepo == nil {
+		return unmark, nil
+	}
+	stop, err := m.holdSourceLock(ctx, companyID, source)
+	if err != nil {
+		unmark()
+		return nil, err
+	}
+	return func() {
+		stop()
+		unmark()
 	}, nil
 }
 
@@ -525,7 +544,7 @@ func (m *Manager) ResetSyncState(ctx context.Context, input ResetSyncInput) erro
 	if err != nil {
 		return err
 	}
-	release, err := m.ReserveSource(company.ID, source)
+	release, err := m.ReserveSource(ctx, company.ID, source)
 	if err != nil {
 		return err
 	}

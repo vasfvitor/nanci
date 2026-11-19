@@ -42,7 +42,7 @@ func (s *NFeService) Reset(ctx context.Context, cnpj string) (NFeResetResult, er
 	if err != nil {
 		return NFeResetResult{}, err
 	}
-	release, err := s.SyncManager.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
+	release, err := s.SyncManager.ReserveSource(ctx, comp.ID, syncstate.SyncSourceNFe)
 	if err != nil {
 		return NFeResetResult{}, err
 	}
