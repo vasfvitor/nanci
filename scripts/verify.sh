@@ -34,7 +34,9 @@ tool() {
 		echo "    falta '$name' $want. Instale com: $install"
 		return 1
 	fi
-	if ! "$name" version 2>&1 | grep -qF "${want#v}"; then
+	# The whole version token must match, so v3.1.0-nightly is not v3.1.0.
+	local ver=${want#v}
+	if ! "$name" version 2>&1 | grep -qE "(^|[^0-9A-Za-z.+-])v?${ver//./\\.}([^0-9A-Za-z.+-]|$)"; then
 		echo "    '$name' não está na versão $want do CI. Instale com: $install"
 		return 1
 	fi
