@@ -8,6 +8,9 @@ import (
 // A fresh tree is built per Execute call so that repeated invocations
 // (and tests) don't share cobra state.
 func NewRootCommand(env CommandEnv) *cobra.Command {
+	if env.JSON == nil {
+		env.JSON = new(bool)
+	}
 	root := &cobra.Command{
 		Use:   "nanci",
 		Short: "CLI para sincronização de XMLs de NFS-e Nacional, NF-e e CT-e",
@@ -31,6 +34,7 @@ distribuição DF-e da SEFAZ.`,
 	root.SetErr(env.Stderr)
 	root.PersistentFlags().BoolVarP(env.Verbose, "verbose", "v", false, "Habilita log detalhado (debug)")
 	root.PersistentFlags().BoolVar(env.Trace, "trace", false, "Habilita log de rastreamento extremo (trace); NANCI_TRACE=1 tem o mesmo efeito")
+	root.PersistentFlags().BoolVar(env.JSON, "json", false, "Escreve o resultado como JSON no stdout e os erros como JSON no stderr (para scripts e agentes de IA)")
 
 	root.AddCommand(newInitCommand(env))
 	root.AddCommand(newCompanyCommand(env))

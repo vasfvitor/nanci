@@ -21,6 +21,8 @@ type CommandEnv struct {
 	AppFactory AppFactory
 	Verbose    *bool
 	Trace      *bool
+	// JSON is the --json flag; nil means off (NewRootCommand allocates it).
+	JSON *bool
 }
 
 // AppFactory constructs an *app.App on demand. Returning the same instance
@@ -33,13 +35,14 @@ type AppFactory func(ctx context.Context) (*app.App, func(), error)
 // production factory. The factory takes the env itself, so the streams
 // reach it by field name and cannot be passed in the wrong order.
 func prodEnv() CommandEnv {
-	v, tr := false, false
+	v, tr, js := false, false, false
 	env := CommandEnv{
 		Stdin:   os.Stdin,
 		Stderr:  os.Stderr,
 		Stdout:  os.Stdout,
 		Verbose: &v,
 		Trace:   &tr,
+		JSON:    &js,
 	}
 	env.AppFactory = prodAppFactory(env)
 	return env
