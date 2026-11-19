@@ -554,7 +554,7 @@ func TestParseSyncStartPolicyInput(t *testing.T) {
 		{name: "since_date", policy: "since_date", date: "2025-12-31", wantPolicy: syncstate.SyncStartPolicySinceDate, wantDate: "2025-12-31"},
 		{name: "since_date without a date", policy: "since_date", wantErr: "obrigatório"},
 		{name: "since_date with a bad date", policy: "since_date", date: "2025-13-01", wantErr: "YYYY-MM-DD"},
-		{name: "unknown policy", policy: "sometimes", wantErr: "invalid sync start policy"},
+		{name: "unknown policy", policy: "sometimes", wantErr: "política de sincronização inválida"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

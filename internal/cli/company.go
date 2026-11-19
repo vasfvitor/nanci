@@ -52,7 +52,7 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 			rawSyncStartPolicy, rawSyncStartDate := resolveCompanySyncStartFlags(syncStartPolicy, syncStartDate, last12Months, last5Years)
 			policy, date, err := company.ParseSyncStartPolicyInput(rawSyncStartPolicy, rawSyncStartDate)
 			if err != nil {
-				return fmt.Errorf("erro na politica de sincronização: %w", err)
+				return fmt.Errorf("erro na política de sincronização: %w", err)
 			}
 
 			application, cleanup, err := env.AppFactory(cmd.Context())

@@ -26,7 +26,7 @@ func ParseEnvironment(val string) (Environment, error) {
 	case EnvironmentProduction, EnvironmentRestricted:
 		return Environment(val), nil
 	default:
-		return "", fmt.Errorf("invalid environment %q: %w", val, ErrInvalidEnum)
+		return "", fmt.Errorf("ambiente inválido %q (use producao ou producao_restrita): %w", val, ErrInvalidEnum)
 	}
 }
 

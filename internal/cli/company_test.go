@@ -199,7 +199,7 @@ func TestCompany_InvalidFlagsFailBeforeAppFactory(t *testing.T) {
 		{
 			name: "add with unknown sync start policy",
 			args: []string{"company", "add", "--cnpj", "11222333000181", "--name", "Acme", "--sync-start-policy", "sometimes"},
-			want: "invalid sync start policy",
+			want: "política de sincronização inválida",
 		},
 		{
 			name: "add with since_date and no date",

@@ -140,7 +140,7 @@ const (
 func ParseSyncStartPolicy(val string) (SyncStartPolicy, error) {
 	policy := SyncStartPolicy(val)
 	if !policy.Valid() {
-		return "", fmt.Errorf("invalid sync start policy %q: %w", val, dfe.ErrInvalidEnum)
+		return "", fmt.Errorf("política de sincronização inválida %q (use all, since_date ou from_now): %w", val, dfe.ErrInvalidEnum)
 	}
 	return policy, nil
 }
