@@ -130,7 +130,7 @@ func TestNSUGapsDateFromTheLastAnswer(t *testing.T) {
 	if time.Since(gaps[1].Since) > time.Minute {
 		t.Errorf("second gap since = %v, want the first page's answer", gaps[1].Since)
 	}
-	missing, err := h.store.MissingNSUs(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment, time.Now().Add(-NSUGapWindow))
+	missing, err := h.store.MissingNSUs(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}

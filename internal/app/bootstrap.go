@@ -28,10 +28,6 @@ var ErrSourceBlocked = sync.ErrSourceBlocked
 // are already syncing in this process.
 var ErrSyncRunning = sync.ErrSyncRunning
 
-// ErrNoRequestsLeft means the hour's budget has nothing left for an NSU
-// recovery.
-var ErrNoRequestsLeft = sync.ErrNoRequestsLeft
-
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest = sync.CertPasswordRequest
 

@@ -35,8 +35,8 @@
 import { computed, ref } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
 import { compactCode } from '@/utils/cnpj'
+import { isChaveDFe } from '@/utils/formatters'
 
-const CHAVE_PATTERN = /^[0-9A-Z]{44}$/
 // A pasted chave may come grouped with spaces ("3526 0912 ..."), so the
 // field accepts more than 44 characters and compactCode strips the rest.
 const CHAVE_INPUT_MAX_LENGTH = 60
@@ -54,7 +54,7 @@ defineEmits<{
 const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
 
 const chave = ref('')
-const valid = computed(() => CHAVE_PATTERN.test(chave.value))
+const valid = computed(() => isChaveDFe(chave.value))
 
 const budgetText = computed(
   () => `Gasta 1 das ${props.requestBudget} consultas da hora (${props.requestsLastHour} usadas)`

@@ -26,10 +26,7 @@ export const useNFeDocumentsStore = defineStore('nfeDocuments', () => {
 
   const list = documentListState<NFeRow>()
   const { rows, selected } = list
-  // A focused note must not be hidden by the text typed for the list.
-  const focus = chaveFocusState(workspace, () => {
-    list.filterText.value = ''
-  })
+  const focus = chaveFocusState(workspace, list.filterText)
 
   // listInput is the only place the ListNFe request is built from the
   // workspace and the filter. Clearable inputs set null, so every field is

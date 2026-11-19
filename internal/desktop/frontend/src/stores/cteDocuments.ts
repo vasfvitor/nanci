@@ -5,13 +5,13 @@ import { documentListState } from '@/stores/documentListState'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult, ListCTeInput } from '@/types/desktop'
 import { compactCode } from '@/utils/cnpj'
+import { isChaveDFe } from '@/utils/formatters'
 import { latestOnly } from '@/utils/latestOnly'
 
-// isNFeChaveFilter accepts an empty NF-e filter or a 44-character key. The
-// emitente CNPJ inside the key may carry letters, so they are allowed; the
+// isNFeChaveFilter accepts an empty NF-e filter or a 44-character key; the
 // backend checks the rest.
 function isNFeChaveFilter(chave: string) {
-  return chave === '' || /^[0-9A-Z]{44}$/.test(chave)
+  return chave === '' || isChaveDFe(chave)
 }
 
 // The store holds CT-e page state that outlives the page.
@@ -31,10 +31,7 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   })
 
   const list = documentListState<CTeRow>()
-  // A focused CT-e must not be hidden by the text typed for the list.
-  const focus = chaveFocusState(workspace, () => {
-    list.filterText.value = ''
-  })
+  const focus = chaveFocusState(workspace, list.filterText)
 
   // listInput is the only place the ListCTe request is built from the
   // workspace and the filter. Clearable inputs set null, so every field is

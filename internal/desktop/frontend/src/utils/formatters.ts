@@ -92,6 +92,18 @@ export function isChaveNFSe(value: string | null | undefined) {
   return chaveNFSePattern.test(normalizeChaveNFSe(value))
 }
 
+// isChaveDFe tells whether chave is the 44 characters of an NF-e or CT-e
+// access key. The emitente CNPJ inside it may carry letters; the check digit
+// is not verified.
+export function isChaveDFe(chave: string) {
+  return /^[0-9A-Z]{44}$/.test(chave)
+}
+
+// formatCount puts n before the singular or plural noun: "1 NSU", "2 NSUs".
+export function formatCount(n: number, singular: string, plural: string) {
+  return `${n} ${n === 1 ? singular : plural}`
+}
+
 // formatChaveDFe prints a 44-character NF-e or CT-e access key as the DANFE
 // and DACTE do: 11 groups of 4 separated by spaces. Anything else is returned
 // unchanged.

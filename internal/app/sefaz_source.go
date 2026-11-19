@@ -94,7 +94,7 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 	status.BlockedReason = string(limits.BlockedReason)
 	status.RequestsLastHour = limits.RequestsLastHour
 	status.RequestBudget = limits.RequestBudget
-	missing, err := syncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment, now.Add(-sync.NSUGapWindow))
+	missing, err := syncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment)
 	if err != nil {
 		return SefazSourceStatus{}, nil, fmt.Errorf("contar NSUs faltantes: %w", err)
 	}

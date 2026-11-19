@@ -19,10 +19,10 @@ export type MarkViewedOptions<Row extends ViewedRow> = {
   // markingViewed lives in the page store, so a remounted page sees the
   // request in flight.
   markingViewed: Ref<boolean>
-  // listsOnlyUnread tells whether the listed rows came from a search limited
-  // to unread documents; it defaults to the toggle. A page that can search
-  // past the toggle, such as one focused on a single document, passes it.
-  listsOnlyUnread?: () => boolean
+  // listedOnlyUnread tells whether the listed rows came from a search limited
+  // to unread documents: the OnlyUnread of the list request, which a page can
+  // send past the toggle, as when it focuses on a single document.
+  listedOnlyUnread: () => boolean
 }
 
 // useMarkViewed holds "Marcar vistos" and "Somente não vistos" for a document
@@ -55,8 +55,7 @@ export function useMarkViewed<Row extends ViewedRow>(options: MarkViewedOptions<
       const count = await options.mark(cnpj, chavesAcesso)
       options.selected.value = []
       const rows = options.rows.value
-      const listsOnlyUnread = options.listsOnlyUnread?.() ?? onlyUnviewed.value
-      if (listsOnlyUnread) {
+      if (options.listedOnlyUnread()) {
         const marked = new Set(chavesAcesso)
         options.setRows(rows.filter((row) => !marked.has(row.ChaveAcesso)))
       } else {

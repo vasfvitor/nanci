@@ -42,8 +42,8 @@ type RecoverNSUResult struct {
 	CompanyName string
 	CNPJ        string
 	Asked       int   // consNSU requests answered
-	Recovered   int   // NSUs that brought a document
-	Empty       int   // NSUs SEFAZ answered 137 for: never generated, to disregard
+	Recovered   int   // NSUs whose document was stored
+	Empty       int   // NSUs with nothing to store: never generated (137), rejected alone (589, 632) or skipped by policy
 	Unreadable  int   // NSUs whose document could not be read; the XML is in the log
 	Expired     int64 // NSUs closed unasked because they are past the window
 	Missing     int64 // NSUs still missing after the run
@@ -118,23 +118,16 @@ func (m *Manager) RecoverNSU(ctx context.Context, input RecoverNSUInput) (Recove
 // openGapsInWindow returns the source's open gaps, closing as expired the
 // ones whose NSUs date from before the distribution window.
 func (m *Manager) openGapsInWindow(ctx context.Context, comp *company.Company, source syncstate.SyncSource, result *RecoverNSUResult) ([]NSUGap, error) {
+	expired, err := m.SyncRepo.ExpireNSUGaps(ctx, comp.ID, source, comp.Environment)
+	if err != nil {
+		return nil, fmt.Errorf("encerrar NSUs fora da janela: %w", err)
+	}
+	result.Expired = expired
 	gaps, err := m.SyncRepo.OpenNSUGaps(ctx, comp.ID, source, comp.Environment)
 	if err != nil {
 		return nil, fmt.Errorf("carregar NSUs faltantes: %w", err)
 	}
-	cutoff := time.Now().Add(-NSUGapWindow)
-	open := gaps[:0]
-	for _, gap := range gaps {
-		if gap.Since.Before(cutoff) {
-			if err := m.SyncRepo.ExpireNSUGap(ctx, gap); err != nil {
-				return nil, fmt.Errorf("encerrar NSUs fora da janela: %w", err)
-			}
-			result.Expired += gap.Missing()
-			continue
-		}
-		open = append(open, gap)
-	}
-	return open, nil
+	return gaps, nil
 }
 
 // recoverAllowance is how many requests this run may spend.
@@ -230,19 +223,17 @@ func (m *Manager) recoverOne(ctx context.Context, comp *company.Company, fetcher
 		}
 		result.StopReason = RecoverStopConsumoIndevido
 		return true, nil
-	case sefaz.CStatNenhumDocumento:
-		// The NT: the Ambiente Nacional did not generate the NSU, and the
-		// client should disregard it.
-		result.Empty++
-		return false, m.SyncRepo.AdvanceNSUGap(ctx, gap, nsu)
 	case sefaz.CStatDocumentoLocalizado:
 		return false, m.storeRecovered(ctx, comp, fetcher, state, gap, nsu, items, result)
-	case sefaz.CStatNSUAcimaDoMaximo, sefaz.CStatForaDePrazo:
-		// A rejection of this NSU alone: asking again would get it again and
-		// keep every later NSU waiting. Other rejections (certificate, CNPJ,
-		// service down) stop the run and leave the gap where it is.
-		m.Log.WarnContext(ctx, "SEFAZ recusou o NSU pedido por consNSU",
-			slog.Int64("nsu", nsu), slog.Int("cstat", resp.CStat), slog.String("xmotivo", resp.XMotivo))
+	case sefaz.CStatNenhumDocumento, sefaz.CStatNSUAcimaDoMaximo, sefaz.CStatForaDePrazo:
+		// 137: the Ambiente Nacional did not generate the NSU, and the NT
+		// says to disregard it. 589 and 632 reject this NSU alone: asking
+		// again would get them again and keep every later NSU waiting. Other
+		// rejections (certificate, CNPJ, service down) stop the run below.
+		if resp.CStat != sefaz.CStatNenhumDocumento {
+			m.Log.WarnContext(ctx, "SEFAZ recusou o NSU pedido por consNSU",
+				slog.Int64("nsu", nsu), slog.Int("cstat", resp.CStat), slog.String("xmotivo", resp.XMotivo))
+		}
 		result.Empty++
 		return false, m.SyncRepo.AdvanceNSUGap(ctx, gap, nsu)
 	default:
@@ -287,7 +278,7 @@ func (m *Manager) storeRecovered(ctx context.Context, comp *company.Company, fet
 
 // fillRecoverTotals sets what is still missing and the hour's budget.
 func (m *Manager) fillRecoverTotals(ctx context.Context, comp *company.Company, source syncstate.SyncSource, result *RecoverNSUResult) error {
-	missing, err := m.SyncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment, time.Now().Add(-NSUGapWindow))
+	missing, err := m.SyncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment)
 	if err != nil {
 		return fmt.Errorf("contar NSUs faltantes: %w", err)
 	}

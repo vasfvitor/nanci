@@ -67,6 +67,7 @@ export function useDocuments() {
     selected,
     setRows: (rows) => store.setRows(rows),
     markingViewed,
+    listedOnlyUnread: () => Boolean(store.listInput.OnlyUnread),
   })
 
   const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, nfseStateBadges)

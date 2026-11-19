@@ -229,7 +229,7 @@ func TestRecoverNSUStopsOnARejectionOfTheRequest(t *testing.T) {
 	if !errors.As(err, &rejection) || rejection.CStat != 593 {
 		t.Fatalf("RecoverNSU error = %v, want the 593 rejection", err)
 	}
-	missing, err := mgr.SyncRepo.MissingNSUs(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment, time.Now().Add(-time.Hour))
+	missing, err := mgr.SyncRepo.MissingNSUs(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment)
 	if err != nil {
 		t.Fatal(err)
 	}

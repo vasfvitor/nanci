@@ -19,8 +19,8 @@ export type RecoverNSUStopReason = 'limit' | 'rate_budget' | 'consumo_indevido'
 // RecoverNSUResult counts what one NF-e or CT-e NSU recovery (consNSU) did.
 export type RecoverNSUResult = {
   Asked: number
-  Recovered: number // NSUs that brought a document
-  Empty: number // NSUs SEFAZ never generated, to disregard
+  Recovered: number // NSUs whose document was stored
+  Empty: number // NSUs with nothing to store (never generated, rejected alone or skipped)
   Unreadable: number // NSUs whose document could not be read; see the log
   Expired: number // NSUs closed unasked, past the 90-day window
   Missing: number // NSUs still missing after the run

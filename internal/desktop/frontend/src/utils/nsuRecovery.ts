@@ -1,4 +1,5 @@
 import type { RecoverNSUResult } from '@/types/desktop'
+import { formatCount } from '@/utils/formatters'
 
 // RECOVERY_RESERVE is how many requests of the hour a recovery leaves for
 // the next pull (sync.RecoverNSUReserve).
@@ -19,7 +20,7 @@ export function recoveryAllowance(status: RecoveryStatus | null | undefined) {
 }
 
 function nsus(count: number) {
-  return `${count} ${count === 1 ? 'NSU' : 'NSUs'}`
+  return formatCount(count, 'NSU', 'NSUs')
 }
 
 // missingNSUsText is the notice above the table.
@@ -42,7 +43,7 @@ export function recoverySummary(result: RecoverNSUResult) {
     return 'Nenhum NSU faltando.'
   }
   const parts = [
-    `${nsus(result.Asked)} ${result.Asked === 1 ? 'consultado' : 'consultados'}`,
+    formatCount(result.Asked, 'NSU consultado', 'NSUs consultados'),
     `${result.Recovered} com documento`,
     `${result.Empty} sem documento`,
   ]

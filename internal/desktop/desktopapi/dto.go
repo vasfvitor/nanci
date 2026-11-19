@@ -135,8 +135,8 @@ type RecoverNSUInput struct {
 // hourly budget is spent after it.
 type RecoverNSUResult struct {
 	Asked            int    // consNSU requests answered
-	Recovered        int    // NSUs that brought a document
-	Empty            int    // NSUs SEFAZ never generated, to disregard
+	Recovered        int    // NSUs whose document was stored
+	Empty            int    // NSUs with nothing to store (never generated, rejected alone or skipped)
 	Unreadable       int    // NSUs whose document could not be read; see the log
 	Expired          int64  // NSUs closed unasked, past the 90-day window
 	Missing          int64  // NSUs still missing after the run

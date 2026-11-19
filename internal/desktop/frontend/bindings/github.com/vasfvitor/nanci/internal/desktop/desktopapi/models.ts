@@ -1128,12 +1128,12 @@ export interface RecoverNSUResult {
     "Asked": number;
 
     /**
-     * NSUs that brought a document
+     * NSUs whose document was stored
      */
     "Recovered": number;
 
     /**
-     * NSUs SEFAZ never generated, to disregard
+     * NSUs with nothing to store (never generated, rejected alone or skipped)
      */
     "Empty": number;
 

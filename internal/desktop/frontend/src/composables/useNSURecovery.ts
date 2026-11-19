@@ -1,10 +1,9 @@
-import { computed } from 'vue'
+import { computed, type Ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useQuasar } from 'quasar'
 import { useCTeLoaders } from '@/composables/useCTeLoaders'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
 import { useNotify } from '@/composables/useNotify'
-import { useSefazBlock } from '@/composables/useSefazBlock'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
@@ -14,17 +13,26 @@ import type { RecoverNSUResult } from '@/types/desktop'
 import {
   missingNSUsText,
   recoveryAllowance,
+  RECOVERY_RESERVE,
   recoveryConfirmText,
   recoverySummary,
 } from '@/utils/nsuRecovery'
 
 export type NSURecoverySource = 'nfe' | 'cte'
 
+export type NSURecoveryOptions = {
+  // syncBlockedUntil is the block the page shows (useSefazBlock).
+  syncBlockedUntil: Readonly<Ref<Date | null>>
+  // syncBusy tells whether a pull, import, fetch or reset of the company's
+  // source runs; it is the page composable's own check.
+  syncBusy: (cnpj: string) => boolean
+}
+
 // useNSURecovery holds the "Recuperar NSUs" action of the NF-e or CT-e page:
 // it asks SEFAZ, one consNSU at a time, for the NSUs the distribution
 // skipped. The run holds the source's sync marker in the companySync store,
 // like a pull, so it stays visible and cancellable after leaving the page.
-export function useNSURecovery(source: NSURecoverySource) {
+export function useNSURecovery(source: NSURecoverySource, options: NSURecoveryOptions) {
   const $q = useQuasar()
   const { notifySuccess, notifyWarning, notifySyncError } = useNotify()
   const syncStore = useCompanySyncStore()
@@ -43,24 +51,16 @@ export function useNSURecovery(source: NSURecoverySource) {
 
   // The hour of wait after the queue caught up only holds back distNSU; a
   // 656 or the spent budget hold back consNSU too.
-  const { syncBlockedUntil } = useSefazBlock(status)
   const blocked = computed(
-    () => Boolean(syncBlockedUntil.value) && status.value?.BlockedReason !== 'caught_up'
+    () => Boolean(options.syncBlockedUntil.value) && status.value?.BlockedReason !== 'caught_up'
   )
-
-  function busy(companyCNPJ: string) {
-    return (
-      !companyCNPJ ||
-      syncStore.isSyncing(companyCNPJ, source) ||
-      store.resettingCNPJ === companyCNPJ
-    )
-  }
+  const busy = options.syncBusy
 
   const disabledReason = computed(() => {
     if (busy(cnpj.value)) return 'Aguarde a operação em andamento terminar.'
     if (blocked.value) return 'Consultas bloqueadas no momento. Aguarde o horário indicado.'
     if (allowance.value === 0) {
-      return 'Sem consultas sobrando nesta hora; 2 ficam para a sincronização.'
+      return `Sem consultas sobrando nesta hora; ${RECOVERY_RESERVE} ficam para a sincronização.`
     }
     return ''
   })

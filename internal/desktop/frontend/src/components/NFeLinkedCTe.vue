@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { useNFeLinkedCTe } from '@/composables/useNFeLinkedCTe'
 import type { CTeRow } from '@/types/desktop'
-import { formatCpfCnpj, formatCurrencyCents, formatDate, formatNFeNumber } from '@/utils/formatters'
+import { formatCurrencyCents, formatDate, formatNFeNumber, formatParty } from '@/utils/formatters'
 
 // NFeLinkedCTe lists, in the expanded row of an NF-e, the CT-e of the
 // company that transported it; open asks the page to show one of them.
@@ -52,7 +52,7 @@ const { rows, loading, error } = useNFeLinkedCTe(
 function cteLine(cte: CTeRow) {
   return [
     `CT-e ${formatNFeNumber(cte.Numero)}`,
-    cte.EmitenteName || formatCpfCnpj(cte.EmitenteCNPJ),
+    formatParty(cte.EmitenteName, cte.EmitenteCNPJ),
     formatDate(cte.IssueDate),
     formatCurrencyCents(cte.TotalValue),
   ]

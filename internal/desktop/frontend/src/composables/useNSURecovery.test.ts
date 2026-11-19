@@ -1,7 +1,8 @@
 import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { shallowRef } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useNSURecovery } from './useNSURecovery'
+import { useNSURecovery, type NSURecoverySource } from './useNSURecovery'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
@@ -49,6 +50,16 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
   } as NFeStatusResult
 }
 
+// recovery mounts useNSURecovery with the busy check the page composables
+// pass: no company, or a sync of the company's source in flight.
+function recovery(source: NSURecoverySource, blockedUntil: Date | null = null) {
+  const syncStore = useCompanySyncStore()
+  return useNSURecovery(source, {
+    syncBlockedUntil: shallowRef(blockedUntil),
+    syncBusy: (cnpj) => !cnpj || syncStore.isSyncing(cnpj, source),
+  })
+}
+
 function result(overrides: Partial<RecoverNSUResult> = {}): RecoverNSUResult {
   return {
     Asked: 6,
@@ -81,11 +92,11 @@ describe('useNSURecovery', () => {
   it('confirms what the run spends, recovers and refreshes the status', async () => {
     useNFeDocumentsStore().status = status()
     vi.mocked(desktopClient.recoverNFeNSU).mockResolvedValue(result())
-    const recovery = useNSURecovery('nfe')
-    expect(recovery.notice.value).toBe('6 NSUs faltando')
-    expect(recovery.disabledReason.value).toBe('')
+    const nsu = recovery('nfe')
+    expect(nsu.notice.value).toBe('6 NSUs faltando')
+    expect(nsu.disabledReason.value).toBe('')
 
-    recovery.confirmRecover()
+    nsu.confirmRecover()
     expect(dialog.mock.calls[0]?.[0]?.['message']).toBe(
       'Faltam 6 NSUs. A recuperação pede cada um à SEFAZ (consNSU) e usa até 6 das 20 consultas desta hora, ' +
         'deixando 2 para a sincronização. O que faltar continua na próxima vez.'
@@ -110,10 +121,10 @@ describe('useNSURecovery', () => {
     const pending = deferred<RecoverNSUResult>()
     vi.mocked(desktopClient.recoverCTeNSU).mockReturnValue(pending.promise)
 
-    const first = useNSURecovery('cte')
+    const first = recovery('cte')
     const running = first.recover()
 
-    const second = useNSURecovery('cte')
+    const second = recovery('cte')
     expect(useCompanySyncStore().isSyncing('123', 'cte')).toBe(true)
     expect(useCompanySyncStore().canCancelSync('123', 'cte')).toBe(true)
     expect(second.disabledReason.value).toBe('Aguarde a operação em andamento terminar.')
@@ -128,23 +139,23 @@ describe('useNSURecovery', () => {
   })
 
   it('holds back while SEFAZ blocks consultas, but not for the wait after catching up', () => {
-    const later = new Date(Date.now() + 30 * 60_000).toISOString()
+    const later = new Date(Date.now() + 30 * 60_000)
     const store = useNFeDocumentsStore()
-    const recovery = useNSURecovery('nfe')
 
     store.status = status({ NextAllowedAt: later, BlockedReason: 'caught_up' })
-    expect(recovery.disabledReason.value).toBe('')
+    expect(recovery('nfe', later).disabledReason.value).toBe('')
 
     store.status = status({ NextAllowedAt: later, BlockedReason: 'consumo_indevido' })
-    expect(recovery.disabledReason.value).toBe(
+    expect(recovery('nfe', later).disabledReason.value).toBe(
       'Consultas bloqueadas no momento. Aguarde o horário indicado.'
     )
 
     store.status = status({ RequestsLastHour: 18 })
-    expect(recovery.disabledReason.value).toBe(
+    const spent = recovery('nfe')
+    expect(spent.disabledReason.value).toBe(
       'Sem consultas sobrando nesta hora; 2 ficam para a sincronização.'
     )
-    recovery.confirmRecover()
+    spent.confirmRecover()
     expect(dialog).not.toHaveBeenCalled()
   })
 
@@ -154,7 +165,7 @@ describe('useNSURecovery', () => {
       result({ Asked: 2, Recovered: 0, Empty: 1, Missing: 5, StopReason: 'consumo_indevido' })
     )
 
-    await useNSURecovery('nfe').recover()
+    await recovery('nfe').recover()
 
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({

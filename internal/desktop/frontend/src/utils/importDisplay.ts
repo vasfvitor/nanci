@@ -1,3 +1,4 @@
+import { formatCount } from '@/utils/formatters'
 import type { ImportXMLResult } from '@/types/desktop'
 import { displayTable } from '@/utils/sefazDisplay'
 
@@ -27,16 +28,12 @@ export function fileName(path: string) {
   return path.split(/[\\/]/).pop() ?? path
 }
 
-function count(n: number, singular: string, plural: string) {
-  return `${n} ${n === 1 ? singular : plural}`
-}
-
 // importSummary counts the files of an import by outcome:
 // "2 importados, 1 atualizado, 0 rejeitados".
 export function importSummary(result: Pick<ImportXMLResult, 'Imported' | 'Updated' | 'Rejected'>) {
   return [
-    count(result.Imported, 'importado', 'importados'),
-    count(result.Updated, 'atualizado', 'atualizados'),
-    count(result.Rejected, 'rejeitado', 'rejeitados'),
+    formatCount(result.Imported, 'importado', 'importados'),
+    formatCount(result.Updated, 'atualizado', 'atualizados'),
+    formatCount(result.Rejected, 'rejeitado', 'rejeitados'),
   ].join(', ')
 }

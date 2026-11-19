@@ -72,10 +72,8 @@ func requestsPerHour(source syncstate.SyncSource) int {
 // the Ambiente Nacional generates NSUs without holes, and the NT tells the
 // client to ask for each missing one with consNSU (NT 2014.002 v1.40, §3.6).
 // A 138 page with holes and a 656 whose ultNSU is ahead of the cursor
-// (another program consumed the CNPJ's sequence) have them. A walk from
-// cursor 0 has none: the distribution starts it at the oldest NSU still in
-// the window, and the ones before it are gone. A 137 has none either, since
-// SEFAZ found nothing to deliver.
+// (another program consumed the CNPJ's sequence) have them; a 137 has none,
+// since SEFAZ found nothing to deliver.
 func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cursor int64, isEvent func(schema string) bool, label string) (Batch, error) {
 	batch := Batch{
 		UltNSU:     resp.UltNSU,
@@ -87,13 +85,11 @@ func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cur
 	switch resp.CStat {
 	case sefaz.CStatDocumentoLocalizado:
 		batch.Items = distItems(resp, isEvent)
-		if cursor > 0 {
-			delivered := make([]int64, 0, len(resp.Docs))
-			for _, doc := range resp.Docs {
-				delivered = append(delivered, doc.NSU)
-			}
-			batch.Gaps = nsuGaps(cursor, batch.NextCursor, delivered, NSUGapBatchHole)
+		delivered := make([]int64, 0, len(resp.Docs))
+		for _, doc := range resp.Docs {
+			delivered = append(delivered, doc.NSU)
 		}
+		batch.Gaps = nsuGaps(cursor, batch.NextCursor, delivered, NSUGapBatchHole)
 		if resp.UltNSU >= resp.MaxNSU {
 			batch.Done = true
 			batch.StopReason = syncstate.SyncStopReasonCaughtUp
@@ -107,9 +103,7 @@ func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cur
 		batch.Done = true
 		batch.StopReason = syncstate.SyncStopReasonConsumoIndevido
 		batch.WaitUntil = &waitUntil
-		if cursor > 0 {
-			batch.Gaps = nsuGaps(cursor, batch.NextCursor, nil, NSUGapConsumoIndevido)
-		}
+		batch.Gaps = nsuGaps(cursor, batch.NextCursor, nil, NSUGapConsumoIndevido)
 		log.WarnContext(ctx, "SEFAZ bloqueou a consulta de "+label+" por consumo indevido",
 			slog.Int64("ult_nsu", resp.UltNSU),
 			slog.Time("next_allowed_at", waitUntil))
@@ -157,30 +151,17 @@ func CheckTpAmb(xmlTpAmb, pullTpAmb string, warnings *[]string) string {
 // nsuGaps lists the NSUs in (cursor, next] that are not in delivered, as
 // ranges with cause. The distribution answers a distNSU at cursor with the
 // documents after it and the new ultNSU (next); every NSU in between that
-// came without a document never reaches nanci by distNSU again.
+// came without a document never reaches nanci by distNSU again. A walk from
+// cursor 0 has no gaps: the distribution starts it at the oldest NSU still
+// in the window, and the ones before it are gone.
 func nsuGaps(cursor, next int64, delivered []int64, cause NSUGapCause) []NSURange {
-	if next <= cursor {
+	if cursor == 0 || next <= cursor {
 		return nil
 	}
-	inRange := make([]int64, 0, len(delivered))
-	for _, nsu := range delivered {
-		if nsu > cursor && nsu <= next {
-			inRange = append(inRange, nsu)
-		}
+	sorted := slices.Sorted(slices.Values(delivered))
+	held := make([]NSURange, 0, len(sorted))
+	for _, nsu := range slices.Compact(sorted) {
+		held = append(held, NSURange{First: nsu, Last: nsu})
 	}
-	slices.Sort(inRange)
-	inRange = slices.Compact(inRange)
-
-	var gaps []NSURange
-	from := cursor + 1
-	for _, nsu := range inRange {
-		if nsu > from {
-			gaps = append(gaps, NSURange{First: from, Last: nsu - 1, Cause: cause})
-		}
-		from = nsu + 1
-	}
-	if from <= next {
-		gaps = append(gaps, NSURange{First: from, Last: next, Cause: cause})
-	}
-	return gaps
+	return subtractRanges(NSURange{First: cursor + 1, Last: next, Cause: cause}, held)
 }

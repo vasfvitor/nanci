@@ -62,7 +62,7 @@ export function useNFeDocuments() {
     selected,
     setRows: (next) => store.setRows(next),
     markingViewed,
-    listsOnlyUnread: () => Boolean(store.listInput.OnlyUnread),
+    listedOnlyUnread: () => Boolean(store.listInput.OnlyUnread),
   })
 
   const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, nfeStateBadges)
@@ -239,6 +239,7 @@ export function useNFeDocuments() {
     isCancelling,
     isResetting,
     syncBlockedUntil,
+    syncBusy,
     blockedText,
     search,
     loadStatus,

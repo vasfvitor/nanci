@@ -26,6 +26,7 @@ function setup() {
       rows.value = next
     },
     markingViewed,
+    listedOnlyUnread: () => filter.value.OnlyUnread,
   }
   return { cnpj, filter, rows, filteredRows, selected, markingViewed, mark, options }
 }
@@ -59,7 +60,10 @@ describe('useMarkViewed', () => {
 
   it('keeps the marked documents when the list was searched past the toggle', async () => {
     const { rows, options } = setup()
-    const { onlyUnviewed, markViewed } = useMarkViewed({ ...options, listsOnlyUnread: () => false })
+    const { onlyUnviewed, markViewed } = useMarkViewed({
+      ...options,
+      listedOnlyUnread: () => false,
+    })
     onlyUnviewed.value = true
 
     await markViewed(['a'])

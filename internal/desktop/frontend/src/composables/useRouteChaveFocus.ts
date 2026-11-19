@@ -1,12 +1,7 @@
 import { watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { compactCode } from '@/utils/cnpj'
-
-// isAccessKey accepts the 44 characters of an NF-e or CT-e access key. The
-// emitente CNPJ inside it may carry letters; the backend checks the rest.
-function isAccessKey(chave: string) {
-  return /^[0-9A-Z]{44}$/.test(chave)
-}
+import { isChaveDFe } from '@/utils/formatters'
 
 // useRouteChaveFocus reads "?chave=", which the links between the NF-e and
 // CT-e pages set, focuses the page list on that document and drops the
@@ -25,7 +20,7 @@ export function useRouteChaveFocus(focusChave: (chave: string) => void, search: 
       if (!raw) return
       void router.replace({ query: {} })
       const chave = typeof raw === 'string' ? compactCode(raw) : ''
-      if (!isAccessKey(chave)) return
+      if (!isChaveDFe(chave)) return
       focusChave(chave)
       if (setUp) void search()
     },

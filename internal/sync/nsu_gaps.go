@@ -25,6 +25,11 @@ const (
 	NSUGapBatchHole NSUGapCause = "batch_hole"
 )
 
+// NSUGapWindow is how long the distribution keeps a document: 90 days for
+// the NF-e (NT 2014.002) and 3 months for the CT-e (NT 2015.002). A gap whose
+// NSUs may date from longer ago holds nothing consNSU can still return.
+const NSUGapWindow = 90 * 24 * time.Hour
+
 // NSURange is the inclusive range of NSUs First..Last the distribution
 // skipped, and why.
 type NSURange struct {
@@ -33,28 +38,16 @@ type NSURange struct {
 	Cause NSUGapCause
 }
 
-// Count is how many NSUs the range holds.
-func (r NSURange) Count() int64 {
-	return r.Last - r.First + 1
-}
-
 // NSUGap is an open gap: Next is the first NSU recovery has not asked for
 // yet. Since is the earliest time its NSUs may date from; the distribution
 // window counts from it.
 type NSUGap struct {
-	ID        int64
-	First     int64
-	Last      int64
-	Next      int64
-	Cause     NSUGapCause
-	Recovered int
-	Empty     int
-	Since     time.Time
-}
-
-// Missing is how many NSUs of the gap recovery still has to ask for.
-func (g NSUGap) Missing() int64 {
-	return g.Last - g.Next + 1
+	ID    int64
+	First int64
+	Last  int64
+	Next  int64
+	Cause NSUGapCause
+	Since time.Time
 }
 
 // RecordNSUGaps stores the ranges as open gaps of the source in env. since
@@ -135,7 +128,7 @@ func subtractRanges(gap NSURange, held []NSURange) []NSURange {
 // OpenNSUGaps lists the source's open gaps in env, oldest NSU first.
 func (r *Store) OpenNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) ([]NSUGap, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, first_nsu, last_nsu, next_nsu, cause, recovered, empty, nsus_since
+		SELECT id, first_nsu, last_nsu, next_nsu, cause, nsus_since
 		FROM sync_nsu_gaps
 		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open'
 		ORDER BY first_nsu
@@ -149,7 +142,7 @@ func (r *Store) OpenNSUGaps(ctx context.Context, companyID dfe.CompanyID, source
 	for rows.Next() {
 		var gap NSUGap
 		var cause, since string
-		if err := rows.Scan(&gap.ID, &gap.First, &gap.Last, &gap.Next, &cause, &gap.Recovered, &gap.Empty, &since); err != nil {
+		if err := rows.Scan(&gap.ID, &gap.First, &gap.Last, &gap.Next, &cause, &since); err != nil {
 			return nil, err
 		}
 		gap.Cause = NSUGapCause(cause)
@@ -161,22 +154,51 @@ func (r *Store) OpenNSUGaps(ctx context.Context, companyID dfe.CompanyID, source
 	return gaps, rows.Err()
 }
 
-// MissingNSUs counts the NSUs of the source's open gaps in env whose NSUs
-// date from since or later; older gaps are past the distribution window and
-// recovery closes them without asking.
-func (r *Store) MissingNSUs(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, since time.Time) (int64, error) {
+// windowStart is the oldest nsus_since still inside the distribution window.
+func windowStart() string {
+	return time.Now().Add(-NSUGapWindow).UTC().Format(time.RFC3339)
+}
+
+// MissingNSUs counts the NSUs recovery can still ask for: those of the
+// source's open gaps in env inside the distribution window.
+func (r *Store) MissingNSUs(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) (int64, error) {
 	var missing int64
 	err := r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(last_nsu - next_nsu + 1), 0)
 		FROM sync_nsu_gaps
 		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open' AND nsus_since >= ?
-	`, string(companyID), string(source), string(env), since.UTC().Format(time.RFC3339)).Scan(&missing)
+	`, string(companyID), string(source), string(env), windowStart()).Scan(&missing)
 	return missing, err
 }
 
-// advanceNSUGap moves the gap past nsu and counts the answer, closing the gap
-// when nsu was its last. It runs on tx so a recovered document and the move
-// commit together.
+// ExpireNSUGaps closes the source's open gaps in env whose NSUs are past the
+// distribution window and returns how many NSUs they still held.
+func (r *Store) ExpireNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) (int64, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		UPDATE sync_nsu_gaps SET status = 'expired', finished_at = ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open' AND nsus_since < ?
+		RETURNING last_nsu - next_nsu + 1
+	`, time.Now().UTC().Format(time.RFC3339), string(companyID), string(source), string(env), windowStart())
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var expired int64
+	for rows.Next() {
+		var n int64
+		if err := rows.Scan(&n); err != nil {
+			return 0, err
+		}
+		expired += n
+	}
+	return expired, rows.Err()
+}
+
+// advanceNSUGap moves the gap past nsu and counts the answer as recovered (a
+// document stored) or empty (nothing stored), closing the gap when nsu was
+// its last. It runs on tx so a recovered document and the move commit
+// together.
 func advanceNSUGap(ctx context.Context, tx executor, gap NSUGap, nsu int64, recovered bool) error {
 	recoveredDelta, emptyDelta := 0, 1
 	if recovered {
@@ -202,11 +224,6 @@ func (r *Store) AdvanceNSUGap(ctx context.Context, gap NSUGap, nsu int64) error 
 	return advanceNSUGap(ctx, r.db, gap, nsu, false)
 }
 
-// NSUGapWindow is how long the distribution keeps a document: 90 days for
-// the NF-e (NT 2014.002) and 3 months for the CT-e (NT 2015.002). A gap
-// detected longer ago than that holds nothing consNSU can still return.
-const NSUGapWindow = 90 * 24 * time.Hour
-
 // ApplyAndAdvanceNSUGap returns a CommitFunc that stores an item recovered at
 // nsu and moves gap past it in the same transaction. An item the source
 // skipped by policy, such as an event of an NF-e the company does not have,
@@ -224,12 +241,4 @@ func (r *Store) ApplyAndAdvanceNSUGap(gap NSUGap, nsu int64) CommitFunc {
 			return outcome, nil
 		})
 	}
-}
-
-// ExpireNSUGap closes a gap whose NSUs are past the distribution window.
-func (r *Store) ExpireNSUGap(ctx context.Context, gap NSUGap) error {
-	_, err := r.db.ExecContext(ctx, `
-		UPDATE sync_nsu_gaps SET status = 'expired', finished_at = ? WHERE id = ?
-	`, time.Now().UTC().Format(time.RFC3339), gap.ID)
-	return err
 }
