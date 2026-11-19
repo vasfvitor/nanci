@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -65,6 +66,50 @@ func TestDistBatch(t *testing.T) {
 	var rejection *sefaz.RejectionError
 	if !errors.As(err, &rejection) || rejection.CStat != 593 {
 		t.Errorf("distBatch error = %v, want the 593 rejection", err)
+	}
+}
+
+func TestDistBatchGaps(t *testing.T) {
+	page := func(nsus ...int64) []sefaz.DocZip {
+		docs := make([]sefaz.DocZip, 0, len(nsus))
+		for _, nsu := range nsus {
+			docs = append(docs, sefaz.DocZip{NSU: nsu, Schema: "doc"})
+		}
+		return docs
+	}
+	tests := []struct {
+		name   string
+		cursor int64
+		resp   sefaz.DistResult
+		want   []NSURange
+	}{
+		{"138 without holes", 10, sefaz.DistResult{CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 13, MaxNSU: 20, Docs: page(11, 12, 13)}, nil},
+		{"138 with holes", 10, sefaz.DistResult{CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 16, MaxNSU: 20, Docs: page(12, 14)},
+			[]NSURange{{11, 11, NSUGapBatchHole}, {13, 13, NSUGapBatchHole}, {15, 16, NSUGapBatchHole}}},
+		{"138 from cursor 0 starts at the window", 0, sefaz.DistResult{CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 52, MaxNSU: 60, Docs: page(50, 52)}, nil},
+		{"137 jump is not a gap", 10, sefaz.DistResult{CStat: sefaz.CStatNenhumDocumento, UltNSU: 15, MaxNSU: 15}, nil},
+		{"656 jump", 10, sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 400}, []NSURange{{11, 400, NSUGapConsumoIndevido}}},
+		{"656 behind the cursor", 10, sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 4}, nil},
+		{"656 from cursor 0", 0, sefaz.DistResult{CStat: sefaz.CStatConsumoIndevido, UltNSU: 400}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			batch, err := distBatch(context.Background(), discardLogger(), tt.resp, tt.cursor, func(string) bool { return false }, "NF-e")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(batch.Gaps, tt.want) {
+				t.Errorf("gaps = %+v, want %+v", batch.Gaps, tt.want)
+			}
+		})
+	}
+}
+
+func TestNSUGapsIgnoresNSUsOutsideTheRangeAndRepeats(t *testing.T) {
+	got := nsuGaps(10, 15, []int64{9, 12, 12, 20, 15}, NSUGapBatchHole)
+	want := []NSURange{{11, 11, NSUGapBatchHole}, {13, 14, NSUGapBatchHole}}
+	if !slices.Equal(got, want) {
+		t.Errorf("gaps = %+v, want %+v", got, want)
 	}
 }
 

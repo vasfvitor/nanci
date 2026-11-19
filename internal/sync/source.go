@@ -35,6 +35,7 @@ type Batch struct {
 	Done       bool                     // the source says: stop fetching for now
 	StopReason syncstate.SyncStopReason // meaningful when Done
 	WaitUntil  *time.Time               // earliest next query the source allows
+	Gaps       []NSURange               // NSUs the cursor moves past without a document (NF-e and CT-e)
 }
 
 // ItemOutcome tells the loop how one item ended.

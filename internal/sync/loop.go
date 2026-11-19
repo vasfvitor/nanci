@@ -333,6 +333,19 @@ func (s *SyncService) processBatch(ctx context.Context, company *company.Company
 		}
 	}
 
+	// Gaps go in before the items move the cursor past them; recording the
+	// same range again after a crash is harmless.
+	if len(batch.Gaps) > 0 {
+		if err := s.store.RecordNSUGaps(ctx, company.ID, s.source.Kind(), company.Environment, batch.Gaps); err != nil {
+			return Batch{}, persistFailure(fmt.Errorf("failed to record NSU gaps: %w", err))
+		}
+		s.log.WarnContext(ctx, "A distribuição pulou NSUs; recupere com consNSU",
+			slog.String("source", string(s.source.Kind())),
+			slog.Int("ranges", len(batch.Gaps)),
+			slog.Int64("first_nsu", batch.Gaps[0].First),
+			slog.Int64("last_nsu", batch.Gaps[len(batch.Gaps)-1].Last))
+	}
+
 	processedAny := false
 	for _, item := range batch.Items {
 		if item.NSU <= cursor {

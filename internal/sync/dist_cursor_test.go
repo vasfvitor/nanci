@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -52,6 +53,16 @@ func assertReturnedUltNSUFollowed(t *testing.T, h *testHelper, source syncstate.
 	}
 	if want := []int64{0, 40, 90, 120}; !slices.Equal(fetcher.cursors, want) {
 		t.Errorf("requested ultNSU = %v, want %v (each one the previous response's ultNSU)", fetcher.cursors, want)
+	}
+
+	// Only the 656 jump is a gap: the walk from 0 starts at the window's
+	// oldest NSU, and a 137 found nothing to deliver.
+	gaps, err := h.store.OpenNSUGaps(context.Background(), h.company.ID, source, h.company.Environment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(gaps) != 1 || gaps[0].First != 91 || gaps[0].Last != 120 || gaps[0].Cause != NSUGapConsumoIndevido {
+		t.Errorf("open gaps = %+v, want 91-120 from the 656", gaps)
 	}
 }
 
