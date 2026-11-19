@@ -33,6 +33,9 @@
       :export-disabled="scopeRows.length === 0"
       :search-disabled="!cnpj || Boolean(listError)"
       :mark-viewed-count="unviewedChaves.length"
+      :unviewed-disabled-reason="
+        chaveFocus ? 'Sem efeito enquanto a lista mostra um documento só' : ''
+      "
       @search="searchWithoutFocus"
       @mark-viewed="confirmMarkViewed"
       @export="openExportDialog"
@@ -232,6 +235,7 @@
                     @click.stop="copyChave(chave)"
                   />
                   <q-btn
+                    v-if="isChaveDFe(chave)"
                     dense
                     flat
                     no-caps
@@ -304,6 +308,7 @@ import {
   formatCurrencyCents,
   formatDateTime,
   formatNFeNumber,
+  isChaveDFe,
 } from '@/utils/formatters'
 import { CTE_LEGEND } from '@/utils/stateLegends'
 
@@ -400,6 +405,10 @@ function valoresItems(row: CTeRow): DetailItem[] {
   ]
 }
 
+// searchFailed keeps the empty table from reading as "not stored" when the
+// list could not be loaded.
+const searchFailed = ref(false)
+
 // A link from the NF-e page opens one CT-e; it must be read before the
 // first search.
 useRouteChaveFocus(cte.focusChave, search)
@@ -417,9 +426,11 @@ const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
 })
 
 async function search() {
+  searchFailed.value = false
   try {
     await cte.search()
   } catch (error) {
+    searchFailed.value = true
     notifyError('Erro ao buscar CT-e', error)
   }
 }
@@ -433,6 +444,7 @@ function searchWithoutFocus() {
 
 const noDataLabel = computed(() => {
   if (!cnpj.value) return noCompanyLabel.value
+  if (searchFailed.value) return 'Não foi possível carregar a lista.'
   if (chaveFocus.value) return 'Este CT-e não está guardado para esta empresa.'
   return 'Nenhum CT-e encontrado.'
 })

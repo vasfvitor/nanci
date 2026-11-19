@@ -55,6 +55,9 @@
           :export-disabled="scopeRows.length === 0"
           :search-disabled="!cnpj"
           :mark-viewed-count="unviewedChaves.length"
+          :unviewed-disabled-reason="
+            chaveFocus ? 'Sem efeito enquanto a lista mostra um documento só' : ''
+          "
           @search="searchWithoutFocus"
           @mark-viewed="confirmMarkViewed"
           @export="openExportDialog"
@@ -333,6 +336,10 @@ const columns = documentColumns<NFeRow>({
   valor: (row) => row.TotalValue,
 })
 
+// searchFailed keeps the empty table from reading as "not stored" when the
+// list could not be loaded.
+const searchFailed = ref(false)
+
 // A link from the CT-e page opens one note on the Notas tab; it must be
 // read before the first search.
 useRouteChaveFocus((chave) => {
@@ -372,9 +379,11 @@ const { importXML, openFetchDialog } = useNFeImportActions({
 })
 
 async function search() {
+  searchFailed.value = false
   try {
     await nfe.search()
   } catch (error) {
+    searchFailed.value = true
     notifyError('Erro ao buscar NF-e', error)
   }
 }
@@ -390,6 +399,7 @@ function searchWithoutFocus() {
 // "Buscar pela chave" can bring it from the SEFAZ.
 const noDataLabel = computed(() => {
   if (!cnpj.value) return noCompanyLabel.value
+  if (searchFailed.value) return 'Não foi possível carregar a lista.'
   if (chaveFocus.value) {
     return 'Esta NF-e não está guardada para esta empresa. Use "Buscar pela chave" para trazê-la da SEFAZ.'
   }

@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useNotify } from '@/composables/useNotify'
 import { compactCode } from '@/utils/cnpj'
 import { isChaveDFe } from '@/utils/formatters'
 
@@ -12,6 +13,7 @@ import { isChaveDFe } from '@/utils/formatters'
 export function useRouteChaveFocus(focusChave: (chave: string) => void, search: () => unknown) {
   const route = useRoute()
   const router = useRouter()
+  const { notifyWarning } = useNotify()
   let setUp = false
 
   watch(
@@ -20,7 +22,10 @@ export function useRouteChaveFocus(focusChave: (chave: string) => void, search: 
       if (!raw) return
       void router.replace({ query: {} })
       const chave = typeof raw === 'string' ? compactCode(raw) : ''
-      if (!isChaveDFe(chave)) return
+      if (!isChaveDFe(chave)) {
+        notifyWarning('Link sem chave de acesso válida; mostrando a lista.')
+        return
+      }
       focusChave(chave)
       if (setUp) void search()
     },

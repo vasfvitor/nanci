@@ -176,7 +176,7 @@ function mountPage(stubs: Record<string, unknown> = {}) {
         },
         'q-toggle': {
           name: 'QToggle',
-          props: ['modelValue', 'label'],
+          props: ['modelValue', 'label', 'disable'],
           emits: ['update:modelValue'],
           template: '<div />',
         },
@@ -310,6 +310,8 @@ describe('CTePage', () => {
       expect(replace).toHaveBeenCalledWith({ query: {} })
       expect(chip(wrapper).props('chave')).toBe(tomada.ChaveAcesso)
       expect(useWorkspaceStore().competence).toBe('2026-08')
+      // "Somente não vistos" has no effect on a single focused CT-e.
+      expect(wrapper.getComponent({ name: 'QToggle' }).props('disable')).toBe(true)
     })
 
     it('keeps the focus after leaving the page and coming back', async () => {
@@ -358,10 +360,25 @@ describe('CTePage', () => {
       )
     })
 
-    it('ignores a malformed key', async () => {
+    it('says the list could not be loaded when the focused search fails', async () => {
+      vi.mocked(desktopClient.listCTe).mockRejectedValue(new Error('banco ocupado'))
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(table(wrapper).props('noDataLabel')).toBe('Não foi possível carregar a lista.')
+    })
+
+    it('warns about a malformed key and lists the competência', async () => {
       route.query = { chave: '1234' }
       const wrapper = mountPage()
       await flushPromises()
+
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'warning',
+          message: 'Link sem chave de acesso válida; mostrando a lista.',
+        })
+      )
 
       expect(desktopClient.listCTe).toHaveBeenCalledWith(
         expect.objectContaining({ Competence: '2026-08' })
@@ -1036,5 +1053,25 @@ describe('CTePage import', () => {
     await button(wrapper, 'Ver NF-e').trigger('click')
 
     expect(push).toHaveBeenCalledWith({ path: '/nfe', query: { chave: nfeChave } })
+  })
+
+  it('offers no link for a transported NF-e key that is not 44 characters', async () => {
+    vi.mocked(desktopClient.listCTe).mockResolvedValue([{ ...tomada, NFeChaves: ['1234'] }])
+    const wrapper = mountPage({
+      'q-table': {
+        name: 'QTable',
+        props: ['rows'],
+        template: `<div><div v-for="row in rows" :key="row.ChaveAcesso">
+          <slot name="body" :row="row" :cols="[]" :expand="true" />
+        </div></div>`,
+      },
+      DocumentDetailRow: { template: '<div><slot /></div>' },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('1234')
+    expect(
+      wrapper.findAllComponents({ name: 'QBtn' }).some((btn) => btn.props('label') === 'Ver NF-e')
+    ).toBe(false)
   })
 })

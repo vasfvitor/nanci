@@ -351,6 +351,14 @@ describe('NFePage', () => {
       )
     })
 
+    it('does not point to "Buscar pela chave" when the search failed', async () => {
+      vi.mocked(desktopClient.listNFe).mockRejectedValue(new Error('banco ocupado'))
+      const wrapper = mountPage()
+      await flushPromises()
+
+      expect(table(wrapper).props('noDataLabel')).toBe('Não foi possível carregar a lista.')
+    })
+
     it('goes back to the filter and the competência from the chip', async () => {
       const wrapper = mountPage()
       await flushPromises()

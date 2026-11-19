@@ -6,9 +6,11 @@
       :model-value="onlyUnviewed"
       label="Somente não vistos"
       dense
-      :disable="loading"
+      :disable="loading || Boolean(unviewedDisabledReason)"
       @update:model-value="onOnlyUnviewedChange"
-    />
+    >
+      <q-tooltip v-if="unviewedDisabledReason">{{ unviewedDisabledReason }}</q-tooltip>
+    </q-toggle>
 
     <q-space />
 
@@ -65,9 +67,13 @@ const props = withDefaults(
     exportDisabled: boolean
     searchDisabled?: boolean
     markViewedCount: number
+    // unviewedDisabledReason, when set, disables "Somente não vistos" and
+    // says why, as while the list shows a single focused document.
+    unviewedDisabledReason?: string
   }>(),
   {
     searchDisabled: false,
+    unviewedDisabledReason: '',
   }
 )
 
