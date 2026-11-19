@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -10,6 +11,10 @@ import (
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 )
+
+// errNoPasswordTerminal is the failure when the certificate password is
+// neither saved nor in NANCI_CERT_PASSWORD and stdin is not a terminal.
+var errNoPasswordTerminal = errors.New("a senha do certificado não está salva e não há terminal para pedi-la: execute uma vez num terminal para salvá-la, ou defina NANCI_CERT_PASSWORD")
 
 // TerminalCredentialProvider obtains certificate passwords from the terminal.
 // It first checks the NANCI_CERT_PASSWORD environment variable, then prompts
@@ -30,7 +35,12 @@ func (p TerminalCredentialProvider) GetCertPassword(ctx context.Context, req app
 		return []byte(pass), nil
 	}
 
-	// 2. Prompt interactively
+	// 2. Prompt interactively, when there is a terminal to read from. A
+	// script or an AI agent has none: fail with what the person can do
+	// instead of writing a prompt nobody answers.
+	if !term.IsTerminal(int(p.In.Fd())) {
+		return nil, errNoPasswordTerminal
+	}
 	if _, err := fmt.Fprintf(p.Out, "Digite a senha do certificado '%s' (%s) para consultar %s: ", req.CredentialLabel, req.CertPath, req.TargetCNPJ); err != nil {
 		return nil, fmt.Errorf("falha ao exibir prompt da senha: %w", err)
 	}
