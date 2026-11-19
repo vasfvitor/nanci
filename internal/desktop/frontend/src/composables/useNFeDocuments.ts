@@ -5,7 +5,8 @@ import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useNFeLoaders } from '@/composables/useNFeLoaders'
 import { useRowMap } from '@/composables/useRowMap'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
-import { useSefazBlock } from '@/composables/useSefazBlock'
+import { useSefazStatus } from '@/composables/useSefazStatus'
+import { useSourceSync } from '@/composables/useSourceSync'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
@@ -13,7 +14,6 @@ import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { NFeExportFormat } from '@/types/desktop'
 import { nfeNoteCount, nfePendingCount, nfeStateBadges, nfeStatusLine } from '@/utils/nfeDisplay'
-import { idleWarning as idleWarningText, sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useNFeDocuments() {
   const store = useNFeDocumentsStore()
@@ -67,36 +67,23 @@ export function useNFeDocuments() {
 
   const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, nfeStateBadges)
 
-  const companyName = computed(() => status.value?.CompanyName || selectedCompany.value?.Name || '')
-  const ambiente = computed(() => (status.value ? sefazAmbiente(status.value.TpAmb) : null))
   const pendingCount = computed(() => nfePendingCount(status.value))
   const noteCount = computed(() => nfeNoteCount(status.value))
   const statusLine = computed(() => (status.value ? nfeStatusLine(status.value) : ''))
-  const idleWarning = computed(() => idleWarningText(status.value))
 
-  const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'nfe'))
-  const canCancelSync = computed(
-    () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'nfe')
+  const { companyName, ambiente, idleWarning, syncBlockedUntil, blockedText } = useSefazStatus(
+    status,
+    selectedCompany
   )
-  const isCancelling = computed(
-    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'nfe')
-  )
-  const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
-
-  const { syncBlockedUntil, blockedText } = useSefazBlock(status)
+  const { isSyncing, canCancelSync, isCancelling, isResetting, syncBusy, cancelSync } =
+    useSourceSync('nfe', cnpj, resettingCNPJ)
 
   // syncNFe runs one distribution pull. The in-flight marker and the
   // cancellable mark live in the companySync store, so the button stays
   // busy, and the pull cancellable, after navigating away and back.
   async function syncNFe() {
     const companyCNPJ = cnpj.value
-    if (
-      !companyCNPJ ||
-      syncStore.isSyncing(companyCNPJ, 'nfe') ||
-      resettingCNPJ.value === companyCNPJ
-    ) {
-      return null
-    }
+    if (syncBusy(companyCNPJ)) return null
 
     try {
       return await syncStore.runCancellableSync(companyCNPJ, 'nfe', () =>
@@ -105,20 +92,6 @@ export function useNFeDocuments() {
     } finally {
       await refresh(companyCNPJ)
     }
-  }
-
-  // cancelSync asks the backend to stop the pull. The pull stays busy until
-  // the backend has stopped; then syncNFe refreshes the page.
-  async function cancelSync() {
-    if (cnpj.value) await syncStore.cancelSync(cnpj.value, 'nfe')
-  }
-
-  // syncBusy is true without a company, while a pull, import or fetch of the
-  // company's NF-e runs, or while its reset runs.
-  function syncBusy(companyCNPJ: string) {
-    return (
-      !companyCNPJ || syncStore.isSyncing(companyCNPJ, 'nfe') || resettingCNPJ.value === companyCNPJ
-    )
   }
 
   // importXML asks for XML files and stores them for the company without
@@ -218,7 +191,6 @@ export function useNFeDocuments() {
     chaveFocus,
     focusChave: (chave: string) => store.focusChave(chave),
     clearChaveFocus: () => store.clearChaveFocus(),
-    rows,
     selected,
     rowsFor,
     clearRows: () => store.clearRows(),

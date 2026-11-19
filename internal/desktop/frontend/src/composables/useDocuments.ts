@@ -5,6 +5,7 @@ import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useRowMap } from '@/composables/useRowMap'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
+import { useSourceSync } from '@/composables/useSourceSync'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
@@ -79,14 +80,8 @@ export function useDocuments() {
     selectedCompany.value ? nfseStatusLine(selectedCompany.value) : ''
   )
 
-  const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'nfse'))
-  const canCancelSync = computed(
-    () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'nfse')
-  )
-  const isCancelling = computed(
-    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'nfse')
-  )
-  const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
+  const { isSyncing, canCancelSync, isCancelling, isResetting, syncBusy, cancelSync } =
+    useSourceSync('nfse', cnpj, resettingCNPJ)
 
   // refresh reloads the company list, whose sync fields feed the status line
   // and the Empresas page, after a sync or a reset, and the NFS-e list when
@@ -104,13 +99,7 @@ export function useDocuments() {
   // from any screen, through the companySync store.
   async function syncNFSe() {
     const companyCNPJ = cnpj.value
-    if (
-      !companyCNPJ ||
-      syncStore.isSyncing(companyCNPJ, 'nfse') ||
-      resettingCNPJ.value === companyCNPJ
-    ) {
-      return null
-    }
+    if (syncBusy(companyCNPJ)) return null
     try {
       return await syncStore.runCancellableSync(companyCNPJ, 'nfse', () =>
         desktopClient.pull({ CNPJ: companyCNPJ, Mode: '' })
@@ -118,12 +107,6 @@ export function useDocuments() {
     } finally {
       await refresh(companyCNPJ)
     }
-  }
-
-  // cancelSync asks the backend to stop the pull. The pull stays busy until
-  // the backend has stopped; then syncNFSe refreshes the page.
-  async function cancelSync() {
-    if (cnpj.value) await syncStore.cancelSync(cnpj.value, 'nfse')
   }
 
   // resetSync restarts the company's NFS-e sync from NSU 0. It moves only
@@ -184,7 +167,6 @@ export function useDocuments() {
   return {
     listEvents,
     filter,
-    rows,
     selected,
     rowsFor,
     clearRows: () => store.clearRows(),

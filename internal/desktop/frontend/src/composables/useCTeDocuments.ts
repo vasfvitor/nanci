@@ -5,7 +5,8 @@ import { useExportGuard } from '@/composables/useExportGuard'
 import { useMarkViewed } from '@/composables/useMarkViewed'
 import { useRowMap } from '@/composables/useRowMap'
 import { useRowTextFilter } from '@/composables/useRowTextFilter'
-import { useSefazBlock } from '@/composables/useSefazBlock'
+import { useSefazStatus } from '@/composables/useSefazStatus'
+import { useSourceSync } from '@/composables/useSourceSync'
 import { useTablePagination } from '@/composables/useTablePagination'
 import { desktopClient } from '@/platform/wails/client'
 import { useCompanySyncStore } from '@/stores/companySync'
@@ -13,7 +14,6 @@ import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeExportFormat } from '@/types/desktop'
 import { cteDocumentCount, cteStateBadges, cteStatusLine } from '@/utils/cteDisplay'
-import { idleWarning as idleWarningText, sefazAmbiente } from '@/utils/sefazDisplay'
 
 export function useCTeDocuments() {
   const store = useCTeDocumentsStore()
@@ -67,35 +67,22 @@ export function useCTeDocuments() {
 
   const badgesByChave = useRowMap(rows, (row) => row.ChaveAcesso, cteStateBadges)
 
-  const companyName = computed(() => status.value?.CompanyName || selectedCompany.value?.Name || '')
-  const ambiente = computed(() => (status.value ? sefazAmbiente(status.value.TpAmb) : null))
   const documentCount = computed(() => cteDocumentCount(status.value))
   const statusLine = computed(() => (status.value ? cteStatusLine(status.value) : ''))
-  const idleWarning = computed(() => idleWarningText(status.value))
 
-  const isSyncing = computed(() => Boolean(cnpj.value) && syncStore.isSyncing(cnpj.value, 'cte'))
-  const canCancelSync = computed(
-    () => Boolean(cnpj.value) && syncStore.canCancelSync(cnpj.value, 'cte')
+  const { companyName, ambiente, idleWarning, syncBlockedUntil, blockedText } = useSefazStatus(
+    status,
+    selectedCompany
   )
-  const isCancelling = computed(
-    () => Boolean(cnpj.value) && syncStore.isCancelling(cnpj.value, 'cte')
-  )
-  const isResetting = computed(() => Boolean(cnpj.value) && resettingCNPJ.value === cnpj.value)
-
-  const { syncBlockedUntil, blockedText } = useSefazBlock(status)
+  const { isSyncing, canCancelSync, isCancelling, isResetting, syncBusy, cancelSync } =
+    useSourceSync('cte', cnpj, resettingCNPJ)
 
   // syncCTe runs one distribution pull. The in-flight marker and the
   // cancellable mark live in the companySync store, so the button stays
   // busy, and the pull cancellable, after navigating away and back.
   async function syncCTe() {
     const companyCNPJ = cnpj.value
-    if (
-      !companyCNPJ ||
-      syncStore.isSyncing(companyCNPJ, 'cte') ||
-      resettingCNPJ.value === companyCNPJ
-    ) {
-      return null
-    }
+    if (syncBusy(companyCNPJ)) return null
 
     try {
       return await syncStore.runCancellableSync(companyCNPJ, 'cte', () =>
@@ -104,20 +91,6 @@ export function useCTeDocuments() {
     } finally {
       await refresh(companyCNPJ)
     }
-  }
-
-  // cancelSync asks the backend to stop the pull. The pull stays busy until
-  // the backend has stopped; then syncCTe refreshes the page.
-  async function cancelSync() {
-    if (cnpj.value) await syncStore.cancelSync(cnpj.value, 'cte')
-  }
-
-  // syncBusy is true without a company, while a pull, import or fetch of the
-  // company's CT-e runs, or while its reset runs.
-  function syncBusy(companyCNPJ: string) {
-    return (
-      !companyCNPJ || syncStore.isSyncing(companyCNPJ, 'cte') || resettingCNPJ.value === companyCNPJ
-    )
   }
 
   // importXML asks for XML files and stores them for the company without
@@ -208,7 +181,6 @@ export function useCTeDocuments() {
     chaveFocus,
     focusChave: (chave: string) => store.focusChave(chave),
     clearChaveFocus: () => store.clearChaveFocus(),
-    rows,
     selected,
     rowsFor,
     clearRows: () => store.clearRows(),
