@@ -297,6 +297,7 @@ type fakeNFe struct {
 	imported  app.ImportXMLResult
 	fetched   app.FetchByChaveResult
 	recovered app.RecoverNSUResult
+	discarded int64
 	err       error
 }
 
@@ -395,6 +396,11 @@ func (f *fakeNFe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (app.Rec
 	return f.recovered, f.err
 }
 
+func (f *fakeNFe) DiscardNSU(_ context.Context, in app.DiscardNSUInput) (int64, error) {
+	f.record("DiscardNSU", in)
+	return f.discarded, f.err
+}
+
 type fakeCTe struct {
 	recorder
 	pull       app.CTePullResult
@@ -407,6 +413,7 @@ type fakeCTe struct {
 	reset      app.CTeResetResult
 	imported   app.ImportXMLResult
 	recovered  app.RecoverNSUResult
+	discarded  int64
 	err        error
 }
 
@@ -488,4 +495,9 @@ func (f *fakeCTe) ImportXML(_ context.Context, in app.ImportXMLInput) (app.Impor
 func (f *fakeCTe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error) {
 	f.record("RecoverNSU", in)
 	return f.recovered, f.err
+}
+
+func (f *fakeCTe) DiscardNSU(_ context.Context, in app.DiscardNSUInput) (int64, error) {
+	f.record("DiscardNSU", in)
+	return f.discarded, f.err
 }

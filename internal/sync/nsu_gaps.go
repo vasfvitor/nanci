@@ -174,11 +174,37 @@ func (r *Store) MissingNSUs(ctx context.Context, companyID dfe.CompanyID, source
 // ExpireNSUGaps closes the source's open gaps in env whose NSUs are past the
 // distribution window and returns how many NSUs they still held.
 func (r *Store) ExpireNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) (int64, error) {
+	return r.closeNSUGaps(ctx, companyID, source, env, "expired", windowStart())
+}
+
+// DiscardNSUGaps closes every open gap of the source in env at the user's
+// request, so recovery never asks for those NSUs, and returns how many NSUs
+// they still held.
+func (r *Store) DiscardNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) (int64, error) {
+	// Every nsus_since is before the far future: all open gaps.
+	return r.closeNSUGaps(ctx, companyID, source, env, "discarded", "9999-12-31T23:59:59Z")
+}
+
+// OpenNSUs counts the NSUs of every open gap of the source in env, inside the
+// window or not: what DiscardNSUGaps would close.
+func (r *Store) OpenNSUs(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) (int64, error) {
+	var open int64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(last_nsu - next_nsu + 1), 0)
+		FROM sync_nsu_gaps
+		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open'
+	`, string(companyID), string(source), string(env)).Scan(&open)
+	return open, err
+}
+
+// closeNSUGaps sets status on the source's open gaps in env whose NSUs date
+// from before before, and returns how many NSUs they still held.
+func (r *Store) closeNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, status, before string) (int64, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		UPDATE sync_nsu_gaps SET status = 'expired', finished_at = ?
+		UPDATE sync_nsu_gaps SET status = ?, finished_at = ?
 		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open' AND nsus_since < ?
 		RETURNING last_nsu - next_nsu + 1
-	`, time.Now().UTC().Format(time.RFC3339), string(companyID), string(source), string(env), windowStart())
+	`, status, time.Now().UTC().Format(time.RFC3339), string(companyID), string(source), string(env), before)
 	if err != nil {
 		return 0, err
 	}

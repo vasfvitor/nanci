@@ -346,3 +346,49 @@ func TestRecoveryLimits(t *testing.T) {
 		}
 	})
 }
+
+func TestDiscardNSUCountsThenClosesEveryOpenGap(t *testing.T) {
+	passwords := &countingProvider{}
+	fetcher := &scriptedFetcher{}
+	mgr, comp := newNFePullTestManager(t, passwords, fetcher)
+	recordGaps(t, mgr, comp, syncstate.SyncSourceNFe,
+		NSURange{First: 11, Last: 5010, Cause: NSUGapConsumoIndevido},
+		NSURange{First: 6000, Last: 6001, Cause: NSUGapBatchHole})
+
+	would, err := mgr.DiscardNSU(context.Background(), DiscardNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
+	if err != nil {
+		t.Fatalf("DiscardNSU dry run: %v", err)
+	}
+	if would != 5002 {
+		t.Errorf("dry run = %d, want 5002", would)
+	}
+	missing, err := mgr.SyncRepo.MissingNSUs(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment)
+	if err != nil || missing != 5002 {
+		t.Fatalf("missing after the dry run = %d, %v, want 5002", missing, err)
+	}
+
+	discarded, err := mgr.DiscardNSU(context.Background(), DiscardNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe, Confirm: true})
+	if err != nil || discarded != 5002 {
+		t.Fatalf("DiscardNSU = %d, %v, want 5002", discarded, err)
+	}
+	result, err := mgr.RecoverNSU(context.Background(), RecoverNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
+	if err != nil {
+		t.Fatalf("RecoverNSU: %v", err)
+	}
+	if result.Asked != 0 || result.Missing != 0 || len(fetcher.asked) != 0 || passwords.callCount() != 0 {
+		t.Errorf("recovery after discarding = %+v, asked %v, prompts %d; want nothing", result, fetcher.asked, passwords.callCount())
+	}
+}
+
+func TestDiscardNSURefusesWhileThePullRuns(t *testing.T) {
+	mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
+	release, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	if _, err := mgr.DiscardNSU(context.Background(), DiscardNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe, Confirm: true}); !errors.Is(err, ErrSyncRunning) {
+		t.Fatalf("DiscardNSU error = %v, want ErrSyncRunning", err)
+	}
+}

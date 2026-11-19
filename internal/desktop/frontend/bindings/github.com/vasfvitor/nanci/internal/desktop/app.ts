@@ -58,6 +58,24 @@ export function ConfirmQuit(): $CancellablePromise<void> {
     return $Call.ByID(2432217600);
 }
 
+/**
+ * DiscardCTeNSU discards the company's CT-e gaps, so recovery never asks
+ * for those NSUs, and returns how many NSUs they held. The page confirms
+ * before calling it.
+ */
+export function DiscardCTeNSU(cnpj: string): $CancellablePromise<number> {
+    return $Call.ByID(969254029, cnpj);
+}
+
+/**
+ * DiscardNFeNSU discards the company's NF-e gaps, so recovery never asks
+ * for those NSUs, and returns how many NSUs they held. The page confirms
+ * before calling it.
+ */
+export function DiscardNFeNSU(cnpj: string): $CancellablePromise<number> {
+    return $Call.ByID(3748448054, cnpj);
+}
+
 export function ExportCTeDocuments(input: desktopapi$0.ExportCTeDocumentsInput): $CancellablePromise<desktopapi$0.CTeExportResult> {
     return $Call.ByID(2900832415, input);
 }

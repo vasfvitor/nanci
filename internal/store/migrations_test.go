@@ -1023,6 +1023,44 @@ func TestMigration023AddsSyncNSUGaps(t *testing.T) {
 	}
 }
 
+func TestMigration024AllowsDiscardedNSUGaps(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 23)
+
+	const now = "2026-11-19T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	mustExec(t, db, `
+		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, nsus_since, detected_at)
+		VALUES ('comp-1', 'nfe', 'producao', 11, 20, 13, 'consumo_indevido', ?, ?)
+	`, now, now)
+
+	if _, err := provider.UpTo(ctx, 24); err != nil {
+		t.Fatalf("migrate to version 24: %v", err)
+	}
+	var next int64
+	if err := db.QueryRowContext(ctx, `SELECT next_nsu FROM sync_nsu_gaps WHERE first_nsu = 11`).Scan(&next); err != nil {
+		t.Fatalf("read the kept gap: %v", err)
+	}
+	if next != 13 {
+		t.Errorf("next_nsu after up = %d, want 13", next)
+	}
+	mustExec(t, db, `UPDATE sync_nsu_gaps SET status = 'discarded' WHERE first_nsu = 11`)
+
+	if _, err := provider.DownTo(ctx, 23); err != nil {
+		t.Fatalf("migrate down to version 23: %v", err)
+	}
+	var status string
+	if err := db.QueryRowContext(ctx, `SELECT status FROM sync_nsu_gaps WHERE first_nsu = 11`).Scan(&status); err != nil {
+		t.Fatalf("read the gap after down: %v", err)
+	}
+	if status != "expired" {
+		t.Errorf("status after down = %q, want the discarded gap as expired", status)
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()

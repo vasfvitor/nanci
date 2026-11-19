@@ -88,6 +88,7 @@ O Ambiente Nacional numera os documentos de cada CNPJ "sem lacunas", e a NT mand
 - **Retomada.** Cada lacuna guarda o próximo NSU a pedir (`next_nsu`), então uma execução cortada pelo limite, por cancelamento ou por 656 continua de onde parou. Uma resposta que já chegou é guardada mesmo com o cancelamento, e a execução cancelada devolve o que já fez (`StopReason` `canceled`), não só o aviso de cancelamento.
 - **Janela.** Uma lacuna cujo `nsus_since` passou de 90 dias (`sync.NSUGapWindow`) é encerrada sem consulta e não entra na contagem: a NT não dá cStat para um NSU fora da janela, só diz que "não será possível recuperar". Assim, os NSUs pulados por uma retomada depois de mais de 90 dias parados, que a distribuição começa no NSU mais antigo que ainda guarda, já nascem fora da janela.
 - `nfe status` e a página mostram "NSUs faltando: N". O status também traz quantos NSUs uma recuperação iniciada agora pediria e, quando ela não pode começar, a hora em que pode (`sync.Manager.RecoveryLimits`, a mesma regra que a recuperação aplica): o fim do bloqueio, ou, com o orçamento da hora gasto, a saída da consulta mais antiga da janela. A página recarrega o status nessa hora e o botão volta sozinho. Redefinir as NF-e apaga as lacunas, já que o cursor volta ao 0.
+- **Descartar.** Uma lacuna grande (milhares de NSUs de um 656) levaria dias a 20 consultas por hora. `nfe recuperar-nsu --descartar --confirmar` (sem `--confirmar`, só mostra quantos seriam descartados) e o botão **Descartar** da página encerram todas as lacunas abertas como `discarded`, sem consultar a SEFAZ; a recuperação não volta a pedir esses NSUs, e os documentos deles só entram importando o XML.
 
 ## Manifestação do Destinatário
 
@@ -192,6 +193,7 @@ nanci.exe nfe buscar --cnpj 12345678000199 --chave <CHAVE>
 # 9a. Pedir à SEFAZ os NSUs que a distribuição pulou (ver "Recuperar NSUs faltantes")
 nanci.exe nfe recuperar-nsu --cnpj 12345678000199
 nanci.exe nfe recuperar-nsu --cnpj 12345678000199 --limite 5
+nanci.exe nfe recuperar-nsu --cnpj 12345678000199 --descartar --confirmar
 
 # 10. Redefinir as NF-e da empresa (apaga as notas dos dois ambientes)
 nanci.exe nfe reset --cnpj 12345678000199
@@ -208,7 +210,7 @@ nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 - `nfe export danfe-zip` grava o DANFE de cada nota em `<competencia>/<papel>/<chave>.pdf` (padrão `danfes.zip`), com os mesmos filtros e `--incremental`. O DANFE precisa do XML completo, então os resumos nunca entram e não há `--incluir-resumos`; a saída conta os que ficaram de fora em "Resumos sem DANFE". `nfe export danfe` grava o DANFE de uma `--chave` (padrão `<chave>.pdf`) e recusa um resumo. Uma nota cancelada sai com a marca d'água de cancelamento.
 - Cada formato tem a sua marca de exportação (`xml`, `csv`, `xlsx`, `danfe`): exportar em CSV não tira a nota da próxima exportação incremental em XML ou Excel.
 - `nfe import` recebe um ou mais arquivos e imprime uma linha por arquivo (importado, atualizado ou rejeitado, com o motivo) e o resumo; só falha quando todos foram rejeitados. Arquivos inexistentes são recusados antes de abrir o banco. As regras de recusa estão em "Importação de XML".
-- `nfe recuperar-nsu` imprime quantos NSUs foram consultados, com e sem documento, quantos ainda faltam e as consultas da hora; sem nada faltando, diz "Nenhum NSU faltando." e não pede a senha. `--limite` não pode ser negativo.
+- `nfe recuperar-nsu` imprime quantos NSUs foram consultados, com e sem documento, quantos ainda faltam e as consultas da hora; sem nada faltando, diz "Nenhum NSU faltando." e não pede a senha. `--limite` não pode ser negativo. Uma execução cancelada termina com "Interrompida pelo usuário". `--descartar` não consulta a SEFAZ nem pede a senha; sem `--confirmar` mostra quantos NSUs seriam descartados, e não aceita `--limite`.
 - `nfe buscar` valida a chave antes de abrir o banco, gasta uma das 20 consultas da hora e grava o que a SEFAZ devolver (completa, ou só o resumo até a Ciência). Durante um `nfe pull` o comando recusa com "sincronização em andamento".
 
 ## Aplicativo desktop
@@ -217,7 +219,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `023` em `internal/store/migrations_v2/`:
+Migrações `007` a `024` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -236,6 +238,7 @@ Migrações `007` a `023` em `internal/store/migrations_v2/`:
 - `021`: recria `company_nfe_export_marks` e `company_cte_export_marks` para aceitar os tipos de exportação `csv`, `xlsx` e o PDF de cada origem (`danfe` na NF-e, `dacte` no CT-e), além de `xml`. As marcas existentes, todas `xml`, são mantidas com o seu `exported_events`.
 - `022`: acrescenta `error_code` e `error_message` a `sync_runs`, para a execução que termina em erro guardar o código (`persist_error`, `fetch_error`, `process_error`...) e a mensagem. As execuções antigas ficam com `NULL`.
 - `023`: cria `sync_nsu_gaps`, os intervalos de NSU que a distribuição de NF-e ou CT-e pulou sem entregar documento, por empresa, origem e ambiente, com o próximo NSU a pedir na recuperação (ver [Recuperar NSUs faltantes](#recuperar-nsus-faltantes)). Começa vazia: os saltos anteriores não ficaram registrados.
+- `024`: reconstrói `sync_nsu_gaps` para aceitar o status `discarded` (lacuna descartada pelo usuário). As linhas existentes ficam como estão; o Down transforma as descartadas em `expired`.
 
 Tabelas de NF-e:
 

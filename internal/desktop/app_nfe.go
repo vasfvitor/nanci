@@ -106,6 +106,21 @@ func (a *App) RecoverNFeNSU(ctx context.Context, input desktopapi.RecoverNSUInpu
 	return desktopapi.RecoverNSUResultFrom(res), nil
 }
 
+// DiscardNFeNSU discards the company's NF-e gaps, so recovery never asks
+// for those NSUs, and returns how many NSUs they held. The page confirms
+// before calling it.
+func (a *App) DiscardNFeNSU(cnpj string) (int64, error) {
+	if cnpj == "" {
+		return 0, errors.New("empresa não especificada")
+	}
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
+		return 0, err
+	}
+	defer end()
+	return a.svc.nfe.DiscardNSU(ctx, app.DiscardNSUInput{CNPJ: cnpj, Confirm: true})
+}
+
 func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.NFeStatusResult{}, err

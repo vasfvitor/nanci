@@ -23,7 +23,9 @@
       v-if="nsuNotice"
       :notice="nsuNotice"
       :disabled-reason="nsuDisabledReason"
+      :discard-disabled="isSyncing || isResetting"
       @recover="confirmRecoverNSU"
+      @discard="confirmDiscardNSU"
     />
 
     <q-tabs
@@ -273,6 +275,7 @@ const {
   notice: nsuNotice,
   disabledReason: nsuDisabledReason,
   confirmRecover: confirmRecoverNSU,
+  confirmDiscard: confirmDiscardNSU,
 } = useNSURecovery('nfe', { syncBusy: nfe.syncBusy })
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()

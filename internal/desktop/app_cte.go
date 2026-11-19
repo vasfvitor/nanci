@@ -82,6 +82,21 @@ func (a *App) RecoverCTeNSU(ctx context.Context, input desktopapi.RecoverNSUInpu
 	return desktopapi.RecoverNSUResultFrom(res), nil
 }
 
+// DiscardCTeNSU discards the company's CT-e gaps, so recovery never asks
+// for those NSUs, and returns how many NSUs they held. The page confirms
+// before calling it.
+func (a *App) DiscardCTeNSU(cnpj string) (int64, error) {
+	if cnpj == "" {
+		return 0, errors.New("empresa não especificada")
+	}
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
+		return 0, err
+	}
+	defer end()
+	return a.svc.cte.DiscardNSU(ctx, app.DiscardNSUInput{CNPJ: cnpj, Confirm: true})
+}
+
 func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
 	if err := a.ready(); err != nil {
 		return desktopapi.CTeStatusResult{}, err

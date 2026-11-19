@@ -53,6 +53,12 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"FetchNFeByChave": func(a *App) (any, error) {
 			return a.FetchNFeByChave(context.Background(), desktopapi.FetchByChaveInput{CNPJ: testCNPJ, ChaveAcesso: testChave})
 		},
+		"DiscardCTeNSU": func(a *App) (any, error) {
+			return a.DiscardCTeNSU(testCNPJ)
+		},
+		"DiscardNFeNSU": func(a *App) (any, error) {
+			return a.DiscardNFeNSU(testCNPJ)
+		},
 		"RecoverCTeNSU": func(a *App) (any, error) {
 			return a.RecoverCTeNSU(context.Background(), desktopapi.RecoverNSUInput{CNPJ: testCNPJ})
 		},

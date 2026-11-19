@@ -1390,6 +1390,8 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
         }),
         RecoverNFeNSU: async () => recoveredNSUs,
         RecoverCTeNSU: async () => recoveredNSUs,
+        DiscardNFeNSU: async () => 0,
+        DiscardCTeNSU: async () => 0,
         ImportNFeXML: async (input: { Files?: string[] }) => ({
           Files: (input.Files ?? []).map((Path) => ({
             Path,

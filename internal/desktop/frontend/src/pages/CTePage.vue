@@ -23,7 +23,9 @@
       v-if="nsuNotice"
       :notice="nsuNotice"
       :disabled-reason="nsuDisabledReason"
+      :discard-disabled="isSyncing || isResetting"
       @recover="confirmRecoverNSU"
+      @discard="confirmDiscardNSU"
     />
 
     <DocumentFilterBar
@@ -319,6 +321,7 @@ const {
   notice: nsuNotice,
   disabledReason: nsuDisabledReason,
   confirmRecover: confirmRecoverNSU,
+  confirmDiscard: confirmDiscardNSU,
 } = useNSURecovery('cte', { syncBusy: cte.syncBusy })
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()

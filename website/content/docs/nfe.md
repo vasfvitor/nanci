@@ -22,7 +22,7 @@ Não deixe a empresa mais de 60 dias sem sincronizar. A SEFAZ só gera NSU para 
 
 ## NSUs faltando
 
-A SEFAZ numera os documentos de cada CNPJ em sequência e, quando falta um número, manda pedi-lo de novo ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=), item 3.6). Isso acontece quando outro programa consulta o mesmo CNPJ, como o sistema do contador: a SEFAZ entrega a ele parte da sequência, e o Nanci fica sem esses documentos. A página então mostra **N NSUs faltando** e o botão **Recuperar NSUs**, que pede cada número à SEFAZ. Cada um gasta 1 das 20 consultas da hora, e o Nanci deixa sempre 2 para a sincronização; o que faltar continua na próxima vez. Números que a SEFAZ nunca gerou voltam vazios, e os de mais de 90 dias não podem mais ser recuperados.
+A SEFAZ numera os documentos de cada CNPJ em sequência e, quando falta um número, manda pedi-lo de novo ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=), item 3.6). Isso acontece quando outro programa consulta o mesmo CNPJ, como o sistema do contador: a SEFAZ entrega a ele parte da sequência, e o Nanci fica sem esses documentos. A página então mostra **N NSUs faltando** e o botão **Recuperar NSUs**, que pede cada número à SEFAZ. Cada um gasta 1 das 20 consultas da hora, e o Nanci deixa sempre 2 para a sincronização; o que faltar continua na próxima vez. Números que a SEFAZ nunca gerou voltam vazios, e os de mais de 90 dias não podem mais ser recuperados. Quando faltam milhares de números e você já tem os XMLs, **Descartar** encerra a lista sem consultar a SEFAZ; depois, use **Importar XML** para guardar essas notas.
 
 ## Manifestação do Destinatário
 

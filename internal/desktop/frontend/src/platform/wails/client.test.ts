@@ -55,6 +55,8 @@ import {
   PullCTe,
   PullNFe,
   QueryNFSeEvents,
+  DiscardCTeNSU,
+  DiscardNFeNSU,
   RecoverCTeNSU,
   RecoverNFeNSU,
   RegisterNFeCiencia,
@@ -114,6 +116,8 @@ vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () 
   PullCTe: vi.fn(),
   PullNFe: vi.fn(),
   QueryNFSeEvents: vi.fn(),
+  DiscardCTeNSU: vi.fn(),
+  DiscardNFeNSU: vi.fn(),
   RecoverCTeNSU: vi.fn(),
   RecoverNFeNSU: vi.fn(),
   RegisterNFeCiencia: vi.fn(),
@@ -1518,6 +1522,16 @@ describe('import and fetch by chave client calls', () => {
     expect(RecoverNFeNSU).toHaveBeenCalledWith({ CNPJ: '123' })
     await expect(desktopClient.recoverCTeNSU('123')).resolves.toMatchObject({ StopReason: '' })
     expect(RecoverCTeNSU).toHaveBeenCalledWith({ CNPJ: '123' })
+  })
+
+  it('discards the missing NSUs of NF-e and CT-e', async () => {
+    vi.mocked(DiscardNFeNSU).mockResolvedValue(4200 as never)
+    vi.mocked(DiscardCTeNSU).mockResolvedValue(3 as never)
+
+    await expect(desktopClient.discardNFeNSU('123')).resolves.toBe(4200)
+    await expect(desktopClient.discardCTeNSU('123')).resolves.toBe(3)
+    expect(DiscardNFeNSU).toHaveBeenCalledWith('123')
+    expect(DiscardCTeNSU).toHaveBeenCalledWith('123')
   })
 
   it('keeps the error code of a blocked fetch', async () => {

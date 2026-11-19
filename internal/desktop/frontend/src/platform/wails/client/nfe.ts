@@ -12,6 +12,7 @@ import {
   MarkNFeViewed,
   PlanNFeCiencia,
   PullNFe,
+  DiscardNFeNSU,
   RecoverNFeNSU,
   RegisterNFeCiencia,
   RegisterNFeManifestacao,
@@ -370,6 +371,11 @@ export const nfeClient = {
   async recoverNFeNSU(cnpj: string): Promise<RecoverNSUResult> {
     const res = await callWails(() => RecoverNFeNSU({ CNPJ: cnpj }))
     return mapRecoverNSUResult(res)
+  },
+  // discardNFeNSU closes the company's NF-e gaps, so recovery never asks for
+  // them, and returns how many NSUs they held.
+  async discardNFeNSU(cnpj: string): Promise<number> {
+    return callWails(() => DiscardNFeNSU(cnpj))
   },
   async registerNFeManifestacao(input: RegisterNFeManifestacaoInput): Promise<NFeEventResult> {
     const res = await callWails(() => RegisterNFeManifestacao(input))

@@ -10,6 +10,7 @@ import {
   MarkCTeViewed,
   PreviewResetCTe,
   PullCTe,
+  DiscardCTeNSU,
   RecoverCTeNSU,
   ResetCTe,
   StatusCTe,
@@ -321,6 +322,11 @@ export const cteClient = {
   async recoverCTeNSU(cnpj: string): Promise<RecoverNSUResult> {
     const res = await callWails(() => RecoverCTeNSU({ CNPJ: cnpj }))
     return mapRecoverNSUResult(res)
+  },
+  // discardCTeNSU closes the company's CT-e gaps, so recovery never asks for
+  // them, and returns how many NSUs they held.
+  async discardCTeNSU(cnpj: string): Promise<number> {
+    return callWails(() => DiscardCTeNSU(cnpj))
   },
   // previewResetCTe counts what resetCTe would remove, changing nothing.
   async previewResetCTe(cnpj: string): Promise<CTeResetResult> {

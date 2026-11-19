@@ -43,7 +43,7 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `nfe export zip`, `xml`, `csv`, `xlsx`, `danfe-zip`, `danfe` | Exporta as NF-e em XML, planilha ou DANFE (PDF). O DANFE não sai para resumos. |
 | `nfe import <arquivo>...` | Importa arquivos XML de NF-e e de eventos que a empresa já tem, sem consultar a SEFAZ. |
 | `nfe buscar --chave <chave>` | Busca uma NF-e na SEFAZ pela chave de acesso. |
-| `nfe recuperar-nsu`, `cte recuperar-nsu` | Pede à SEFAZ, um a um, os NSUs que a sincronização pulou. `--limite N` limita as consultas da execução. |
+| `nfe recuperar-nsu`, `cte recuperar-nsu` | Pede à SEFAZ, um a um, os NSUs que a sincronização pulou. `--limite N` limita as consultas da execução; `--descartar` encerra a lista sem consultar. |
 | `cte pull`, `status`, `list` | Sincroniza e lista os CT-e. `cte list --nfe <chave>` acha o frete de uma NF-e. |
 | `cte export zip`, `xml`, `csv`, `xlsx`, `dacte`, `dacte-zip` | Exporta os CT-e. O DACTE só existe para o CT-e modelo 57. |
 | `cte import <arquivo>...` | Importa arquivos XML de CT-e e de eventos que a empresa já tem, sem consultar a SEFAZ. |
@@ -51,7 +51,7 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `nfe reset`, `cte reset` | Apaga as notas da empresa e recomeça a sincronização. |
 
 {{< callout type="warning" >}}
-`nfe ciencia`, `nfe manifestar` e os `reset` só simulam. Para executar, repita com `--confirmar`. Uma manifestação enviada não pode ser cancelada.
+`nfe ciencia`, `nfe manifestar`, os `reset` e o `recuperar-nsu --descartar` só simulam. Para executar, repita com `--confirmar`. Uma manifestação enviada não pode ser cancelada.
 {{< /callout >}}
 
 Cada `nfe buscar` gasta uma das 20 consultas por hora de NF-e da empresa, as mesmas do `nfe pull`. O `recuperar-nsu` gasta uma por NSU e, sem `--limite`, deixa 2 da hora para a sincronização.

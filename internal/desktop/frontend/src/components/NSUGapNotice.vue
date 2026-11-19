@@ -20,6 +20,18 @@
     >
       <q-tooltip v-if="disabledReason">{{ disabledReason }}</q-tooltip>
     </q-btn>
+    <q-btn
+      dense
+      flat
+      no-caps
+      size="sm"
+      color="grey-7"
+      icon="block"
+      label="Descartar"
+      title="Encerra estes NSUs sem pedi-los à SEFAZ"
+      :disable="discardDisabled"
+      @click="emit('discard')"
+    />
   </div>
 </template>
 
@@ -28,14 +40,21 @@ import { useQuasar } from 'quasar'
 import { badgeProps } from '@/utils/sefazDisplay'
 
 // NSUGapNotice tells that the distribution skipped NSUs and offers to ask
-// SEFAZ for them; disabledReason, when set, says why it cannot run now.
-defineProps<{
-  notice: string
-  disabledReason: string
-}>()
+// SEFAZ for them, or to discard them; disabledReason, when set, says why the
+// recovery cannot run now.
+withDefaults(
+  defineProps<{
+    notice: string
+    disabledReason: string
+    // discardDisabled is true while another operation of the source runs.
+    discardDisabled?: boolean
+  }>(),
+  { discardDisabled: false }
+)
 
 const emit = defineEmits<{
   recover: []
+  discard: []
 }>()
 
 const $q = useQuasar()

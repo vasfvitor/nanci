@@ -33,6 +33,8 @@ vi.mock('@/platform/wails/client', () => ({
     statusCTe: vi.fn(),
     recoverNFeNSU: vi.fn(),
     recoverCTeNSU: vi.fn(),
+    discardNFeNSU: vi.fn(),
+    discardCTeNSU: vi.fn(),
   },
   wailsErrorCode: (error: { code?: string }) => error?.code ?? '',
   errorMessage: (error: { message?: string }) => error?.message ?? String(error),
@@ -196,5 +198,39 @@ describe('useNSURecovery', () => {
         message: expect.stringContaining('Recuperação cancelada'),
       })
     )
+  })
+
+  it('discards the missing NSUs after the confirmation and refreshes the status', async () => {
+    useCTeDocumentsStore().status = status({ NSUFaltantes: 4200 }) as never
+    vi.mocked(desktopClient.discardCTeNSU).mockResolvedValue(4200)
+    const nsu = recovery('cte')
+
+    nsu.confirmDiscard()
+    expect(dialog.mock.calls[0]?.[0]?.['message']).toBe(
+      'Descarta 4200 NSUs sem pedi-los à SEFAZ: a recuperação não vai pedi-los de novo. ' +
+        'Se precisar dos documentos desses NSUs, importe o XML deles.'
+    )
+    expect(desktopClient.discardCTeNSU).not.toHaveBeenCalled()
+
+    okHandlers[0]?.()
+    await flushPromises()
+
+    expect(desktopClient.discardCTeNSU).toHaveBeenCalledWith('123')
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'positive', message: '4200 NSUs descartados.' })
+    )
+    expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
+  })
+
+  it('does not discard while another operation of the source runs', async () => {
+    useNFeDocumentsStore().status = status()
+    useCompanySyncStore().startSync('123', 'nfe')
+    const nsu = recovery('nfe')
+
+    nsu.confirmDiscard()
+    await expect(nsu.discard()).resolves.toBeNull()
+
+    expect(dialog).not.toHaveBeenCalled()
+    expect(desktopClient.discardNFeNSU).not.toHaveBeenCalled()
   })
 })

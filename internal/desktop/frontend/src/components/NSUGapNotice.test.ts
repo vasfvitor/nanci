@@ -30,6 +30,17 @@ describe('NSUGapNotice', () => {
     expect(wrapper.emitted('recover')).toHaveLength(1)
   })
 
+  it('asks to discard the missing NSUs, unless another operation runs', async () => {
+    const wrapper = mountNotice('')
+    const discard = wrapper.findAll('button').find((b) => b.text().includes('Descartar'))
+    await discard?.trigger('click')
+    expect(wrapper.emitted('discard')).toHaveLength(1)
+
+    await wrapper.setProps({ discardDisabled: true })
+    const disabled = wrapper.findAll('button').find((b) => b.text().includes('Descartar'))
+    expect(disabled?.attributes('disabled')).toBeDefined()
+  })
+
   it('says why the recovery cannot run now', () => {
     const wrapper = mountNotice('Aguarde a operação em andamento terminar.')
     expect(wrapper.get('button').attributes('disabled')).toBeDefined()

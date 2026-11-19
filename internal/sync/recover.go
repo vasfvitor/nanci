@@ -361,3 +361,40 @@ func (m *Manager) fillRecoverTotals(ctx context.Context, comp *company.Company, 
 	result.RequestBudget = limits.RequestBudget
 	return nil
 }
+
+// DiscardNSUInput names the company and source whose open gaps to discard.
+// Without Confirm nothing changes.
+type DiscardNSUInput struct {
+	CNPJ    string
+	Source  syncstate.SyncSource
+	Confirm bool
+}
+
+// DiscardNSU closes every open gap of the company's source, so recovery
+// never asks for those NSUs; their documents can still come in by XML
+// import. It returns how many NSUs the gaps held: with Confirm, the ones
+// discarded; without it, the ones that would be. It holds the source like a
+// pull, so it never races a recovery, and asks SEFAZ nothing.
+func (m *Manager) DiscardNSU(ctx context.Context, input DiscardNSUInput) (int64, error) {
+	cleanedCNPJ, err := cnpj.Normalize(input.CNPJ)
+	if err != nil {
+		return 0, err
+	}
+	source := input.Source
+	if source != syncstate.SyncSourceNFe && source != syncstate.SyncSourceCTe {
+		return 0, fmt.Errorf("a recuperação de NSU só existe para NF-e e CT-e, não para %q", source)
+	}
+	comp, err := m.CompanyProvider.CompanyByCNPJ(ctx, cleanedCNPJ)
+	if err != nil {
+		return 0, err
+	}
+	release, err := m.ReserveSource(comp.ID, source)
+	if err != nil {
+		return 0, err
+	}
+	defer release()
+	if !input.Confirm {
+		return m.SyncRepo.OpenNSUs(ctx, comp.ID, source, comp.Environment)
+	}
+	return m.SyncRepo.DiscardNSUGaps(ctx, comp.ID, source, comp.Environment)
+}

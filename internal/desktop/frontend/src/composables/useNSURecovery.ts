@@ -11,7 +11,13 @@ import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { RecoverNSUResult } from '@/types/desktop'
 import { formatTime, parseDate } from '@/utils/formatters'
-import { missingNSUsText, recoveryConfirmText, recoverySummary } from '@/utils/nsuRecovery'
+import {
+  discardConfirmText,
+  discardedNSUsText,
+  missingNSUsText,
+  recoveryConfirmText,
+  recoverySummary,
+} from '@/utils/nsuRecovery'
 
 export type NSURecoverySource = 'nfe' | 'cte'
 
@@ -38,6 +44,10 @@ export function useNSURecovery(source: NSURecoverySource, options: NSURecoveryOp
     source === 'nfe'
       ? desktopClient.recoverNFeNSU(companyCNPJ)
       : desktopClient.recoverCTeNSU(companyCNPJ)
+  const discardNSU = (companyCNPJ: string) =>
+    source === 'nfe'
+      ? desktopClient.discardNFeNSU(companyCNPJ)
+      : desktopClient.discardCTeNSU(companyCNPJ)
 
   const status = computed(() => store.status)
   const missing = computed(() => status.value?.NSUFaltantes ?? 0)
@@ -119,5 +129,36 @@ export function useNSURecovery(source: NSURecoverySource, options: NSURecoveryOp
     })
   }
 
-  return { missing, notice, disabledReason, recover, confirmRecover }
+  // discard closes the gaps so recovery never asks for them; null means it
+  // did not run. It holds the sync marker like a recovery, though it asks
+  // SEFAZ nothing.
+  async function discard(): Promise<number | null> {
+    const companyCNPJ = cnpj.value
+    if (options.syncBusy(companyCNPJ)) return null
+    try {
+      const discarded = await syncStore.runSync(companyCNPJ, source, () => discardNSU(companyCNPJ))
+      notifySuccess(discardedNSUsText(discarded))
+      return discarded
+    } catch (error) {
+      notifySyncError('Erro ao descartar NSUs', error)
+      return null
+    } finally {
+      await refresh(companyCNPJ)
+    }
+  }
+
+  function confirmDiscard() {
+    if (missing.value === 0 || options.syncBusy(cnpj.value)) return
+    $q.dialog({
+      title: 'Descartar NSUs faltantes',
+      message: discardConfirmText(missing.value),
+      cancel: true,
+      persistent: true,
+      ok: { label: 'Descartar', color: 'negative' },
+    }).onOk(() => {
+      void discard()
+    })
+  }
+
+  return { missing, notice, disabledReason, recover, confirmRecover, discard, confirmDiscard }
 }

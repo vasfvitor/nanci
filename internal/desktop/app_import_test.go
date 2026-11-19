@@ -152,6 +152,30 @@ func TestRecoverNSU(t *testing.T) {
 	}
 }
 
+func TestDiscardNSU(t *testing.T) {
+	f, a := newFakeApp(nil)
+	f.nfe.discarded = 4200
+	got, err := a.DiscardNFeNSU(testCNPJ)
+	if err != nil || got != 4200 {
+		t.Fatalf("DiscardNFeNSU = %d, %v, want 4200", got, err)
+	}
+	assertCalls(t, &f.nfe.recorder, call{"DiscardNSU", []any{app.DiscardNSUInput{CNPJ: testCNPJ, Confirm: true}}})
+
+	f, a = newFakeApp(nil)
+	f.cte.discarded = 3
+	got, err = a.DiscardCTeNSU(testCNPJ)
+	if err != nil || got != 3 {
+		t.Fatalf("DiscardCTeNSU = %d, %v, want 3", got, err)
+	}
+	assertCalls(t, &f.cte.recorder, call{"DiscardNSU", []any{app.DiscardNSUInput{CNPJ: testCNPJ, Confirm: true}}})
+
+	f, a = newFakeApp(nil)
+	if _, err := a.DiscardNFeNSU(""); err == nil || err.Error() != "empresa não especificada" {
+		t.Fatalf("DiscardNFeNSU without company = %v", err)
+	}
+	f.assertNoCalls(t)
+}
+
 func TestImportAndFetchRejectBeforeCore(t *testing.T) {
 	tests := []struct {
 		name    string

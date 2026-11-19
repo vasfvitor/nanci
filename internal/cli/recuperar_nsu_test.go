@@ -95,3 +95,47 @@ func TestCTeRecuperarNSU_RejectsANegativeLimitWithoutTheApp(t *testing.T) {
 		t.Errorf("AppFactory called %d times, want 0", calls)
 	}
 }
+
+func TestNFeRecuperarNSU_DiscardsOnlyWithConfirmar(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.recordGap(syncstate.SyncSourceNFe, 41, 45)
+
+	if err := env.run("nfe", "recuperar-nsu", "-c", nfeTestCNPJ, "--descartar"); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if got := env.out.String(); got != "NSUs que seriam descartados: 5. Nada foi alterado. Use --confirmar para descartar.\n" {
+		t.Errorf("dry run output = %q", got)
+	}
+
+	// The next run sets both flags, so nothing sticks from the dry run.
+	if err := env.run("nfe", "recuperar-nsu", "-c", nfeTestCNPJ, "--descartar", "--confirmar"); err != nil {
+		t.Fatalf("discard: %v", err)
+	}
+	if !strings.Contains(env.out.String(), "NSUs descartados: 5.") {
+		t.Errorf("discard output = %q", env.out.String())
+	}
+	if err := env.run("nfe", "status", "-c", nfeTestCNPJ); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if strings.Contains(env.out.String(), "NSUs faltando") {
+		t.Errorf("status still shows missing NSUs:\n%s", env.out.String())
+	}
+	if env.passwords.requests != 0 {
+		t.Errorf("password requests = %d, want 0", env.passwords.requests)
+	}
+}
+
+func TestRecuperarNSU_RejectsFlagMixesWithoutTheApp(t *testing.T) {
+	for _, args := range [][]string{
+		{"nfe", "recuperar-nsu", "-c", nfeTestCNPJ, "--descartar", "--limite", "3"},
+		{"cte", "recuperar-nsu", "-c", nfeTestCNPJ, "--confirmar"},
+	} {
+		calls, err := runWithoutApp(t, args...)
+		if err == nil {
+			t.Errorf("%v: no error", args)
+		}
+		if calls != 0 {
+			t.Errorf("%v: AppFactory called %d times, want 0", args, calls)
+		}
+	}
+}

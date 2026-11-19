@@ -19,6 +19,22 @@ export function recoveryConfirmText(missing: number, allowance: number, budget: 
   )
 }
 
+// discardConfirmText explains, before discarding, that the NSUs are gone
+// for good and how their documents can still come in.
+export function discardConfirmText(missing: number) {
+  return (
+    `Descarta ${nsus(missing)} sem pedi-los à SEFAZ: a recuperação não vai pedi-los de novo. ` +
+    'Se precisar dos documentos desses NSUs, importe o XML deles.'
+  )
+}
+
+// discardedNSUsText is the notice after discarding.
+export function discardedNSUsText(discarded: number) {
+  return discarded === 0
+    ? 'Nenhum NSU faltando.'
+    : `${formatCount(discarded, 'NSU descartado', 'NSUs descartados')}.`
+}
+
 // recoverySummary is the notice after the run.
 export function recoverySummary(result: RecoverNSUResult) {
   if (result.Asked === 0 && result.Expired === 0 && result.Missing === 0) {
