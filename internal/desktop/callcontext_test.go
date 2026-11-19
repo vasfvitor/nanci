@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
 	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
@@ -158,5 +159,43 @@ func TestCancelSyncStopsThatSync(t *testing.T) {
 	defer a.guard.mu.Unlock()
 	if len(a.guard.cancels) != 0 || a.guard.pulls != 0 {
 		t.Errorf("cancels = %v, pulls = %d after the sync, want none", a.guard.cancels, a.guard.pulls)
+	}
+}
+
+// waitingRecovery is a fakeNFe whose RecoverNSU waits for its context to
+// end, as the recovery does between consNSU requests.
+type waitingRecovery struct {
+	*fakeNFe
+	started chan struct{}
+}
+
+func (n *waitingRecovery) RecoverNSU(ctx context.Context, _ app.RecoverNSUInput) (app.RecoverNSUResult, error) {
+	close(n.started)
+	<-ctx.Done()
+	return app.RecoverNSUResult{}, ctx.Err()
+}
+
+// TestCancelSyncStopsANSURecovery cancels an NF-e NSU recovery with the
+// cancel button of the NF-e sync, which the frontend shows while it runs.
+func TestCancelSyncStopsANSURecovery(t *testing.T) {
+	f, a := newFakeApp(nil)
+	recovery := &waitingRecovery{fakeNFe: f.nfe, started: make(chan struct{})}
+	a.svc.nfe = recovery
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := a.RecoverNFeNSU(context.Background(), desktopapi.RecoverNSUInput{CNPJ: testCNPJ})
+		done <- err
+	}()
+	<-recovery.started
+
+	a.CancelSync(testCNPJ, "nfe")
+	select {
+	case err := <-done:
+		if code := formatError(err).Code; code != "canceled" {
+			t.Errorf("code = %q (err %v), want canceled", code, err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("RecoverNFeNSU did not return")
 	}
 }

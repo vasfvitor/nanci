@@ -19,6 +19,13 @@
       @reset="confirmResetNFe"
     />
 
+    <NSUGapNotice
+      v-if="nsuNotice"
+      :notice="nsuNotice"
+      :disabled-reason="nsuDisabledReason"
+      @recover="confirmRecoverNSU"
+    />
+
     <q-tabs
       v-model="activeTab"
       dense
@@ -228,6 +235,7 @@ import NFeListActions from '../components/NFeListActions.vue'
 import NFePendingPanel from '../components/NFePendingPanel.vue'
 import NFeRowMenu from '../components/NFeRowMenu.vue'
 import NFeStateBadges from '../components/NFeStateBadges.vue'
+import NSUGapNotice from '../components/NSUGapNotice.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import PartyCell from '../components/PartyCell.vue'
 import StateLegend from '../components/StateLegend.vue'
@@ -237,6 +245,7 @@ import { useNFeImportActions } from '@/composables/useNFeImportActions'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNFeManifestacaoActions } from '@/composables/useNFeManifestacaoActions'
 import { useNotify } from '@/composables/useNotify'
+import { useNSURecovery } from '@/composables/useNSURecovery'
 import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
@@ -257,6 +266,11 @@ const $q = useQuasar()
 const router = useRouter()
 const nfe = useNFeDocuments()
 const manifestacao = useNFeManifestacao()
+const {
+  notice: nsuNotice,
+  disabledReason: nsuDisabledReason,
+  confirmRecover: confirmRecoverNSU,
+} = useNSURecovery('nfe')
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()
 

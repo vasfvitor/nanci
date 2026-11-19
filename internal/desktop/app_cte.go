@@ -62,7 +62,8 @@ func (a *App) ImportCTeXML(ctx context.Context, input desktopapi.ImportXMLInput)
 }
 
 // RecoverCTeNSU asks SEFAZ for each CT-e NSU the distribution skipped
-// (consNSU). It spends the hour's budget, leaving the reserve for the pull.
+// (consNSU). It spends the hour's budget, leaving the reserve for the pull;
+// CancelSync stops it as it stops a pull.
 func (a *App) RecoverCTeNSU(ctx context.Context, input desktopapi.RecoverNSUInput) (desktopapi.RecoverNSUResult, error) {
 	if input.CNPJ == "" {
 		return desktopapi.RecoverNSUResult{}, errors.New("empresa não especificada")
@@ -72,6 +73,8 @@ func (a *App) RecoverCTeNSU(ctx context.Context, input desktopapi.RecoverNSUInpu
 		return desktopapi.RecoverNSUResult{}, err
 	}
 	defer end()
+	ctx, stop := a.guard.cancelable(ctx, syncKey{input.CNPJ, syncstate.SyncSourceCTe})
+	defer stop()
 	res, err := a.svc.cte.RecoverNSU(ctx, app.RecoverNSUInput{CNPJ: input.CNPJ})
 	if err != nil {
 		return desktopapi.RecoverNSUResult{}, err

@@ -19,6 +19,13 @@
       @reset="confirmResetCTe"
     />
 
+    <NSUGapNotice
+      v-if="nsuNotice"
+      :notice="nsuNotice"
+      :disabled-reason="nsuDisabledReason"
+      @recover="confirmRecoverNSU"
+    />
+
     <DocumentFilterBar
       v-model:only-unviewed="onlyUnviewed"
       :loading="loading"
@@ -263,6 +270,7 @@ import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
 import ImportResultDialog from '../components/ImportResultDialog.vue'
+import NSUGapNotice from '../components/NSUGapNotice.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
 import PartyCell from '../components/PartyCell.vue'
@@ -272,6 +280,7 @@ import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
+import { useNSURecovery } from '@/composables/useNSURecovery'
 import { copyChave, useNotify } from '@/composables/useNotify'
 import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
@@ -301,6 +310,11 @@ import { CTE_LEGEND } from '@/utils/stateLegends'
 const $q = useQuasar()
 const router = useRouter()
 const cte = useCTeDocuments()
+const {
+  notice: nsuNotice,
+  disabledReason: nsuDisabledReason,
+  confirmRecover: confirmRecoverNSU,
+} = useNSURecovery('cte')
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()
 

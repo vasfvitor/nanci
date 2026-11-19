@@ -66,6 +66,7 @@ vi.mock('@/platform/wails/client', async (importOriginal) => ({
     listCompanies: vi.fn(),
     listNFe: vi.fn(),
     statusNFe: vi.fn(),
+    recoverNFeNSU: vi.fn(),
     listNFePendingManifestacoes: vi.fn(),
     planNFeCiencia: vi.fn(),
     registerNFeCiencia: vi.fn(),
@@ -939,6 +940,64 @@ describe('NFePage', () => {
 
 // The row menu renders through the body slot of the table, which the default
 // q-table stub leaves out.
+describe('NFePage missing NSUs', () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    route = reactive({ query: {} })
+    okHandlers.length = 0
+    vi.mocked(desktopClient.listCompanies).mockResolvedValue([company])
+    vi.mocked(desktopClient.listNFe).mockResolvedValue([])
+    vi.mocked(desktopClient.listNFePendingManifestacoes).mockResolvedValue([])
+    await useWorkspaceStore().loadCompanies()
+  })
+
+  it('shows no notice while nothing is missing', async () => {
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status())
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'NSUGapNotice' }).exists()).toBe(false)
+  })
+
+  it('offers to recover the missing NSUs and runs after the confirmation', async () => {
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ NSUFaltantes: 3 }))
+    vi.mocked(desktopClient.recoverNFeNSU).mockResolvedValue({
+      Asked: 3,
+      Recovered: 1,
+      Empty: 2,
+      Unreadable: 0,
+      Expired: 0,
+      Missing: 0,
+      StopReason: '',
+      RequestsLastHour: 3,
+      RequestBudget: 20,
+    })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    const notice = wrapper.findComponent({ name: 'NSUGapNotice' })
+    expect(notice.props('notice')).toBe('3 NSUs faltando')
+    expect(notice.props('disabledReason')).toBe('')
+
+    notice.vm.$emit('recover')
+    expect(dialog).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Recuperar NSUs faltantes' })
+    )
+    okHandlers[0]?.(undefined)
+    await flushPromises()
+
+    expect(desktopClient.recoverNFeNSU).toHaveBeenCalledWith(company.CNPJ)
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'positive',
+        message: '3 NSUs consultados, 1 com documento, 2 sem documento.',
+      })
+    )
+  })
+})
+
 describe('NFePage row menu', () => {
   const rowStubs = {
     'q-table': {

@@ -86,7 +86,8 @@ func (a *App) FetchNFeByChave(ctx context.Context, input desktopapi.FetchByChave
 }
 
 // RecoverNFeNSU asks SEFAZ for each NF-e NSU the distribution skipped
-// (consNSU). It spends the hour's budget, leaving the reserve for the pull.
+// (consNSU). It spends the hour's budget, leaving the reserve for the pull;
+// CancelSync stops it as it stops a pull.
 func (a *App) RecoverNFeNSU(ctx context.Context, input desktopapi.RecoverNSUInput) (desktopapi.RecoverNSUResult, error) {
 	if input.CNPJ == "" {
 		return desktopapi.RecoverNSUResult{}, errors.New("empresa não especificada")
@@ -96,6 +97,8 @@ func (a *App) RecoverNFeNSU(ctx context.Context, input desktopapi.RecoverNSUInpu
 		return desktopapi.RecoverNSUResult{}, err
 	}
 	defer end()
+	ctx, stop := a.guard.cancelable(ctx, syncKey{input.CNPJ, syncstate.SyncSourceNFe})
+	defer stop()
 	res, err := a.svc.nfe.RecoverNSU(ctx, app.RecoverNSUInput{CNPJ: input.CNPJ})
 	if err != nil {
 		return desktopapi.RecoverNSUResult{}, err
