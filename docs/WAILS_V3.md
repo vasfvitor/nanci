@@ -11,7 +11,7 @@ Registro da migração do desktop (`internal/desktop`) do Wails v2.16.0 para o W
 
 Os nomes de API e os comportamentos citados aqui foram conferidos no código-fonte da v3.0.0 no cache de módulos (`github.com/wailsapp/wails/v3@v3.0.0`), não no guia de migração. Os caminhos de arquivo sem prefixo são desse módulo.
 
-**Atualização para a v3.1.0 (18/11/2026).** A v3.1.0 saiu em 01/11/2026 (notas em https://github.com/wailsapp/wails/releases/tag/v3.1.0). O Wails v3 passou a ter release semanal: o número menor avança com o tempo, não com funcionalidades. As notas não listam quebra de API. Os bindings gerados saíram idênticos aos da v3.0.0, e o `MarshalError` da aplicação continua ignorado nos métodos dos serviços (`pkg/application/bindings.go:140` na v3.1.0). O resto deste documento não foi conferido de novo na v3.1.0.
+**Atualização para a v3.1.0 (18/11/2026).** A v3.1.0 saiu em 01/11/2026 (notas em https://github.com/wailsapp/wails/releases/tag/v3.1.0). As notas não listam quebra de API. Os bindings gerados saíram idênticos aos da v3.0.0, e o `MarshalError` da aplicação continua ignorado nos métodos dos serviços (`pkg/application/bindings.go:140` na v3.1.0). O resto deste documento não foi conferido de novo na v3.1.0.
 
 ## O que mudou em cada camada
 
@@ -255,6 +255,7 @@ Experimento opcional: `WindowsWindow.NonClientRegionSupport: true` liga o suport
 
 - Release v3.0.0 (26/10/2026; GTK 4 e WebKitGTK 6.0 por padrão no Linux, GTK 3 com `-tags gtk3` até a v3.1; Go 1.26 ou mais novo): https://github.com/wailsapp/wails/releases/tag/v3.0.0
 - Publicação de `@wailsio/runtime@3.0.0` no npm: 2026-10-26T11:01:20Z (`npm view @wailsio/runtime time`).
+- Release v3.1.0 (01/11/2026): https://github.com/wailsapp/wails/releases/tag/v3.1.0; `@wailsio/runtime@3.1.0` no npm em 2026-11-01T11:59:42Z (`npm view @wailsio/runtime time`, conferido em 18/11/2026).
 - `minimumReleaseAgeExclude` aceita versões exatas (`nome@versão`): https://pnpm.io/settings/dependency-resolution#minimumreleaseageexclude
 - Código-fonte da v3.0.0: `go mod download github.com/wailsapp/wails/v3@v3.0.0`, arquivos citados acima.
 - Link para o asset do release mais recente (`/releases/latest/download/<asset>`): https://docs.github.com/en/repositories/releasing-projects-on-github/linking-to-releases (conferido em 30/10/2026).

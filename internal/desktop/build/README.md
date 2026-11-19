@@ -1,6 +1,6 @@
 # Build Directory
 
-Build configuration and assets of Nanci Desktop for Wails v3 (v3.0.0). The app ships for Windows only.
+Build configuration and assets of Nanci Desktop for Wails v3 (v3.1.0). The app ships for Windows only.
 
 * `config.yml` - project information (company, product, version, copyright) and the `wails3 dev` settings.
 * `Taskfile.yml` - common tasks: frontend install and build, bindings generation, icons, `update:build-assets`.

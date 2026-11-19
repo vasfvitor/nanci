@@ -120,8 +120,8 @@ func main() {
 }
 
 // appServices binds App. The marshaler goes on the service: Wails v3.0.0
-// calls only the service's MarshalError for bound methods and never falls
-// back to Options.MarshalError (bindings.go:140), so set there it would
+// and v3.1.0 call only the service's MarshalError for bound methods and
+// never fall back to Options.MarshalError (bindings.go:140), so set there it would
 // leave every error code out of the payload. TestBoundErrorCarriesCode
 // calls a method through the Wails bindings to keep it that way.
 func appServices(app *App) []application.Service {
