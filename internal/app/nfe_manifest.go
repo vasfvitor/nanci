@@ -412,6 +412,7 @@ func (s *NFeService) newSender(ctx context.Context, comp *company.Company, purpo
 		Environment: comp.Environment,
 		Certificate: &loaded.TLS,
 		Log:         s.Log,
+		Endpoints:   s.SyncManager.SEFAZEndpoints,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("configurar cliente SEFAZ: %w", err)

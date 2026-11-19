@@ -350,9 +350,10 @@ func (s *NFeService) pendingManifestacoes(ctx context.Context, companyID dfe.Com
 // TestConnection checks the TLS connection to the NF-e distribution host.
 func (s *NFeService) TestConnection(ctx context.Context, cnpj string) (ConnectionTestResult, error) {
 	return testSefazConnection(ctx, s.Log, s.CompanyStore, s.Certificates, cnpj, sefazConnection{
-		purpose: "Teste de conexão NF-e",
-		target:  "SEFAZ",
-		check:   sefazClient.CheckTLS,
+		purpose:   "Teste de conexão NF-e",
+		target:    "SEFAZ",
+		check:     sefazClient.CheckTLS,
+		endpoints: s.SyncManager.SEFAZEndpoints,
 	})
 }
 

@@ -115,6 +115,9 @@ type sefazConnection struct {
 	target  string // "SEFAZ" or "SEFAZ (CT-e)" in the result texts
 	// check is the method expression sefazClient.CheckTLS or CheckTLSCTe.
 	check func(client sefazClient, ctx context.Context) error
+	// endpoints overrides the SEFAZ URLs, as the sync manager's do; nil uses
+	// the URLs of the company's environment.
+	endpoints *sefaz.Endpoints
 }
 
 // testSefazConnection loads the certificate and opens a TLS connection with
@@ -145,6 +148,7 @@ func testSefazConnection(ctx context.Context, log *slog.Logger, companies *compa
 		Environment: comp.Environment,
 		Certificate: &loaded.TLS,
 		Log:         log,
+		Endpoints:   conn.endpoints,
 	})
 	if err != nil {
 		result.StatusExplanation = fmt.Sprintf("Erro ao configurar cliente SEFAZ: %v", err)

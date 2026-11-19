@@ -18,7 +18,8 @@ import (
 // cStat per chave (135 when not scripted).
 type fakeSEFAZ struct {
 	t           *testing.T
-	clients     int // clients created through newSEFAZClient
+	clients     int                // clients created through newSEFAZClient
+	endpoints   []*sefaz.Endpoints // Endpoints of each client created
 	tlsErr      error
 	tlsCalls    int
 	cteTLSCalls int
@@ -100,6 +101,7 @@ func useFakeSEFAZ(t *testing.T) *fakeSEFAZ {
 			t.Errorf("client config = %+v", cfg)
 		}
 		fake.clients++
+		fake.endpoints = append(fake.endpoints, cfg.Endpoints)
 		return fake, nil
 	}
 	return fake
@@ -467,4 +469,34 @@ func outcomeCounts(outcomes []NFeEventOutcome) map[string]int {
 		counts[o.Status]++
 	}
 	return counts
+}
+
+// TestSEFAZClientsUseTheManagerEndpoints checks that the manifestação sender
+// and both connection tests take the sync manager's SEFAZ URLs, as the pull
+// does, so one test server serves them all.
+func TestSEFAZClientsUseTheManagerEndpoints(t *testing.T) {
+	env := newNFeTestEnv(t)
+	stub := useFakeSEFAZ(t)
+	endpoints := &sefaz.Endpoints{Distribuicao: "https://sefaz.test/dist", RecepcaoEvento: "https://sefaz.test/evento"}
+	env.app.SyncManager.SEFAZEndpoints = endpoints
+	env.seedResumos(1)
+
+	if _, err := env.app.NFe.TestConnection(context.Background(), nfeTestCNPJ); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.app.CTe.TestConnection(context.Background(), nfeTestCNPJ); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.app.NFe.RegisterCiencia(context.Background(), NFeCienciaInput{CNPJ: nfeTestCNPJ, AllResumos: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(stub.endpoints) != 3 {
+		t.Fatalf("clients = %d, want 3", len(stub.endpoints))
+	}
+	for i, got := range stub.endpoints {
+		if got != endpoints {
+			t.Errorf("client %d endpoints = %v, want the manager's", i, got)
+		}
+	}
 }
