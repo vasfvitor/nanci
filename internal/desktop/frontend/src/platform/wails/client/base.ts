@@ -16,13 +16,18 @@ import type {
 
 type RawRecord = Record<string, unknown>
 
-// WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go. Wails v3
+// WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go,
+// which takes the core's from app.ErrorCode (internal/app/errorcode.go). Wails v3
 // rejects a bound-method promise with a RuntimeError whose cause is the {code, message}
 // payload marshalError builds.
 const wailsErrorCodes = [
   'canceled',
   'sefaz_blocked',
   'sync_running',
+  'no_requests_left',
+  'not_found',
+  'invalid_input',
+  'wrong_password',
   'update_busy',
   'startup_failed',
 ] as const

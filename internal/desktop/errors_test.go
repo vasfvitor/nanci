@@ -14,6 +14,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/company"
 	nsync "github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
@@ -40,6 +41,7 @@ func TestFormatError(t *testing.T) {
 		{"startup failed", fmt.Errorf("%w: %w", errNotStarted, errors.New("abrir banco de dados: disco cheio")), "startup_failed", "o nanci não iniciou: abrir banco de dados"},
 		{"not started", errNotStarted, "startup_failed", "não iniciou"},
 		{"plain", errors.New("empresa não encontrada"), "", "empresa não encontrada"},
+		{"core code", fmt.Errorf("listar: %w", company.ErrCompanyNotFound), "not_found", "empresa não encontrada"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 
@@ -18,16 +17,13 @@ import (
 func formatError(err error) desktopapi.ErrorPayload {
 	payload := desktopapi.ErrorPayload{Message: err.Error()}
 	switch {
-	case errors.Is(err, app.ErrOperationCanceled), errors.Is(err, context.Canceled):
-		payload.Code = "canceled"
-	case errors.Is(err, app.ErrSourceBlocked):
-		payload.Code = "sefaz_blocked"
-	case errors.Is(err, app.ErrSyncRunning):
-		payload.Code = "sync_running"
 	case errors.Is(err, errUpdateDuringSync), errors.Is(err, errUpdateBusy):
 		payload.Code = "update_busy"
 	case errors.Is(err, errNotStarted):
 		payload.Code = "startup_failed"
+	default:
+		// The codes of the core are the ones the CLI's --json gives too.
+		payload.Code = app.ErrorCode(err)
 	}
 	return payload
 }
