@@ -24,9 +24,12 @@ func newCTePullCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			out := cmd.OutOrStdout()
 			result, err := application.CTe.Pull(cmd.Context(), *cnpjFlag)
 			if err != nil {
-				return pullError(out, err)
+				return env.pullError(out, err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(out, newCTePullOutput(result))
+			}
 			printCTePullResult(out, result)
 			return nil
 		},

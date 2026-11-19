@@ -30,15 +30,18 @@ func newNFeBuscarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			defer cleanup()
 
 			out := cmd.OutOrStdout()
-			_, _ = fmt.Fprintf(out, "Buscando NF-e %s...\n", formatChaveDFe(chave))
+			env.progress(out, "Buscando NF-e "+formatChaveDFe(chave)+"...")
 			res, err := application.NFe.FetchByChave(cmd.Context(), app.FetchByChaveInput{
 				CNPJ:        *cnpjFlag,
 				ChaveAcesso: chave.String(),
 			})
 			if err != nil {
-				return pullError(out, err)
+				return env.pullError(out, err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(out, newFetchOutput(res))
+			}
 			switch res.Outcome {
 			case app.FetchOutcomeCompleta:
 				_, _ = fmt.Fprintln(out, "NF-e completa salva.")

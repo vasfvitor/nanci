@@ -172,3 +172,16 @@ func TestNFeBuscar_InvalidChaveSkipsAppFactory(t *testing.T) {
 		t.Errorf("AppFactory called %d times, want 0", calls)
 	}
 }
+
+func TestNFeBuscar_JSON(t *testing.T) {
+	env, _ := newNFeFetchTestRoot(t, retDistDFeInt(t, 138, "Documento localizado", "procnfe.xml"))
+
+	if err := env.run("nfe", "buscar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc, "--json"); err != nil {
+		t.Fatalf("buscar --json: %v\n%s", err, env.out.String())
+	}
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	if result["ChaveAcesso"] != nfeChaveProc || result["Outcome"] != app.FetchOutcomeCompleta || result["RequestsLastHour"] != float64(1) || result["RequestBudget"] != float64(20) {
+		t.Errorf("buscar = %v", result)
+	}
+}

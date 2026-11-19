@@ -249,3 +249,46 @@ func TestNFeExportDANFE_DefaultsToChavePDF(t *testing.T) {
 		t.Errorf("DANFE = %q, want the rendered PDF", data)
 	}
 }
+
+func TestNFeExport_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	env.seed("resnfe-cancelada.xml", 2)
+	outPath := filepath.Join(t.TempDir(), "nfe.zip")
+
+	if err := env.run("nfe", "export", "zip", "-c", nfeTestCNPJ, "--out", outPath, "--json"); err != nil {
+		t.Fatalf("export zip --json: %v", err)
+	}
+	var bulk map[string]any
+	decodeJSONOutput(t, env.out, &bulk)
+	if bulk["OutPath"] != outPath || bulk["ExportedCount"] != float64(1) || bulk["SkippedResumos"] != float64(1) {
+		t.Errorf("zip = %v", bulk)
+	}
+
+	if err := env.run("nfe", "export", "zip", "-c", nfeTestCNPJ, "--out", outPath, "--incremental", "--json"); err != nil {
+		t.Fatalf("export zip --incremental --json: %v", err)
+	}
+	decodeJSONOutput(t, env.out, &bulk)
+	if bulk["OutPath"] != "" || bulk["ExportedCount"] != float64(0) || bulk["Incremental"] != true {
+		t.Errorf("incremental zip with nothing new = %v", bulk)
+	}
+
+	pdfPath := filepath.Join(t.TempDir(), "nota.pdf")
+	if err := env.run("nfe", "export", "danfe", "-c", nfeTestCNPJ, "--chave", nfeChaveProc, "--out", pdfPath, "--json"); err != nil {
+		t.Fatalf("export danfe --json: %v", err)
+	}
+	var single map[string]any
+	decodeJSONOutput(t, env.out, &single)
+	if len(single) != 1 || single["OutPath"] != pdfPath {
+		t.Errorf("danfe = %v, want only OutPath", single)
+	}
+
+	xmlPath := filepath.Join(t.TempDir(), "nota.xml")
+	if err := env.run("nfe", "export", "xml", "-c", nfeTestCNPJ, "--chave", nfeChaveProc, "--out", xmlPath, "--json"); err != nil {
+		t.Fatalf("export xml --json: %v", err)
+	}
+	decodeJSONOutput(t, env.out, &single)
+	if single["OutPath"] != xmlPath {
+		t.Errorf("xml = %v", single)
+	}
+}

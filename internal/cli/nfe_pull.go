@@ -24,9 +24,12 @@ func newNFePullCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			out := cmd.OutOrStdout()
 			result, err := application.NFe.Pull(cmd.Context(), *cnpjFlag)
 			if err != nil {
-				return pullError(out, err)
+				return env.pullError(out, err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(out, newNFePullOutput(result))
+			}
 			printNFePullResult(out, result)
 			return nil
 		},

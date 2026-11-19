@@ -668,3 +668,98 @@ func TestTestarConexao_JSONKeepsTheError(t *testing.T) {
 		})
 	}
 }
+
+func TestNFePull_JSON(t *testing.T) {
+	env, _ := newNFeFetchTestRoot(t, retDistDFeInt(t, 137, "Nenhum documento localizado", ""))
+	if err := env.run("nfe", "pull", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("pull --json: %v\n%s", err, env.out.String())
+	}
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	if result["CNPJ"] != nfeTestCNPJ || result["Status"] == "" || result["RequestsLastHour"] != float64(1) || result["RequestBudget"] != float64(20) {
+		t.Errorf("pull = %v", result)
+	}
+	if _, ok := result["DurationMs"].(float64); !ok {
+		t.Errorf("DurationMs = %v, want a number", result["DurationMs"])
+	}
+}
+
+func TestSefazPull_JSONBlockedPrintsNothing(t *testing.T) {
+	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
+		t.Run(string(source), func(t *testing.T) {
+			env := newNFeTestRoot(t)
+			until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
+			if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, source, env.company.Environment, until, syncstate.SyncStopReasonCaughtUp); err != nil {
+				t.Fatal(err)
+			}
+
+			err := env.run(string(source), "pull", "-c", nfeTestCNPJ, "--json")
+			if !errors.Is(err, app.ErrSourceBlocked) {
+				t.Fatalf("Execute = %v, want ErrSourceBlocked", err)
+			}
+			if got := env.out.String(); got != "" {
+				t.Errorf("stdout = %q, want nothing: the error carries the time", got)
+			}
+		})
+	}
+}
+
+func TestNFeManifestacao_JSONDryRun(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("resnfe.xml", 1)
+
+	if err := env.run("nfe", "ciencia", "-c", nfeTestCNPJ, "--todos-resumos", "--json"); err != nil {
+		t.Fatalf("ciencia --json: %v", err)
+	}
+	var plan map[string]any
+	decodeJSONOutput(t, env.out, &plan)
+	eligible, ok := plan["Eligible"].([]any)
+	if !ok || len(eligible) != 1 || eligible[0].(map[string]any)["ChaveAcesso"] != nfeChaveProc {
+		t.Errorf("Eligible = %v", plan["Eligible"])
+	}
+	if skipped, ok := plan["Skipped"].([]any); !ok || len(skipped) != 0 {
+		t.Errorf("Skipped = %v, want []", plan["Skipped"])
+	}
+	assertNoJSONKeys(t, plan, internalJSONKeys...)
+
+	err := env.run("nfe", "manifestar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc,
+		"--tipo", "nao_realizada", "--justificativa", "mercadoria devolvida ao emitente", "--json")
+	if err != nil {
+		t.Fatalf("manifestar --json: %v", err)
+	}
+	decodeJSONOutput(t, env.out, &plan)
+	if plan["TpEvento"] != "210240" || plan["Tipo"] != "nao_realizada" || plan["ChaveAcesso"] != nfeChaveProc ||
+		plan["Justificativa"] != "mercadoria devolvida ao emitente" || plan["ConclusiveDue"] == nil {
+		t.Errorf("manifestar plan = %v", plan)
+	}
+
+	if env.passwords.requests != 0 {
+		t.Errorf("password requests = %d, want 0", env.passwords.requests)
+	}
+	if n := env.manifestacaoCount(); n != 0 {
+		t.Errorf("manifestações recorded = %d, want 0", n)
+	}
+}
+
+func TestNFeReset_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+
+	if err := env.run("nfe", "reset", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("reset --json: %v", err)
+	}
+	var preview map[string]any
+	decodeJSONOutput(t, env.out, &preview)
+	if preview["Confirmed"] != false || preview["CompanyDocuments"] != float64(1) || preview["Environment"] != "producao" {
+		t.Errorf("preview = %v", preview)
+	}
+
+	if err := env.run("nfe", "reset", "-c", nfeTestCNPJ, "--confirmar", "--json"); err != nil {
+		t.Fatalf("reset --confirmar --json: %v", err)
+	}
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	if result["Confirmed"] != true || result["CompanyDocuments"] != float64(1) {
+		t.Errorf("result = %v", result)
+	}
+}

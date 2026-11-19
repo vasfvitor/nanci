@@ -4,8 +4,10 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // seedNFSe stores an NFS-e the company provided, issued on 2026-06-10.
@@ -110,5 +112,33 @@ func TestStatus_JSON(t *testing.T) {
 	decodeJSONOutput(t, env.out, &status)
 	if status["CNPJ"] != nfeTestCNPJ || status["TotalEmitidas"] != float64(0) || status["LastFoundNSU"] != nil {
 		t.Errorf("status = %v", status)
+	}
+}
+
+func TestPull_JSONFailurePrintsNothing(t *testing.T) {
+	// The refusing provider fails the NFS-e pull at the certificate.
+	env := newNFeTestRoot(t)
+	if err := env.run("pull", "-c", nfeTestCNPJ, "--json"); err == nil {
+		t.Fatal("pull without a certificate password succeeded")
+	}
+	if got := env.out.String(); got != "" {
+		t.Errorf("stdout = %q, want nothing", got)
+	}
+}
+
+func TestNFSePullOutput(t *testing.T) {
+	found := int64(7)
+	got := newNFSePullOutput(sync.PullResult{
+		CompanyName:      "Empresa",
+		CNPJ:             nfeTestCNPJ,
+		CredentialLabel:  "Mock A1",
+		Status:           "completed",
+		LastProcessedNSU: 9,
+		LastFoundNSU:     &found,
+		DocumentsFound:   3,
+		Duration:         1500 * time.Millisecond,
+	})
+	if got.DurationMs != 1500 || got.LastProcessedNSU != 9 || *got.LastFoundNSU != 7 || got.DocumentsFound != 3 || got.Status != "completed" {
+		t.Errorf("newNFSePullOutput = %+v", got)
 	}
 }

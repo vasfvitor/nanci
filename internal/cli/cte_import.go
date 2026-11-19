@@ -30,6 +30,12 @@ func newCTeImportCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("erro ao importar XML: %w", err)
 			}
+			if env.jsonOutput() {
+				if err := printJSON(cmd.OutOrStdout(), newImportOutput(res)); err != nil {
+					return err
+				}
+				return importError(res)
+			}
 			return printImportResult(cmd.OutOrStdout(), res)
 		},
 	}

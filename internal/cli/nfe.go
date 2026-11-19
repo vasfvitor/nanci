@@ -81,10 +81,11 @@ func connectionTestError(r app.ConnectionTestResult) error {
 }
 
 // pullError returns the error of a failed NF-e or CT-e pull. For a blocked
-// source it first prints when the next query is allowed.
-func pullError(out io.Writer, err error) error {
+// source it first prints when the next query is allowed, in text mode only:
+// with --json the error message already names the time.
+func (e CommandEnv) pullError(out io.Writer, err error) error {
 	var blocked *sync.BlockedError
-	if errors.As(err, &blocked) {
+	if errors.As(err, &blocked) && !e.jsonOutput() {
 		_, _ = fmt.Fprintf(out, "Próxima consulta permitida após: %s\n", formatDateTime(blocked.Until))
 	}
 	if errors.Is(err, app.ErrSyncRunning) {

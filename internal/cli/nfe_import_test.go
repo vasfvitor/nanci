@@ -155,3 +155,44 @@ func TestCTeImport_AllRejectedFails(t *testing.T) {
 		t.Errorf("err = %v, want nenhum arquivo importado", err)
 	}
 }
+
+func TestImport_JSON(t *testing.T) {
+	env := newCTeTestRoot(t)
+	nfeTestdata := filepath.Join("..", "nfe", "testdata")
+	invalid := filepath.Join(nfeTestdata, "invalid.xml")
+
+	if err := env.run("nfe", "import", "-c", nfeTestCNPJ, filepath.Join(nfeTestdata, "procnfe.xml"), invalid, "--json"); err != nil {
+		t.Fatalf("nfe import --json: %v\n%s", err, env.out.String())
+	}
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	files, ok := result["Files"].([]any)
+	if !ok || len(files) != 2 || result["Imported"] != float64(1) || result["Rejected"] != float64(1) {
+		t.Fatalf("nfe import = %v", result)
+	}
+	first := files[0].(map[string]any)
+	if first["Outcome"] != app.ImportOutcomeImported || first["Kind"] != app.ImportKindCompleta || first["ChaveAcesso"] != nfeChaveProc {
+		t.Errorf("first file = %v", first)
+	}
+	if second := files[1].(map[string]any); second["Outcome"] != app.ImportOutcomeRejected || second["Path"] != invalid || second["Message"] == "" {
+		t.Errorf("second file = %v", second)
+	}
+
+	if err := env.run("cte", "import", "-c", nfeTestCNPJ, filepath.Join("..", "cte", "testdata", "procte.xml"), "--json"); err != nil {
+		t.Fatalf("cte import --json: %v\n%s", err, env.out.String())
+	}
+	decodeJSONOutput(t, env.out, &result)
+	if result["Imported"] != float64(1) || result["Rejected"] != float64(0) {
+		t.Errorf("cte import = %v", result)
+	}
+
+	// Every file rejected: the result still prints, and the error stays.
+	err := env.run("cte", "import", "-c", nfeTestCNPJ, invalid, "--json")
+	if err == nil || err.Error() != "nenhum arquivo importado" {
+		t.Errorf("err = %v, want nenhum arquivo importado", err)
+	}
+	decodeJSONOutput(t, env.out, &result)
+	if result["Rejected"] != float64(1) {
+		t.Errorf("all rejected = %v", result)
+	}
+}

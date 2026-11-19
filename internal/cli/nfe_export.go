@@ -72,7 +72,7 @@ func newNFeBulkExportCmd(
 			}
 			defer cleanup()
 
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Gerando arquivo %s...\n", fileType)
+			env.progress(cmd.OutOrStdout(), "Gerando arquivo "+fileType+"...")
 			res, err := run(cmd.Context(), application, app.NFeExportInput{
 				CNPJ:           *cnpjFlag,
 				Competence:     competenceFlag,
@@ -86,6 +86,9 @@ func newNFeBulkExportCmd(
 				return fmt.Errorf("erro ao gerar arquivo %s: %w", fileType, err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newNFeExportOutput(res))
+			}
 			printExportResult(cmd.OutOrStdout(), res.ExportResult)
 			if res.SkippedResumos > 0 {
 				if withResumos {
@@ -139,6 +142,9 @@ func newNFeExportXMLCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro ao exportar XML: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), fileOutput{OutPath: outPath})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "XML exportado com sucesso: %s\n", outPath)
 			return nil
 		},
@@ -180,6 +186,9 @@ func newNFeExportDANFECmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro ao exportar DANFE: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), fileOutput{OutPath: outPath})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "DANFE exportado com sucesso: %s\n", outPath)
 			return nil
 		},

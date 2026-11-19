@@ -51,7 +51,7 @@ func newCTeBulkExportCmd(env CommandEnv, cnpjFlag *string, use, short, what, def
 			}
 			defer cleanup()
 
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Gerando arquivo %s...\n", what)
+			env.progress(cmd.OutOrStdout(), "Gerando arquivo "+what+"...")
 			res, err := run(application.CTe, cmd.Context(), app.CTeExportInput{
 				CNPJ:         *cnpjFlag,
 				Competence:   competenceFlag,
@@ -64,6 +64,9 @@ func newCTeBulkExportCmd(env CommandEnv, cnpjFlag *string, use, short, what, def
 				return fmt.Errorf("erro ao gerar arquivo %s: %w", what, err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newCTeExportOutput(res))
+			}
 			printExportResult(cmd.OutOrStdout(), res.ExportResult)
 			if res.SkippedSemDACTE > 0 {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "CT-e sem DACTE: %d\n", res.SkippedSemDACTE)
@@ -110,6 +113,9 @@ func newCTeExportXMLCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro ao exportar XML: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), fileOutput{OutPath: outPath})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "XML exportado com sucesso: %s\n", outPath)
 			return nil
 		},
@@ -151,6 +157,9 @@ func newCTeExportDACTECmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro ao exportar DACTE: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), fileOutput{OutPath: outPath})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "DACTE exportado com sucesso: %s\n", outPath)
 			return nil
 		},

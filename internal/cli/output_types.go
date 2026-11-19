@@ -520,3 +520,428 @@ func newConnectionTestOutput(r app.ConnectionTestResult) connectionTestOutput {
 		StatusExplanation: r.StatusExplanation,
 	}
 }
+
+// nfsePullOutput is `pull`, one NFS-e sync run. DurationMs is in
+// milliseconds.
+type nfsePullOutput struct {
+	CompanyName              string
+	CNPJ                     string
+	Status                   string
+	StopReason               string
+	LastProcessedNSU         int64
+	LastFoundNSU             *int64
+	DocumentsFound           int
+	EventsFound              int
+	DocumentsSaved           int
+	EventsSaved              int
+	DocumentsSkippedByPolicy int
+	EventsSkippedByPolicy    int
+	Errors                   int
+	DurationMs               int64
+}
+
+func newNFSePullOutput(r sync.PullResult) nfsePullOutput {
+	return nfsePullOutput{
+		CompanyName:              r.CompanyName,
+		CNPJ:                     r.CNPJ,
+		Status:                   r.Status,
+		StopReason:               r.StopReason,
+		LastProcessedNSU:         r.LastProcessedNSU,
+		LastFoundNSU:             r.LastFoundNSU,
+		DocumentsFound:           r.DocumentsFound,
+		EventsFound:              r.EventsFound,
+		DocumentsSaved:           r.DocumentsSaved,
+		EventsSaved:              r.EventsSaved,
+		DocumentsSkippedByPolicy: r.DocumentsSkippedByPolicy,
+		EventsSkippedByPolicy:    r.EventsSkippedByPolicy,
+		Errors:                   r.Errors,
+		DurationMs:               r.Duration.Milliseconds(),
+	}
+}
+
+// nfePullOutput is `nfe pull`. DurationMs is in milliseconds.
+type nfePullOutput struct {
+	CompanyName      string
+	CNPJ             string
+	Status           string
+	StopReason       string
+	LastNSU          int64
+	MaxNSU           *int64
+	CompletasSaved   int
+	ResumosSaved     int
+	EventsSaved      int
+	Errors           int
+	NextAllowedAt    *time.Time
+	RequestsLastHour int
+	RequestBudget    int
+	DurationMs       int64
+}
+
+func newNFePullOutput(r app.NFePullResult) nfePullOutput {
+	return nfePullOutput{
+		CompanyName:      r.CompanyName,
+		CNPJ:             r.CNPJ,
+		Status:           r.Status,
+		StopReason:       r.StopReason,
+		LastNSU:          r.LastNSU,
+		MaxNSU:           r.MaxNSU,
+		CompletasSaved:   r.CompletasSaved,
+		ResumosSaved:     r.ResumosSaved,
+		EventsSaved:      r.EventsSaved,
+		Errors:           r.Errors,
+		NextAllowedAt:    r.NextAllowedAt,
+		RequestsLastHour: r.RequestsLastHour,
+		RequestBudget:    r.RequestBudget,
+		DurationMs:       r.Duration.Milliseconds(),
+	}
+}
+
+// ctePullOutput is `cte pull`. DurationMs is in milliseconds.
+type ctePullOutput struct {
+	CompanyName      string
+	CNPJ             string
+	Status           string
+	StopReason       string
+	LastNSU          int64
+	MaxNSU           *int64
+	DocumentsSaved   int
+	EventsSaved      int
+	Errors           int
+	NextAllowedAt    *time.Time
+	RequestsLastHour int
+	RequestBudget    int
+	DurationMs       int64
+}
+
+func newCTePullOutput(r app.CTePullResult) ctePullOutput {
+	return ctePullOutput{
+		CompanyName:      r.CompanyName,
+		CNPJ:             r.CNPJ,
+		Status:           r.Status,
+		StopReason:       r.StopReason,
+		LastNSU:          r.LastNSU,
+		MaxNSU:           r.MaxNSU,
+		DocumentsSaved:   r.DocumentsSaved,
+		EventsSaved:      r.EventsSaved,
+		Errors:           r.Errors,
+		NextAllowedAt:    r.NextAllowedAt,
+		RequestsLastHour: r.RequestsLastHour,
+		RequestBudget:    r.RequestBudget,
+		DurationMs:       r.Duration.Milliseconds(),
+	}
+}
+
+// exportOutput is a bulk export of `export`. OutPath is empty when nothing
+// was exported, since no file is written then.
+type exportOutput struct {
+	OutPath       string
+	Format        string
+	Incremental   bool
+	ExportedCount int
+}
+
+func newExportOutput(r app.ExportResult) exportOutput {
+	return exportOutput{
+		OutPath:       r.OutPath,
+		Format:        r.Format,
+		Incremental:   r.Incremental,
+		ExportedCount: r.ExportedCount,
+	}
+}
+
+// nfeExportOutput is a bulk export of `nfe export`, with the resumos it
+// left out.
+type nfeExportOutput struct {
+	exportOutput
+	SkippedResumos int
+}
+
+func newNFeExportOutput(r app.NFeExportResult) nfeExportOutput {
+	return nfeExportOutput{
+		exportOutput:   newExportOutput(r.ExportResult),
+		SkippedResumos: r.SkippedResumos,
+	}
+}
+
+// cteExportOutput is a bulk export of `cte export`, with the CT-e a DACTE
+// export left out.
+type cteExportOutput struct {
+	exportOutput
+	SkippedSemDACTE int
+}
+
+func newCTeExportOutput(r app.CTeExportResult) cteExportOutput {
+	return cteExportOutput{
+		exportOutput:    newExportOutput(r.ExportResult),
+		SkippedSemDACTE: r.SkippedSemDACTE,
+	}
+}
+
+// fileOutput is the file a single-document export wrote.
+type fileOutput struct {
+	OutPath string
+}
+
+// importedFileOutput is one file of `nfe import` or `cte import`. Kind and
+// ChaveAcesso are empty when the file was rejected before they were known.
+type importedFileOutput struct {
+	Path        string
+	Kind        string
+	ChaveAcesso string
+	Outcome     string // imported | updated | rejected
+	Message     string
+}
+
+// importOutput is `nfe import` or `cte import`, one entry per file.
+type importOutput struct {
+	Files    []importedFileOutput
+	Imported int
+	Updated  int
+	Rejected int
+}
+
+func newImportOutput(r app.ImportXMLResult) importOutput {
+	files := make([]importedFileOutput, 0, len(r.Files))
+	for _, f := range r.Files {
+		files = append(files, importedFileOutput{
+			Path:        f.Path,
+			Kind:        f.Kind,
+			ChaveAcesso: f.ChaveAcesso,
+			Outcome:     f.Outcome,
+			Message:     f.Message,
+		})
+	}
+	return importOutput{
+		Files:    files,
+		Imported: r.Imported,
+		Updated:  r.Updated,
+		Rejected: r.Rejected,
+	}
+}
+
+// fetchOutput is `nfe buscar`.
+type fetchOutput struct {
+	ChaveAcesso      string
+	Outcome          string // completa | resumo | not_found
+	Message          string
+	RequestsLastHour int
+	RequestBudget    int
+}
+
+func newFetchOutput(r app.FetchByChaveResult) fetchOutput {
+	return fetchOutput{
+		ChaveAcesso:      r.ChaveAcesso,
+		Outcome:          r.Outcome,
+		Message:          r.Message,
+		RequestsLastHour: r.RequestsLastHour,
+		RequestBudget:    r.RequestBudget,
+	}
+}
+
+// recoverNSUOutput is `recuperar-nsu`. StopReason is set when the run
+// stopped with NSUs left to ask for.
+type recoverNSUOutput struct {
+	CompanyName      string
+	CNPJ             string
+	Asked            int
+	Recovered        int
+	Empty            int
+	Unreadable       int
+	Expired          int64
+	Missing          int64
+	StopReason       string
+	NextAllowedAt    *time.Time
+	RequestsLastHour int
+	RequestBudget    int
+}
+
+func newRecoverNSUOutput(r app.RecoverNSUResult) recoverNSUOutput {
+	return recoverNSUOutput{
+		CompanyName:      r.CompanyName,
+		CNPJ:             r.CNPJ,
+		Asked:            r.Asked,
+		Recovered:        r.Recovered,
+		Empty:            r.Empty,
+		Unreadable:       r.Unreadable,
+		Expired:          r.Expired,
+		Missing:          r.Missing,
+		StopReason:       r.StopReason,
+		NextAllowedAt:    r.NextAllowedAt,
+		RequestsLastHour: r.RequestsLastHour,
+		RequestBudget:    r.RequestBudget,
+	}
+}
+
+// discardNSUOutput is `recuperar-nsu --descartar`: how many NSUs were
+// discarded or, without --confirmar, would be.
+type discardNSUOutput struct {
+	Discarded int64
+	Confirmed bool
+}
+
+// nfeSkippedOutput is a chave a manifestação leaves out, and why.
+type nfeSkippedOutput struct {
+	ChaveAcesso string
+	Reason      string
+}
+
+func newNFeSkippedOutput(s app.NFeSkipped) nfeSkippedOutput {
+	return nfeSkippedOutput{ChaveAcesso: s.ChaveAcesso, Reason: s.Reason}
+}
+
+// nfeCienciaPlanOutput is `nfe ciencia` without --confirmar: what would be
+// sent. Nothing is.
+type nfeCienciaPlanOutput struct {
+	Eligible []nfeDocumentOutput
+	Skipped  []nfeSkippedOutput
+}
+
+func newNFeCienciaPlanOutput(p app.NFeCienciaPlan) nfeCienciaPlanOutput {
+	eligible := make([]nfeDocumentOutput, 0, len(p.Eligible))
+	for _, d := range p.Eligible {
+		eligible = append(eligible, newNFeDocumentOutput(d))
+	}
+	skipped := make([]nfeSkippedOutput, 0, len(p.Skipped))
+	for _, s := range p.Skipped {
+		skipped = append(skipped, newNFeSkippedOutput(s))
+	}
+	return nfeCienciaPlanOutput{Eligible: eligible, Skipped: skipped}
+}
+
+// nfeEventOutcomeOutput is the result of one manifestação event. Status is
+// registrada, ja_registrada, rejeitada or nao_enviada.
+type nfeEventOutcomeOutput struct {
+	ChaveAcesso  string
+	TpEvento     string
+	Status       string
+	CStat        string
+	XMotivo      string
+	Protocolo    string
+	RegisteredAt *time.Time
+}
+
+func newNFeEventOutcomeOutput(o app.NFeEventOutcome) nfeEventOutcomeOutput {
+	return nfeEventOutcomeOutput{
+		ChaveAcesso:  o.ChaveAcesso,
+		TpEvento:     o.TpEvento,
+		Status:       o.Status,
+		CStat:        o.CStat,
+		XMotivo:      o.XMotivo,
+		Protocolo:    o.Protocolo,
+		RegisteredAt: o.RegisteredAt,
+	}
+}
+
+// nfeCienciaSummaryOutput is `nfe ciencia --confirmar`: one outcome per
+// chave sent. Interrupted is the error that stopped the sending, or empty.
+type nfeCienciaSummaryOutput struct {
+	Outcomes    []nfeEventOutcomeOutput
+	Skipped     []nfeSkippedOutput
+	Interrupted string
+}
+
+func newNFeCienciaSummaryOutput(s app.NFeManifestacaoSummary) nfeCienciaSummaryOutput {
+	outcomes := make([]nfeEventOutcomeOutput, 0, len(s.Outcomes))
+	for _, o := range s.Outcomes {
+		outcomes = append(outcomes, newNFeEventOutcomeOutput(o))
+	}
+	skipped := make([]nfeSkippedOutput, 0, len(s.Skipped))
+	for _, sk := range s.Skipped {
+		skipped = append(skipped, newNFeSkippedOutput(sk))
+	}
+	return nfeCienciaSummaryOutput{Outcomes: outcomes, Skipped: skipped, Interrupted: s.Interrupted}
+}
+
+// nfeManifestacaoPlanOutput is `nfe manifestar` without --confirmar: the
+// event that would be sent and the NF-e it is for. Nothing is sent.
+type nfeManifestacaoPlanOutput struct {
+	Tipo             string
+	TpEvento         string
+	Justificativa    string
+	ChaveAcesso      string
+	Numero           string
+	Serie            string
+	IssueDate        *time.Time
+	TotalValue       int64
+	EmitenteCNPJ     string
+	EmitenteName     string
+	Manifestacao     string
+	CienciaDue       *time.Time
+	ConclusiveDue    *time.Time
+	DaysLeft         *int
+	TacitlyConfirmed bool
+}
+
+func newNFeManifestacaoPlanOutput(p app.NFeManifestacaoPlan) nfeManifestacaoPlanOutput {
+	return nfeManifestacaoPlanOutput{
+		Tipo:             string(p.Tipo),
+		TpEvento:         p.Tipo.TpEvento(),
+		Justificativa:    p.Justificativa,
+		ChaveAcesso:      string(p.Document.ChaveAcesso),
+		Numero:           p.Document.Numero,
+		Serie:            p.Document.Serie,
+		IssueDate:        optionalTime(p.Document.IssueDate),
+		TotalValue:       p.Document.TotalValue.Cents(),
+		EmitenteCNPJ:     p.Document.EmitenteCNPJ,
+		EmitenteName:     p.Document.EmitenteName,
+		Manifestacao:     string(p.Document.Manifestacao),
+		CienciaDue:       optionalTime(p.CienciaDue),
+		ConclusiveDue:    optionalTime(p.ConclusiveDue),
+		DaysLeft:         optionalDaysLeft(p.ConclusiveDue, p.DaysLeft),
+		TacitlyConfirmed: p.TacitlyConfirmed,
+	}
+}
+
+// nfeResetOutput is `nfe reset`: what was removed with --confirmar
+// (Confirmed true), or what would be removed without it.
+type nfeResetOutput struct {
+	CompanyName       string
+	CNPJ              string
+	Environment       string
+	Confirmed         bool
+	CompanyDocuments  int
+	Documents         int
+	Events            int
+	ExportMarks       int
+	ManifestacoesKept int
+}
+
+func newNFeResetOutput(r app.NFeResetResult, confirmed bool) nfeResetOutput {
+	return nfeResetOutput{
+		CompanyName:       r.CompanyName,
+		CNPJ:              r.CNPJ,
+		Environment:       string(r.Environment),
+		Confirmed:         confirmed,
+		CompanyDocuments:  r.CompanyDocuments,
+		Documents:         r.Documents,
+		Events:            r.Events,
+		ExportMarks:       r.ExportMarks,
+		ManifestacoesKept: r.ManifestacoesKept,
+	}
+}
+
+// cteResetOutput is `cte reset`: what was removed with --confirmar
+// (Confirmed true), or what would be removed without it.
+type cteResetOutput struct {
+	CompanyName      string
+	CNPJ             string
+	Environment      string
+	Confirmed        bool
+	CompanyDocuments int
+	Documents        int
+	Events           int
+	ExportMarks      int
+}
+
+func newCTeResetOutput(r app.CTeResetResult, confirmed bool) cteResetOutput {
+	return cteResetOutput{
+		CompanyName:      r.CompanyName,
+		CNPJ:             r.CNPJ,
+		Environment:      string(r.Environment),
+		Confirmed:        confirmed,
+		CompanyDocuments: r.CompanyDocuments,
+		Documents:        r.Documents,
+		Events:           r.Events,
+		ExportMarks:      r.ExportMarks,
+	}
+}

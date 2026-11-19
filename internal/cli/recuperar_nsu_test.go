@@ -139,3 +139,39 @@ func TestRecuperarNSU_RejectsFlagMixesWithoutTheApp(t *testing.T) {
 		}
 	}
 }
+
+func TestNFeRecuperarNSU_JSON(t *testing.T) {
+	env, _ := newNFeFetchTestRoot(t, retDistDFeInt(t, 137, "Nenhum documento localizado", ""))
+	env.recordGap(syncstate.SyncSourceNFe, 41, 45)
+
+	if err := env.run("nfe", "recuperar-nsu", "-c", nfeTestCNPJ, "--limite", "2", "--json"); err != nil {
+		t.Fatalf("recuperar-nsu --json: %v\n%s", err, env.out.String())
+	}
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	if result["Asked"] != float64(2) || result["Empty"] != float64(2) || result["Missing"] != float64(3) || result["StopReason"] != sync.RecoverStopLimit {
+		t.Errorf("recuperar-nsu = %v", result)
+	}
+}
+
+func TestNFeRecuperarNSU_JSONDiscard(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.recordGap(syncstate.SyncSourceNFe, 41, 45)
+
+	var result map[string]any
+	if err := env.run("nfe", "recuperar-nsu", "-c", nfeTestCNPJ, "--descartar", "--json"); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	decodeJSONOutput(t, env.out, &result)
+	if result["Discarded"] != float64(5) || result["Confirmed"] != false {
+		t.Errorf("dry run = %v", result)
+	}
+
+	if err := env.run("nfe", "recuperar-nsu", "-c", nfeTestCNPJ, "--descartar", "--confirmar", "--json"); err != nil {
+		t.Fatalf("discard: %v", err)
+	}
+	decodeJSONOutput(t, env.out, &result)
+	if result["Discarded"] != float64(5) || result["Confirmed"] != true {
+		t.Errorf("discard = %v", result)
+	}
+}

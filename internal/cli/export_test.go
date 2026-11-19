@@ -188,3 +188,54 @@ func TestExportDANFSe_InvalidChaveSkipsAppFactory(t *testing.T) {
 		t.Errorf("AppFactory called %d times, want 0", calls)
 	}
 }
+
+func TestExport_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seedNFSeFixture("simple-prestada")
+	env.seedNFSeFixture("simple-tomada")
+	csvPath := filepath.Join(t.TempDir(), "notas.csv")
+
+	if err := env.run("export", "csv", "-c", nfeTestCNPJ, "-o", csvPath, "--json"); err != nil {
+		t.Fatalf("export csv --json: %v", err)
+	}
+	var bulk map[string]any
+	decodeJSONOutput(t, env.out, &bulk)
+	if bulk["OutPath"] != csvPath || bulk["ExportedCount"] != float64(2) || bulk["Format"] == "" {
+		t.Errorf("csv = %v", bulk)
+	}
+
+	xmlPath := filepath.Join(t.TempDir(), "nota.xml")
+	if err := env.run("export", "xml", "-c", nfeTestCNPJ, "--chave", nfseChavePrestada, "-o", xmlPath, "--json"); err != nil {
+		t.Fatalf("export xml --json: %v", err)
+	}
+	var single map[string]any
+	decodeJSONOutput(t, env.out, &single)
+	if len(single) != 1 || single["OutPath"] != xmlPath {
+		t.Errorf("xml = %v, want only OutPath", single)
+	}
+}
+
+func TestExportDANFSe_JSONSkipsTheProgressLine(t *testing.T) {
+	// The test app has no DANFSe renderer, so the export fails after the
+	// progress line.
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"text", nil, "Gerando DANFSe...\n"},
+		{"json", []string{"--json"}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newNFeTestRoot(t) // flag values stick to a command tree
+			env.seedNFSeFixture("simple-prestada")
+			args := append([]string{"export", "danfse", "-c", nfeTestCNPJ, "--chave", nfseChavePrestada, "-o", filepath.Join(t.TempDir(), "d.pdf")}, tc.args...)
+			if err := env.run(args...); err == nil {
+				t.Fatal("export danfse without a renderer succeeded")
+			}
+			if got := env.out.String(); got != tc.want {
+				t.Errorf("stdout = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

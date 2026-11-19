@@ -33,6 +33,9 @@ func newCTeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("erro: %w", err)
 				}
+				if env.jsonOutput() {
+					return printJSON(out, newCTeResetOutput(result, false))
+				}
 				_, _ = fmt.Fprintf(out, "Redefinição de CT-e para: %s (%s), ambiente %s\n", result.CompanyName, cnpj.Format(result.CNPJ), result.Environment)
 				printCTeResetCounts(out, result, "seriam removidos")
 				_, _ = fmt.Fprintln(out, "\nNada foi alterado. Use --confirmar para redefinir.")
@@ -45,6 +48,9 @@ func newCTeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 					return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
 				}
 				return fmt.Errorf("erro: %w", err)
+			}
+			if env.jsonOutput() {
+				return printJSON(out, newCTeResetOutput(result, true))
 			}
 			_, _ = fmt.Fprintf(out, "CT-e redefinidos para: %s (%s), ambiente %s\n", result.CompanyName, cnpj.Format(result.CNPJ), result.Environment)
 			printCTeResetCounts(out, result, "removidos")

@@ -82,7 +82,7 @@ func newNFSeBulkExportCmd(env CommandEnv, flags *nfseExportFlags, use, short, de
 			}
 			defer cleanup()
 
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), progress)
+			env.progress(cmd.OutOrStdout(), progress)
 			res, err := run(cmd.Context(), application, app.ExportInput{
 				CNPJ:         flags.cnpj,
 				Competence:   flags.competence,
@@ -95,6 +95,9 @@ func newNFSeBulkExportCmd(env CommandEnv, flags *nfseExportFlags, use, short, de
 				return fmt.Errorf("%s: %w", failure, err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newExportOutput(res))
+			}
 			printExportResult(cmd.OutOrStdout(), res)
 			return nil
 		},
@@ -135,6 +138,9 @@ func newExportXMLCmd(env CommandEnv, cnpj *string) *cobra.Command {
 				return fmt.Errorf("erro ao exportar XML: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), fileOutput{OutPath: outPath})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "XML exportado com sucesso: %s\n", outPath)
 			return nil
 		},
@@ -181,11 +187,14 @@ func newExportDANFSeCmd(env CommandEnv, cnpj *string) *cobra.Command {
 				OutPath:     outPath,
 			}
 
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Gerando DANFSe...")
+			env.progress(cmd.OutOrStdout(), "Gerando DANFSe...")
 			if err := application.Exports.ExportDANFSe(cmd.Context(), input); err != nil {
 				return fmt.Errorf("erro ao gerar DANFSe: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), fileOutput{OutPath: outPath})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "DANFSe gerado com sucesso: %s\n", outPath)
 			return nil
 		},

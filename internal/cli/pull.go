@@ -30,6 +30,10 @@ func newPullCommand(env CommandEnv) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newNFSePullOutput(result))
+			}
+
 			out := cmd.OutOrStdout()
 			_, _ = fmt.Fprintf(out, "Iniciando sincronização para %s (%s)\n",
 				result.CompanyName, cnpj.Format(result.CNPJ))

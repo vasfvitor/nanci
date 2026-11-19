@@ -15,6 +15,15 @@ func (e CommandEnv) jsonOutput() bool {
 	return e.JSON != nil && *e.JSON
 }
 
+// progress prints a progress line such as "Gerando arquivo ZIP..." in text
+// mode. With --json it prints nothing, so stdout holds only the result.
+func (e CommandEnv) progress(w io.Writer, line string) {
+	if e.jsonOutput() {
+		return
+	}
+	_, _ = fmt.Fprintln(w, line)
+}
+
 // printJSON writes v as indented JSON, one value per command run.
 func printJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)

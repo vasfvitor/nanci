@@ -49,6 +49,9 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("erro: %w", err)
 				}
+				if env.jsonOutput() {
+					return printJSON(out, newNFeCienciaPlanOutput(plan))
+				}
 				if len(plan.Eligible) == 0 {
 					_, _ = fmt.Fprintln(out, "Nenhuma NF-e elegível para a Ciência da Operação.")
 					printNFeSkipped(out, plan.Skipped)
@@ -81,6 +84,12 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			summary, err := application.NFe.RegisterCiencia(cmd.Context(), input)
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
+			}
+			if env.jsonOutput() {
+				if err := printJSON(out, newNFeCienciaSummaryOutput(summary)); err != nil {
+					return err
+				}
+				return nfeOutcomesError(summary.Outcomes, summary.Interrupted)
 			}
 			printNFeOutcomes(out, summary.Outcomes)
 			printNFeSkipped(out, summary.Skipped)
@@ -142,6 +151,9 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				if plan.BlockReason != "" {
 					return errors.New("erro: " + plan.BlockReason)
 				}
+				if env.jsonOutput() {
+					return printJSON(out, newNFeManifestacaoPlanOutput(plan))
+				}
 				printNFeManifestacaoPlan(out, plan)
 				_, _ = fmt.Fprintln(out, "\nNada foi enviado. Use --confirmar para registrar a manifestação.")
 				return nil
@@ -149,7 +161,13 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 
 			outcome, err := application.NFe.RegisterManifestacao(cmd.Context(), input)
 			if outcome.ChaveAcesso != "" {
-				printNFeOutcomes(out, []app.NFeEventOutcome{outcome})
+				if env.jsonOutput() {
+					if jsonErr := printJSON(out, newNFeEventOutcomeOutput(outcome)); jsonErr != nil {
+						return jsonErr
+					}
+				} else {
+					printNFeOutcomes(out, []app.NFeEventOutcome{outcome})
+				}
 			}
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)

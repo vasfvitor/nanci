@@ -62,14 +62,20 @@ func newRecuperarNSUCmd(env CommandEnv, cnpjFlag *string, label, group string, a
 			if descartarFlag {
 				n, err := actions.discard(cmd.Context(), app.DiscardNSUInput{CNPJ: *cnpjFlag, Confirm: confirmarFlag})
 				if err != nil {
-					return pullError(out, err)
+					return env.pullError(out, err)
+				}
+				if env.jsonOutput() {
+					return printJSON(out, discardNSUOutput{Discarded: n, Confirmed: confirmarFlag})
 				}
 				printDiscardNSUResult(out, n, confirmarFlag)
 				return nil
 			}
 			res, err := actions.recover(cmd.Context(), app.RecoverNSUInput{CNPJ: *cnpjFlag, Limit: limiteFlag})
 			if err != nil {
-				return pullError(out, err)
+				return env.pullError(out, err)
+			}
+			if env.jsonOutput() {
+				return printJSON(out, newRecoverNSUOutput(res))
 			}
 			printRecoverNSUResult(out, res, group, limiteFlag)
 			return nil

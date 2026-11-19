@@ -556,3 +556,63 @@ func TestCTeStatus_JSON(t *testing.T) {
 		t.Errorf("status = %v", status)
 	}
 }
+
+func TestCTeReset_JSON(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedCTe("procte.xml", 1)
+
+	if err := env.run("cte", "reset", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("reset --json: %v", err)
+	}
+	var preview map[string]any
+	decodeJSONOutput(t, env.out, &preview)
+	if preview["Confirmed"] != false || preview["CompanyDocuments"] != float64(1) {
+		t.Errorf("preview = %v", preview)
+	}
+	if _, ok := preview["ManifestacoesKept"]; ok {
+		t.Error("CT-e reset prints ManifestacoesKept, an NF-e field")
+	}
+
+	if err := env.run("cte", "reset", "-c", nfeTestCNPJ, "--confirmar", "--json"); err != nil {
+		t.Fatalf("reset --confirmar --json: %v", err)
+	}
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	if result["Confirmed"] != true || result["CompanyDocuments"] != float64(1) {
+		t.Errorf("result = %v", result)
+	}
+}
+
+func TestCTeExport_JSON(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	outPath := filepath.Join(t.TempDir(), "dactes.zip")
+
+	if err := env.run("cte", "export", "dacte-zip", "-c", nfeTestCNPJ, "--out", outPath, "--json"); err != nil {
+		t.Fatalf("export dacte-zip --json: %v", err)
+	}
+	var bulk map[string]any
+	decodeJSONOutput(t, env.out, &bulk)
+	if bulk["OutPath"] != outPath || bulk["ExportedCount"] != float64(1) || bulk["SkippedSemDACTE"] != float64(1) || bulk["Incremental"] != false {
+		t.Errorf("dacte-zip = %v", bulk)
+	}
+
+	pdfPath := filepath.Join(t.TempDir(), "proc.pdf")
+	if err := env.run("cte", "export", "dacte", "-c", nfeTestCNPJ, "--chave", cteChaveProc, "--out", pdfPath, "--json"); err != nil {
+		t.Fatalf("export dacte --json: %v", err)
+	}
+	var single map[string]any
+	decodeJSONOutput(t, env.out, &single)
+	if len(single) != 1 || single["OutPath"] != pdfPath {
+		t.Errorf("dacte = %v, want only OutPath", single)
+	}
+
+	xmlPath := filepath.Join(t.TempDir(), "proc.xml")
+	if err := env.run("cte", "export", "xml", "-c", nfeTestCNPJ, "--chave", cteChaveProc, "--out", xmlPath, "--json"); err != nil {
+		t.Fatalf("export xml --json: %v", err)
+	}
+	decodeJSONOutput(t, env.out, &single)
+	if single["OutPath"] != xmlPath {
+		t.Errorf("xml = %v", single)
+	}
+}

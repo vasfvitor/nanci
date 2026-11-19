@@ -34,6 +34,9 @@ func newNFeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("erro: %w", err)
 				}
+				if env.jsonOutput() {
+					return printJSON(out, newNFeResetOutput(result, false))
+				}
 				_, _ = fmt.Fprintf(out, "Redefinição de NF-e para: %s (%s), ambiente %s\n", result.CompanyName, cnpj.Format(result.CNPJ), result.Environment)
 				printNFeResetCounts(out, result, "seriam removidos")
 				_, _ = fmt.Fprintln(out, "\nNada foi alterado. Use --confirmar para redefinir.")
@@ -46,6 +49,9 @@ func newNFeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 					return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
 				}
 				return fmt.Errorf("erro: %w", err)
+			}
+			if env.jsonOutput() {
+				return printJSON(out, newNFeResetOutput(result, true))
 			}
 			_, _ = fmt.Fprintf(out, "NF-e redefinidas para: %s (%s), ambiente %s\n", result.CompanyName, cnpj.Format(result.CNPJ), result.Environment)
 			printNFeResetCounts(out, result, "removidos")

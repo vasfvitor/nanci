@@ -35,6 +35,12 @@ func newNFeImportCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("erro ao importar XML: %w", err)
 			}
+			if env.jsonOutput() {
+				if err := printJSON(cmd.OutOrStdout(), newImportOutput(res)); err != nil {
+					return err
+				}
+				return importError(res)
+			}
 			return printImportResult(cmd.OutOrStdout(), res)
 		},
 	}
@@ -86,7 +92,12 @@ func printImportResult(w io.Writer, res app.ImportXMLResult) error {
 	}
 	_ = tw.Flush()
 	_, _ = fmt.Fprintf(w, "Importados: %d | Atualizados: %d | Rejeitados: %d\n", res.Imported, res.Updated, res.Rejected)
+	return importError(res)
+}
 
+// importError is the error of an import where every file was rejected, or
+// nil.
+func importError(res app.ImportXMLResult) error {
 	if res.Imported+res.Updated == 0 {
 		return errors.New("nenhum arquivo importado")
 	}
