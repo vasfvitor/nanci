@@ -24,6 +24,7 @@ func newCTeCommand(env CommandEnv) *cobra.Command {
 	cteCmd.AddCommand(newCTeListCmd(env, &cnpjFlag))
 	cteCmd.AddCommand(newCTeExportCmd(env, &cnpjFlag))
 	cteCmd.AddCommand(newCTeImportCmd(env, &cnpjFlag))
+	cteCmd.AddCommand(newCTeRecuperarNSUCmd(env, &cnpjFlag))
 	cteCmd.AddCommand(newCTeTestarConexaoCmd(env, &cnpjFlag))
 	cteCmd.AddCommand(newCTeResetCmd(env, &cnpjFlag))
 	return cteCmd

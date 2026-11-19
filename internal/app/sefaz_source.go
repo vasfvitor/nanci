@@ -36,6 +36,9 @@ type SefazSourceStatus struct {
 	// The Ambiente Nacional stops generating NSUs for the CNPJ root after 60
 	// days without a distNSU, and a pull resets the count.
 	IdleDays int
+	// NSUFaltantes is how many NSUs the distribution skipped without a
+	// document and RecoverNSU can still ask for (sync.NSUGapWindow).
+	NSUFaltantes int64
 }
 
 // loadSefazSourceStatus reads the company's cursor, last run, initial sync
@@ -91,6 +94,11 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 	status.BlockedReason = string(limits.BlockedReason)
 	status.RequestsLastHour = limits.RequestsLastHour
 	status.RequestBudget = limits.RequestBudget
+	missing, err := syncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment, now.Add(-sync.NSUGapWindow))
+	if err != nil {
+		return SefazSourceStatus{}, nil, fmt.Errorf("contar NSUs faltantes: %w", err)
+	}
+	status.NSUFaltantes = missing
 	return status, comp, nil
 }
 
