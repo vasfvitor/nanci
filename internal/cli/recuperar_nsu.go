@@ -84,6 +84,8 @@ func printRecoverNSUResult(out io.Writer, res app.RecoverNSUResult, group string
 		_, _ = fmt.Fprintf(out, "Parou no limite desta execução. Rode `%s` de novo para continuar.\n", again)
 	case sync.RecoverStopRateBudget:
 		_, _ = fmt.Fprintln(out, "Parou porque as consultas desta hora acabaram.")
+	case sync.RecoverStopCanceled:
+		_, _ = fmt.Fprintln(out, "Interrompida pelo usuário; o que falta continua na próxima vez.")
 	case sync.RecoverStopConsumoIndevido:
 		_, _ = fmt.Fprintln(out, "A SEFAZ bloqueou o CNPJ por consumo indevido (cStat 656).")
 	}

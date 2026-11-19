@@ -163,6 +163,35 @@ func TestRecoverNSUClosesGapsPastTheWindowWithoutAsking(t *testing.T) {
 	}
 }
 
+func TestRecoverNSUReportsWhatItDidWhenCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fetcher := &scriptedFetcher{
+		consNSU: map[int64]sefaz.DistResult{
+			11: {CStat: sefaz.CStatDocumentoLocalizado, Docs: []sefaz.DocZip{docZip(t, 11, "procNFe_v4.00.xsd", "procnfe.xml")}},
+		},
+		// The user cancels while the second NSU is being asked.
+		onConsNSU: func(nsu int64) {
+			if nsu == 12 {
+				cancel()
+			}
+		},
+	}
+	mgr, comp := newNFePullTestManager(t, &countingProvider{}, fetcher)
+	recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 15, Cause: NSUGapConsumoIndevido})
+
+	result, err := mgr.RecoverNSU(ctx, RecoverNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
+	if err != nil {
+		t.Fatalf("RecoverNSU: %v", err)
+	}
+	if result.StopReason != RecoverStopCanceled || result.Asked != 2 || result.Recovered != 1 || result.Empty != 1 || result.Missing != 3 {
+		t.Errorf("result = %+v, want canceled after 2 asked, 3 missing", result)
+	}
+	if want := []int64{11, 12}; !slices.Equal(fetcher.asked, want) {
+		t.Errorf("asked NSUs = %v, want %v", fetcher.asked, want)
+	}
+}
+
 func TestRecoverNSURefusesWhileThePullRuns(t *testing.T) {
 	mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
 	release, err := mgr.ReserveSource(comp.ID, syncstate.SyncSourceNFe)

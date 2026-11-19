@@ -1153,7 +1153,7 @@ export interface RecoverNSUResult {
     "Missing": number;
 
     /**
-     * limit | rate_budget | consumo_indevido; empty when nothing is left to ask
+     * limit | rate_budget | consumo_indevido | canceled; empty when nothing is left to ask
      */
     "StopReason": string;
     "NextAllowedAt": string | null;

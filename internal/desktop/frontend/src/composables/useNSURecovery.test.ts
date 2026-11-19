@@ -176,4 +176,20 @@ describe('useNSURecovery', () => {
       })
     )
   })
+
+  it('reports what a cancelled run did as a warning', async () => {
+    useNFeDocumentsStore().status = status()
+    vi.mocked(desktopClient.recoverNFeNSU).mockResolvedValue(
+      result({ Asked: 2, Recovered: 1, Empty: 1, Missing: 4, StopReason: 'canceled' })
+    )
+
+    await recovery('nfe').recover()
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'warning',
+        message: expect.stringContaining('Recuperação cancelada'),
+      })
+    )
+  })
 })

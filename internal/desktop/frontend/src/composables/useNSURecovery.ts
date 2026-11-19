@@ -73,7 +73,9 @@ export function useNSURecovery(source: NSURecoverySource, options: NSURecoveryOp
       const result = await syncStore.runCancellableSync(companyCNPJ, source, () =>
         recoverNSU(companyCNPJ)
       )
-      const notify = result.StopReason === 'consumo_indevido' ? notifyWarning : notifySuccess
+      const stoppedShort =
+        result.StopReason === 'consumo_indevido' || result.StopReason === 'canceled'
+      const notify = stoppedShort ? notifyWarning : notifySuccess
       notify(recoverySummary(result))
       return result
     } catch (error) {

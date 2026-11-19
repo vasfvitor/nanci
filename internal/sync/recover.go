@@ -25,6 +25,7 @@ const (
 	RecoverStopLimit           = "limit"            // it spent what it was allowed to
 	RecoverStopRateBudget      = "rate_budget"      // the hour's budget ran out
 	RecoverStopConsumoIndevido = "consumo_indevido" // SEFAZ answered 656
+	RecoverStopCanceled        = "canceled"         // the caller cancelled after some NSUs were asked
 )
 
 // RecoverNSUInput names the company and source whose gaps to recover. Limit
@@ -48,7 +49,8 @@ type RecoverNSUResult struct {
 	Expired     int64 // NSUs closed unasked because they are past the window
 	Missing     int64 // NSUs still missing after the run
 	// StopReason is set when the run stopped with NSUs left to ask for:
-	// RecoverStopLimit, RecoverStopRateBudget or RecoverStopConsumoIndevido.
+	// RecoverStopLimit, RecoverStopRateBudget, RecoverStopConsumoIndevido or
+	// RecoverStopCanceled.
 	StopReason       string
 	NextAllowedAt    *time.Time
 	RequestsLastHour int
@@ -104,7 +106,14 @@ func (m *Manager) RecoverNSU(ctx context.Context, input RecoverNSUInput) (Recove
 		return RecoverNSUResult{}, err
 	}
 	if len(gaps) > 0 {
-		if err := m.recoverGaps(ctx, comp, source, input.Limit, gaps, &result); err != nil {
+		err := m.recoverGaps(ctx, comp, source, input.Limit, gaps, &result)
+		switch {
+		case errors.Is(err, context.Canceled) && result.Asked > 0:
+			// What was asked is stored and spent: report it instead of only
+			// the cancel.
+			result.StopReason = RecoverStopCanceled
+			ctx = context.WithoutCancel(ctx)
+		case err != nil:
 			return RecoverNSUResult{}, err
 		}
 	}
@@ -174,6 +183,9 @@ func (m *Manager) recoverGaps(ctx context.Context, comp *company.Company, source
 
 	for _, gap := range gaps {
 		for nsu := gap.Next; nsu <= gap.Last; nsu++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if result.Asked >= allowance {
 				result.StopReason = RecoverStopLimit
 				return nil
@@ -201,7 +213,9 @@ func (m *Manager) recoverGaps(ctx context.Context, comp *company.Company, source
 }
 
 // recoverOne asks for nsu and stores the answer. It reports stop when SEFAZ
-// blocked the CNPJ (656).
+// blocked the CNPJ (656). Once SEFAZ has answered, the request is spent, so
+// storing the answer and moving the gap ignore a cancel: asking again would
+// spend another request for the same NSU.
 func (m *Manager) recoverOne(ctx context.Context, comp *company.Company, fetcher nsuFetcher, state SourceState, gap NSUGap, nsu int64, result *RecoverNSUResult) (bool, error) {
 	source := fetcher.Kind()
 	resp, items, err := fetcher.FetchNSU(ctx, comp, nsu)
@@ -209,13 +223,12 @@ func (m *Manager) recoverOne(ctx context.Context, comp *company.Company, fetcher
 		return false, fmt.Errorf("consultar NSU %d: %w", nsu, err)
 	}
 	result.Asked++
+	ctx = context.WithoutCancel(ctx)
 
 	switch resp.CStat {
 	case sefaz.CStatConsumoIndevido:
-		// SEFAZ already imposed the block, so a cancel arriving now must not
-		// keep it from being recorded.
 		until := time.Now().UTC().Add(distWaitAfterStop)
-		blockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		blockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		err := m.SyncRepo.SetBlockedUntil(blockCtx, comp.ID, source, comp.Environment, until, syncstate.SyncStopReasonConsumoIndevido)
 		cancel()
 		if err != nil {

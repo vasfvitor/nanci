@@ -140,7 +140,7 @@ type RecoverNSUResult struct {
 	Unreadable       int    // NSUs whose document could not be read; see the log
 	Expired          int64  // NSUs closed unasked, past the 90-day window
 	Missing          int64  // NSUs still missing after the run
-	StopReason       string // limit | rate_budget | consumo_indevido; empty when nothing is left to ask
+	StopReason       string // limit | rate_budget | consumo_indevido | canceled; empty when nothing is left to ask
 	NextAllowedAt    *time.Time
 	RequestsLastHour int
 	RequestBudget    int

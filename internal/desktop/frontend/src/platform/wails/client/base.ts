@@ -162,6 +162,7 @@ const recoverNSUStopReasons: readonly RecoverNSUStopReason[] = [
   'limit',
   'rate_budget',
   'consumo_indevido',
+  'canceled',
 ]
 
 export function mapRecoverNSUResult(item: desktopapi.RecoverNSUResult): RecoverNSUResult {

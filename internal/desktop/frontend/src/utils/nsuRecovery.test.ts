@@ -30,6 +30,17 @@ describe('nsuRecovery', () => {
     expect(missingNSUsText(12)).toBe('12 NSUs faltando')
   })
 
+  it('says a cancelled run keeps what it did', () => {
+    expect(
+      recoverySummary(
+        result({ Asked: 2, Recovered: 1, Empty: 1, Missing: 3, StopReason: 'canceled' })
+      )
+    ).toBe(
+      '2 NSUs consultados, 1 com documento, 1 sem documento. Ainda faltam 3 NSUs. ' +
+        'Recuperação cancelada; o que falta continua na próxima vez.'
+    )
+  })
+
   it('sums up a run', () => {
     expect(recoverySummary(result())).toBe('Nenhum NSU faltando.')
     expect(recoverySummary(result({ Asked: 0, Expired: 4 }))).toBe(

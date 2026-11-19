@@ -57,6 +57,8 @@ export function recoverySummary(result: RecoverNSUResult) {
     text += ' A SEFAZ bloqueou o CNPJ por consumo indevido (656); tente depois do horário indicado.'
   } else if (result.StopReason === 'rate_budget') {
     text += ' As consultas desta hora acabaram.'
+  } else if (result.StopReason === 'canceled') {
+    text += ' Recuperação cancelada; o que falta continua na próxima vez.'
   }
   return text
 }
