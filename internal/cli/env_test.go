@@ -29,6 +29,8 @@ func TestProdEnv_LogFlagsReachTheFactory(t *testing.T) {
 		{name: "trace wins over verbose", args: []string{"-v", "--trace"}, wantLevel: logger.LevelTrace},
 		{name: "NANCI_TRACE alone", envTrace: "1", wantLevel: logger.LevelTrace},
 		{name: "NANCI_TRACE with verbose", args: []string{"-v"}, envTrace: "1", wantLevel: logger.LevelTrace},
+		{name: "json keeps Info out", args: []string{"--json"}, wantLevel: slog.LevelWarn},
+		{name: "json with verbose", args: []string{"--json", "-v"}, wantLevel: slog.LevelDebug},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -39,7 +41,7 @@ func TestProdEnv_LogFlagsReachTheFactory(t *testing.T) {
 			root := NewRootCommand(env)
 			var gotLevel slog.Level
 			tempCommand(t, root, "__probe", func(cmd *cobra.Command, args []string) error {
-				gotLevel = enabledLevel(logger.New(logLevels(env)))
+				gotLevel = enabledLevel(newLogger(env))
 				return nil
 			})
 			root.SetArgs(append([]string{"__probe"}, tt.args...))

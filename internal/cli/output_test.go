@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -22,6 +23,9 @@ func TestReportErrorAsJSONCarriesTheCode(t *testing.T) {
 	}
 	if envelope.Error.Code != "invalid_input" || envelope.Error.Message != err.Error() {
 		t.Errorf("envelope = %+v, want invalid_input with the message", envelope)
+	}
+	if lines := strings.Count(out.String(), "\n"); lines != 1 {
+		t.Errorf("envelope spans %d lines, want 1 (stderr is JSON Lines):\n%s", lines, out.String())
 	}
 }
 

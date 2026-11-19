@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/vasfvitor/nanci/internal/app"
@@ -28,7 +29,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 			return nil, nil, fmt.Errorf("falha ao carregar runtime: %w", err)
 		}
 
-		log := logger.New(logLevels(env))
+		log := newLogger(env)
 
 		dataDir, err := app.ResolveRuntimeDataDir("")
 		if err != nil {
@@ -75,6 +76,16 @@ func prodAppFactory(env CommandEnv) AppFactory {
 		}
 		return application, cleanup, nil
 	}
+}
+
+// newLogger builds the CLI logger: text from Info, or with --json one JSON
+// object per line from Warn, so stderr stays machine-readable.
+func newLogger(env CommandEnv) *slog.Logger {
+	verbose, trace := logLevels(env)
+	if env.jsonOutput() {
+		return logger.NewJSON(verbose, trace)
+	}
+	return logger.New(verbose, trace)
 }
 
 // logLevels reads the --verbose and --trace flags when the factory runs,

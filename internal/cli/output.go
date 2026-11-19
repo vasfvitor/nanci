@@ -36,7 +36,8 @@ func printJSON(w io.Writer, v any) error {
 }
 
 // errorEnvelope is how an error reaches stderr with --json: the message and
-// the code of app.ErrorCode ("" when the error has none).
+// the code of app.ErrorCode ("" when the error has none). It is written on one
+// line, like the JSON log records before it, so stderr is JSON Lines.
 type errorEnvelope struct {
 	Error struct {
 		Code    string `json:"code"`
@@ -54,7 +55,9 @@ func reportError(w io.Writer, err error, asJSON bool) {
 	var envelope errorEnvelope
 	envelope.Error.Code = app.ErrorCode(err)
 	envelope.Error.Message = err.Error()
-	if jsonErr := printJSON(w, envelope); jsonErr != nil {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	if jsonErr := enc.Encode(envelope); jsonErr != nil {
 		_, _ = fmt.Fprintln(w, err)
 	}
 }
