@@ -273,7 +273,7 @@ const {
   notice: nsuNotice,
   disabledReason: nsuDisabledReason,
   confirmRecover: confirmRecoverNSU,
-} = useNSURecovery('nfe', { syncBlockedUntil: nfe.syncBlockedUntil, syncBusy: nfe.syncBusy })
+} = useNSURecovery('nfe', { syncBusy: nfe.syncBusy })
 const { notifyError, notifySuccess, notifyInfo, notifyWarning, notifyExported, notifySyncError } =
   useNotify()
 

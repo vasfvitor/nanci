@@ -1,24 +1,6 @@
 import type { RecoverNSUResult } from '@/types/desktop'
 import { formatCount } from '@/utils/formatters'
 
-// RECOVERY_RESERVE is how many requests of the hour a recovery leaves for
-// the next pull (sync.RecoverNSUReserve).
-export const RECOVERY_RESERVE = 2
-
-export type RecoveryStatus = {
-  NSUFaltantes: number
-  RequestsLastHour: number
-  RequestBudget: number
-}
-
-// recoveryAllowance is how many NSUs a recovery started now would ask for:
-// the missing ones, up to what the hour has left after the reserve.
-export function recoveryAllowance(status: RecoveryStatus | null | undefined) {
-  if (!status) return 0
-  const left = status.RequestBudget - status.RequestsLastHour - RECOVERY_RESERVE
-  return Math.max(0, Math.min(status.NSUFaltantes, left))
-}
-
 function nsus(count: number) {
   return formatCount(count, 'NSU', 'NSUs')
 }
@@ -32,7 +14,7 @@ export function missingNSUsText(missing: number) {
 export function recoveryConfirmText(missing: number, allowance: number, budget: number) {
   return (
     `Faltam ${nsus(missing)}. A recuperação pede cada um à SEFAZ (consNSU) ` +
-    `e usa até ${allowance} das ${budget} consultas desta hora, deixando ${RECOVERY_RESERVE} para a sincronização. ` +
+    `e usa até ${allowance} das ${budget} consultas desta hora; as outras ficam para a sincronização. ` +
     'O que faltar continua na próxima vez.'
   )
 }

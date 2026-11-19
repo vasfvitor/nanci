@@ -214,6 +214,8 @@ func TestStatusNFeMapsEveryField(t *testing.T) {
 			RequestBudget:     20,
 			IdleDays:          55,
 			NSUFaltantes:      7,
+			RecoveryAllowance: 5,
+			RecoveryReadyAt:   &next,
 		},
 		TotalDestinatario: 10,
 		TotalEmitente:     11,
@@ -249,6 +251,8 @@ func TestStatusNFeMapsEveryField(t *testing.T) {
 		RequestBudget:     20,
 		IdleDays:          55,
 		NSUFaltantes:      7,
+		RecoveryAllowance: 5,
+		RecoveryReadyAt:   &next,
 		TotalDestinatario: 10,
 		TotalEmitente:     11,
 		TotalOutros:       12,
@@ -267,6 +271,7 @@ func TestStatusCTeMapsEveryField(t *testing.T) {
 	f, a := newFakeApp(nil)
 	maxNSU := int64(40)
 	lastSync := time.Date(2026, 9, 2, 10, 0, 0, 0, time.UTC)
+	next := time.Date(2026, 9, 2, 11, 0, 0, 0, time.UTC)
 	f.cte.status = app.CTeStatusResult{
 		SefazSourceStatus: app.SefazSourceStatus{
 			CompanyName:       "Empresa Teste",
@@ -283,6 +288,8 @@ func TestStatusCTeMapsEveryField(t *testing.T) {
 			RequestBudget:     20,
 			IdleDays:          61,
 			NSUFaltantes:      3,
+			RecoveryAllowance: 2,
+			RecoveryReadyAt:   &next,
 		},
 		TotalTomador:      4,
 		TotalDestinatario: 5,
@@ -311,6 +318,8 @@ func TestStatusCTeMapsEveryField(t *testing.T) {
 		RequestBudget:     20,
 		IdleDays:          61,
 		NSUFaltantes:      3,
+		RecoveryAllowance: 2,
+		RecoveryReadyAt:   &next,
 		TotalTomador:      4,
 		TotalDestinatario: 5,
 		TotalRemetente:    6,

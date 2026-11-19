@@ -652,6 +652,8 @@ describe('NF-e mappers', () => {
       PendingConclusiva: 2,
       IdleDays: 47,
       NSUFaltantes: 12,
+      RecoveryAllowance: 5,
+      RecoveryReadyAt: '2026-09-23T16:00:00Z',
       LastRunStatus: 'failed',
       LastRunError: 'falha de conexão',
     } as unknown as desktopapi.NFeStatusResult)
@@ -665,6 +667,8 @@ describe('NF-e mappers', () => {
       PendingConclusiva: 2,
       IdleDays: 47,
       NSUFaltantes: 12,
+      RecoveryAllowance: 5,
+      RecoveryReadyAt: '2026-09-23T16:00:00Z',
       LastRunStatus: 'failed',
       LastRunError: 'falha de conexão',
     })

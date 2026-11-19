@@ -245,6 +245,8 @@ export function mapCTeStatus(item: desktopapi.CTeStatusResult): CTeStatusResult 
     RequestBudget: item.RequestBudget,
     IdleDays: item.IdleDays,
     NSUFaltantes: item.NSUFaltantes,
+    RecoveryAllowance: item.RecoveryAllowance,
+    RecoveryReadyAt: asDate(item.RecoveryReadyAt),
     TotalTomador: item.TotalTomador,
     TotalDestinatario: item.TotalDestinatario,
     TotalRemetente: item.TotalRemetente,

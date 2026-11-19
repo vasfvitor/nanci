@@ -210,6 +210,10 @@ export type NFeStatusResult = {
   // NSUFaltantes is how many NSUs the distribution skipped without a
   // document that a recovery can still ask SEFAZ for.
   NSUFaltantes: number
+  // RecoveryAllowance is how many of them a recovery started now would ask
+  // for; RecoveryReadyAt, when set, is when one could start.
+  RecoveryAllowance: number
+  RecoveryReadyAt?: ISODateValue
   TotalDestinatario: number
   TotalEmitente: number
   TotalOutros: number

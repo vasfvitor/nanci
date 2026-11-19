@@ -283,3 +283,66 @@ func TestRecoverNSUCountsAnEventItCannotKeepAsEmpty(t *testing.T) {
 		t.Errorf("result = %+v, want the skipped event counted as empty", result)
 	}
 }
+
+func TestRecoveryLimits(t *testing.T) {
+	t.Run("nothing missing", func(t *testing.T) {
+		mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
+		limits, err := mgr.RecoveryLimits(context.Background(), comp, syncstate.SyncSourceNFe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if limits != (RecoveryLimits{}) {
+			t.Errorf("limits = %+v, want zero", limits)
+		}
+	})
+
+	t.Run("ready, up to the hour left after the reserve", func(t *testing.T) {
+		mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
+		recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 40, Cause: NSUGapConsumoIndevido})
+		spendRequests(t, mgr, comp, syncstate.SyncSourceNFe, 5)
+		// The wait after catching up holds back distNSU only.
+		if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment, time.Now().Add(time.Hour), syncstate.SyncStopReasonCaughtUp); err != nil {
+			t.Fatal(err)
+		}
+		limits, err := mgr.RecoveryLimits(context.Background(), comp, syncstate.SyncSourceNFe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if limits.Missing != 30 || limits.Allowance != 13 || limits.ReadyAt != nil {
+			t.Errorf("limits = %+v, want 30 missing, 13 allowed (20-5-2), ready now", limits)
+		}
+	})
+
+	t.Run("budget spent: ready when the oldest request leaves the hour", func(t *testing.T) {
+		mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
+		recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 12, Cause: NSUGapBatchHole})
+		oldest := time.Now().Add(-30 * time.Minute).UTC().Truncate(time.Second)
+		if err := mgr.SyncRepo.RecordRequest(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment, oldest); err != nil {
+			t.Fatal(err)
+		}
+		spendRequests(t, mgr, comp, syncstate.SyncSourceNFe, 17)
+		limits, err := mgr.RecoveryLimits(context.Background(), comp, syncstate.SyncSourceNFe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if limits.Allowance != 0 || limits.ReadyAt == nil || !limits.ReadyAt.Equal(oldest.Add(time.Hour)) {
+			t.Errorf("limits = %+v, want nothing allowed until %v", limits, oldest.Add(time.Hour))
+		}
+	})
+
+	t.Run("blocked by a 656: ready when the block ends", func(t *testing.T) {
+		mgr, comp := newNFePullTestManager(t, &countingProvider{}, &scriptedFetcher{})
+		recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 12, Cause: NSUGapBatchHole})
+		until := time.Now().Add(40 * time.Minute).UTC().Truncate(time.Second)
+		if err := mgr.SyncRepo.SetBlockedUntil(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment, until, syncstate.SyncStopReasonConsumoIndevido); err != nil {
+			t.Fatal(err)
+		}
+		limits, err := mgr.RecoveryLimits(context.Background(), comp, syncstate.SyncSourceNFe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if limits.Allowance != 0 || limits.ReadyAt == nil || !limits.ReadyAt.Equal(until) {
+			t.Errorf("limits = %+v, want nothing allowed until %v", limits, until)
+		}
+	})
+}

@@ -1,6 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { shallowRef } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNSURecovery, type NSURecoverySource } from './useNSURecovery'
 import { desktopClient } from '@/platform/wails/client'
@@ -42,6 +41,8 @@ vi.mock('@/platform/wails/client', () => ({
 function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
   return {
     NSUFaltantes: 6,
+    RecoveryAllowance: 6,
+    RecoveryReadyAt: null,
     RequestsLastHour: 4,
     RequestBudget: 20,
     NextAllowedAt: null,
@@ -52,10 +53,9 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
 
 // recovery mounts useNSURecovery with the busy check the page composables
 // pass: no company, or a sync of the company's source in flight.
-function recovery(source: NSURecoverySource, blockedUntil: Date | null = null) {
+function recovery(source: NSURecoverySource) {
   const syncStore = useCompanySyncStore()
   return useNSURecovery(source, {
-    syncBlockedUntil: shallowRef(blockedUntil),
     syncBusy: (cnpj) => !cnpj || syncStore.isSyncing(cnpj, source),
   })
 }
@@ -98,8 +98,8 @@ describe('useNSURecovery', () => {
 
     nsu.confirmRecover()
     expect(dialog.mock.calls[0]?.[0]?.['message']).toBe(
-      'Faltam 6 NSUs. A recuperação pede cada um à SEFAZ (consNSU) e usa até 6 das 20 consultas desta hora, ' +
-        'deixando 2 para a sincronização. O que faltar continua na próxima vez.'
+      'Faltam 6 NSUs. A recuperação pede cada um à SEFAZ (consNSU) e usa até 6 das 20 consultas desta hora; ' +
+        'as outras ficam para a sincronização. O que faltar continua na próxima vez.'
     )
     expect(desktopClient.recoverNFeNSU).not.toHaveBeenCalled()
 
@@ -138,25 +138,30 @@ describe('useNSURecovery', () => {
     expect(desktopClient.statusCTe).toHaveBeenCalledWith('123')
   })
 
-  it('holds back while SEFAZ blocks consultas, but not for the wait after catching up', () => {
-    const later = new Date(Date.now() + 30 * 60_000)
-    const store = useNFeDocumentsStore()
+  it('holds back until RecoveryReadyAt and then loads the status again', async () => {
+    vi.useFakeTimers()
+    try {
+      const readyAt = new Date(Date.now() + 60_000)
+      useNFeDocumentsStore().status = status({ RecoveryAllowance: 0, RecoveryReadyAt: readyAt })
+      vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ RecoveryAllowance: 4 }))
+      const nsu = recovery('nfe')
 
-    store.status = status({ NextAllowedAt: later, BlockedReason: 'caught_up' })
-    expect(recovery('nfe', later).disabledReason.value).toBe('')
+      expect(nsu.disabledReason.value).toMatch(/^Sem consultas para recuperar agora; volta às /)
+      nsu.confirmRecover()
+      expect(dialog).not.toHaveBeenCalled()
 
-    store.status = status({ NextAllowedAt: later, BlockedReason: 'consumo_indevido' })
-    expect(recovery('nfe', later).disabledReason.value).toBe(
-      'Consultas bloqueadas no momento. Aguarde o horário indicado.'
-    )
+      await vi.advanceTimersByTimeAsync(61_000)
 
-    store.status = status({ RequestsLastHour: 18 })
-    const spent = recovery('nfe')
-    expect(spent.disabledReason.value).toBe(
-      'Sem consultas sobrando nesta hora; 2 ficam para a sincronização.'
-    )
-    spent.confirmRecover()
-    expect(dialog).not.toHaveBeenCalled()
+      expect(desktopClient.statusNFe).toHaveBeenCalledWith('123')
+      expect(nsu.disabledReason.value).toBe('')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('says when nothing of the hour is left for a recovery', () => {
+    useNFeDocumentsStore().status = status({ RecoveryAllowance: 0 })
+    expect(recovery('nfe').disabledReason.value).toBe('Sem consultas sobrando nesta hora.')
   })
 
   it('warns when SEFAZ blocked the CNPJ in the middle of the run', async () => {

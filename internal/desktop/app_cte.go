@@ -108,6 +108,8 @@ func (a *App) StatusCTe(cnpj string) (desktopapi.CTeStatusResult, error) {
 		RequestBudget:     res.RequestBudget,
 		IdleDays:          res.IdleDays,
 		NSUFaltantes:      res.NSUFaltantes,
+		RecoveryAllowance: res.RecoveryAllowance,
+		RecoveryReadyAt:   res.RecoveryReadyAt,
 		TotalTomador:      res.TotalTomador,
 		TotalDestinatario: res.TotalDestinatario,
 		TotalRemetente:    res.TotalRemetente,

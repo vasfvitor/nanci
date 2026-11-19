@@ -132,6 +132,8 @@ func (a *App) StatusNFe(cnpj string) (desktopapi.NFeStatusResult, error) {
 		RequestBudget:     res.RequestBudget,
 		IdleDays:          res.IdleDays,
 		NSUFaltantes:      res.NSUFaltantes,
+		RecoveryAllowance: res.RecoveryAllowance,
+		RecoveryReadyAt:   res.RecoveryReadyAt,
 		TotalDestinatario: res.TotalDestinatario,
 		TotalEmitente:     res.TotalEmitente,
 		TotalOutros:       res.TotalOutros,

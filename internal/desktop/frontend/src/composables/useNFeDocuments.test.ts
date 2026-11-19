@@ -56,6 +56,7 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     RequestBudget: 20,
     IdleDays: 0,
     NSUFaltantes: 0,
+    RecoveryAllowance: 0,
     TotalDestinatario: 0,
     TotalEmitente: 0,
     TotalOutros: 0,

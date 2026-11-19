@@ -39,6 +39,11 @@ type SefazSourceStatus struct {
 	// NSUFaltantes is how many NSUs the distribution skipped without a
 	// document and RecoverNSU can still ask for (sync.NSUGapWindow).
 	NSUFaltantes int64
+	// RecoveryAllowance is how many of them a recovery started now would ask
+	// for, and RecoveryReadyAt, when set, when one could start; see
+	// sync.Manager.RecoveryLimits.
+	RecoveryAllowance int
+	RecoveryReadyAt   *time.Time
 }
 
 // loadSefazSourceStatus reads the company's cursor, last run, initial sync
@@ -94,11 +99,13 @@ func loadSefazSourceStatus(ctx context.Context, companies *company.Store, syncRe
 	status.BlockedReason = string(limits.BlockedReason)
 	status.RequestsLastHour = limits.RequestsLastHour
 	status.RequestBudget = limits.RequestBudget
-	missing, err := syncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment)
+	recovery, err := manager.RecoveryLimits(ctx, comp, source)
 	if err != nil {
-		return SefazSourceStatus{}, nil, fmt.Errorf("contar NSUs faltantes: %w", err)
+		return SefazSourceStatus{}, nil, err
 	}
-	status.NSUFaltantes = missing
+	status.NSUFaltantes = recovery.Missing
+	status.RecoveryAllowance = recovery.Allowance
+	status.RecoveryReadyAt = recovery.ReadyAt
 	return status, comp, nil
 }
 

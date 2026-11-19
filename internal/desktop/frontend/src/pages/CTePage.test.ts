@@ -128,6 +128,7 @@ function status(overrides: Partial<CTeStatusResult> = {}): CTeStatusResult {
     RequestBudget: 20,
     IdleDays: 0,
     NSUFaltantes: 0,
+    RecoveryAllowance: 0,
     TotalTomador: 2,
     TotalDestinatario: 0,
     TotalRemetente: 0,
@@ -802,7 +803,9 @@ describe('CTePage missing NSUs', () => {
   })
 
   it('offers to recover the missing NSUs and runs after the confirmation', async () => {
-    vi.mocked(desktopClient.statusCTe).mockResolvedValue(status({ NSUFaltantes: 3 }))
+    vi.mocked(desktopClient.statusCTe).mockResolvedValue(
+      status({ NSUFaltantes: 3, RecoveryAllowance: 3 })
+    )
     vi.mocked(desktopClient.recoverCTeNSU).mockResolvedValue({
       Asked: 3,
       Recovered: 1,

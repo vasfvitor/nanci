@@ -96,7 +96,7 @@ func (m *Manager) RecoverNSU(ctx context.Context, input RecoverNSUInput) (Recove
 		return RecoverNSUResult{}, err
 	}
 	defer release()
-	if err := m.BlockedFor(ctx, comp, source, syncstate.SyncStopReasonConsumoIndevido, syncstate.SyncStopReasonRateBudget); err != nil {
+	if err := m.BlockedFor(ctx, comp, source, recoveryBlocks...); err != nil {
 		return RecoverNSUResult{}, err
 	}
 
@@ -139,21 +139,74 @@ func (m *Manager) openGapsInWindow(ctx context.Context, comp *company.Company, s
 	return gaps, nil
 }
 
-// recoverAllowance is how many requests this run may spend.
-func (m *Manager) recoverAllowance(ctx context.Context, comp *company.Company, source syncstate.SyncSource, limit int) (int, error) {
-	limits, err := m.SourceLimits(ctx, comp, source)
+// recoveryBlocks are the blocks that hold back consNSU. The hour of wait
+// after the queue caught up only holds back distNSU (decision of 17/10/2026,
+// as for FetchByChave).
+var recoveryBlocks = []syncstate.SyncStopReason{syncstate.SyncStopReasonConsumoIndevido, syncstate.SyncStopReasonRateBudget}
+
+// RecoveryLimits is what a recovery started now could do.
+type RecoveryLimits struct {
+	Missing int64 // NSUs a recovery can still ask for (MissingNSUs)
+	// Allowance is how many NSUs a run without a limit would ask for now:
+	// the missing ones, up to the hour's budget left after RecoverNSUReserve.
+	Allowance int
+	// ReadyAt is set while NSUs are missing and a run cannot start: the end
+	// of a block in recoveryBlocks, or, with the budget spent, when the
+	// oldest request of the hour leaves the window. Ask again then.
+	ReadyAt *time.Time
+}
+
+// RecoveryLimits reports what a recovery of the company's source could do
+// now. It is the rule RecoverNSU applies, for the status to show.
+func (m *Manager) RecoveryLimits(ctx context.Context, comp *company.Company, source syncstate.SyncSource) (RecoveryLimits, error) {
+	missing, err := m.SyncRepo.MissingNSUs(ctx, comp.ID, source, comp.Environment)
 	if err != nil {
-		return 0, err
+		return RecoveryLimits{}, fmt.Errorf("contar NSUs faltantes: %w", err)
 	}
-	left := limits.RequestBudget - limits.RequestsLastHour
+	limits := RecoveryLimits{Missing: missing}
+	if missing == 0 {
+		return limits, nil
+	}
+	var blocked *BlockedError
+	if err := m.BlockedFor(ctx, comp, source, recoveryBlocks...); errors.As(err, &blocked) {
+		limits.ReadyAt = &blocked.Until
+		return limits, nil
+	} else if err != nil {
+		return RecoveryLimits{}, err
+	}
+	now := time.Now().UTC()
+	count, oldest, err := m.SyncRepo.RequestsSince(ctx, comp.ID, source, comp.Environment, now.Add(-time.Hour))
+	if err != nil {
+		return RecoveryLimits{}, fmt.Errorf("contar consultas da última hora: %w", err)
+	}
+	left := requestsPerHour(source) - count - RecoverNSUReserve
+	limits.Allowance = int(min(missing, int64(max(left, 0))))
+	if limits.Allowance == 0 && oldest != nil {
+		readyAt := oldest.Add(time.Hour)
+		limits.ReadyAt = &readyAt
+	}
+	return limits, nil
+}
+
+// recoverAllowance is how many requests this run may spend: up to limit
+// when set, reserve included, or else what RecoveryLimits allows.
+func (m *Manager) recoverAllowance(ctx context.Context, comp *company.Company, source syncstate.SyncSource, limit int) (int, error) {
 	if limit > 0 {
-		if allowed := min(limit, left); allowed > 0 {
+		sourceLimits, err := m.SourceLimits(ctx, comp, source)
+		if err != nil {
+			return 0, err
+		}
+		if allowed := min(limit, sourceLimits.RequestBudget-sourceLimits.RequestsLastHour); allowed > 0 {
 			return allowed, nil
 		}
 		return 0, ErrNoRequestsLeft
 	}
-	if allowed := left - RecoverNSUReserve; allowed > 0 {
-		return allowed, nil
+	limits, err := m.RecoveryLimits(ctx, comp, source)
+	if err != nil {
+		return 0, err
+	}
+	if limits.Allowance > 0 {
+		return limits.Allowance, nil
 	}
 	return 0, fmt.Errorf("%w (%d ficam para a sincronização)", ErrNoRequestsLeft, RecoverNSUReserve)
 }

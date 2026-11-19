@@ -148,6 +148,7 @@ function status(overrides: Partial<NFeStatusResult> = {}): NFeStatusResult {
     RequestBudget: 20,
     IdleDays: 0,
     NSUFaltantes: 0,
+    RecoveryAllowance: 0,
     TotalDestinatario: 0,
     TotalEmitente: 0,
     TotalOutros: 0,
@@ -970,7 +971,9 @@ describe('NFePage missing NSUs', () => {
   })
 
   it('offers to recover the missing NSUs and runs after the confirmation', async () => {
-    vi.mocked(desktopClient.statusNFe).mockResolvedValue(status({ NSUFaltantes: 3 }))
+    vi.mocked(desktopClient.statusNFe).mockResolvedValue(
+      status({ NSUFaltantes: 3, RecoveryAllowance: 3 })
+    )
     vi.mocked(desktopClient.recoverNFeNSU).mockResolvedValue({
       Asked: 3,
       Recovered: 1,

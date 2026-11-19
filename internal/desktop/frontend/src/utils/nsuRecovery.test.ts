@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { missingNSUsText, recoveryAllowance, recoverySummary } from './nsuRecovery'
+import { missingNSUsText, recoverySummary } from './nsuRecovery'
 import type { RecoverNSUResult } from '@/types/desktop'
 
 function result(overrides: Partial<RecoverNSUResult> = {}): RecoverNSUResult {
@@ -18,13 +18,6 @@ function result(overrides: Partial<RecoverNSUResult> = {}): RecoverNSUResult {
 }
 
 describe('nsuRecovery', () => {
-  it('asks for the missing NSUs up to the hour left after the reserve', () => {
-    expect(recoveryAllowance(null)).toBe(0)
-    expect(recoveryAllowance({ NSUFaltantes: 3, RequestsLastHour: 0, RequestBudget: 20 })).toBe(3)
-    expect(recoveryAllowance({ NSUFaltantes: 50, RequestsLastHour: 5, RequestBudget: 20 })).toBe(13)
-    expect(recoveryAllowance({ NSUFaltantes: 50, RequestsLastHour: 19, RequestBudget: 20 })).toBe(0)
-  })
-
   it('names one NSU and many', () => {
     expect(missingNSUsText(1)).toBe('1 NSU faltando')
     expect(missingNSUsText(12)).toBe('12 NSUs faltando')

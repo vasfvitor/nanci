@@ -268,6 +268,16 @@ export interface CTeStatusResult {
      * NSUs the distribution skipped that RecoverNFeNSU/RecoverCTeNSU can still ask for
      */
     "NSUFaltantes": number;
+
+    /**
+     * NSUs a recovery started now would ask for
+     */
+    "RecoveryAllowance": number;
+
+    /**
+     * set while NSUs are missing and a recovery cannot start yet
+     */
+    "RecoveryReadyAt": string | null;
     "TotalTomador": number;
     "TotalDestinatario": number;
     "TotalRemetente": number;
@@ -1004,6 +1014,16 @@ export interface NFeStatusResult {
      * NSUs the distribution skipped that RecoverNFeNSU/RecoverCTeNSU can still ask for
      */
     "NSUFaltantes": number;
+
+    /**
+     * NSUs a recovery started now would ask for
+     */
+    "RecoveryAllowance": number;
+
+    /**
+     * set while NSUs are missing and a recovery cannot start yet
+     */
+    "RecoveryReadyAt": string | null;
     "TotalDestinatario": number;
     "TotalEmitente": number;
     "TotalOutros": number;

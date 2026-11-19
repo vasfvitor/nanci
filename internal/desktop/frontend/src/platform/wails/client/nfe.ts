@@ -249,6 +249,8 @@ export function mapNFeStatus(item: desktopapi.NFeStatusResult): NFeStatusResult 
     RequestBudget: item.RequestBudget,
     IdleDays: item.IdleDays,
     NSUFaltantes: item.NSUFaltantes,
+    RecoveryAllowance: item.RecoveryAllowance,
+    RecoveryReadyAt: asDate(item.RecoveryReadyAt),
     TotalDestinatario: item.TotalDestinatario,
     TotalEmitente: item.TotalEmitente,
     TotalOutros: item.TotalOutros,
