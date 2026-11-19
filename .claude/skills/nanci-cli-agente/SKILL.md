@@ -35,7 +35,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 
 - The certificate password comes from the Windows credential store, saved the first time a person typed it, or from the `NANCI_CERT_PASSWORD` environment variable. There is no `--senha` flag.
 - Never ask the person to paste the password into the chat, never write it in a command line or a file, and never guess it. When a command fails with `wrong_password`, or with a message about reading the password ("falha ao ler a senha": there is no saved password and no terminal to prompt), ask the person to run that same command once in their own terminal so nanci prompts and saves it, or to open the desktop app, then continue.
-- Registering companies and certificates (`init`, `company add/update/assign-credential`, `credential add/update-path`) is for the person, in the desktop app or their terminal. These commands still print text under `--json`.
+- Registering companies and certificates (`init`, `company add/update/assign-credential`, `credential add/update-path`) is for the person, in the desktop app or their terminal. Run them only when the person asks, with the certificate path they gave you. With `--json` they answer with the record as stored; `credential add` returns the new `ID` that `company assign-credential --credential-id` takes.
 
 ## Query budget and timing (NF-e and CT-e)
 
