@@ -332,7 +332,7 @@ func TestCTeExportZip_Layout(t *testing.T) {
 	if err := env.run("cte", "export", "zip", "-c", nfeTestCNPJ, "--out", outPath); err != nil {
 		t.Fatalf("export zip: %v", err)
 	}
-	if got := env.out.String(); !strings.Contains(got, "Arquivo xml gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
+	if got := env.out.String(); !strings.Contains(got, "Arquivo gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
 		t.Errorf("export zip output:\n%s", got)
 	}
 
@@ -416,7 +416,7 @@ func TestCTeExportCSV_WritesSpreadsheet(t *testing.T) {
 	if err := env.run("cte", "export", "csv", "-c", nfeTestCNPJ, "--out", outPath); err != nil {
 		t.Fatalf("export csv: %v", err)
 	}
-	if got := env.out.String(); !strings.Contains(got, "Arquivo csv gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
+	if got := env.out.String(); !strings.Contains(got, "Arquivo gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
 		t.Errorf("export csv output:\n%s", got)
 	}
 	data, err := os.ReadFile(outPath) // #nosec G304 -- test temp path.
@@ -436,7 +436,7 @@ func TestCTeExportXLSX_WritesSpreadsheet(t *testing.T) {
 	if err := env.run("cte", "export", "xlsx", "-c", nfeTestCNPJ, "--out", outPath, "--incremental"); err != nil {
 		t.Fatalf("export xlsx: %v", err)
 	}
-	if got := env.out.String(); !strings.Contains(got, "Arquivo xlsx gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
+	if got := env.out.String(); !strings.Contains(got, "Arquivo gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") {
 		t.Errorf("export xlsx output:\n%s", got)
 	}
 	if _, err := os.Stat(outPath); err != nil {
@@ -453,7 +453,7 @@ func TestCTeExportDACTEZip_CountsDocumentsWithoutDACTE(t *testing.T) {
 		t.Fatalf("export dacte-zip: %v", err)
 	}
 	got := env.out.String()
-	if !strings.Contains(got, "Arquivo dacte gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 1") ||
+	if !strings.Contains(got, "Arquivo gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 1") ||
 		!strings.Contains(got, "CT-e sem DACTE: 1") {
 		t.Errorf("export dacte-zip output:\n%s", got)
 	}

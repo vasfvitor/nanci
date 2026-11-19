@@ -164,6 +164,10 @@ func newExportDANFSeCmd(env CommandEnv, cnpj *string) *cobra.Command {
 		Use:   "danfse",
 		Short: "Exporta o DANFSe de uma NFS-e para PDF (.pdf)",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			parsed, err := parseNFSeChave(chave)
+			if err != nil {
+				return err
+			}
 			application, cleanup, err := env.AppFactory(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("inicializar: %w", err)
@@ -172,7 +176,7 @@ func newExportDANFSeCmd(env CommandEnv, cnpj *string) *cobra.Command {
 
 			input := app.ExportDANFSeInput{
 				CNPJ:        *cnpj,
-				ChaveAcesso: chave,
+				ChaveAcesso: parsed,
 				OutPath:     outPath,
 			}
 
@@ -200,6 +204,6 @@ func printExportResult(w io.Writer, res app.ExportResult) {
 		}
 		return
 	}
-	_, _ = fmt.Fprintf(w, "Arquivo %s gerado com sucesso: %s\n", res.Format, res.OutPath)
+	_, _ = fmt.Fprintf(w, "Arquivo gerado com sucesso: %s\n", res.OutPath)
 	_, _ = fmt.Fprintf(w, "Documentos exportados: %d\n", res.ExportedCount)
 }

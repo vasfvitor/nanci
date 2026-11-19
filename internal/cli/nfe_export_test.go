@@ -41,7 +41,7 @@ func TestNFeExportZip_Layout(t *testing.T) {
 	}
 	got := env.out.String()
 	for _, want := range []string{
-		"Arquivo xml gerado com sucesso: " + outPath,
+		"Arquivo gerado com sucesso: " + outPath,
 		"Documentos exportados: 1",
 		"Resumos não exportados: 1 (use --incluir-resumos para incluí-los)",
 	} {
@@ -146,7 +146,7 @@ func TestNFeExportCSV(t *testing.T) {
 	got := env.out.String()
 	for _, want := range []string{
 		"Gerando arquivo CSV...",
-		"Arquivo csv gerado com sucesso: " + outPath,
+		"Arquivo gerado com sucesso: " + outPath,
 		"Documentos exportados: 1",
 		"Resumos não exportados: 1 (use --incluir-resumos para incluí-los)",
 	} {
@@ -174,7 +174,7 @@ func TestNFeExportXLSX_IncluirResumos(t *testing.T) {
 		t.Fatalf("export xlsx: %v", err)
 	}
 	got := env.out.String()
-	if !strings.Contains(got, "Arquivo xlsx gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") ||
+	if !strings.Contains(got, "Arquivo gerado com sucesso: "+outPath) || !strings.Contains(got, "Documentos exportados: 2") ||
 		strings.Contains(got, "Resumos não exportados") {
 		t.Errorf("export xlsx output:\n%s", got)
 	}
@@ -199,7 +199,7 @@ func TestNFeExportDANFEZip_SkipsResumos(t *testing.T) {
 	got := env.out.String()
 	for _, want := range []string{
 		"Gerando arquivo ZIP...",
-		"Arquivo danfe gerado com sucesso: " + outPath,
+		"Arquivo gerado com sucesso: " + outPath,
 		"Documentos exportados: 1",
 		"Resumos sem DANFE: 1",
 	} {

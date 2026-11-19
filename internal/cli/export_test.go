@@ -178,3 +178,13 @@ func TestExportCSV_IncrementalTwice(t *testing.T) {
 		t.Errorf("second output = %q, want nothing pending", env.out.String())
 	}
 }
+
+func TestExportDANFSe_InvalidChaveSkipsAppFactory(t *testing.T) {
+	calls, err := runWithoutApp(t, "export", "danfse", "-c", nfeTestCNPJ, "--chave", "123")
+	if err == nil || !strings.Contains(err.Error(), "chave de acesso inválida") {
+		t.Errorf("err = %v, want the invalid-chave error", err)
+	}
+	if calls != 0 {
+		t.Errorf("AppFactory called %d times, want 0", calls)
+	}
+}
