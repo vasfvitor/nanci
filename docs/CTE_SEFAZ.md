@@ -93,6 +93,10 @@ A NT 2015.002 não publica um limite de consultas por hora para o CT-e, e não f
 
 O bloqueio aparece como "Próxima consulta permitida após" no `cte pull` e no `cte status`. Um pull dentro desse intervalo é recusado antes de pedir a senha. A distribuição nunca é reenviada automaticamente, e um documento que falha ao ser decodificado ou interpretado três vezes seguidas no mesmo NSU tem o XML guardado, é marcado como não suportado e o cursor avança.
 
+## Recuperar NSUs faltantes
+
+O CT-e registra e recupera os NSUs pulados como a NF-e (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#recuperar-nsus-faltantes)): o `consNSU` do CTeDistribuicaoDFe responde com os mesmos 137, 138, 589 e 656 (NT 2015.002 v1.05, §2.4 e §2.6; `docs/pesquisa/2026-11-18-sefaz-consnsu.md`), e é o único jeito de buscar um CT-e fora da fila, já que não há consulta por chave. O orçamento é o da origem `cte`, com a mesma reserva de 2 consultas para o pull e a mesma janela de 90 dias para encerrar lacunas antigas (a NT do CT-e fala em 3 meses). O comando é `nanci cte recuperar-nsu`.
+
 ## Eventos distribuídos
 
 | Evento | `tpEvento` | Tipo no Nanci |
@@ -175,6 +179,9 @@ nanci.exe cte export dacte --cnpj 12345678000199 --chave <CHAVE>
 # 7. Importar XML avulso (procCTe, procCTeOS, procGTVe, procCTeSimp ou evento)
 nanci.exe cte import --cnpj 12345678000199 frete.xml
 
+# 7a. Pedir à SEFAZ os NSUs que a distribuição pulou
+nanci.exe cte recuperar-nsu --cnpj 12345678000199
+
 # 8. Redefinir os CT-e da empresa (apaga os documentos dos dois ambientes)
 nanci.exe cte reset --cnpj 12345678000199
 nanci.exe cte reset --cnpj 12345678000199 --confirmar
@@ -191,7 +198,7 @@ nanci.exe cte reset --cnpj 12345678000199 --confirmar
 
 ## Aplicativo desktop
 
-O menu lateral ganha a entrada "CT-e", logo abaixo de "NF-e". A página lista a empresa e a competência escolhidas no menu lateral, numa única tabela, sem aba de pendências, com filtros de papel, modelo, situação, tomador e chave de NF-e, e os botões "Sincronizar CT-e", "Exportar" e "Redefinir CT-e"; este pede confirmação e faz o mesmo que `cte reset --confirmar`. Sob o título, uma linha mostra a empresa, o CNPJ e a competência escolhidos no menu lateral, ou "Todas as competências", e continua visível quando a janela estreita esconde o menu. Os eventos de cada documento abrem num diálogo. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade "Sincronização CT-e", o que separa os pedidos quando NFS-e, NF-e e CT-e sincronizam ao mesmo tempo.
+O menu lateral ganha a entrada "CT-e", logo abaixo de "NF-e". A página lista a empresa e a competência escolhidas no menu lateral, numa única tabela, sem aba de pendências, com filtros de papel, modelo, situação, tomador e chave de NF-e, e os botões "Sincronizar CT-e", "Exportar" e "Redefinir CT-e"; este pede confirmação e faz o mesmo que `cte reset --confirmar`. Sob o título, uma linha mostra a empresa, o CNPJ e a competência escolhidos no menu lateral, ou "Todas as competências", e continua visível quando a janela estreita esconde o menu. Os eventos de cada documento abrem num diálogo. Quando há NSUs faltando, um aviso sob o título oferece **Recuperar NSUs**, como na NF-e. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade "Sincronização CT-e", o que separa os pedidos quando NFS-e, NF-e e CT-e sincronizam ao mesmo tempo.
 
 ## Modelo de dados
 

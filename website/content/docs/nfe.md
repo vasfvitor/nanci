@@ -20,6 +20,10 @@ A SEFAZ bloqueia por uma hora quem consulta demais ([NT 2014.002](https://www.nf
 
 Não deixe a empresa mais de 60 dias sem sincronizar. A SEFAZ só gera NSU para quem consultou nesse prazo, e as notas do período parado não chegam mais (regra da NT 2014.002 v1.10, conhecida por relatos de terceiros). Depois de 45 dias sem consulta, a página mostra o aviso **Sem consulta há N dias**; sincronizar reinicia a contagem.
 
+## NSUs faltando
+
+A SEFAZ numera os documentos de cada CNPJ em sequência e, quando falta um número, manda pedi-lo de novo ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=), item 3.6). Isso acontece quando outro programa consulta o mesmo CNPJ, como o sistema do contador: a SEFAZ entrega a ele parte da sequência, e o Nanci fica sem esses documentos. A página então mostra **N NSUs faltando** e o botão **Recuperar NSUs**, que pede cada número à SEFAZ. Cada um gasta 1 das 20 consultas da hora, e o Nanci deixa sempre 2 para a sincronização; o que faltar continua na próxima vez. Números que a SEFAZ nunca gerou voltam vazios, e os de mais de 90 dias não podem mais ser recuperados.
+
 ## Manifestação do Destinatário
 
 {{< callout type="warning" >}}

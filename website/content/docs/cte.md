@@ -22,7 +22,7 @@ A SEFAZ guarda os CT-e por 3 meses ([NT 2015.002](https://www.cte.fazenda.gov.br
 
 **Importar XML** guarda os CT-e que a empresa já tem em arquivo, sem consultar a SEFAZ e sem gastar consultas: os que ela mesma emitiu, os de mais de 3 meses e os recebidos por e-mail. Aceita CT-e, CT-e OS, GTV-e e CT-e Simplificado autorizados e os eventos, vários arquivos de uma vez. As recusas são as da [NF-e](../nfe/#importar-e-buscar), e o Nanci mostra o motivo de cada arquivo. Na lista, o CT-e importado leva a marca **Importado**.
 
-Não há busca pela chave para o CT-e: a distribuição do CT-e só entrega pela fila de NSU.
+Não há busca pela chave para o CT-e: a distribuição do CT-e só entrega pela fila de NSU. Quando a fila pula números, a página mostra **Recuperar NSUs**, como na [NF-e](../nfe/#nsus-faltando); é assim que voltam os CT-e que outro programa recebeu com o mesmo CNPJ.
 
 ## Achar o frete de uma NF-e
 

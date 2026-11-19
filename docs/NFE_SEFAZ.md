@@ -72,6 +72,22 @@ O bloqueio fica em `company_sync_sources.blocked_until` e aparece como "Próxima
 
 A distribuição nunca é reenviada automaticamente pelo transporte, já que cada envio conta no limite. Um documento que falha ao ser decodificado ou interpretado três vezes seguidas no mesmo NSU tem o XML guardado, é marcado como não suportado e o cursor avança, para que um único documento não trave a fila.
 
+## Recuperar NSUs faltantes
+
+O Ambiente Nacional numera os documentos de cada CNPJ "sem lacunas", e a NT manda o cliente pedir cada NSU faltante com `consNSU` (NT 2014.002 v1.40, §3.6 e campo A09; `docs/pesquisa/2026-11-18-sefaz-consnsu.md`). O Nanci registra, a cada resposta da distribuição, os NSUs que o cursor passou sem receber documento (`sync_nsu_gaps`, `sync.distBatch`):
+
+- **Salto do 656.** Desde a v1.14, o 656 devolve a posição da sequência do CNPJ no servidor, e o Nanci adota esse `ultNSU` quando ele está à frente do cursor. Os NSUs entre os dois foram entregues a outro programa que consulta o mesmo CNPJ, como o ERP do contador (leitura do Nanci, não escrita na NT). Causa `consumo_indevido`.
+- **Buraco num lote 138.** Um NSU do intervalo (cursor, `ultNSU`] que veio sem `docZip`. Causa `batch_hole`.
+- **Não são lacunas:** a caminhada a partir do NSU 0, que a distribuição começa no NSU mais antigo da janela; um 137, que não tem nada a entregar; uma pausa de mais de 60 dias, em que o Ambiente Nacional não gera NSU (ver "Regra dos 60 dias").
+
+`nanci nfe recuperar-nsu` e o botão **Recuperar NSUs** da página (`sync.Manager.RecoverNSU`) pedem cada NSU faltante, do mais antigo ao mais novo, e gravam o que vier pelo mesmo caminho da distribuição, sem mover o cursor:
+
+- **Orçamento.** Cada NSU gasta 1 das 20 consultas da hora, registrada antes do envio. Sem `--limite`, a execução usa o que sobra na hora menos 2 (`sync.RecoverNSUReserve`), que ficam para o pull; com `--limite N`, usa até N, reserva incluída. Sem consulta sobrando, recusa antes de pedir a senha. Como na busca pela chave, `consumo_indevido` e `rate_budget` recusam a execução, e a espera depois de `caught_up` não.
+- **Respostas.** 138 grava o documento; 137 conta como "sem documento" (a NT: "o Ambiente Nacional não gerou o NSU e o interessado deve desconsiderá-lo"); 656 bloqueia a origem por 1 hora e para; outra rejeição para com erro. Um documento recuperado que não pode ser lido conta como ilegível, e o NSU é dado por consultado.
+- **Retomada.** Cada lacuna guarda o próximo NSU a pedir (`next_nsu`), então uma execução cortada pelo limite, por cancelamento ou por 656 continua de onde parou.
+- **Janela.** Uma lacuna registrada há mais de 90 dias (`sync.NSUGapWindow`) é encerrada sem consulta: a NT não dá cStat para um NSU fora da janela, só diz que "não será possível recuperar".
+- `nfe status` e a página mostram "NSUs faltando: N". Redefinir as NF-e apaga as lacunas, já que o cursor volta ao 0.
+
 ## Manifestação do Destinatário
 
 Só a empresa **destinatária** de uma NF-e **autorizada** pode manifestar. Os quatro eventos:
@@ -172,6 +188,10 @@ nanci.exe nfe export danfe --cnpj 12345678000199 --chave <CHAVE> --out nota.pdf
 nanci.exe nfe import --cnpj 12345678000199 nota.xml cancelamento.xml
 nanci.exe nfe buscar --cnpj 12345678000199 --chave <CHAVE>
 
+# 9a. Pedir à SEFAZ os NSUs que a distribuição pulou (ver "Recuperar NSUs faltantes")
+nanci.exe nfe recuperar-nsu --cnpj 12345678000199
+nanci.exe nfe recuperar-nsu --cnpj 12345678000199 --limite 5
+
 # 10. Redefinir as NF-e da empresa (apaga as notas dos dois ambientes)
 nanci.exe nfe reset --cnpj 12345678000199
 nanci.exe nfe reset --cnpj 12345678000199 --confirmar
@@ -187,11 +207,12 @@ nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 - `nfe export danfe-zip` grava o DANFE de cada nota em `<competencia>/<papel>/<chave>.pdf` (padrão `danfes.zip`), com os mesmos filtros e `--incremental`. O DANFE precisa do XML completo, então os resumos nunca entram e não há `--incluir-resumos`; a saída conta os que ficaram de fora em "Resumos sem DANFE". `nfe export danfe` grava o DANFE de uma `--chave` (padrão `<chave>.pdf`) e recusa um resumo. Uma nota cancelada sai com a marca d'água de cancelamento.
 - Cada formato tem a sua marca de exportação (`xml`, `csv`, `xlsx`, `danfe`): exportar em CSV não tira a nota da próxima exportação incremental em XML ou Excel.
 - `nfe import` recebe um ou mais arquivos e imprime uma linha por arquivo (importado, atualizado ou rejeitado, com o motivo) e o resumo; só falha quando todos foram rejeitados. Arquivos inexistentes são recusados antes de abrir o banco. As regras de recusa estão em "Importação de XML".
+- `nfe recuperar-nsu` imprime quantos NSUs foram consultados, com e sem documento, quantos ainda faltam e as consultas da hora; sem nada faltando, diz "Nenhum NSU faltando." e não pede a senha. `--limite` não pode ser negativo.
 - `nfe buscar` valida a chave antes de abrir o banco, gasta uma das 20 consultas da hora e grava o que a SEFAZ devolver (completa, ou só o resumo até a Ciência). Durante um `nfe pull` o comando recusa com "sincronização em andamento".
 
 ## Aplicativo desktop
 
-O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e os botões "Sincronizar NF-e" e "Redefinir NF-e"; este pede confirmação e faz o mesmo que `nfe reset --confirmar`. Sob o título, uma linha mostra a empresa, o CNPJ e a competência escolhidos no menu lateral, ou "Todas as competências", e continua visível quando a janela estreita esconde o menu. Na aba Notas é possível selecionar notas e usar "Registrar ciência", que abre um diálogo com as notas elegíveis, as ignoradas com o motivo e uma caixa de reconhecimento obrigatória antes do envio. As manifestações conclusivas são feitas nota a nota por um diálogo que pede o tipo, a justificativa quando exigida e uma revisão final. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade (por exemplo, "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)").
+O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e os botões "Sincronizar NF-e" e "Redefinir NF-e"; este pede confirmação e faz o mesmo que `nfe reset --confirmar`. Sob o título, uma linha mostra a empresa, o CNPJ e a competência escolhidos no menu lateral, ou "Todas as competências", e continua visível quando a janela estreita esconde o menu. Na aba Notas é possível selecionar notas e usar "Registrar ciência", que abre um diálogo com as notas elegíveis, as ignoradas com o motivo e uma caixa de reconhecimento obrigatória antes do envio. As manifestações conclusivas são feitas nota a nota por um diálogo que pede o tipo, a justificativa quando exigida e uma revisão final. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade (por exemplo, "Sincronização NF-e" ou "Assinatura: Ciência da Operação (12 notas)"). Quando há NSUs faltando, um aviso sob o título mostra quantos e o botão **Recuperar NSUs**, que confirma quantas consultas a execução vai usar; ela ocupa o botão de sincronizar como um pull e pode ser cancelada pelo mesmo botão.
 
 ## Modelo de dados
 
