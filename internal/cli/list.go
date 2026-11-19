@@ -37,6 +37,14 @@ func newListCommand(env CommandEnv) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				rows := make([]nfseDocumentOutput, 0, len(docs))
+				for _, d := range docs {
+					rows = append(rows, newNFSeDocumentOutput(d))
+				}
+				return printJSON(cmd.OutOrStdout(), rows)
+			}
+
 			if len(docs) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhum documento encontrado.")
 				return nil

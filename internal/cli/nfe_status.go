@@ -25,6 +25,10 @@ func newNFeStatusCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newNFeStatusOutput(result))
+			}
+
 			out := cmd.OutOrStdout()
 			_, _ = fmt.Fprintf(out, "Status NF-e para: %s (%s)\n", result.CompanyName, cnpj.Format(result.CNPJ))
 			_, _ = fmt.Fprintf(out, "Ambiente: %s (tpAmb %s) | UF: %s\n", ambienteLabel(result.TpAmb), result.TpAmb, dashIfEmpty(result.UF))

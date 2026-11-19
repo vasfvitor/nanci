@@ -46,6 +46,14 @@ func newNFeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				rows := make([]nfeDocumentOutput, 0, len(docs))
+				for _, d := range docs {
+					rows = append(rows, newNFeDocumentOutput(d))
+				}
+				return printJSON(cmd.OutOrStdout(), rows)
+			}
+
 			if len(docs) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhuma NF-e encontrada.")
 				return nil

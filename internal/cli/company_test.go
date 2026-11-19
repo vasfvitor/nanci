@@ -258,3 +258,35 @@ func TestList_MissingRequiredFlag(t *testing.T) {
 		t.Errorf("stderr not empty: %q", errOut.String())
 	}
 }
+
+func TestCompanyAndCredentialList_JSON(t *testing.T) {
+	root, out, _ := newInMemTestRoot(t)
+	root.SetArgs([]string{"company", "list", "--json"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("company list --json: %v", err)
+	}
+	if got := out.String(); got != "[]\n" {
+		t.Errorf("empty company list = %q, want []", got)
+	}
+
+	env := newNFeTestRoot(t)
+	if err := env.run("company", "list", "--json"); err != nil {
+		t.Fatalf("company list --json: %v", err)
+	}
+	var companies []map[string]any
+	decodeJSONOutput(t, env.out, &companies)
+	if len(companies) != 1 || companies[0]["CNPJ"] != nfeTestCNPJ || companies[0]["CredentialID"] != "cred-1" || companies[0]["UF"] != "SP" {
+		t.Errorf("companies = %v", companies)
+	}
+	assertNoJSONKeys(t, companies, internalJSONKeys...)
+
+	if err := env.run("credential", "list", "--json"); err != nil {
+		t.Fatalf("credential list --json: %v", err)
+	}
+	var credentials []map[string]any
+	decodeJSONOutput(t, env.out, &credentials)
+	if len(credentials) != 1 || credentials[0]["ID"] != "cred-1" || credentials[0]["Label"] != "Mock A1" {
+		t.Errorf("credentials = %v", credentials)
+	}
+	assertNoJSONKeys(t, credentials, internalJSONKeys...)
+}

@@ -62,3 +62,53 @@ func TestList_NaoVistos(t *testing.T) {
 		t.Errorf("list --nao-vistos:\n%s", got)
 	}
 }
+
+func TestList_JSON(t *testing.T) {
+	const chave = "35503082270860312000150000000000000126060000000011"
+	env := newNFeTestRoot(t)
+	if _, err := env.db.ExecContext(context.Background(), `UPDATE companies SET sync_start_policy = 'all', sync_start_date = NULL WHERE id = ?`, string(env.company.ID)); err != nil {
+		t.Fatal(err)
+	}
+	env.seedNFSe("doc-1", chave)
+
+	if err := env.run("list", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+	var rows []map[string]any
+	decodeJSONOutput(t, env.out, &rows)
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d, want 1:\n%s", len(rows), env.out.String())
+	}
+	row := rows[0]
+	if row["ChaveAcesso"] != chave || row["CompanyRole"] != "prestada" || row["PrestadorCNPJ"] != nfeTestCNPJ || row["ViewedAt"] != nil {
+		t.Errorf("row = %v", row)
+	}
+	if _, ok := row["ServiceValue"].(float64); !ok {
+		t.Errorf("ServiceValue = %v, want a number", row["ServiceValue"])
+	}
+	if warnings, ok := row["ParseWarnings"].([]any); !ok || len(warnings) != 0 {
+		t.Errorf("ParseWarnings = %v, want []", row["ParseWarnings"])
+	}
+	assertNoJSONKeys(t, rows, internalJSONKeys...)
+	assertNoJSONKeys(t, rows, "ID")
+
+	env = newNFeTestRoot(t) // flag values stick to a command tree
+	if err := env.run("list", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("empty list --json: %v", err)
+	}
+	if got := env.out.String(); got != "[]\n" {
+		t.Errorf("empty list = %q, want []", got)
+	}
+}
+
+func TestStatus_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	if err := env.run("status", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("status --json: %v", err)
+	}
+	var status map[string]any
+	decodeJSONOutput(t, env.out, &status)
+	if status["CNPJ"] != nfeTestCNPJ || status["TotalEmitidas"] != float64(0) || status["LastFoundNSU"] != nil {
+		t.Errorf("status = %v", status)
+	}
+}

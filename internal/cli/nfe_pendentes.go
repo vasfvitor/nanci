@@ -35,6 +35,14 @@ func newNFePendentesCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				rows := make([]nfePendingOutput, 0, len(pending))
+				for _, d := range pending {
+					rows = append(rows, newNFePendingOutput(d))
+				}
+				return printJSON(cmd.OutOrStdout(), rows)
+			}
+
 			if len(pending) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhuma manifestação pendente.")
 				return nil

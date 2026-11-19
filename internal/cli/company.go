@@ -177,6 +177,14 @@ func newCompanyListCmd(env CommandEnv) *cobra.Command {
 				return fmt.Errorf("erro ao listar empresas: %w", err)
 			}
 
+			if env.jsonOutput() {
+				rows := make([]companyOutput, 0, len(companies))
+				for _, c := range companies {
+					rows = append(rows, newCompanyOutput(c))
+				}
+				return printJSON(cmd.OutOrStdout(), rows)
+			}
+
 			if len(companies) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhuma empresa cadastrada.")
 				return nil

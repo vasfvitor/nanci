@@ -48,6 +48,14 @@ func newCTeListCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				rows := make([]cteDocumentOutput, 0, len(docs))
+				for _, d := range docs {
+					rows = append(rows, newCTeDocumentOutput(d))
+				}
+				return printJSON(cmd.OutOrStdout(), rows)
+			}
+
 			if len(docs) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhum CT-e encontrado.")
 				return nil

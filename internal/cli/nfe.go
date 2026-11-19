@@ -68,7 +68,12 @@ func printConnectionTest(out io.Writer, r app.ConnectionTestResult) error {
 	}
 	_, _ = fmt.Fprintln(out, r.StatusExplanation)
 	_, _ = fmt.Fprintln(out, "Nenhuma consulta foi consumida.")
+	return connectionTestError(r)
+}
 
+// connectionTestError is the error of a connection test that did not reach
+// SEFAZ, or nil.
+func connectionTestError(r app.ConnectionTestResult) error {
 	if !r.EndpointReached {
 		return errors.New("teste de conexão com a SEFAZ falhou")
 	}

@@ -66,6 +66,14 @@ func newCredentialListCmd(env CommandEnv) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("erro ao listar credenciais: %w", err)
 			}
+			if env.jsonOutput() {
+				rows := make([]credentialOutput, 0, len(credentials))
+				for _, c := range credentials {
+					rows = append(rows, newCredentialOutput(c))
+				}
+				return printJSON(cmd.OutOrStdout(), rows)
+			}
+
 			if len(credentials) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Nenhuma credencial cadastrada.")
 				return nil

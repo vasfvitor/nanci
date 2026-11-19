@@ -499,3 +499,60 @@ func TestCTeExportDACTE_Single(t *testing.T) {
 		t.Errorf("an invalid --chave asked for %d passwords", env.passwords.requests)
 	}
 }
+
+func TestCTeList_JSON(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedListFixtures()
+	if err := env.run("cte", "list", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+	var rows []map[string]any
+	decodeJSONOutput(t, env.out, &rows)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want 2:\n%s", len(rows), env.out.String())
+	}
+	byChave := make(map[string]map[string]any)
+	for _, row := range rows {
+		byChave[row["ChaveAcesso"].(string)] = row
+	}
+	proc := byChave[cteChaveProc]
+	if proc == nil || proc["Situacao"] != "cancelada" || proc["CompanyRole"] != "tomador" || proc["Modelo"] != "57" {
+		t.Fatalf("procte row = %v", proc)
+	}
+	if papeis, ok := proc["Papeis"].([]any); !ok || len(papeis) != 2 {
+		t.Errorf("Papeis = %v, want both roles", proc["Papeis"])
+	}
+	if chaves, ok := proc["NFeChaves"].([]any); !ok || !slices.Contains(chaves, any(cteNFeChave)) {
+		t.Errorf("NFeChaves = %v, want %s", proc["NFeChaves"], cteNFeChave)
+	}
+	if emitente, ok := proc["Emitente"].(map[string]any); !ok || emitente["CNPJ"] != "12345678000195" {
+		t.Errorf("Emitente = %v", proc["Emitente"])
+	}
+	if _, ok := proc["TotalValue"].(float64); !ok {
+		t.Errorf("TotalValue = %v, want a number", proc["TotalValue"])
+	}
+	assertNoJSONKeys(t, rows, internalJSONKeys...)
+	assertNoJSONKeys(t, rows, "ID")
+
+	env = newCTeTestRoot(t) // flag values stick to a command tree
+	if err := env.run("cte", "list", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("empty list --json: %v", err)
+	}
+	if got := env.out.String(); got != "[]\n" {
+		t.Errorf("empty list = %q, want []", got)
+	}
+}
+
+func TestCTeStatus_JSON(t *testing.T) {
+	env := newCTeTestRoot(t)
+	env.seedCTe("procte.xml", 1)
+	env.seedCTe("procteos.xml", 2)
+	if err := env.run("cte", "status", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("status --json: %v", err)
+	}
+	var status map[string]any
+	decodeJSONOutput(t, env.out, &status)
+	if status["CNPJ"] != nfeTestCNPJ || status["TotalTomador"] != float64(2) || status["TotalRemetente"] != float64(0) || status["InitialSyncDoneAt"] != nil {
+		t.Errorf("status = %v", status)
+	}
+}

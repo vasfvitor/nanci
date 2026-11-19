@@ -579,3 +579,92 @@ func TestNFeReset_DryRunThenConfirm(t *testing.T) {
 		t.Errorf("documents after the reset = %d, %v; want none", len(docs), err)
 	}
 }
+
+func TestNFeList_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+	if got := env.out.String(); got != "[]\n" {
+		t.Errorf("empty list = %q, want []", got)
+	}
+
+	env = newNFeTestRoot(t)
+	env.seed("resnfe-cancelada.xml", 1)
+	env.seed("procnfe.xml", 2)
+	env.seed("proceventonfe-ciencia.xml", 3)
+	if err := env.run("nfe", "list", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+	var rows []map[string]any
+	decodeJSONOutput(t, env.out, &rows)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want 2:\n%s", len(rows), env.out.String())
+	}
+	proc := rows[0]
+	if proc["ChaveAcesso"] != nfeChaveProc || proc["Manifestacao"] != "ciencia" || proc["Completeness"] != "completa" || proc["CompanyRole"] != "destinatario" {
+		t.Errorf("first row = %v", proc)
+	}
+	if cents, ok := proc["TotalValue"].(float64); !ok || cents <= 0 || cents != float64(int64(cents)) {
+		t.Errorf("TotalValue = %v, want integer cents", proc["TotalValue"])
+	}
+	if proc["ConclusiveDue"] == nil || proc["DaysLeft"] == nil {
+		t.Errorf("deadlines missing: ConclusiveDue %v, DaysLeft %v", proc["ConclusiveDue"], proc["DaysLeft"])
+	}
+	if _, ok := proc["AutorizadosCNPJ"].([]any); !ok {
+		t.Errorf("AutorizadosCNPJ = %v, want a list", proc["AutorizadosCNPJ"])
+	}
+	assertNoJSONKeys(t, rows, internalJSONKeys...)
+	assertNoJSONKeys(t, rows, "ID")
+}
+
+func TestNFePendentes_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	if err := env.run("nfe", "pendentes", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("pendentes --json: %v", err)
+	}
+	var rows []map[string]any
+	decodeJSONOutput(t, env.out, &rows)
+	if len(rows) != 1 || rows[0]["ChaveAcesso"] != nfeChaveProc || rows[0]["Kind"] != app.NFePendingSemCiencia {
+		t.Errorf("pendentes = %v", rows)
+	}
+	if _, ok := rows[0]["CienciaOverdue"].(bool); !ok {
+		t.Errorf("CienciaOverdue = %v, want a bool", rows[0]["CienciaOverdue"])
+	}
+	assertNoJSONKeys(t, rows, internalJSONKeys...)
+}
+
+func TestNFeStatus_JSON(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	if err := env.run("nfe", "status", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("status --json: %v", err)
+	}
+	var status map[string]any
+	decodeJSONOutput(t, env.out, &status)
+	if status["CNPJ"] != nfeTestCNPJ || status["TpAmb"] != "1" || status["UF"] != "SP" ||
+		status["TotalDestinatario"] != float64(1) || status["PendingCiencia"] != float64(1) {
+		t.Errorf("status = %v", status)
+	}
+	if v, ok := status["MaxNSU"]; !ok || v != nil {
+		t.Errorf("MaxNSU = %v (present %t), want null", v, ok)
+	}
+}
+
+func TestTestarConexao_JSONKeepsTheError(t *testing.T) {
+	for _, source := range []string{"nfe", "cte"} {
+		t.Run(source, func(t *testing.T) {
+			env := newNFeTestRoot(t) // the refusing provider leaves the certificate unloaded
+			err := env.run(source, "testar-conexao", "-c", nfeTestCNPJ, "--json")
+			if err == nil || err.Error() != "teste de conexão com a SEFAZ falhou" {
+				t.Errorf("err = %v, want the failed connection test", err)
+			}
+			var result map[string]any
+			decodeJSONOutput(t, env.out, &result)
+			if result["CertLoaded"] != false || result["EndpointReached"] != false || result["StatusExplanation"] == "" {
+				t.Errorf("result = %v", result)
+			}
+		})
+	}
+}

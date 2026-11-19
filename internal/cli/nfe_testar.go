@@ -22,6 +22,12 @@ func newNFeTestarConexaoCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				if err := printJSON(cmd.OutOrStdout(), newConnectionTestOutput(result)); err != nil {
+					return err
+				}
+				return connectionTestError(result)
+			}
 			return printConnectionTest(cmd.OutOrStdout(), result)
 		},
 	}

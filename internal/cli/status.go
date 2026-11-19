@@ -25,6 +25,10 @@ func newStatusCommand(env CommandEnv) *cobra.Command {
 				return fmt.Errorf("erro: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newNFSeStatusOutput(result))
+			}
+
 			out := cmd.OutOrStdout()
 			_, _ = fmt.Fprintf(out, "Status para: %s (%s)\n", result.CompanyName, cnpj.Format(result.CNPJ))
 			_, _ = fmt.Fprintf(out, "Ambiente: %s\n", result.Environment)
