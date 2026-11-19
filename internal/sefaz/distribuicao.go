@@ -95,10 +95,8 @@ func (c *Client) DistNSU(ctx context.Context, cnpjValue string, cUFAutor int, ul
 }
 
 // ConsNSU asks for the single document with the given NSU (consNSU), to fill
-// a gap in the queue.
-//
-// It has no caller yet: it is kept for the planned NSU gap recovery (ROADMAP,
-// Fase 2, item 5). A call spends the same 20 per hour NF-e budget as DistNSU.
+// a gap in the queue (NT 2014.002 v1.40, §3.6). A call spends the same 20 per
+// hour NF-e budget as DistNSU.
 func (c *Client) ConsNSU(ctx context.Context, cnpjValue string, cUFAutor int, nsu int64) (DistResult, error) {
 	query, err := nsuQuery("consNSU", "NSU", nsu)
 	if err != nil {

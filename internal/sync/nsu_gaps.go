@@ -150,10 +150,16 @@ func advanceNSUGap(ctx context.Context, tx executor, gap NSUGap, nsu int64, reco
 	return err
 }
 
-// AdvanceNSUGap records that nsu of gap came back without a document.
+// AdvanceNSUGap records that nsu of gap came back without a document the
+// recovery could store.
 func (r *Store) AdvanceNSUGap(ctx context.Context, gap NSUGap, nsu int64) error {
 	return advanceNSUGap(ctx, r.db, gap, nsu, false)
 }
+
+// NSUGapWindow is how long the distribution keeps a document: 90 days for
+// the NF-e (NT 2014.002) and 3 months for the CT-e (NT 2015.002). A gap
+// detected longer ago than that holds nothing consNSU can still return.
+const NSUGapWindow = 90 * 24 * time.Hour
 
 // ApplyAndAdvanceNSUGap returns a CommitFunc that stores an item recovered at
 // nsu and moves gap past it in the same transaction.

@@ -35,11 +35,8 @@ func (c *Client) DistCTeNSU(ctx context.Context, cnpjValue string, cUFAutor int,
 }
 
 // ConsCTeNSU asks CTeDistribuicaoDFe for the single document with the given
-// NSU (consNSU).
-//
-// It has no caller yet: it is kept for the planned NSU gap recovery (ROADMAP,
-// Fase 2, item 5). A call spends the same 20 per hour CT-e budget as
-// DistCTeNSU.
+// NSU (consNSU), to fill a gap in the queue (NT 2015.002 v1.05, §2.6). A
+// call spends the same 20 per hour CT-e budget as DistCTeNSU.
 func (c *Client) ConsCTeNSU(ctx context.Context, cnpjValue string, cUFAutor int, nsu int64) (DistResult, error) {
 	query, err := nsuQuery("consNSU", "NSU", nsu)
 	if err != nil {

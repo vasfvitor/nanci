@@ -21,6 +21,7 @@ var nfeRequestDelay = 2 * time.Second
 
 type nfeFetcher interface {
 	DistNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error)
+	ConsNSU(ctx context.Context, cnpj string, cUFAutor int, nsu int64) (sefaz.DistResult, error)
 }
 
 // nfeSource walks the NF-e distribution of the Ambiente Nacional
@@ -61,6 +62,15 @@ func (s *nfeSource) Fetch(ctx context.Context, company *company.Company, cursor 
 		return Batch{}, err
 	}
 	return distBatch(ctx, s.log, resp, cursor, isNFeEvent, "NF-e")
+}
+
+// FetchNSU asks for the single document at nsu (consNSU), to fill a gap.
+func (s *nfeSource) FetchNSU(ctx context.Context, company *company.Company, nsu int64) (sefaz.DistResult, []Item, error) {
+	resp, err := s.client.ConsNSU(ctx, company.CNPJ, s.cUFAutor, nsu)
+	if err != nil {
+		return sefaz.DistResult{}, nil, err
+	}
+	return resp, distItems(resp, isNFeEvent), nil
 }
 
 func isNFeEvent(schema string) bool {

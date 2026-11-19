@@ -21,6 +21,7 @@ var cteRequestDelay = 2 * time.Second
 
 type cteFetcher interface {
 	DistCTeNSU(ctx context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error)
+	ConsCTeNSU(ctx context.Context, cnpj string, cUFAutor int, nsu int64) (sefaz.DistResult, error)
 }
 
 // cteSource walks the CT-e distribution of the Ambiente Nacional
@@ -61,6 +62,15 @@ func (s *cteSource) Fetch(ctx context.Context, company *company.Company, cursor 
 		return Batch{}, err
 	}
 	return distBatch(ctx, s.log, resp, cursor, isCTeEvent, "CT-e")
+}
+
+// FetchNSU asks for the single document at nsu (consNSU), to fill a gap.
+func (s *cteSource) FetchNSU(ctx context.Context, company *company.Company, nsu int64) (sefaz.DistResult, []Item, error) {
+	resp, err := s.client.ConsCTeNSU(ctx, company.CNPJ, s.cUFAutor, nsu)
+	if err != nil {
+		return sefaz.DistResult{}, nil, err
+	}
+	return resp, distItems(resp, isCTeEvent), nil
 }
 
 func isCTeEvent(schema string) bool {

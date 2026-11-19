@@ -37,6 +37,35 @@ type scriptedFetcher struct {
 	cUFAutors []int
 	cnpjs     []string
 	services  []string // "nfe" or "cte" for each request
+
+	// consNSU answers ConsNSU and ConsCTeNSU by NSU; an NSU without an
+	// answer gets cStat 137. asked lists the NSUs requested.
+	consNSU map[int64]sefaz.DistResult
+	asked   []int64
+	// onConsNSU, when set, runs before each consNSU answer.
+	onConsNSU func(nsu int64)
+}
+
+func (f *scriptedFetcher) ConsNSU(_ context.Context, cnpj string, cUFAutor int, nsu int64) (sefaz.DistResult, error) {
+	return f.answerNSU("nfe", cnpj, cUFAutor, nsu)
+}
+
+func (f *scriptedFetcher) ConsCTeNSU(_ context.Context, cnpj string, cUFAutor int, nsu int64) (sefaz.DistResult, error) {
+	return f.answerNSU("cte", cnpj, cUFAutor, nsu)
+}
+
+func (f *scriptedFetcher) answerNSU(service, cnpj string, cUFAutor int, nsu int64) (sefaz.DistResult, error) {
+	f.services = append(f.services, service)
+	f.asked = append(f.asked, nsu)
+	f.cUFAutors = append(f.cUFAutors, cUFAutor)
+	f.cnpjs = append(f.cnpjs, cnpj)
+	if f.onConsNSU != nil {
+		f.onConsNSU(nsu)
+	}
+	if resp, ok := f.consNSU[nsu]; ok {
+		return resp, nil
+	}
+	return sefaz.DistResult{CStat: sefaz.CStatNenhumDocumento}, nil
 }
 
 func (f *scriptedFetcher) DistNSU(_ context.Context, cnpj string, cUFAutor int, ultNSU int64) (sefaz.DistResult, error) {

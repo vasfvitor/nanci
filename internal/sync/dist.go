@@ -86,15 +86,7 @@ func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cur
 
 	switch resp.CStat {
 	case sefaz.CStatDocumentoLocalizado:
-		batch.Items = make([]Item, 0, len(resp.Docs))
-		for _, doc := range resp.Docs {
-			batch.Items = append(batch.Items, Item{
-				NSU:     doc.NSU,
-				Schema:  doc.Schema,
-				Payload: doc.Content,
-				IsEvent: isEvent(doc.Schema),
-			})
-		}
+		batch.Items = distItems(resp, isEvent)
 		if cursor > 0 {
 			delivered := make([]int64, 0, len(resp.Docs))
 			for _, doc := range resp.Docs {
@@ -125,6 +117,20 @@ func distBatch(ctx context.Context, log *slog.Logger, resp sefaz.DistResult, cur
 		return Batch{}, &sefaz.RejectionError{CStat: resp.CStat, XMotivo: resp.XMotivo}
 	}
 	return batch, nil
+}
+
+// distItems turns the docZips of a distribution answer into loop items.
+func distItems(resp sefaz.DistResult, isEvent func(schema string) bool) []Item {
+	items := make([]Item, 0, len(resp.Docs))
+	for _, doc := range resp.Docs {
+		items = append(items, Item{
+			NSU:     doc.NSU,
+			Schema:  doc.Schema,
+			Payload: doc.Content,
+			IsEvent: isEvent(doc.Schema),
+		})
+	}
+	return items
 }
 
 // CheckTpAmb returns the tpAmb to store for an NF-e or CT-e item of a pull
