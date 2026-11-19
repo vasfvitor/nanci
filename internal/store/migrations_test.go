@@ -1005,13 +1005,13 @@ func TestMigration023AddsSyncNSUGaps(t *testing.T) {
 		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
 	`, now, now)
 	mustExec(t, db, `
-		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, detected_at)
-		VALUES ('comp-1', 'nfe', 'producao', 11, 20, 11, 'consumo_indevido', ?)
-	`, now)
+		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, nsus_since, detected_at)
+		VALUES ('comp-1', 'nfe', 'producao', 11, 20, 11, 'consumo_indevido', ?, ?)
+	`, now, now)
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, detected_at)
-		VALUES ('comp-1', 'nfse', 'producao', 1, 2, 1, 'batch_hole', ?)
-	`, now); err == nil {
+		INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, nsus_since, detected_at)
+		VALUES ('comp-1', 'nfse', 'producao', 1, 2, 1, 'batch_hole', ?, ?)
+	`, now, now); err == nil {
 		t.Error("sync_nsu_gaps accepted the nfse source")
 	}
 

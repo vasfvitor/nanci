@@ -60,6 +60,12 @@ const (
 	CStatDocumentoLocalizado = 138
 	// CStatConsumoIndevido: too many requests; the CNPJ is blocked for an hour.
 	CStatConsumoIndevido = 656
+	// CStatNSUAcimaDoMaximo rejects an NSU above maxNSU (NT 2014.002, rule
+	// H06, for distNSU and consNSU).
+	CStatNSUAcimaDoMaximo = 589
+	// CStatForaDePrazo rejects a document past the distribution window (NT
+	// 2014.002, rule H16).
+	CStatForaDePrazo = 632
 )
 
 // DistResult is a retDistDFeInt with cStat 137, 138 or 656. What each one

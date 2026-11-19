@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -89,5 +90,51 @@ func TestCTeSourceStoresReturnedUltNSUAfterEveryResponse(t *testing.T) {
 	})
 	if got := len(h.documents()); got != 1 {
 		t.Errorf("documents = %d, want 1", got)
+	}
+}
+
+// TestNSUGapsDateFromTheLastAnswer resumes a distribution whose last answer
+// is 100 days old: SEFAZ starts the page at the oldest NSU it still keeps,
+// and the NSUs before it, skipped since that answer, are past the window.
+// A hole in a later page of the same run dates from the page before it.
+func TestNSUGapsDateFromTheLastAnswer(t *testing.T) {
+	h := newNFeTestHelper(t)
+	h.setNFeCursor(100)
+	old := time.Now().Add(-100 * 24 * time.Hour).UTC()
+	if _, err := h.db.ExecContext(context.Background(), `UPDATE sync_state SET last_success_at = ?`, old.Format(time.RFC3339)); err != nil {
+		t.Fatal(err)
+	}
+	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{
+		100: {CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 300, MaxNSU: 310, Docs: []sefaz.DocZip{
+			docZip(t, 300, "resNFe_v1.01.xsd", "resnfe.xml"),
+		}},
+		300: {CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 310, MaxNSU: 310, Docs: []sefaz.DocZip{
+			docZip(t, 310, "procNFe_v4.00.xsd", "procnfe.xml"),
+		}},
+	}}
+
+	if _, err := h.run(fetcher); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	gaps, err := h.store.OpenNSUGaps(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(gaps) != 2 || gaps[0].First != 101 || gaps[0].Last != 299 || gaps[1].First != 301 || gaps[1].Last != 309 {
+		t.Fatalf("open gaps = %+v, want 101-299 and 301-309", gaps)
+	}
+	if !gaps[0].Since.Equal(old.Truncate(time.Second)) {
+		t.Errorf("first gap since = %v, want the old answer %v", gaps[0].Since, old)
+	}
+	if time.Since(gaps[1].Since) > time.Minute {
+		t.Errorf("second gap since = %v, want the first page's answer", gaps[1].Since)
+	}
+	missing, err := h.store.MissingNSUs(context.Background(), h.company.ID, syncstate.SyncSourceNFe, h.company.Environment, time.Now().Add(-NSUGapWindow))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing != 9 {
+		t.Errorf("missing = %d, want only the 9 NSUs of the second page", missing)
 	}
 }

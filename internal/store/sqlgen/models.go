@@ -337,6 +337,7 @@ type SyncNsuGap struct {
 	Status      string
 	Recovered   int64
 	Empty       int64
+	NsusSince   string
 	DetectedAt  string
 	FinishedAt  sql.NullString
 }

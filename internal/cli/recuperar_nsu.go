@@ -51,7 +51,7 @@ func newRecuperarNSUCmd(env CommandEnv, cnpjFlag *string, label, group string, r
 			if err != nil {
 				return pullError(out, err)
 			}
-			printRecoverNSUResult(out, res, group)
+			printRecoverNSUResult(out, res, group, limiteFlag)
 			return nil
 		},
 	}
@@ -59,7 +59,9 @@ func newRecuperarNSUCmd(env CommandEnv, cnpjFlag *string, label, group string, r
 	return cmd
 }
 
-func printRecoverNSUResult(out io.Writer, res app.RecoverNSUResult, group string) {
+// printRecoverNSUResult prints the counts of a run; limit is the --limite the
+// user gave, repeated in the hint to continue.
+func printRecoverNSUResult(out io.Writer, res app.RecoverNSUResult, group string, limit int) {
 	if res.Asked == 0 && res.Expired == 0 && res.Missing == 0 {
 		_, _ = fmt.Fprintln(out, "Nenhum NSU faltando.")
 		return
@@ -75,7 +77,11 @@ func printRecoverNSUResult(out io.Writer, res app.RecoverNSUResult, group string
 	_, _ = fmt.Fprintf(out, "NSUs ainda faltando: %d\n", res.Missing)
 	switch res.StopReason {
 	case sync.RecoverStopLimit:
-		_, _ = fmt.Fprintf(out, "Parou no limite desta execução. Rode `nanci %s recuperar-nsu --cnpj %s` de novo para continuar.\n", group, res.CNPJ)
+		again := fmt.Sprintf("nanci %s recuperar-nsu --cnpj %s", group, res.CNPJ)
+		if limit > 0 {
+			again += fmt.Sprintf(" --limite %d", limit)
+		}
+		_, _ = fmt.Fprintf(out, "Parou no limite desta execução. Rode `%s` de novo para continuar.\n", again)
 	case sync.RecoverStopRateBudget:
 		_, _ = fmt.Fprintln(out, "Parou porque as consultas desta hora acabaram.")
 	case sync.RecoverStopConsumoIndevido:

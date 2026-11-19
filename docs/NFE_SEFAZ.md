@@ -78,14 +78,15 @@ O Ambiente Nacional numera os documentos de cada CNPJ "sem lacunas", e a NT mand
 
 - **Salto do 656.** Desde a v1.14, o 656 devolve a posição da sequência do CNPJ no servidor, e o Nanci adota esse `ultNSU` quando ele está à frente do cursor. Os NSUs entre os dois foram entregues a outro programa que consulta o mesmo CNPJ, como o ERP do contador (leitura do Nanci, não escrita na NT). Causa `consumo_indevido`.
 - **Buraco num lote 138.** Um NSU do intervalo (cursor, `ultNSU`] que veio sem `docZip`. Causa `batch_hole`.
+- Os intervalos não se sobrepõem: um intervalo novo guarda só os NSUs que nenhuma lacuna registrada, aberta ou encerrada, já tem. Cada lacuna guarda `nsus_since`, a hora da última resposta da distribuição antes do salto, que é o mais antigo que os seus NSUs podem ser.
 - **Não são lacunas:** a caminhada a partir do NSU 0, que a distribuição começa no NSU mais antigo da janela; um 137, que não tem nada a entregar; uma pausa de mais de 60 dias, em que o Ambiente Nacional não gera NSU (ver "Regra dos 60 dias").
 
 `nanci nfe recuperar-nsu` e o botão **Recuperar NSUs** da página (`sync.Manager.RecoverNSU`) pedem cada NSU faltante, do mais antigo ao mais novo, e gravam o que vier pelo mesmo caminho da distribuição, sem mover o cursor:
 
 - **Orçamento.** Cada NSU gasta 1 das 20 consultas da hora, registrada antes do envio. Sem `--limite`, a execução usa o que sobra na hora menos 2 (`sync.RecoverNSUReserve`), que ficam para o pull; com `--limite N`, usa até N, reserva incluída. Sem consulta sobrando, recusa antes de pedir a senha. Como na busca pela chave, `consumo_indevido` e `rate_budget` recusam a execução, e a espera depois de `caught_up` não.
-- **Respostas.** 138 grava o documento; 137 conta como "sem documento" (a NT: "o Ambiente Nacional não gerou o NSU e o interessado deve desconsiderá-lo"); 656 bloqueia a origem por 1 hora e para; outra rejeição para com erro. Um documento recuperado que não pode ser lido conta como ilegível, e o NSU é dado por consultado.
+- **Respostas.** 138 grava o documento; 137 conta como "sem documento" (a NT: "o Ambiente Nacional não gerou o NSU e o interessado deve desconsiderá-lo"); 656 bloqueia a origem por 1 hora e para; 589 (NSU acima do `maxNSU`) e 632 (fora de prazo) recusam só aquele NSU, que conta como "sem documento"; outra rejeição (certificado, CNPJ, serviço parado) para com erro e deixa a lacuna onde está. Um documento recuperado que não pode ser lido conta como ilegível, e o NSU é dado por consultado. Um evento que a distribuição descartaria, como o de uma NF-e que a empresa não tem e não assinou, também conta como "sem documento".
 - **Retomada.** Cada lacuna guarda o próximo NSU a pedir (`next_nsu`), então uma execução cortada pelo limite, por cancelamento ou por 656 continua de onde parou.
-- **Janela.** Uma lacuna registrada há mais de 90 dias (`sync.NSUGapWindow`) é encerrada sem consulta: a NT não dá cStat para um NSU fora da janela, só diz que "não será possível recuperar".
+- **Janela.** Uma lacuna cujo `nsus_since` passou de 90 dias (`sync.NSUGapWindow`) é encerrada sem consulta e não entra na contagem: a NT não dá cStat para um NSU fora da janela, só diz que "não será possível recuperar". Assim, os NSUs pulados por uma retomada depois de mais de 90 dias parados, que a distribuição começa no NSU mais antigo que ainda guarda, já nascem fora da janela.
 - `nfe status` e a página mostram "NSUs faltando: N". Redefinir as NF-e apaga as lacunas, já que o cursor volta ao 0.
 
 ## Manifestação do Destinatário

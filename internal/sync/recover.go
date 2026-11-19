@@ -66,8 +66,8 @@ type nsuFetcher interface {
 // distribution does, without moving the cursor. Each request spends one of
 // the source's 20 per hour, recorded before it is sent. As in FetchByChave, a
 // consumo_indevido or rate_budget block refuses the run before the password
-// prompt and the wait after caught_up does not. Gaps detected longer ago than
-// NSUGapWindow are closed without asking. A gap keeps the NSU it reached, so
+// prompt and the wait after caught_up does not. Gaps whose NSUs date from
+// longer ago than NSUGapWindow are closed without asking. A gap keeps the NSU it reached, so
 // a run cut short by a cancel, the limit or a 656 continues where it stopped.
 func (m *Manager) RecoverNSU(ctx context.Context, input RecoverNSUInput) (RecoverNSUResult, error) {
 	cleanedCNPJ, err := cnpj.Normalize(input.CNPJ)
@@ -116,7 +116,7 @@ func (m *Manager) RecoverNSU(ctx context.Context, input RecoverNSUInput) (Recove
 }
 
 // openGapsInWindow returns the source's open gaps, closing as expired the
-// ones detected before the distribution window.
+// ones whose NSUs date from before the distribution window.
 func (m *Manager) openGapsInWindow(ctx context.Context, comp *company.Company, source syncstate.SyncSource, result *RecoverNSUResult) ([]NSUGap, error) {
 	gaps, err := m.SyncRepo.OpenNSUGaps(ctx, comp.ID, source, comp.Environment)
 	if err != nil {
@@ -125,7 +125,7 @@ func (m *Manager) openGapsInWindow(ctx context.Context, comp *company.Company, s
 	cutoff := time.Now().Add(-NSUGapWindow)
 	open := gaps[:0]
 	for _, gap := range gaps {
-		if gap.DetectedAt.Before(cutoff) {
+		if gap.Since.Before(cutoff) {
 			if err := m.SyncRepo.ExpireNSUGap(ctx, gap); err != nil {
 				return nil, fmt.Errorf("encerrar NSUs fora da janela: %w", err)
 			}
@@ -237,6 +237,14 @@ func (m *Manager) recoverOne(ctx context.Context, comp *company.Company, fetcher
 		return false, m.SyncRepo.AdvanceNSUGap(ctx, gap, nsu)
 	case sefaz.CStatDocumentoLocalizado:
 		return false, m.storeRecovered(ctx, comp, fetcher, state, gap, nsu, items, result)
+	case sefaz.CStatNSUAcimaDoMaximo, sefaz.CStatForaDePrazo:
+		// A rejection of this NSU alone: asking again would get it again and
+		// keep every later NSU waiting. Other rejections (certificate, CNPJ,
+		// service down) stop the run and leave the gap where it is.
+		m.Log.WarnContext(ctx, "SEFAZ recusou o NSU pedido por consNSU",
+			slog.Int64("nsu", nsu), slog.Int("cstat", resp.CStat), slog.String("xmotivo", resp.XMotivo))
+		result.Empty++
+		return false, m.SyncRepo.AdvanceNSUGap(ctx, gap, nsu)
 	default:
 		return false, fmt.Errorf("consultar NSU %d: %w", nsu, &sefaz.RejectionError{CStat: resp.CStat, XMotivo: resp.XMotivo})
 	}
@@ -244,18 +252,21 @@ func (m *Manager) recoverOne(ctx context.Context, comp *company.Company, fetcher
 
 // storeRecovered stores the items of a consNSU answer and moves the gap past
 // nsu together with the last one. A document that cannot be read still moves
-// the gap: asking again would only spend another request.
+// the gap: asking again would only spend another request. An item the source
+// skipped by policy counts as empty, as nothing was stored.
 func (m *Manager) storeRecovered(ctx context.Context, comp *company.Company, fetcher nsuFetcher, state SourceState, gap NSUGap, nsu int64, items []Item, result *RecoverNSUResult) error {
 	if len(items) == 0 {
 		result.Empty++
 		return m.SyncRepo.AdvanceNSUGap(ctx, gap, nsu)
 	}
+	var outcome ItemOutcome
 	for i, item := range items {
 		commit := m.SyncRepo.Apply
 		if i == len(items)-1 {
 			commit = m.SyncRepo.ApplyAndAdvanceNSUGap(gap, nsu)
 		}
-		_, err := fetcher.ProcessItem(ctx, comp, state, item, commit)
+		var err error
+		outcome, err = fetcher.ProcessItem(ctx, comp, state, item, commit)
 		var parseErr *ProcessingError
 		if errors.As(err, &parseErr) {
 			m.Log.WarnContext(ctx, "Documento recuperado por consNSU não pôde ser lido", slog.Any("error", parseErr))
@@ -266,7 +277,11 @@ func (m *Manager) storeRecovered(ctx context.Context, comp *company.Company, fet
 			return fmt.Errorf("gravar documento do NSU %d: %w", nsu, err)
 		}
 	}
-	result.Recovered++
+	if outcome.SkippedByPolicy {
+		result.Empty++
+	} else {
+		result.Recovered++
+	}
 	return nil
 }
 

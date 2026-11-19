@@ -3,6 +3,10 @@
 -- delivering a document to nanci: the jump a cStat 656 makes when another
 -- program consumed the CNPJ's sequence, or a hole inside a page. Recovery
 -- asks for each NSU with consNSU, walking next_nsu up to last_nsu.
+-- nsus_since is the earliest time the range's NSUs may date from (when the
+-- distribution last answered before the jump); the 90-day window counts
+-- from it, so a range found after a long pause is born past the window.
+-- Ranges never overlap: a new one keeps only the NSUs no row holds yet.
 -- Gaps are only known from this version on; no existing data describes them.
 CREATE TABLE sync_nsu_gaps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -16,6 +20,7 @@ CREATE TABLE sync_nsu_gaps (
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'done', 'expired')),
     recovered INTEGER NOT NULL DEFAULT 0,
     empty INTEGER NOT NULL DEFAULT 0,
+    nsus_since TEXT NOT NULL,
     detected_at TEXT NOT NULL,
     finished_at TEXT,
     CHECK (first_nsu <= last_nsu),

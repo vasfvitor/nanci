@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
@@ -12,7 +13,7 @@ import (
 func (e *nfeTestRoot) recordGap(source syncstate.SyncSource, first, last int64) {
 	e.t.Helper()
 	gaps := []sync.NSURange{{First: first, Last: last, Cause: sync.NSUGapConsumoIndevido}}
-	if err := sync.NewStore(e.db).RecordNSUGaps(context.Background(), e.company.ID, source, e.company.Environment, gaps); err != nil {
+	if err := sync.NewStore(e.db).RecordNSUGaps(context.Background(), e.company.ID, source, e.company.Environment, time.Now(), gaps); err != nil {
 		e.t.Fatal(err)
 	}
 }
@@ -60,7 +61,7 @@ func TestNFeRecuperarNSU_StopsAtTheLimit(t *testing.T) {
 	for _, want := range []string{
 		"NSUs consultados: 2 (0 com documento, 2 sem documento)",
 		"NSUs ainda faltando: 3",
-		"Parou no limite desta execução. Rode `nanci nfe recuperar-nsu --cnpj " + nfeTestCNPJ + "` de novo para continuar.",
+		"Parou no limite desta execução. Rode `nanci nfe recuperar-nsu --cnpj " + nfeTestCNPJ + " --limite 2` de novo para continuar.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)

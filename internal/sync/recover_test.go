@@ -14,7 +14,7 @@ import (
 
 func recordGaps(t *testing.T, mgr *Manager, comp *company.Company, source syncstate.SyncSource, gaps ...NSURange) {
 	t.Helper()
-	if err := mgr.SyncRepo.RecordNSUGaps(context.Background(), comp.ID, source, comp.Environment, gaps); err != nil {
+	if err := mgr.SyncRepo.RecordNSUGaps(context.Background(), comp.ID, source, comp.Environment, time.Now(), gaps); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -147,7 +147,7 @@ func TestRecoverNSUClosesGapsPastTheWindowWithoutAsking(t *testing.T) {
 	mgr, comp := newNFePullTestManager(t, passwords, fetcher)
 	recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 14, Cause: NSUGapConsumoIndevido})
 	old := time.Now().Add(-NSUGapWindow - time.Hour).UTC().Format(time.RFC3339)
-	if _, err := mgr.SyncRepo.db.ExecContext(context.Background(), `UPDATE sync_nsu_gaps SET detected_at = ?`, old); err != nil {
+	if _, err := mgr.SyncRepo.db.ExecContext(context.Background(), `UPDATE sync_nsu_gaps SET nsus_since = ?`, old); err != nil {
 		t.Fatal(err)
 	}
 
@@ -197,5 +197,60 @@ func TestRecoverNSUOfCTeUsesTheCTeService(t *testing.T) {
 	}
 	if result.Recovered != 1 || result.Missing != 0 || !slices.Equal(fetcher.services, []string{"cte"}) {
 		t.Errorf("result = %+v, services = %v, want 1 recovered through the CT-e service", result, fetcher.services)
+	}
+}
+
+func TestRecoverNSUMovesPastAnNSUSEFAZRejects(t *testing.T) {
+	fetcher := &scriptedFetcher{consNSU: map[int64]sefaz.DistResult{
+		11: {CStat: sefaz.CStatNSUAcimaDoMaximo, XMotivo: "NSU superior ao maior NSU"},
+		12: {CStat: sefaz.CStatForaDePrazo, XMotivo: "fora de prazo"},
+	}}
+	mgr, comp := newNFePullTestManager(t, &countingProvider{}, fetcher)
+	recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 13, Cause: NSUGapConsumoIndevido})
+
+	result, err := mgr.RecoverNSU(context.Background(), RecoverNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
+	if err != nil {
+		t.Fatalf("RecoverNSU: %v", err)
+	}
+	if result.Asked != 3 || result.Empty != 3 || result.Missing != 0 {
+		t.Errorf("result = %+v, want the rejected NSUs counted as empty and the gap closed", result)
+	}
+}
+
+func TestRecoverNSUStopsOnARejectionOfTheRequest(t *testing.T) {
+	fetcher := &scriptedFetcher{consNSU: map[int64]sefaz.DistResult{
+		11: {CStat: 593, XMotivo: "CNPJ-Base consultado difere do CNPJ-Base do certificado"},
+	}}
+	mgr, comp := newNFePullTestManager(t, &countingProvider{}, fetcher)
+	recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 12, Cause: NSUGapConsumoIndevido})
+
+	_, err := mgr.RecoverNSU(context.Background(), RecoverNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
+	var rejection *sefaz.RejectionError
+	if !errors.As(err, &rejection) || rejection.CStat != 593 {
+		t.Fatalf("RecoverNSU error = %v, want the 593 rejection", err)
+	}
+	missing, err := mgr.SyncRepo.MissingNSUs(context.Background(), comp.ID, syncstate.SyncSourceNFe, comp.Environment, time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing != 2 {
+		t.Errorf("missing = %d, want the gap left untouched", missing)
+	}
+}
+
+func TestRecoverNSUCountsAnEventItCannotKeepAsEmpty(t *testing.T) {
+	fetcher := &scriptedFetcher{consNSU: map[int64]sefaz.DistResult{
+		// A ciência by another CNPJ on an NF-e the company does not have.
+		11: {CStat: sefaz.CStatDocumentoLocalizado, Docs: []sefaz.DocZip{docZip(t, 11, "procEventoNFe_v1.00.xsd", "proceventonfe-ciencia.xml")}},
+	}}
+	mgr, comp := newNFePullTestManager(t, &countingProvider{}, fetcher)
+	recordGaps(t, mgr, comp, syncstate.SyncSourceNFe, NSURange{First: 11, Last: 11, Cause: NSUGapBatchHole})
+
+	result, err := mgr.RecoverNSU(context.Background(), RecoverNSUInput{CNPJ: comp.CNPJ, Source: syncstate.SyncSourceNFe})
+	if err != nil {
+		t.Fatalf("RecoverNSU: %v", err)
+	}
+	if result.Recovered != 0 || result.Empty != 1 || result.Missing != 0 {
+		t.Errorf("result = %+v, want the skipped event counted as empty", result)
 	}
 }

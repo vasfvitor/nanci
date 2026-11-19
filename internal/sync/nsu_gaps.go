@@ -39,16 +39,17 @@ func (r NSURange) Count() int64 {
 }
 
 // NSUGap is an open gap: Next is the first NSU recovery has not asked for
-// yet.
+// yet. Since is the earliest time its NSUs may date from; the distribution
+// window counts from it.
 type NSUGap struct {
-	ID         int64
-	First      int64
-	Last       int64
-	Next       int64
-	Cause      NSUGapCause
-	Recovered  int
-	Empty      int
-	DetectedAt time.Time
+	ID        int64
+	First     int64
+	Last      int64
+	Next      int64
+	Cause     NSUGapCause
+	Recovered int
+	Empty     int
+	Since     time.Time
 }
 
 // Missing is how many NSUs of the gap recovery still has to ask for.
@@ -56,11 +57,12 @@ func (g NSUGap) Missing() int64 {
 	return g.Last - g.Next + 1
 }
 
-// RecordNSUGaps stores the ranges as open gaps of the source in env. A range
-// already recorded with the same first NSU keeps the wider end and opens
-// again if it grew, so detecting the same jump twice (a crash before the
-// checkpoint) records it once.
-func (r *Store) RecordNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, gaps []NSURange) error {
+// RecordNSUGaps stores the ranges as open gaps of the source in env. since
+// is the earliest time their NSUs may date from: when the distribution last
+// answered before it skipped them. A range keeps only the NSUs no recorded
+// gap holds yet, open or finished, so detecting the same jump twice (a crash
+// before the checkpoint) or an overlapping one never asks for an NSU twice.
+func (r *Store) RecordNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, since time.Time, gaps []NSURange) error {
 	if len(gaps) == 0 {
 		return nil
 	}
@@ -71,25 +73,69 @@ func (r *Store) RecordNSUGaps(ctx context.Context, companyID dfe.CompanyID, sour
 	defer func() { _ = tx.Rollback() }()
 
 	now := time.Now().UTC().Format(time.RFC3339)
+	sinceText := since.UTC().Format(time.RFC3339)
 	for _, gap := range gaps {
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, detected_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (company_id, source, environment, first_nsu) DO UPDATE SET
-				status = CASE WHEN excluded.last_nsu > last_nsu THEN 'open' ELSE status END,
-				finished_at = CASE WHEN excluded.last_nsu > last_nsu THEN NULL ELSE finished_at END,
-				last_nsu = MAX(last_nsu, excluded.last_nsu)
-		`, string(companyID), string(source), string(env), gap.First, gap.Last, gap.First, string(gap.Cause), now); err != nil {
-			return fmt.Errorf("record NSU gap %d-%d: %w", gap.First, gap.Last, err)
+		held, err := heldNSURanges(ctx, tx, companyID, source, env, gap)
+		if err != nil {
+			return fmt.Errorf("read NSU gaps around %d-%d: %w", gap.First, gap.Last, err)
+		}
+		for _, part := range subtractRanges(gap, held) {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO sync_nsu_gaps (company_id, source, environment, first_nsu, last_nsu, next_nsu, cause, nsus_since, detected_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`, string(companyID), string(source), string(env), part.First, part.Last, part.First, string(part.Cause), sinceText, now); err != nil {
+				return fmt.Errorf("record NSU gap %d-%d: %w", part.First, part.Last, err)
+			}
 		}
 	}
 	return tx.Commit()
 }
 
+// heldNSURanges lists, oldest first, the recorded gaps that overlap gap.
+func heldNSURanges(ctx context.Context, tx *sql.Tx, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, gap NSURange) ([]NSURange, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT first_nsu, last_nsu
+		FROM sync_nsu_gaps
+		WHERE company_id = ? AND source = ? AND environment = ? AND first_nsu <= ? AND last_nsu >= ?
+		ORDER BY first_nsu
+	`, string(companyID), string(source), string(env), gap.Last, gap.First)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var held []NSURange
+	for rows.Next() {
+		var r NSURange
+		if err := rows.Scan(&r.First, &r.Last); err != nil {
+			return nil, err
+		}
+		held = append(held, r)
+	}
+	return held, rows.Err()
+}
+
+// subtractRanges returns the parts of gap outside every range of held, which
+// is sorted by First.
+func subtractRanges(gap NSURange, held []NSURange) []NSURange {
+	var parts []NSURange
+	from := gap.First
+	for _, h := range held {
+		if h.First > from {
+			parts = append(parts, NSURange{First: from, Last: min(h.First-1, gap.Last), Cause: gap.Cause})
+		}
+		from = max(from, h.Last+1)
+		if from > gap.Last {
+			return parts
+		}
+	}
+	return append(parts, NSURange{First: from, Last: gap.Last, Cause: gap.Cause})
+}
+
 // OpenNSUGaps lists the source's open gaps in env, oldest NSU first.
 func (r *Store) OpenNSUGaps(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment) ([]NSUGap, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, first_nsu, last_nsu, next_nsu, cause, recovered, empty, detected_at
+		SELECT id, first_nsu, last_nsu, next_nsu, cause, recovered, empty, nsus_since
 		FROM sync_nsu_gaps
 		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open'
 		ORDER BY first_nsu
@@ -102,28 +148,28 @@ func (r *Store) OpenNSUGaps(ctx context.Context, companyID dfe.CompanyID, source
 	var gaps []NSUGap
 	for rows.Next() {
 		var gap NSUGap
-		var cause, detectedAt string
-		if err := rows.Scan(&gap.ID, &gap.First, &gap.Last, &gap.Next, &cause, &gap.Recovered, &gap.Empty, &detectedAt); err != nil {
+		var cause, since string
+		if err := rows.Scan(&gap.ID, &gap.First, &gap.Last, &gap.Next, &cause, &gap.Recovered, &gap.Empty, &since); err != nil {
 			return nil, err
 		}
 		gap.Cause = NSUGapCause(cause)
-		if parsed := store.ParseNullableTime(sql.NullString{String: detectedAt, Valid: true}); parsed != nil {
-			gap.DetectedAt = *parsed
+		if parsed := store.ParseNullableTime(sql.NullString{String: since, Valid: true}); parsed != nil {
+			gap.Since = *parsed
 		}
 		gaps = append(gaps, gap)
 	}
 	return gaps, rows.Err()
 }
 
-// MissingNSUs counts the NSUs of the source's open gaps in env detected at or
-// after since; older gaps are past the distribution window and recovery
-// closes them without asking.
+// MissingNSUs counts the NSUs of the source's open gaps in env whose NSUs
+// date from since or later; older gaps are past the distribution window and
+// recovery closes them without asking.
 func (r *Store) MissingNSUs(ctx context.Context, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, since time.Time) (int64, error) {
 	var missing int64
 	err := r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(last_nsu - next_nsu + 1), 0)
 		FROM sync_nsu_gaps
-		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open' AND detected_at >= ?
+		WHERE company_id = ? AND source = ? AND environment = ? AND status = 'open' AND nsus_since >= ?
 	`, string(companyID), string(source), string(env), since.UTC().Format(time.RFC3339)).Scan(&missing)
 	return missing, err
 }
@@ -162,7 +208,9 @@ func (r *Store) AdvanceNSUGap(ctx context.Context, gap NSUGap, nsu int64) error 
 const NSUGapWindow = 90 * 24 * time.Hour
 
 // ApplyAndAdvanceNSUGap returns a CommitFunc that stores an item recovered at
-// nsu and moves gap past it in the same transaction.
+// nsu and moves gap past it in the same transaction. An item the source
+// skipped by policy, such as an event of an NF-e the company does not have,
+// counts as empty.
 func (r *Store) ApplyAndAdvanceNSUGap(gap NSUGap, nsu int64) CommitFunc {
 	return func(ctx context.Context, write func(tx *sql.Tx) (ItemOutcome, error)) (ItemOutcome, error) {
 		return r.Apply(ctx, func(tx *sql.Tx) (ItemOutcome, error) {
@@ -170,7 +218,7 @@ func (r *Store) ApplyAndAdvanceNSUGap(gap NSUGap, nsu int64) CommitFunc {
 			if err != nil {
 				return ItemOutcome{}, err
 			}
-			if err := advanceNSUGap(ctx, tx, gap, nsu, true); err != nil {
+			if err := advanceNSUGap(ctx, tx, gap, nsu, !outcome.SkippedByPolicy); err != nil {
 				return ItemOutcome{}, fmt.Errorf("advance NSU gap: %w", err)
 			}
 			return outcome, nil

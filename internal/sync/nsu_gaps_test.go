@@ -19,31 +19,32 @@ func TestNSUGapsRecordAdvanceAndClose(t *testing.T) {
 	repo := sync.NewStore(db)
 	comp := seedCompany(t, db, "company-1", "11222333000181")
 	env := comp.Environment
-	since := time.Now().Add(-time.Hour)
+	now := time.Now()
+	window := now.Add(-time.Hour)
 
 	gaps := []sync.NSURange{
 		{First: 11, Last: 12, Cause: sync.NSUGapConsumoIndevido},
 		{First: 20, Last: 20, Cause: sync.NSUGapBatchHole},
 	}
-	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env, gaps); err != nil {
+	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env, now, gaps); err != nil {
 		t.Fatal(err)
 	}
-	// The same jump detected again, wider, keeps one row with the wider end.
+	// The same jump detected again, wider, adds only the NSU no gap holds.
 	wider := []sync.NSURange{{First: 11, Last: 13, Cause: sync.NSUGapConsumoIndevido}}
-	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env, wider); err != nil {
+	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env, now, wider); err != nil {
 		t.Fatal(err)
 	}
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, env, since, 4)
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, env, since, 0)
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, env, window, 4)
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, env, window, 0)
 
 	open, err := repo.OpenNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(open) != 2 || open[0].First != 11 || open[0].Last != 13 || open[0].Next != 11 || open[1].First != 20 {
-		t.Fatalf("open gaps = %+v", open)
+	if len(open) != 3 || open[0].First != 11 || open[0].Last != 12 || open[1].First != 13 || open[1].Last != 13 || open[2].First != 20 {
+		t.Fatalf("open gaps = %+v, want 11-12, 13 and 20", open)
 	}
-	if open[0].Cause != sync.NSUGapConsumoIndevido || open[0].DetectedAt.IsZero() {
+	if open[0].Cause != sync.NSUGapConsumoIndevido || open[0].Since.IsZero() {
 		t.Fatalf("first gap = %+v", open[0])
 	}
 
@@ -55,50 +56,66 @@ func TestNSUGapsRecordAdvanceAndClose(t *testing.T) {
 	if _, err := commit(ctx, func(*sql.Tx) (sync.ItemOutcome, error) { return sync.ItemOutcome{Inserted: true}, nil }); err != nil {
 		t.Fatal(err)
 	}
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, env, since, 2)
-
-	if err := repo.AdvanceNSUGap(ctx, open[0], 13); err != nil {
+	// An item skipped by policy stores nothing and counts as empty.
+	skipped := repo.ApplyAndAdvanceNSUGap(open[1], 13)
+	if _, err := skipped(ctx, func(*sql.Tx) (sync.ItemOutcome, error) {
+		return sync.ItemOutcome{SkippedByPolicy: true, IsEvent: true}, nil
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.ExpireNSUGap(ctx, open[1]); err != nil {
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, env, window, 1)
+
+	if err := repo.ExpireNSUGap(ctx, open[2]); err != nil {
+		t.Fatal(err)
+	}
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, env, window, 0)
+
+	counts := gapCounts(t, db)
+	want := map[int64][3]any{
+		11: {"done", 1, 1},
+		13: {"done", 0, 1},
+		20: {"expired", 0, 0},
+	}
+	for first, w := range want {
+		if counts[first] != w {
+			t.Errorf("gap at %d = %v, want %v", first, counts[first], w)
+		}
+	}
+
+	// A range across finished gaps keeps only the NSUs outside them.
+	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env, now, []sync.NSURange{{First: 10, Last: 22, Cause: sync.NSUGapConsumoIndevido}}); err != nil {
 		t.Fatal(err)
 	}
 	open, err = repo.OpenNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(open) != 0 {
-		t.Fatalf("open gaps after closing = %+v", open)
+	if len(open) != 3 || open[0].First != 10 || open[0].Last != 10 ||
+		open[1].First != 14 || open[1].Last != 19 || open[2].First != 21 || open[2].Last != 22 {
+		t.Fatalf("open gaps = %+v, want 10, 14-19 and 21-22", open)
 	}
-
-	var status string
-	var recovered, empty int
-	if err := db.QueryRowContext(ctx, `SELECT status, recovered, empty FROM sync_nsu_gaps WHERE first_nsu = 11`).Scan(&status, &recovered, &empty); err != nil {
-		t.Fatal(err)
-	}
-	if status != "done" || recovered != 1 || empty != 2 {
-		t.Fatalf("closed gap = %s recovered=%d empty=%d, want done 1 2", status, recovered, empty)
-	}
-
-	// Detected again with a wider end, a closed gap opens again.
-	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceNFe, env, []sync.NSURange{{First: 11, Last: 15, Cause: sync.NSUGapConsumoIndevido}}); err != nil {
-		t.Fatal(err)
-	}
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, env, since, 2)
 }
 
-func TestMissingNSUsLeavesOutGapsDetectedBeforeSince(t *testing.T) {
+func TestMissingNSUsLeavesOutGapsPastTheWindow(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	db := storetest.OpenTestDB(t)
 	repo := sync.NewStore(db)
 	comp := seedCompany(t, db, "company-1", "11222333000181")
+	window := time.Now().Add(-sync.NSUGapWindow)
 
-	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceCTe, comp.Environment, []sync.NSURange{{First: 5, Last: 9, Cause: sync.NSUGapBatchHole}}); err != nil {
+	// NSUs skipped after the distribution last answered 100 days ago are
+	// already past the window when the gap is found.
+	old := time.Now().Add(-100 * 24 * time.Hour)
+	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceCTe, comp.Environment, old, []sync.NSURange{{First: 5, Last: 9, Cause: sync.NSUGapBatchHole}}); err != nil {
 		t.Fatal(err)
 	}
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, comp.Environment, time.Now().Add(-time.Hour), 5)
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, comp.Environment, time.Now().Add(time.Hour), 0)
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, comp.Environment, window, 0)
+
+	if err := repo.RecordNSUGaps(ctx, comp.ID, syncstate.SyncSourceCTe, comp.Environment, time.Now(), []sync.NSURange{{First: 20, Last: 21, Cause: sync.NSUGapBatchHole}}); err != nil {
+		t.Fatal(err)
+	}
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, comp.Environment, window, 2)
 }
 
 func TestResetSyncStateDeletesTheSourceGaps(t *testing.T) {
@@ -107,10 +124,10 @@ func TestResetSyncStateDeletesTheSourceGaps(t *testing.T) {
 	db := storetest.OpenTestDB(t)
 	repo := sync.NewStore(db)
 	comp := seedCompany(t, db, "company-1", "11222333000181")
-	since := time.Now().Add(-time.Hour)
+	window := time.Now().Add(-time.Hour)
 	gap := []sync.NSURange{{First: 5, Last: 9, Cause: sync.NSUGapBatchHole}}
 	for _, source := range []syncstate.SyncSource{syncstate.SyncSourceNFe, syncstate.SyncSourceCTe} {
-		if err := repo.RecordNSUGaps(ctx, comp.ID, source, comp.Environment, gap); err != nil {
+		if err := repo.RecordNSUGaps(ctx, comp.ID, source, comp.Environment, time.Now(), gap); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -119,8 +136,34 @@ func TestResetSyncStateDeletesTheSourceGaps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, comp.Environment, since, 0)
-	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, comp.Environment, since, 5)
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceNFe, comp.Environment, window, 0)
+	assertMissing(t, repo, comp.ID, syncstate.SyncSourceCTe, comp.Environment, window, 5)
+}
+
+// gapCounts maps the first NSU of every recorded gap to its status and its
+// recovered and empty counters.
+func gapCounts(t *testing.T, db *sql.DB) map[int64][3]any {
+	t.Helper()
+	rows, err := db.QueryContext(context.Background(), `SELECT first_nsu, status, recovered, empty FROM sync_nsu_gaps`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	counts := map[int64][3]any{}
+	for rows.Next() {
+		var first int64
+		var status string
+		var recovered, empty int
+		if err := rows.Scan(&first, &status, &recovered, &empty); err != nil {
+			t.Fatal(err)
+		}
+		counts[first] = [3]any{status, recovered, empty}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return counts
 }
 
 func assertMissing(t *testing.T, repo *sync.Store, companyID dfe.CompanyID, source syncstate.SyncSource, env dfe.Environment, since time.Time, want int64) {
