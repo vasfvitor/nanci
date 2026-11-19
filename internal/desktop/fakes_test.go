@@ -163,9 +163,9 @@ type fakeCredentials struct {
 	err         error
 }
 
-func (f *fakeCredentials) AddCredential(_ context.Context, in credential.AddCredentialInput) error {
+func (f *fakeCredentials) AddCredential(_ context.Context, in credential.AddCredentialInput) (credential.Credential, error) {
 	f.record("AddCredential", in)
-	return f.err
+	return credential.Credential{}, f.err
 }
 
 func (f *fakeCredentials) ListCredentials(_ context.Context) ([]credential.Credential, error) {
@@ -173,9 +173,9 @@ func (f *fakeCredentials) ListCredentials(_ context.Context) ([]credential.Crede
 	return f.credentials, f.err
 }
 
-func (f *fakeCredentials) UpdateCredentialPath(_ context.Context, in credential.UpdateCredentialPathInput) error {
+func (f *fakeCredentials) UpdateCredentialPath(_ context.Context, in credential.UpdateCredentialPathInput) (credential.Credential, error) {
 	f.record("UpdateCredentialPath", in)
-	return f.err
+	return credential.Credential{}, f.err
 }
 
 func (f *fakeCredentials) UpdateCredentialData(_ context.Context, in credential.UpdateCredentialDataInput) error {

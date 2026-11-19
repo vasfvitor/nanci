@@ -290,3 +290,65 @@ func TestCompanyAndCredentialList_JSON(t *testing.T) {
 	}
 	assertNoJSONKeys(t, credentials, internalJSONKeys...)
 }
+
+// TestCompanyAndCredentialWrites_JSON asserts that the commands that write a
+// company or a credential answer --json with the record as stored, so an
+// agent gets the new credential ID without parsing text.
+func TestCompanyAndCredentialWrites_JSON(t *testing.T) {
+	root, out, errOut := newInMemTestRoot(t)
+	root.SetErr(errOut)
+	certPath := filepath.Join(t.TempDir(), "a1.pfx")
+	newPath := filepath.Join(t.TempDir(), "a1-novo.pfx")
+	for _, p := range []string{certPath, newPath} {
+		if err := os.WriteFile(p, []byte("not inspected by these commands"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(v any, args ...string) {
+		t.Helper()
+		out.Reset()
+		root.SetArgs(append(args, "--json"))
+		if err := root.ExecuteContext(context.Background()); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		decodeJSONOutput(t, out, v)
+		assertNoJSONKeys(t, v, internalJSONKeys...)
+	}
+
+	var cred map[string]any
+	run(&cred, "credential", "add", "--label", "Certificado A1", "--cert", certPath)
+	credID, _ := cred["ID"].(string)
+	if credID == "" || cred["Label"] != "Certificado A1" {
+		t.Fatalf("credential add = %v, want an ID and the label", cred)
+	}
+
+	run(&cred, "credential", "update-path", "--credential-id", credID, "--cert", newPath)
+	if cred["ID"] != credID {
+		t.Errorf("credential update-path = %v, want ID %s", cred, credID)
+	}
+
+	var company map[string]any
+	run(&company, "company", "add", "--cnpj", "11.222.333/0001-81", "--name", "Acme", "--cert", certPath, "--uf", "sp")
+	if company["CNPJ"] != "11222333000181" || company["Name"] != "Acme" || company["UF"] != "SP" {
+		t.Errorf("company add = %v", company)
+	}
+
+	run(&company, "company", "update", "--cnpj", "11222333000181", "--uf", "RJ")
+	if company["UF"] != "RJ" || company["Name"] != "Acme" {
+		t.Errorf("company update = %v, want UF RJ and the name kept", company)
+	}
+
+	run(&company, "company", "assign-credential", "--cnpj", "11222333000181", "--credential-id", credID)
+	if company["CredentialID"] != credID {
+		t.Errorf("company assign-credential = %v, want CredentialID %s", company, credID)
+	}
+
+	var initResult map[string]any
+	run(&initResult, "init")
+	if dir, _ := initResult["DataDir"].(string); dir == "" {
+		t.Errorf("init = %v, want DataDir", initResult)
+	}
+	if errOut.Len() != 0 {
+		t.Errorf("stderr not empty: %q", errOut.String())
+	}
+}

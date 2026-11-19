@@ -68,7 +68,7 @@ func TestAppIntegration_OnboardingFlow(t *testing.T) {
 		CertPath: certPath,
 	}
 
-	err := application.Credentials.AddCredential(ctx, credInput)
+	_, err := application.Credentials.AddCredential(ctx, credInput)
 	if err != nil {
 		t.Fatalf("AddCredential falhou: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestAppIntegration_SyncPreferencesFlow(t *testing.T) {
 	certPath, _ := filepath.Abs("app_integration_test.go")
 
 	// Setup base company
-	if err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
+	if _, err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
 		t.Fatalf("AddCredential: %v", err)
 	}
 	creds, _ := application.Credentials.ListCredentials(ctx)

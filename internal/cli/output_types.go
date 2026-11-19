@@ -478,6 +478,11 @@ func newCompanyOutput(c company.Company) companyOutput {
 	}
 }
 
+// initOutput is what `init` prints: the folder that holds the database.
+type initOutput struct {
+	DataDir string
+}
+
 // credentialOutput is one row of `credential list`. OwnerCNPJ is empty until
 // the certificate was read.
 type credentialOutput struct {

@@ -18,7 +18,7 @@ func TestAppIntegration_ListDocuments(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	if err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
+	if _, err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
 		t.Fatalf("AddCredential: %v", err)
 	}
 	creds, _ := application.Credentials.ListCredentials(ctx)
@@ -105,7 +105,7 @@ func TestAppIntegration_MarkDocumentsViewed(t *testing.T) {
 	ctx := context.Background()
 
 	certPath, _ := filepath.Abs("app_list_integration_test.go")
-	if err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
+	if _, err := application.Credentials.AddCredential(ctx, credential.AddCredentialInput{Label: "L", CertPath: certPath}); err != nil {
 		t.Fatalf("AddCredential: %v", err)
 	}
 	creds, _ := application.Credentials.ListCredentials(ctx)

@@ -21,6 +21,9 @@ func newInitCommand(env CommandEnv) *cobra.Command {
 			defer cleanup()
 
 			dataDir, _ := app.ResolveRuntimeDataDir("")
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), initOutput{DataDir: dataDir})
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Pronto. Banco de dados criado/atualizado em: %s\n", dataDir)
 			return nil
 		},

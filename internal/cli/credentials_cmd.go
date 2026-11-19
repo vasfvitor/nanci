@@ -35,11 +35,15 @@ func newCredentialAddCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.Credentials.AddCredential(cmd.Context(), credential.AddCredentialInput{
+			added, err := application.Credentials.AddCredential(cmd.Context(), credential.AddCredentialInput{
 				Label:    label,
 				CertPath: path,
-			}); err != nil {
+			})
+			if err != nil {
 				return fmt.Errorf("erro ao adicionar credencial: %w", err)
+			}
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newCredentialOutput(added))
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Credencial adicionada com sucesso.")
 			return nil
@@ -111,11 +115,15 @@ func newCredentialUpdatePathCmd(env CommandEnv) *cobra.Command {
 			}
 			defer cleanup()
 
-			if err := application.Credentials.UpdateCredentialPath(cmd.Context(), credential.UpdateCredentialPathInput{
+			updated, err := application.Credentials.UpdateCredentialPath(cmd.Context(), credential.UpdateCredentialPathInput{
 				CredentialID: id,
 				CertPath:     path,
-			}); err != nil {
+			})
+			if err != nil {
 				return fmt.Errorf("erro ao atualizar credencial: %w", err)
+			}
+			if env.jsonOutput() {
+				return printJSON(cmd.OutOrStdout(), newCredentialOutput(updated))
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Caminho da credencial atualizado com sucesso.")
 			return nil

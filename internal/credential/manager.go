@@ -46,10 +46,11 @@ func NewManager(store storeInterface) *Manager {
 	}
 }
 
-// AddCredential registers a reusable credential record.
-func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) error {
+// AddCredential registers a reusable credential record and returns it with
+// its new ID.
+func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) (Credential, error) {
 	if err := ValidateCertificatePath(input.CertPath); err != nil {
-		return err
+		return Credential{}, err
 	}
 	credential := &Credential{
 		ID:       dfe.CredentialID(dfe.GenerateID()),
@@ -61,9 +62,9 @@ func (m *Manager) AddCredential(ctx context.Context, input AddCredentialInput) e
 	}
 
 	if err := m.store.CreateCredential(ctx, credential); err != nil {
-		return fmt.Errorf("salvar credencial: %w", err)
+		return Credential{}, fmt.Errorf("salvar credencial: %w", err)
 	}
-	return nil
+	return *credential, nil
 }
 
 // ListCredentials returns all reusable credentials.
@@ -75,20 +76,21 @@ func (m *Manager) ListCredentials(ctx context.Context) ([]Credential, error) {
 	return credentials, nil
 }
 
-// UpdateCredentialPath updates the PKCS#12 path of an existing credential.
-func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPathInput) error {
+// UpdateCredentialPath updates the PKCS#12 path of an existing credential and
+// returns the updated credential.
+func (m *Manager) UpdateCredentialPath(ctx context.Context, input UpdateCredentialPathInput) (Credential, error) {
 	if err := ValidateCertificatePath(input.CertPath); err != nil {
-		return err
+		return Credential{}, err
 	}
 	cred, err := LookupByID(ctx, m.store, dfe.CredentialID(input.CredentialID))
 	if err != nil {
-		return err
+		return Credential{}, err
 	}
 	cred.CertPath = input.CertPath
 	if err := m.store.UpdateCredential(ctx, cred); err != nil {
-		return fmt.Errorf("atualizar credencial: %w", err)
+		return Credential{}, fmt.Errorf("atualizar credencial: %w", err)
 	}
-	return nil
+	return *cred, nil
 }
 
 // UpdateCredentialData updates the label of an existing credential.

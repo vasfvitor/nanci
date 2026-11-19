@@ -61,7 +61,7 @@ func TestManager_AddCredential(t *testing.T) {
 		CertPath: certPath,
 	}
 
-	err = m.AddCredential(context.Background(), input)
+	added, err := m.AddCredential(context.Background(), input)
 	if err != nil {
 		t.Fatalf("AddCredential failed: %v", err)
 	}
@@ -71,6 +71,9 @@ func TestManager_AddCredential(t *testing.T) {
 	}
 
 	cred := mock.createdCreds[0]
+	if added.ID == "" || added.ID != cred.ID {
+		t.Errorf("returned ID = %q, want the stored %q", added.ID, cred.ID)
+	}
 	if cred.Label != input.Label {
 		t.Errorf("Expected label %s, got %s", input.Label, cred.Label)
 	}
@@ -102,9 +105,12 @@ func TestManager_UpdateCredentialPath(t *testing.T) {
 		CertPath:     certPath,
 	}
 
-	err = m.UpdateCredentialPath(context.Background(), input)
+	updated, err := m.UpdateCredentialPath(context.Background(), input)
 	if err != nil {
 		t.Fatalf("UpdateCredentialPath failed: %v", err)
+	}
+	if updated.ID != cred.ID || updated.CertPath != certPath {
+		t.Errorf("returned credential = %+v, want ID %q with the new path", updated, cred.ID)
 	}
 
 	if cred.CertPath != certPath {
@@ -164,7 +170,8 @@ func TestManager_UpdateCredentialLookupErrors(t *testing.T) {
 		run  func(m *Manager) error
 	}{
 		{"UpdateCredentialPath", func(m *Manager) error {
-			return m.UpdateCredentialPath(context.Background(), UpdateCredentialPathInput{CredentialID: "cred-123", CertPath: certPath})
+			_, err := m.UpdateCredentialPath(context.Background(), UpdateCredentialPathInput{CredentialID: "cred-123", CertPath: certPath})
+			return err
 		}},
 		{"UpdateCredentialData", func(m *Manager) error {
 			return m.UpdateCredentialData(context.Background(), UpdateCredentialDataInput{CredentialID: "cred-123", Label: "New Label"})

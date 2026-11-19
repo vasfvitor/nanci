@@ -25,9 +25,9 @@ type companyService interface {
 }
 
 type credentialService interface {
-	AddCredential(ctx context.Context, input credential.AddCredentialInput) error
+	AddCredential(ctx context.Context, input credential.AddCredentialInput) (credential.Credential, error)
 	ListCredentials(ctx context.Context) ([]credential.Credential, error)
-	UpdateCredentialPath(ctx context.Context, input credential.UpdateCredentialPathInput) error
+	UpdateCredentialPath(ctx context.Context, input credential.UpdateCredentialPathInput) (credential.Credential, error)
 	UpdateCredentialData(ctx context.Context, input credential.UpdateCredentialDataInput) error
 }
 

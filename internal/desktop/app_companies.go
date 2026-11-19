@@ -45,10 +45,11 @@ func (a *App) AddCredential(input desktopapi.AddCredentialInput) error {
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.svc.credentials.AddCredential(a.ctx, credential.AddCredentialInput{
+	_, err := a.svc.credentials.AddCredential(a.ctx, credential.AddCredentialInput{
 		Label:    input.Label,
 		CertPath: input.CertPath,
 	})
+	return err
 }
 
 func (a *App) ListCredentials() ([]desktopapi.CredentialSummary, error) {
@@ -66,10 +67,11 @@ func (a *App) UpdateCredentialPath(input desktopapi.UpdateCredentialPathInput) e
 	if err := a.ready(); err != nil {
 		return err
 	}
-	return a.svc.credentials.UpdateCredentialPath(a.ctx, credential.UpdateCredentialPathInput{
+	_, err := a.svc.credentials.UpdateCredentialPath(a.ctx, credential.UpdateCredentialPathInput{
 		CredentialID: input.CredentialID,
 		CertPath:     input.CertPath,
 	})
+	return err
 }
 
 func (a *App) UpdateCredentialData(input desktopapi.UpdateCredentialDataInput) error {

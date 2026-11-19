@@ -1,11 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	cnpjpkg "github.com/vasfvitor/nanci/internal/foundation/cnpj"
@@ -25,6 +28,16 @@ func newCompanyCommand(env CommandEnv) *cobra.Command {
 	companyCmd.AddCommand(newCompanyListCmd(env))
 	companyCmd.AddCommand(newCompanyAssignCredentialCmd(env))
 	return companyCmd
+}
+
+// printCompanyJSON prints the company as stored now: the --json answer of the
+// commands that write one.
+func printCompanyJSON(ctx context.Context, out io.Writer, application *app.App, rawCNPJ string) error {
+	c, err := application.Companies.CompanyByCNPJ(ctx, rawCNPJ)
+	if err != nil {
+		return fmt.Errorf("erro ao ler empresa: %w", err)
+	}
+	return printJSON(out, newCompanyOutput(*c))
 }
 
 func newCompanyAddCmd(env CommandEnv) *cobra.Command {
@@ -75,6 +88,9 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 				return fmt.Errorf("erro ao adicionar empresa: %w", err)
 			}
 
+			if env.jsonOutput() {
+				return printCompanyJSON(cmd.Context(), cmd.OutOrStdout(), application, cnpj)
+			}
 			cleanedCNPJ := cnpjpkg.Clean(cnpj)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Empresa '%s' (%s) adicionada com sucesso.\n", name, cnpjpkg.Format(cleanedCNPJ))
 			return nil
@@ -149,6 +165,9 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 			if err := application.Companies.UpdateCompany(cmd.Context(), input); err != nil {
 				return fmt.Errorf("erro ao atualizar empresa: %w", err)
 			}
+			if env.jsonOutput() {
+				return printCompanyJSON(cmd.Context(), cmd.OutOrStdout(), application, current.CNPJ)
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Empresa %s atualizada com sucesso.\n", cnpjpkg.Format(current.CNPJ))
 			return nil
 		},
@@ -222,6 +241,9 @@ func newCompanyAssignCredentialCmd(env CommandEnv) *cobra.Command {
 				CredentialID: credentialID,
 			}); err != nil {
 				return fmt.Errorf("erro ao atribuir credencial: %w", err)
+			}
+			if env.jsonOutput() {
+				return printCompanyJSON(cmd.Context(), cmd.OutOrStdout(), application, cnpj)
 			}
 
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Credencial atribuída com sucesso.")
