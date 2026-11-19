@@ -118,4 +118,12 @@ describe('useNotify', () => {
     notifyExported({ ExportedCount: 0, OutPath: '' })
     expect(notify.mock.calls[0]?.[0]).not.toHaveProperty('actions')
   })
+
+  it('leaves the path out when the export reports none', () => {
+    const { notifyExported } = useNotify()
+
+    notifyExported({ ExportedCount: 3, OutPath: '' })
+
+    expect(notify).toHaveBeenCalledWith({ type: 'positive', message: '3 XMLs exportados.' })
+  })
 })

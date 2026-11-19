@@ -62,7 +62,7 @@ export function useNotify() {
     const what = count === 1 ? `1 ${noun} exportado` : `${count} ${noun}s exportados`
     const path = result.OutPath
     if (!path) {
-      notifySuccess(`${what} para ${path}.`)
+      notifySuccess(`${what}.`)
       return
     }
     const openFolder = () => {
