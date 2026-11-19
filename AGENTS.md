@@ -22,7 +22,7 @@ Composables should orchestrate feature actions and return a small typed API. The
 
 Shared formatting and display logic belongs in utilities, not templates: use `src/utils/formatters.ts` for CPF/CNPJ, date/time, currency cents, and access-key formatting, and `src/utils/nfseDisplay.ts` for NFSe role/status/visibility labels and colors. Keep computed derivations out of templates when they are reused or non-trivial.
 
-Dialogs should expose typed props and emits where practical. They should not reach into generated Wails APIs; if backend behavior is needed, call a feature composable or `desktopClient`. Event subscriptions must use the platform event wrapper and keep the unsubscribe function returned by `Events.On`.
+Dialogs should expose typed props and emits where practical. They should not reach into generated Wails APIs; if backend behavior is needed, call a feature composable or take a loader prop from the page (`NFeEventsDialog`'s `load`). Components and pages never import `desktopClient`: the calls live in composables and stores (`useCompanies`, `useCredentials`, `useCertPasswordPrompt`, `useSystemInfo`, the `diagnostics` store). Event subscriptions must use the platform event wrapper and keep the unsubscribe function returned by `Events.On`.
 
 Desktop Go methods exposed to Wails should return DTOs from `internal/desktop/desktopapi`, not `internal/nfse` domain structs. Add or update DTO mappers when fields cross the desktop boundary, and keep file path construction/export dispatch in the backend for export flows.
 
