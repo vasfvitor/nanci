@@ -69,3 +69,15 @@ nanci export zip --cnpj $cnpj --incremental --out "D:\fiscal\nfse-$(Get-Date -Fo
 ```
 
 Rodar de hora em hora é seguro: se a SEFAZ ainda não permitir nova consulta, o comando avisa e não envia nada. Os logs vão para o terminal; redirecione com `2>> nanci.log` se quiser guardá-los.
+
+## Para scripts e agentes de IA
+
+Com `--json`, o comando escreve o resultado como um único JSON no stdout, sem linhas de progresso, e um erro como JSON no stderr, com código de saída 1:
+
+```json
+{"error": {"code": "sync_running", "message": "erro: sincronização já em andamento para esta empresa (NF-e) em outro processo do nanci (aplicativo); aguarde a sincronização atual terminar"}}
+```
+
+O `code` vem vazio quando o erro não tem um código próprio. Os códigos são `canceled`, `sefaz_blocked`, `sync_running`, `no_requests_left`, `not_found`, `invalid_input` e `wrong_password`.
+
+Um agente de IA, como o Claude Code, pode usar o `nanci` pelo terminal com `--json`. A senha do certificado sai do Windows (guardada na primeira vez) ou de `NANCI_CERT_PASSWORD`, sem prompt. O que envia evento ou apaga dados só simula sem `--confirmar`, então o agente pode mostrar o plano antes de executar. O aplicativo e o terminal usam o mesmo banco: se um estiver sincronizando uma empresa, o outro recusa a mesma origem com `sync_running` em vez de consultar a SEFAZ ao mesmo tempo.
