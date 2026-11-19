@@ -10,6 +10,8 @@ import type {
   ISODateValue,
   RecoverNSUResult,
   RecoverNSUStopReason,
+  SefazBlockedReason,
+  SefazSourceStatus,
 } from '@/types/desktop'
 
 type RawRecord = Record<string, unknown>
@@ -155,6 +157,40 @@ export function mapExportResult(item: desktopapi.ExportResult): ExportResult {
     Format: item.Format as ExportResult['Format'],
     Incremental: item.Incremental,
     ExportedCount: item.ExportedCount,
+  }
+}
+
+const sefazBlockedReasons: readonly SefazBlockedReason[] = [
+  'caught_up',
+  'consumo_indevido',
+  'rate_budget',
+]
+
+// mapSefazSourceStatus maps the part of the NF-e and CT-e status that is the
+// same for both SEFAZ sources.
+export function mapSefazSourceStatus(
+  item: desktopapi.NFeStatusResult | desktopapi.CTeStatusResult
+): SefazSourceStatus {
+  return {
+    CompanyName: item.CompanyName,
+    CNPJ: item.CNPJ,
+    UF: item.UF,
+    TpAmb: item.TpAmb,
+    LastNSU: item.LastNSU,
+    MaxNSU: asNullableNumber(item.MaxNSU),
+    LastSyncAt: asDate(item.LastSyncAt),
+    LastRunStatus: item.LastRunStatus,
+    LastRunStopReason: item.LastRunStopReason,
+    LastRunError: asString(item.LastRunError),
+    InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
+    NextAllowedAt: asDate(item.NextAllowedAt),
+    BlockedReason: asEnum(item.BlockedReason, sefazBlockedReasons),
+    RequestsLastHour: item.RequestsLastHour,
+    RequestBudget: item.RequestBudget,
+    IdleDays: item.IdleDays,
+    NSUFaltantes: item.NSUFaltantes,
+    RecoveryAllowance: item.RecoveryAllowance,
+    RecoveryReadyAt: asDate(item.RecoveryReadyAt),
   }
 }
 

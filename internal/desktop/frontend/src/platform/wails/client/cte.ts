@@ -19,7 +19,6 @@ import {
 import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ConnectionTestResult,
-  CTeBlockedReason,
   CTeEvent,
   CTeEventType,
   CTeModelo,
@@ -44,7 +43,6 @@ import type {
 import {
   callWails,
   asNullableNumber,
-  asString,
   asStringArray,
   asArray,
   asDate,
@@ -55,6 +53,7 @@ import {
   mapConnectionTestResult,
   mapImportXMLResult,
   mapRecoverNSUResult,
+  mapSefazSourceStatus,
 } from './base'
 import { systemClient } from './system'
 
@@ -86,11 +85,6 @@ const cteEventTypes: readonly CTeEventType[] = [
   'mdfe_autorizado',
   'mdfe_cancelado',
   'unknown',
-]
-const cteBlockedReasons: readonly CTeBlockedReason[] = [
-  'caught_up',
-  'consumo_indevido',
-  'rate_budget',
 ]
 
 function cteExportDialog(format: CTeExportFormat, cnpj: string): SaveDialog {
@@ -229,25 +223,7 @@ export function mapCTeEvent(item: desktopapi.CTeEvent): CTeEvent {
 
 export function mapCTeStatus(item: desktopapi.CTeStatusResult): CTeStatusResult {
   return {
-    CompanyName: item.CompanyName,
-    CNPJ: item.CNPJ,
-    UF: item.UF,
-    TpAmb: item.TpAmb,
-    LastNSU: item.LastNSU,
-    MaxNSU: asNullableNumber(item.MaxNSU),
-    LastSyncAt: asDate(item.LastSyncAt),
-    LastRunStatus: item.LastRunStatus,
-    LastRunStopReason: item.LastRunStopReason,
-    LastRunError: asString(item.LastRunError),
-    InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
-    NextAllowedAt: asDate(item.NextAllowedAt),
-    BlockedReason: asEnum(item.BlockedReason, cteBlockedReasons),
-    RequestsLastHour: item.RequestsLastHour,
-    RequestBudget: item.RequestBudget,
-    IdleDays: item.IdleDays,
-    NSUFaltantes: item.NSUFaltantes,
-    RecoveryAllowance: item.RecoveryAllowance,
-    RecoveryReadyAt: asDate(item.RecoveryReadyAt),
+    ...mapSefazSourceStatus(item),
     TotalTomador: item.TotalTomador,
     TotalDestinatario: item.TotalDestinatario,
     TotalRemetente: item.TotalRemetente,

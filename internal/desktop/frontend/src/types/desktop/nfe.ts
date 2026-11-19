@@ -1,4 +1,4 @@
-import type { ExportResult, ISODateValue } from './common'
+import type { ExportResult, ISODateValue, SefazSourceStatus } from './common'
 
 // NF-e (modelo 55). Enum fields allow '' so an unknown backend value never
 // reads as a real fiscal state.
@@ -13,7 +13,6 @@ export type NFeRole = 'destinatario' | 'emitente' | 'transportador' | 'autorizad
 export type NFeConclusiveTipo = '210200' | '210220' | '210240'
 export type NFeEventOutcome = 'registrada' | 'ja_registrada' | 'rejeitada' | 'nao_enviada'
 export type NFePendingKind = 'sem_ciencia' | 'sem_conclusiva'
-export type NFeBlockedReason = 'caught_up' | 'consumo_indevido' | 'rate_budget'
 
 export type ListNFeInput = {
   CNPJ: string
@@ -188,32 +187,7 @@ export type PullNFeResult = {
   Duration: number
 }
 
-export type NFeStatusResult = {
-  CompanyName: string
-  CNPJ: string
-  UF: string
-  TpAmb: string
-  LastNSU: number
-  MaxNSU: number | null
-  LastSyncAt?: ISODateValue
-  LastRunStatus: string
-  LastRunStopReason: string
-  LastRunError: string // set only when LastRunStatus is 'failed'
-  InitialSyncDoneAt?: ISODateValue
-  NextAllowedAt?: ISODateValue
-  BlockedReason: NFeBlockedReason | ''
-  RequestsLastHour: number
-  RequestBudget: number
-  // IdleDays is the number of days since the last successful distribution
-  // query, set only when it nears the 60-day NSU rule; 0 otherwise.
-  IdleDays: number
-  // NSUFaltantes is how many NSUs the distribution skipped without a
-  // document that a recovery can still ask SEFAZ for.
-  NSUFaltantes: number
-  // RecoveryAllowance is how many of them a recovery started now would ask
-  // for; RecoveryReadyAt, when set, is when one could start.
-  RecoveryAllowance: number
-  RecoveryReadyAt?: ISODateValue
+export type NFeStatusResult = SefazSourceStatus & {
   TotalDestinatario: number
   TotalEmitente: number
   TotalOutros: number

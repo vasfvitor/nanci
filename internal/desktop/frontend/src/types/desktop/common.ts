@@ -12,6 +12,39 @@ export type ExportResult = {
 
 export type SyncSource = 'nfse' | 'nfe' | 'cte'
 
+// SefazBlockedReason says why a SEFAZ source must not be queried now.
+export type SefazBlockedReason = 'caught_up' | 'consumo_indevido' | 'rate_budget'
+
+// SefazSourceStatus is the part of the NF-e and CT-e status that is the same
+// for both SEFAZ sources (desktopapi.SefazSourceStatus).
+export type SefazSourceStatus = {
+  CompanyName: string
+  CNPJ: string
+  UF: string
+  TpAmb: string
+  LastNSU: number
+  MaxNSU: number | null
+  LastSyncAt?: ISODateValue
+  LastRunStatus: string
+  LastRunStopReason: string
+  LastRunError: string // set only when LastRunStatus is 'failed'
+  InitialSyncDoneAt?: ISODateValue
+  NextAllowedAt?: ISODateValue
+  BlockedReason: SefazBlockedReason | ''
+  RequestsLastHour: number
+  RequestBudget: number
+  // IdleDays is the number of days since the last successful distribution
+  // query, set only when it nears the 60-day NSU rule; 0 otherwise.
+  IdleDays: number
+  // NSUFaltantes is how many NSUs the distribution skipped without a
+  // document that a recovery can still ask SEFAZ for.
+  NSUFaltantes: number
+  // RecoveryAllowance is how many of them a recovery started now would ask
+  // for; RecoveryReadyAt, when set, is when one could start.
+  RecoveryAllowance: number
+  RecoveryReadyAt?: ISODateValue
+}
+
 // RecoverNSUStopReason says why an NSU recovery stopped with NSUs left to ask
 // for: its share of the hour, the hour's budget, a SEFAZ block (656), or the
 // user's cancel.

@@ -1,4 +1,4 @@
-import type { ExportResult, ISODateValue } from './common'
+import type { ExportResult, ISODateValue, SefazSourceStatus } from './common'
 
 // CT-e (modelos 57 and 67, GTV-e modelo 64 and CT-e Simplificado). Enum fields
 // allow '' so an unknown backend value never reads as a real fiscal state.
@@ -33,7 +33,6 @@ export type CTeEventType =
   | 'mdfe_autorizado'
   | 'mdfe_cancelado'
   | 'unknown'
-export type CTeBlockedReason = 'caught_up' | 'consumo_indevido' | 'rate_budget'
 
 export type ListCTeInput = {
   CNPJ: string
@@ -165,32 +164,7 @@ export type PullCTeResult = {
   Duration: number
 }
 
-export type CTeStatusResult = {
-  CompanyName: string
-  CNPJ: string
-  UF: string
-  TpAmb: string
-  LastNSU: number
-  MaxNSU: number | null
-  LastSyncAt?: ISODateValue
-  LastRunStatus: string
-  LastRunStopReason: string
-  LastRunError: string // set only when LastRunStatus is 'failed'
-  InitialSyncDoneAt?: ISODateValue
-  NextAllowedAt?: ISODateValue
-  BlockedReason: CTeBlockedReason | ''
-  RequestsLastHour: number
-  RequestBudget: number
-  // IdleDays is the number of days since the last successful distribution
-  // query, set only when it nears the 60-day NSU rule; 0 otherwise.
-  IdleDays: number
-  // NSUFaltantes is how many NSUs the distribution skipped without a
-  // document that a recovery can still ask SEFAZ for.
-  NSUFaltantes: number
-  // RecoveryAllowance is how many of them a recovery started now would ask
-  // for; RecoveryReadyAt, when set, is when one could start.
-  RecoveryAllowance: number
-  RecoveryReadyAt?: ISODateValue
+export type CTeStatusResult = SefazSourceStatus & {
   TotalTomador: number
   TotalDestinatario: number
   TotalRemetente: number

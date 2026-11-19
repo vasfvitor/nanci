@@ -29,7 +29,6 @@ import type {
   FetchOutcome,
   ImportXMLResult,
   ListNFeInput,
-  NFeBlockedReason,
   NFeCienciaPlan,
   NFeCompleteness,
   NFeEvent,
@@ -54,7 +53,6 @@ import type {
 import {
   callWails,
   asNullableNumber,
-  asString,
   asStringArray,
   asArray,
   asDate,
@@ -64,6 +62,7 @@ import {
   mapExportResult,
   mapImportXMLResult,
   mapRecoverNSUResult,
+  mapSefazSourceStatus,
 } from './base'
 import { systemClient } from './system'
 
@@ -90,11 +89,6 @@ const nfeOutcomes: readonly NFeEventOutcome[] = [
   'nao_enviada',
 ]
 const nfePendingKinds: readonly NFePendingKind[] = ['sem_ciencia', 'sem_conclusiva']
-const nfeBlockedReasons: readonly NFeBlockedReason[] = [
-  'caught_up',
-  'consumo_indevido',
-  'rate_budget',
-]
 const fetchOutcomes: readonly FetchOutcome[] = ['completa', 'resumo', 'not_found']
 
 function nfeExportDialog(format: NFeExportFormat, cnpj: string): SaveDialog {
@@ -233,25 +227,7 @@ export function mapNFeCienciaPlan(item: desktopapi.NFeCienciaPlan): NFeCienciaPl
 
 export function mapNFeStatus(item: desktopapi.NFeStatusResult): NFeStatusResult {
   return {
-    CompanyName: item.CompanyName,
-    CNPJ: item.CNPJ,
-    UF: item.UF,
-    TpAmb: item.TpAmb,
-    LastNSU: item.LastNSU,
-    MaxNSU: asNullableNumber(item.MaxNSU),
-    LastSyncAt: asDate(item.LastSyncAt),
-    LastRunStatus: item.LastRunStatus,
-    LastRunStopReason: item.LastRunStopReason,
-    LastRunError: asString(item.LastRunError),
-    InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
-    NextAllowedAt: asDate(item.NextAllowedAt),
-    BlockedReason: asEnum(item.BlockedReason, nfeBlockedReasons),
-    RequestsLastHour: item.RequestsLastHour,
-    RequestBudget: item.RequestBudget,
-    IdleDays: item.IdleDays,
-    NSUFaltantes: item.NSUFaltantes,
-    RecoveryAllowance: item.RecoveryAllowance,
-    RecoveryReadyAt: asDate(item.RecoveryReadyAt),
+    ...mapSefazSourceStatus(item),
     TotalDestinatario: item.TotalDestinatario,
     TotalEmitente: item.TotalEmitente,
     TotalOutros: item.TotalOutros,

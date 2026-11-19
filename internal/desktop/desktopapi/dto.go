@@ -126,6 +126,36 @@ func FetchByChaveResultFrom(res app.FetchByChaveResult) FetchByChaveResult {
 	return FetchByChaveResult(res)
 }
 
+// SefazSourceStatus is the part of the NF-e and CT-e status that is the same
+// for both SEFAZ sources. The status DTOs embed it; Wails flattens embedded
+// structs, so the frontend sees one flat object.
+type SefazSourceStatus struct {
+	CompanyName       string
+	CNPJ              string
+	UF                string
+	TpAmb             string // "1" produção, "2" homologação
+	LastNSU           int64
+	MaxNSU            *int64 // nil when unknown
+	LastSyncAt        *time.Time
+	LastRunStatus     string
+	LastRunStopReason string
+	LastRunError      string // message of the last run, set only when it failed
+	InitialSyncDoneAt *time.Time
+	NextAllowedAt     *time.Time
+	BlockedReason     string // caught_up | consumo_indevido | rate_budget; empty when not blocked
+	RequestsLastHour  int
+	RequestBudget     int
+	IdleDays          int        // days since the last successful distribution query when it reached sync.DistIdleWarningDays; 0 otherwise
+	NSUFaltantes      int64      // NSUs the distribution skipped that RecoverNFeNSU/RecoverCTeNSU can still ask for
+	RecoveryAllowance int        // NSUs a recovery started now would ask for
+	RecoveryReadyAt   *time.Time // set while NSUs are missing and a recovery cannot start yet
+}
+
+// SefazSourceStatusFrom maps the shared part of a SEFAZ source status.
+func SefazSourceStatusFrom(s app.SefazSourceStatus) SefazSourceStatus {
+	return SefazSourceStatus(s)
+}
+
 // RecoverNSUInput names the company whose missing NSUs to ask SEFAZ for.
 type RecoverNSUInput struct {
 	CNPJ string
