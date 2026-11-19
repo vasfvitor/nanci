@@ -12,8 +12,9 @@ description: Use when an AI agent runs the `nanci` CLI for someone, to sync, lis
 Put `--json` on every command: `nanci nfe status -c 12345678000199 --json`.
 
 - **Success:** stdout holds exactly one JSON value (an object or an array), with no progress lines; parse the whole of stdout. Exit code 0.
-- **Failure:** stderr holds `{"error":{"code":"...","message":"..."}}` and the exit code is 1. `message` is Portuguese and meant for a person; branch on `code`.
-- **Batch with failed items** (`nfe import`, `cte import`, `nfe ciencia --confirmar`, `nfe manifestar --confirmar`) and **`testar-conexao` that fails:** stdout still has the result JSON *and* stderr has the envelope, exit 1. Read stdout first to see which items failed.
+- **Failure:** exit code 1, and the last line of stderr is `{"error":{"code":"...","message":"..."}}`. stderr is JSON Lines: before the envelope there may be log records, one JSON object per line (warnings only, unless `-v`). Take the line with the `error` key. `message` is Portuguese and meant for a person; branch on `code`.
+- **Batch with failed items** (`nfe ciencia --confirmar`, `nfe manifestar --confirmar`) and **`testar-conexao` that fails:** stdout still has the result JSON *and* stderr has the envelope, exit 1. Read stdout first to see which items failed.
+- **`nfe import` / `cte import`** fail (exit 1, envelope "nenhum arquivo importado") only when no file got in. With some files in, the exit is 0 even if others were rejected: always check `Rejected` and each file's `Outcome` and `Message`.
 - Field names are the Go names (`ChaveAcesso`, `TotalValue`, `NextAllowedAt`). Money is `int64` cents (`123456` is R$ 1.234,56). Times are RFC 3339; a time or a day count that does not apply is `null`, never a zero date. Empty lists are `[]`.
 
 Without `--json` the output is Portuguese text for a person. Never parse it.
@@ -34,7 +35,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 ## Password and certificate
 
 - The certificate password comes from the Windows credential store, saved the first time a person typed it, or from the `NANCI_CERT_PASSWORD` environment variable. There is no `--senha` flag.
-- Never ask the person to paste the password into the chat, never write it in a command line or a file, and never guess it. When a command fails with `wrong_password`, or with a message about reading the password ("falha ao ler a senha": there is no saved password and no terminal to prompt), ask the person to run that same command once in their own terminal so nanci prompts and saves it, or to open the desktop app, then continue.
+- Never ask the person to paste the password into the chat, never write it in a command line or a file, and never guess it. When a command fails with `wrong_password`, or with "a senha do certificado não está salva e não há terminal para pedi-la", ask the person to run that same command once in their own terminal so nanci prompts and saves it, or to open the desktop app, then continue.
 - Registering companies and certificates (`init`, `company add/update/assign-credential`, `credential add/update-path`) is for the person, in the desktop app or their terminal. Run them only when the person asks, with the certificate path they gave you. With `--json` they answer with the record as stored; `credential add` returns the new `ID` that `company assign-credential --credential-id` takes.
 
 ## Query budget and timing (NF-e and CT-e)
