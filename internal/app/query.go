@@ -131,13 +131,13 @@ func (s *QueryService) TestConnection(ctx context.Context, companyCNPJ string) (
 		return result, err
 	}
 
-	cred, err := s.CredentialStore.CredentialByID(ctx, company.CredentialID)
+	cred, err := credential.LookupByID(ctx, s.CredentialStore, company.CredentialID)
 	if errors.Is(err, credential.ErrCredentialNotFound) {
 		result.StatusExplanation = "Certificado digital não associado ou não encontrado para esta empresa."
 		return result, nil
 	}
 	if err != nil {
-		return result, fmt.Errorf("buscar credencial: %w", err)
+		return result, err
 	}
 
 	// A certificate inspected before and already expired stops here, without
