@@ -70,8 +70,7 @@ export const useConsoleStore = defineStore('console', () => {
   const consoleOpen = ref(false)
   const logFilterLevel = ref<LogFilterLevel>(readLogFilterLevel())
   const logEntries = ref<LogEntry[]>([])
-  const logListenersInitialised = ref(false)
-  const logUnsubscribe = ref<Unsubscribe | null>(null)
+  let logUnsubscribe: Unsubscribe | null = null
 
   const debugEnabled = computed(
     () => logFilterLevel.value === 'debug' || logFilterLevel.value === 'trace'
@@ -120,33 +119,23 @@ export const useConsoleStore = defineStore('console', () => {
   }
 
   function initLogListeners() {
-    if (logListenersInitialised.value) return
-    logListenersInitialised.value = true
+    if (logUnsubscribe) return
 
-    logUnsubscribe.value = onWailsEvent('backend-log', (payload) => {
+    logUnsubscribe = onWailsEvent('backend-log', (payload) => {
       pushLogEntry(toLogEntry(payload))
     })
-  }
-
-  function disposeLogListeners() {
-    logUnsubscribe.value?.()
-    logUnsubscribe.value = null
-    logListenersInitialised.value = false
   }
 
   return {
     consoleOpen,
     logFilterLevel,
     logEntries,
-    logListenersInitialised,
-    logUnsubscribe,
     debugEnabled,
     filteredLogEntries,
     filteredLogsText,
     pushLogEntry,
     clearLogs,
     initLogListeners,
-    disposeLogListeners,
     setLogFilter,
     syncInitialLogLevel,
   }

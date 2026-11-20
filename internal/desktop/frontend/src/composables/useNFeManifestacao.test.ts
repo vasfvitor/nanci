@@ -85,6 +85,7 @@ describe('useNFeManifestacao', () => {
   })
 
   it('keeps a ciência plan in flight visible across a route remount', async () => {
+    const store = useNFeDocumentsStore()
     const call = deferred<NFeCienciaPlan>()
     vi.mocked(desktopClient.planNFeCiencia).mockReturnValue(call.promise)
 
@@ -92,22 +93,23 @@ describe('useNFeManifestacao', () => {
     const planning = firstPage.planCiencia(['a'])
 
     const remountedPage = useNFeManifestacao()
-    expect(remountedPage.planningCiencia.value).toBe(true)
+    expect(store.planningCiencia).toBe(true)
     await expect(remountedPage.planCiencia(['b'])).resolves.toBeNull()
     expect(desktopClient.planNFeCiencia).toHaveBeenCalledTimes(1)
 
     const plan: NFeCienciaPlan = { Eligible: [nfeRow('a')], Skipped: [] }
     call.resolve(plan)
     await expect(planning).resolves.toEqual(plan)
-    expect(remountedPage.planningCiencia.value).toBe(false)
+    expect(store.planningCiencia).toBe(false)
   })
 
   it('clears the planning marker when the plan fails', async () => {
+    const store = useNFeDocumentsStore()
     vi.mocked(desktopClient.planNFeCiencia).mockRejectedValue(new Error('boom'))
 
     const manifestacao = useNFeManifestacao()
     await expect(manifestacao.planCiencia(['a'])).rejects.toThrow('boom')
-    expect(manifestacao.planningCiencia.value).toBe(false)
+    expect(store.planningCiencia).toBe(false)
   })
 
   it('keeps a pending ciência visible across a route remount', async () => {
@@ -120,9 +122,9 @@ describe('useNFeManifestacao', () => {
     const sending = firstPage.registerCiencia(['a', 'b'])
 
     const remountedPage = useNFeManifestacao()
-    expect(remountedPage.cienciaInFlight.value).toEqual(['a', 'b'])
-    expect(remountedPage.isChaveBusy('a')).toBe(true)
-    expect(remountedPage.isChaveBusy('z')).toBe(false)
+    expect(store.cienciaInFlight).toEqual(['a', 'b'])
+    expect(store.isChaveBusy('a')).toBe(true)
+    expect(store.isChaveBusy('z')).toBe(false)
 
     await expect(remountedPage.registerCiencia(['a', 'b'])).resolves.toBeNull()
     await expect(remountedPage.registerCiencia(['z'])).resolves.toBeNull()
@@ -132,8 +134,8 @@ describe('useNFeManifestacao', () => {
     call.resolve(batch)
     await expect(sending).resolves.toEqual(batch)
 
-    expect(remountedPage.cienciaInFlight.value).toBeNull()
-    expect(remountedPage.isChaveBusy('a')).toBe(false)
+    expect(store.cienciaInFlight).toBeNull()
+    expect(store.isChaveBusy('a')).toBe(false)
     expect(store.selected).toEqual([])
     expect(desktopClient.listNFe).toHaveBeenCalledWith(store.listInput)
     expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
@@ -148,13 +150,13 @@ describe('useNFeManifestacao', () => {
 
     const manifestacao = useNFeManifestacao()
     const sending = manifestacao.registerCiencia(['a'])
-    expect(manifestacao.isChaveBusy('a')).toBe(true)
+    expect(store.isChaveBusy('a')).toBe(true)
 
     call.reject(new Error('senha não informada'))
     await expect(sending).rejects.toThrow('senha não informada')
 
-    expect(manifestacao.cienciaInFlight.value).toBeNull()
-    expect(manifestacao.isChaveBusy('a')).toBe(false)
+    expect(store.cienciaInFlight).toBeNull()
+    expect(store.isChaveBusy('a')).toBe(false)
     expect(store.selected).toHaveLength(1)
   })
 
@@ -168,6 +170,7 @@ describe('useNFeManifestacao', () => {
   })
 
   it('keeps a pending manifestação busy per chave across a route remount', async () => {
+    const store = useNFeDocumentsStore()
     const call = deferred<NFeEventResult>()
     vi.mocked(desktopClient.registerNFeManifestacao).mockReturnValue(call.promise)
 
@@ -175,8 +178,8 @@ describe('useNFeManifestacao', () => {
     const sending = firstPage.registerManifestacao('a', '210240', '  mercadoria não entregue  ')
 
     const remountedPage = useNFeManifestacao()
-    expect(remountedPage.manifestacaoInFlight.value).toEqual(new Set(['a']))
-    expect(remountedPage.isChaveBusy('a')).toBe(true)
+    expect(store.manifestacaoInFlight).toEqual(new Set(['a']))
+    expect(store.isChaveBusy('a')).toBe(true)
     await expect(remountedPage.registerManifestacao('a', '210200')).resolves.toBeNull()
     await expect(remountedPage.registerCiencia(['a'])).resolves.toBeNull()
     expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledTimes(1)
@@ -192,7 +195,7 @@ describe('useNFeManifestacao', () => {
     call.resolve(outcome)
     await expect(sending).resolves.toEqual(outcome)
 
-    expect(remountedPage.isChaveBusy('a')).toBe(false)
+    expect(store.isChaveBusy('a')).toBe(false)
     expect(desktopClient.listNFe).toHaveBeenCalled()
     expect(desktopClient.listNFePendingManifestacoes).toHaveBeenCalledWith('123')
   })
@@ -232,6 +235,7 @@ describe('useNFeManifestacao', () => {
   })
 
   it('clears the manifestação marker when the call fails and drops justificativa for other tipos', async () => {
+    const store = useNFeDocumentsStore()
     vi.mocked(desktopClient.registerNFeManifestacao).mockRejectedValue(new Error('boom'))
 
     const manifestacao = useNFeManifestacao()
@@ -239,7 +243,7 @@ describe('useNFeManifestacao', () => {
       'boom'
     )
 
-    expect(manifestacao.isChaveBusy('a')).toBe(false)
+    expect(store.isChaveBusy('a')).toBe(false)
     expect(desktopClient.registerNFeManifestacao).toHaveBeenCalledWith({
       CNPJ: '123',
       ChaveAcesso: 'a',

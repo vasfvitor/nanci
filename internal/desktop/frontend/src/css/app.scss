@@ -17,18 +17,10 @@ body.body--light,
   /* App Semantic Tokens */
   --app-bg: #f8fafc;
   --app-surface: #ffffff;
-  --app-surface-muted: #f1f5f9;
   --app-text: #0f172a;
   --app-text-muted: #64748b;
   --app-primary-text: #ffffff;
   --app-border: #64748b;
-
-  /* JSON Viewer Semantic Tokens */
-  --app-json-key: #1976d2;
-  --app-json-string: #2e7d32;
-  --app-json-number: #c2185b;
-  --app-json-boolean: #f57c00;
-  --app-json-null: #757575;
 
   /* Console Tokens */
   --app-console-bg: #0f172a;
@@ -52,18 +44,10 @@ body.body--dark,
   /* App Semantic Tokens */
   --app-bg: #0f172a;
   --app-surface: #111827;
-  --app-surface-muted: #1e293b;
   --app-text: #e5e7eb;
   --app-text-muted: #94a3b8;
   --app-primary-text: #020617;
   --app-border: #64748b;
-
-  /* JSON Viewer Semantic Tokens */
-  --app-json-key: #90caf9;
-  --app-json-string: #a5d6a7;
-  --app-json-number: #f48fb1;
-  --app-json-boolean: #ffb74d;
-  --app-json-null: #bdbdbd;
 
   /* Console Tokens */
   --app-console-bg: #020617;
@@ -78,22 +62,8 @@ body {
 
 /* App Utility Classes */
 
-.app-card {
-  background: var(--app-surface);
-  color: var(--app-text);
-  border: 1px solid var(--app-border);
-}
-
 .text-app-muted {
   color: var(--app-text-muted) !important;
-}
-
-.bg-app-surface {
-  background: var(--app-surface) !important;
-}
-
-.bg-app-surface-muted {
-  background: var(--app-surface-muted) !important;
 }
 
 .bg-app-header {
@@ -103,25 +73,6 @@ body {
 .app-console {
   background: var(--app-console-bg) !important;
   color: var(--app-console-text) !important;
-}
-
-/* JSON Viewer Globals */
-.json-key {
-  color: var(--app-json-key);
-  font-weight: bold;
-}
-.json-string {
-  color: var(--app-json-string);
-}
-.json-number {
-  color: var(--app-json-number);
-}
-.json-boolean {
-  color: var(--app-json-boolean);
-  font-weight: bold;
-}
-.json-null {
-  color: var(--app-json-null);
 }
 
 /* Monospaced digits for keys, numbers, dates and money */

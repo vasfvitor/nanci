@@ -227,6 +227,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import ChaveCell from '../components/ChaveCell.vue'
@@ -258,6 +259,7 @@ import { useNSURecovery } from '@/composables/useNSURecovery'
 import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
+import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
 import type { NFeExportFormat, NFeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import { exportedNoun, NFE_EXPORT_FORMATS } from '@/utils/exportFormats'
@@ -312,14 +314,10 @@ const {
   syncBlockedUntil,
   blockedText,
 } = nfe
-const {
-  pending,
-  pendingLoading,
-  planningCiencia,
-  cienciaInFlight,
-  eligibleSelection,
-  isChaveBusy,
-} = manifestacao
+const { eligibleSelection } = manifestacao
+const nfeStore = useNFeDocumentsStore()
+const { pending, pendingLoading, planningCiencia, cienciaInFlight } = storeToRefs(nfeStore)
+const isChaveBusy = (chaveAcesso: string) => nfeStore.isChaveBusy(chaveAcesso)
 
 const showEventsDialog = ref(false)
 const eventsChave = ref('')

@@ -44,7 +44,6 @@ export function useCTeDesacordo() {
   }
 
   return {
-    desacordoInFlight,
     isSending: (chaveAcesso: string) => desacordoInFlight.value.has(chaveAcesso),
     planDesacordo,
     registerDesacordo,
