@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -45,6 +46,15 @@ type errorEnvelope struct {
 	} `json:"error"`
 }
 
+// errorCode is app.ErrorCode, plus invalid_input for a usage error.
+func errorCode(err error) string {
+	var usage usageError
+	if errors.As(err, &usage) {
+		return app.ErrorCodeInvalidInput
+	}
+	return app.ErrorCode(err)
+}
+
 // reportError writes err to w: as a JSON envelope with --json, or as the
 // message line otherwise.
 func reportError(w io.Writer, err error, asJSON bool) {
@@ -53,7 +63,7 @@ func reportError(w io.Writer, err error, asJSON bool) {
 		return
 	}
 	var envelope errorEnvelope
-	envelope.Error.Code = app.ErrorCode(err)
+	envelope.Error.Code = errorCode(err)
 	envelope.Error.Message = err.Error()
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)

@@ -3,7 +3,9 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -116,5 +118,84 @@ func TestRootPersistentFlagsParse(t *testing.T) {
 	}
 	if strings.TrimSpace(out.String()) == "" {
 		t.Errorf("expected help output on stdout when no subcommand given")
+	}
+}
+
+// TestRun_UsageErrorsAsJSON checks that a command line cobra refuses reaches
+// stderr as an invalid_input envelope, also when --json comes after the bad
+// flag, where the flag parser never reads it.
+func TestRun_UsageErrorsAsJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantJSON bool
+		wantCode string
+	}{
+		{"json after an unknown flag", []string{"nfe", "list", "-c", nfeTestCNPJ, "--bogus", "--json"}, true, app.ErrorCodeInvalidInput},
+		{"json before an unknown flag", []string{"--json", "nfe", "list", "-c", nfeTestCNPJ, "--bogus"}, true, app.ErrorCodeInvalidInput},
+		{"missing required flag", []string{"nfe", "manifestar", "-c", nfeTestCNPJ, "--json"}, true, app.ErrorCodeInvalidInput},
+		{"wrong number of arguments", []string{"nfe", "import", "-c", nfeTestCNPJ, "--json"}, true, app.ErrorCodeInvalidInput},
+		{"json=false", []string{"nfe", "list", "--bogus", "--json=false"}, false, ""},
+		{"no json", []string{"nfe", "list", "--bogus"}, false, ""},
+		// The command ran and failed: not a usage error.
+		{"error from the command", []string{"nfe", "list", "-c", nfeTestCNPJ, "--json"}, true, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			stderr, err := os.CreateTemp(t.TempDir(), "stderr")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = stderr.Close() }()
+			v, tr, js := false, false, false
+			code := run(context.Background(), CommandEnv{
+				Stdout: &stdout,
+				Stderr: stderr,
+				AppFactory: func(context.Context) (*app.App, func(), error) {
+					return nil, nil, errors.New("sem banco no teste")
+				},
+				Verbose: &v,
+				Trace:   &tr,
+				JSON:    &js,
+			}, tt.args)
+			if code != 1 {
+				t.Errorf("exit code = %d, want 1", code)
+			}
+			if stdout.Len() != 0 {
+				t.Errorf("stdout = %q, want nothing", stdout.String())
+			}
+			written, err := os.ReadFile(stderr.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var envelope errorEnvelope
+			isJSON := json.Unmarshal(written, &envelope) == nil
+			if isJSON != tt.wantJSON {
+				t.Fatalf("stderr as JSON = %t, want %t: %q", isJSON, tt.wantJSON, written)
+			}
+			if tt.wantJSON && (envelope.Error.Code != tt.wantCode || envelope.Error.Message == "") {
+				t.Errorf("envelope = %+v, want code %q and a message", envelope, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestJSONRequested(t *testing.T) {
+	tests := []struct {
+		args []string
+		want bool
+	}{
+		{[]string{"nfe", "list"}, false},
+		{[]string{"nfe", "list", "--json"}, true},
+		{[]string{"--json=true", "nfe"}, true},
+		{[]string{"--json", "--json=false"}, false},
+		{[]string{"nfe", "import", "--", "--json"}, false},
+		{[]string{"--jsonx"}, false},
+	}
+	for _, tt := range tests {
+		if got := jsonRequested(tt.args); got != tt.want {
+			t.Errorf("jsonRequested(%q) = %t, want %t", tt.args, got, tt.want)
+		}
 	}
 }
