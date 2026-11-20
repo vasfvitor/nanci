@@ -24,8 +24,9 @@ type dfeItems struct {
 	label string // NF-e or CT-e, for logs and errors
 	xml   files.XMLStore
 	log   *slog.Logger
-	// documentExists reports whether the company already sees the chave.
-	documentExists func(ctx context.Context, companyID dfe.CompanyID, chave string) (bool, error)
+	// documentExists reports whether the company already sees the chave in
+	// the tpAmb.
+	documentExists func(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (bool, error)
 }
 
 // applyFunc stores a parsed item through tx. rawHash is the hash of its kept
@@ -68,6 +69,9 @@ type dfeEvent struct {
 	chaveAcesso string
 	autorCNPJ   string
 	tpEvento    string
+	// tpAmb is the event's environment (after CheckTpAmb): an event belongs
+	// to the document of the same environment only.
+	tpAmb string
 }
 
 // keepEvent stores an event. An event for a chave the company does not see
@@ -76,7 +80,7 @@ type dfeEvent struct {
 func (s dfeItems) keepEvent(ctx context.Context, company *company.Company, item Item, payload gzipxml.Decoded, commit CommitFunc, ev dfeEvent, apply applyFunc) (ItemOutcome, error) {
 	authoredByCompany := cnpj.Clean(ev.autorCNPJ) == company.CNPJ
 	if !authoredByCompany {
-		hasLocalDocument, err := s.documentExists(ctx, company.ID, ev.chaveAcesso)
+		hasLocalDocument, err := s.documentExists(ctx, company.ID, ev.tpAmb, ev.chaveAcesso)
 		if err != nil {
 			return ItemOutcome{}, fmt.Errorf("check local document for event failed: %w", err)
 		}

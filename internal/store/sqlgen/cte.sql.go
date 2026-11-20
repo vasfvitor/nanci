@@ -96,16 +96,17 @@ func (q *Queries) HasCTeEvent(ctx context.Context, arg HasCTeEventParams) (int64
 const hasCompanyCTeDocument = `-- name: HasCompanyCTeDocument :one
 SELECT COUNT(*) FROM company_cte_documents cd
 INNER JOIN cte_documents d ON d.id = cd.cte_document_id
-WHERE cd.company_id = ? AND d.chave_acesso = ?
+WHERE cd.company_id = ? AND d.tp_amb = ? AND d.chave_acesso = ?
 `
 
 type HasCompanyCTeDocumentParams struct {
 	CompanyID   string
+	TpAmb       string
 	ChaveAcesso string
 }
 
 func (q *Queries) HasCompanyCTeDocument(ctx context.Context, arg HasCompanyCTeDocumentParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, hasCompanyCTeDocument, arg.CompanyID, arg.ChaveAcesso)
+	row := q.db.QueryRowContext(ctx, hasCompanyCTeDocument, arg.CompanyID, arg.TpAmb, arg.ChaveAcesso)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

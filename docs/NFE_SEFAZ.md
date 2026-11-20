@@ -26,7 +26,7 @@ O Nanci classifica o papel da empresa em cada nota (coluna `PAPEL` do `nfe list`
 | `autorizado` | NF-e em que o CNPJ foi informado no grupo `autXML` (pessoas autorizadas a obter o XML). |
 | `none` | A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado. |
 
-Eventos de uma chave que a empresa ainda não tem localmente são descartados, exceto os que a própria empresa assinou (suas manifestações), que ficam guardados e são ligados à nota quando ela chegar.
+Eventos de uma chave que a empresa ainda não tem localmente, no mesmo ambiente (`tpAmb`) do evento, são descartados, exceto os que a própria empresa assinou (suas manifestações), que ficam guardados e são ligados à nota quando ela chegar. Desde 20/11/2026 a nota de outro ambiente não conta: um cancelamento de homologação não cancela a nota de produção com a mesma chave.
 
 ## Endpoints Consumidos
 

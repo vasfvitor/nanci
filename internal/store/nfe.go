@@ -86,8 +86,11 @@ func (r *NFeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		return false, fmt.Errorf("upsert nfe document %s: %w", chave, err)
 	}
 
+	// The row was just upserted with params.TpAmb, so this asks whether the
+	// company saw the chave before, whatever environment it had then.
 	seen, err := q.HasCompanyNFeDocument(ctx, sqlgen.HasCompanyNFeDocumentParams{
 		CompanyID:   string(p.CompanyID),
+		TpAmb:       params.TpAmb,
 		ChaveAcesso: chave,
 	})
 	if err != nil {
@@ -176,9 +179,10 @@ func (r *NFeRepository) ApplyEventTx(ctx context.Context, tx *sql.Tx, p ApplyNFe
 }
 
 // CompanyDocumentExists reports whether the company already sees the chave.
-func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID dfe.CompanyID, chave string) (bool, error) {
+func (r *NFeRepository) CompanyDocumentExists(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (bool, error) {
 	count, err := r.queries.HasCompanyNFeDocument(ctx, sqlgen.HasCompanyNFeDocumentParams{
 		CompanyID:   string(companyID),
+		TpAmb:       tpAmb,
 		ChaveAcesso: chave,
 	})
 	if err != nil {

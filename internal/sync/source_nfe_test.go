@@ -368,6 +368,36 @@ func TestNFeSourceKeepsOnlyOwnEventsWithoutLocalDocument(t *testing.T) {
 	}
 }
 
+// TestNFeSourceSkipsAnEventOfTheOtherEnvironment checks that an event of
+// another author is kept only when the company holds the note in the
+// event's environment: a homologação cancelamento does not cancel the
+// produção note with the same chave.
+func TestNFeSourceSkipsAnEventOfTheOtherEnvironment(t *testing.T) {
+	h := newNFeTestHelper(t)
+	data, err := os.ReadFile(filepath.Join("..", "nfe", "testdata", "proceventonfe-cancelamento.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	homologacao := strings.ReplaceAll(string(data), "<tpAmb>1</tpAmb>", "<tpAmb>2</tpAmb>")
+	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{
+		0: {CStat: sefaz.CStatDocumentoLocalizado, UltNSU: 2, MaxNSU: 2, Docs: []sefaz.DocZip{
+			docZip(t, 1, "resNFe_v1.01.xsd", "resnfe-cancelada.xml"),
+			{NSU: 2, Schema: "procEventoNFe_v1.00.xsd", Content: mustEncodeGzipBase64(t, homologacao)},
+		}},
+	}}
+
+	progress, err := h.run(fetcher)
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if got := len(h.events(nfeChaveCancelada)); got != 0 {
+		t.Errorf("events of the homologação cancelamento = %d, want 0", got)
+	}
+	if progress.EventsSkippedByPolicy != 1 {
+		t.Errorf("events skipped by policy = %d, want 1", progress.EventsSkippedByPolicy)
+	}
+}
+
 func TestNFeSourceSkipsUnknownSchemaAndAdvances(t *testing.T) {
 	h := newNFeTestHelper(t)
 	fetcher := &scriptedFetcher{responses: map[int64]sefaz.DistResult{

@@ -86,8 +86,11 @@ func (r *CTeRepository) ApplyDocumentTx(ctx context.Context, tx *sql.Tx, p Apply
 		return false, fmt.Errorf("upsert cte document %s: %w", chave, err)
 	}
 
+	// The row was just upserted with params.TpAmb, so this asks whether the
+	// company saw the chave before, whatever environment it had then.
 	seen, err := q.HasCompanyCTeDocument(ctx, sqlgen.HasCompanyCTeDocumentParams{
 		CompanyID:   string(p.CompanyID),
+		TpAmb:       params.TpAmb,
 		ChaveAcesso: chave,
 	})
 	if err != nil {
@@ -219,9 +222,10 @@ func (r *CTeRepository) RecordDesacordo(ctx context.Context, rec cte.DesacordoRe
 }
 
 // CompanyDocumentExists reports whether the company already sees the chave.
-func (r *CTeRepository) CompanyDocumentExists(ctx context.Context, companyID dfe.CompanyID, chave string) (bool, error) {
+func (r *CTeRepository) CompanyDocumentExists(ctx context.Context, companyID dfe.CompanyID, tpAmb, chave string) (bool, error) {
 	count, err := r.queries.HasCompanyCTeDocument(ctx, sqlgen.HasCompanyCTeDocumentParams{
 		CompanyID:   string(companyID),
+		TpAmb:       tpAmb,
 		ChaveAcesso: chave,
 	})
 	if err != nil {

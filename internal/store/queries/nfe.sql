@@ -48,7 +48,7 @@ UPDATE nfe_documents SET situacao = ?, updated_at = ? WHERE chave_acesso = ?;
 -- name: HasCompanyNFeDocument :one
 SELECT COUNT(*) FROM company_nfe_documents cd
 INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
-WHERE cd.company_id = ? AND d.chave_acesso = ?;
+WHERE cd.company_id = ? AND d.tp_amb = ? AND d.chave_acesso = ?;
 
 -- name: UpsertCompanyNFeDocument :exec
 INSERT INTO company_nfe_documents (

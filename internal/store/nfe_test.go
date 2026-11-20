@@ -733,13 +733,20 @@ func TestNFeExportMarks(t *testing.T) {
 func TestNFeCompanyDocumentLookup(t *testing.T) {
 	ctx := context.Background()
 	f := newNFeFixture(t)
-	f.applyDocument("mock", cnpjMock, f.resNFe("resnfe.xml", "hash-resumo"), 1)
+	resumo := f.resNFe("resnfe.xml", "hash-resumo")
+	resumo.TpAmb = "1" // the sync gives a resumo the company's tpAmb (CheckTpAmb)
+	f.applyDocument("mock", cnpjMock, resumo, 1)
 
-	exists, err := f.repo.CompanyDocumentExists(ctx, "mock", nfeKeyProc)
+	exists, err := f.repo.CompanyDocumentExists(ctx, "mock", "1", nfeKeyProc)
 	if err != nil || !exists {
 		t.Errorf("CompanyDocumentExists(mock) = %v, %v", exists, err)
 	}
-	exists, err = f.repo.CompanyDocumentExists(ctx, "emitente", nfeKeyProc)
+	// An event of the other environment does not belong to this note.
+	exists, err = f.repo.CompanyDocumentExists(ctx, "mock", "2", nfeKeyProc)
+	if err != nil || exists {
+		t.Errorf("CompanyDocumentExists(mock, homologação) = %v, %v; want false", exists, err)
+	}
+	exists, err = f.repo.CompanyDocumentExists(ctx, "emitente", "1", nfeKeyProc)
 	if err != nil || exists {
 		t.Errorf("CompanyDocumentExists(emitente) = %v, %v", exists, err)
 	}

@@ -366,9 +366,14 @@ func TestCTeDocumentSeenByTwoCompanies(t *testing.T) {
 	if counts.ByRole[cte.CompanyRoleTomador] != 1 || len(counts.ByRole) != 1 {
 		t.Errorf("terceiro counts = %v, want one tomador", counts.ByRole)
 	}
-	exists, err := f.repo.CompanyDocumentExists(context.Background(), "remetente", cteKeyToma4)
+	exists, err := f.repo.CompanyDocumentExists(context.Background(), "remetente", "1", cteKeyToma4)
 	if err != nil || !exists {
 		t.Errorf("CompanyDocumentExists(remetente) = %v, %v", exists, err)
+	}
+	// An event of the other environment does not belong to this CT-e.
+	exists, err = f.repo.CompanyDocumentExists(context.Background(), "remetente", "2", cteKeyToma4)
+	if err != nil || exists {
+		t.Errorf("CompanyDocumentExists(remetente, homologação) = %v, %v; want false", exists, err)
 	}
 	if _, err := f.repo.CompanyDocumentByChave(context.Background(), "remetente", "1", cteKeyProc); !errors.Is(err, cte.ErrDocumentNotFound) {
 		t.Errorf("CompanyDocumentByChave of an unseen chave error = %v, want ErrDocumentNotFound", err)

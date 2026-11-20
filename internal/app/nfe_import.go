@@ -185,7 +185,7 @@ func (s *NFeService) importFile(ctx context.Context, comp *company.Company, tpAm
 		// As in the distribution: an event for an NF-e the company does not
 		// hold is dropped, unless the company authored it.
 		if cnpj.Clean(ev.AutorCNPJ) != comp.CNPJ {
-			exists, err := s.NFeRepo.CompanyDocumentExists(ctx, comp.ID, string(ev.ChaveAcesso))
+			exists, err := s.NFeRepo.CompanyDocumentExists(ctx, comp.ID, ev.TpAmb, string(ev.ChaveAcesso))
 			if err != nil {
 				return fmt.Errorf("buscar NF-e do evento: %w", err)
 			}

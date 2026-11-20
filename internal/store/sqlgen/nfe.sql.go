@@ -57,16 +57,17 @@ func (q *Queries) GetNFeDocumentByChave(ctx context.Context, chaveAcesso string)
 const hasCompanyNFeDocument = `-- name: HasCompanyNFeDocument :one
 SELECT COUNT(*) FROM company_nfe_documents cd
 INNER JOIN nfe_documents d ON d.id = cd.nfe_document_id
-WHERE cd.company_id = ? AND d.chave_acesso = ?
+WHERE cd.company_id = ? AND d.tp_amb = ? AND d.chave_acesso = ?
 `
 
 type HasCompanyNFeDocumentParams struct {
 	CompanyID   string
+	TpAmb       string
 	ChaveAcesso string
 }
 
 func (q *Queries) HasCompanyNFeDocument(ctx context.Context, arg HasCompanyNFeDocumentParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, hasCompanyNFeDocument, arg.CompanyID, arg.ChaveAcesso)
+	row := q.db.QueryRowContext(ctx, hasCompanyNFeDocument, arg.CompanyID, arg.TpAmb, arg.ChaveAcesso)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

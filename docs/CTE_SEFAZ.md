@@ -53,7 +53,7 @@ O código bruto do indicador fica em `tomador_indicador` (vazio no CT-e OS). Um 
 
 Para terceiros do `autXML`, o AN troca as chaves de documentos relacionados (`infDoc`, `docAnt`, `refCTe`) por `9999…`. O Nanci descarta essas chaves (veja "Ligação com a NF-e").
 
-Eventos de uma chave que a empresa ainda não tem localmente são descartados, exceto os que a própria empresa assinou, que ficam guardados e são ligados ao documento quando ele chegar.
+Eventos de uma chave que a empresa ainda não tem localmente, no mesmo ambiente (`tpAmb`) do evento, são descartados, exceto os que a própria empresa assinou, que ficam guardados e são ligados ao documento quando ele chegar.
 
 ## Endpoints Consumidos
 

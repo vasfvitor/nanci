@@ -85,7 +85,7 @@ UPDATE cte_documents SET situacao = ?, updated_at = ? WHERE chave_acesso = ?;
 -- name: HasCompanyCTeDocument :one
 SELECT COUNT(*) FROM company_cte_documents cd
 INNER JOIN cte_documents d ON d.id = cd.cte_document_id
-WHERE cd.company_id = ? AND d.chave_acesso = ?;
+WHERE cd.company_id = ? AND d.tp_amb = ? AND d.chave_acesso = ?;
 
 -- name: UpsertCompanyCTeDocument :exec
 INSERT INTO company_cte_documents (

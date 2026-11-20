@@ -121,7 +121,7 @@ func (s *cteSource) processEvent(ctx context.Context, company *company.Company, 
 	}
 	ev.TpAmb = CheckTpAmb(ev.TpAmb, tpAmb, &ev.ParseWarnings)
 
-	keys := dfeEvent{chaveAcesso: string(ev.ChaveAcesso), autorCNPJ: ev.AutorCNPJ, tpEvento: ev.TpEvento}
+	keys := dfeEvent{chaveAcesso: string(ev.ChaveAcesso), autorCNPJ: ev.AutorCNPJ, tpEvento: ev.TpEvento, tpAmb: ev.TpAmb}
 	return s.keepEvent(ctx, company, item, payload, commit, keys, func(tx *sql.Tx, rawHash string) (bool, error) {
 		ev.RawHash = rawHash
 		return s.repo.ApplyEventTx(ctx, tx, store.ApplyCTeEventParams{Event: ev})
