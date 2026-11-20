@@ -2,6 +2,7 @@
 name: lane
 description: Use when delegating an implementation step of nanci to a subagent in an isolated worktree (a "lane"). Builds the agent prompt with the repo's non-negotiable mechanics (base commit, go.work and dist setup, LF, signed commits without trailers, bindings plus mocks, verification per area, report format) so nothing is re-derived from memory.
 ---
+<!-- Generated from .agents/skills/lane/ by scripts/sync-skills.sh; edit there. -->
 
 # Lane: delegate one implementation step
 

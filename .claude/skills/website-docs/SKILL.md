@@ -2,6 +2,7 @@
 name: website-docs
 description: Use when adding or editing a page of the nanci website (Hugo) or refreshing screenshots. Covers the Hextra setup, front matter, the local layout overrides and shortcodes, link rules for the HTML and Markdown copies, screenshot generation, the Pages workflow, a local build with a link check, and what belongs on the site versus docs/.
 ---
+<!-- Generated from .agents/skills/website-docs/ by scripts/sync-skills.sh; edit there. -->
 
 # Website docs: the Hugo site under `website/`
 

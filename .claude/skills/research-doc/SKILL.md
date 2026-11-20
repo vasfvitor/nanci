@@ -2,6 +2,7 @@
 name: research-doc
 description: Use when recording a fact about an external system (SEFAZ, ADN, Receita, a library) or resolving a pending item, so the docs do not drift. Says where each fact lives, how to cite it (NT number, version, date, URL, third-party marking), how research notes, ROADMAP and PENDENCIAS are kept, and to re-verify aged claims before repeating them.
 ---
+<!-- Generated from .agents/skills/research-doc/ by scripts/sync-skills.sh; edit there. -->
 
 # Research doc: record a fact once, with its source
 

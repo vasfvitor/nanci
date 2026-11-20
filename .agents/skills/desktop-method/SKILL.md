@@ -1,0 +1,92 @@
+---
+name: desktop-method
+description: Use when exposing a backend capability to the nanci desktop app end to end (app service, DTO, Wails method, bindings, client, composable, store, page), or changing an existing one. Walks every layer with the file to edit, the pattern to copy and the test that pins it, using ExportNFeDocuments as the worked example.
+---
+
+# Desktop method: one capability, every layer
+
+Read AGENTS.md "Desktop Frontend Architecture" and "Testing Guidelines" first. Work bottom-up and keep one commit per layer pair where it builds (`app`, `wails`, `frontend`). The worked example is the NF-e XML ZIP export; open each cited file before copying its pattern.
+
+## 1. Core: `internal/app`
+
+- The service method holds the behaviour: lookup, validation, file writing, marks. Example: `NFeService.ExportXMLZip` in `internal/app/nfe_export.go` with `NFeExportInput` and `NFeExportResult` (embeds `ExportResult` from `internal/app/export.go`).
+- Input and result types live here and use domain words: `Competence`, `Role`, `ChavesAcesso`, `IncludeResumos`. Document each field that is not obvious (formats like `"YYYY-MM"`, allowed values).
+- Exports write through `writeViaTemp`/`writeFileAtomic`, then mark exported. `ExportedCount` is the number of documents written; with nothing to export, write no file and return `ExportedCount: 0` with an empty `OutPath`.
+- Tests next to the code (`internal/app/nfe_test.go`, `TestNFeExportXMLZipLayoutAndIncrementalMarks`): archive layout, incremental marks, resumos skipped.
+- Nothing Wails-specific here: no DTOs, no dialogs, no default file names.
+
+## 2. DTO: `internal/desktop/desktopapi/dto_<area>.go`
+
+- Every Wails input and result is a DTO (`ExportNFeDocumentsInput`, `NFeExportResult`) in the area's file (`dto_companies.go`, `dto_nfse.go`, `dto_nfe.go`, `dto_cte.go`; DTOs used by several areas, such as `ExportResult` and `MarkViewedInput`, in `dto.go`), never an `internal/nfe`, `internal/nfse` or `internal/app` struct.
+- Enums cross as `string` in Portuguese (`Situacao`, `Manifestacao`, `CompanyRole` are `string(document.X)`); money as `int64` cents (`TotalValue: document.TotalValue.Cents()`); dates as `time.Time`, optional ones as `*time.Time` (`optionalTime`); slices never nil, so the frontend gets `[]`.
+- A result built from more than a couple of fields gets a mapper function next to it in `dto_<area>.go` (`NFeRows`/`nfeRow`, `NFeEventResultFrom`, `CTeResetResultFrom`) with a test in `desktopapi/dto_<area>_test.go` (`TestNFeRows` in `dto_nfe_test.go` checks every field, cents, nil dates, enum strings, empty slices). Small results are built inline in the area's `app_<area>.go` (`NFeExportResult{ExportResult: desktopapi.ExportResult(res.ExportResult), SkippedResumos: ...}`).
+- Fields two DTOs share go in one embedded struct: the Wails generator flattens embedded structs into the `models.ts` interface, so the frontend shape does not change. `NFeStatusResult` and `CTeStatusResult` embed `SefazSourceStatus` (`dto.go`, mapped by `SefazSourceStatusFrom`); on the frontend, the matching `SefazSourceStatus` type (`types/desktop/common.ts`) and `mapSefazSourceStatus` (`client/base.ts`) do the same.
+
+## 3. Wails method: `internal/desktop`
+
+- `services.go`: add the core method to the service interface (`nfeService.ExportXMLZip`). `servicesFrom` wires the real `*app.App`; tests swap fakes.
+- `app_<area>.go` (`app_companies.go`, `app_nfse.go`, `app_nfe.go`, `app_cte.go`; dialogs, folders and logs in `app_runtime.go`; `app.go` keeps the `App` struct, startup and shared helpers): one thin method per action. Validate what the core cannot see (`if input.OutPath == "" { return ..., fmt.Errorf("caminho de saída não especificado") }`, enum parsing such as `dfe.ParseEnvironment` in `AddCompany`), map DTO to app input field by field, call `a.svc.nfe.ExportXMLZip(a.ctx, ...)`, return the zero DTO with the error unchanged, map the result.
+- No path construction in Go beyond what the core does; the user picks the path through `SelectSaveFile`.
+- Errors reach the frontend through `formatError` in `errors.go` as `{Message, Code}`. Codes today: `canceled`, `sefaz_blocked`, `sync_running`, `update_busy`, `startup_failed`. A new code needs `errors.go`, `errors_test.go`, and `WailsErrorCode`/`asErrorCode` in `client/base.ts`.
+- Tests: add the method to the fake in `fakes_test.go` (`f.record("ExportXMLZip", in)`, return a result field). Then in `app_export_test.go` (or `app_documents_test.go`, `app_company_test.go`, `app_sync_test.go` by area):
+  - a mapping test (`TestExportNFeDocumentsFormats`: `assertCalls` sees every input field, result equals the expected DTO);
+  - an entry in the table tests: `exportRuns` feeds `TestExportsRequireOutPath` (no core call, zero result) and `TestExportsPassCoreErrors` (`errors.Is(err, errCore)`); document methods go in `TestDocumentMethodsPassCoreErrors`.
+
+## 4. Bindings: `internal/desktop/frontend/bindings`
+
+- `cd internal/desktop && wails3 generate bindings -clean=true -ts -i` with the pinned CLI (`wails3` at the `WAILS_VERSION` of `.github/workflows/ci.yml`, v3.1.0 today; `frontend/dist` must exist, built or stubbed, see the setup in the `lane` skill). Expect `bindings/github.com/vasfvitor/nanci/internal/desktop/app.ts` (`export function ExportNFeDocuments(input: desktopapi$0.ExportNFeDocumentsInput): $CancellablePromise<desktopapi$0.NFeExportResult>`, calling `$Call.ByID(<numeric id>, input)`) and `bindings/.../desktopapi/models.ts` plus its `index.ts` (one interface per new DTO). Nothing else should change. `wails3 build` and `wails3 dev` regenerate the folder too.
+- Same commit: add the method to the `vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', ...)` list in `src/platform/wails/client.test.ts` and to the `App` mock in `installWailsMock` of `scripts/generate-screenshots.ts` (`ExportNFeDocuments: async () => ({ OutPath: ..., ExportedCount: 4, SkippedResumos: 3 })`). The script maps the numeric IDs of `app.ts` back to these names, and `vue-tsc -b` type-checks it through `tsconfig.node.json`.
+- CI job `bindings` in `.github/workflows/ci.yml` regenerates (with `GOOS=windows`) and fails on any drift in `frontend/bindings`.
+
+## 5. Client: `src/types/desktop/` and `src/platform/wails/client/`
+
+- Types live by area in `src/types/desktop/` (`common.ts` for shared types such as `ISODateValue`, `ExportResult` and the import results, then `companies.ts`, `nfse.ts`, `nfe.ts`, `cte.ts`); `index.ts` re-exports them all, so code imports `@/types/desktop`. Types mirror the DTO with typed unions where the DTO has strings: `ExportNFeDocumentsInput.Role: NFeRole | ''`, `NFeExportResult = ExportResult & { SkippedResumos: number }`. Pages, stores and composables import these, never `bindings` or `@wailsio/runtime`.
+- The client is split by area under `src/platform/wails/client/`: `base.ts` (`callWails`, error normalization, the `as*` readers, `fileTimestamp`, shared mappers such as `mapExportResult`), `companies.ts` (companies and credentials), `nfse.ts`, `nfe.ts`, `cte.ts`, and `system.ts` (dialogs, logs, data directory, build info). `index.ts` spreads the area objects into `desktopClient` and re-exports the public mappers by name, so importers keep using `@/platform/wails/client`.
+- The method goes in its area object (`nfeClient` in `client/nfe.ts`) and wraps the call in `callWails` (error normalization). Exports take `Omit<ExportNFeDocumentsInput, 'OutPath'> & { BaseName?: string; OutPath?: string }`, build the default name (`nfe_${CNPJ}_${fileTimestamp()}.zip`), call `systemClient.selectSaveFile(title, defaultName, '*.zip')`, return `null` when the dialog is cancelled, fill optional arrays (`ChavesAcesso || []`), and map the result.
+- Result mappers read loose values through the exported readers of `client/base.ts`: `asString`, `asDate`, `asNullableNumber`, `asStringArray`, `asArray` and `asEnum` (an unknown enum value becomes `''`). Example: `mapExportResult`, `mapNFeExportResult`. Exported mappers are tested directly.
+- `client.test.ts`: a success test (dialog title and default-name regex, exact Wails input, mapped result with defaults) and a cancel test (`SelectSaveFile` resolves `''`, result `null`, Wails method not called). See "exports NF-e XML and ZIP to the path chosen in the save dialog".
+
+## 6. Composable and store: `src/composables`, `src/stores`
+
+- Feature logic goes in the source's composable (`useNFeDocuments`, `useDocuments`, `useCTeDocuments`). Return functions and `storeToRefs` refs, nothing generated.
+- State that outlives the route lives in the source store (`nfeDocuments`, `documents`, `cteDocuments`); the shared list fields (`rows`, `selected`, `exporting`, `markingViewed`, `resettingCNPJ`, `searchGate`) come from `documentListState()`. A new cross-route flag goes there or in a focused setup store.
+- Mark in-flight state in the store before awaiting and clear it in `finally`. Exports use `useExportGuard(exporting, () => store.listInput.CNPJ)`: `runExport` returns `null` without a company or while another export runs. Syncs use `companySync.runSync`; resets set `resettingCNPJ`.
+- Guards return `null` for "did not run" (`exportDocuments(format, [])`), so the page can tell it from a result.
+- Backend events go through `onWailsEvent` from `src/platform/wails/events.ts`; keep the returned `Unsubscribe` and call it on unmount or stop (`layouts/MainLayout.vue`, `stores/console.ts`).
+- Tests (`useNFeDocuments.test.ts`, `vi.mock('@/platform/wails/client')`): the request built from the store, the guards, failure clearing the flag, and the mandatory remount test: start the call on a pending promise (`deferred()` from `@/test/fixtures`), create a second instance, assert the flag is visible and a second call resolves `null` without a new client call, resolve, assert the flag clears ("keeps an export visible to a second instance while it is pending").
+
+## 7. Page and components: `src/pages`, `src/components`, `src/utils`
+
+- The page wires the composable, dialogs and notifications only. `NFePage.vue`: `useDocumentListActions({ source: 'nfe', ..., exportList })` opens `ExportDialog`; the page's `exportList` calls `nfe.exportDocuments(format, chaves, choice)`, then `notifyExported(result, exportedNoun(choice.format))`, and `notifyError('Erro ao exportar NF-e', error)` on failure. Extra outcomes get their own Portuguese notice (`SkippedResumos` via `notifyInfo`).
+- `useNotify` wording: `notifyExported` says "N XMLs exportados para <caminho>." or "Nenhum documento para exportar."; errors read "Erro ao <ação>: <causa>".
+- New dialogs take typed `defineProps`/`defineEmits` and return the choice (`ExportDialog` emits `ok: [choice: ExportChoice]`); the page or composable makes the backend call.
+- Reuse the shared pieces before writing markup: `DocumentPageHeader`, `DocumentFilterBar`, `DocumentFilterSelect`, `DocumentTableTop`, `StateLegend`, `StateBadges`, `AbbrBadge`, `ChaveCell`, `NumeroCell`, `PartyCell`, `RowActionsMenu`/`RowMenuItem`, `DocumentDetailRow`, `DetailList`, `ExportDialog`, `EventsDialogFrame`, `ParseWarnings`; columns from `utils/documentColumns.ts`.
+- Formatting in `utils/formatters.ts` (`formatCpfCnpj`, `formatCurrencyCents`, `formatDate`, `formatDateTime`, `formatNFeNumber`); labels in `utils/nfseDisplay.ts`, `nfeDisplay.ts`, `cteDisplay.ts`, `sefazDisplay.ts`; source nouns and gender agreement in `utils/documentSources.ts` (`DOCUMENT_SOURCES`, `agree`).
+- Dark mode: `$q.dark.isActive` class bindings or Quasar CSS variables, no hex colors, no `dark:` selectors.
+- Tests: the component's `*.test.ts` for props/emits; the page test (`NFePage.test.ts`, "exports the filtered rows as a ZIP with the choice of the dialog") for the dialog-to-client wiring and the notification text.
+- Screenshots: `pnpm run screenshots nfe` (routes as arguments, leading slash optional). Specs with `fitsWidth: true` fail when `.document-table` scrolls sideways; at the 1280px window the table area is about 946px, so a new column must fit that budget.
+
+## 8. CLI parity: `internal/cli`
+
+A user-facing capability usually ships with its CLI command in the same change: NF-e export landed in desktop and in `internal/cli/nfe_export.go` (`nfe export zip`, flags `--competencia`, `--papel`, `--chave`, `--incluir-resumos`, `--incremental`, `--out`, output via `printExportResult`) in the same PR (#18, `25315c2`). CLI tests sit next to the command (`internal/cli/cte_test.go`, `TestCTeExportZip_Layout`).
+
+## Decisions already made
+
+- One composable, store and page per source (NFS-e `useDocuments`/`documents`/`DocumentsPage`, NF-e `useNFeDocuments`/`nfeDocuments`/`NFePage`, CT-e `useCTeDocuments`/`cteDocuments`/`CTePage`); shared behaviour goes in `documentListState`, `useExportGuard`, `useMarkViewed`, `useDocumentListActions` and the shared components above, not in a central export layer.
+- Only `src/platform/wails/client/` (its files), `events.ts` and `runtime.ts` import `bindings` or `@wailsio/runtime` (ESLint enforces it). No `window.go`, no `@ts-expect-error` Wails calls, no raw `Events.Off`, no `v-html`.
+- Wails methods return `desktopapi` DTOs; the default file name is suggested in the client (`src/platform/wails/client/`), the path is chosen by the user, the file is written by the core.
+- Portuguese fiscal vocabulary stays in every layer: `ChaveAcesso`, `ChavesAcesso`, `Competence`, `Manifestacao`, `tomada`/`prestada`, `destinatario`, `tomador`.
+
+## Checklist
+
+- [ ] `internal/app` method, input/result types, tests
+- [ ] `desktopapi` DTOs (+ mapper and `dto_<area>_test.go` when not trivial)
+- [ ] `services.go` interface, `app_<area>.go` method, fake in `fakes_test.go`, mapping test, table entries (out path, core errors)
+- [ ] `wails3 generate bindings -clean=true -ts -i`; diff shows only the new method and DTOs
+- [ ] `client.test.ts` `vi.mock` list and `scripts/generate-screenshots.ts` mock updated in the same commit
+- [ ] `types/desktop/<area>.ts` type, `client/<area>.ts` method with mapper, success and cancel tests
+- [ ] composable function with guard, store flag set before await and cleared in `finally`, second-instance test
+- [ ] page wiring with `useNotify`, dialog typed props/emits, page test
+- [ ] CLI command and test when user-facing
+- [ ] `bash scripts/verify.sh`; `pnpm run screenshots <route>` when a page changed
+- [ ] Manual smoke test in `wails3 dev` of the flow touched

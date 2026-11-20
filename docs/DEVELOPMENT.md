@@ -84,7 +84,7 @@ pnpm run build
 bash scripts/verify.sh    # ou: make verify
 ```
 
-O `verify.sh` roda na sua máquina o que o CI confere, com as versões das ferramentas lidas do `ci.yml`: lint, testes e build do frontend; testes e `golangci-lint` nos dois módulos Go (que incluem os testes de arquitetura); `go.mod` arrumado; bindings do Wails e código do sqlc em dia; e o `govulncheck`. Roda todas as etapas mesmo depois de uma falha, termina com a lista do que falhou e avisa quando um arquivo de regra (skills, lint, testes de arquitetura, migrations) mudou desde a `main`. Leva uns 2 minutos.
+O `verify.sh` roda na sua máquina o que o CI confere, com as versões das ferramentas lidas do `ci.yml`: lint, testes e build do frontend; testes e `golangci-lint` nos dois módulos Go (que incluem os testes de arquitetura); `go.mod` arrumado; bindings do Wails, código do sqlc e a cópia dos skills em `.claude/skills` em dia; e o `govulncheck`. Roda todas as etapas mesmo depois de uma falha, termina com a lista do que falhou e avisa quando um arquivo de regra (skills, lint, testes de arquitetura, migrations) mudou desde a `main`. Leva uns 2 minutos.
 
 `make check` (fmt, vuln, lint, test e security) também formata o código e roda o `gosec` e o `gitleaks`; `make test` roda só `go test ./...`.
 

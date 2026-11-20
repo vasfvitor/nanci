@@ -2,6 +2,7 @@
 name: nanci-cli-agente
 description: Use when an AI agent runs the `nanci` CLI for someone, to sync, list, check or export NFS-e, NF-e or CT-e, register a manifestação, import XML or recover NSUs. Covers `--json` and reading its output, the error codes and what to do on each, the certificate password, the SEFAZ hourly budget, the simulate-then-`--confirmar` rule, and recipes per task. For changing the CLI itself, use cli-command instead.
 ---
+<!-- Generated from .agents/skills/nanci-cli-agente/ by scripts/sync-skills.sh; edit there. -->
 
 # Using the `nanci` CLI as an agent
 

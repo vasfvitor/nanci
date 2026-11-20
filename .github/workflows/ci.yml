@@ -191,6 +191,10 @@ jobs:
           CGO_ENABLED: '0'
         run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }} diff
 
+      # .claude/skills is generated from .agents/skills for Claude Code.
+      - name: Check skills copy
+        run: bash scripts/sync-skills.sh --check
+
       - name: Check for drift
         run: |
           if ! git diff --exit-code -- go.mod go.sum internal/desktop/go.mod internal/desktop/go.sum; then

@@ -2,6 +2,7 @@
 name: new-source
 description: Use when adding a new document source to nanci (a fourth DF-e such as MDF-e), or when a feature spans all sources. Ordered checklist rebuilt from how NF-e and CT-e were added, with the file to copy at each step, every place that enumerates sources, the decisions not to reopen and the gotchas NF-e taught.
 ---
+<!-- Generated from .agents/skills/new-source/ by scripts/sync-skills.sh; edit there. -->
 
 # New source: one DF-e, every layer
 

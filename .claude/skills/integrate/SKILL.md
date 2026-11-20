@@ -2,6 +2,7 @@
 name: integrate
 description: Use when bringing a finished lane (subagent worktree commits) into nanci's main or an integration branch. Cherry-pick or fast-forward, resolve doc conflicts, run the full verification, check LF and signatures, clean the worktree, and hand the push to the person running the session.
 ---
+<!-- Generated from .agents/skills/integrate/ by scripts/sync-skills.sh; edit there. -->
 
 # Integrate: land a lane
 

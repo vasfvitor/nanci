@@ -2,6 +2,7 @@
 name: sefaz-call
 description: Use when adding a new call to SEFAZ (NF-e/CT-e Ambiente Nacional or a UF service) or to the ADN (NFS-e), or changing an existing one. Covers the shared mTLS httpclient, SOAP 1.2 envelopes and endpoints in internal/sefaz, the ADN REST client, cStat handling and the hourly budget, XMLDSig signing, log redaction, tests with fake servers, the confirmation rule for events, and the SEFAZ rules an implementer must respect.
 ---
+<!-- Generated from .agents/skills/sefaz-call/ by scripts/sync-skills.sh; edit there. -->
 
 # SEFAZ / ADN call: add a request to a government web service
 

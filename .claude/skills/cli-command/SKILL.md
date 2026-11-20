@@ -2,6 +2,7 @@
 name: cli-command
 description: Use when adding or changing a `nanci` CLI command (internal/cli). Covers registration through CommandEnv and AppFactory, the flag conventions (-c/--cnpj, -m/--competencia, -d/--direcao vs -p/--papel, --chave, --incremental, -o/--out, --confirmar), Portuguese help and output, error wrapping, validation before AppFactory, password handling, the test harness, and the docs to update.
 ---
+<!-- Generated from .agents/skills/cli-command/ by scripts/sync-skills.sh; edit there. -->
 
 # CLI command: add or change a `nanci` command
 

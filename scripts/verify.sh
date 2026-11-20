@@ -97,13 +97,14 @@ step "golangci-lint" lint
 step "go.mod arrumado" tidy
 step "bindings do Wails" bindings
 step "código do sqlc" sqlc
+step "cópia dos skills" bash scripts/sync-skills.sh --check
 step "govulncheck" go run "golang.org/x/vuln/cmd/govulncheck@$vuln_version" ./... ./internal/desktop/...
 
 # A change to the rules is not a failure, but whoever asked for the work
 # must approve it: the agent that changed them cannot be the one to judge.
 rules=$(
 	base=$(git merge-base HEAD main 2>/dev/null) || exit 0
-	git diff --name-only "$base" -- AGENTS.md .claude/skills .golangci.yml .github/workflows scripts/verify.sh \
+	git diff --name-only "$base" -- AGENTS.md .agents/skills .claude/skills .gemini scripts/sync-skills.sh .golangci.yml .github/workflows scripts/verify.sh \
 		internal/desktop/frontend/eslint.config.ts internal/desktop/architecture_test.go internal/store/migrations_frozen_test.go
 	git diff --name-only --diff-filter=MDR "$base" -- internal/store/migrations_v2
 )

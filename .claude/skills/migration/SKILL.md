@@ -2,6 +2,7 @@
 name: migration
 description: Use when changing the SQLite schema of nanci (new table, column, index, CHECK value, export kind, sync source, or a data fix). Covers the goose migration, sqlc regeneration, the hand-written SQL that sqlc does not see, the migration test pattern and the docs list.
 ---
+<!-- Generated from .agents/skills/migration/ by scripts/sync-skills.sh; edit there. -->
 
 # Migration: change the SQLite schema
 

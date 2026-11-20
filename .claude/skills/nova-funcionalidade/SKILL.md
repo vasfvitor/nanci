@@ -2,6 +2,7 @@
 name: nova-funcionalidade
 description: Start here for any new feature, change or fix in nanci, especially when the person asking is not a developer ("quero que o app faça...", "adiciona um botão", "muda a tela de...", "corrige..."). Plain-Portuguese plan for approval, local branch, scripts/verify.sh, and a list of things to stop and ask about.
 ---
+<!-- Generated from .agents/skills/nova-funcionalidade/ by scripts/sync-skills.sh; edit there. -->
 
 # Nova funcionalidade: do pedido ao commit
 

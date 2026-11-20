@@ -2,6 +2,7 @@
 name: desktop-method
 description: Use when exposing a backend capability to the nanci desktop app end to end (app service, DTO, Wails method, bindings, client, composable, store, page), or changing an existing one. Walks every layer with the file to edit, the pattern to copy and the test that pins it, using ExportNFeDocuments as the worked example.
 ---
+<!-- Generated from .agents/skills/desktop-method/ by scripts/sync-skills.sh; edit there. -->
 
 # Desktop method: one capability, every layer
 
