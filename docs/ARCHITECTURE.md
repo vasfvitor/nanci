@@ -2,57 +2,34 @@
 
 ## Estrutura de Diretórios
 
-- `cmd/nanci`: Ponto de entrada (main) do CLI.
-- `cmd/mockcert`: Gera com o OpenSSL o certificado A1 de teste em `internal/foundation/cert/testdata/` (`make mockcert`).
-- `cmd/seeddev`: Cria um banco de desenvolvimento em `devdata/` com uma empresa, o certificado de teste e algumas NFS-e de exemplo (`make seeddev`).
-- `internal/cli`: Adaptadores e configuração dos comandos Cobra (ex: `nanci pull`, `nanci export`, `nanci nfe`, `nanci cte`).
-- `internal/desktop`: O aplicativo Wails completo. Contém o código Go que faz ponte com o frontend, e dentro dele, `frontend/` com o código Vue 3 / TypeScript.
-- `internal/app`: Casos de uso centrais. Responsável por inicializar as dependências e amarrar repositórios com serviços. Os casos de uso de NF-e ficam em `NFeService` (`internal/app/nfe*.go`) e os de CT-e em `CTeService` (`internal/app/cte*.go`).
-- `internal/sync`: Loop de sincronização por NSU, genérico por origem (NFS-e, NF-e e CT-e), com orçamento de consultas, bloqueios e carregamento do certificado (`CertificateLoader`).
-- `internal/syncstate`: Estado da sincronização por empresa e origem, sem o loop: `SyncSource`, os registros `SyncRun` e `SyncState`, os enums de status, modo, motivo de parada e política inicial (`SyncStartPolicy`), o evento de progresso e os parâmetros que o store recebe para gravá-los. Pacote folha, só importa `internal/dfe`. Não fica em `internal/sync` porque `sync` importa `store` e `store` precisa desses tipos.
-- `internal/company`: Cadastro das empresas (o tipo `Company`, `Store` e `Manager`): validação de CNPJ e UF, política inicial de sincronização e vínculo com a credencial, que precisa ter a mesma raiz de CNPJ.
-- `internal/credential`: Cadastro das credenciais (certificados A1 reutilizáveis entre empresas): o tipo `Credential`, caminho do arquivo e rótulo. A senha fica no keyring do sistema, a cargo de `internal/app`.
-- `internal/store`: Camada de persistência. Contém as queries (frequentemente geradas via sqlc), conexões SQLite e a pasta `migrations_v2/` com o schema do banco.
-- `internal/store/sqlgen`: Código gerado pelo sqlc a partir de `internal/store/queries`, com o schema lido das migrations em `migrations_v2/` (configuração em `sqlc.yaml`). Não editar à mão.
-- `internal/files`: Armazenamento dos XMLs brutos em `blobs/`, um arquivo por hash SHA-256 (`BlobStore`).
-- `internal/nfse` e `internal/adn`: Modelos da Nota Fiscal de Serviço Eletrônica (documento, eventos, chave de 50 caracteres, papel da empresa e parsers; só NFS-e, como `nfe` e `cte`) e cliente da API do Ambiente de Dados Nacional.
-- `internal/danfse`: Interface `Renderer` (XML da NFS-e entra, PDF do DANFSe sai) e a implementação em `godanfsev2/`, com a biblioteca `go-danfse-v2`. O DANFSe é gerado localmente, sem chamar a API do ADN.
-- `internal/danfe` e `internal/dacte`: Interfaces `Renderer` (XML da NF-e ou do CT-e entra, PDF do DANFE ou do DACTE sai, com a marca d'água de cancelada opcional) e as implementações em `fiscalrenderer/`, com a biblioteca [fiscal-renderer](https://github.com/awafinance/fiscal-renderer) (LGPL-3.0). O DACTE só tem o leiaute do CT-e modelo 57: CT-e OS, GTV-e e CT-e Simplificado ficam sem PDF (`cte.Document.HasDACTE`).
-- `internal/dfe`: Vocabulário comum dos documentos fiscais eletrônicos da SEFAZ (NF-e, CT-e): chave de acesso de 44 caracteres, valores monetários (`Money`) e `ErrInvalidEnum`, mais o que todas as origens usam, NFS-e inclusive: `CompanyID`, `CredentialID`, `GenerateID` e `Environment` (`producao` ou `producao_restrita`). Sem código de rede ou banco.
-- `internal/nfe`: Modelos da NF-e (modelo 55): leitura de `resNFe`, `procNFe` e eventos, papel da empresa na nota, regras de mesclagem resumo/completa, estado e prazos da manifestação.
-- `internal/cte`: Modelos do CT-e (modelos 57 e 67, GTV-e modelo 64 e CT-e Simplificado): leitura de `procCTe`, `procCTeOS`, `procGTVe`, `procCTeSimp` e `procEventoCTe`, resolução do tomador, papéis da empresa no documento e regras de mesclagem e situação.
-- `internal/sefaz`: Cliente SOAP dos webservices do Ambiente Nacional da NF-e e do CT-e (`NFeDistribuicaoDFe`, `CTeDistribuicaoDFe` e `NFeRecepcaoEvento4`) e assinatura XMLDSig dos eventos. Só fala o protocolo; regras de armazenamento e sincronização ficam com quem chama.
-- `internal/report`: Escritores das exportações compartilhados pelas origens: `WriteCSV` e `WriteXLSX` recebem uma `Spreadsheet` (colunas, abas e linhas) que cada origem monta com seu próprio tipo de linha (`NFSeRow`, `NFeRow`, `CTeRow`), `GenerateZIP` grava os XMLs no `.zip` conforme as entradas de cada origem e `GeneratePDFZIP` grava no `.zip` o PDF que o renderizador da origem gera de cada XML.
-- `internal/foundation`: Utilitários gerais do projeto (parsers de CNPJ, códigos de UF em `uf`, handlers de build, criptografia).
-- `internal/foundation/httpclient`: Cliente HTTP mTLS neutro compartilhado por `internal/adn` e `internal/sefaz`: transporte TLS, retry, leitura limitada do corpo e registros de log. Quem chama define cabeçalhos, formato do payload, o significado de cada status e como mascarar identificadores (CNPJ, chave de acesso) antes de irem para o log.
-- `internal/foundation/redact`: Mascaramento de identificadores fiscais (CNPJ, CPF, chave de acesso, nomes) em XML de NF-e, CT-e e NFS-e. `internal/sefaz` e `internal/adn` mascaram os corpos de resposta que vão para o log e para as mensagens de erro; `internal/adn` mascara também o `cnpjConsulta` e a chave de `NFSe/{chave}/...` nas URLs. `internal/sync` mascara a prévia do XML que não pôde ser lido. Nas respostas JSON do ADN a máscara não alcança o XML, que vem em base64 com gzip (`ArquivoXml`).
-- `internal/foundation/xmlwalk`: Leitura de XML em fluxo que entrega cada elemento pelo caminho a partir da raiz (`Walk`, `HasAnySuffix`, `AttrValue`), para os parsers de documentos fiscais casarem campos por sufixo de caminho. Usado por `internal/nfe` e `internal/cte`.
-- `third_party/gonfe`: Licença do [gonfe](https://github.com/mschunke/gonfe) (MIT), do qual partes de `internal/sefaz` foram adaptadas.
+O CLI (`cmd/nanci`, comandos em `internal/cli`) e o aplicativo (`internal/desktop`, módulo Go separado com o frontend Vue em `frontend/`) usam o mesmo núcleo: casos de uso em `internal/app`, sincronização em `internal/sync` e banco em `internal/store`. Os pacotes cujo papel não sai do nome:
+
+- `internal/syncstate`: estado da sincronização por empresa e origem, sem o loop (`SyncSource`, `SyncRun`, `SyncState`, os enums e o evento de progresso). Pacote folha, só importa `internal/dfe`. Não fica em `internal/sync` porque `sync` importa `store` e `store` precisa desses tipos.
+- `internal/dfe`: vocabulário comum da NF-e e do CT-e (chave de 44 caracteres, `Money`) e o que todas as origens usam, NFS-e inclusive (`CompanyID`, `CredentialID`, `Environment`). Sem código de rede ou banco.
+- `internal/company`: a empresa precisa ter a mesma raiz de CNPJ da credencial.
+- `internal/credential`: certificados A1 reutilizáveis entre empresas. A senha não fica aqui, e sim no cofre do sistema, a cargo de `internal/app` (ver [CERTIFICATES.md](CERTIFICATES.md)).
+- `internal/store/sqlgen`: gerado pelo sqlc a partir de `internal/store/queries`, com o schema lido das migrations goose em `migrations_v2/`. Não editar à mão.
+- `internal/files`: os XMLs brutos ficam em `blobs/`, um arquivo por hash SHA-256.
+- `internal/danfse`: o DANFSe é gerado localmente (`go-danfse-v2`), sem chamar a API do ADN.
+- `internal/danfe` e `internal/dacte`: DANFE e DACTE pela biblioteca [fiscal-renderer](https://github.com/awafinance/fiscal-renderer) (LGPL-3.0). O DACTE só tem o leiaute do CT-e modelo 57: CT-e OS, GTV-e e CT-e Simplificado ficam sem PDF (`cte.Document.HasDACTE`).
+- `internal/sefaz`: só fala o protocolo SOAP da SEFAZ e assina os eventos; armazenamento e sincronização ficam com quem chama.
+- `internal/report`: só os escritores (CSV, XLSX, ZIP de XML e de PDF) são compartilhados; cada origem monta as próprias linhas e entradas.
+- `internal/foundation/httpclient`: cliente HTTP mTLS neutro de `internal/adn` e `internal/sefaz` (TLS, retry, leitura limitada, log). Quem chama define cabeçalhos, payload, o significado de cada status e como mascarar identificadores antes do log.
+- `internal/foundation/redact`: `internal/sefaz` e `internal/adn` mascaram CNPJ, CPF, chaves e nomes nos corpos que vão para o log e para as mensagens de erro; `internal/adn` também nas URLs. Nas respostas JSON do ADN a máscara não alcança o XML, que vem em base64 com gzip (`ArquivoXml`).
+- `internal/foundation/xmlwalk`: leitura de XML em fluxo por caminho, para os parsers da NF-e e do CT-e casarem campos por sufixo.
+- `third_party/gonfe`: licença do [gonfe](https://github.com/mschunke/gonfe) (MIT), do qual partes de `internal/sefaz` foram adaptadas.
 
 ## Fluxo de Dados
 
-1. **Entrada de Dados**: O usuário interage pelo Frontend Wails ou pelo Terminal CLI.
-2. **Orquestração**: A requisição bate no `internal/app` que delega para o `internal/sync`.
-3. **Comunicação Segura**: O `sync` carrega o certificado da empresa e consulta a origem escolhida por mTLS: `internal/adn` para NFS-e, `internal/sefaz` para NF-e e CT-e.
-4. **Persistência Bruta**: Os XMLs recebidos são validados no `internal/nfse`, `internal/nfe` ou `internal/cte` e salvos de forma intacta no armazenamento de blobs, com os metadados no SQLite via `internal/store`.
-5. **Processamento**: Partes vitais do XML (Emitente, Tomador/Destinatário, Valor, Descrição) são cacheadas em colunas específicas no banco para pesquisa rápida e exportação.
+O XML recebido é guardado intacto em `blobs/`. Os campos usados em pesquisa e exportação (emitente, tomador ou destinatário, valor, descrição) são copiados para colunas do SQLite.
 
 ## Origens de Sincronização
 
-Cada serviço de distribuição por NSU é uma implementação da interface `Source` em `internal/sync/source.go`:
-
-- `Kind()` identifica a origem (`nfse`, `nfe`, `cte`).
-- `Policy()` informa o intervalo entre requisições e o limite de consultas por hora (0 = sem limite). A NFS-e não tem limite; a NF-e e o CT-e têm 20 por hora cada, contados separadamente. Na NF-e, o limite de 20 por hora da NT 2014.002 vale para `consNSU` e `consChNFe` somados, e o `distNSU` tem a espera de 1 hora depois do `cStat` 137; contar também o `distNSU` nas 20 é escolha conservadora do Nanci (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)).
-- `Fetch()` busca a página seguinte ao cursor e traduz a resposta em um `Batch`: itens, próximo cursor, se deve parar e até quando esperar (`WaitUntil`).
-- `ProcessItem()` decodifica e grava um item e chama `commit` exatamente uma vez, para que o checkpoint avance na mesma transação.
+Cada serviço de distribuição por NSU é uma implementação da interface `Source` em `internal/sync/source.go`. `ProcessItem()` chama `commit` exatamente uma vez, para que o checkpoint avance na mesma transação. O limite de consultas por hora de cada origem está em [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta); a NFS-e não tem limite.
 
 O loop (`internal/sync/loop.go`) é o mesmo para todas as origens. Ele desconta o orçamento antes de cada requisição, grava o bloqueio pedido pela origem e pula, como não suportado, um item que falha ao ser interpretado três vezes seguidas no mesmo NSU. O `Manager` recusa o pull de uma origem bloqueada antes de pedir a senha, e não deixa duas operações da mesma empresa e origem (pull, busca pela chave, recuperação de NSU, redefinição) rodarem ao mesmo tempo: `ReserveSource` marca a origem em memória, contra o mesmo processo, e em `source_locks`, contra outro processo do nanci (o aplicativo e a linha de comando usam o mesmo banco). A reserva no banco vale 1 minuto e é renovada enquanto a operação roda, então a de um processo que caiu vence sozinha.
 
-O estado é separado por empresa, origem e ambiente:
-
-- `sync_state` e `sync_runs`: cursor, checkpoint e histórico de execuções, com as colunas `source` e `environment`.
-- `company_sync_sources`: data em que a sincronização inicial terminou e `blocked_until`/`blocked_reason`, por empresa, origem e ambiente. Zerar o estado local limpa a sincronização inicial em todos os ambientes, mas mantém o bloqueio.
-- `sync_requests`: uma linha por requisição enviada, com a origem e o ambiente, para a janela móvel de 1 hora do orçamento.
+O estado é separado por empresa, origem e ambiente. Zerar o estado local limpa a sincronização inicial em todos os ambientes, mas mantém o bloqueio (`company_sync_sources.blocked_until`).
 
 Uma nova origem precisa de um `Source`, tabelas e tela próprias; o loop, o orçamento, o `httpclient` e o `CertificateLoader` servem sem mudança, como aconteceu com o CT-e. Os detalhes da NF-e estão em [NFE_SEFAZ.md](NFE_SEFAZ.md) e os do CT-e em [CTE_SEFAZ.md](CTE_SEFAZ.md).
 
@@ -60,4 +37,4 @@ Uma nova origem precisa de um `Source`, tabelas e tela próprias; o loop, o orç
 
 `internal/app` usa `internal/store` e `internal/sync` direto, de propósito: a camada de casos de uso é fina e os repositórios são testados com SQLite real, então uma interface entre os dois só repetiria as assinaturas.
 
-Os pacotes de domínio `internal/nfse`, `internal/nfe`, `internal/cte`, `internal/dfe` e `internal/syncstate` não importam `internal/app`, `internal/store` nem `database/sql`. A regra `domain` do `depguard` em `.golangci.yml` cobra isso, mas só fora do Windows. No Windows os caminhos usam barra invertida, os globs de `files` não casam e a regra não dispara.
+Os pacotes de domínio `internal/nfse`, `internal/nfe`, `internal/cte`, `internal/dfe` e `internal/syncstate` não importam `internal/app`, `internal/store` nem `database/sql`. A regra `domain` do `depguard` em `.golangci.yml` cobra isso também no Windows (conferido em 20/11/2026 com um import de `database/sql` em `internal/dfe`).

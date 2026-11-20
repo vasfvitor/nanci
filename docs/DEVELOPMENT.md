@@ -66,7 +66,7 @@ cd internal/desktop
 wails3 dev
 ```
 
-O `wails3 dev` segue `build/config.yml` e os Taskfiles: compila o app em modo dev (o que regenera os bindings em `frontend/bindings/`), sobe o Vite em `127.0.0.1:9245` e abre a janela. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. O frontend usa só `src/platform/wails/` para falar com o Wails (veja [AGENTS.md](../AGENTS.md)). Se o `wails3 dev` não abrir, rode as partes separadas: `pnpm dev --port 9245 --strictPort` em `frontend/` e, em `internal/desktop`, `wails3 build DEV=true` seguido de `FRONTEND_DEVSERVER_URL=http://127.0.0.1:9245 ./bin/nanci-desktop.exe`. Assim o Go não recompila sozinho.
+O `wails3 dev` segue `build/config.yml` e os Taskfiles: compila o app em modo dev (o que regenera os bindings em `frontend/bindings/`), sobe o Vite em `127.0.0.1:9245` e abre a janela. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. Se o `wails3 dev` não abrir, rode as partes separadas: `pnpm dev --port 9245 --strictPort` em `frontend/` e, em `internal/desktop`, `wails3 build DEV=true` seguido de `FRONTEND_DEVSERVER_URL=http://127.0.0.1:9245 ./bin/nanci-desktop.exe`. Assim o Go não recompila sozinho.
 
 Comandos do frontend, em `internal/desktop/frontend`:
 
@@ -98,7 +98,7 @@ wails3 build                    # só o executável: bin/nanci-desktop.exe
 wails3 task windows:package     # executável e instalador NSIS
 ```
 
-O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe` e instala por usuário, sem pedir permissão de administrador. Os releases são gerados pelo workflow `.github/workflows/release.yml` a partir de uma tag `vX.Y.Z`: ele grava a versão em `build/config.yml` (de onde saem os metadados do executável e do instalador) e em `internal/foundation/buildinfo` (pela variável `EXTRA_LDFLAGS` do Taskfile), e tira as notas da mensagem do commit da tag.
+O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe` e instala por usuário, sem pedir permissão de administrador. Uma tag `vX.Y.Z` dispara o workflow `.github/workflows/release.yml`, que grava a versão no executável e no instalador e tira as notas da mensagem do commit da tag.
 
 ## Chave de atualização
 
@@ -122,10 +122,6 @@ Matar o app à força pode deixar processos `msedgewebview2.exe` presos ao perfi
 
 Uma atualização automática que falha deixa o log do auxiliar em `%TEMP%\wails-update-<pid do app>.log`. O exe substituído fica como `.old.<n>` na pasta de instalação até a próxima atualização.
 
-## Testes de certificado
-
-Os testes de compatibilidade PKCS#12/BER (`third_party/go-pkcs12`, `internal/foundation/cert`) incluem a validação opcional de um certificado real, mantido fora do repositório. Sem ele, esses casos são pulados.
-
 ## Capturas de tela
 
 As imagens de `docs/screenshots/` (usadas no README e no site) são geradas com dados fictícios: o Vite sobe o frontend com o backend simulado e o Playwright captura cada tela nos temas claro e escuro.
@@ -146,6 +142,4 @@ cd website
 hugo server
 ```
 
-O site é a documentação de uso. Detalhes técnicos ficam em `docs/` e o site aponta para eles; não copie o conteúdo de um para o outro.
-
-Além do HTML, o build gera saídas para buscadores e LLMs: cada página da documentação tem uma cópia em Markdown (`docs/<página>.md`, `layouts/page.markdown.md`); a raiz tem `llms.txt`, uma linha por página a partir do `description` (`layouts/llms.txt`), e `llms-full.txt`, o Markdown de todas as páginas na ordem do site com links absolutos (`layouts/llms-full.txt`); uma página sai das duas listas com `llms: false`. `robots.txt` aponta o `sitemap.xml`. As tags Open Graph e Twitter usam `static/img/og-default.png` (1200×630), ou o primeiro screenshot da página na documentação, e cada página leva JSON-LD (`layouts/_partials/jsonld.html`): `SoftwareApplication` na home, `TechArticle` na documentação e `FAQPage` numa página feita de `{{< faq >}}`.
+O site é a documentação de uso. Detalhes técnicos ficam em `docs/` e o site aponta para eles; não copie o conteúdo de um para o outro. Front matter, saídas em Markdown e `llms.txt`, e a verificação de links ficam em [`.agents/skills/website-docs/SKILL.md`](../.agents/skills/website-docs/SKILL.md).
