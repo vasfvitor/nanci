@@ -250,6 +250,7 @@ import NumeroCell from '../components/NumeroCell.vue'
 import PartyCell from '../components/PartyCell.vue'
 import StateLegend from '../components/StateLegend.vue'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
+import { useImportActions } from '@/composables/useImportActions'
 import { useNFeDocuments } from '@/composables/useNFeDocuments'
 import { useNFeImportActions } from '@/composables/useNFeImportActions'
 import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
@@ -376,10 +377,16 @@ const { registerSelectedCiencia, startCiencia, openManifestacao } = useNFeManife
   syncNFe,
 })
 
-const { importXML, openFetchDialog } = useNFeImportActions({
+const { importDisabled, importXML } = useImportActions('nfe', {
+  cnpj,
+  exporting,
+  isSyncing,
+  isResetting,
+  importXML: nfe.importXML,
+})
+const { openFetchDialog } = useNFeImportActions({
   cnpj,
   status,
-  importXML: nfe.importXML,
   fetchByChave: nfe.fetchByChave,
 })
 
@@ -438,12 +445,6 @@ async function syncNFe() {
     notifySyncError('Erro na sincronização da NF-e', error)
   }
 }
-
-// The import and the fetch hold the NF-e sync marker, so they wait for a
-// pull, a reset or an export to finish.
-const importDisabled = computed(
-  () => exporting.value || isSyncing.value || isResetting.value || !cnpj.value
-)
 
 function confirmResetNFe() {
   if (!cnpj.value) return

@@ -2,9 +2,8 @@ import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNFeImportActions, type NFeImportActionsOptions } from './useNFeImportActions'
-import ImportResultDialog from '@/components/ImportResultDialog.vue'
 import NFeFetchDialog from '@/components/NFeFetchDialog.vue'
-import type { FetchByChaveResult, ImportXMLResult, NFeStatusResult } from '@/types/desktop'
+import type { FetchByChaveResult, NFeStatusResult } from '@/types/desktop'
 
 type OkHandler = (payload: unknown) => void
 
@@ -24,10 +23,6 @@ vi.mock('quasar', () => ({
 
 const chave = '35260912345678000195550010000000011000000010'
 
-function importResult(rejected: number): ImportXMLResult {
-  return { Files: [], Imported: 1, Updated: 0, Rejected: rejected }
-}
-
 function fetchResult(overrides: Partial<FetchByChaveResult>): FetchByChaveResult {
   return {
     ChaveAcesso: chave,
@@ -40,72 +35,22 @@ function fetchResult(overrides: Partial<FetchByChaveResult>): FetchByChaveResult
 }
 
 function setup(overrides: Partial<NFeImportActionsOptions> = {}) {
-  const importXML = vi.fn(async (): Promise<ImportXMLResult | null> => importResult(0))
   const fetchByChave = vi.fn(async (_chave: string): Promise<FetchByChaveResult | null> =>
     fetchResult({})
   )
   const actions = useNFeImportActions({
     cnpj: ref('123'),
     status: ref({ RequestsLastHour: 4, RequestBudget: 20 } as NFeStatusResult),
-    importXML,
     fetchByChave,
     ...overrides,
   })
-  return { importXML, fetchByChave, actions }
+  return { fetchByChave, actions }
 }
 
 describe('useNFeImportActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     okHandlers.length = 0
-  })
-
-  it('reports an import without rejections and opens no dialog', async () => {
-    const { actions } = setup()
-
-    await actions.importXML()
-
-    expect(notify).toHaveBeenCalledWith({
-      type: 'positive',
-      message: 'Importação: 1 importado, 0 atualizados, 0 rejeitados.',
-    })
-    expect(dialog).not.toHaveBeenCalled()
-  })
-
-  it('lists the files when some were rejected', async () => {
-    const result = importResult(1)
-    const { actions } = setup({ importXML: async () => result })
-
-    await actions.importXML()
-
-    expect(notify).toHaveBeenCalledWith({
-      type: 'warning',
-      message: 'Importação: 1 importado, 0 atualizados, 1 rejeitado.',
-    })
-    expect(dialog).toHaveBeenCalledWith({
-      component: ImportResultDialog,
-      componentProps: { result, source: 'nfe' },
-    })
-  })
-
-  it('says nothing when the import did not run', async () => {
-    const { actions } = setup({ importXML: async () => null })
-
-    await actions.importXML()
-
-    expect(notify).not.toHaveBeenCalled()
-  })
-
-  it('reports a failed import', async () => {
-    const { actions } = setup({
-      importXML: async () => {
-        throw new Error('boom')
-      },
-    })
-
-    await actions.importXML()
-
-    expect(notify).toHaveBeenCalledWith({ type: 'negative', message: 'Erro ao importar XML: boom' })
   })
 
   it('opens no fetch dialog without a company', () => {

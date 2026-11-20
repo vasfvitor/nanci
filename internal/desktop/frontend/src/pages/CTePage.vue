@@ -292,7 +292,6 @@ import DocumentFilterSelect from '../components/DocumentFilterSelect.vue'
 import DocumentPageHeader from '../components/DocumentPageHeader.vue'
 import DocumentTableTop from '../components/DocumentTableTop.vue'
 import type { ExportChoice } from '../components/ExportDialog.vue'
-import ImportResultDialog from '../components/ImportResultDialog.vue'
 import NSUGapNotice from '../components/NSUGapNotice.vue'
 import NumeroCell from '../components/NumeroCell.vue'
 import ParseWarnings from '../components/ParseWarnings.vue'
@@ -304,12 +303,13 @@ import StateLegend from '../components/StateLegend.vue'
 import { useCTeDesacordoActions } from '@/composables/useCTeDesacordoActions'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
+import { useImportActions } from '@/composables/useImportActions'
 import { useNSURecovery } from '@/composables/useNSURecovery'
 import { copyChave, useNotify } from '@/composables/useNotify'
 import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { wailsErrorCode } from '@/platform/wails/client'
-import type { CTeExportFormat, CTeResetResult, CTeRow, ImportXMLResult } from '@/types/desktop'
+import type { CTeExportFormat, CTeResetResult, CTeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {
   cteModalLabel,
@@ -322,7 +322,6 @@ import {
 } from '@/utils/cteDisplay'
 import { desacordoMenuBlock } from '@/utils/cteDesacordo'
 import { CTE_EXPORT_FORMATS, exportedNoun } from '@/utils/exportFormats'
-import { importSummary } from '@/utils/importDisplay'
 import {
   formatChaveDFe,
   formatCpfCnpj,
@@ -449,6 +448,14 @@ const { cnpj, noCompanyLabel, contextLine } = useWorkspaceList({
   loadCompany: loadStatus,
 })
 
+const { importDisabled, importXML } = useImportActions('cte', {
+  cnpj,
+  exporting,
+  isSyncing,
+  isResetting,
+  importXML: cte.importXML,
+})
+
 async function search() {
   searchFailed.value = false
   try {
@@ -490,31 +497,6 @@ async function syncCTe() {
     )
   } catch (error) {
     notifySyncError('Erro na sincronização do CT-e', error)
-  }
-}
-
-// The import holds the CT-e sync marker, so it waits for a pull, a reset or
-// an export to finish.
-const importDisabled = computed(
-  () => exporting.value || isSyncing.value || isResetting.value || !cnpj.value
-)
-
-async function importXML() {
-  try {
-    const result = await cte.importXML()
-    if (result) notifyImportResult(result)
-  } catch (error) {
-    notifyError('Erro ao importar XML', error)
-  }
-}
-
-// notifyImportResult counts the files and, when some were rejected, lists
-// every file with its reason.
-function notifyImportResult(result: ImportXMLResult) {
-  const notify = result.Rejected > 0 ? notifyWarning : notifySuccess
-  notify(`Importação: ${importSummary(result)}.`)
-  if (result.Rejected > 0) {
-    $q.dialog({ component: ImportResultDialog, componentProps: { result, source: 'cte' } })
   }
 }
 
