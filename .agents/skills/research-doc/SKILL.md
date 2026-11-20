@@ -57,7 +57,7 @@ Todas as fontes foram consultadas em 07/10/2026. Afirmações marcadas "(relato 
 
 ## Memory versus repo
 
-A Claude memory (kept per user, outside the repo) holds session pointers, never the only copy of a fact. Anything a contributor needs (a source, a rule, a decision, a known bug) goes in the repo doc that owns it, and the memory points there.
+An agent memory (notes the tool keeps per user, outside the repo) holds session pointers, never the only copy of a fact. Anything a contributor needs (a source, a rule, a decision, a known bug) goes in the repo doc that owns it, and the memory points there.
 
 ## Verify before asserting
 
@@ -71,4 +71,4 @@ A dated claim (memory, research note, PENDENCIAS, an old commit message) is a le
 - [ ] "(relato de terceiros)" on every non-official claim; "Não encontrado" section in research notes
 - [ ] Resolved pending item removed from `PENDENCIAS.md`, decision with date in the area doc
 - [ ] Aged claims re-verified at `HEAD` before being repeated
-- [ ] Nothing left only in a Claude memory
+- [ ] Nothing left only in an agent memory

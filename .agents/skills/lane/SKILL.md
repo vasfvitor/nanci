@@ -1,17 +1,17 @@
 ---
 name: lane
-description: Use when delegating an implementation step of nanci to a subagent in an isolated worktree (a "lane"). Builds the agent prompt with the repo's non-negotiable mechanics (base commit, go.work and dist setup, LF, signed commits without trailers, bindings plus mocks, verification per area, report format) so nothing is re-derived from memory.
+description: Use when delegating an implementation step of nanci to another agent in an isolated worktree (a "lane"). Builds the agent prompt with the repo's non-negotiable mechanics (base commit, go.work and dist setup, LF, signed commits without trailers, bindings plus mocks, verification per area, report format) so nothing is re-derived from memory.
 ---
 
 # Lane: delegate one implementation step
 
-A lane is one subagent, one worktree, a few commits, disjoint files from every other running lane. The orchestrator integrates with the `integrate` skill afterwards.
+A lane is one agent, one worktree, a few commits, disjoint files from every other running lane. The orchestrator integrates with the `integrate` skill afterwards.
 
-## Before spawning
+## Before starting the agent
 
 1. Decide the scope in files: two lanes must not touch the same file. `src/platform/wails/client/`, `src/types/desktop/`, `frontend/bindings/` and `scripts/generate-screenshots.ts` are one unit; `go.mod`/`go.sum` of a module are one unit; `docs/ROADMAP.md` and `docs/PENDENCIAS.md` are edited by the orchestrator only.
 2. Pick the base: `main` for maintenance, the integration branch for a feature. Agent worktrees may start at a stale commit, so the prompt always begins with a reset to the base tip.
-3. Spawn with `isolation: worktree`, a short `name`, an explicit `model` when the session has a policy for subagents, and the prompt below filled in.
+3. Give the agent its own worktree: the tool's worktree isolation when it has one, or by hand with `git worktree add ../nanci-<lane> -b lane/<lane> <base>` and the agent started there. Give it a short name, the model the session's policy asks for (if any), and the prompt below filled in.
 
 ## Prompt skeleton
 
