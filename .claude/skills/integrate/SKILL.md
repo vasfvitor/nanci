@@ -16,7 +16,7 @@ description: Use when bringing a finished lane (commits an agent made in its own
 6. **Signatures.** When the repo signs commits, `git log --format=%G? origin/main..HEAD | sort | uniq -c` must be only `G`. Any history rewrite (`filter-branch`, `rebase`, `commit --amend` of someone else's commit) drops signatures: re-sign with `git rebase --exec 'git commit --amend --no-edit -S' <base>` and confirm the tree is unchanged (`git diff <old-tip> HEAD` empty).
 7. **Messages.** No attribution trailers (`Co-Authored-By:`, `Claude-Session:` or any other tool's trailer). If one slipped in: `git filter-branch -f --msg-filter 'sed "/^<Trailer>:/d"' <base>..HEAD`, then step 6 again.
 8. **Clean up.** `git worktree remove --force <path>` (if "Filename too long", `rm -rf` the directory then `git worktree prune`), delete the lane branch.
-9. **Roadmap.** Tick the item in `docs/ROADMAP.md` (one line with the date, do not rewrite the section); remove resolved items from `docs/PENDENCIAS.md`. Commit as `docs: …`.
+9. **Roadmap.** Delete the finished item from `docs/ROADMAP.md` and resolved items from `docs/PENDENCIAS.md`; the decisions go to the area doc, the history stays in git. Commit as `docs: …`.
 10. **Hand off.** Land as AGENTS.md "Working With Agents" says. Do not push: give the person running the session the exact command and the count of commits, then watch `gh run list` for the CI result after they push.
 
 ## What to report

@@ -51,7 +51,7 @@ Todas as fontes foram consultadas em 07/10/2026. Afirmações marcadas "(relato 
 
 ## ROADMAP and PENDENCIAS
 
-- `docs/ROADMAP.md` orders work in phases. When a phase is done, delete it and record its decisions in the area doc; decisions taken in planning go in "Decisões tomadas em <data>" with the date.
+- `docs/ROADMAP.md` orders the work that has not started and records what was ruled out. When an item is done, delete it and record its decisions in the area doc; decisions taken in planning go under "Decisões" with the date.
 - `docs/PENDENCIAS.md` is the short list of items without a plan. On resolving one, remove it and record the decision (what, why, date) in the area doc, not in the commit message only.
 - Both files are edited by the orchestrator only (see `lane`); a lane reports the change it would make.
 

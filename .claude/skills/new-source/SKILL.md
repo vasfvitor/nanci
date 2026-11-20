@@ -62,7 +62,7 @@ Docs:
 ## Decisions already made, do not reopen
 
 - Per-source everything: `NFeService`/`CTeService`, `nanci nfe`/`nanci cte` trees, `NFePage`/`CTePage`, one row type per source.
-- No central export layer (docs/ROADMAP.md, Fase 2 item 1). Each service writes its own ZIP and marks.
+- No central export layer (docs/PENDENCIAS.md, "Não fazer"). Each service writes its own ZIP and marks.
 - No shared `DocumentTable` component or store factory (docs/PENDENCIAS.md, 30/09/2026). The shared parts already exist: `useMarkViewed`, `useExportGuard`, `companySync.runSync`, `documentListState`. With a fourth source, evaluate before copying a fourth time: whether the four stores differ only in filter shape and `listInput` (then a factory pays), and whether the four tables can be built from shared cells without one slot per column (otherwise `DocumentTable` is just `q-table` again).
 - Portuguese fiscal identifiers everywhere (AGENTS.md): `ChaveAcesso`, `Situacao`, `tomador`, `<x>_manifestacoes`.
 - Wails methods return `desktopapi` DTOs, never domain structs.

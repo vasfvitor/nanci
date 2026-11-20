@@ -1,99 +1,54 @@
 # Roteiro de longo prazo
 
-Levantado em 07/10/2026 a partir do código, das issues abertas, do `docs/PENDENCIAS.md` e de uma pesquisa sobre quais dados fiscais uma empresa consegue puxar por API hoje. O material bruto, com fontes e datas, está em `docs/pesquisa/` (inventário de manutenção, SEFAZ DFe, NFS-e e municípios, Serpro e federal, eSocial e reforma); confira a data antes de confiar num fato de lá. O `PENDENCIAS.md` continua sendo a lista curta de itens sem plano; este arquivo ordena o trabalho em fases e registra o que foi descartado e por quê. Ao concluir uma fase, apague-a daqui e registre as decisões no documento da área.
+Este arquivo ordena o trabalho que ainda não começou e registra o que foi descartado e por quê. O material bruto, com fontes e datas, está em `docs/pesquisa/`; confira a data antes de confiar num fato de lá. Itens pequenos sem plano ficam no `PENDENCIAS.md`. Ao concluir um item, apague-o daqui e registre as decisões no documento da área.
 
 Esforço: **[P]** menos de uma hora, **[M]** alguns dias, **[G]** semanas.
 
-## Fase 0: fundação (este mês)
+## Issues abertas
 
-Tudo aqui é barato e reduz o custo de todas as fases seguintes.
+- **#14** (links do site): rodar um verificador de links no HTML do Hugo e fechar ou corrigir. [P]
+- **#4** (fork do go-pkcs12): o fork tem os backports até a v0.7.4 do upstream, e o upstream segue sem BER indefinido (conferido em 17/10/2026), então o fork fica. Ele também carrega `DecodeChainBytes` (#10). [M]
+- **#15** (assinatura do instalador no Windows): depende de aprovação externa (SignPath); o passo no workflow é pequeno. [M]
+- **#12** (criptografia em repouso): `modernc.org/sqlite` não tem SEE/SQLCipher, e os blobs são arquivos simples. Estacionado (07/10/2026) até o driver mudar ou surgir um pedido concreto.
+- **#10** (senha na memória): a lista do que não dá para zerar está no `PENDENCIAS.md`.
 
-**Estado em 07/10/2026 (branch `chore/fase-0`, 21 commits):** feito o portão de CI (`ci.yml`, `release.yml` depende dele; primeira execução real só no PR), a faxina (branches locais, sobras do spike v3, `.gitattributes` com renormalização, `.gitignore`, docs desatualizadas, comentários nos métodos `sefaz` sem chamador, `Makefile`), as dependências Go (x/crypto 0.57, sqlite 1.60, cobra, goose, go-retry) e do frontend (menores + vitest 5, pinia 4, vue-router 5, @quasar/vite-plugin 2, @eslint/css 2), o aviso de 45 dias de NSU, o teste de reuso do `ultNSU`, a auditoria do CNPJ alfanumérico (corrigiu `nfse.ParseAccessKey`, que rejeitava chaves com letras), o backport de segurança do fork do go-pkcs12 (GO-2026-5052 e IV do PBES2, issue #4) e os links relativos das cópias Markdown do site (#14). Também caiu um bug antigo do `make seeddev`.
+## Mais dados fiscais por API
 
-Ficou para o dono: colar os comentários prontos nas issues #4, #10, #12, #14 e #15 (texto no scratchpad da sessão de 07/10); TypeScript 7 (vue-tsc e typescript-eslint ainda não suportam); `@vue/test-utils` 2.5 (exige Node 24.15); os pontos em aberto do CNPJ alfanumérico listados em `docs/NFE_SEFAZ.md`.
-
-### Issues [P/M]
-
-- **#10** (senha na memória): fechar com comentário listando o residual que não dá para zerar (string do `keyring.Set`, `NANCI_CERT_PASSWORD`, string JS do Wails, chaves derivadas no fork do pkcs12).
-- **#14** (links do site): rodar um verificador de links no HTML do Hugo e fechar ou corrigir.
-- **#4** (fork do go-pkcs12): o fork já tem os backports até a v0.7.4 do upstream (`third_party/go-pkcs12/README.nanci.md`); falta verificar se o upstream ganhou suporte a BER indefinido. O fork também carrega `DecodeChainBytes` (#10), então voltar ao upstream exige levar isso para o chamador. [M]
-- **#15** (assinatura Windows): depende de aprovação externa (SignPath). Abrir o pedido; o passo no workflow é pequeno. [M]
-- **#12** (criptografia em repouso): `modernc.org/sqlite` não tem SEE/SQLCipher e os blobs são arquivos simples. **Estacionado** (decisão de 07/10/2026): fica aberto, sem plano, até o driver mudar ou surgir um pedido concreto. Comentar na issue.
-
-## Fase 1: dívida estrutural (1 a 2 meses)
-
-**Estado em 07/10/2026: concluída em `main`.** Vocabulário movido (`internal/syncstate`, `dfe`, `company`, `credential`; `internal/nfse` só NFS-e); módulo desktop de 24% para 67% de cobertura com `App` falando com interfaces estreitas (`internal/desktop/services.go`) e fakes em teste; os quatro módulos do frontend sem teste cobertos (+25 testes); logs em disco documentados em `privacidade.md`; CI com checks de drift (`go mod tidy`, `wails generate module`); skills de processo `lane` e `integrate` e de desenvolvimento `new-source`, `desktop-method`, `migration`, `cli-command`, `sefaz-call`, `website-docs`, `research-doc` em `.claude/skills/`, mais a seção "Working With Agents" no `AGENTS.md`. Derivar os skills do código achou e corrigiu: `--verbose`/`--trace` ignorados e prompt de senha no stdout (CLI), `schema.sql` divergente em duas tabelas (agora com teste de drift), quatro fatos errados no site, nome do banco de dev na doc. Achados dos testes do desktop que não foram corrigidos estão no `PENDENCIAS.md`.
-
-- **Vocabulário compartilhado fora de `internal/nfse`** [G]: `Company`, `Credential`, `Environment`, `SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy`, `SyncRun`, `SyncState` e `SyncSnapshot` têm 576 referências em 66 arquivos fora do pacote (`sync` 148, `company` 49, `credential` 24, `app` 24, `store` 19, `sefaz` 6). PR só de movimento, sem mudança de comportamento. Destino decidido em 07/10/2026:
-  - `Company` → `internal/company`, que já é o pacote da empresa cadastrada (`Store` e `Manager`); passa a ter também o tipo. Idem `Credential` → `internal/credential`.
-  - `Environment` (produção/homologação, o `tpAmb`) → `internal/dfe`, que é o vocabulário DF-e sem rede nem banco.
-  - Os enums e registros de sincronização (`SyncSource`, `SyncStatus`, `SyncStopReason`, `SyncMode`, `SyncStartPolicy`, `SyncRun`, `SyncState`, `SyncSnapshot`) → novo pacote folha `internal/syncstate`. Não podem ir para `internal/sync` porque `sync` importa `store` e `store` precisa deles (ciclo). O nome diz o que é: o estado da sincronização, sem o loop.
-  - Depois do movimento, `internal/nfse` fica só com a NFS-e, como `nfe` e `cte`.
-  - **Feito em 07/10/2026**, em quatro commits de movimento; `CredentialID` e `GenerateID` foram para `internal/dfe` junto com `Environment`.
-- **Testes do módulo desktop** [M]: `internal/desktop` está em 24% de cobertura; os métodos de `App` não têm teste. Introduzir um `core` falso (interface pequena por serviço) e testar validação de entrada, mapeamento de DTO e erros. Isso também é pré-requisito para a paridade de exportação.
-- **Frontend sem teste** [P/M]: `composables/useCredentials.ts`, `composables/useSefazBlock.ts`, `stores/query.ts`, `platform/wails/runtime.ts`.
-- **Logs em disco com CNPJ em claro**: mantém em claro (decisão de 07/10/2026), registrado em `website/content/docs/privacidade.md`.
-- **Docs**: atualizar `ARCHITECTURE.md` e `AGENTS.md` depois do movimento de pacotes; `docs/specs/` tem um único spec de 06/2026, decidir se a pasta fica.
-
-**Lote pré-Fase 2 (07/10/2026, em `main`):** passe de simplificação sobre a Fase 0 e 1 (15 commits: cache do CI, cópias mortas de store e fixtures, `credential.ValidateCertificatePath`, `cnpj.Normalize`, lookups exportados, charset de chave único em `dfe`, `IdleDays` como campo único, fakes do desktop num construtor) e as pendências de código (13 commits): desktop recusa chamadas após `startup` falho em vez de entrar em pânico, política vazia no editar mantém a guardada, mock da lista completo; `TestConnection` e `credential.Manager` com erro de banco distinto de "não encontrada"; `company add|update` valida antes de abrir o banco; `CommandEnv{Stdin, Stderr, Stdout}`; testes de `nfe export zip|xml`; ADN mascara corpos e a chave no path como o `sefaz`; três fatos corrigidos nos docs (20/h é `consNSU`+`consChNFe`, 45 dias é relato de terceiros); sqlc lê as migrations goose direto (`schema.sql` e o teste de drift apagados); seeder escreve pelos stores; globs do `depguard` corrigidos (nunca casavam, em nenhum SO). O que ficou está no `PENDENCIAS.md`.
-
-**UX do desktop (17/10/2026, em `main`, 11 commits):** primeira abertura com cartão de boas-vindas (três passos e botão que abre o cadastro; a primeira empresa é selecionada e leva a Documentos com o selo "Primeira sincronização"; o botão do drawer abre o diálogo); formulários de empresa e credencial com rascunho durante a sessão (fechar sem salvar não perde nada, "Rascunho recuperado" com Limpar, clique fora bloqueado enquanto há texto), Enter envia, erros inline, `autofocus`, CNPJ com máscara e DV conferido no frontend (mesma regra do Go, alfanumérico incluso); fechar o app com sync em andamento pergunta antes (`OnBeforeClose` cobre X, Ctrl+Q e Alt+F4); toast de exportação com "Abrir pasta"; senha do certificado com toggle e trava durante a checagem; Testar Conexão também para CT-e; formato de exportação lembrado por origem; `localStorage` protegido por try/catch nos stores; Esc limpa o filtro. Fora, por custo: ordenação persistida, copiar CNPJ na tabela, teste de conexão NF-e (sem binding).
-
-**Manutenção de 17/10/2026 (lotes 1 a 3, 18 commits em `main`):** Prettier imposto no `lint:check` (um commit de formatação, 71 arquivos); devDeps do frontend em dia (exceto `@vue/test-utils` 2.5, que exige Node mais novo); goose 3.29, x/term 0.47 e famílias `x/*`; fork do go-pkcs12 com o fix da 0.7.4 (upstream segue sem BER, fork fica); cobertura `syncstate` 44→100%, `company` 52→94%, `logger` e `xmlwalk` 0→100%; `FetchByChave` pede a senha antes de gastar a consulta; `TestConnection` distingue erro de banco; `main.ts`/`console.ts` com storage protegido; Esc vence o debounce do filtro; textos do Sobre com as três origens. Arquivos grandes partidos por área sem mudar API: `desktop/app.go` → `app_{runtime,companies,nfse,nfe,cte}.go`, `desktopapi/dto.go` → `dto_*.go`, `client.ts` → `platform/wails/client/`, `types/desktop.ts` → `types/desktop/`. Duplicação NF-e/CT-e removida no `store` (`dfe.go`: marcas de exportação, pendentes, eventos por chave, reset) e no `sync` (`source_dfe.go`: pipeline de item da distribuição); lookups de empresa e credencial preservam o sentinela de não encontrado; `xmlwalk` aceita callback nulo. Fica para depois: arquitetura do frontend (diálogos chamando `desktopClient`, `SettingsPage`, `useNFeDocuments`, `SefazSourceStatus` repetido), listada no `PENDENCIAS.md`.
-
-## Fase 2: funcionalidades já pendentes
-
-Ordem por valor para quem usa, não por facilidade.
-
-1. **Paridade de exportação (NF-e e CT-e com CSV, XLSX e PDF)** [G]. **Concluída em `main` em 17/10/2026** (31 commits de 16 e 17/10). NFS-e, NF-e e CT-e exportam CSV, XLSX, ZIP de XML com eventos, PDF avulso e ZIP de PDF, na CLI e no desktop, cada formato com marca própria para o incremental (migration 021). DANFE e DACTE pelo `github.com/awafinance/fiscal-renderer` v0.8.1 (LGPL-3.0, dependência direta; nanci é GPL-3.0); DACTE só para o CT-e modelo 57, resumos de NF-e nunca têm DANFE, ambos contados e informados. Sem camada central: só os escritores de `internal/report` são compartilhados. De passagem: avulsos contam 1 (toast corrigido), `GenerateXLSX` deixava de fora as NFS-e intermediadas, `ExportDANFSeZIP` perdia erro de `Close`, formato padrão do diálogo de NF-e e CT-e passou a CSV, Go 1.26.9 e x/net 0.60.0 pelas correções de outubro. Fora, por decisão: eventos no ZIP da NFS-e e `exported_events` na NFS-e.
-2. **Importar XML avulso e buscar por chave** [M]. **Concluído em `main` em 17/10/2026.** `nfe import`/`cte import` e o botão Importar XML aceitam procNFe, resNFe, eventos e os quatro procCTe; XML em que a empresa não é parte, de outro ambiente ou evento de nota desconhecida é recusado com mensagem; documento importado fica sem NSU (`first_seen_nsu` NULL, mostrado como "Importado"). `nfe buscar --chave` e "Buscar pela chave" usam `consChNFe` com 1 das 20 consultas/h, respeitando só os bloqueios de consumo (656 e orçamento; o `caught_up` do distNSU não barra, decisão de 17/10), e guardam o que a SEFAZ devolver (completa, ou resumo até a Ciência); 640/641/632/653/654/618 viram mensagens. Alicerces reutilizáveis: `sync.Manager.SpendRequest`/`BlockedFor`, `sync.Store.Apply` + `ProcessItem` fora do loop, `dfe.RootElement`.
-3. **Ligação CT-e ↔ NF-e nas telas** [M]. **Concluída em 18/11/2026**, só no frontend: o CT-e aberto mostra **Ver NF-e** em cada nota transportada, e a NF-e aberta lista os CT-e do frete com **Ver CT-e**. O link abre a outra página só com aquele documento (`?chave=`), de qualquer competência, sem mudar a competência do workspace (`chaveFocusState`, `useRouteChaveFocus`). Fora, por custo: um indicador de frete em cada linha da NF-e, que pediria uma consulta em lote no `store`.
-4. **Prestação em desacordo (CT-e, 610110)** [G]. **Concluída em 19/11/2026**, na CLI (`cte desacordo`) e no aplicativo (menu da linha do CT-e): o tomador envia o evento à SEFAZ autorizadora da UF da chave, com a observação, depois de revisar o prazo de 45 dias (mostrado, sem bloquear) e confirmar. Fontes oficiais em `docs/pesquisa/2026-11-19-cte-desacordo.md`; decisões em `docs/CTE_SEFAZ.md`. Fora: o cancelamento (610111), em `docs/PENDENCIAS.md`, e a SOAP action ainda não conferida no WSDL oficial.
-5. **Recuperar intervalo perdido de NSU** [M]. **Concluída em 18/11/2026**, para NF-e e CT-e: a sincronização registra os NSUs que o cursor passou sem documento (o salto de um 656 quando outro programa consumiu a sequência do CNPJ, e buracos dentro de um lote; migration 023), e `nfe recuperar-nsu`/`cte recuperar-nsu` e o botão **Recuperar NSUs** pedem cada um com `consNSU`, deixando 2 consultas da hora para o pull. Uma pausa de mais de 60 dias não entra: nela o Ambiente Nacional não gera NSU, então não há o que pedir. Detalhes em `docs/NFE_SEFAZ.md`, "Recuperar NSUs faltantes".
-
-## Fase 3: mais dados fiscais por API
-
-Universo levantado em 07/10/2026 (fontes oficiais quando existem; itens marcados *3P* vêm só de relatos de terceiros). Ordenado por valor para a empresa ou o contador × viabilidade para uma ferramenta desktop com certificado A1, em Go, gratuita.
+Universo levantado em 07/10/2026 (itens marcados *3P* vêm só de relatos de terceiros). Ordenado por valor para a empresa ou o contador × viabilidade para uma ferramenta desktop com certificado A1, em Go, gratuita.
 
 | # | Fonte | O que traz | Acesso | Custo | Viabilidade | Valor |
 |---|---|---|---|---|---|---|
-| 1 | NF-e `consChNFe` / `consNSU` | procNFe por chave; NSU faltante | A1, mesmo serviço de hoje | grátis, 20/h | fácil | alto (import e recuperação) |
-| 2 | **MDF-e** `MDFeDistribuicaoDFe` v1.00 | MDF-e em que a empresa é autXML, contratante ou dona do veículo | A1, SOAP SVRS | grátis | médio | médio (transportadoras e contratantes) |
-| 3 | NFS-e ADN `GET /NFSe/{chave}` | a nota pela chave | A1, já documentado | grátis | fácil | médio (consulta direta completa) |
-| 4 | NFS-e São Paulo `ConsultaNFeRecebidas` | notas tomadas em SP, 50 por página | A1 + XMLDSig SHA-1 | grátis | médio | depende: *verificar primeiro* se SP já aparece no ADN pelo compartilhamento (LC 214 art. 62; *3P* diz que sim) |
-| 5 | `CadConsultaCadastro4` | cadastro de IE do fornecedor por CNPJ | A1; BA, GO, MS, MT, PE, PR, RS, SP e SVRS; SP/ES podem recusar certificado de outra UF | grátis | fácil | baixo a médio (validar contraparte) |
-| 6 | CNPJ público (`minhareceita.org`, BrasilAPI) | razão social, UF, situação | sem certificado | grátis, limites por IP | fácil | médio (preencher cadastro da empresa) |
-| 7 | **eSocial** download de eventos | XML dos eventos já enviados, inclusive por contador | A1 da empresa; 10 chamadas/dia, 50 eventos por chamada, nada nos dias 1 a 7 | grátis | médio | alto para quem tem folha, mas é folha/RH, não documento fiscal: **fora do escopo por ora** (07/10/2026) |
-| 8 | Serpro Integra Contador | DCTFWeb, Simples/PGDAS, caixa postal, parcelamentos, pagamentos, DARF (Sicalc), CND | e-CNPJ mTLS + OAuth2; a própria empresa não precisa de procuração | pago por chamada: consulta R$0,24 a 0,06; sem faixa grátis | médio | alto para contador. **Sem plano agora** (07/10/2026); fica em aberto como módulo opcional "traga suas credenciais". Nada barato a preparar hoje: o mTLS do `httpclient` já serve, e o resto (OAuth2, envelope JSON) só faz sentido com o módulo |
-| 9 | CBS apuração (`api.receitafederal.gov.br/apuracao-cbs/v2`) | débitos e créditos de CBS | OAuth gov.br (não é A1) + **webhook HTTPS público** | grátis, 4/dia | difícil para desktop | alto a partir de 2027; acompanhar |
-| 10 | EFD-Reinf consulta de recibos | só recibo, id e status | A1 | grátis | fácil | baixo |
-| 11 | GNRE lote | emissão de guia | e-CNPJ + cadastro no portal | grátis | médio | baixo (emissão, não coleta) |
-| 12 | Serpro Consulta NF-e / CNPJ / CND | JSON limitado pela anuência; CND em PDF | API key | R$0,66 a 0,88 por consulta | fácil | baixo (não devolve o XML) |
+| 1 | **MDF-e** `MDFeDistribuicaoDFe` v1.00 | MDF-e em que a empresa é autXML, contratante ou dona do veículo | A1, SOAP SVRS | grátis | médio | médio (transportadoras e contratantes) |
+| 2 | NFS-e ADN `GET /NFSe/{chave}` | a nota pela chave | A1, já documentado | grátis | fácil | médio (consulta direta completa) |
+| 3 | NFS-e São Paulo `ConsultaNFeRecebidas` | notas tomadas em SP, 50 por página | A1 + XMLDSig SHA-1 | grátis | médio | depende: *verificar primeiro* se SP já aparece no ADN pelo compartilhamento (LC 214 art. 62; *3P* diz que sim) |
+| 4 | `CadConsultaCadastro4` | cadastro de IE do fornecedor por CNPJ | A1; BA, GO, MS, MT, PE, PR, RS, SP e SVRS; SP/ES podem recusar certificado de outra UF | grátis | fácil | baixo a médio (validar contraparte) |
+| 5 | CNPJ público (`minhareceita.org`, BrasilAPI) | razão social, UF, situação | sem certificado | grátis, limites por IP | fácil | médio (preencher cadastro da empresa) |
+| 6 | **eSocial** download de eventos | XML dos eventos já enviados, inclusive por contador | A1 da empresa; 10 chamadas/dia, 50 eventos por chamada, nada nos dias 1 a 7 | grátis | médio | alto para quem tem folha, mas é folha/RH: **fora do escopo** |
+| 7 | Serpro Integra Contador | DCTFWeb, Simples/PGDAS, caixa postal, parcelamentos, pagamentos, DARF, CND | e-CNPJ mTLS + OAuth2 | pago por chamada (R$0,24 a 0,06), sem faixa grátis | médio | alto para contador. **Sem plano**; talvez um módulo opcional "traga suas credenciais" |
+| 8 | CBS apuração (`api.receitafederal.gov.br/apuracao-cbs/v2`) | débitos e créditos de CBS | OAuth gov.br (não é A1) + **webhook HTTPS público** | grátis, 4/dia | difícil para desktop | alto a partir de 2027; acompanhar |
+| 9 | EFD-Reinf consulta de recibos | só recibo, id e status | A1 | grátis | fácil | baixo |
+| 10 | GNRE lote | emissão de guia | e-CNPJ + cadastro no portal | grátis | médio | baixo (emissão, não coleta) |
+| 11 | Serpro Consulta NF-e / CNPJ / CND | JSON limitado pela anuência; CND em PDF | API key | R$0,66 a 0,88 por consulta | fácil | baixo (não devolve o XML) |
+
+Sequência proposta: **2 e 5** são pequenas. **1 (MDF-e)** é a quarta origem e o gatilho que o `PENDENCIAS.md` prevê para reconsiderar um `DocumentTable` e um store comum. **3 e 4** quando houver um caso real (uma nota de SP que não apareça no ADN; um fornecedor a validar). **6 e 7** fora por decisão. **8** só com um caminho sem webhook público.
 
 Sem caminho (não planejar):
 
-- **NF-e e CT-e emitidos pela própria empresa**: a distribuição nunca devolve ao emitente (`consChNFe` responde 641). Só via importação de XML ou do emissor.
-- **NFC-e** para o comprador: não existe distribuição; desde 04/05/2026 compra com CNPJ exige NF-e 55. Em SP o emissor baixa as próprias pelo SAE-NFC-e.
+- **NF-e e CT-e emitidos pela própria empresa**: a distribuição nunca devolve ao emitente (`consChNFe` responde 641). Só pela importação do XML.
+- **NFC-e** para o comprador: não existe distribuição; desde 04/05/2026 compra com CNPJ exige NF-e 55.
 - **NF3e, NFCom, BP-e, NFAg, NFGas**: sem serviço de distribuição na SVRS.
 - **SPED (EFD, ECD, ECF)**: só pelo ReceitanetBX, sem API.
 - **IBS (Comitê Gestor)**: nenhuma API encontrada.
 - **CNDT e CRF/FGTS**: sem API oficial.
 - **Open Finance**: exige autorização do Banco Central para receber dados.
 
-Fatos do ecossistema que mudam prioridades:
+Fatos que mudam prioridades (detalhes e fontes em `docs/pesquisa/2026-10-07-nfse-adn-municipios.md` e `2026-10-07-federal-serpro.md`):
 
-- LC 214/2025 art. 62: desde 01/01/2026 todo município usa o emissor nacional ou compartilha com o ADN; gov.br diz que os 5.571 entes aderiram. Entre os 10 maiores PIBs, Rio, Maricá, BH, Manaus, Curitiba e Porto Alegre estão no emissor nacional; São Paulo e Brasília têm sistema próprio compartilhando; Osasco e Guarulhos sem confirmação.
-- CGSN 191/2026: ME e EPP obrigadas ao emissor nacional a partir de 01/11/2026. Reduz ainda mais o caso para APIs municipais.
-- Módulo de Apuração Nacional (ISS, guia DNA) em produção restrita desde 14/04/2026, sem spec de API.
-- Nenhuma biblioteca Go para DistDFe, CT-e, MDF-e, GNRE ou Integra Contador; referências MIT/Apache existem em Dart, Python e TypeScript.
+- Desde 01/01/2026 todo município usa o emissor nacional ou compartilha com o ADN (LC 214/2025 art. 62), e ME e EPP usam o emissor nacional desde 01/11/2026 (CGSN 191/2026). APIs municipais quase não fazem falta.
+- Não há biblioteca Go para DistDFe, CT-e, MDF-e, GNRE ou Integra Contador.
 
-Sequência proposta: **1 → 3 → 6** são pequenas e cabem na Fase 2. **2 (MDF-e)** é a quarta origem e é o gatilho que o `PENDENCIAS.md` já previa para reconsiderar um `DocumentTable` e um store comum; fazer depois da paridade de exportação, para não carregar quatro páginas de exportação diferente. **4 e 5** quando houver um caso real (uma nota de SP que não apareça no ADN; um fornecedor a validar). **7 e 8** fora do plano por decisão (acima). **9** só quando houver um caminho sem webhook público ou um relay opcional.
+## Decisões
 
-## Decisões tomadas em 07/10/2026
-
-1. Vocabulário compartilhado: `Company` → `internal/company`, `Credential` → `internal/credential`, `Environment` → `internal/dfe`, estado de sync → novo `internal/syncstate`.
-2. #12 criptografia em repouso: estacionado, sem plano.
-3. APIs pagas (Serpro): sem plano agora; possível módulo opcional no futuro; nada a preparar hoje.
-4. eSocial: fora do escopo por ora (é folha/RH, não documento fiscal).
-5. Logs em disco: mantêm o CNPJ em claro; só o pacote exportado mascara.
-6. Aviso dos 60 dias de NSU: limiar de 45 dias.
+- APIs pagas (Serpro): sem plano; nada a preparar hoje (07/10/2026).
+- eSocial: fora do escopo, por ser folha/RH e não documento fiscal (07/10/2026).
+- Logs em disco mantêm o CNPJ em claro; só o pacote exportado mascara (07/10/2026, em `website/content/docs/privacidade.md`).
