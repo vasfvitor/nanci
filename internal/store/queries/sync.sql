@@ -65,6 +65,12 @@ ON CONFLICT(raw_hash) DO NOTHING;
 -- name: GetDocumentIDByAccessKey :one
 SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1;
 
+-- name: GetDocumentByRawHash :one
+SELECT id, chave_acesso FROM documents WHERE raw_hash = ? LIMIT 1;
+
+-- name: UpdateDocumentAccessKey :exec
+UPDATE documents SET chave_acesso = ?, updated_at = ? WHERE id = ?;
+
 -- name: LinkEventsToDocument :exec
 UPDATE events SET document_id = ? WHERE chave_acesso = ? AND document_id IS NULL;
 

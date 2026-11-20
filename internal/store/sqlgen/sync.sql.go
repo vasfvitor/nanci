@@ -10,6 +10,22 @@ import (
 	"database/sql"
 )
 
+const getDocumentByRawHash = `-- name: GetDocumentByRawHash :one
+SELECT id, chave_acesso FROM documents WHERE raw_hash = ? LIMIT 1
+`
+
+type GetDocumentByRawHashRow struct {
+	ID          string
+	ChaveAcesso string
+}
+
+func (q *Queries) GetDocumentByRawHash(ctx context.Context, rawHash string) (GetDocumentByRawHashRow, error) {
+	row := q.db.QueryRowContext(ctx, getDocumentByRawHash, rawHash)
+	var i GetDocumentByRawHashRow
+	err := row.Scan(&i.ID, &i.ChaveAcesso)
+	return i, err
+}
+
 const getDocumentIDByAccessKey = `-- name: GetDocumentIDByAccessKey :one
 SELECT id FROM documents WHERE chave_acesso = ? LIMIT 1
 `
@@ -100,6 +116,21 @@ func (q *Queries) ListEventTypesByAccessKey(ctx context.Context, chaveAcesso str
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateDocumentAccessKey = `-- name: UpdateDocumentAccessKey :exec
+UPDATE documents SET chave_acesso = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateDocumentAccessKeyParams struct {
+	ChaveAcesso string
+	UpdatedAt   string
+	ID          string
+}
+
+func (q *Queries) UpdateDocumentAccessKey(ctx context.Context, arg UpdateDocumentAccessKeyParams) error {
+	_, err := q.db.ExecContext(ctx, updateDocumentAccessKey, arg.ChaveAcesso, arg.UpdatedAt, arg.ID)
+	return err
 }
 
 const updateDocumentStatusByAccessKey = `-- name: UpdateDocumentStatusByAccessKey :exec

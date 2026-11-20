@@ -130,37 +130,43 @@ func (r *Store) doApplyDocument(ctx context.Context, tx executor, q *sqlgen.Quer
 		return nfse.ApplyOutcome{}, err
 	}
 
-	canonicalDocumentID, err := q.UpsertDocument(ctx, sqlgen.UpsertDocumentParams{
-		ID:                 string(params.Document.ID),
-		ChaveAcesso:        string(params.Document.ChaveAcesso),
-		IssueDate:          params.Document.IssueDate.Format(time.RFC3339),
-		Competence:         params.Document.Competence,
-		PrestadorCnpj:      params.Document.PrestadorCNPJ,
-		PrestadorName:      params.Document.PrestadorName,
-		TomadorCnpj:        params.Document.TomadorCNPJ,
-		TomadorName:        params.Document.TomadorName,
-		IntermediarioCnpj:  params.Document.IntermediarioCNPJ,
-		IntermediarioName:  params.Document.IntermediarioName,
-		ServiceValue:       int64(params.Document.ServiceValue),
-		IssValue:           int64(params.Document.ISSValue),
-		IrrfValue:          int64(params.Document.IRRFValue),
-		InssValue:          int64(params.Document.INSSValue),
-		PisValue:           int64(params.Document.PISValue),
-		CofinsValue:        int64(params.Document.COFINSValue),
-		CsllValue:          int64(params.Document.CSLLValue),
-		TotalRetentions:    int64(params.Document.TotalRetentions),
-		Status:             string(params.Document.Status),
-		LayoutVersion:      params.Document.LayoutVersion,
-		XmlPath:            params.Document.XMLPath,
-		RawHash:            params.Document.RawHash,
-		ParseWarnings:      sql.NullString{String: string(parseWarnings), Valid: true},
-		NfseNumber:         params.Document.NFSeNumber,
-		ServiceDescription: params.Document.ServiceDescription,
-		CreatedAt:          now,
-		UpdatedAt:          now,
-	})
+	canonicalDocumentID, err := reconcileRawHash(ctx, q, params.Document, now)
 	if err != nil {
 		return nfse.ApplyOutcome{}, err
+	}
+	if canonicalDocumentID == "" {
+		canonicalDocumentID, err = q.UpsertDocument(ctx, sqlgen.UpsertDocumentParams{
+			ID:                 string(params.Document.ID),
+			ChaveAcesso:        string(params.Document.ChaveAcesso),
+			IssueDate:          params.Document.IssueDate.Format(time.RFC3339),
+			Competence:         params.Document.Competence,
+			PrestadorCnpj:      params.Document.PrestadorCNPJ,
+			PrestadorName:      params.Document.PrestadorName,
+			TomadorCnpj:        params.Document.TomadorCNPJ,
+			TomadorName:        params.Document.TomadorName,
+			IntermediarioCnpj:  params.Document.IntermediarioCNPJ,
+			IntermediarioName:  params.Document.IntermediarioName,
+			ServiceValue:       int64(params.Document.ServiceValue),
+			IssValue:           int64(params.Document.ISSValue),
+			IrrfValue:          int64(params.Document.IRRFValue),
+			InssValue:          int64(params.Document.INSSValue),
+			PisValue:           int64(params.Document.PISValue),
+			CofinsValue:        int64(params.Document.COFINSValue),
+			CsllValue:          int64(params.Document.CSLLValue),
+			TotalRetentions:    int64(params.Document.TotalRetentions),
+			Status:             string(params.Document.Status),
+			LayoutVersion:      params.Document.LayoutVersion,
+			XmlPath:            params.Document.XMLPath,
+			RawHash:            params.Document.RawHash,
+			ParseWarnings:      sql.NullString{String: string(parseWarnings), Valid: true},
+			NfseNumber:         params.Document.NFSeNumber,
+			ServiceDescription: params.Document.ServiceDescription,
+			CreatedAt:          now,
+			UpdatedAt:          now,
+		})
+		if err != nil {
+			return nfse.ApplyOutcome{}, err
+		}
 	}
 
 	inserted, err := companyDocumentMissing(ctx, tx, string(params.CompanyID), canonicalDocumentID)
@@ -195,6 +201,38 @@ func (r *Store) doApplyDocument(ctx context.Context, tx executor, q *sqlgen.Quer
 	}
 
 	return nfse.ApplyOutcome{Inserted: inserted}, nil
+}
+
+// reconcileRawHash handles an XML already stored under another chave, as
+// builds older than the parser fix stored a NFS-e without chNFSe ("NFS" + 50
+// digits). When the chave is free, the stored row takes it and the upsert
+// then updates that row; it returns "". When another document already has
+// the chave, the upsert would move this raw_hash onto it and break
+// UNIQUE(raw_hash), so it returns that document's ID to link instead and
+// leaves the prefixed row as migration 020 leaves it.
+func reconcileRawHash(ctx context.Context, q *sqlgen.Queries, doc nfse.Document, now string) (string, error) {
+	stored, err := q.GetDocumentByRawHash(ctx, doc.RawHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if stored.ChaveAcesso == string(doc.ChaveAcesso) {
+		return "", nil
+	}
+	twinID, err := q.GetDocumentIDByAccessKey(ctx, string(doc.ChaveAcesso))
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", q.UpdateDocumentAccessKey(ctx, sqlgen.UpdateDocumentAccessKeyParams{
+			ChaveAcesso: string(doc.ChaveAcesso),
+			UpdatedAt:   now,
+			ID:          stored.ID,
+		})
+	}
+	if err != nil {
+		return "", err
+	}
+	return twinID, nil
 }
 
 func (r *Store) doApplyEvent(ctx context.Context, tx executor, q *sqlgen.Queries, params nfse.ApplyEventParams) (nfse.ApplyOutcome, error) {
