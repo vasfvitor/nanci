@@ -78,6 +78,6 @@ Com `--json`, o comando escreve o resultado como um único JSON no stdout, sem l
 {"error": {"code": "sync_running", "message": "erro: sincronização já em andamento para esta empresa (NF-e) em outro processo do nanci (aplicativo); aguarde a sincronização atual terminar"}}
 ```
 
-Os avisos de log, quando há, também saem no stderr como uma linha JSON cada, antes do erro. O `code` vem vazio quando o erro não tem um código próprio. Os códigos são `canceled`, `sefaz_blocked`, `sync_running`, `no_requests_left`, `not_found`, `invalid_input` e `wrong_password`.
+Os avisos de log, quando há, também saem no stderr como uma linha JSON cada, antes do erro. O `code` vem vazio quando o erro não tem um código próprio. Os códigos são `canceled`, `sefaz_blocked`, `sync_running`, `no_requests_left`, `not_found`, `invalid_input`, `wrong_password` e `password_required` (a senha não está salva e não há terminal para pedi-la).
 
 Um agente de IA, como o Claude Code, pode usar o `nanci` pelo terminal com `--json`. A senha do certificado sai do Windows (guardada na primeira vez que você a digita no terminal ou no aplicativo) ou de `NANCI_CERT_PASSWORD`; sem terminal, o `nanci` não pede a senha e avisa como resolver. O que envia evento ou apaga dados só simula sem `--confirmar`, então o agente pode mostrar o plano antes de executar. O aplicativo e o terminal usam o mesmo banco: se um estiver sincronizando uma empresa, o outro recusa a mesma origem com `sync_running` em vez de consultar a SEFAZ ao mesmo tempo.

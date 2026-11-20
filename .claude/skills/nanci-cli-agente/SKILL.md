@@ -27,6 +27,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 | `sefaz_blocked` | The SEFAZ blocked queries for this company until a time, written in the message (for example after cStat 656, consumo indevido). | Stop. Report the time. Running `nfe status`/`cte status` shows `NextAllowedAt` and `BlockedReason`. Never work around it. |
 | `no_requests_left` | The 20 queries per hour for this company and source are spent. | Wait. `status` shows `RequestsLastHour`, `RequestBudget` and `NextAllowedAt`. |
 | `wrong_password` | The certificate password is wrong. | Ask the person to fix it (see Password). Never guess or try variations. |
+| `password_required` | The password is not saved and there is no terminal to ask for it. | Ask the person to run the command once in their terminal (see Password). |
 | `not_found` | The company, certificate or document does not exist. | Run `nanci company list --json` and check the CNPJ, or the chave de acesso. |
 | `invalid_input` | A malformed chave de acesso, CNPJ or flag value. | Fix the argument; nothing was sent. |
 | `canceled` | The run was interrupted. | Run it again if the person still wants it. |
@@ -35,7 +36,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 ## Password and certificate
 
 - The certificate password comes from the Windows credential store, saved the first time a person typed it, or from the `NANCI_CERT_PASSWORD` environment variable. There is no `--senha` flag.
-- Never ask the person to paste the password into the chat, never write it in a command line or a file, and never guess it. When a command fails with `wrong_password`, or with "a senha do certificado não está salva e não há terminal para pedi-la", ask the person to run that same command once in their own terminal so nanci prompts and saves it, or to open the desktop app, then continue.
+- Never ask the person to paste the password into the chat, never write it in a command line or a file, and never guess it. When a command fails with `wrong_password` or `password_required`, ask the person to run that same command once in their own terminal so nanci prompts and saves it, or to open the desktop app, then continue.
 - Registering companies and certificates (`init`, `company add/update/assign-credential`, `credential add/update-path`) is for the person, in the desktop app or their terminal. Run them only when the person asks, with the certificate path they gave you. With `--json` they answer with the record as stored; `credential add` returns the new `ID` that `company assign-credential --credential-id` takes.
 
 ## Query budget and timing (NF-e and CT-e)
