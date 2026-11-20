@@ -26,6 +26,8 @@ func main() {
 	// is safe for the running instance's log: opening only appends, and
 	// rotation needs a write, which the second instance makes only if it
 	// cannot notify the first (its other startup messages are below warn).
+	// Wails also logs there, at error level, every error a bound method
+	// returns, cancellations included.
 	var wailsLog *slog.Logger
 	if logDir, err := desktopLogDir(); err == nil {
 		writer, err := newRotatingFileWriter(filepath.Join(logDir, wailsLogFileName), logFileMaxBytes, logFileMaxBackups)

@@ -18,6 +18,8 @@ import { normalizeError } from '../errors'
 // callWails runs a bound-method call and normalizes its error. With a signal,
 // aborting it cancels the call: the promise rejects with the canceled code and
 // the Go method, when it takes a context.Context, sees that context end.
+// When the Go method returns after the promise was cancelled, the runtime logs
+// a CancelledRejectionError in the WebView console; that is expected.
 export async function callWails<T>(
   operation: () => CancellablePromise<T>,
   signal?: AbortSignal

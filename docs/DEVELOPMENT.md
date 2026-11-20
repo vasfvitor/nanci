@@ -66,7 +66,7 @@ cd internal/desktop
 wails3 dev
 ```
 
-O `wails3 dev` segue `build/config.yml` e os Taskfiles: compila o app em modo dev (o que regenera os bindings em `frontend/bindings/`), sobe o Vite em `127.0.0.1:9245` e abre a janela. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. O frontend usa só `src/platform/wails/` para falar com o Wails (veja [AGENTS.md](../AGENTS.md)). Se o `wails3 dev` não abrir, [WAILS_V3.md](WAILS_V3.md) mostra como rodar as partes separadamente.
+O `wails3 dev` segue `build/config.yml` e os Taskfiles: compila o app em modo dev (o que regenera os bindings em `frontend/bindings/`), sobe o Vite em `127.0.0.1:9245` e abre a janela. Salvar arquivos em `frontend/src` recarrega a janela; mudanças em Go recompilam o backend. O frontend usa só `src/platform/wails/` para falar com o Wails (veja [AGENTS.md](../AGENTS.md)). Se o `wails3 dev` não abrir, rode as partes separadas: `pnpm dev --port 9245 --strictPort` em `frontend/` e, em `internal/desktop`, `wails3 build DEV=true` seguido de `FRONTEND_DEVSERVER_URL=http://127.0.0.1:9245 ./bin/nanci-desktop.exe`. Assim o Go não recompila sozinho.
 
 Comandos do frontend, em `internal/desktop/frontend`:
 
@@ -99,6 +99,28 @@ wails3 task windows:package     # executável e instalador NSIS
 ```
 
 O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe` e instala por usuário, sem pedir permissão de administrador. Os releases são gerados pelo workflow `.github/workflows/release.yml` a partir de uma tag `vX.Y.Z`: ele grava a versão em `build/config.yml` (de onde saem os metadados do executável e do instalador) e em `internal/foundation/buildinfo` (pela variável `EXTRA_LDFLAGS` do Taskfile), e tira as notas da mensagem do commit da tag.
+
+## Chave de atualização
+
+O app só instala atualizações assinadas pela chave Ed25519 fixada em `internal/desktop/updater_key.go`, e o release falha sem ela ou sem o segredo que corresponde a ela. Para criar ou trocar o par (num fork, por exemplo):
+
+1. Fora do repositório, `wails3 updater genkey -out nanci-updater.key`. Copie a linha impressa abaixo de "Or inline as base64 of the raw key" (44 caracteres, termina em `=`) para `updaterPublicKey`; `TestCommittedUpdaterKeyIsValid` confere o formato.
+2. `gh secret set UPDATER_SIGNING_KEY < nanci-updater.key` (o PEM inteiro).
+3. Guarde o `.key` num cofre de senhas e apague a cópia local. Quem tem a chave publica atualizações para todos os usuários. Se ela se perder ou for trocada, cada usuário precisa reinstalar pelo instalador uma versão com a chave nova.
+
+Para testar uma atualização sem release: dois builds `-tags production` com `-ldflags "-X main.updaterPublicKey=<chave descartável> -X main.updateManifestURL=http://127.0.0.1:<porta>/nanci-update.json"`, e o manifesto do segundo gerado por `wails3 updater manifest -key`. Dar outro nome ao exe faz o WebView2 usar outra pasta de dados (`%APPDATA%\<nome do exe>`).
+
+## Atualizar o Wails
+
+O módulo Go (`internal/desktop/go.mod`), o `@wailsio/runtime` (versão exata em `package.json`), o `wails3` (`go install ...@vX.Y.Z`, nunca `@latest`) e o `WAILS_VERSION` de `ci.yml` e `release.yml` mudam juntos. O `pnpm-workspace.yaml` exige 7 dias de publicação (`minimumReleaseAge: 10080`): escolha uma versão publicada há mais de 7 dias ou abra em `minimumReleaseAgeExclude` uma exceção `@wailsio/runtime@X.Y.Z`, com data para remover ([pnpm](https://pnpm.io/settings/dependency-resolution#minimumreleaseageexclude), conferido em 29/10/2026).
+
+Os testes não cobrem a janela. Depois de atualizar, confira na mão: fechar durante uma sincronização (X, Ctrl+Q, Alt+F4), tema fixo contra o tema do Windows, cancelar um diálogo de arquivo, abrir uma segunda instância, redimensionar pelas laterais e usar o Snap.
+
+## Problemas comuns do desktop
+
+Matar o app à força pode deixar processos `msedgewebview2.exe` presos ao perfil `%APPDATA%\nanci-desktop.exe\EBWebView`. Enquanto eles existem, o app sai na hora com código 1, sem janela e sem log (visto na v3.0.0-beta.27). Encerre os `msedgewebview2.exe` que têm `nanci-desktop` na linha de comando.
+
+Uma atualização automática que falha deixa o log do auxiliar em `%TEMP%\wails-update-<pid do app>.log`. O exe substituído fica como `.old.<n>` na pasta de instalação até a próxima atualização.
 
 ## Testes de certificado
 

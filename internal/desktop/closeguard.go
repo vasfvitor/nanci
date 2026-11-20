@@ -117,7 +117,9 @@ func (g *closeGuard) waitIdle(limit time.Duration) {
 // counts the method in the guard (pull for a sync, an XML import or a fetch
 // by chave) and returns the context to pass to the core (callContext). end
 // cancels that context and releases the guard; defer it. The methods without
-// a context parameter pass a.ctx.
+// a context parameter pass a.ctx. Event submissions to SEFAZ (ciência,
+// manifestação) and the resets take a.ctx on purpose: cancelling one midway
+// could leave the event recorded at SEFAZ but not in the database.
 func (a *App) begin(ctx context.Context, pull bool) (_ context.Context, end func(), err error) {
 	if err := a.ready(); err != nil {
 		return nil, nil, err

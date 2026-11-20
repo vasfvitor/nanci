@@ -15,6 +15,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // No @wailsio/runtime/plugins/vite: it injects the generated eventcreate.ts,
+  // which builds event payloads only for class bindings, and ours are
+  // interfaces (wails3 generate bindings -i).
   plugins: [
     vue({
       template: { transformAssetUrls },
