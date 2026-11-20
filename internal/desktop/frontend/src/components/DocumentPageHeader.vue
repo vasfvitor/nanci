@@ -66,7 +66,7 @@
       dense
       rounded
       class="q-mb-md"
-      :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
+      :class="warningBannerClass($q.dark.isActive)"
     >
       <template #avatar>
         <q-icon name="schedule" />
@@ -79,6 +79,7 @@
 <script setup lang="ts">
 import { useQuasar } from 'quasar'
 import { badgeProps, IDLE_WARNING_TOOLTIP } from '@/utils/sefazDisplay'
+import { warningBannerClass } from '@/utils/bannerClass'
 
 // DocumentPageHeader is the top of a document page: the title with the
 // ambiente badge, the sync and reset buttons, the workspace company and

@@ -75,7 +75,7 @@
             v-if="!canEditSyncPolicy"
             dense
             rounded
-            :class="$q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-grey-2 text-grey-8'"
+            :class="mutedBannerClass($q.dark.isActive)"
           >
             A política inicial não pode ser alterada depois que a sincronização começou. Para
             refazer o bootstrap histórico, use uma ação avançada de reset/backfill.
@@ -101,6 +101,7 @@ import { errorMessage } from '@/platform/wails/client'
 import type { CompanySummary, SyncStartPolicy } from '@/types/desktop'
 import { environmentOptions } from '@/utils/nfseDisplay'
 import { UF_SIGLAS } from '@/utils/uf'
+import { mutedBannerClass } from '@/utils/bannerClass'
 
 const props = defineProps<{
   modelValue: boolean

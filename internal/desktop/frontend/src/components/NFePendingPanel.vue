@@ -15,12 +15,7 @@
         />
       </div>
 
-      <q-banner
-        dense
-        rounded
-        class="q-mb-sm"
-        :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'"
-      >
+      <q-banner dense rounded class="q-mb-sm" :class="mutedBannerClass($q.dark.isActive)">
         <template #avatar>
           <q-icon name="info" />
         </template>
@@ -109,12 +104,7 @@
         Aguardando manifestação conclusiva ({{ semConclusiva.length }})
       </div>
 
-      <q-banner
-        dense
-        rounded
-        class="q-mb-sm"
-        :class="$q.dark.isActive ? 'bg-grey-9 text-grey-4' : 'bg-grey-2 text-grey-8'"
-      >
+      <q-banner dense rounded class="q-mb-sm" :class="mutedBannerClass($q.dark.isActive)">
         <template #avatar>
           <q-icon name="gavel" />
         </template>
@@ -206,6 +196,7 @@ import {
   deadlineLabel,
   TACIT_CONFIRMATION_LABEL,
 } from '@/utils/nfeDisplay'
+import { mutedBannerClass } from '@/utils/bannerClass'
 
 const props = defineProps<{
   rows: NFePendingRow[]

@@ -66,11 +66,7 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none">
-        <q-banner
-          dense
-          rounded
-          :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
-        >
+        <q-banner dense rounded :class="warningBannerClass($q.dark.isActive)">
           <template #avatar>
             <q-icon name="gavel" />
           </template>
@@ -111,6 +107,7 @@ import {
   formatParty,
 } from '@/utils/formatters'
 import { ambienteColor, ambienteLabel, badgeProps } from '@/utils/sefazDisplay'
+import { warningBannerClass } from '@/utils/bannerClass'
 
 const props = defineProps<{
   companyName: string

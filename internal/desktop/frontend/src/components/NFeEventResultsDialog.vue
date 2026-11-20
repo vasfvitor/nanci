@@ -10,11 +10,7 @@
       </q-card-section>
 
       <q-card-section v-if="result.Interrupted" class="q-pt-none">
-        <q-banner
-          dense
-          rounded
-          :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
-        >
+        <q-banner dense rounded :class="warningBannerClass($q.dark.isActive)">
           <template #avatar>
             <q-icon name="warning" />
           </template>
@@ -61,6 +57,7 @@ import { formatChaveDFe } from '@/utils/formatters'
 import { outcomeColor, outcomeLabel } from '@/utils/nfeDisplay'
 import { badgeProps } from '@/utils/sefazDisplay'
 import { countOutcomes, isProblemOutcome } from '@/utils/nfeManifestacao'
+import { warningBannerClass } from '@/utils/bannerClass'
 
 const props = defineProps<{
   result: NFeEventBatchResult

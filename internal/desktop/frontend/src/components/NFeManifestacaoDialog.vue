@@ -74,12 +74,7 @@
             <div class="text-body2 justificativa-text">{{ justificativa.trim() }}</div>
           </div>
 
-          <q-banner
-            dense
-            rounded
-            class="q-mt-md"
-            :class="$q.dark.isActive ? 'bg-grey-9 text-orange-3' : 'bg-orange-1 text-orange-10'"
-          >
+          <q-banner dense rounded class="q-mt-md" :class="warningBannerClass($q.dark.isActive)">
             <template #avatar>
               <q-icon name="gavel" />
             </template>
@@ -120,6 +115,7 @@ import {
   JUSTIFICATIVA_MIN_LENGTH,
   validateJustificativa,
 } from '@/utils/nfeManifestacao'
+import { warningBannerClass } from '@/utils/bannerClass'
 
 const props = defineProps<{
   note: NFeRow
