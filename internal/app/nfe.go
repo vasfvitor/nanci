@@ -26,6 +26,7 @@ type sefazClient interface {
 	CheckTLS(ctx context.Context) error
 	CheckTLSCTe(ctx context.Context) error
 	EnviarEventos(ctx context.Context, signer *sefaz.Signer, idLote string, eventos []sefaz.Evento) (sefaz.LoteResult, error)
+	EnviarEventoDesacordo(ctx context.Context, signer *sefaz.Signer, e sefaz.EventoDesacordo) (sefaz.EventoCTeResult, error)
 	ConsChNFe(ctx context.Context, cnpj string, cUFAutor int, chave string) (sefaz.DistResult, error)
 }
 

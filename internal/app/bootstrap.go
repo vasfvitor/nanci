@@ -32,6 +32,10 @@ var ErrSyncRunning = sync.ErrSyncRunning
 // not open the certificate.
 var ErrWrongPassword = errors.New("senha inválida para o certificado")
 
+// ErrInvalidObservacao matches an observation of a CT-e event that the
+// schema would refuse (sefaz.CheckXObsDesacordo).
+var ErrInvalidObservacao = errors.New("observação inválida")
+
 // ErrPasswordRequired matches a certificate password that is not saved and
 // that the CredentialProvider has no way to ask for, as in the CLI run by a
 // script or an AI agent without a terminal.

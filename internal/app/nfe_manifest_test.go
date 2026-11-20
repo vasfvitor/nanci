@@ -25,6 +25,10 @@ type fakeSEFAZ struct {
 	lotes       [][]sefaz.Evento
 	cStats      map[string]int
 	failLote    map[int]error // 0-based lote index -> transport error
+
+	desacordos     []sefaz.EventoDesacordo
+	desacordoCStat int
+	desacordoErr   error
 }
 
 func (f *fakeSEFAZ) CheckTLS(context.Context) error {
@@ -74,6 +78,41 @@ func (f *fakeSEFAZ) EnviarEventos(_ context.Context, signer *sefaz.Signer, idLot
 		})
 	}
 	return result, nil
+}
+
+// EnviarEventoDesacordo signs the real eventoCTe and answers with
+// desacordoCStat (135 when zero), or fails with desacordoErr.
+func (f *fakeSEFAZ) EnviarEventoDesacordo(_ context.Context, signer *sefaz.Signer, e sefaz.EventoDesacordo) (sefaz.EventoCTeResult, error) {
+	f.desacordos = append(f.desacordos, e)
+	if f.desacordoErr != nil {
+		return sefaz.EventoCTeResult{}, f.desacordoErr
+	}
+	signed, err := signer.SignEventoDesacordo(e, sefaz.TpAmbProducao)
+	if err != nil {
+		f.t.Fatalf("sign eventoCTe: %v", err)
+	}
+	cStat := f.desacordoCStat
+	if cStat == 0 {
+		cStat = sefaz.CStatEventoCTeVinculado
+	}
+	registeredAt := time.Date(2026, 11, 19, 13, 31, 2, 0, time.UTC)
+	protocolo := ""
+	if sefaz.IsRegisteredCTe(cStat) {
+		protocolo = "135260000000123"
+	}
+	ret := fmt.Sprintf(`<retEventoCTe versao="4.00"><infEvento><tpAmb>1</tpAmb><verAplic>TESTE</verAplic><cOrgao>35</cOrgao>`+
+		`<cStat>%d</cStat><xMotivo>resposta %d</xMotivo><chCTe>%s</chCTe><tpEvento>610110</tpEvento>`+
+		`<xEvento>Prestacao do Servico em Desacordo</xEvento><nSeqEvento>%d</nSeqEvento>`+
+		`<dhRegEvento>%s</dhRegEvento><nProt>%s</nProt></infEvento></retEventoCTe>`,
+		cStat, cStat, e.ChaveAcesso, e.NSeqEvento, registeredAt.Format(time.RFC3339), protocolo)
+	return sefaz.EventoCTeResult{
+		CStat:        cStat,
+		XMotivo:      fmt.Sprintf("resposta %d", cStat),
+		Protocolo:    protocolo,
+		DhRegEvento:  &registeredAt,
+		SignedEvento: signed,
+		RetEvento:    []byte(ret),
+	}, nil
 }
 
 func (f *fakeSEFAZ) ConsChNFe(context.Context, string, int, string) (sefaz.DistResult, error) {

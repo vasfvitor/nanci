@@ -32,6 +32,7 @@ func TestErrorCode(t *testing.T) {
 		{fmt.Errorf("buscar: %w", nfe.ErrDocumentNotFound), ErrorCodeNotFound},
 		{fmt.Errorf("chave: %w", dfe.ErrInvalidAccessKey), ErrorCodeInvalidInput},
 		{cnpj.ErrInvalidCheckDigits, ErrorCodeInvalidInput},
+		{fmt.Errorf("%w: curta", ErrInvalidObservacao), ErrorCodeInvalidInput},
 		{cert.ErrInvalidPass, ErrorCodeWrongPassword},
 		{fmt.Errorf("obter senha do certificado: %w", ErrPasswordRequired), ErrorCodePasswordRequired},
 	}

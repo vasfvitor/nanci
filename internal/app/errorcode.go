@@ -47,7 +47,8 @@ func ErrorCode(err error) string {
 		return ErrorCodeNotFound
 	case errors.Is(err, dfe.ErrInvalidAccessKey), errors.Is(err, dfe.ErrInvalidEnum),
 		errors.Is(err, cnpj.ErrInvalidLength), errors.Is(err, cnpj.ErrInvalidFormat),
-		errors.Is(err, cnpj.ErrNonNumericCheckDigit), errors.Is(err, cnpj.ErrInvalidCheckDigits):
+		errors.Is(err, cnpj.ErrNonNumericCheckDigit), errors.Is(err, cnpj.ErrInvalidCheckDigits),
+		errors.Is(err, ErrInvalidObservacao):
 		return ErrorCodeInvalidInput
 	case errors.Is(err, cert.ErrInvalidPass), errors.Is(err, ErrWrongPassword):
 		return ErrorCodeWrongPassword

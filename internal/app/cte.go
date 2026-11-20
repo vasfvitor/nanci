@@ -30,6 +30,8 @@ type CTeService struct {
 	Certificates *sync.CertificateLoader
 	// DACTERenderer renders the DACTE; nil makes the DACTE exports fail.
 	DACTERenderer dacte.Renderer
+
+	now func() time.Time
 }
 
 func NewCTeService(d Dependencies, certificates *sync.CertificateLoader, syncManager *sync.Manager) *CTeService {
@@ -42,6 +44,7 @@ func NewCTeService(d Dependencies, certificates *sync.CertificateLoader, syncMan
 		XMLStore:      d.XMLStore,
 		Certificates:  certificates,
 		DACTERenderer: d.DACTERenderer,
+		now:           time.Now,
 	}
 }
 
