@@ -24,6 +24,8 @@ const (
 	ErrorCodeNotFound       = "not_found"        // company, credential or document not found
 	ErrorCodeInvalidInput   = "invalid_input"    // a malformed access key, CNPJ or option value
 	ErrorCodeWrongPassword  = "wrong_password"   // the certificate password does not open it
+	// The password is not saved and there is no terminal to ask for it (CLI only).
+	ErrorCodePasswordRequired = "password_required"
 )
 
 // ErrorCode names what err is, by the sentinel it wraps, for callers that
@@ -49,6 +51,8 @@ func ErrorCode(err error) string {
 		return ErrorCodeInvalidInput
 	case errors.Is(err, cert.ErrInvalidPass):
 		return ErrorCodeWrongPassword
+	case errors.Is(err, ErrPasswordRequired):
+		return ErrorCodePasswordRequired
 	}
 	return ""
 }

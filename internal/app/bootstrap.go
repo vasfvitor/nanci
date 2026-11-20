@@ -28,6 +28,11 @@ var ErrSourceBlocked = sync.ErrSourceBlocked
 // are already syncing in this process.
 var ErrSyncRunning = sync.ErrSyncRunning
 
+// ErrPasswordRequired matches a certificate password that is not saved and
+// that the CredentialProvider has no way to ask for, as in the CLI run by a
+// script or an AI agent without a terminal.
+var ErrPasswordRequired = errors.New("a senha do certificado não está salva e não há terminal para pedi-la")
+
 // CertPasswordRequest carries the context needed to ask for a certificate password.
 type CertPasswordRequest = sync.CertPasswordRequest
 

@@ -30,6 +30,9 @@ func TestTerminalCredentialProvider_NoTerminal(t *testing.T) {
 	if !errors.Is(err, errNoPasswordTerminal) {
 		t.Fatalf("err = %v, want errNoPasswordTerminal", err)
 	}
+	if code := app.ErrorCode(err); code != app.ErrorCodePasswordRequired {
+		t.Errorf("ErrorCode = %q, want %q", code, app.ErrorCodePasswordRequired)
+	}
 	if info, statErr := out.Stat(); statErr != nil || info.Size() != 0 {
 		t.Errorf("prompt written without a terminal (size %d, err %v)", info.Size(), statErr)
 	}

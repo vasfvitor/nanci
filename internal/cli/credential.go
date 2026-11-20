@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
@@ -14,7 +13,7 @@ import (
 
 // errNoPasswordTerminal is the failure when the certificate password is
 // neither saved nor in NANCI_CERT_PASSWORD and stdin is not a terminal.
-var errNoPasswordTerminal = errors.New("a senha do certificado não está salva e não há terminal para pedi-la: execute uma vez num terminal para salvá-la, ou defina NANCI_CERT_PASSWORD")
+var errNoPasswordTerminal = fmt.Errorf("%w: execute uma vez num terminal para salvá-la, ou defina NANCI_CERT_PASSWORD", app.ErrPasswordRequired)
 
 // TerminalCredentialProvider obtains certificate passwords from the terminal.
 // It first checks the NANCI_CERT_PASSWORD environment variable, then prompts

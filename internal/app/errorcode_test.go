@@ -33,6 +33,7 @@ func TestErrorCode(t *testing.T) {
 		{fmt.Errorf("chave: %w", dfe.ErrInvalidAccessKey), ErrorCodeInvalidInput},
 		{cnpj.ErrInvalidCheckDigits, ErrorCodeInvalidInput},
 		{cert.ErrInvalidPass, ErrorCodeWrongPassword},
+		{fmt.Errorf("obter senha do certificado: %w", ErrPasswordRequired), ErrorCodePasswordRequired},
 	}
 	for _, tt := range tests {
 		if got := ErrorCode(tt.err); got != tt.want {
