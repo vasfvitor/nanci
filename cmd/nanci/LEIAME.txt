@@ -1,0 +1,23 @@
+Nanci {{VERSION}} - linha de comando
+
+O nanci.exe faz pelo terminal o mesmo que o aplicativo Nanci e usa os mesmos
+dados. Use os dois na mesma versão: quando o aplicativo se atualizar, baixe de
+novo o nanci.exe da mesma versão. Um nanci.exe mais antigo que o aplicativo
+recusa abrir os dados e avisa.
+
+Instalar
+
+1. Extraia o nanci.exe para uma pasta, por exemplo
+   %LOCALAPPDATA%\Programs\nanci-cli
+2. No menu Iniciar, abra "Editar as variáveis de ambiente para sua conta",
+   escolha Path, clique em Editar, depois em Novo, e cole o caminho da pasta.
+   Não use o comando setx: ele corta um Path longo.
+3. Abra um terminal novo e confira:
+   nanci --version
+
+Usar
+
+   nanci --help
+
+Os comandos, as rotinas agendadas e o uso por agentes de IA estão em
+https://nanci.abelhaninja.de/docs/cli/

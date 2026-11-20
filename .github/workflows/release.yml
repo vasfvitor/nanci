@@ -184,6 +184,7 @@ jobs:
           # The app looks for updates in the releases of the repository that
           # built it, so a fork's build follows the fork's releases, not these.
           update_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/latest/download/nanci-update.json"
+          buildinfo="-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date'"
 
           echo "Writing version $asset_version to build/config.yml..."
           sed -i -E "s/^  version: \"[^\"]*\"/  version: \"$asset_version\"/" build/config.yml
@@ -195,12 +196,20 @@ jobs:
 
           echo "Building the installer..."
           wails3 task windows:package \
-            EXTRA_LDFLAGS="-X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Version=$version' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Commit=$commit' -X 'github.com/vasfvitor/nanci/internal/foundation/buildinfo.Date=$date' -X 'main.updateManifestURL=$update_url'"
+            EXTRA_LDFLAGS="$buildinfo -X 'main.updateManifestURL=$update_url'"
 
           test -s bin/nanci-desktop-amd64-installer.exe
           test -s bin/nanci-desktop.exe
           # Without the URL the app turns updates off.
           grep -q -a -F "$update_url" bin/nanci-desktop.exe
+
+          # The CLI ships as its own download: the automatic update swaps
+          # only the desktop exe. It refuses a database migrated by a newer
+          # app, so the person downloads the CLI of the app's version again.
+          echo "Building the CLI..."
+          GOARCH=amd64 go -C ../.. build -trimpath -ldflags "-s -w $buildinfo" -o internal/desktop/bin/nanci.exe ./cmd/nanci
+          test -s bin/nanci.exe
+          grep -q -a -F "$version" bin/nanci.exe
 
       - name: Upload Desktop Artifact
         uses: actions/upload-artifact@v7
@@ -218,6 +227,14 @@ jobs:
         with:
           name: nanci-desktop-windows-amd64-exe
           path: internal/desktop/bin/nanci-desktop.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload CLI Executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: nanci-cli-windows-amd64
+          path: internal/desktop/bin/nanci.exe
           if-no-files-found: error
           retention-days: 7
 
@@ -247,6 +264,12 @@ jobs:
           name: nanci-desktop-windows-amd64-exe
           path: artifacts/desktop-exe
 
+      - name: Download CLI Executable
+        uses: actions/download-artifact@v7
+        with:
+          name: nanci-cli-windows-amd64
+          path: artifacts/cli
+
       - name: Stage Release Assets
         shell: bash
         run: |
@@ -261,12 +284,26 @@ jobs:
           cp artifacts/desktop/nanci-desktop-amd64-installer.exe "release/$installer_name"
           cp artifacts/desktop-exe/nanci-desktop.exe "release/$exe_name"
 
+          # The CLI zip holds nanci.exe, so the command keeps its name, and
+          # the LEIAME with the version. The skill zip holds the skill folder
+          # at its root, ready to extract into an agent's skills folder.
+          cli_zip="nanci-cli-windows-amd64-${tag}.zip"
+          skill_zip="nanci-skill-${tag}.zip"
+          cli_dir="$RUNNER_TEMP/cli"
+          mkdir -p "$cli_dir"
+          cp artifacts/cli/nanci.exe "$cli_dir/nanci.exe"
+          sed "s/{{VERSION}}/${tag}/" cmd/nanci/LEIAME.txt > "$cli_dir/LEIAME.txt"
+          (cd "$cli_dir" && zip -X "$GITHUB_WORKSPACE/release/$cli_zip" nanci.exe LEIAME.txt)
+          (cd .agents/skills && zip -r -X "$GITHUB_WORKSPACE/release/$skill_zip" nanci-cli-agente)
+
           test -s "release/$installer_name"
           test -s "release/$exe_name"
+          test -s "release/$cli_zip"
+          test -s "release/$skill_zip"
 
           (
             cd release
-            sha256sum "$installer_name" "$exe_name" > nanci-checksums.txt
+            sha256sum "$installer_name" "$exe_name" "$cli_zip" "$skill_zip" > nanci-checksums.txt
           )
 
           echo "Release assets:"
@@ -346,6 +383,7 @@ jobs:
         with:
           subject-path: |
             release/*.exe
+            release/*.zip
             release/nanci-checksums.txt
             release/nanci-update.json
 
@@ -370,6 +408,13 @@ jobs:
 
           - \`$installer_name\`
 
+          Opcionais, baixados à parte (a atualização automática do app não os atualiza; use a mesma versão do app):
+
+          - \`nanci-cli-windows-amd64-${tag}.zip\`: a linha de comando (\`nanci.exe\`).
+          - \`nanci-skill-${tag}.zip\`: o skill \`nanci-cli-agente\`, para agentes de IA que usam a linha de comando.
+
+          Como instalar: https://nanci.abelhaninja.de/docs/cli/
+
           A atualização automática do app usa \`$exe_name\` e \`nanci-update.json\` (assinado com Ed25519); não é preciso baixá-los.
 
           Checksum SHA-256:
@@ -392,6 +437,7 @@ jobs:
           body_path: release_notes.md
           files: |
             release/*.exe
+            release/*.zip
             release/nanci-checksums.txt
             release/nanci-update.json
         env:
