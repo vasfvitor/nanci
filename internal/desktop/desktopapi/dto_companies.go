@@ -26,11 +26,14 @@ type CompanySummary struct {
 	SyncStartPolicy    string
 	SyncStartDate      *time.Time
 	InitialSyncDoneAt  *time.Time
-	LastRunStatus      string
-	LastRunStopReason  string
-	LastRunError       string // message of the last NFS-e run, set only when it failed
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	// SyncStartPolicyLocked is true while the company has an NFS-e sync
+	// cursor; resetting the NFS-e sync makes the start policy editable again.
+	SyncStartPolicyLocked bool
+	LastRunStatus         string
+	LastRunStopReason     string
+	LastRunError          string // message of the last NFS-e run, set only when it failed
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 type CredentialSummary struct {
@@ -93,25 +96,26 @@ func CompanySummaries(companies []company.Company) []CompanySummary {
 	out := make([]CompanySummary, len(companies))
 	for i, company := range companies {
 		out[i] = CompanySummary{
-			ID:                 string(company.ID),
-			CNPJ:               company.CNPJ,
-			CNPJRoot:           company.CNPJRoot,
-			Name:               company.Name,
-			CredentialID:       string(company.CredentialID),
-			CredentialLabel:    company.CredentialLabel,
-			CredentialCertPath: company.CredentialCertPath,
-			Environment:        string(company.Environment),
-			UF:                 company.UF,
-			LastFoundNSU:       company.LastFoundNSU,
-			LastSyncAt:         company.LastSyncAt,
-			SyncStartPolicy:    string(company.SyncStartPolicy),
-			SyncStartDate:      company.SyncStartDate,
-			InitialSyncDoneAt:  company.InitialSyncDoneAt,
-			LastRunStatus:      string(company.LastRunStatus),
-			LastRunStopReason:  string(company.LastRunStopReason),
-			LastRunError:       company.LastRunError,
-			CreatedAt:          company.CreatedAt,
-			UpdatedAt:          company.UpdatedAt,
+			ID:                    string(company.ID),
+			CNPJ:                  company.CNPJ,
+			CNPJRoot:              company.CNPJRoot,
+			Name:                  company.Name,
+			CredentialID:          string(company.CredentialID),
+			CredentialLabel:       company.CredentialLabel,
+			CredentialCertPath:    company.CredentialCertPath,
+			Environment:           string(company.Environment),
+			UF:                    company.UF,
+			LastFoundNSU:          company.LastFoundNSU,
+			LastSyncAt:            company.LastSyncAt,
+			SyncStartPolicy:       string(company.SyncStartPolicy),
+			SyncStartDate:         company.SyncStartDate,
+			InitialSyncDoneAt:     company.InitialSyncDoneAt,
+			SyncStartPolicyLocked: company.SyncStartPolicyLocked,
+			LastRunStatus:         string(company.LastRunStatus),
+			LastRunStopReason:     string(company.LastRunStopReason),
+			LastRunError:          company.LastRunError,
+			CreatedAt:             company.CreatedAt,
+			UpdatedAt:             company.UpdatedAt,
 		}
 	}
 	return out

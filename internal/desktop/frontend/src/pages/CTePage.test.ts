@@ -78,6 +78,7 @@ const company = {
   UF: 'SP',
   LastFoundNSU: null,
   SyncStartPolicy: 'from_now' as const,
+  SyncStartPolicyLocked: false,
   LastRunStatus: '',
   LastRunStopReason: '',
   LastRunError: '',

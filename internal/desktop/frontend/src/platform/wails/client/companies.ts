@@ -40,6 +40,7 @@ export function mapCompanySummary(item: desktopapi.CompanySummary): CompanySumma
     SyncStartPolicy: item.SyncStartPolicy as CompanySummary['SyncStartPolicy'],
     SyncStartDate: asDate(item.SyncStartDate),
     InitialSyncDoneAt: asDate(item.InitialSyncDoneAt),
+    SyncStartPolicyLocked: item.SyncStartPolicyLocked,
     LastRunStatus: item.LastRunStatus,
     LastRunStopReason: item.LastRunStopReason,
     LastRunError: asString(item.LastRunError),

@@ -380,6 +380,12 @@ export interface CompanySummary {
     "SyncStartPolicy": string;
     "SyncStartDate": string | null;
     "InitialSyncDoneAt": string | null;
+
+    /**
+     * SyncStartPolicyLocked is true while the company has an NFS-e sync
+     * cursor; resetting the NFS-e sync makes the start policy editable again.
+     */
+    "SyncStartPolicyLocked": boolean;
     "LastRunStatus": string;
     "LastRunStopReason": string;
 

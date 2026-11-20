@@ -155,6 +155,7 @@ describe('desktop client mappers', () => {
       SyncStartPolicy: 'since_date',
       SyncStartDate: '2025-01-01T00:00:00Z',
       InitialSyncDoneAt: null,
+      SyncStartPolicyLocked: true,
       LastRunStatus: 'failed',
       LastRunStopReason: 'fetch_error',
       LastRunError: 'falha de conexão',
@@ -171,6 +172,7 @@ describe('desktop client mappers', () => {
     expect(company.SyncStartPolicy).toBe('since_date')
     expect(company.SyncStartDate).toBe('2025-01-01T00:00:00Z')
     expect(company.InitialSyncDoneAt).toBeNull()
+    expect(company.SyncStartPolicyLocked).toBe(true)
     expect(company.LastRunStatus).toBe('failed')
     expect(company.LastRunStopReason).toBe('fetch_error')
     expect(company.LastRunError).toBe('falha de conexão')

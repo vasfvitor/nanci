@@ -31,6 +31,7 @@ export function company(
     UF: 'SP',
     LastFoundNSU: null,
     SyncStartPolicy: 'all',
+    SyncStartPolicyLocked: false,
     LastRunStatus: '',
     LastRunStopReason: '',
     LastRunError: '',

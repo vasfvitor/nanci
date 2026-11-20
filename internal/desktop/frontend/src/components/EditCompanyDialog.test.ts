@@ -32,6 +32,7 @@ const company: CompanySummary = {
   UF: 'SP',
   LastFoundNSU: null,
   SyncStartPolicy: 'from_now',
+  SyncStartPolicyLocked: false,
   LastRunStatus: '',
   LastRunStopReason: '',
   LastRunError: '',

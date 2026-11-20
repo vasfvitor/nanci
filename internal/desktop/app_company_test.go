@@ -301,16 +301,17 @@ func TestCompanyAndCredentialMethodsPassCoreErrors(t *testing.T) {
 func TestListCompanies(t *testing.T) {
 	f, a := newFakeApp(nil)
 	f.companies.companies = []company.Company{{
-		ID:                "company-1",
-		CNPJ:              testCNPJ,
-		Name:              "Empresa Teste",
-		CredentialID:      "cred-1",
-		Environment:       dfe.EnvironmentProduction,
-		UF:                "SP",
-		SyncStartPolicy:   syncstate.SyncStartPolicyAll,
-		LastRunStatus:     syncstate.SyncStatusFailed,
-		LastRunStopReason: syncstate.SyncStopReasonFetchError,
-		LastRunError:      "falha de conexão",
+		ID:                    "company-1",
+		CNPJ:                  testCNPJ,
+		Name:                  "Empresa Teste",
+		CredentialID:          "cred-1",
+		Environment:           dfe.EnvironmentProduction,
+		UF:                    "SP",
+		SyncStartPolicy:       syncstate.SyncStartPolicyAll,
+		SyncStartPolicyLocked: true,
+		LastRunStatus:         syncstate.SyncStatusFailed,
+		LastRunStopReason:     syncstate.SyncStopReasonFetchError,
+		LastRunError:          "falha de conexão",
 	}}
 
 	got, err := a.ListCompanies()
@@ -320,16 +321,17 @@ func TestListCompanies(t *testing.T) {
 
 	assertCalls(t, &f.companies.recorder, call{"ListCompanies", nil})
 	want := []desktopapi.CompanySummary{{
-		ID:                "company-1",
-		CNPJ:              testCNPJ,
-		Name:              "Empresa Teste",
-		CredentialID:      "cred-1",
-		Environment:       "producao",
-		UF:                "SP",
-		SyncStartPolicy:   "all",
-		LastRunStatus:     "failed",
-		LastRunStopReason: "fetch_error",
-		LastRunError:      "falha de conexão",
+		ID:                    "company-1",
+		CNPJ:                  testCNPJ,
+		Name:                  "Empresa Teste",
+		CredentialID:          "cred-1",
+		Environment:           "producao",
+		UF:                    "SP",
+		SyncStartPolicy:       "all",
+		SyncStartPolicyLocked: true,
+		LastRunStatus:         "failed",
+		LastRunStopReason:     "fetch_error",
+		LastRunError:          "falha de conexão",
 	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("summaries = %+v, want %+v", got, want)

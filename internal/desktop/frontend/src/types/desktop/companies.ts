@@ -15,6 +15,9 @@ export type CompanySummary = {
   SyncStartPolicy: SyncStartPolicy
   SyncStartDate?: ISODateValue
   InitialSyncDoneAt?: ISODateValue
+  // SyncStartPolicyLocked is true while the company has an NFS-e sync cursor;
+  // resetting the NFS-e sync makes the start policy editable again.
+  SyncStartPolicyLocked: boolean
   LastRunStatus: string
   LastRunStopReason: string
   LastRunError: string // set only when LastRunStatus is 'failed'
