@@ -530,13 +530,25 @@ func TestManager_UpdateCompanySameStartDate(t *testing.T) {
 }
 
 func TestManager_CompanyByCNPJ(t *testing.T) {
-	m := company.NewManager(&stubStore{company: storedCompany()}, &stubCreds{}, &stubSyncs{})
-	got, err := m.CompanyByCNPJ(context.Background(), "11.222.333/0001-81")
-	if err != nil {
-		t.Fatalf("CompanyByCNPJ: %v", err)
+	for _, hasState := range []bool{false, true} {
+		m := company.NewManager(&stubStore{company: storedCompany()}, &stubCreds{}, &stubSyncs{hasState: hasState})
+		got, err := m.CompanyByCNPJ(context.Background(), "11.222.333/0001-81")
+		if err != nil {
+			t.Fatalf("CompanyByCNPJ: %v", err)
+		}
+		if got.ID != "comp-1" {
+			t.Errorf("ID = %q, want comp-1", got.ID)
+		}
+		if got.SyncStartPolicyLocked != hasState {
+			t.Errorf("cursor %t: SyncStartPolicyLocked = %t", hasState, got.SyncStartPolicyLocked)
+		}
 	}
-	if got.ID != "comp-1" {
-		t.Errorf("ID = %q, want comp-1", got.ID)
+
+	m := company.NewManager(&stubStore{company: storedCompany()}, &stubCreds{}, &stubSyncs{hasStateErr: errDB})
+	_, err := m.CompanyByCNPJ(context.Background(), "11.222.333/0001-81")
+	wantErrContains(t, err, "verificar estado de sincronização")
+	if !errors.Is(err, errDB) {
+		t.Errorf("error %v does not wrap the cursor check error", err)
 	}
 }
 

@@ -210,9 +210,18 @@ func (m *Manager) resolveCredentialForCompany(ctx context.Context, input AddComp
 	return credential, nil
 }
 
-// CompanyByCNPJ returns one registered company.
+// CompanyByCNPJ returns one registered company, with its start policy lock.
 func (m *Manager) CompanyByCNPJ(ctx context.Context, rawCNPJ string) (*Company, error) {
-	return LookupByCNPJ(ctx, m.store, rawCNPJ)
+	c, err := LookupByCNPJ(ctx, m.store, rawCNPJ)
+	if err != nil {
+		return nil, err
+	}
+	locked, err := m.startPolicyLocked(ctx, c.ID)
+	if err != nil {
+		return nil, err
+	}
+	c.SyncStartPolicyLocked = locked
+	return c, nil
 }
 
 // UpdateCompany replaces the editable fields of an existing company: name,

@@ -25,7 +25,8 @@ type Company struct {
 	InitialSyncDoneAt  *time.Time // NFS-e source; read from company_sync_sources
 	// SyncStartPolicyLocked is true while the company has an NFS-e sync cursor
 	// in any environment: UpdateCompany then refuses another start policy or
-	// date. Set by ListCompanies only.
+	// date. Set by Manager.ListCompanies and Manager.CompanyByCNPJ, not by
+	// the store.
 	SyncStartPolicyLocked bool
 	LastRunStatus         syncstate.SyncStatus
 	LastRunStopReason     syncstate.SyncStopReason
