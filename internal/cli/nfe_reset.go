@@ -56,7 +56,7 @@ func newNFeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			}
 			_, _ = fmt.Fprintf(out, "NF-e redefinidas para: %s (%s), ambiente %s\n", result.CompanyName, cnpj.Format(result.CNPJ), result.Environment)
 			printNFeResetCounts(out, result, "removidos")
-			_, _ = fmt.Fprintln(out, "\nO próximo `nanci nfe pull` baixa a distribuição desde o NSU 0. O ambiente da empresa já pode ser alterado.")
+			_, _ = fmt.Fprintln(out, "\nO próximo `nanci nfe pull` baixa a distribuição desde o NSU 0.")
 			return nil
 		},
 	}
