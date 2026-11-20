@@ -483,20 +483,24 @@ type companyOutput struct {
 	UF              string
 	SyncStartPolicy string
 	SyncStartDate   *time.Time
-	LastSyncAt      *time.Time
+	// SyncStartPolicyLocked is true while the NFS-e has a sync cursor: the
+	// start policy and date only change after `nanci reset --confirmar`.
+	SyncStartPolicyLocked bool
+	LastSyncAt            *time.Time
 }
 
 func newCompanyOutput(c company.Company) companyOutput {
 	return companyOutput{
-		CNPJ:            c.CNPJ,
-		Name:            c.Name,
-		CredentialID:    string(c.CredentialID),
-		CredentialLabel: c.CredentialLabel,
-		Environment:     string(c.Environment),
-		UF:              c.UF,
-		SyncStartPolicy: string(c.SyncStartPolicy),
-		SyncStartDate:   c.SyncStartDate,
-		LastSyncAt:      c.LastSyncAt,
+		CNPJ:                  c.CNPJ,
+		Name:                  c.Name,
+		CredentialID:          string(c.CredentialID),
+		CredentialLabel:       c.CredentialLabel,
+		Environment:           string(c.Environment),
+		UF:                    c.UF,
+		SyncStartPolicy:       string(c.SyncStartPolicy),
+		SyncStartDate:         c.SyncStartDate,
+		SyncStartPolicyLocked: c.SyncStartPolicyLocked,
+		LastSyncAt:            c.LastSyncAt,
 	}
 }
 

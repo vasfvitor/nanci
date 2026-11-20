@@ -57,6 +57,39 @@ func TestCompanyUpdate_SyncStartDate(t *testing.T) {
 	}
 }
 
+// TestCompanyList_JSONStartPolicyLock: an agent reads the lock before trying
+// `company update --sync-start-date`.
+func TestCompanyList_JSONStartPolicyLock(t *testing.T) {
+	env := newNFeTestRoot(t)
+	locked := func() any {
+		t.Helper()
+		if err := env.run("company", "list", "--json"); err != nil {
+			t.Fatalf("company list --json: %v", err)
+		}
+		var companies []map[string]any
+		decodeJSONOutput(t, env.out, &companies)
+		if len(companies) != 1 {
+			t.Fatalf("companies = %v", companies)
+		}
+		assertNoJSONKeys(t, companies, internalJSONKeys...)
+		return companies[0]["SyncStartPolicyLocked"]
+	}
+
+	if got := locked(); got != false {
+		t.Errorf("without a cursor SyncStartPolicyLocked = %v, want false", got)
+	}
+	seedNFSeCursors(t, env)
+	if got := locked(); got != true {
+		t.Errorf("with an NFS-e cursor SyncStartPolicyLocked = %v, want true", got)
+	}
+	if err := env.run("reset", "-c", nfeTestCNPJ, "--confirmar"); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if got := locked(); got != false {
+		t.Errorf("after the reset SyncStartPolicyLocked = %v, want false", got)
+	}
+}
+
 func TestCompanyUpdate_RejectsInvalidSyncStart(t *testing.T) {
 	env := newNFeTestRoot(t)
 	err := env.run("company", "update", "-c", nfeTestCNPJ, "--sync-start-policy", "all", "--sync-start-date", "2024-01-01")
