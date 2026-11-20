@@ -5,6 +5,9 @@ import { asSentence } from '@/utils/formatters'
 
 type NotifyOptions = Omit<QNotifyCreateOptions, 'type' | 'message'>
 
+// EventAnswer is the SEFAZ answer to one event sent for one document.
+type EventAnswer = { Status: string; CStat: string; XMotivo: string; Protocolo: string }
+
 // errorNotice is the notification of a failed action: "message: cause".
 function errorNotice(message: string, error: unknown): QNotifyCreateOptions {
   return { type: 'negative', message: `${message}: ${errorMessage(error)}` }
@@ -76,6 +79,27 @@ export function useNotify() {
     })
   }
 
+  // notifyEventResult reports the SEFAZ answer to one event. noun names the
+  // event in lowercase, as a feminine noun ("manifestação", "prestação em
+  // desacordo").
+  function notifyEventResult(result: EventAnswer, noun: string) {
+    const name = noun.charAt(0).toUpperCase() + noun.slice(1)
+    const detail = [result.CStat, result.XMotivo].filter(Boolean).join(' - ')
+    switch (result.Status) {
+      case 'registrada':
+        notifySuccess(`${name} registrada. Protocolo ${result.Protocolo || '—'}.`)
+        return
+      case 'ja_registrada':
+        notifyInfo(`A ${noun} já estava registrada na SEFAZ.`)
+        return
+      case 'rejeitada':
+        notifyError(`${name} rejeitada pela SEFAZ`, detail)
+        return
+      default:
+        notifyWarning(`${name} não enviada. ${detail}`.trim())
+    }
+  }
+
   // notifySyncError reports a failed sync. A canceled, already running or
   // SEFAZ-blocked sync is a warning; anything else is an error under message.
   function notifySyncError(message: string, error: unknown) {
@@ -104,6 +128,7 @@ export function useNotify() {
     notifyInfo,
     notifyWarning,
     notifyExported,
+    notifyEventResult,
     notifySyncError,
   }
 }

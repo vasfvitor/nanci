@@ -8,12 +8,7 @@ import { useNFeManifestacao } from '@/composables/useNFeManifestacao'
 import { useNotify } from '@/composables/useNotify'
 import { wailsErrorCode } from '@/platform/wails/client'
 import { useNFeDocumentsStore } from '@/stores/nfeDocuments'
-import type {
-  NFeConclusiveTipo,
-  NFeEventBatchResult,
-  NFeEventResult,
-  NFeRow,
-} from '@/types/desktop'
+import type { NFeConclusiveTipo, NFeEventBatchResult, NFeRow } from '@/types/desktop'
 import { countOutcomes, isProblemOutcome, noEligibleCienciaMessage } from '@/utils/nfeManifestacao'
 
 export type NFeManifestacaoActionsOptions = {
@@ -31,7 +26,7 @@ export type NFeManifestacaoActionsOptions = {
 // useNFeManifestacao.
 export function useNFeManifestacaoActions(options: NFeManifestacaoActionsOptions) {
   const $q = useQuasar()
-  const { notifyError, notifySuccess, notifyInfo, notifyWarning } = useNotify()
+  const { notifyError, notifySuccess, notifyWarning, notifyEventResult } = useNotify()
   const manifestacao = useNFeManifestacao()
   const { selected } = storeToRefs(useNFeDocumentsStore())
 
@@ -136,30 +131,13 @@ export function useNFeManifestacaoActions(options: NFeManifestacaoActionsOptions
         notifyWarning('Esta nota já tem um envio em andamento.')
         return
       }
-      notifyManifestacaoResult(result)
+      notifyEventResult(result, 'manifestação')
     } catch (error) {
       if (wailsErrorCode(error) === 'canceled') {
         notifyWarning('Envio da manifestação cancelado.')
       } else {
         notifyError('Erro ao registrar manifestação', error)
       }
-    }
-  }
-
-  function notifyManifestacaoResult(result: NFeEventResult) {
-    const detail = [result.CStat, result.XMotivo].filter(Boolean).join(' - ')
-    switch (result.Status) {
-      case 'registrada':
-        notifySuccess(`Manifestação registrada. Protocolo ${result.Protocolo || '—'}.`)
-        return
-      case 'ja_registrada':
-        notifyInfo('A manifestação já estava registrada na SEFAZ.')
-        return
-      case 'rejeitada':
-        notifyError('Manifestação rejeitada pela SEFAZ', detail)
-        return
-      default:
-        notifyWarning(`Manifestação não enviada. ${detail}`.trim())
     }
   }
 

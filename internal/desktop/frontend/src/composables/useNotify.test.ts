@@ -131,6 +131,33 @@ describe('useNotify', () => {
     expect(notify.mock.calls[0]?.[0]).not.toHaveProperty('actions')
   })
 
+  it('reports the SEFAZ answer to an event under its name', () => {
+    const { notifyEventResult } = useNotify()
+    const answer = { CStat: '', XMotivo: '', Protocolo: '' }
+
+    notifyEventResult({ ...answer, Status: 'registrada', Protocolo: '135' }, 'manifestação')
+    notifyEventResult({ ...answer, Status: 'registrada' }, 'prestação em desacordo')
+    notifyEventResult({ ...answer, Status: 'ja_registrada' }, 'manifestação')
+    notifyEventResult(
+      { ...answer, Status: 'rejeitada', CStat: '573', XMotivo: 'Duplicidade de evento' },
+      'prestação em desacordo'
+    )
+    notifyEventResult({ ...answer, Status: 'nao_enviada', XMotivo: 'sem resposta' }, 'manifestação')
+    notifyEventResult({ ...answer, Status: '' }, 'manifestação')
+
+    expect(notify.mock.calls.map(([options]) => options)).toEqual([
+      { type: 'positive', message: 'Manifestação registrada. Protocolo 135.' },
+      { type: 'positive', message: 'Prestação em desacordo registrada. Protocolo —.' },
+      { type: 'info', message: 'A manifestação já estava registrada na SEFAZ.' },
+      {
+        type: 'negative',
+        message: 'Prestação em desacordo rejeitada pela SEFAZ: 573 - Duplicidade de evento',
+      },
+      { type: 'warning', message: 'Manifestação não enviada. sem resposta' },
+      { type: 'warning', message: 'Manifestação não enviada.' },
+    ])
+  })
+
   it('leaves the path out when the export reports none', () => {
     const { notifyExported } = useNotify()
 
