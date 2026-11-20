@@ -77,8 +77,9 @@
             rounded
             :class="mutedBannerClass($q.dark.isActive)"
           >
-            A política inicial não pode ser alterada depois que a sincronização começou. Para
-            refazer o bootstrap histórico, use uma ação avançada de reset/backfill.
+            A data inicial fica travada depois que a NFS-e começou a sincronizar. Para trocá-la, use
+            Redefinir NFS-e na página NFS-e: a próxima sincronização baixa de novo desde o início, a
+            partir da nova data.
           </q-banner>
         </q-card-section>
 
@@ -156,11 +157,9 @@ const syncPolicyOptions = [
   { label: 'A partir de hoje', value: 'from_now' },
 ]
 
-const canEditSyncPolicy = computed(() => {
-  const company = props.companyData
-  if (!company) return true
-  return !company.LastSyncAt && !company.InitialSyncDoneAt
-})
+// canEditSyncPolicy follows the NFS-e cursor, like the backend: Redefinir
+// NFS-e deletes it and unlocks the start date, while LastSyncAt stays.
+const canEditSyncPolicy = computed(() => !props.companyData?.SyncStartPolicyLocked)
 
 watch(
   () => props.modelValue,

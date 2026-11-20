@@ -288,7 +288,8 @@ function confirmResetSync() {
   $q.dialog({
     title: 'Redefinir NFS-e',
     message:
-      'Reinicia a sincronização da NFS-e a partir do NSU 0. Os documentos já baixados ficam.',
+      'Reinicia a sincronização da NFS-e a partir do NSU 0 e libera a troca da data inicial no ' +
+      'cadastro da empresa. Os documentos já baixados ficam.',
     cancel: true,
     persistent: true,
     ok: { label: 'Redefinir', color: 'negative' },

@@ -51,6 +51,18 @@ function ufSelect(wrapper: ReturnType<typeof mountDialog>) {
     .find((select) => select.props('label') === 'UF (opcional)')
 }
 
+function policySelect(wrapper: ReturnType<typeof mountDialog>) {
+  return wrapper
+    .findAllComponents({ name: 'QSelect' })
+    .find((select) => select.props('label') === 'Política inicial de histórico')
+}
+
+function startDateInput(wrapper: ReturnType<typeof mountDialog>) {
+  return wrapper
+    .findAllComponents({ name: 'QInput' })
+    .find((input) => input.props('label') === 'Importar a partir de')
+}
+
 function nameInput(wrapper: ReturnType<typeof mountDialog>) {
   return wrapper
     .findAllComponents({ name: 'QInput' })
@@ -130,6 +142,45 @@ describe('EditCompanyDialog', () => {
 
     expect(nameInput(wrapper)?.props('modelValue')).toBe('Empresa Renomeada')
     expect(wrapper.findComponent(DraftBanner).exists()).toBe(false)
+  })
+
+  it('locks the start date while the NFS-e has a sync cursor', async () => {
+    const wrapper = mountDialog()
+    await reopen(wrapper, {
+      ...company,
+      SyncStartPolicy: 'since_date',
+      SyncStartDate: '2025-06-01T00:00:00Z',
+      SyncStartPolicyLocked: true,
+    })
+
+    expect(policySelect(wrapper)?.props('disable')).toBe(true)
+    expect(startDateInput(wrapper)?.props('readonly')).toBe(true)
+    expect(wrapper.text()).toContain('use Redefinir NFS-e na página NFS-e')
+  })
+
+  // Redefinir NFS-e deletes the cursor but keeps the run history, so a
+  // company with LastSyncAt can still take a new start date.
+  it('sends an earlier start date once the NFS-e sync was reset', async () => {
+    const wrapper = mountDialog()
+    await reopen(wrapper, {
+      ...company,
+      LastSyncAt: '2026-11-01T10:00:00Z',
+      SyncStartPolicy: 'since_date',
+      SyncStartDate: '2025-06-01T00:00:00Z',
+      SyncStartPolicyLocked: false,
+    })
+
+    expect(policySelect(wrapper)?.props('disable')).toBe(false)
+    expect(startDateInput(wrapper)?.props('readonly')).toBe(false)
+    expect(wrapper.text()).not.toContain('Redefinir NFS-e')
+
+    startDateInput(wrapper)?.vm.$emit('update:modelValue', '2024-01-01')
+    await flushPromises()
+    await submitForm(wrapper)
+
+    expect(desktopClient.updateCompany).toHaveBeenCalledWith(
+      expect.objectContaining({ SyncStartPolicy: 'since_date', SyncStartDate: '2024-01-01' })
+    )
   })
 
   it('shows an empty name inline', async () => {
