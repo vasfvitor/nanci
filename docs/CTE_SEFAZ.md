@@ -121,7 +121,15 @@ Eventos de uma chave que a empresa não tem localmente são descartados com um r
 
 ## Prestação do serviço em desacordo
 
-O evento 610110 é a forma de o **tomador** declarar que o serviço de transporte não foi prestado como consta no CT-e. Só o tomador pode enviá-lo, para o CT-e (modelo 57) e o CT-e OS (67), em até 45 dias da autorização (Ajuste SINIEF 09/07, cláusula 17ª, § 6º), com uma observação de 15 a 255 caracteres, e o envio vai à **SEFAZ autorizadora do CT-e** (`CTeRecepcaoEventoV4` da UF da chave, SVRS ou SVSP para a maioria), não ao Ambiente Nacional. Layout, endpoints e rejeições, com as fontes: `docs/pesquisa/2026-11-19-cte-desacordo.md`. O Nanci mostra o evento quando ele chega pela distribuição, mas não o envia. Veja "Próximos passos".
+O evento 610110 é a forma de o **tomador** declarar que o serviço de transporte não foi prestado como consta no CT-e. Só o tomador pode enviá-lo, para o CT-e (modelo 57) e o CT-e OS (67), em até 45 dias da autorização (Ajuste SINIEF 09/07, cláusula 17ª, § 6º), com uma observação de 15 a 255 caracteres, e o envio vai à **SEFAZ autorizadora do CT-e** (`CTeRecepcaoEventoV4` da UF da chave, SVRS ou SVSP para a maioria), não ao Ambiente Nacional. Layout, endpoints e rejeições, com as fontes: `docs/pesquisa/2026-11-19-cte-desacordo.md`.
+
+O Nanci envia o evento pelo `nanci cte desacordo` e pelo item **Prestação em desacordo** do menu da linha do CT-e (decisões de 19/11/2026):
+
+- Antes de pedir a senha, `CTeService.PlanDesacordo` (`internal/app/cte_desacordo.go`) confere a observação pela regra do schema (`sefaz.CheckXObsDesacordo`: 15 a 255 caracteres de Latin-1, sem espaço nas pontas; fora dela, o código `invalid_input`), que o CNPJ da empresa é exatamente o do tomador resolvido do CT-e (a regra da rejeição 755), o modelo 57 ou 67, a situação autorizada e que não há desacordo registrado em vigor (um 610110 registrado sem um 610111 registrado depois). O `nSeqEvento` é o número de desacordos registrados mais 1.
+- O prazo de 45 dias é mostrado, contado de `AuthorizedAt`, e nunca bloqueia: a SEFAZ decide, com a rejeição 787 (`app.DesacordoPrazoDias`). É a mesma regra da manifestação conclusiva da NF-e.
+- O envio vai sozinho, sem lote, ao `CTeRecepcaoEventoV4` da autorizadora da UF da chave (`sefaz.CTeRecepcaoEventoURL`, tabela em `internal/sefaz/cte_endpoints.go`), com `cOrgao` igual ao código da UF da chave. Os `cStat` 134, 135 e 136 registram o evento; 631 é duplicidade (registrado antes); o resto é rejeição.
+- Todo envio fica em `cte_desacordos`, também o rejeitado e o que ficou sem resposta. O registrado é lido de volta do seu `procEventoCTe` pelo mesmo parser da distribuição e gravado em `cte_events`.
+- A SOAP action (`http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoEventoV4/cteRecepcaoEvento`) segue o padrão dos outros serviços do CT-e; o WSDL oficial só responde com certificado de cliente e não foi lido. Os testes usam só servidores falsos, com respostas montadas a partir do schema.
 
 ## Ligação com a NF-e
 
@@ -221,14 +229,10 @@ Um CT-e recebido de novo substitui o anterior (não há resumo a preservar), man
 
 ## Fora do escopo
 
-- Envio da prestação do serviço em desacordo (610110) e do seu cancelamento.
+- Cancelamento da prestação do serviço em desacordo (610111); ver `docs/PENDENCIAS.md`.
 - MDF-e: os documentos em si e os eventos de MDF-e sobre CT-e que a empresa não tem.
 - Recuperar pela SEFAZ os CT-e emitidos pela própria empresa; o XML deles pode ser importado (ver "Importação de XML").
 - Ligação visual entre CT-e e NFS-e nas telas.
-
-## Próximos passos
-
-- Prestação do serviço em desacordo: tabela UF → SEFAZ autorizadora do CT-e por ambiente (SVRS para 18 UF, SVSP para AP, PE e RR; MG, MS, MT, PR, RS e SP com endpoint próprio), com a UF tirada da chave; generalizar o assinador de `internal/sefaz/xmldsig.go` para o `eventoCTe` 4.00; tabela de auditoria dos envios, como `nfe_manifestacoes`; confirmação explícita no CLI e no aplicativo, com o prazo exibido.
 
 ## Atribuição
 

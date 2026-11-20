@@ -4,11 +4,12 @@ Itens anotados durante as entregas de NF-e (v0.4.0) e CT-e (v0.5.0), em 24/09/20
 
 ## Funcionalidade
 
-- **Prestação do serviço em desacordo (CT-e, evento 610110).** Só o tomador envia, em até 45 dias da autorização (relato de terceiros; ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`), com uma observação, à SEFAZ autorizadora do CT-e (não ao Ambiente Nacional). Precisa de: tabela UF → serviço de recepção de eventos por ambiente (SVRS para a maioria; SP, MT, MS, MG e PR com endpoint próprio), assinatura do `eventoCTe` reaproveitando `internal/sefaz/xmldsig.go` com o namespace do CT-e, tabela de auditoria dos envios (espelho de `nfe_manifestacoes`), confirmação explícita como na ciência da NF-e. Ver `docs/CTE_SEFAZ.md`, "Próximos passos".
+- **Cancelar a prestação do serviço em desacordo (CT-e, evento 610111).** O tomador anula um 610110 registrado informando o protocolo dele (`nProtEvPrestDes`); grupo `evCancPrestDesacordo`, mesmos modelos e mesma autorizadora (MOC CT-e 4.00, 6.6; ver `docs/pesquisa/2026-11-19-cte-desacordo.md`). O envio do 610110 já existe; o cancelamento reaproveitaria `signInfEvento`, a tabela de autorizadoras e `cte_desacordos`.
 - **Notas emitidas pela própria empresa.** A distribuição não devolve ao emitente os próprios documentos (e `consChNFe` responde 641); desde 17/10/2026 entram por importação do XML (`nfe import`, botão Importar XML). Buscar na SEFAZ pelo emitente continua fora.
 
 ## Comportamento conhecido
 
+- **Prestação em desacordo real ainda não enviada.** O envio do 610110 foi testado só com servidores falsos. Antes do primeiro envio real, conferir a SOAP action no WSDL do `CTeRecepcaoEventoV4` com o certificado A1 (ver `docs/CTE_SEFAZ.md`, "Prestação do serviço em desacordo").
 - **Ciência da Operação real ainda não enviada.** O fluxo de manifestação da NF-e foi testado só com o servidor de teste; um envio real exige um CNPJ que receba NF-e. A assinatura foi conferida byte a byte contra um evento real aceito pela SEFAZ.
 
 ## Código

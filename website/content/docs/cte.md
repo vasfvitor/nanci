@@ -14,6 +14,16 @@ O Nanci baixa os CT-e (modelos 57, 64 e 67) em que a empresa é parte, com os ev
 
 A SEFAZ guarda os CT-e por 3 meses ([NT 2015.002](https://www.cte.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=LLSQYxGtwv0=)). O XML completo chega direto, sem resumo nem manifestação.
 
+## Prestação em desacordo
+
+Quando o transporte não foi prestado como consta no CT-e, o tomador declara isso à SEFAZ com o evento de prestação do serviço em desacordo. Use **Prestação em desacordo** no menu da linha do CT-e, escreva a observação (de 15 a 255 caracteres) e revise antes de enviar. O item fica desabilitado, com o motivo, quando a empresa não é a tomadora, para a GTV-e e para um CT-e cancelado ou denegado.
+
+O prazo é de 45 dias da autorização do CT-e ([Ajuste SINIEF 09/07](https://www.confaz.fazenda.gov.br/legislacao/ajustes/2007/AJ_009_07), cláusula 17ª, § 6º). O Nanci mostra o prazo e avisa quando ele passou, mas deixa a SEFAZ decidir. O evento vai à SEFAZ que autorizou o CT-e e não gasta consultas da distribuição. Pela linha de comando, é o `nanci cte desacordo`, que só simula sem `--confirmar`.
+
+{{< callout type="warning" >}}
+O evento enviado não pode ser desfeito pelo Nanci. O cancelamento do desacordo existe na SEFAZ, mas o Nanci ainda não o envia.
+{{< /callout >}}
+
 ## Exportar
 
 **Exportar** gera, da lista filtrada ou da seleção, uma planilha Excel ou CSV, um ZIP com os XMLs e eventos, ou um ZIP com os DACTE em PDF. Cada documento também pode ser salvo sozinho em XML ou DACTE. O DACTE existe só para o CT-e modelo 57; CT-e OS, GTV-e e CT-e Simplificado ficam fora do ZIP de DACTE, e a tela diz quantos ficaram de fora. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.
