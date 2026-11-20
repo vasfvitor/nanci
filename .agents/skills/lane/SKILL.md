@@ -18,8 +18,9 @@ A lane is one agent, one worktree, a few commits, disjoint files from every othe
 ```
 Repo nanci. Read AGENTS.md (and <area docs>). You are in an isolated worktree:
 first `git reset --hard <base>` (worktree is clean). Work only there; do not push.
-Setup (gitignored, never commit): `go work init . ./internal/desktop
-./third_party/go-pkcs12`; for the desktop module without frontend work, stub the
+Setup (gitignored, never commit): `GOWORK=$PWD/go.work go work init .
+./internal/desktop ./third_party/go-pkcs12` (without GOWORK, a worktree inside
+the main checkout picks up its go.work); for the desktop module without frontend work, stub the
 embedded bundle as CI does: `mkdir -p internal/desktop/frontend/dist && echo
 '<div></div>' > internal/desktop/frontend/dist/index.html`; for frontend work
 `pnpm install --frozen-lockfile` in internal/desktop/frontend (`pnpm run build`
