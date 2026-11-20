@@ -15,6 +15,12 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+// ErrDatabaseNewer means the database has migrations this binary does not
+// know: a newer nanci (usually the desktop app after an automatic update)
+// migrated it. goose would carry on without a word, and older code would then
+// write to a schema it was not written for.
+var ErrDatabaseNewer = errors.New("o banco de dados foi atualizado por uma versão mais nova do Nanci; use o nanci e o aplicativo da mesma versão")
+
 //go:embed migrations_v2/*.sql
 var embedMigrationsV2 embed.FS
 
@@ -61,6 +67,11 @@ func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, er
 			return nil, fmt.Errorf("falha ao configurar migrations: %w", err)
 		}
 
+		if err := checkNotNewer(ctx, provider); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+
 		_, err = provider.Up(ctx)
 		if err != nil {
 			_ = db.Close()
@@ -69,4 +80,21 @@ func OpenDB(ctx context.Context, dbPath string, runMigrations bool) (*sql.DB, er
 	}
 
 	return db, nil
+}
+
+// checkNotNewer fails with ErrDatabaseNewer when the database was migrated
+// past the last migration embedded in this binary.
+func checkNotNewer(ctx context.Context, provider *goose.Provider) error {
+	dbVersion, err := provider.GetDBVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("falha ao ler a versão do banco: %w", err)
+	}
+	var known int64
+	for _, source := range provider.ListSources() {
+		known = max(known, source.Version)
+	}
+	if dbVersion > known {
+		return fmt.Errorf("%w (banco na migração %d, este programa conhece até a %d)", ErrDatabaseNewer, dbVersion, known)
+	}
+	return nil
 }

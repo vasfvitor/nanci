@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -67,4 +68,36 @@ func readThenWrite(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// TestOpenDBRefusesNewerDatabase opens a database that a newer nanci migrated
+// (a version above the last embedded migration). goose alone accepts it.
+func TestOpenDBRefusesNewerDatabase(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "newer.db")
+	db, err := store.OpenDB(ctx, path, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO goose_db_version (version_id, is_applied) VALUES (9999, 1)`); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+
+	_, err = store.OpenDB(ctx, path, true)
+	if !errors.Is(err, store.ErrDatabaseNewer) {
+		t.Fatalf("OpenDB on a newer database: got %v, want ErrDatabaseNewer", err)
+	}
+}
+
+func TestOpenDBReopensAnUpToDateDatabase(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "current.db")
+	for range 2 {
+		db, err := store.OpenDB(ctx, path, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = db.Close()
+	}
 }
