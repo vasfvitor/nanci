@@ -146,3 +146,9 @@ UPDATE cte_events SET cte_document_id = ? WHERE chave_acesso = ? AND cte_documen
 SELECT * FROM cte_events
 WHERE chave_acesso = ?
 ORDER BY COALESCE(registered_at, event_at, created_at), tp_evento, n_seq_evento;
+
+-- name: InsertCTeDesacordo :exec
+INSERT INTO cte_desacordos (
+    id, company_id, chave_acesso, tp_amb, n_seq_evento, observacao, status, c_stat, x_motivo,
+    protocolo, event_at, registered_at, request_raw_hash, response_raw_hash, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

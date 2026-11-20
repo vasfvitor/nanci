@@ -111,6 +111,52 @@ func (q *Queries) HasCompanyCTeDocument(ctx context.Context, arg HasCompanyCTeDo
 	return count, err
 }
 
+const insertCTeDesacordo = `-- name: InsertCTeDesacordo :exec
+INSERT INTO cte_desacordos (
+    id, company_id, chave_acesso, tp_amb, n_seq_evento, observacao, status, c_stat, x_motivo,
+    protocolo, event_at, registered_at, request_raw_hash, response_raw_hash, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertCTeDesacordoParams struct {
+	ID              string
+	CompanyID       string
+	ChaveAcesso     string
+	TpAmb           string
+	NSeqEvento      int64
+	Observacao      string
+	Status          string
+	CStat           string
+	XMotivo         string
+	Protocolo       string
+	EventAt         string
+	RegisteredAt    sql.NullString
+	RequestRawHash  sql.NullString
+	ResponseRawHash sql.NullString
+	CreatedAt       string
+}
+
+func (q *Queries) InsertCTeDesacordo(ctx context.Context, arg InsertCTeDesacordoParams) error {
+	_, err := q.db.ExecContext(ctx, insertCTeDesacordo,
+		arg.ID,
+		arg.CompanyID,
+		arg.ChaveAcesso,
+		arg.TpAmb,
+		arg.NSeqEvento,
+		arg.Observacao,
+		arg.Status,
+		arg.CStat,
+		arg.XMotivo,
+		arg.Protocolo,
+		arg.EventAt,
+		arg.RegisteredAt,
+		arg.RequestRawHash,
+		arg.ResponseRawHash,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const linkCTeEventsToDocument = `-- name: LinkCTeEventsToDocument :exec
 UPDATE cte_events SET cte_document_id = ? WHERE chave_acesso = ? AND cte_document_id IS NULL
 `

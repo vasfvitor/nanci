@@ -1,6 +1,11 @@
 package cte
 
-import "errors"
+import (
+	"errors"
+	"time"
+
+	"github.com/vasfvitor/nanci/internal/dfe"
+)
 
 // Export kinds tracked in the CT-e export marks. Each kind keeps its own
 // marks, so exporting the XML does not mark the spreadsheet as exported.
@@ -43,4 +48,37 @@ type ResetCounts struct {
 	Documents        int // cte_documents no other company sees
 	Events           int // cte_events of those documents
 	ExportMarks      int
+}
+
+// Statuses of an outbound prestação em desacordo, stored in
+// cte_desacordos.status. They match the NF-e manifestação ones.
+const (
+	DesacordoStatusRegistrada   = "registrada"
+	DesacordoStatusJaRegistrada = "ja_registrada"
+	DesacordoStatusRejeitada    = "rejeitada"
+	DesacordoStatusErro         = "erro" // the request got no SEFAZ answer
+)
+
+// DesacordoRecord is one prestação em desacordo sent to SEFAZ, whatever
+// the answer. Fields are plain values so the store does not depend on the
+// SEFAZ client.
+type DesacordoRecord struct {
+	CompanyID   dfe.CompanyID
+	ChaveAcesso string
+	TpAmb       string // tpAmb the event was sent to: 1 produção, 2 homologação
+	NSeqEvento  int
+	Observacao  string
+	EventAt     time.Time // dhEvento sent
+	Status      string    // one of the DesacordoStatus* constants
+	CStat       string
+	XMotivo     string
+	Protocolo   string
+	// RegisteredAt is dhRegEvento, when SEFAZ registered the event.
+	RegisteredAt *time.Time
+
+	RequestRawHash  string
+	ResponseRawHash string
+	// Event is the registered event, read from its procEventoCTe, to store
+	// in cte_events; nil unless SEFAZ registered it now.
+	Event *Event
 }

@@ -208,6 +208,61 @@ func TestCTeDocumentRoundTrip(t *testing.T) {
 	}
 }
 
+// TestCTeRecordDesacordo checks that every send is kept in cte_desacordos
+// and that only a registered one reaches cte_events and the document.
+func TestCTeRecordDesacordo(t *testing.T) {
+	f := newCTeFixture(t)
+	ctx := context.Background()
+	f.applyDocument("mock", cnpjMock, f.document("procte.xml", "hash-proc"), 1)
+	eventAt := time.Date(2026, 11, 19, 10, 30, 0, 0, time.UTC)
+	registeredAt := eventAt.Add(4 * time.Second)
+
+	rejected := cte.DesacordoRecord{
+		CompanyID: "mock", ChaveAcesso: cteKeyProc, TpAmb: "1", NSeqEvento: 1,
+		Observacao: "Carga entregue avariada no destino", EventAt: eventAt,
+		Status: cte.DesacordoStatusRejeitada, CStat: "787", XMotivo: "Rejeicao: Prazo excedido",
+		RequestRawHash: "hash-req-1", ResponseRawHash: "hash-resp-1",
+	}
+	if err := f.repo.RecordDesacordo(ctx, rejected); err != nil {
+		t.Fatalf("RecordDesacordo rejected: %v", err)
+	}
+	if n := len(f.events(cteKeyProc)); n != 0 {
+		t.Fatalf("events after a rejected desacordo = %d, want 0", n)
+	}
+
+	registered := rejected
+	registered.Status = cte.DesacordoStatusRegistrada
+	registered.CStat, registered.XMotivo, registered.Protocolo = "135", "Evento registrado e vinculado a CT-e", "135260000000123"
+	registered.RegisteredAt = &registeredAt
+	registered.Event = &cte.Event{
+		ChaveAcesso: cteKeyProc, TpAmb: "1", COrgao: "35",
+		TpEvento: "610110", Type: cte.EventTypePrestacaoDesacordo, NSeqEvento: 1,
+		EventAt: &eventAt, RegisteredAt: &registeredAt, Protocolo: "135260000000123",
+		AutorCNPJ: cnpjMock, Description: "Prestacao do Servico em Desacordo",
+		Observacao: registered.Observacao, Registered: true, CStat: "135", XMotivo: registered.XMotivo,
+		RawHash: "hash-proc-evento",
+	}
+	if err := f.repo.RecordDesacordo(ctx, registered); err != nil {
+		t.Fatalf("RecordDesacordo registered: %v", err)
+	}
+
+	events := f.events(cteKeyProc)
+	if len(events) != 1 || events[0].Type != cte.EventTypePrestacaoDesacordo || events[0].Observacao != registered.Observacao || !events[0].Registered {
+		t.Fatalf("events = %+v, want the registered desacordo", events)
+	}
+	if doc := f.companyDocument("mock", cteKeyProc); doc.EventCount != 1 {
+		t.Errorf("EventCount = %d, want 1", doc.EventCount)
+	}
+
+	var statuses string
+	if err := f.db.QueryRowContext(ctx, `SELECT group_concat(status, ',') FROM (SELECT status FROM cte_desacordos ORDER BY created_at, status)`).Scan(&statuses); err != nil {
+		t.Fatal(err)
+	}
+	if statuses != "registrada,rejeitada" && statuses != "rejeitada,registrada" {
+		t.Errorf("cte_desacordos statuses = %q, want both sends kept", statuses)
+	}
+}
+
 func TestCTeEventBeforeDocument(t *testing.T) {
 	f := newCTeFixture(t)
 	cancelamento := f.event("proceventocte-cancelamento.xml", "hash-canc")

@@ -1104,6 +1104,48 @@ func TestMigration025AddsSourceLocks(t *testing.T) {
 	}
 }
 
+func TestMigration026AddsCTeDesacordos(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 25)
+
+	tableCount := func() int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'cte_desacordos'`).Scan(&n); err != nil {
+			t.Fatalf("read sqlite_master: %v", err)
+		}
+		return n
+	}
+
+	if _, err := provider.UpTo(ctx, 26); err != nil {
+		t.Fatalf("migrate to version 26: %v", err)
+	}
+	if n := tableCount(); n != 1 {
+		t.Fatalf("cte_desacordos tables after up = %d, want 1", n)
+	}
+	const now = "2026-11-19T10:00:00Z"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '70860312000150', '70860312', 'Company', 'producao', 'all', ?, ?)
+	`, now, now)
+	const insert = `
+		INSERT INTO cte_desacordos (id, company_id, chave_acesso, tp_amb, n_seq_evento, observacao, status,
+			c_stat, x_motivo, protocolo, event_at, created_at)
+		VALUES (?, 'comp-1', '35260912345678000195570010000001011123456784', '1', 1, 'Carga não entregue', ?,
+			'135', 'Evento registrado', '135260000000001', ?, ?)`
+	mustExec(t, db, insert, "d-1", "registrada", now, now)
+	if _, err := db.ExecContext(ctx, insert, "d-2", "enviada", now, now); err == nil {
+		t.Error("cte_desacordos accepted an unknown status")
+	}
+
+	if _, err := provider.DownTo(ctx, 25); err != nil {
+		t.Fatalf("migrate down to version 25: %v", err)
+	}
+	if n := tableCount(); n != 0 {
+		t.Errorf("cte_desacordos tables after down = %d, want 0", n)
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()

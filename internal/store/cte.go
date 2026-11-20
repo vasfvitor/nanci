@@ -180,6 +180,44 @@ func (r *CTeRepository) ApplyEventTx(ctx context.Context, tx *sql.Tx, p ApplyCTe
 	return count == 0, nil
 }
 
+// RecordDesacordo stores one sent prestação em desacordo in cte_desacordos
+// and, when SEFAZ registered it (rec.Event), its event in cte_events with the
+// situação recomputed, all in one transaction.
+func (r *CTeRepository) RecordDesacordo(ctx context.Context, rec cte.DesacordoRecord) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	err = r.queries.WithTx(tx).InsertCTeDesacordo(ctx, sqlgen.InsertCTeDesacordoParams{
+		ID:              dfe.GenerateID(),
+		CompanyID:       string(rec.CompanyID),
+		ChaveAcesso:     rec.ChaveAcesso,
+		TpAmb:           rec.TpAmb,
+		NSeqEvento:      int64(rec.NSeqEvento),
+		Observacao:      rec.Observacao,
+		Status:          rec.Status,
+		CStat:           rec.CStat,
+		XMotivo:         rec.XMotivo,
+		Protocolo:       rec.Protocolo,
+		EventAt:         rec.EventAt.UTC().Format(time.RFC3339),
+		RegisteredAt:    nullableTime(rec.RegisteredAt, time.RFC3339),
+		RequestRawHash:  nullString(rec.RequestRawHash),
+		ResponseRawHash: nullString(rec.ResponseRawHash),
+		CreatedAt:       time.Now().UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		return fmt.Errorf("record desacordo %s: %w", rec.ChaveAcesso, err)
+	}
+	if rec.Event != nil {
+		if _, err := r.ApplyEventTx(ctx, tx, ApplyCTeEventParams{Event: *rec.Event}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // CompanyDocumentExists reports whether the company already sees the chave.
 func (r *CTeRepository) CompanyDocumentExists(ctx context.Context, companyID dfe.CompanyID, chave string) (bool, error) {
 	count, err := r.queries.HasCompanyCTeDocument(ctx, sqlgen.HasCompanyCTeDocumentParams{

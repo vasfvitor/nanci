@@ -117,6 +117,24 @@ type Credential struct {
 	UpdatedAt         string
 }
 
+type CteDesacordo struct {
+	ID              string
+	CompanyID       string
+	ChaveAcesso     string
+	TpAmb           string
+	NSeqEvento      int64
+	Observacao      string
+	Status          string
+	CStat           string
+	XMotivo         string
+	Protocolo       string
+	EventAt         string
+	RegisteredAt    sql.NullString
+	RequestRawHash  sql.NullString
+	ResponseRawHash sql.NullString
+	CreatedAt       string
+}
+
 type CteDocument struct {
 	ID                  string
 	ChaveAcesso         string
