@@ -80,7 +80,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 
 **Which companies are there.** `nanci company list --json` returns an array of `{CNPJ, Name, CredentialLabel, Environment, UF, LastSyncAt, ...}`. Use these CNPJs; do not invent one.
 
-**State of a company.** `nanci nfe status -c <cnpj> --json`, then `cte status` and `status` (NFS-e). From NF-e status report `LastSyncAt`, `NextAllowedAt`, `RequestsLastHour`/`RequestBudget`, `TotalResumos`, `PendingCiencia`, `PendingConclusiva`, `CienciaOverdue`, `NSUFaltantes` and `IdleDays`.
+**State of a company.** `nanci nfe status -c <cnpj> --json`, then `cte status` and `status` (NFS-e). From NF-e status report `LastSyncAt`, `NextAllowedAt`, `RequestsLastHour`/`RequestBudget`, `TotalResumos`, `PendingCiencia`, `PendingConclusiva`, `CienciaOverdue`, `NSUFaltantes` and `IdleDays`. The NFS-e `status` has `NextAllowedAt` and `BlockedReason` too.
 
 **Bring new documents.** `nanci pull -c <cnpj> --json` (NFS-e), `nanci nfe pull -c <cnpj> --json`, `nanci cte pull -c <cnpj> --json`. Report the counts (`CompletasSaved`, `ResumosSaved`, `DocumentsSaved`, `EventsSaved`, `Errors`) and `StopReason`. Run them one after another, not in parallel: each source of a company takes the lock.
 

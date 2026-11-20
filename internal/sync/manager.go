@@ -468,8 +468,12 @@ type StatusResult struct {
 	LastSyncAt         *time.Time
 	LastRunStatus      string
 	LastRunStopReason  string
-	TotalEmitidas      int64
-	TotalTomadas       int64
+	// NextAllowedAt is set while the ADN must not be queried, with why in
+	// BlockedReason.
+	NextAllowedAt *time.Time
+	BlockedReason string
+	TotalEmitidas int64
+	TotalTomadas  int64
 }
 
 func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, error) {
@@ -494,6 +498,10 @@ func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, err
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("contar documentos: %w", err)
 	}
+	limits, err := m.SourceLimits(ctx, company, syncstate.SyncSourceNFSe)
+	if err != nil {
+		return StatusResult{}, err
+	}
 
 	result := StatusResult{
 		CompanyName:        company.Name,
@@ -502,6 +510,8 @@ func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, err
 		ConsultationCNPJ:   company.CNPJ,
 		CredentialCNPJ:     credential.OwnerCNPJ,
 		CredentialNotAfter: credential.NotAfter,
+		NextAllowedAt:      limits.NextAllowedAt,
+		BlockedReason:      string(limits.BlockedReason),
 		TotalEmitidas:      counts["prestada"],
 		TotalTomadas:       counts["tomada"],
 	}

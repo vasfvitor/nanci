@@ -351,6 +351,8 @@ type nfseStatusOutput struct {
 	LastSyncAt         *time.Time
 	LastRunStatus      string
 	LastRunStopReason  string
+	NextAllowedAt      *time.Time
+	BlockedReason      string
 	TotalEmitidas      int64
 	TotalTomadas       int64
 }
@@ -368,6 +370,8 @@ func newNFSeStatusOutput(r sync.StatusResult) nfseStatusOutput {
 		LastSyncAt:         r.LastSyncAt,
 		LastRunStatus:      r.LastRunStatus,
 		LastRunStopReason:  r.LastRunStopReason,
+		NextAllowedAt:      r.NextAllowedAt,
+		BlockedReason:      r.BlockedReason,
 		TotalEmitidas:      r.TotalEmitidas,
 		TotalTomadas:       r.TotalTomadas,
 	}

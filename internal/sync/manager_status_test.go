@@ -145,9 +145,10 @@ func TestStatusWithStateButNoRunUsesLastSuccess(t *testing.T) {
 	}
 }
 
-// TestStatusIgnoresAnActiveBlock pins that a block of the source neither
-// fails Status nor changes what it reports: StatusResult has no block field.
-func TestStatusIgnoresAnActiveBlock(t *testing.T) {
+// TestStatusReportsAnActiveBlock checks that a block of the source does not
+// fail Status and shows up in NextAllowedAt and BlockedReason, the rest of
+// the result unchanged.
+func TestStatusReportsAnActiveBlock(t *testing.T) {
 	mgr, comp := newPullTestManager(t, &countingProvider{})
 	ctx := context.Background()
 	runStatusSource(t, mgr, comp, &fakeSource{
@@ -166,8 +167,15 @@ func TestStatusIgnoresAnActiveBlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Status while blocked = %v, want no error", err)
 	}
+	if before.NextAllowedAt != nil || before.BlockedReason != "" {
+		t.Errorf("Status before the block = %+v, want no block", before)
+	}
+	if after.NextAllowedAt == nil || after.BlockedReason != string(syncstate.SyncStopReasonConsumoIndevido) {
+		t.Errorf("Status while blocked = %+v, want the block", after)
+	}
+	after.NextAllowedAt, after.BlockedReason = nil, ""
 	if !reflect.DeepEqual(after, before) {
-		t.Errorf("Status while blocked = %+v, want %+v", after, before)
+		t.Errorf("Status while blocked, without the block = %+v, want %+v", after, before)
 	}
 }
 

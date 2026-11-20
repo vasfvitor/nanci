@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/store"
 	"github.com/vasfvitor/nanci/internal/sync"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // seedNFSe stores an NFS-e the company provided, issued on 2026-06-10.
@@ -112,6 +113,43 @@ func TestStatus_JSON(t *testing.T) {
 	decodeJSONOutput(t, env.out, &status)
 	if status["CNPJ"] != nfeTestCNPJ || status["TotalEmitidas"] != float64(0) || status["LastFoundNSU"] != nil {
 		t.Errorf("status = %v", status)
+	}
+}
+
+// TestStatus_ShowsTheNFSeBlock checks that `status` shows when the ADN may
+// be queried again, as `nfe status` and `cte status` do.
+func TestStatus_ShowsTheNFSeBlock(t *testing.T) {
+	env := newNFeTestRoot(t)
+	if err := env.run("status", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("status --json: %v", err)
+	}
+	var status map[string]any
+	decodeJSONOutput(t, env.out, &status)
+	if v, ok := status["NextAllowedAt"]; !ok || v != nil {
+		t.Errorf("NextAllowedAt without a block = %v (present %t), want null", v, ok)
+	}
+
+	env = newNFeTestRoot(t) // flag values stick to a command tree: --json would carry over
+	until := time.Now().Add(30 * time.Minute).UTC().Truncate(time.Second)
+	if err := sync.NewStore(env.db).SetBlockedUntil(context.Background(), env.company.ID, syncstate.SyncSourceNFSe,
+		env.company.Environment, until, syncstate.SyncStopReasonCaughtUp); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := env.run("status", "-c", nfeTestCNPJ); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if want := "Próxima consulta permitida após: " + formatDateTime(until); !strings.Contains(env.out.String(), want) {
+		t.Errorf("status lacks %q:\n%s", want, env.out.String())
+	}
+
+	if err := env.run("status", "-c", nfeTestCNPJ, "--json"); err != nil {
+		t.Fatalf("status --json: %v", err)
+	}
+	status = nil // a fresh map: json.Unmarshal merges into an existing one
+	decodeJSONOutput(t, env.out, &status)
+	if status["NextAllowedAt"] == nil || status["BlockedReason"] != string(syncstate.SyncStopReasonCaughtUp) {
+		t.Errorf("status = %v, want the block", status)
 	}
 }
 
