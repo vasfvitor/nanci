@@ -627,6 +627,9 @@ func TestNFeList_JSON(t *testing.T) {
 	if _, ok := proc["AutorizadosCNPJ"].([]any); !ok {
 		t.Errorf("AutorizadosCNPJ = %v, want a list", proc["AutorizadosCNPJ"])
 	}
+	if proc["Modelo"] != "55" || proc["FinNFe"] == "" || proc["VisibilityReason"] == "" {
+		t.Errorf("Modelo %v, FinNFe %v, VisibilityReason %v; want them filled", proc["Modelo"], proc["FinNFe"], proc["VisibilityReason"])
+	}
 	assertNoJSONKeys(t, rows, internalJSONKeys...)
 	assertNoJSONKeys(t, rows, "ID")
 }
@@ -660,8 +663,10 @@ func TestNFeStatus_JSON(t *testing.T) {
 		status["TotalDestinatario"] != float64(1) || status["PendingCiencia"] != float64(1) {
 		t.Errorf("status = %v", status)
 	}
-	if v, ok := status["MaxNSU"]; !ok || v != nil {
-		t.Errorf("MaxNSU = %v (present %t), want null", v, ok)
+	for _, key := range []string{"MaxNSU", "IdleDays"} {
+		if v, ok := status[key]; !ok || v != nil {
+			t.Errorf("%s = %v (present %t), want null", key, v, ok)
+		}
 	}
 }
 
@@ -678,7 +683,25 @@ func TestTestarConexao_JSONKeepsTheError(t *testing.T) {
 			if result["CertLoaded"] != false || result["EndpointReached"] != false || result["StatusExplanation"] == "" {
 				t.Errorf("result = %v", result)
 			}
+			if v, ok := result["CertExpiration"]; !ok || v != nil {
+				t.Errorf("CertExpiration = %v (present %t), want null with no certificate read", v, ok)
+			}
 		})
+	}
+}
+
+func TestTestarConexao_JSONCertExpiration(t *testing.T) {
+	env, _ := newNFeFetchTestRoot(t, retDistDFeInt(t, 137, "Nenhum documento localizado", ""))
+	// The fake may fail the query itself; the certificate is read before it.
+	_ = env.run("nfe", "testar-conexao", "-c", nfeTestCNPJ, "--json")
+	var result map[string]any
+	decodeJSONOutput(t, env.out, &result)
+	if result["CertLoaded"] != true {
+		t.Fatalf("result = %v, want the certificate loaded", result)
+	}
+	expiration, _ := result["CertExpiration"].(string)
+	if _, err := time.Parse(time.RFC3339, expiration); err != nil {
+		t.Errorf("CertExpiration = %v, want RFC 3339: %v", result["CertExpiration"], err)
 	}
 }
 

@@ -33,6 +33,15 @@ func optionalDaysLeft(due time.Time, days int) *int {
 	return &days
 }
 
+// optionalIdleDays is days, or nil when it is 0: the app sets it only when
+// the idle warning applies.
+func optionalIdleDays(days int) *int {
+	if days == 0 {
+		return nil
+	}
+	return &days
+}
+
 // nonNilStrings keeps a list as [] in JSON when it is empty.
 func nonNilStrings(s []string) []string {
 	if s == nil {
@@ -107,6 +116,7 @@ func newNFSeDocumentOutput(d nfse.CompanyDocument) nfseDocumentOutput {
 // deadline.
 type nfeDocumentOutput struct {
 	ChaveAcesso           string
+	Modelo                string
 	Serie                 string
 	Numero                string
 	IssueDate             *time.Time
@@ -115,6 +125,7 @@ type nfeDocumentOutput struct {
 	Protocolo             string
 	TpNF                  string
 	TpAmb                 string
+	FinNFe                string
 	NatOp                 string
 	EmitenteCNPJ          string
 	EmitenteName          string
@@ -131,6 +142,7 @@ type nfeDocumentOutput struct {
 	Completeness          string
 	ParseWarnings         []string
 	CompanyRole           string
+	VisibilityReason      string
 	Manifestacao          string
 	ManifestacaoAt        *time.Time
 	CienciaDue            *time.Time
@@ -149,6 +161,7 @@ type nfeDocumentOutput struct {
 func newNFeDocumentOutput(d app.NFeDocument) nfeDocumentOutput {
 	return nfeDocumentOutput{
 		ChaveAcesso:           string(d.ChaveAcesso),
+		Modelo:                d.Modelo,
 		Serie:                 d.Serie,
 		Numero:                d.Numero,
 		IssueDate:             optionalTime(d.IssueDate),
@@ -157,6 +170,7 @@ func newNFeDocumentOutput(d app.NFeDocument) nfeDocumentOutput {
 		Protocolo:             d.Protocolo,
 		TpNF:                  d.TpNF,
 		TpAmb:                 d.TpAmb,
+		FinNFe:                d.FinNFe,
 		NatOp:                 d.NatOp,
 		EmitenteCNPJ:          d.EmitenteCNPJ,
 		EmitenteName:          d.EmitenteName,
@@ -173,6 +187,7 @@ func newNFeDocumentOutput(d app.NFeDocument) nfeDocumentOutput {
 		Completeness:          string(d.Completeness),
 		ParseWarnings:         nonNilStrings(d.ParseWarnings),
 		CompanyRole:           string(d.CompanyRole),
+		VisibilityReason:      string(d.VisibilityReason),
 		Manifestacao:          string(d.Manifestacao),
 		ManifestacaoAt:        d.ManifestacaoAt,
 		CienciaDue:            optionalTime(d.CienciaDue),
@@ -268,6 +283,7 @@ type cteDocumentOutput struct {
 	ParseWarnings       []string
 	CompanyRole         string
 	Papeis              []string
+	VisibilityReason    string
 	EventCount          int
 	FirstSyncedAt       time.Time
 	LastSyncedAt        time.Time
@@ -313,6 +329,7 @@ func newCTeDocumentOutput(d cte.CompanyDocument) cteDocumentOutput {
 		ParseWarnings:       nonNilStrings(d.ParseWarnings),
 		CompanyRole:         string(d.CompanyRole),
 		Papeis:              nonNilStrings(cte.PapeisStrings(d.Papeis)),
+		VisibilityReason:    string(d.VisibilityReason),
 		EventCount:          d.EventCount,
 		FirstSyncedAt:       d.FirstSyncedAt,
 		LastSyncedAt:        d.LastSyncedAt,
@@ -356,8 +373,8 @@ func newNFSeStatusOutput(r sync.StatusResult) nfseStatusOutput {
 }
 
 // sefazSourceStatusOutput is the part of `nfe status` and `cte status` that
-// both SEFAZ sources share. MaxNSU is null when unknown; IdleDays is 0 unless
-// the idle warning applies.
+// both SEFAZ sources share. MaxNSU is null when unknown; IdleDays is null
+// unless the idle warning applies.
 type sefazSourceStatusOutput struct {
 	CompanyName       string
 	CNPJ              string
@@ -374,7 +391,7 @@ type sefazSourceStatusOutput struct {
 	BlockedReason     string
 	RequestsLastHour  int
 	RequestBudget     int
-	IdleDays          int
+	IdleDays          *int
 	NSUFaltantes      int64
 	RecoveryAllowance int
 	RecoveryReadyAt   *time.Time
@@ -397,7 +414,7 @@ func newSefazSourceStatusOutput(s app.SefazSourceStatus) sefazSourceStatusOutput
 		BlockedReason:     s.BlockedReason,
 		RequestsLastHour:  s.RequestsLastHour,
 		RequestBudget:     s.RequestBudget,
-		IdleDays:          s.IdleDays,
+		IdleDays:          optionalIdleDays(s.IdleDays),
 		NSUFaltantes:      s.NSUFaltantes,
 		RecoveryAllowance: s.RecoveryAllowance,
 		RecoveryReadyAt:   s.RecoveryReadyAt,
@@ -508,10 +525,11 @@ func newCredentialOutput(c credential.Credential) credentialOutput {
 }
 
 // connectionTestOutput is `nfe testar-conexao` and `cte testar-conexao`.
+// CertExpiration is null when the certificate was not read.
 type connectionTestOutput struct {
 	CertLoaded        bool
 	CertSubject       string
-	CertExpiration    string
+	CertExpiration    *time.Time
 	EndpointReached   bool
 	StatusExplanation string
 }
@@ -520,7 +538,7 @@ func newConnectionTestOutput(r app.ConnectionTestResult) connectionTestOutput {
 	return connectionTestOutput{
 		CertLoaded:        r.CertLoaded,
 		CertSubject:       r.CertSubject,
-		CertExpiration:    r.CertExpiration,
+		CertExpiration:    optionalTime(r.CertNotAfter),
 		EndpointReached:   r.EndpointReached,
 		StatusExplanation: r.StatusExplanation,
 	}

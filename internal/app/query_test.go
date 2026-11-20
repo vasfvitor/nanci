@@ -143,6 +143,7 @@ func TestTestConnectionSuccess(t *testing.T) {
 				CertLoaded:        true,
 				CertSubject:       cred.SubjectName,
 				CertExpiration:    formatCertExpiration(*cred.NotAfter),
+				CertNotAfter:      *cred.NotAfter,
 				MTLSAccepted:      true,
 				EndpointReached:   true,
 				ResponseCode:      "Sucesso",
@@ -297,6 +298,7 @@ func TestTestConnectionExpiredCertificate(t *testing.T) {
 		CertLoaded:        true,
 		CertSubject:       cred.SubjectName,
 		CertExpiration:    formatCertExpiration(expired),
+		CertNotAfter:      expired,
 		StatusExplanation: "Certificado digital expirado.",
 	}
 	if result != want {

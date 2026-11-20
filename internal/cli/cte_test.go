@@ -531,6 +531,9 @@ func TestCTeList_JSON(t *testing.T) {
 	if _, ok := proc["TotalValue"].(float64); !ok {
 		t.Errorf("TotalValue = %v, want a number", proc["TotalValue"])
 	}
+	if proc["VisibilityReason"] == "" || proc["VisibilityReason"] == nil {
+		t.Errorf("VisibilityReason = %v, want it filled", proc["VisibilityReason"])
+	}
 	assertNoJSONKeys(t, rows, internalJSONKeys...)
 	assertNoJSONKeys(t, rows, "ID")
 

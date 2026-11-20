@@ -114,7 +114,8 @@ func (s *QueryService) buildClient(ctx context.Context, companyCNPJ, purpose str
 type ConnectionTestResult struct {
 	CertLoaded        bool
 	CertSubject       string
-	CertExpiration    string
+	CertExpiration    string    // CertNotAfter in local time, for display
+	CertNotAfter      time.Time // zero when the certificate was not read
 	MTLSAccepted      bool
 	EndpointReached   bool
 	ResponseCode      string
@@ -192,6 +193,7 @@ func describeCertificate(result *ConnectionTestResult, cred *credential.Credenti
 		return false
 	}
 	result.CertExpiration = formatCertExpiration(*cred.NotAfter)
+	result.CertNotAfter = *cred.NotAfter
 	if !cred.NotAfter.Before(time.Now()) {
 		return false
 	}
