@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 )
 
 // tempCommand registers a throwaway subcommand on the given root for the
@@ -205,5 +206,34 @@ func TestJSONRequested(t *testing.T) {
 		if got := jsonRequested(tt.args); got != tt.want {
 			t.Errorf("jsonRequested(%q) = %t, want %t", tt.args, got, tt.want)
 		}
+	}
+}
+
+func TestRoot_VersionDoesNotOpenTheDatabase(t *testing.T) {
+	v, tr := false, false
+	var out bytes.Buffer
+	opened := false
+	root := NewRootCommand(CommandEnv{
+		Stdout: &out,
+		AppFactory: func(context.Context) (*app.App, func(), error) {
+			opened = true
+			return nil, func() {}, nil
+		},
+		Verbose: &v,
+		Trace:   &tr,
+	})
+	root.SetArgs([]string{"--version"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	want := "nanci " + buildinfo.Version + " (commit " + buildinfo.Commit + ", " + buildinfo.Date + ")\n"
+	if out.String() != want {
+		t.Errorf("--version printed %q, want %q", out.String(), want)
+	}
+	if opened {
+		t.Error("--version opened the database")
+	}
+	if f := root.PersistentFlags().ShorthandLookup("v"); f == nil || f.Name != "verbose" {
+		t.Errorf("-v should stay --verbose, got %v", f)
 	}
 }

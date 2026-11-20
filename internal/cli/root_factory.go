@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+
+	"github.com/vasfvitor/nanci/internal/foundation/buildinfo"
 )
 
 // NewRootCommand builds a fresh *cobra.Command tree from the given env.
@@ -30,6 +34,11 @@ distribuição DF-e da SEFAZ.`,
 		DisableFlagsInUseLine: true,
 		DisableSuggestions:    true,
 	}
+	// --version lets the person compare the CLI with "Sobre o Nanci" in the
+	// app: the CLI is a separate download and does not update with the app.
+	root.Version = buildinfo.Version
+	root.SetVersionTemplate(fmt.Sprintf("nanci %s (commit %s, %s)\n", buildinfo.Version, buildinfo.Commit, buildinfo.Date))
+	root.Flags().Bool("version", false, "Mostra a versão do nanci")
 	root.SetOut(env.Stdout)
 	root.SetErr(env.Stderr)
 	root.PersistentFlags().BoolVarP(env.Verbose, "verbose", "v", false, "Habilita log detalhado (debug)")
