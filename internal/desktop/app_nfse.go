@@ -104,31 +104,6 @@ func (a *App) ListEventsForDocument(documentID string) ([]desktopapi.DocumentEve
 	return desktopapi.DocumentEvents(events), nil
 }
 
-func (a *App) Status(cnpj string) (desktopapi.StatusResult, error) {
-	if err := a.ready(); err != nil {
-		return desktopapi.StatusResult{}, err
-	}
-	res, err := a.svc.sync.Status(a.ctx, cnpj)
-	if err != nil {
-		return desktopapi.StatusResult{}, err
-	}
-	return desktopapi.StatusResult{
-		CompanyName:        res.CompanyName,
-		CNPJ:               res.CNPJ,
-		Environment:        res.Environment,
-		ConsultationCNPJ:   res.ConsultationCNPJ,
-		CredentialCNPJ:     res.CredentialCNPJ,
-		CredentialNotAfter: res.CredentialNotAfter,
-		LastProcessedNSU:   res.LastProcessedNSU,
-		LastFoundNSU:       res.LastFoundNSU,
-		LastSyncAt:         res.LastSyncAt,
-		LastRunStatus:      res.LastRunStatus,
-		LastRunStopReason:  res.LastRunStopReason,
-		TotalEmitidas:      res.TotalEmitidas,
-		TotalTomadas:       res.TotalTomadas,
-	}, nil
-}
-
 func (a *App) ExportDANFSe(ctx context.Context, input desktopapi.ExportDANFSeInput) (desktopapi.ExportResult, error) {
 	if input.OutPath == "" {
 		return desktopapi.ExportResult{}, fmt.Errorf("caminho de saída não especificado")

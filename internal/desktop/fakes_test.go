@@ -225,19 +225,13 @@ func (f *fakeQuery) TestConnection(_ context.Context, cnpj string) (app.Connecti
 
 type fakeSync struct {
 	recorder
-	pull   nsync.PullResult
-	status nsync.StatusResult
-	err    error
+	pull nsync.PullResult
+	err  error
 }
 
 func (f *fakeSync) Pull(_ context.Context, in nsync.PullInput) (nsync.PullResult, error) {
 	f.record("Pull", in)
 	return f.pull, f.err
-}
-
-func (f *fakeSync) Status(_ context.Context, cnpj string) (nsync.StatusResult, error) {
-	f.record("Status", cnpj)
-	return f.status, f.err
 }
 
 func (f *fakeSync) ResetSyncState(_ context.Context, in nsync.ResetSyncInput) error {

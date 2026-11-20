@@ -10,22 +10,6 @@ import (
 	"github.com/vasfvitor/nanci/internal/nfse"
 )
 
-type StatusResult struct {
-	CompanyName        string
-	CNPJ               string
-	Environment        string
-	ConsultationCNPJ   string
-	CredentialCNPJ     string
-	CredentialNotAfter *time.Time
-	LastProcessedNSU   int64
-	LastFoundNSU       *int64
-	LastSyncAt         *time.Time
-	LastRunStatus      string
-	LastRunStopReason  string
-	TotalEmitidas      int64
-	TotalTomadas       int64
-}
-
 type DocumentRow struct {
 	ID                 string
 	ChaveAcesso        string

@@ -120,7 +120,6 @@ func coreRuns() map[string]func(a *App) (any, error) {
 		"ResetSyncState": func(a *App) (any, error) {
 			return nil, a.ResetSyncState(desktopapi.ResetSyncInput{CompanyCNPJ: testCNPJ})
 		},
-		"Status":            func(a *App) (any, error) { return a.Status(testCNPJ) },
 		"StatusCTe":         func(a *App) (any, error) { return a.StatusCTe(testCNPJ) },
 		"StatusNFe":         func(a *App) (any, error) { return a.StatusNFe(testCNPJ) },
 		"TestCTeConnection": func(a *App) (any, error) { return a.TestCTeConnection(context.Background(), testCNPJ) },

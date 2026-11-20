@@ -1542,7 +1542,6 @@ async function installWailsMock(context: BrowserContext, spec: ScreenshotSpec) {
         SetLogLevel: async () => undefined,
         SetWindowTheme: async () => undefined,
         ShowInFolder: async () => undefined,
-        Status: async () => ({}),
         SubmitCertPassword: async () => undefined,
         UpdateCompany: async () => undefined,
         UpdateCredentialData: async () => undefined,

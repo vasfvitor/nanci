@@ -53,7 +53,6 @@ type queryService interface {
 
 type syncService interface {
 	Pull(ctx context.Context, input nsync.PullInput) (nsync.PullResult, error)
-	Status(ctx context.Context, rawCNPJ string) (nsync.StatusResult, error)
 	ResetSyncState(ctx context.Context, input nsync.ResetSyncInput) error
 }
 

@@ -1270,22 +1270,6 @@ export interface ResetSyncInput {
     "CompanyCNPJ": string;
 }
 
-export interface StatusResult {
-    "CompanyName": string;
-    "CNPJ": string;
-    "Environment": string;
-    "ConsultationCNPJ": string;
-    "CredentialCNPJ": string;
-    "CredentialNotAfter": string | null;
-    "LastProcessedNSU": number;
-    "LastFoundNSU": number | null;
-    "LastSyncAt": string | null;
-    "LastRunStatus": string;
-    "LastRunStopReason": string;
-    "TotalEmitidas": number;
-    "TotalTomadas": number;
-}
-
 export interface UpdateCompanyInput {
     "CNPJ": string;
     "Name": string;

@@ -135,7 +135,6 @@ vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () 
   SetLogLevel: vi.fn(),
   SetWindowTheme: vi.fn(),
   ShowInFolder: vi.fn(),
-  Status: vi.fn(),
   StatusCTe: vi.fn(),
   StatusNFe: vi.fn(),
   SubmitCertPassword: vi.fn(),

@@ -371,10 +371,6 @@ export function ShowInFolder(path: string): $CancellablePromise<void> {
     return $Call.ByID(1225131967, path);
 }
 
-export function Status(cnpj: string): $CancellablePromise<desktopapi$0.StatusResult> {
-    return $Call.ByID(2836613335, cnpj);
-}
-
 export function StatusCTe(cnpj: string): $CancellablePromise<desktopapi$0.CTeStatusResult> {
     return $Call.ByID(1032652199, cnpj);
 }

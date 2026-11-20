@@ -151,53 +151,6 @@ func TestResetSyncStateResetsNFSe(t *testing.T) {
 	assertCalls(t, &f.sync.recorder, call{"ResetSyncState", []any{nsync.ResetSyncInput{CNPJ: testCNPJ, Source: syncstate.SyncSourceNFSe}}})
 }
 
-func TestStatusNFSe(t *testing.T) {
-	f, a := newFakeApp(nil)
-	notAfter := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
-	lastSync := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
-	lastFound := int64(77)
-	f.sync.status = nsync.StatusResult{
-		CompanyName:        "Empresa Teste",
-		CNPJ:               testCNPJ,
-		Environment:        "producao",
-		ConsultationCNPJ:   testCNPJ,
-		CredentialCNPJ:     testCNPJ,
-		CredentialNotAfter: &notAfter,
-		LastProcessedNSU:   76,
-		LastFoundNSU:       &lastFound,
-		LastSyncAt:         &lastSync,
-		LastRunStatus:      "completed",
-		LastRunStopReason:  "caught_up",
-		TotalEmitidas:      5,
-		TotalTomadas:       6,
-	}
-
-	got, err := a.Status(testCNPJ)
-	if err != nil {
-		t.Fatalf("Status: %v", err)
-	}
-
-	assertCalls(t, &f.sync.recorder, call{"Status", []any{testCNPJ}})
-	want := desktopapi.StatusResult{
-		CompanyName:        "Empresa Teste",
-		CNPJ:               testCNPJ,
-		Environment:        "producao",
-		ConsultationCNPJ:   testCNPJ,
-		CredentialCNPJ:     testCNPJ,
-		CredentialNotAfter: &notAfter,
-		LastProcessedNSU:   76,
-		LastFoundNSU:       &lastFound,
-		LastSyncAt:         &lastSync,
-		LastRunStatus:      "completed",
-		LastRunStopReason:  "caught_up",
-		TotalEmitidas:      5,
-		TotalTomadas:       6,
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("status =\n  %+v\nwant\n  %+v", got, want)
-	}
-}
-
 func TestPullNFe(t *testing.T) {
 	f, a := newFakeApp(nil)
 	maxNSU := int64(500)
@@ -300,7 +253,6 @@ func TestSyncErrorsReachFormatError(t *testing.T) {
 		"ResetSyncState": func(a *App) (any, error) {
 			return nil, a.ResetSyncState(desktopapi.ResetSyncInput{CompanyCNPJ: testCNPJ})
 		},
-		"Status": func(a *App) (any, error) { return a.Status(testCNPJ) },
 		"PullNFe": func(a *App) (any, error) {
 			return a.PullNFe(context.Background(), desktopapi.PullNFeInput{CNPJ: testCNPJ})
 		},

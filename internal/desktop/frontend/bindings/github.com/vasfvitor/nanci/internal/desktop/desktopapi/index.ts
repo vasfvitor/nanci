@@ -65,7 +65,6 @@ export type {
     RegisterNFeCienciaInput,
     RegisterNFeManifestacaoInput,
     ResetSyncInput,
-    StatusResult,
     UpdateCompanyInput,
     UpdateCredentialDataInput,
     UpdateCredentialPathInput,
