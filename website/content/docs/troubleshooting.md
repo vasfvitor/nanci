@@ -9,7 +9,7 @@ weight: 80
 | Mensagem | O que fazer |
 |---|---|
 | SmartScreen: "O Windows protegeu o computador" | Confira o hash do instalador ([Instalação](../instalacao/#instalar)) e clique em **Mais informações → Executar assim mesmo**. |
-| Senha incorreta ou "MAC verification failed" | Sincronize de novo e digite a senha certa. |
+| "senha inválida para o certificado" ou "invalid password for certificate" | Sincronize de novo e digite a senha certa. |
 | Certificado não encontrado | O arquivo mudou de lugar. Atualize o caminho em **Credenciais**. |
 | E2220: nenhum documento localizado | Não é erro: não há notas novas na fila do ADN. |
 | 401 ou 403 | O certificado está vencido ou é de outra empresa. |

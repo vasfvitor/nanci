@@ -18,7 +18,7 @@ Get-FileHash .\nanci-desktop-windows-amd64-v0.8.0-installer.exe -Algorithm SHA25
 
 ## Atualizar
 
-O Nanci procura uma versão nova quando abre. Se houver, aparece o aviso **Nova versão disponível**: clique em **Atualizar e reiniciar**, e o Nanci baixa a versão nova, fecha e abre de novo já atualizado. Para procurar a qualquer momento, use **Procurar atualizações** em **Configurações** › **Sobre o Nanci**.
+O Nanci procura uma versão nova quando abre. Se houver, aparece o aviso **Nova versão … disponível**, com o número da versão: clique em **Atualizar e reiniciar**, e o Nanci baixa a versão nova, fecha e abre de novo já atualizado. Para procurar a qualquer momento, use **Procurar atualizações** em **Configurações** › **Sobre o Nanci**.
 
 A atualização só é instalada se tiver a assinatura do projeto. Ela não começa enquanto uma sincronização estiver em andamento. Seus dados e as empresas cadastradas continuam onde estavam.
 

@@ -22,5 +22,5 @@ O Nanci baixa os documentos fiscais da empresa direto do governo, com o certific
 ## Fora do escopo
 
 - Emitir notas.
-- NFC-e, MDF-e, NFCom, NF3e, CF-e SAT e importação de XML avulso.
-- NF-e e CT-e emitidos pela própria empresa: a SEFAZ não os distribui ao emitente.
+- NFC-e, MDF-e, NFCom, NF3e e CF-e SAT.
+- Baixar da SEFAZ as NF-e e os CT-e emitidos pela própria empresa: ela não os distribui ao emitente. Esses entram só pelo **Importar XML**.
