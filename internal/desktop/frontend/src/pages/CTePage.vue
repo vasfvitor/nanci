@@ -318,6 +318,7 @@ import {
   cteParticipantes,
   ctePercurso,
   cteSituacaoFilterOptions,
+  cteSyncSummary,
   cteTpServLabel,
 } from '@/utils/cteDisplay'
 import { desacordoMenuBlock } from '@/utils/cteDesacordo'
@@ -492,9 +493,7 @@ async function syncCTe() {
   try {
     const result = await cte.syncCTe()
     if (!result) return
-    notifySuccess(
-      `Sincronização CT-e ${result.Status || 'concluída'}: ${result.DocumentsSaved} CT-e e ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`
-    )
+    notifySuccess(cteSyncSummary(result))
   } catch (error) {
     notifySyncError('Erro na sincronização do CT-e', error)
   }

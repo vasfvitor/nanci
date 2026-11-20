@@ -17,10 +17,11 @@ import {
   nfeRoleFilterOptions,
   showsConclusiveDeadline,
   nfeStatusLine,
+  nfeSyncSummary,
   situacaoFilterOptions,
   situacaoLabel,
 } from './nfeDisplay'
-import type { NFeStatusResult } from '@/types/desktop'
+import type { NFeStatusResult, PullNFeResult } from '@/types/desktop'
 import type { DisplayTable } from './sefazDisplay'
 
 // expectShortUniqueAbbrs checks that every value of table has an
@@ -264,5 +265,22 @@ describe('nfeDisplay', () => {
       CompanyRole: '',
     })
     expect(badges.map((badge) => badge.abbr)).toEqual(['—', '—', '—', '—'])
+  })
+
+  it('sums up an NF-e pull', () => {
+    const result = {
+      Status: 'completed',
+      CompletasSaved: 2,
+      ResumosSaved: 5,
+      EventsSaved: 1,
+      LastNSU: 120,
+      MaxNSU: 150,
+    } as PullNFeResult
+    expect(nfeSyncSummary(result)).toBe(
+      'Sincronização NF-e completed: 2 completas, 5 resumos, 1 eventos (NSU 120/150).'
+    )
+    expect(nfeSyncSummary({ ...result, Status: '', MaxNSU: null })).toBe(
+      'Sincronização NF-e concluída: 2 completas, 5 resumos, 1 eventos (NSU 120/—).'
+    )
   })
 })

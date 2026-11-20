@@ -1,4 +1,4 @@
-import type { NFeRow, NFeStatusResult } from '@/types/desktop'
+import type { NFeRow, NFeStatusResult, PullNFeResult } from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
 import { displayTable, failedRunSegment, type StateBadge } from '@/utils/sefazDisplay'
 
@@ -213,6 +213,12 @@ export function nfeNoteCount(status: NFeStatusCounts | null) {
   return (
     (status?.TotalDestinatario ?? 0) + (status?.TotalEmitente ?? 0) + (status?.TotalOutros ?? 0)
   )
+}
+
+// nfeSyncSummary reports one distribution pull: how it ended, what it saved
+// and the NSU cursor.
+export function nfeSyncSummary(result: PullNFeResult) {
+  return `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`
 }
 
 // nfeStatusLine sums up the last sync, the NSU cursor, the pendências and

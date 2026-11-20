@@ -271,6 +271,7 @@ import {
   completenessFilterOptions,
   manifestacaoFilterOptions,
   nfeRoleFilterOptions,
+  nfeSyncSummary,
   situacaoFilterOptions,
 } from '@/utils/nfeDisplay'
 
@@ -438,9 +439,7 @@ async function syncNFe() {
   try {
     const result = await nfe.syncNFe()
     if (!result) return
-    notifySuccess(
-      `Sincronização NF-e ${result.Status || 'concluída'}: ${result.CompletasSaved} completas, ${result.ResumosSaved} resumos, ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`
-    )
+    notifySuccess(nfeSyncSummary(result))
   } catch (error) {
     notifySyncError('Erro na sincronização da NF-e', error)
   }

@@ -1,4 +1,10 @@
-import type { CTeEvent, CTeMunicipio, CTeRow, CTeStatusResult } from '@/types/desktop'
+import type {
+  CTeEvent,
+  CTeMunicipio,
+  CTeRow,
+  CTeStatusResult,
+  PullCTeResult,
+} from '@/types/desktop'
 import { formatDateTime } from '@/utils/formatters'
 import { displayTable, failedRunSegment, type StateBadge } from '@/utils/sefazDisplay'
 
@@ -220,6 +226,12 @@ export function cteDocumentCount(status: CTeStatusCounts | null) {
     (status?.TotalRemetente ?? 0) +
     (status?.TotalOutros ?? 0)
   )
+}
+
+// cteSyncSummary reports one distribution pull: how it ended, what it saved
+// and the NSU cursor.
+export function cteSyncSummary(result: PullCTeResult) {
+  return `Sincronização CT-e ${result.Status || 'concluída'}: ${result.DocumentsSaved} CT-e e ${result.EventsSaved} eventos (NSU ${result.LastNSU}/${result.MaxNSU ?? '—'}).`
 }
 
 // cteStatusLine sums up the last sync, the NSU cursor, the CT-e count and

@@ -16,10 +16,11 @@ import {
   cteSituacaoFilterOptions,
   cteStateBadges,
   cteStatusLine,
+  cteSyncSummary,
   cteTipoDocumento,
   cteTpServLabel,
 } from './cteDisplay'
-import type { CTeEventType, CTeRow, CTeStatusResult } from '@/types/desktop'
+import type { CTeEventType, CTeRow, CTeStatusResult, PullCTeResult } from '@/types/desktop'
 import type { DisplayTable } from './sefazDisplay'
 
 // documentBadge is the first state badge of a CT-e, which names its kind.
@@ -305,5 +306,21 @@ describe('cteDisplay', () => {
       color: 'secondary',
       kind: 'Documento',
     })
+  })
+
+  it('sums up a CT-e pull', () => {
+    const result = {
+      Status: 'completed',
+      DocumentsSaved: 3,
+      EventsSaved: 1,
+      LastNSU: 120,
+      MaxNSU: 150,
+    } as PullCTeResult
+    expect(cteSyncSummary(result)).toBe(
+      'Sincronização CT-e completed: 3 CT-e e 1 eventos (NSU 120/150).'
+    )
+    expect(cteSyncSummary({ ...result, Status: '', MaxNSU: null })).toBe(
+      'Sincronização CT-e concluída: 3 CT-e e 1 eventos (NSU 120/—).'
+    )
   })
 })
