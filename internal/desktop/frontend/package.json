@@ -27,10 +27,7 @@
     "vue-router": "5.4.0"
   },
   "devDependencies": {
-    "@eslint/css": "2.0.1",
     "@eslint/js": "10.0.1",
-    "@eslint/json": "2.1.1",
-    "@pinia/testing": "2.0.2",
     "@quasar/vite-plugin": "2.0.2",
     "@types/node": "24.19.0",
     "@vitejs/plugin-vue": "6.0.10",
