@@ -41,6 +41,7 @@ var frozenMigrations = map[string]string{
 	"025_source_locks.sql":                          "22d818917808b8149690a1f8c24d60aa4c6720f4202faa95e807ff8f9db693e5",
 	"026_cte_desacordos.sql":                        "0fef87d584a1a16f87e1a7b3116bc9217c0c59501683a2e0f7f8b89d5ef42bd6",
 	"027_nfse_export_marks_event_count.sql":         "54bf711ebefb6568460cdfc28cfb7b15a3057a2a78f2d6ae74c674ba11caeab3",
+	"028_nfse_chave_without_prefix_again.sql":       "4cfc5118762209c3a570ab1e344f69673bb9e58815bae8d96e8f15b104f15a93",
 }
 
 func TestMigrationsAreFrozen(t *testing.T) {

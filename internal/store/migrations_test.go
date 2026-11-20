@@ -885,6 +885,76 @@ func TestMigration020StripsTheNFSPrefixOfNFSeChaves(t *testing.T) {
 	}
 }
 
+// TestMigration028StripsThePrefixLeftAfter020: rows a build older than the
+// parser fix wrote after 020 ran get the same rewrite, with the same rules.
+func TestMigration028StripsThePrefixLeftAfter020(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 27)
+
+	const now = "2026-10-05T17:32:02Z"
+	const chaveX = "26079012245852546000109000000000003126084764398700"
+	const chaveY = "26079012245852546000109000000000003226090191437394"
+	const invalidID = "NFS2607901224585254600010900000000000332609019143739X"
+	insertDoc := `
+		INSERT INTO documents (
+			id, chave_acesso, issue_date, competence, created_at, updated_at,
+			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name, intermediario_cnpj, intermediario_name,
+			status, layout_version, xml_path, raw_hash, nfse_number, service_description
+		) VALUES (?, ?, ?, '2026-10', ?, ?, '45852546000109', 'P', '11222333000181', 'T', '', '',
+			'normal', '1.0', '', ?, '1', 'Serviço')`
+	// (a) prefixed, no collision, with a cancelamento never linked to it
+	mustExec(t, db, insertDoc, "doc-a", "NFS"+chaveX, now, now, now, "hash-a")
+	mustExec(t, db, `
+		INSERT INTO events (id, document_id, chave_acesso, type, event_at, replacement_chave_acesso,
+			description, raw_xml_path, raw_hash, created_at)
+		VALUES ('ev-a', NULL, ?, 'cancelamento', ?, '', 'Cancelamento', '', 'hash-ev-a', ?)
+	`, chaveX, now, now)
+	// (b) prefixed, but another document already has the 50 digits
+	mustExec(t, db, insertDoc, "doc-b", "NFS"+chaveY, now, now, now, "hash-b")
+	mustExec(t, db, insertDoc, "doc-y", chaveY, now, now, now, "hash-y")
+	// (c) an Id that is not "NFS" + 50 digits
+	mustExec(t, db, insertDoc, "doc-c", invalidID, now, now, now, "hash-c")
+
+	if _, err := provider.UpTo(ctx, 28); err != nil {
+		t.Fatalf("migrate to version 28: %v", err)
+	}
+
+	docChaveAndStatus := func(id string) (string, string) {
+		t.Helper()
+		var chave, status string
+		if err := db.QueryRowContext(ctx, `SELECT chave_acesso, status FROM documents WHERE id = ?`, id).Scan(&chave, &status); err != nil {
+			t.Fatalf("read %s: %v", id, err)
+		}
+		return chave, status
+	}
+	if chave, status := docChaveAndStatus("doc-a"); chave != chaveX || status != "cancelada" {
+		t.Errorf("doc-a = (%q, %q), want (%q, cancelada)", chave, status, chaveX)
+	}
+	var linked sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT document_id FROM events WHERE id = 'ev-a'`).Scan(&linked); err != nil {
+		t.Fatalf("read ev-a: %v", err)
+	}
+	if linked.String != "doc-a" {
+		t.Errorf("ev-a document_id = %q, want doc-a", linked.String)
+	}
+	if chave, status := docChaveAndStatus("doc-b"); chave != "NFS"+chaveY || status != "normal" {
+		t.Errorf("doc-b = (%q, %q), want the prefixed chave untouched", chave, status)
+	}
+	if chave, _ := docChaveAndStatus("doc-y"); chave != chaveY {
+		t.Errorf("doc-y chave = %q, want %q", chave, chaveY)
+	}
+	if chave, _ := docChaveAndStatus("doc-c"); chave != invalidID {
+		t.Errorf("doc-c chave = %q, want %q", chave, invalidID)
+	}
+
+	if _, err := provider.DownTo(ctx, 27); err != nil {
+		t.Fatalf("migrate down to version 27: %v", err)
+	}
+	if chave, _ := docChaveAndStatus("doc-a"); chave != chaveX {
+		t.Errorf("doc-a chave after down = %q, want the 50 digits kept", chave)
+	}
+}
+
 func TestMigration021WidensExportKinds(t *testing.T) {
 	ctx := context.Background()
 	db, provider := migrateTo(t, 20)

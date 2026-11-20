@@ -41,4 +41,4 @@ A chave é `cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13) AAMM(4) cNum(9) DV
 
 Os eventos se ligam ao documento pelos 50 dígitos, e o status (`normal`, `cancelada`, `substituida`) é calculado a partir deles; uma substituição prevalece sobre um cancelamento.
 
-A migração `020` reescreveu para os 50 dígitos as chaves que versões anteriores guardavam com o prefixo, e não tem volta: quais linhas tinham o prefixo não é guardado. Se outro documento já tinha os mesmos 50 dígitos, a linha com prefixo ficou como estava, e a tela mostra os seus 10 últimos caracteres.
+A migração `020` reescreveu para os 50 dígitos as chaves que versões anteriores guardavam com o prefixo, e não tem volta: quais linhas tinham o prefixo não é guardado. Se outro documento já tinha os mesmos 50 dígitos, a linha com prefixo ficou como estava, e a tela mostra os seus 10 últimos caracteres. Uma versão anterior à correção do parser continuou gravando o prefixo em bancos que já tinham rodado a `020`, e a sincronização seguinte do mesmo NSU falhava em `UNIQUE(documents.raw_hash)`; a migração `028` repete a reescrita, com as mesmas regras.
