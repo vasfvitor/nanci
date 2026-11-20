@@ -89,7 +89,7 @@ Tests are white-box (`package cli`) next to the command (`nfe_test.go`, `cte_tes
 ## Docs to update in the same change
 
 - `website/content/docs/cli.md`: the "Comandos" table (one row per command group) and the `--confirmar` callout when the command has side effects; "Primeiros passos" or "Rotina agendada" when the command belongs in a routine.
-- `docs/NFE_SEFAZ.md` or `docs/CTE_SEFAZ.md`, section "Uso pela linha de comando": the numbered example block and the bullet that explains the flags and defaults. NFS-e commands have no such section in `docs/NFSE_ADN.md`; describe behavior there only if it changes the ADN contract.
+- Flags, defaults and usage live in the command's `--help` (`Short`, `Long`, flag help), `website/content/docs/cli.md` and `nanci-cli-agente`; the area docs (`docs/NFE_SEFAZ.md`, `docs/CTE_SEFAZ.md`, `docs/NFSE_ADN.md`) have no command section. Touch them only for a new SEFAZ or ADN rule, or a decision with its reason.
 - `README.md` has no command examples, only the build line and a link to the CLI page; touch it only if that changes.
 - `.agents/skills/nanci-cli-agente/SKILL.md` when the command is one an agent would run: its recipe, its JSON fields and any new error code.
 - If the command mirrors a desktop action, keep the wording of both aligned (button label, confirmation text).
@@ -105,4 +105,4 @@ Tests are white-box (`package cli`) next to the command (`nfe_test.go`, `cte_tes
 - [ ] Non-zero exit when any item of a batch failed.
 - [ ] `--json` output type in `output_types.go`, progress through `env.progress`, and a `--json` test with `decodeJSONOutput` and `assertNoJSONKeys`.
 - [ ] Tests with a fresh root per invocation; dry-run test asserts zero password requests.
-- [ ] `cli.md` table, `docs/<SOURCE>_SEFAZ.md` command section updated.
+- [ ] `cli.md` table and `--help` text updated; area doc only for a new rule or decision.

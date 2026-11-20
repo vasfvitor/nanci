@@ -6,7 +6,7 @@ Detalhamento técnico sobre como o Nanci baixa CT-e (modelo 57, inclusive o CT-e
 
 ## O que é a distribuição de CT-e
 
-A SEFAZ mantém no Ambiente Nacional (AN) o webservice **CTeDistribuicaoDFe**, com o mesmo desenho do `NFeDistribuicaoDFe` descrito em [NFE_SEFAZ.md](NFE_SEFAZ.md): cada documento recebe um NSU próprio do CNPJ consultado, o Nanci envia o último NSU que já leu (`distNSU/ultNSU`) e recebe até 50 documentos seguintes, com os cursores atualizados (`ultNSU` e `maxNSU`). A fila guarda os documentos por cerca de 3 meses, e a política inicial da empresa (`--sync-start-policy`) **não** se aplica ao CT-e: o primeiro pull traz o que a SEFAZ ainda tiver.
+A SEFAZ mantém no Ambiente Nacional (AN) o webservice **CTeDistribuicaoDFe**, com o mesmo desenho do `NFeDistribuicaoDFe` descrito em [NFE_SEFAZ.md](NFE_SEFAZ.md): fila por NSU, até 50 documentos por consulta. A fila guarda os documentos por cerca de 3 meses, e a política inicial da empresa (`--sync-start-policy`) **não** se aplica ao CT-e: o primeiro pull traz o que a SEFAZ ainda tiver.
 
 Diferenças em relação à NF-e:
 
@@ -22,102 +22,45 @@ Schemas distribuídos e lidos pelo Nanci:
 | `procCTeOS` | CT-e OS (outros serviços), modelo 67. |
 | `procGTVe` | GTV-e (guia de transporte de valores), modelo 64. |
 | `procCTeSimp` | CT-e Simplificado, modelo 57. |
-| `procEventoCTe` | Eventos (veja "Eventos distribuídos"). |
+| `procEventoCTe` | Eventos. |
 
-O tipo do documento (`cte`, `cte_os`, `gtve`, `cte_simplificado`) vem do elemento que envolve o `infCte` (`CTe`, `CTeOS`, `GTVe`, `CTeSimp`), então um CT-e Simplificado entregue no schema `procCTe` também é reconhecido. Os layouts 2.00, 3.00 e 4.00 podem aparecer na janela de 3 meses; o Nanci lê os campos por sufixo de caminho e ignora os que não conhece. Qualquer outro schema é guardado sem leitura e marcado como não suportado.
+Os layouts 2.00, 3.00 e 4.00 podem aparecer na janela de 3 meses. Qualquer outro schema é guardado sem leitura e marcado como não suportado.
 
 ## O que a empresa recebe, por papel
 
-O AN distribui o CT-e ao remetente, ao destinatário, ao expedidor, ao recebedor, ao tomador (inclusive o tomador terceiro do `toma4`) e aos CNPJ/CPF do grupo `autXML`. O Nanci classifica o papel da empresa em cada documento (coluna `PAPEL` do `cte list`), na ordem abaixo; o primeiro papel que a empresa ocupa é o principal:
+O AN distribui o CT-e ao remetente, ao destinatário, ao expedidor, ao recebedor, ao tomador (inclusive o tomador terceiro do `toma4`) e aos CNPJ/CPF do grupo `autXML`. Ao emitente, não distribui o CT-e que ele mesmo emitiu, só os eventos de MDF-e sobre ele; esses eventos são descartados, porque a empresa não tem o documento.
 
-| Papel | O que chega |
-|---|---|
-| `tomador` | CT-e em que a empresa toma o serviço de transporte, apontada pelo indicador `toma` (remetente, expedidor, recebedor ou destinatário) ou informada como terceiro (`toma4`). É quem escritura o frete. |
-| `destinatario` | CT-e em que a empresa é o destinatário da carga. |
-| `remetente` | CT-e em que a empresa é o remetente da carga. |
-| `expedidor` | CT-e em que a empresa entrega a carga ao transportador no lugar do remetente. |
-| `recebedor` | CT-e em que a empresa recebe a carga no lugar do destinatário. |
-| `emitente` | A SEFAZ não distribui ao emitente o CT-e que ele mesmo emitiu, só os eventos de MDF-e sobre ele. Um documento só aparece com esse papel quando chega por outro motivo (por exemplo, o CNPJ também está no `autXML`). |
-| `autorizado` | CT-e em que o CNPJ ou CPF foi informado no grupo `autXML`. |
-| `none` | A empresa só compartilha a raiz do CNPJ com alguma das partes, ou o motivo não foi identificado. |
-
-Uma empresa pode ocupar vários papéis no mesmo CT-e, por exemplo remetente e tomador. Todos ficam em `papeis`, em ordem, e o filtro `--papel` casa com o papel principal ou com qualquer um deles: `--papel remetente` encontra o CT-e cujo papel principal é `tomador` quando a empresa também é o remetente.
-
-O tomador é resolvido na leitura do XML:
-
-- **CT-e:** `ide/toma3/toma` (`ide/toma03/toma` no layout 2.00) aponta para uma das partes: 0 remetente, 1 expedidor, 2 recebedor, 3 destinatário. O tomador recebe o CNPJ, o nome, a IE e a UF dessa parte. Com `toma4`, o tomador é a parte informada ali.
-- **GTV-e:** `ide/toma/toma` aponta para o remetente (0) ou o destinatário (1); `tomaTerceiro` informa um terceiro.
-- **CT-e OS e CT-e Simplificado:** o tomador vem sempre de `infCte/toma`.
-
-O código bruto do indicador fica em `tomador_indicador` (vazio no CT-e OS). Um indicador que aponta para uma parte ausente do XML (o que pode acontecer num CT-e de anulação ou de complemento) deixa o tomador vazio, com um aviso de leitura, e a empresa cai no papel seguinte que ocupar.
+Uma empresa pode ocupar vários papéis no mesmo CT-e, por exemplo remetente e tomador. O papel principal é o primeiro na ordem tomador, destinatário, remetente, expedidor, recebedor, emitente, autorizado; todos ficam guardados, e o filtro de papel casa com qualquer um deles.
 
 Para terceiros do `autXML`, o AN troca as chaves de documentos relacionados (`infDoc`, `docAnt`, `refCTe`) por `9999…`. O Nanci descarta essas chaves (veja "Ligação com a NF-e").
 
-Eventos de uma chave que a empresa ainda não tem localmente, no mesmo ambiente (`tpAmb`) do evento, são descartados, exceto os que a própria empresa assinou, que ficam guardados e são ligados ao documento quando ele chegar.
-
 ## Endpoints Consumidos
 
-A chamada é SOAP 1.2 síncrona sobre HTTPS com o certificado A1 da empresa, método `cteDistDFeInteresse`, pedido `distDFeInt` versão `1.00` no namespace `http://www.portalfiscal.inf.br/cte`.
+A chamada é SOAP 1.2 síncrona sobre HTTPS com o certificado A1 da empresa, método `cteDistDFeInteresse`, pedido `distDFeInt` versão `1.00` no namespace `http://www.portalfiscal.inf.br/cte`. As URLs estão em `internal/sefaz/endpoints.go`, e o ambiente segue o da empresa, como na NF-e. A action SOAP (`http://www.portalfiscal.inf.br/cte/wsdl/CTeDistribuicaoDFe/cteDistDFeInteresse`) segue a do serviço de NF-e e foi aceita pelo serviço de produção em 24/09/2026 (resposta `cStat` 137 para uma empresa sem CT-e na fila).
 
-1. **Produção:** `https://www1.cte.fazenda.gov.br/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx`
-2. **Homologação:** `https://hom1.cte.fazenda.gov.br/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx`
+Cada CT-e e cada evento guardam o seu `tpAmb`. Sem `ide/tpAmb`, o documento usa o `tpAmb` do protocolo (`infProt/tpAmb`), e o evento, o do `retEventoCTe`. Um `tpAmb` ausente ou inválido não impede a gravação: o XML é guardado com o `tpAmb` do ambiente consultado e um aviso, sem as novas tentativas de uma falha de leitura. A mesma regra vale para a NF-e. Cursor, bloqueio e orçamento são separados por ambiente, como na NF-e.
 
-O ambiente segue o da empresa, como na NF-e: `producao` usa produção (`tpAmb` 1) e `producao_restrita` usa homologação (`tpAmb` 2). As URLs estão em `internal/sefaz/endpoints.go` e só podem ser substituídas pelo código (`sefaz.ClientConfig.Endpoints`). A action SOAP (`http://www.portalfiscal.inf.br/cte/wsdl/CTeDistribuicaoDFe/cteDistDFeInteresse`) segue a do serviço de NF-e e foi aceita pelo serviço de produção em 24/09/2026 (resposta `cStat` 137 para uma empresa sem CT-e na fila).
-
-Cada CT-e e cada evento guardam o seu `tpAmb` (`tp_amb`): o do XML (`ide/tpAmb` no documento, `infEvento/tpAmb` no evento). Sem `ide/tpAmb`, o documento usa o `tpAmb` do protocolo (`infProt/tpAmb`), e o evento, o do `retEventoCTe`, com um aviso de leitura. Um XML de um ambiente diferente do consultado é guardado com o `tpAmb` dele e recebe um aviso de leitura. Um `tpAmb` ausente ou inválido não impede a gravação: o XML é guardado com o `tpAmb` do ambiente consultado e um aviso, sem as novas tentativas de uma falha de leitura. A mesma regra vale para a NF-e. A lista, o `cte status` e a exportação mostram só os documentos do ambiente atual da empresa. O CT-e não trava a troca de ambiente: a empresa pode mudar de ambiente a qualquer momento, os documentos do outro ambiente deixam de aparecer e voltam quando ela retorna a ele. O cursor de sincronização é separado por ambiente, e o bloqueio da SEFAZ (`company_sync_sources.blocked_until`), a data da carga inicial e o orçamento por hora (`sync_requests`) também são: um bloqueio de CT-e recebido em produção não adia o pull de CT-e em homologação, e as consultas de um ambiente não gastam o orçamento do outro.
-
-Para apagar os CT-e da empresa, use `nanci cte reset --cnpj <CNPJ>` (sem `--confirmar` só mostra o que seria removido) ou o botão "Redefinir CT-e" do aplicativo. A redefinição remove os documentos da empresa nos dois ambientes, seus eventos e marcas de exportação, e volta o cursor ao NSU 0. Documentos que outra empresa cadastrada também vê continuam para ela, assim como os eventos assinados por outra empresa cadastrada. Um bloqueio da SEFAZ em vigor continua valendo, e os XMLs baixados ficam no armazenamento de blobs.
-
-A distribuição exige o código IBGE da UF da empresa (`cUFAutor`). Cadastre a UF com `nanci company update --cnpj <CNPJ> --uf SP`; sem ela, `cte pull` falha antes de pedir a senha.
+A redefinição dos CT-e mantém os documentos e os eventos assinados por outra empresa cadastrada.
 
 ## Requisitos de TLS
 
-Os mesmos da NF-e (veja [NFE_SEFAZ.md](NFE_SEFAZ.md#requisitos-de-tls)): TLS 1.2 (os servidores não negociam TLS 1.3), certificado do cliente pedido por renegociação e cadeias públicas. Na verificação de 23/09/2026, `www1.cte.fazenda.gov.br` e `hom1.cte.fazenda.gov.br` apresentavam certificados da AC SERPRO sob a raiz GlobalSign Root R46, já confiável no sistema operacional. O transporte e a verificação são os mesmos da NF-e.
-
-`nanci cte testar-conexao` faz só o handshake TLS com o host de distribuição de CT-e e fecha a conexão. Nenhuma requisição é enviada, então nada é descontado do limite por hora. Como na NF-e, um teste bem-sucedido confirma a rede e a cadeia do servidor, mas não que a SEFAZ aceitará o certificado.
+Os mesmos da NF-e (veja [NFE_SEFAZ.md](NFE_SEFAZ.md#requisitos-de-tls)). Na verificação de 23/09/2026, `www1.cte.fazenda.gov.br` e `hom1.cte.fazenda.gov.br` apresentavam certificados da AC SERPRO sob a raiz GlobalSign Root R46, já confiável no sistema operacional.
 
 ## Limites de consulta
 
-A SEFAZ bloqueia o CNPJ que consulta demais com a rejeição **656 (consumo indevido)**. O Nanci aplica ao CT-e as mesmas regras da NF-e, com orçamento e bloqueio próprios da origem `cte`:
+O Nanci aplica ao CT-e as mesmas regras da NF-e (veja [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)), com orçamento e bloqueio próprios da origem `cte`.
 
-| Regra | Comportamento |
-|---|---|
-| 20 consultas por hora | Orçamento por empresa, origem e ambiente, em janela móvel de 1 hora (`sync_requests`), contado separado do da NF-e e que inclui o `distNSU` (escolha do Nanci). Cada requisição é registrada antes do envio, então tentativas que falham também contam. Esgotado o orçamento, o pull para com `rate_budget` e a origem fica bloqueada até a consulta mais antiga da janela completar 1 hora. |
-| Fila em dia | Com `cStat` 137 (nenhum documento) ou `ultNSU` igual a `maxNSU`, o pull para com `caught_up` e a próxima consulta só é permitida 1 hora depois. |
-| `cStat` 656 | O pull para com `consumo_indevido` e espera 1 hora. O `ultNSU` devolvido só é adotado se avançar o cursor. |
-| Intervalo entre páginas | 2 segundos entre requisições do mesmo pull. |
+A NT 2015.002 não publica um limite de consultas por hora para o CT-e, e não foram encontradas regras de 656 próprias do CT-e; o Nanci supõe que valem as da NF-e (ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`, "Não encontrado"). Se a SEFAZ contar as consultas de NF-e e de CT-e juntas por CNPJ, um pull de CT-e logo depois de um de NF-e pode receber 656. O bloqueio é gravado e respeitado, então o efeito é uma hora de espera.
 
-A NT 2015.002 não publica um limite de consultas por hora para o CT-e, e não foram encontradas regras de 656 próprias do CT-e; o Nanci supõe que valem as da NF-e (ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`, "Não encontrado"). Na NF-e, o limite de 20 por hora vale para `consNSU` e `consChNFe` somados, e o `distNSU` tem a espera de 1 hora depois de um `cStat` 137 (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)). Contar também o `distNSU` nas 20 é escolha conservadora do Nanci. Se a SEFAZ contar as consultas de NF-e e de CT-e juntas por CNPJ, um pull de CT-e logo depois de um de NF-e pode receber 656. O bloqueio é gravado e respeitado, então o efeito é uma hora de espera.
-
-**Regra dos 60 dias.** Na NF-e, o Ambiente Nacional só gera NSU para a raiz de CNPJ que consultou a distribuição nos últimos 60 dias, e uma pausa maior perde de vez os documentos do período (NT 2014.002 v1.10, conhecida só por relatos de terceiros; ver [NFE_SEFAZ.md](NFE_SEFAZ.md#limites-de-consulta)). Não foi encontrada fonte que confirme a mesma regra na distribuição de CT-e (NT 2015.002); o Nanci a aplica ao CT-e por prudência, como faz com o limite por hora. Quando a última consulta respondida pela SEFAZ (`sync_state.last_success_at` da origem `cte` no ambiente atual) passa de **45 dias**, o `cte status` e a página de CT-e mostram um aviso. Uma empresa que nunca sincronizou CT-e não recebe o aviso, e um `cte pull` reinicia a contagem.
-
-O bloqueio aparece como "Próxima consulta permitida após" no `cte pull` e no `cte status`. Um pull dentro desse intervalo é recusado antes de pedir a senha. A distribuição nunca é reenviada automaticamente, e um documento que falha ao ser decodificado ou interpretado três vezes seguidas no mesmo NSU tem o XML guardado, é marcado como não suportado e o cursor avança.
+**Regra dos 60 dias.** Não foi encontrada fonte que confirme na distribuição de CT-e (NT 2015.002) a regra dos 60 dias da NF-e; o Nanci a aplica ao CT-e por prudência, com o mesmo aviso depois de 45 dias sem consulta.
 
 ## Recuperar NSUs faltantes
 
-O CT-e registra e recupera os NSUs pulados como a NF-e (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#recuperar-nsus-faltantes)): o `consNSU` do CTeDistribuicaoDFe responde com os mesmos 137, 138, 589 e 656 (NT 2015.002 v1.05, §2.4 e §2.6; `docs/pesquisa/2026-11-18-sefaz-consnsu.md`), e é o único jeito de buscar um CT-e fora da fila, já que não há consulta por chave. O orçamento é o da origem `cte`, com a mesma reserva de 2 consultas para o pull e a mesma janela de 90 dias para encerrar lacunas antigas (a NT do CT-e fala em 3 meses). O comando é `nanci cte recuperar-nsu`.
+O CT-e registra e recupera os NSUs pulados como a NF-e (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#recuperar-nsus-faltantes)): o `consNSU` do CTeDistribuicaoDFe responde com os mesmos 137, 138, 589 e 656 (NT 2015.002 v1.05, §2.4 e §2.6; `docs/pesquisa/2026-11-18-sefaz-consnsu.md`), e é o único jeito de buscar um CT-e fora da fila, já que não há consulta por chave. O orçamento é o da origem `cte`, com a mesma reserva de 2 consultas para o pull e a mesma janela de 90 dias para encerrar lacunas antigas (a NT do CT-e fala em 3 meses).
 
 ## Eventos distribuídos
 
-| Evento | `tpEvento` | Tipo no Nanci |
-|---|---|---|
-| Cancelamento | 110111 | `cancelamento` |
-| Carta de correção | 110110 | `carta_correcao` |
-| EPEC | 110113 | `epec` |
-| Registro multimodal | 110160 | `registro_multimodal` |
-| GTV | 110170 | `gtv` |
-| Comprovante de entrega | 110180 | `comprovante_entrega` |
-| Cancelamento do comprovante de entrega | 110181 | `cancelamento_comprovante_entrega` |
-| Insucesso na entrega | 110190 | `insucesso_entrega` |
-| Cancelamento do insucesso na entrega | 110191 | `cancelamento_insucesso_entrega` |
-| Prestação do serviço em desacordo | 610110 | `prestacao_desacordo` |
-| Cancelamento da prestação em desacordo | 610111 | `cancelamento_desacordo` |
-| MDF-e autorizado | 310610 | `mdfe_autorizado` |
-| MDF-e cancelado | 310611 | `mdfe_cancelado` |
-
-Outro `tpEvento` é guardado como `unknown`. Um evento só conta como registrado quando o `retEventoCTe` traz `cStat` 134, 135 ou 136; os outros são guardados com um aviso de leitura e não mudam a situação do documento. Um cancelamento registrado deixa o CT-e como `cancelada`. Os campos de texto do evento (`descEvento`, `xJust`, `xObs`, `xCondUso`) são guardados, e a carta de correção vira um texto `grupo.campo=valor; …`.
-
-Eventos de uma chave que a empresa não tem localmente são descartados com um registro no log, salvo quando o autor é a própria empresa. Na prática isso descarta os eventos de MDF-e que chegam ao emitente sobre o próprio CT-e, que a distribuição não entrega a ele.
+Um evento só conta como registrado quando o `retEventoCTe` traz `cStat` 134, 135 ou 136; os outros são guardados com um aviso de leitura e não mudam a situação do documento. Um `tpEvento` desconhecido é guardado como `unknown`.
 
 ## Prestação do serviço em desacordo
 
@@ -125,107 +68,31 @@ O evento 610110 é a forma de o **tomador** declarar que o serviço de transport
 
 O Nanci envia o evento pelo `nanci cte desacordo` e pelo item **Prestação em desacordo** do menu da linha do CT-e (decisões de 19/11/2026):
 
-- Antes de pedir a senha, `CTeService.PlanDesacordo` (`internal/app/cte_desacordo.go`) confere a observação pela regra do schema (`sefaz.CheckXObsDesacordo`: 15 a 255 caracteres de Latin-1, sem espaço nas pontas; fora dela, o código `invalid_input`), que o CNPJ da empresa é exatamente o do tomador resolvido do CT-e (a regra da rejeição 755), o modelo 57 ou 67, a situação autorizada e que não há desacordo registrado em vigor (um 610110 registrado sem um 610111 registrado depois). O `nSeqEvento` é o número de desacordos registrados mais 1.
-- O prazo de 45 dias é mostrado, contado de `AuthorizedAt`, e nunca bloqueia: a SEFAZ decide, com a rejeição 787 (`app.DesacordoPrazoDias`). É a mesma regra da manifestação conclusiva da NF-e.
-- O envio vai sozinho, sem lote, ao `CTeRecepcaoEventoV4` da autorizadora da UF da chave (`sefaz.CTeRecepcaoEventoURL`, tabela em `internal/sefaz/cte_endpoints.go`), com `cOrgao` igual ao código da UF da chave. Os `cStat` 134, 135 e 136 registram o evento; 631 é duplicidade (registrado antes); o resto é rejeição.
-- Todo envio fica em `cte_desacordos`, também o rejeitado e o que ficou sem resposta. O registrado é lido de volta do seu `procEventoCTe` pelo mesmo parser da distribuição e gravado em `cte_events`.
+- Antes de pedir a senha, o Nanci confere a observação pela regra do schema, que o CNPJ da empresa é exatamente o do tomador resolvido do CT-e (a regra da rejeição 755), o modelo, a situação autorizada e que não há desacordo registrado em vigor (um 610110 registrado sem um 610111 registrado depois). O `nSeqEvento` é o número de desacordos registrados mais 1.
+- O prazo de 45 dias é mostrado, contado da autorização, e nunca bloqueia: a SEFAZ decide, com a rejeição 787. É a mesma regra da manifestação conclusiva da NF-e.
+- O envio vai sozinho, sem lote, com `cOrgao` igual ao código da UF da chave. Os `cStat` 134, 135 e 136 registram o evento; 631 é duplicidade (registrado antes); o resto é rejeição.
+- Todo envio fica em `cte_desacordos`, também o rejeitado e o que ficou sem resposta.
 - A SOAP action (`http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoEventoV4/cteRecepcaoEvento`) segue o padrão dos outros serviços do CT-e; o WSDL oficial só responde com certificado de cliente e não foi lido. Os testes usam só servidores falsos, com respostas montadas a partir do schema.
 
 ## Ligação com a NF-e
 
-As chaves das NF-e transportadas ficam em `nfe_chaves`: `infCTeNorm/infDoc/infNFe/chave` nos layouts 3.00 e 4.00, `rem/infNFe/chave` no 2.00 e `det/infNFe/chNFe` no CT-e Simplificado. Só entram chaves que passam na validação da chave de acesso (44 dígitos e dígito verificador), sem repetição. As chaves `9999…` que o AN envia aos terceiros do `autXML` são descartadas, com um único aviso de leitura com a contagem, e o documento fica marcado como cópia mascarada (`masked_keys`); para esses documentos a ligação com a NF-e não existe.
+As chaves das NF-e transportadas ficam em `nfe_chaves`: `infCTeNorm/infDoc/infNFe/chave` nos layouts 3.00 e 4.00, `rem/infNFe/chave` no 2.00 e `det/infNFe/chNFe` no CT-e Simplificado. Só entram chaves que passam na validação da chave de acesso (44 dígitos e dígito verificador), sem repetição. As chaves `9999…` que o AN envia aos terceiros do `autXML` são descartadas, e o documento fica marcado como cópia mascarada (`masked_keys`); para esses documentos a ligação com a NF-e não existe.
 
-O CT-e é guardado uma vez por chave, para todas as empresas que o recebem. Quando uma empresa recebe o documento completo e outra, terceira do `autXML`, recebe a cópia mascarada, o Nanci fica com o completo: a cópia mascarada nunca substitui o completo (só a situação pode mudar, para a mais grave), e o completo substitui a cópia mascarada quando chega depois. A ligação com a NF-e e a exportação usam sempre o XML completo quando alguma empresa o recebeu.
-
-`nanci cte list --nfe <CHAVE_NFE>` (e o filtro de chave de NF-e no aplicativo) encontra os CT-e que transportaram uma NF-e. No aplicativo, a linha aberta de um CT-e lista as NF-e transportadas com **Ver NF-e**, e a linha aberta de uma NF-e lista os CT-e da empresa que a levaram (`ListCTe` com `NFeChave`) com **Ver CT-e**. O link abre a outra página só com aquele documento (`?chave=`), de qualquer competência, sem mudar a competência escolhida; a página diz quando o documento não está guardado para a empresa.
+O CT-e é guardado uma vez por chave, para todas as empresas que o recebem. Quando uma empresa recebe o documento completo e outra, terceira do `autXML`, recebe a cópia mascarada, o Nanci fica com o completo: a cópia mascarada nunca substitui o completo, e o completo substitui a cópia mascarada quando chega depois. A ligação com a NF-e e a exportação usam sempre o XML completo quando alguma empresa o recebeu.
 
 ## Exportação
 
-Os CT-e saem em quatro formatos, cada um com as suas marcas de exportação incremental (exportar a planilha não marca o XML):
-
-- **XML** (`cte export zip` e `cte export xml`): o XML guardado e, no ZIP, os eventos de cada documento.
-- **CSV** e **XLSX** (`cte export csv` e `cte export xlsx`): uma linha por CT-e com papel e todos os papéis da empresa, emissão, competência, modelo, série, número, chave, CFOP, natureza da operação, início e fim (município/UF), CNPJ/CPF e nome de emitente, tomador, remetente e destinatário, valores da prestação, a receber, ICMS, tributos aproximados e carga, produto predominante, quantidade de NF-e transportadas, situação, protocolo e quantidade de eventos. A planilha Excel separa as abas "CTe Tomados" (papel principal tomador), "CTe Emitidos" (emitente) e "CTe Outros"; o CSV traz as três em sequência sob um único cabeçalho.
-- **DACTE** (`cte export dacte` e `cte export dacte-zip`): o PDF gerado com [fiscal-renderer](https://github.com/awafinance/fiscal-renderer), com a marca d'água de cancelado quando o CT-e foi cancelado. O ZIP grava `<competencia>/<papel>/<chave>.pdf`.
-
-O DACTE só existe para o CT-e modelo 57 propriamente dito: o leiaute da biblioteca não cobre CT-e OS (modelo 67), GTV-e (modelo 64) nem CT-e Simplificado. No `dacte-zip` esses documentos ficam de fora, são contados ("CT-e sem DACTE: N") e não recebem marca de exportação, então uma exportação incremental volta a contá-los, como os resumos da NF-e. O `dacte` de um desses documentos falha com "DACTE disponível só para o CT-e modelo 57; CT-e OS, GTV-e e CT-e Simplificado não têm DACTE".
+O DACTE só existe para o CT-e modelo 57 propriamente dito: o leiaute do [fiscal-renderer](https://github.com/awafinance/fiscal-renderer) não cobre CT-e OS (modelo 67), GTV-e (modelo 64) nem CT-e Simplificado. No ZIP de DACTE esses documentos ficam de fora, são contados e não recebem marca de exportação, então uma exportação incremental volta a contá-los, como os resumos da NF-e.
 
 ## Importação de XML
 
-Como na NF-e (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#importação-de-xml)), a empresa pode guardar XMLs de CT-e que já tem, sem consultar a SEFAZ, por `CTeService.ImportXML`. A raiz decide o tipo: `cteProc`, `cteOSProc`, `GTVeProc` e `cteSimpProc` são documentos, `procEventoCTe` é evento; não há resumo. As recusas são as mesmas da NF-e: arquivo ilegível ou maior que 20 MiB, XML inválido, outro ambiente, CT-e em que a empresa não tem papel nenhum, e evento de um CT-e que a empresa não tem e de que não é autora. O documento importado entra sem NSU e passa pela mesma gravação da distribuição (papéis, ligação dos eventos, situação).
-
-## Uso pela linha de comando
-
-Todos os subcomandos de `nanci cte` recebem a empresa por `--cnpj` (`-c`).
-
-```bash
-# 1. Cadastrar a UF da empresa (obrigatória para a distribuição)
-nanci.exe company update --cnpj 12345678000199 --uf SP
-
-# 2. Testar certificado e TLS sem gastar consultas
-nanci.exe cte testar-conexao --cnpj 12345678000199
-
-# 3. Baixar documentos e eventos
-nanci.exe cte pull --cnpj 12345678000199
-nanci.exe cte status --cnpj 12345678000199
-
-# 4. Listar (filtros: --competencia/-m, --situacao, --papel/-p, --modelo, --emitente, --tomador, --nfe, --chave, --nao-vistos)
-nanci.exe cte list --cnpj 12345678000199 -m 2026-09 -p tomador
-nanci.exe cte list --cnpj 12345678000199 --modelo 67
-
-# 5. CT-e que transportaram uma NF-e
-nanci.exe cte list --cnpj 12345678000199 --nfe <CHAVE_NFE>
-
-# 6. Exportar XML, planilha e DACTE
-nanci.exe cte export zip --cnpj 12345678000199 --competencia 2026-09 -p tomador --out cte.zip
-nanci.exe cte export zip --cnpj 12345678000199 --incremental
-nanci.exe cte export xml --cnpj 12345678000199 --chave <CHAVE> --out cte.xml
-nanci.exe cte export xlsx --cnpj 12345678000199 --competencia 2026-09
-nanci.exe cte export csv --cnpj 12345678000199 --incremental
-nanci.exe cte export dacte-zip --cnpj 12345678000199 --competencia 2026-09
-nanci.exe cte export dacte --cnpj 12345678000199 --chave <CHAVE>
-
-# 7. Importar XML avulso (procCTe, procCTeOS, procGTVe, procCTeSimp ou evento)
-nanci.exe cte import --cnpj 12345678000199 frete.xml
-
-# 7a. Pedir à SEFAZ os NSUs que a distribuição pulou
-nanci.exe cte recuperar-nsu --cnpj 12345678000199
-
-# 8. Redefinir os CT-e da empresa (apaga os documentos dos dois ambientes)
-nanci.exe cte reset --cnpj 12345678000199
-nanci.exe cte reset --cnpj 12345678000199 --confirmar
-
-# 9. Prestação do serviço em desacordo, como tomador (evento 610110)
-nanci.exe cte desacordo --cnpj 12345678000199 --chave <CHAVE> --observacao "Carga entregue avariada no destino"
-nanci.exe cte desacordo --cnpj 12345678000199 --chave <CHAVE> --observacao "Carga entregue avariada no destino" --confirmar
-```
-
-- `cte status` mostra cursor, bloqueio, consultas da última hora e os totais do ambiente atual por papel principal: tomador, destinatário, remetente e os demais. Quando a última sincronização falhou, mostra a mensagem guardada (`sync_runs.error_message`) em "Última execução falhou: ...", e a linha de situação da página de CT-e termina em "Falhou: ..."; uma sincronização interrompida, como a cancelada pelo usuário, não mostra nada.
-- `cte list` mostra chave, modelo, número e série, emissão, emitente, tomador, papel, valor da prestação e situação. `--papel` casa com o papel principal ou com qualquer outro papel da empresa no documento; `--modelo` aceita 57, 64 ou 67; `--chave` pode repetir.
-- `cte export zip` grava `<competencia>/<papel>/<chave>-procCTe.xml` (`-procCTeOS`, `-procGTVe` ou `-procCTeSimp` conforme o tipo) e os eventos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (padrão `cte.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível); `--incremental` exporta só o que ainda não foi exportado, mudou ou cuja quantidade de eventos mudou desde a última exportação (por exemplo, depois de um cancelamento); o documento volta com todos os seus eventos.
-- `cte export xml` grava o XML do documento da `--chave` em `--out` (`-o`), por padrão `<chave>.xml`.
-- `cte export csv`, `xlsx` e `dacte-zip` aceitam os mesmos filtros e `--incremental` do `zip`; o `--out` padrão é `cte.csv`, `cte.xlsx` e `dactes.zip`. O `dacte-zip` mostra "CT-e sem DACTE: N" quando deixou documentos de fora.
-- `cte export dacte` grava o DACTE da `--chave` em `--out`, por padrão `<chave>.pdf`.
-- `cte reset` sem `--confirmar` mostra quantos documentos, eventos e marcas de exportação seriam removidos e não altera nada.
-- `cte desacordo` sem `--confirmar` mostra o evento, o CT-e, o prazo de 45 dias contado da autorização (com aviso quando passou, sem bloquear: a SEFAZ decide, com a rejeição 787) e a observação, e não pede a senha. Antes de pedir a senha, recusa: observação fora da regra do schema (15 a 255 caracteres, sem aspas curvas nem emoji), empresa que não é exatamente a tomadora, GTV-e, CT-e cancelado ou denegado, e CT-e que já tem um desacordo registrado. Com `--confirmar`, envia à SEFAZ autorizadora da UF da chave, grava o envio em `cte_desacordos` e, se registrado, o evento em `cte_events`; sai com erro quando a SEFAZ não registrou.
-- `cte import` recebe um ou mais arquivos e imprime uma linha por arquivo (importado, atualizado ou rejeitado, com o motivo) e o resumo; só falha quando todos foram rejeitados. Não há busca por chave para CT-e.
-
-## Aplicativo desktop
-
-O menu lateral ganha a entrada "CT-e", logo abaixo de "NF-e". A página lista a empresa e a competência escolhidas no menu lateral, numa única tabela, sem aba de pendências, com filtros de papel, modelo, situação, tomador e chave de NF-e, e os botões "Sincronizar CT-e", "Exportar" e "Redefinir CT-e"; este pede confirmação e faz o mesmo que `cte reset --confirmar`. Sob o título, uma linha mostra a empresa, o CNPJ e a competência escolhidos no menu lateral, ou "Todas as competências", e continua visível quando a janela estreita esconde o menu. Os eventos de cada documento abrem num diálogo. Quando há NSUs faltando, um aviso sob o título oferece **Recuperar NSUs**, como na NF-e. Enquanto a origem estiver bloqueada (656, fila em dia ou limite por hora), um aviso mostra o horário da próxima consulta permitida e o botão de sincronizar fica desabilitado. O pedido de senha mostra a finalidade "Sincronização CT-e", o que separa os pedidos quando NFS-e, NF-e e CT-e sincronizam ao mesmo tempo.
+Como na NF-e (ver [NFE_SEFAZ.md](NFE_SEFAZ.md#importação-de-xml)), com as mesmas recusas. A raiz decide o tipo: `cteProc`, `cteOSProc`, `GTVeProc` e `cteSimpProc` são documentos, `procEventoCTe` é evento; não há resumo.
 
 ## Modelo de dados
 
-A migração `015` em `internal/store/migrations_v2/` cria as tabelas de CT-e, e a `017` acrescenta `viewed_at` a `company_cte_documents`. A origem `cte` já era aceita pelos `CHECK` de `sync_state`, `sync_runs`, `company_sync_sources` (migração `007`) e `sync_requests` (migração `013`). A `018` acrescenta `exported_events` a `company_cte_export_marks`, a `019` separa `company_sync_sources` e `sync_requests` por ambiente, a `021` passa a aceitar em `company_cte_export_marks` os tipos `csv`, `xlsx` e `dacte`, além de `xml`, e a `026` cria `cte_desacordos`.
+`tp_cte`, `tp_serv` e `modal` em `cte_documents` são texto bruto, sem `CHECK`, porque os domínios mudaram entre os layouts 3.00 e 4.00.
 
-- `cte_documents`: uma linha por chave de acesso, com `tp_amb`, `modelo` (`57`, `64`, `67`), `tipo_documento` (`cte`, `cte_os`, `gtve`, `cte_simplificado`), série, número, CFOP, natureza da operação, emissão, competência, autorização e protocolo; `tp_cte`, `tp_serv` e `modal` como texto bruto, sem `CHECK`, porque os domínios mudaram entre os layouts 3.00 e 4.00; municípios e UF de início e fim da prestação; CNPJ/CPF e nome do emitente, remetente, destinatário, expedidor, recebedor e tomador (IE e UF só do emitente e do tomador); `tomador_indicador`; `autorizados_cnpj` e `nfe_chaves` (listas separadas por vírgula); valores em centavos (`total_value` do `vTPrest`, `receivable_value` do `vRec`, `icms_value`, `tot_trib_value`, `carga_value`); produto predominante; situação; versão do layout; hash do XML bruto e avisos de leitura.
-- `company_cte_documents`: a relação empresa ↔ documento, com o papel principal (`company_role`), todos os papéis (`papeis`, separados por vírgula na ordem de classificação), o motivo da visibilidade (`exact_<papel>`, `same_root_only`, `unknown`), os NSUs em que foi visto e `viewed_at`, preenchida quando a empresa marca o documento como visto. Documento sem `viewed_at` é novo, e `cte list --nao-vistos` mostra só os novos. A sincronização não mexe na coluna, e a redefinição de CT-e apaga a relação junto com ela.
-- `cte_events`: uma linha por (chave, `tpEvento`, `nSeqEvento`), com `tp_amb`, órgão, tipo, datas do evento e do registro, `registered`, `cStat`, `xMotivo`, protocolo, autor e os textos do evento. Um evento pode chegar antes do documento e é ligado a ele quando o documento chega.
-- `cte_desacordos`: cada prestação do serviço em desacordo que o nanci enviou, também as rejeitadas e as que ficaram sem resposta, com empresa, chave, `tp_amb`, `n_seq_evento`, observação, `status` (`registrada`, `ja_registrada`, `rejeitada`, `erro`), `cStat`, `xMotivo`, protocolo, datas do evento e do registro e os hashes do pedido e da resposta, como `nfe_manifestacoes` na NF-e. O evento registrado também vai para `cte_events`, como um que chega pela distribuição. A redefinição de CT-e mantém as linhas, como registro do que foi enviado.
-- `company_cte_export_marks`: o que já foi exportado, com qual hash e quantos eventos o documento tinha (`exported_events`), para a exportação incremental. O documento volta a ficar pendente quando o hash ou a quantidade de eventos muda, então um evento gravado no mesmo segundo da exportação, ou enquanto o ZIP era escrito, entra na próxima.
-
-A situação é `autorizada`, `denegada` ou `cancelada`. Vem do `cStat` do protocolo (100 e 150 → `autorizada`; 110, 205, 301, 302 e 303 → `denegada`) e passa a `cancelada` quando há um cancelamento registrado. Ela só piora (cancelada > denegada > autorizada) e é recalculada a partir de `cte_events` a cada evento gravado. Um protocolo com outro `cStat` é tratado como falha de leitura. No CT-e, 110 ("Uso Denegado"), 205 ("CT-e está denegado na base de dados da SEFAZ"), 301 e 302 (irregularidade fiscal do emitente e do destinatário) estão confirmados nas tabelas de cStat do CT-e; 303 fica na lista por ser da mesma família "Uso Denegado" na NF-e, e é inofensivo se nunca ocorrer. O primeiro sync real, em 30/09/2026, leu 23 CT-e sem avisos de leitura.
-
-Um CT-e recebido de novo substitui o anterior (não há resumo a preservar), mantendo o identificador e a situação mais grave. Os XMLs brutos ficam no mesmo armazenamento de blobs da NFS-e e da NF-e. No ZIP de exportação, cada documento vai para `<competencia>/<papel>/<chave>-procCTe.xml` e seus eventos para `<competencia>/<papel>/eventos/<chave>-<tpEvento>-<nSeqEvento>.xml`; o papel é o principal, e `none` vira a pasta `sem-papel-fiscal`, como na NF-e.
+A situação vem do `cStat` do protocolo (100 e 150 → `autorizada`; 110, 205, 301, 302 e 303 → `denegada`) e passa a `cancelada` quando há um cancelamento registrado. Um protocolo com outro `cStat` é tratado como falha de leitura. No CT-e, 110 ("Uso Denegado"), 205 ("CT-e está denegado na base de dados da SEFAZ"), 301 e 302 (irregularidade fiscal do emitente e do destinatário) estão confirmados nas tabelas de cStat do CT-e; 303 fica na lista por ser da mesma família "Uso Denegado" na NF-e, e é inofensivo se nunca ocorrer.
 
 ## Fora do escopo
 

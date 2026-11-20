@@ -1,6 +1,6 @@
 ---
 name: migration
-description: Use when changing the SQLite schema of nanci (new table, column, index, CHECK value, export kind, sync source, or a data fix). Covers the goose migration, sqlc regeneration, the hand-written SQL that sqlc does not see, the migration test pattern and the docs list.
+description: Use when changing the SQLite schema of nanci (new table, column, index, CHECK value, export kind, sync source, or a data fix). Covers the goose migration, sqlc regeneration, the hand-written SQL that sqlc does not see, the migration test pattern and the docs to touch.
 ---
 <!-- Generated from .agents/skills/migration/ by scripts/sync-skills.sh; edit there. -->
 
@@ -33,7 +33,7 @@ description: Use when changing the SQLite schema of nanci (new table, column, in
 
 - Sync source `'nfse', 'nfe', 'cte'` (`rg "'nfse', 'nfe', 'cte'" internal/store`): `sync_runs`, `sync_state`, `company_sync_sources`, `sync_requests`. A new source rebuilds all four; see the `new-source` skill.
 - Export kind: `company_document_export_marks` (NFS-e: `'xml', 'csv', 'xlsx', 'danfse'`), `company_nfe_export_marks` (`'xml', 'csv', 'xlsx', 'danfe'`) and `company_cte_export_marks` (`'xml', 'csv', 'xlsx', 'dacte'`). The Go side is the `ExportKind*` constants in `internal/nfse/export_kinds.go`, `internal/nfe/repositories.go` and `internal/cte/repositories.go`. A new kind is a rebuild of that marks table.
-- Enums of the domain packages (`situacao`, `company_role`, `visibility_reason`, event `type`, `tp_amb`) mirror `Valid()` in `internal/nfse`, `internal/nfe`, `internal/cte`. Change both together. `cte_documents.tp_cte`, `tp_serv` and `modal` have no CHECK on purpose (layouts disagree; docs/CTE_SEFAZ.md).
+- Enums of the domain packages (`situacao`, `company_role`, `visibility_reason`, event `type`, `tp_amb`) mirror `Valid()` in `internal/nfse`, `internal/nfe`, `internal/cte`. Change both together. `cte_documents.tp_cte`, `tp_serv` and `modal` have no CHECK on purpose (layouts disagree; docs/CTE_SEFAZ.md, "Modelo de dados").
 
 ## sqlc
 
@@ -68,6 +68,6 @@ Run: `go test ./internal/store -run Migration -v`, then `go test ./...` (`sync`,
 
 ## Docs
 
-- docs/NFE_SEFAZ.md, "Modelo de dados": the list "Migrações `007` a `0NN`" gets the new number in its heading and one bullet `` `0NN`: <what changes and what happens to existing rows> `` in Portuguese, linking to the area doc when the migration belongs to another source (`015` -> CTE_SEFAZ.md, `020` -> NFSE_ADN.md).
-- The area doc of the table describes the column (docs/CTE_SEFAZ.md "Modelo de dados", docs/NFSE_ADN.md).
+- The migration's header comment is the record of what changes and what happens to existing rows; the docs keep no list of migrations.
+- The area doc of the table records only non-obvious constraints and their reason (docs/CTE_SEFAZ.md "Modelo de dados", docs/NFSE_ADN.md "Chave de acesso"), not the columns.
 - The PR or report names the schema impact explicitly (AGENTS.md, "Commit & Pull Request Guidelines"). Commit scope `store`.

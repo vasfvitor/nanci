@@ -31,19 +31,14 @@ A NT SE/CGNFS-e 008/2026 desligou a API de geração de DANFSe do ADN (prazo fin
 
 ## Ambientes de Execução
 
-1. **Produção (RFB):** Ambiente real contendo notas com validade fiscal jurídica. 
-   - URL Base: `https://adn.nfse.gov.br/contribuintes`
-2. **Produção Restrita (Homologação):** Ambiente para testes de desenvolvedores. Notas aqui não têm valor fiscal legal.
-   - URL Base: `https://adn.producaorestrita.nfse.gov.br/contribuintes`
+Produção (`https://adn.nfse.gov.br/contribuintes`) e Produção Restrita, o ambiente de testes (`https://adn.producaorestrita.nfse.gov.br/contribuintes`).
 
 ## Chave de acesso
 
-A chave de acesso da NFS-e é guardada com os seus 50 dígitos. O parser lê o `chNFSe`; quando ele falta, usa o `Id` do `infNFSe`, que é `NFS` seguido dos 50 dígitos, sem o prefixo, e registra o aviso "document missing chNFSe; using infNFSe Id as fallback identifier". Um `Id` fora desse formato é guardado como veio.
+A chave de acesso da NFS-e é guardada com os seus 50 dígitos, sem o prefixo `NFS` do `Id` do `infNFSe`.
 
 A chave é `cMun(7) ambGer(1) tpInsc(1) inscFed(14) nNFSe(13) AAMM(4) cNum(9) DV(1)`. Com o CNPJ alfanumérico (NT SE/CGNFS-e 009), a inscrição federal, nas posições 10 a 23, pode ter letras maiúsculas; o padrão `TSIdNFSe` dos esquemas de 27/07/2026 é `NFS[0-9]{9}[0-9A-Z]{14}[0-9]{27}`. `nfse.ParseAccessKey` e a Consulta Direta aceitam esse formato, convertem minúsculas para maiúsculas e não conferem o dígito verificador. O que ficou em aberto está em [NFE_SEFAZ.md](NFE_SEFAZ.md#cnpj-alfanumérico).
 
-Os eventos se ligam ao documento pelos 50 dígitos, e o status (`normal`, `cancelada`, `substituida`) é calculado a partir deles; uma substituição prevalece sobre um cancelamento. Ao marcar notas como vistas, uma chave com o prefixo `NFS` é aceita e usada como veio, para encontrar a linha que a migração `020` deixou com o prefixo (abaixo). Ao copiar a chave, o desktop remove o prefixo, porque o portal pede os 50 dígitos.
+Os eventos se ligam ao documento pelos 50 dígitos, e o status (`normal`, `cancelada`, `substituida`) é calculado a partir deles; uma substituição prevalece sobre um cancelamento.
 
-A exportação incremental (**Somente não exportados**, `--incremental`) guarda em `company_document_export_marks`, por empresa e formato, o hash do XML e quantos eventos a nota tinha (`exported_events`, migração `027`). A nota volta a ficar pendente quando um dos dois muda: o cancelamento muda o status e não o hash, e é a contagem de eventos que o percebe, como na NF-e e no CT-e.
-
-Versões anteriores guardavam o `Id` com o prefixo, e os eventos dessas notas nunca se ligavam a elas. A migração `020` reescreve essas chaves para os 50 dígitos, liga os eventos e recalcula o status, então um cancelamento antes ignorado passa a aparecer. Se outro documento já tem os mesmos 50 dígitos, a linha com prefixo fica como está e a tela mostra os seus 10 últimos caracteres. A migração não tem volta: os 50 dígitos são a chave canônica, e quais linhas tinham o prefixo não é guardado. Nas exportações, essas notas passam a sair como `<50 dígitos>.xml` e `<50 dígitos>.pdf` nos ZIPs, e com os 50 dígitos no CSV e na planilha.
+A migração `020` reescreveu para os 50 dígitos as chaves que versões anteriores guardavam com o prefixo, e não tem volta: quais linhas tinham o prefixo não é guardado. Se outro documento já tinha os mesmos 50 dígitos, a linha com prefixo ficou como estava, e a tela mostra os seus 10 últimos caracteres.
