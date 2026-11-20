@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/danfe"
@@ -202,6 +203,9 @@ func (s *NFeService) ExportDANFE(ctx context.Context, in NFeExportDANFEInput) er
 	if doc.Completeness == nfe.CompletenessResumo {
 		return fmt.Errorf("a NF-e %s é um resumo: o DANFE precisa do XML completo", doc.ChaveAcesso)
 	}
+	if doc.Situacao == nfe.SituacaoDenegada {
+		return fmt.Errorf("a NF-e %s está denegada: uma nota de uso denegado não tem DANFE", doc.ChaveAcesso)
+	}
 	xmlData, err := s.storedXML(doc)
 	if err != nil {
 		return err
@@ -265,6 +269,11 @@ func (s *NFeService) exportDocuments(ctx context.Context, comp *company.Company,
 	}
 	if err != nil {
 		return nil, 0, fmt.Errorf("listar NF-e: %w", err)
+	}
+	if kind == nfe.ExportKindDANFE {
+		// A denegada NF-e has no DANFE (NFePDFEntries); leaving it out here
+		// keeps it out of the count and the export marks.
+		docs = slices.DeleteFunc(docs, func(d nfe.CompanyDocument) bool { return d.Situacao == nfe.SituacaoDenegada })
 	}
 	if in.IncludeResumos {
 		return docs, 0, nil

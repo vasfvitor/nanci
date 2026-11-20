@@ -46,6 +46,7 @@ func TestNFePDFEntriesSkipsResumo(t *testing.T) {
 		{Document: nfe.Document{ChaveAcesso: "B", Competence: "2026-06", RawHash: "hb", Completeness: nfe.CompletenessCompleta, Situacao: nfe.SituacaoCancelada}, CompanyRole: nfe.CompanyRoleDestinatario},
 		{Document: nfe.Document{ChaveAcesso: "C", Competence: "2026-06", RawHash: "hc", Completeness: nfe.CompletenessResumo, Situacao: nfe.SituacaoAutorizada}, CompanyRole: nfe.CompanyRoleDestinatario},
 		{Document: nfe.Document{ChaveAcesso: "D", Competence: "2026-06", Completeness: nfe.CompletenessCompleta}, CompanyRole: nfe.CompanyRoleDestinatario},
+		{Document: nfe.Document{ChaveAcesso: "E", Competence: "2026-06", RawHash: "he", Completeness: nfe.CompletenessCompleta, Situacao: nfe.SituacaoDenegada}, CompanyRole: nfe.CompanyRoleDestinatario},
 	})
 	want := []ZipEntry{
 		{Path: "2026-06/destinatario/A.pdf", RawHash: "ha"},

@@ -51,4 +51,4 @@ Na linha aberta de uma NF-e, **CT-e do frete** lista os CT-e da empresa que leva
 
 ## Exportar
 
-**Exportar** gera, da lista filtrada ou da seleção, uma planilha Excel ou CSV, um ZIP com os XMLs e eventos, ou um ZIP com os DANFE em PDF. Cada nota também pode ser salva sozinha em XML ou DANFE. Resumos (notas sem o XML completo) entram na planilha e no ZIP de XML só com **Incluir resumos**, e nunca têm DANFE: o ZIP de DANFE avisa quantos ficaram de fora. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.
+**Exportar** gera, da lista filtrada ou da seleção, uma planilha Excel ou CSV, um ZIP com os XMLs e eventos, ou um ZIP com os DANFE em PDF. Cada nota também pode ser salva sozinha em XML ou DANFE. Resumos (notas sem o XML completo) entram na planilha e no ZIP de XML só com **Incluir resumos**, e nunca têm DANFE: o ZIP de DANFE avisa quantos ficaram de fora. A NF-e denegada também não tem DANFE e fica fora do ZIP. **Somente não exportados** repete só o que mudou desde a última exportação naquele formato.

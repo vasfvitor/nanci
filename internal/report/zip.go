@@ -56,12 +56,13 @@ func NFSePDFEntries(docs []nfse.CompanyDocument) []ZipEntry {
 }
 
 // NFePDFEntries lays out the DANFE archive: each document goes to
-// <competencia>/<papel>/<chave>.pdf. A resumo has no DANFE and documents
-// without a stored XML are left out.
+// <competencia>/<papel>/<chave>.pdf. A resumo has no DANFE, a denegada NF-e
+// has none either (the renderer has no mark for it, so the PDF would pass for
+// a valid note), and documents without a stored XML are left out.
 func NFePDFEntries(docs []nfe.CompanyDocument) []ZipEntry {
 	var entries []ZipEntry
 	for _, doc := range docs {
-		if doc.Completeness == nfe.CompletenessResumo || doc.RawHash == "" {
+		if doc.Completeness == nfe.CompletenessResumo || doc.Situacao == nfe.SituacaoDenegada || doc.RawHash == "" {
 			continue
 		}
 		entries = append(entries, ZipEntry{

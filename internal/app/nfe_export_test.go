@@ -167,27 +167,23 @@ func TestNFeExportDANFEZipSkipsResumos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.ExportedCount != 2 || res.SkippedResumos != 1 || res.Format != "danfe" || res.OutPath != outPath {
-		t.Errorf("result = %+v, want 2 exported and 1 resumo skipped", res)
+	// The denegada NF-e has no DANFE either: the renderer has no mark for
+	// it, so it is neither exported nor marked.
+	if res.ExportedCount != 1 || res.SkippedResumos != 1 || res.Format != "danfe" || res.OutPath != outPath {
+		t.Errorf("result = %+v, want 1 exported and 1 resumo skipped", res)
 	}
-	want := []string{
-		"2026-09/destinatario/" + nfeChaveProc + ".pdf",
-		"2026-09/destinatario/" + nfeChaveDenegada + ".pdf",
-	}
+	want := []string{"2026-09/destinatario/" + nfeChaveProc + ".pdf"}
 	if got := sortedKeys(zipEntries(t, outPath)); !slices.Equal(got, want) {
 		t.Errorf("zip entries = %v, want %v", got, want)
 	}
-	if len(fake.calls) != 2 {
-		t.Fatalf("renders = %d, want 2", len(fake.calls))
+	if len(fake.calls) != 1 {
+		t.Fatalf("renders = %d, want 1", len(fake.calls))
 	}
 	if !fake.cancelledFor(t, nfeChaveProc) {
 		t.Error("the cancelled NF-e was rendered without Cancelada")
 	}
-	if fake.cancelledFor(t, nfeChaveDenegada) {
-		t.Error("the denegada NF-e was rendered with Cancelada")
-	}
-	if got := env.pendingChaves(nfe.ExportKindDANFE); !slices.Equal(got, []string{nfeChaveCancelada}) {
-		t.Errorf("danfe pending = %v, want the resumo only", got)
+	if got := env.pendingChaves(nfe.ExportKindDANFE); !slices.Equal(got, sortedStrings(nfeChaveCancelada, nfeChaveDenegada)) {
+		t.Errorf("danfe pending = %v, want the resumo and the denegada", got)
 	}
 }
 
@@ -206,6 +202,16 @@ func TestNFeExportDANFE(t *testing.T) {
 	}
 	if _, err := os.Stat(resumoPath); !os.IsNotExist(err) {
 		t.Errorf("DANFE of a resumo wrote a file: %v", err)
+	}
+
+	denegadaPath := filepath.Join(outDir, "denegada.pdf")
+	err = env.app.NFe.ExportDANFE(ctx, NFeExportDANFEInput{CNPJ: nfeTestCNPJ, ChaveAcesso: nfeChaveDenegada, OutPath: denegadaPath})
+	wantErr = "a NF-e " + nfeChaveDenegada + " está denegada: uma nota de uso denegado não tem DANFE"
+	if err == nil || err.Error() != wantErr {
+		t.Errorf("DANFE of a denegada = %v, want %q", err, wantErr)
+	}
+	if _, err := os.Stat(denegadaPath); !os.IsNotExist(err) {
+		t.Errorf("DANFE of a denegada wrote a file: %v", err)
 	}
 
 	outPath := filepath.Join(outDir, "danfe.pdf")
