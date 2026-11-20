@@ -13,7 +13,7 @@ Put `--json` on every command: `nanci nfe status -c 12345678000199 --json`.
 
 - **Success:** stdout holds exactly one JSON value (an object or an array), with no progress lines; parse the whole of stdout. Exit code 0.
 - **Failure:** exit code 1, and the last line of stderr is `{"error":{"code":"...","message":"..."}}`. stderr is JSON Lines: before the envelope there may be log records, one JSON object per line (warnings only, unless `-v`). Take the line with the `error` key. `message` is Portuguese and meant for a person; branch on `code`.
-- **Batch with failed items** (`nfe ciencia --confirmar`, `nfe manifestar --confirmar`) and **`testar-conexao` that fails:** stdout still has the result JSON *and* stderr has the envelope, exit 1. Read stdout first to see which items failed.
+- **Batch with failed items** (`nfe ciencia --confirmar`, `nfe manifestar --confirmar`) and **`testar-conexao` that fails:** stdout still has the result JSON *and* stderr has the envelope, exit 1. Read stdout first to see which items failed. The same goes for `nfe ciencia --confirmar` with no eligible chave (`Skipped` says why each was left out) and for an import that was interrupted (the files done so far).
 - **`nfe import` / `cte import`** fail (exit 1, envelope "nenhum arquivo importado") only when no file got in. With some files in, the exit is 0 even if others were rejected: always check `Rejected` and each file's `Outcome` and `Message`.
 - Field names are the Go names (`ChaveAcesso`, `TotalValue`, `NextAllowedAt`). Money is `int64` cents (`123456` is R$ 1.234,56). Times are RFC 3339; a time or a day count that does not apply is `null`, never a zero date. Empty lists are `[]`.
 
@@ -29,7 +29,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 | `wrong_password` | The certificate password is wrong. | Ask the person to fix it (see Password). Never guess or try variations. |
 | `password_required` | The password is not saved and there is no terminal to ask for it. | Ask the person to run the command once in their terminal (see Password). |
 | `not_found` | The company, certificate or document does not exist. | Run `nanci company list --json` and check the CNPJ, or the chave de acesso. |
-| `invalid_input` | A malformed chave de acesso, CNPJ or flag value. | Fix the argument; nothing was sent. |
+| `invalid_input` | A malformed chave de acesso, CNPJ or flag value, or a command line the CLI refused (unknown flag, missing required flag, wrong number of arguments). | Fix the argument, with `--help` if needed; nothing was sent. |
 | `canceled` | The run was interrupted. | Run it again if the person still wants it. |
 | `""` (empty) | Any other error. | Read `message` and report it; do not guess a fix. |
 
@@ -44,7 +44,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 - Each company has 20 SEFAZ queries per hour per source (NF-e and CT-e count separately), shared with the desktop app. `nfe pull`/`cte pull` stop by themselves at the limit (`StopReason: "rate_budget"`) or when they reach the end (`"caught_up"`); running a pull when the SEFAZ does not allow it yet returns `sefaz_blocked` without sending anything. Running pulls hourly is safe.
 - `nfe buscar --chave` spends one query. `recuperar-nsu` spends one per NSU and, without `--limite`, leaves 2 of the hour for the pull. Check `RequestsLastHour`/`RequestBudget` in `status` before spending queries the person did not ask for.
 - `testar-conexao` spends nothing; use it to check a certificate.
-- `IdleDays` above 0 in a status means the company has not queried the distribution for that many days. The Ambiente Nacional only generates NSUs for whoever queried in the last 60 days, so tell the person and suggest a pull.
+- `IdleDays` that is not `null` in a status means the company has not queried the distribution for that many days. The Ambiente Nacional only generates NSUs for whoever queried in the last 60 days, so tell the person and suggest a pull.
 
 ## Simulate first, then `--confirmar`
 
