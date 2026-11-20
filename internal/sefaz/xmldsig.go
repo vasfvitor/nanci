@@ -45,24 +45,31 @@ func (s *Signer) SignEvento(e Evento, tpAmb string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return s.signInfEvento("evento", nfeNamespace, versaoEvento, id, infEvento)
+}
 
-	canonicalInfEvento := `<infEvento xmlns="` + nfeNamespace + `"` + infEvento[len("<infEvento"):]
-	digest := sha1.Sum([]byte(canonicalInfEvento)) // #nosec G401 -- the NF-e XMLDSig profile mandates SHA-1.
+// signInfEvento wraps a canonical infEvento with the given Id in the root
+// element (evento for the NF-e, eventoCTe for the CT-e) of namespace and
+// versao, and signs it. The digest input is infEvento with the inherited
+// namespace declared, which is its inclusive C14N form.
+func (s *Signer) signInfEvento(root, namespace, versao, id, infEvento string) ([]byte, error) {
+	canonicalInfEvento := `<infEvento xmlns="` + namespace + `"` + infEvento[len("<infEvento"):]
+	digest := sha1.Sum([]byte(canonicalInfEvento)) // #nosec G401 -- the NF-e and CT-e XMLDSig profile mandates SHA-1.
 	digestValue := base64.StdEncoding.EncodeToString(digest[:])
 
-	signed := sha1.Sum([]byte(signedInfo(id, digestValue, true))) // #nosec G401 -- the NF-e XMLDSig profile mandates SHA-1.
+	signed := sha1.Sum([]byte(signedInfo(id, digestValue, true))) // #nosec G401 -- the NF-e and CT-e XMLDSig profile mandates SHA-1.
 	signature, err := rsa.SignPKCS1v15(nil, s.key, crypto.SHA1, signed[:])
 	if err != nil {
 		return nil, err
 	}
 
-	evento := `<evento xmlns="` + nfeNamespace + `" versao="` + versaoEvento + `">` +
+	evento := `<` + root + ` xmlns="` + namespace + `" versao="` + versao + `">` +
 		infEvento +
 		`<Signature xmlns="` + xmldsigNamespace + `">` +
 		signedInfo(id, digestValue, false) +
 		`<SignatureValue>` + base64.StdEncoding.EncodeToString(signature) + `</SignatureValue>` +
 		`<KeyInfo><X509Data><X509Certificate>` + base64.StdEncoding.EncodeToString(s.certDER) + `</X509Certificate></X509Data></KeyInfo>` +
-		`</Signature></evento>`
+		`</Signature></` + root + `>`
 	return []byte(evento), nil
 }
 
