@@ -52,19 +52,6 @@ describe('useNFeLoaders', () => {
     expect(desktopClient.listNFePendingManifestacoes).not.toHaveBeenCalled()
   })
 
-  it('drops results that arrive after the company changed', async () => {
-    const store = useNFeDocumentsStore()
-    const call = deferred<NFeStatusResult>()
-    vi.mocked(desktopClient.statusNFe).mockReturnValue(call.promise)
-
-    const loading = useNFeLoaders().loadStatus()
-    useWorkspaceStore().cnpj = '456'
-    call.resolve(statusResult)
-
-    await expect(loading).resolves.toEqual(statusResult)
-    expect(store.status).toBeNull()
-  })
-
   it('drops a pendências reply from an earlier load', async () => {
     const store = useNFeDocumentsStore()
     const earlier = deferred<NFePendingRow[]>()

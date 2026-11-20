@@ -311,10 +311,8 @@ describe('CompaniesPage first company', () => {
   })
 
   it('opens the add dialog from ?add=1 and drops the query', async () => {
-    await layoutLoad()
-    // Set right before the mount: the pages of earlier tests stay mounted
-    // and would drop the query on the next tick.
     route.query = { add: '1' }
+    await layoutLoad()
     const wrapper = mountPage()
     await flushPromises()
 

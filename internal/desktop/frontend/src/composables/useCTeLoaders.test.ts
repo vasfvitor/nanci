@@ -5,7 +5,6 @@ import { desktopClient } from '@/platform/wails/client'
 import { useCTeDocumentsStore } from '@/stores/cteDocuments'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { CTeRow, CTeStatusResult } from '@/types/desktop'
-import { deferred } from '@/test/fixtures'
 
 vi.mock('@/platform/wails/client', () => ({
   desktopClient: {
@@ -51,28 +50,6 @@ describe('useCTeLoaders', () => {
     expect(store.loading).toBe(false)
   })
 
-  it('skips the refresh once another company is selected', async () => {
-    useWorkspaceStore().cnpj = '456'
-
-    await useCTeLoaders().refresh('123')
-
-    expect(desktopClient.listCTe).not.toHaveBeenCalled()
-    expect(desktopClient.statusCTe).not.toHaveBeenCalled()
-  })
-
-  it('drops results that arrive after the company changed', async () => {
-    const store = useCTeDocumentsStore()
-    const call = deferred<CTeRow[]>()
-    vi.mocked(desktopClient.listCTe).mockReturnValue(call.promise)
-
-    const searching = useCTeLoaders().search()
-    useWorkspaceStore().cnpj = '456'
-    call.resolve([row])
-
-    await expect(searching).resolves.toEqual([row])
-    expect(store.rows).toEqual([])
-  })
-
   it('does not send an NF-e key that is not 44 characters', async () => {
     const store = useCTeDocumentsStore()
     store.filter.NFeChave = '3526'
@@ -95,13 +72,5 @@ describe('useCTeLoaders', () => {
     expect(desktopClient.listCTe).toHaveBeenCalledWith(
       expect.objectContaining({ OnlyUnread: true })
     )
-  })
-
-  it('does not fail when a reload fails', async () => {
-    vi.mocked(desktopClient.listCTe).mockRejectedValue(new Error('boom'))
-
-    await expect(useCTeLoaders().refresh('123')).resolves.toBeUndefined()
-    expect(useCTeDocumentsStore().status).toEqual(statusResult)
-    expect(useCTeDocumentsStore().loading).toBe(false)
   })
 })

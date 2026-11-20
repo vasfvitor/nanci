@@ -1,4 +1,9 @@
-import { vi } from 'vitest'
+import { enableAutoUnmount } from '@vue/test-utils'
+import { afterEach, vi } from 'vitest'
+
+// Every component a test mounts is unmounted after it, so its watchers do not
+// react to the shared mocks of later tests.
+enableAutoUnmount(afterEach)
 
 // Importing @wailsio/runtime wires global mouse listeners and calls the backend
 // over HTTP. Unit tests never run inside Wails, so every test file gets this
