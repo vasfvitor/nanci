@@ -338,10 +338,41 @@ func TestManager_ListCompanies(t *testing.T) {
 		}
 	})
 
+	// A reset deletes the NFS-e cursor but keeps the run history, so the lock
+	// follows the cursor and not LastSyncAt.
+	t.Run("the start policy lock follows the NFS-e cursor", func(t *testing.T) {
+		for _, hasState := range []bool{false, true} {
+			syncs := &stubSyncs{
+				snapshot: syncstate.SyncSnapshot{Run: &syncstate.SyncRun{Status: syncstate.SyncStatusCompleted, FinishedAt: &finished}},
+				hasState: hasState,
+			}
+			m := company.NewManager(&stubStore{company: storedCompany()}, &stubCreds{}, syncs)
+			got, err := m.ListCompanies(ctx)
+			if err != nil {
+				t.Fatalf("ListCompanies: %v", err)
+			}
+			if got[0].LastSyncAt == nil {
+				t.Errorf("cursor %t: LastSyncAt = nil, want the run's FinishedAt", hasState)
+			}
+			if got[0].SyncStartPolicyLocked != hasState {
+				t.Errorf("cursor %t: SyncStartPolicyLocked = %t", hasState, got[0].SyncStartPolicyLocked)
+			}
+		}
+	})
+
 	t.Run("store error", func(t *testing.T) {
 		m := company.NewManager(&stubStore{listErr: errDB}, &stubCreds{}, &stubSyncs{})
 		_, err := m.ListCompanies(ctx)
 		wantErrContains(t, err, "listar empresas")
+	})
+
+	t.Run("cursor check error", func(t *testing.T) {
+		m := company.NewManager(&stubStore{company: storedCompany()}, &stubCreds{}, &stubSyncs{hasStateErr: errDB})
+		_, err := m.ListCompanies(ctx)
+		wantErrContains(t, err, "verificar estado de sincronização")
+		if !errors.Is(err, errDB) {
+			t.Errorf("error %v does not wrap the cursor check error", err)
+		}
 	})
 
 	t.Run("snapshot error", func(t *testing.T) {

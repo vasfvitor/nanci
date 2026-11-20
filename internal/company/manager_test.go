@@ -2,6 +2,7 @@ package company_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 
@@ -172,6 +173,9 @@ func TestManager_UpdateCompanySyncStartPolicyLock(t *testing.T) {
 			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("UpdateCompany error = %v, wantErr %t", err, tt.wantErr)
+			}
+			if tt.wantErr && !errors.Is(err, company.ErrSyncStartPolicyLocked) {
+				t.Errorf("UpdateCompany error = %v, want ErrSyncStartPolicyLocked", err)
 			}
 			want := syncstate.SyncStartPolicyAll
 			if tt.wantErr {

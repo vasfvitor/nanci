@@ -18,6 +18,9 @@ var (
 	ErrCredentialMismatch   = errors.New("a credencial informada não pertence à mesma raiz do CNPJ da empresa")
 	ErrCredentialNoOwner    = errors.New("o certificado não expõe um CNPJ proprietário utilizável para consulta")
 	ErrCompanyNoEnvironment = errors.New("a empresa não possui ambiente configurado")
+	// ErrSyncStartPolicyLocked refuses a new start policy or date while the
+	// company has an NFS-e sync cursor; resetting the NFS-e sync lifts it.
+	ErrSyncStartPolicyLocked = errors.New("não é possível alterar a política inicial depois que a sincronização já começou")
 )
 
 type storeInterface interface {
@@ -145,6 +148,11 @@ func (m *Manager) ListCompanies(ctx context.Context) ([]Company, error) {
 				companies[i].LastSyncAt = snapshot.Run.FinishedAt
 			}
 		}
+		locked, err := m.startPolicyLocked(ctx, companies[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		companies[i].SyncStartPolicyLocked = locked
 	}
 	return companies, nil
 }
@@ -221,14 +229,13 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 		return err
 	}
 
-	// The start policy only applies to NFS-e; an NF-e cursor does not lock it.
 	if input.SyncStartPolicy != company.SyncStartPolicy || !sameDate(input.SyncStartDate, company.SyncStartDate) {
-		hasState, err := m.syncs.HasSyncState(ctx, syncstate.HasSyncStateParams{CompanyID: company.ID, Source: syncstate.SyncSourceNFSe})
+		locked, err := m.startPolicyLocked(ctx, company.ID)
 		if err != nil {
-			return fmt.Errorf("verificar estado de sincronização: %w", err)
+			return err
 		}
-		if hasState {
-			return fmt.Errorf("não é possível alterar a política inicial depois que a sincronização já começou")
+		if locked {
+			return ErrSyncStartPolicyLocked
 		}
 	}
 
@@ -243,6 +250,17 @@ func (m *Manager) UpdateCompany(ctx context.Context, input UpdateCompanyInput) e
 	}
 
 	return nil
+}
+
+// startPolicyLocked reports whether the company has an NFS-e sync cursor in
+// any environment. The start policy only applies to NFS-e, so an NF-e or CT-e
+// cursor does not lock it; resetting the NFS-e sync deletes the cursor.
+func (m *Manager) startPolicyLocked(ctx context.Context, companyID dfe.CompanyID) (bool, error) {
+	locked, err := m.syncs.HasSyncState(ctx, syncstate.HasSyncStateParams{CompanyID: companyID, Source: syncstate.SyncSourceNFSe})
+	if err != nil {
+		return false, fmt.Errorf("verificar estado de sincronização: %w", err)
+	}
+	return locked, nil
 }
 
 func ParseSyncStartPolicyInput(rawPolicy, rawDate string) (syncstate.SyncStartPolicy, *time.Time, error) {
