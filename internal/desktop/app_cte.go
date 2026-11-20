@@ -129,7 +129,6 @@ func (a *App) ListCTe(input desktopapi.ListCTeInput) ([]desktopapi.CTeRow, error
 		NFeChave:     input.NFeChave,
 		ChavesAcesso: input.ChavesAcesso,
 		OnlyUnread:   input.OnlyUnread,
-		Limit:        input.Limit,
 	})
 	if err != nil {
 		return nil, err

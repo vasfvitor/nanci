@@ -326,7 +326,6 @@ func TestCTeListDocumentsFilters(t *testing.T) {
 		{"nfe chave", ListCTeInput{NFeChave: cteNFeChaveProc}, []string{cteChaveProc}},
 		{"nfe chave of toma4", ListCTeInput{NFeChave: cteNFeChaveToma4}, []string{cteChaveToma4}},
 		{"chaves", ListCTeInput{ChavesAcesso: []string{cteChaveOS, cteChaveV200}}, []string{cteChaveOS}},
-		{"limit", ListCTeInput{Limit: 1}, []string{cteChaveSimp}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

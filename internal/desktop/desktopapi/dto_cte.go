@@ -26,7 +26,6 @@ type ListCTeInput struct {
 	NFeChave     string
 	ChavesAcesso []string
 	OnlyUnread   bool
-	Limit        int // 0 means no limit
 }
 
 // CTeMunicipio is where the transport starts or ends.

@@ -1236,7 +1236,6 @@ describe('CT-e client calls', () => {
     await desktopClient.listCTe({
       ...listInput,
       ChavesAcesso: [cteChave],
-      Limit: 1,
       OnlyUnread: true,
     })
     await expect(desktopClient.markCTeViewed('123', [cteChave])).resolves.toBe(2)
@@ -1252,13 +1251,11 @@ describe('CT-e client calls', () => {
       ...listInput,
       ChavesAcesso: [],
       OnlyUnread: false,
-      Limit: 0,
     })
     expect(ListCTe).toHaveBeenNthCalledWith(2, {
       ...listInput,
       ChavesAcesso: [cteChave],
       OnlyUnread: true,
-      Limit: 1,
     })
     expect(MarkCTeViewed).toHaveBeenCalledWith({ CNPJ: '123', ChavesAcesso: [cteChave] })
     expect(ListCTeEvents).toHaveBeenCalledWith({ CNPJ: '123', ChaveAcesso: cteChave })

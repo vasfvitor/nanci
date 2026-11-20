@@ -655,11 +655,6 @@ export interface ListCTeInput {
     "NFeChave": string;
     "ChavesAcesso": string[] | null;
     "OnlyUnread": boolean;
-
-    /**
-     * 0 means no limit
-     */
-    "Limit": number;
 }
 
 export interface ListInput {

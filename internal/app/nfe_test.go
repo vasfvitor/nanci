@@ -246,7 +246,6 @@ func TestNFeListDocumentsFilters(t *testing.T) {
 		{"role", NFeListInput{Role: "emitente"}, []string{}},
 		{"manifestacao", NFeListInput{Manifestacao: "ciencia"}, []string{nfeChaveProc}},
 		{"chaves", NFeListInput{ChavesAcesso: []string{nfeChaveCancelada}}, []string{nfeChaveCancelada}},
-		{"limit", NFeListInput{Limit: 1}, []string{nfeChaveDenegada}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -123,7 +123,6 @@ function cteListRequest(input: ListCTeInput) {
     ...input,
     ChavesAcesso: input.ChavesAcesso ?? [],
     OnlyUnread: input.OnlyUnread ?? false,
-    Limit: input.Limit ?? 0,
   }
 }
 

@@ -197,7 +197,6 @@ type NFeListInput struct {
 	EmitenteCNPJ string
 	ChavesAcesso []string
 	OnlyUnread   bool // keeps only NF-e the company has not marked as viewed
-	Limit        int  // 0 means no limit
 }
 
 // NFeDocument is one of the company's NF-e with its manifestação state
@@ -391,7 +390,6 @@ func (s *NFeService) buildFilter(ctx context.Context, in NFeListInput) (*company
 		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
 		OnlyUnread:   in.OnlyUnread,
-		Limit:        in.Limit,
 	}
 	if in.Situacao != "" {
 		if filter.Situacao, err = nfe.ParseSituacao(in.Situacao); err != nil {

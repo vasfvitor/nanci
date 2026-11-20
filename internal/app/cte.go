@@ -146,7 +146,6 @@ type ListCTeInput struct {
 	NFeChave     string
 	ChavesAcesso []string
 	OnlyUnread   bool // keeps only CT-e the company has not marked as viewed
-	Limit        int  // 0 means no limit
 }
 
 // ListDocuments returns the company's CT-e of its current environment,
@@ -231,7 +230,6 @@ func cteFilter(comp *company.Company, in ListCTeInput) (cte.DocumentFilter, erro
 		ChavesAcesso: chaves,
 		TpAmb:        tpAmb,
 		OnlyUnread:   in.OnlyUnread,
-		Limit:        in.Limit,
 	}
 	if in.Situacao != "" {
 		if filter.Situacao, err = cte.ParseSituacao(in.Situacao); err != nil {

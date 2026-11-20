@@ -72,7 +72,6 @@ func TestListCTeMapsFilters(t *testing.T) {
 		NFeChave:     "nfe-chave",
 		ChavesAcesso: []string{testChave},
 		OnlyUnread:   true,
-		Limit:        50,
 	})
 	if err != nil {
 		t.Fatalf("ListCTe: %v", err)
@@ -89,7 +88,6 @@ func TestListCTeMapsFilters(t *testing.T) {
 		NFeChave:     "nfe-chave",
 		ChavesAcesso: []string{testChave},
 		OnlyUnread:   true,
-		Limit:        50,
 	}}})
 	if len(got) != 1 || got[0].ChaveAcesso != testChave {
 		t.Errorf("rows = %+v, want one row for %s", got, testChave)

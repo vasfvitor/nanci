@@ -49,8 +49,6 @@ export type ListCTeInput = {
   ChavesAcesso?: string[]
   // OnlyUnread keeps the CT-e not yet marked as viewed.
   OnlyUnread?: boolean
-  // Limit 0 or absent lists every row.
-  Limit?: number
 }
 
 export type CTeMunicipio = {
