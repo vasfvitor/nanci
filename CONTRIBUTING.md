@@ -60,7 +60,7 @@ No PR, explique a mudança de comportamento, liste os comandos de verificação 
 
 ## Trabalhar num fork com um agente de IA
 
-Para quem vai mudar o Nanci pedindo a um agente (Claude Code, por exemplo), mesmo sem ser desenvolvedor.
+Para quem vai mudar o Nanci pedindo a um agente (Claude Code, Codex ou Gemini CLI, por exemplo), mesmo sem ser desenvolvedor.
 
 ### Preparar uma vez
 
@@ -80,7 +80,7 @@ Para quem vai mudar o Nanci pedindo a um agente (Claude Code, por exemplo), mesm
 
 ### Pedir uma mudança
 
-Peça em português, do jeito que você explicaria a uma pessoa. O agente segue o skill [`nova-funcionalidade`](.claude/skills/nova-funcionalidade/SKILL.md): mostra um plano em linguagem simples e espera o seu ok, trabalha numa branch local com um commit por passo, roda o `scripts/verify.sh` e, no fim, explica o que mudou e como testar. Não precisa de PR: a branch entra na sua `main` por fast-forward, o que mantém o histórico linear.
+Peça em português, do jeito que você explicaria a uma pessoa. O agente segue o skill [`nova-funcionalidade`](.agents/skills/nova-funcionalidade/SKILL.md): mostra um plano em linguagem simples e espera o seu ok, trabalha numa branch local com um commit por passo, roda o `scripts/verify.sh` e, no fim, explica o que mudou e como testar. Não precisa de PR: a branch entra na sua `main` por fast-forward, o que mantém o histórico linear.
 
 O skill tem uma lista de coisas que o agente não faz sem perguntar, entre elas enviar eventos à SEFAZ, usar produção com um CNPJ real e editar uma migration existente. Se ele pedir para fazer uma delas, leia o motivo com calma antes de aceitar.
 
