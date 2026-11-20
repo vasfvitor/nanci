@@ -43,6 +43,8 @@ func SeedDevelopment(ctx context.Context, db *sql.DB, certPath string) (*company
 		Name:         "Empresa Mock Teste",
 		CredentialID: cred.ID,
 		Environment:  dfe.EnvironmentRestricted,
+		// The NF-e and CT-e pulls need the UF; the mock certificate is from SP.
+		UF: "SP",
 		// The fixtures are old; from_now, the store's default, would hide them.
 		SyncStartPolicy: syncstate.SyncStartPolicyAll,
 	}
@@ -105,6 +107,7 @@ func saveCompany(ctx context.Context, store *company.Store, c *company.Company) 
 	}
 
 	existing.Name = c.Name
+	existing.UF = c.UF
 	existing.Environment = c.Environment
 	existing.SyncStartPolicy = c.SyncStartPolicy
 	existing.SyncStartDate = c.SyncStartDate
