@@ -33,10 +33,11 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | Comando | O que faz |
 |---|---|
 | `init` | Cria ou atualiza o banco e a pasta de dados. |
-| `company add`, `update`, `list` | Cadastra, altera e lista empresas. |
+| `company add`, `update`, `list` | Cadastra, altera e lista empresas. `update --sync-start-date` troca a data inicial da NFS-e antes da primeira sincronização ou depois de um `reset`. |
 | `company assign-credential --cnpj <cnpj> --credential-id <id>` | Liga a empresa a um certificado já cadastrado. O ID sai em `credential list`. |
 | `credential add`, `list`, `update-path` | Cadastra certificados e atualiza o caminho do arquivo. |
 | `pull`, `status`, `list` | Sincroniza, mostra a situação e lista as NFS-e. |
+| `reset` | Recomeça a sincronização da NFS-e desde o NSU 0, sem apagar documentos, e libera a troca da data inicial. |
 | `export xlsx`, `csv`, `zip`, `xml`, `danfse`, `danfse-zip` | Exporta as NFS-e. Nos formatos em lote, `--chave` (pode repetir) limita às notas informadas. |
 | `nfe pull`, `status`, `list`, `pendentes` | Sincroniza e lista as NF-e e as manifestações pendentes. |
 | `nfe ciencia`, `manifestar` | Registra a Manifestação do Destinatário. |
