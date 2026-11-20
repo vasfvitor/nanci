@@ -47,7 +47,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	comp, err := seed.SeedDevelopment(ctx, db)
+	comp, err := seed.SeedDevelopment(ctx, db, dstCert)
 	if err != nil {
 		fatalf("seed dev data: %v", err)
 	}

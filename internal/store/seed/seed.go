@@ -20,11 +20,14 @@ import (
 
 // SeedDevelopment creates the mock credential and company, or brings them back
 // to the mock values when they already exist, and returns the company.
-func SeedDevelopment(ctx context.Context, db *sql.DB) (*company.Company, error) {
+// certPath is the mock certificate; it must be absolute, because the app and
+// the CLI resolve a relative path against their own working directory
+// (wails3 dev runs from internal/desktop).
+func SeedDevelopment(ctx context.Context, db *sql.DB, certPath string) (*company.Company, error) {
 	cred := &credential.Credential{
 		ID:                "dev-credential-70860312000150",
 		Label:             "Certificado Mock 70860312000150",
-		CertPath:          "devdata/certs/cert_a1_mock_70860312000150.pfx",
+		CertPath:          certPath,
 		OwnerCNPJ:         "70860312000150",
 		OwnerCNPJRoot:     "70860312",
 		FingerprintSHA256: "mock-fingerprint",
