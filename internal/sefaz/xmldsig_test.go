@@ -149,6 +149,13 @@ type parsedSignedEvento struct {
 // the digest and verifies the RSA-SHA1 signature with the leaf public key.
 func verifySignedEvento(t *testing.T, signed []byte, leaf *x509.Certificate) {
 	t.Helper()
+	verifySignedEventoIn(t, signed, leaf, nfeNamespace)
+}
+
+// verifySignedEventoIn is verifySignedEvento for an evento in namespace
+// (the NF-e or the CT-e one).
+func verifySignedEventoIn(t *testing.T, signed []byte, leaf *x509.Certificate, namespace string) {
+	t.Helper()
 	var parsed parsedSignedEvento
 	if err := xml.Unmarshal(signed, &parsed); err != nil {
 		t.Fatalf("parse signed evento: %v", err)
@@ -157,8 +164,8 @@ func verifySignedEvento(t *testing.T, signed []byte, leaf *x509.Certificate) {
 		t.Errorf("Reference URI = %q, want #%s", parsed.Signature.SignedInfo.Reference.URI, parsed.InfEvento.ID)
 	}
 
-	canonicalInf := canonicalize(t, signed, "infEvento", nfeNamespace)
-	if embedded := strings.Replace(canonicalInf, ` xmlns="`+nfeNamespace+`"`, "", 1); !strings.Contains(string(signed), embedded) {
+	canonicalInf := canonicalize(t, signed, "infEvento", namespace)
+	if embedded := strings.Replace(canonicalInf, ` xmlns="`+namespace+`"`, "", 1); !strings.Contains(string(signed), embedded) {
 		t.Errorf("infEvento is not embedded in canonical form:\ncanonical %s\n   signed %s", embedded, signed)
 	}
 	digest := sha1.Sum([]byte(canonicalInf))

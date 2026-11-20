@@ -69,6 +69,8 @@ func newFakeClient(t *testing.T, status int, body string, cfg ClientConfig) (*Cl
 		Distribuicao:    server.URL + "/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
 		DistribuicaoCTe: server.URL + "/CTeDistribuicaoDFe/CTeDistribuicaoDFe.asmx",
 		RecepcaoEvento:  server.URL + "/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
+
+		RecepcaoEventoCTe: server.URL + "/CTeRecepcaoEventoV4/CTeRecepcaoEventoV4.asmx",
 	}
 	client, err := NewClient(cfg)
 	if err != nil {

@@ -3,8 +3,9 @@
 // Package sefaz is the SOAP client for the NF-e and CT-e web services of the
 // Ambiente Nacional: NFeDistribuicaoDFe and CTeDistribuicaoDFe (documents
 // addressed to a CNPJ) and NFeRecepcaoEvento4 (manifestação do
-// destinatário). It only speaks the protocol; storage and sync rules belong
-// to the caller.
+// destinatário), plus CTeRecepcaoEventoV4 of the SEFAZ that authorized a
+// CT-e (prestação em desacordo). It only speaks the protocol; storage and
+// sync rules belong to the caller.
 package sefaz
 
 import (
@@ -35,6 +36,10 @@ type Endpoints struct {
 	Distribuicao    string
 	DistribuicaoCTe string
 	RecepcaoEvento  string
+	// RecepcaoEventoCTe, when set, takes the CT-e events of every UF. It is
+	// for tests: empty means the autorizadora of the chave's UF
+	// (CTeRecepcaoEventoURL).
+	RecepcaoEventoCTe string
 }
 
 // EndpointsFor returns the Ambiente Nacional URLs for env: producao uses the
