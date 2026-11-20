@@ -409,11 +409,24 @@ func TestNFeOutcomesError(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := nfeOutcomesError(tc.outcomes, tc.interrupted); (err != nil) != tc.wantErr {
+			err := nfeOutcomesError(context.Background(), tc.outcomes, tc.interrupted)
+			if (err != nil) != tc.wantErr {
 				t.Errorf("nfeOutcomesError = %v, wantErr %v", err, tc.wantErr)
+			}
+			if code := app.ErrorCode(err); code != "" {
+				t.Errorf("code = %q, want none without a cancel", code)
 			}
 		})
 	}
+
+	t.Run("cancelled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := nfeOutcomesError(ctx, []app.NFeEventOutcome{registrada, naoEnviada}, "context canceled")
+		if code := app.ErrorCode(err); code != app.ErrorCodeCanceled {
+			t.Errorf("err = %v, code %q; want %q", err, code, app.ErrorCodeCanceled)
+		}
+	})
 }
 
 func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
@@ -727,10 +740,11 @@ func TestNFeManifestacao_JSONDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("manifestar --json: %v", err)
 	}
-	decodeJSONOutput(t, env.out, &plan)
-	if plan["TpEvento"] != "210240" || plan["Tipo"] != "nao_realizada" || plan["ChaveAcesso"] != nfeChaveProc ||
-		plan["Justificativa"] != "mercadoria devolvida ao emitente" || plan["ConclusiveDue"] == nil {
-		t.Errorf("manifestar plan = %v", plan)
+	var manifestar map[string]any // a fresh map: json.Unmarshal merges into an existing one
+	decodeJSONOutput(t, env.out, &manifestar)
+	if manifestar["TpEvento"] != "210240" || manifestar["Tipo"] != "nao_realizada" || manifestar["ChaveAcesso"] != nfeChaveProc ||
+		manifestar["Justificativa"] != "mercadoria devolvida ao emitente" || manifestar["ConclusiveDue"] == nil {
+		t.Errorf("manifestar plan = %v", manifestar)
 	}
 
 	if env.passwords.requests != 0 {
@@ -738,6 +752,67 @@ func TestNFeManifestacao_JSONDryRun(t *testing.T) {
 	}
 	if n := env.manifestacaoCount(); n != 0 {
 		t.Errorf("manifestações recorded = %d, want 0", n)
+	}
+}
+
+// TestNFeCiencia_JSONNoneEligible checks that a ciência where every chave is
+// skipped prints why, next to the error, and asks for no password.
+func TestNFeCiencia_JSONNoneEligible(t *testing.T) {
+	env := newNFeTestRoot(t)
+	env.seed("procnfe.xml", 1)
+	env.seed("proceventonfe-ciencia.xml", 2)
+
+	err := env.run("nfe", "ciencia", "-c", nfeTestCNPJ, "--chave", nfeChaveProc, "--confirmar", "--json")
+	if err == nil || !strings.Contains(err.Error(), "nenhuma NF-e elegível") {
+		t.Fatalf("err = %v, want nenhuma NF-e elegível", err)
+	}
+	var summary map[string]any
+	decodeJSONOutput(t, env.out, &summary)
+	skipped, ok := summary["Skipped"].([]any)
+	if !ok || len(skipped) != 1 || skipped[0].(map[string]any)["ChaveAcesso"] != nfeChaveProc {
+		t.Errorf("Skipped = %v, want the chave", summary["Skipped"])
+	}
+	if outcomes, ok := summary["Outcomes"].([]any); !ok || len(outcomes) != 0 {
+		t.Errorf("Outcomes = %v, want []", summary["Outcomes"])
+	}
+	if env.passwords.requests != 0 {
+		t.Errorf("password requests = %d, want 0", env.passwords.requests)
+	}
+}
+
+// TestNFeEvents_JSONUnansweredPrintsBoth checks the confirmed paths that
+// print the result and also fail: the fake SEFAZ answers the events with
+// something that is not SOAP, so nothing is registered.
+func TestNFeEvents_JSONUnansweredPrintsBoth(t *testing.T) {
+	env, fake := newNFeFetchTestRoot(t, "não é SOAP")
+	env.seed("resnfe.xml", 1)
+
+	err := env.run("nfe", "ciencia", "-c", nfeTestCNPJ, "--todos-resumos", "--confirmar", "--json")
+	if err == nil {
+		t.Fatal("ciencia: err = nil, want the events without registro")
+	}
+	var summary map[string]any
+	decodeJSONOutput(t, env.out, &summary)
+	outcomes, ok := summary["Outcomes"].([]any)
+	if !ok || len(outcomes) != 1 || outcomes[0].(map[string]any)["ChaveAcesso"] != nfeChaveProc ||
+		outcomes[0].(map[string]any)["Status"] == nfe.ManifestacaoStatusRegistrada {
+		t.Errorf("Outcomes = %v, want the chave without registro", summary["Outcomes"])
+	}
+	if summary["Interrupted"] == "" {
+		t.Errorf("Interrupted = %v, want the failure", summary["Interrupted"])
+	}
+
+	err = env.run("nfe", "manifestar", "-c", nfeTestCNPJ, "--chave", nfeChaveProc, "--tipo", "desconhecimento", "--confirmar", "--json")
+	if err == nil {
+		t.Fatal("manifestar: err = nil, want the event without registro")
+	}
+	var outcome map[string]any
+	decodeJSONOutput(t, env.out, &outcome)
+	if outcome["ChaveAcesso"] != nfeChaveProc || outcome["Status"] == nfe.ManifestacaoStatusRegistrada {
+		t.Errorf("manifestar outcome = %v", outcome)
+	}
+	if fake.requests != 2 {
+		t.Errorf("SEFAZ requests = %d, want 2", fake.requests)
 	}
 }
 

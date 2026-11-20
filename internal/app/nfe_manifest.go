@@ -114,16 +114,17 @@ func (s *NFeService) PlanCiencia(ctx context.Context, in NFeCienciaInput) (NFeCi
 // RegisterCiencia sends Ciência da Operação for the eligible NF-e, in lotes
 // of up to 20, asking for the certificate password once. It returns an error
 // only when nothing was sent (invalid input, no eligible NF-e, password
-// canceled, certificate problem). Once sending starts, failures are reported
-// per chave, and a lote without answer stops the sending and sets
-// Interrupted.
+// canceled, certificate problem); with no eligible NF-e, the summary still
+// has Skipped, with why each chave was left out. Once sending starts,
+// failures are reported per chave, and a lote without answer stops the
+// sending and sets Interrupted.
 func (s *NFeService) RegisterCiencia(ctx context.Context, in NFeCienciaInput) (NFeManifestacaoSummary, error) {
 	comp, plan, err := s.planCiencia(ctx, in)
 	if err != nil {
 		return NFeManifestacaoSummary{}, err
 	}
 	if len(plan.Eligible) == 0 {
-		return NFeManifestacaoSummary{}, fmt.Errorf("nenhuma NF-e elegível para ciência (%d ignoradas)", len(plan.Skipped))
+		return NFeManifestacaoSummary{Skipped: plan.Skipped}, fmt.Errorf("nenhuma NF-e elegível para ciência (%d ignoradas)", len(plan.Skipped))
 	}
 
 	sender, err := s.newSender(ctx, comp, fmt.Sprintf("Assinatura: Ciência da Operação (%d notas)", len(plan.Eligible)))

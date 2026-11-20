@@ -32,16 +32,7 @@ func newNFeImportCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			defer cleanup()
 
 			res, err := application.NFe.ImportXML(cmd.Context(), app.ImportXMLInput{CNPJ: *cnpjFlag, Files: args})
-			if err != nil {
-				return fmt.Errorf("erro ao importar XML: %w", err)
-			}
-			if env.jsonOutput() {
-				if err := printJSON(cmd.OutOrStdout(), newImportOutput(res)); err != nil {
-					return err
-				}
-				return importError(res)
-			}
-			return printImportResult(cmd.OutOrStdout(), res)
+			return reportImport(env, cmd.OutOrStdout(), res, err)
 		},
 	}
 }
@@ -73,9 +64,31 @@ func importOutcomeLabel(outcome string) string {
 	}
 }
 
-// printImportResult writes one line per file and the counts, and returns an
-// error when every file was rejected.
-func printImportResult(w io.Writer, res app.ImportXMLResult) error {
+// reportImport prints the result of `nfe import` or `cte import`, as text or
+// JSON, and returns its error. A cancelled import still prints the files it
+// got through: ImportXML returns them with the error.
+func reportImport(env CommandEnv, w io.Writer, res app.ImportXMLResult, err error) error {
+	if err != nil && len(res.Files) == 0 {
+		return fmt.Errorf("erro ao importar XML: %w", err)
+	}
+	if env.jsonOutput() {
+		if jsonErr := printJSON(w, newImportOutput(res)); jsonErr != nil {
+			return jsonErr
+		}
+	} else {
+		printImportResult(w, res)
+	}
+	if err != nil {
+		return fmt.Errorf("erro ao importar XML: %w", err)
+	}
+	if res.Imported+res.Updated == 0 {
+		return errors.New("nenhum arquivo importado")
+	}
+	return nil
+}
+
+// printImportResult writes one line per file and the counts.
+func printImportResult(w io.Writer, res app.ImportXMLResult) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	for _, f := range res.Files {
 		message := f.Message
@@ -92,14 +105,4 @@ func printImportResult(w io.Writer, res app.ImportXMLResult) error {
 	}
 	_ = tw.Flush()
 	_, _ = fmt.Fprintf(w, "Importados: %d | Atualizados: %d | Rejeitados: %d\n", res.Imported, res.Updated, res.Rejected)
-	return importError(res)
-}
-
-// importError is the error of an import where every file was rejected, or
-// nil.
-func importError(res app.ImportXMLResult) error {
-	if res.Imported+res.Updated == 0 {
-		return errors.New("nenhum arquivo importado")
-	}
-	return nil
 }

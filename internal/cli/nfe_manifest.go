@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -83,13 +84,23 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 
 			summary, err := application.NFe.RegisterCiencia(cmd.Context(), input)
 			if err != nil {
+				// Nothing was sent; when no chave was eligible, Skipped says why.
+				if len(summary.Skipped) > 0 {
+					if env.jsonOutput() {
+						if jsonErr := printJSON(out, newNFeCienciaSummaryOutput(summary)); jsonErr != nil {
+							return jsonErr
+						}
+					} else {
+						printNFeSkipped(out, summary.Skipped)
+					}
+				}
 				return fmt.Errorf("erro: %w", err)
 			}
 			if env.jsonOutput() {
 				if err := printJSON(out, newNFeCienciaSummaryOutput(summary)); err != nil {
 					return err
 				}
-				return nfeOutcomesError(summary.Outcomes, summary.Interrupted)
+				return nfeOutcomesError(cmd.Context(), summary.Outcomes, summary.Interrupted)
 			}
 			printNFeOutcomes(out, summary.Outcomes)
 			printNFeSkipped(out, summary.Skipped)
@@ -103,7 +114,7 @@ func newNFeCienciaCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if summary.Interrupted != "" {
 				_, _ = fmt.Fprintf(out, "Aviso: o envio foi interrompido (%s). As NF-e não enviadas podem ser enviadas de novo.\n", summary.Interrupted)
 			}
-			return nfeOutcomesError(summary.Outcomes, summary.Interrupted)
+			return nfeOutcomesError(cmd.Context(), summary.Outcomes, summary.Interrupted)
 		},
 	}
 	cmd.Flags().StringSliceVar(&chaveFlags, "chave", nil, "Chave de acesso da NF-e (pode repetir)")
@@ -172,7 +183,7 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("erro: %w", err)
 			}
-			return nfeOutcomesError([]app.NFeEventOutcome{outcome}, "")
+			return nfeOutcomesError(cmd.Context(), []app.NFeEventOutcome{outcome}, "")
 		},
 	}
 	cmd.Flags().StringVar(&chaveFlag, "chave", "", "Chave de acesso da NF-e")
@@ -186,8 +197,10 @@ func newNFeManifestarCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 
 // nfeOutcomesError makes ciencia and manifestar exit non-zero when an event
 // was not registered (rejeitada or nao_enviada) or the sending was
-// interrupted. The caller prints the outcome table first.
-func nfeOutcomesError(outcomes []app.NFeEventOutcome, interrupted string) error {
+// interrupted. The caller prints the outcome table first. A sending the
+// person cancelled (ctx) wraps app.ErrOperationCanceled, so --json reports
+// canceled.
+func nfeOutcomesError(ctx context.Context, outcomes []app.NFeEventOutcome, interrupted string) error {
 	failed := 0
 	for _, o := range outcomes {
 		if o.Status != nfe.ManifestacaoStatusRegistrada && o.Status != nfe.ManifestacaoStatusJaRegistrada {
@@ -195,6 +208,8 @@ func nfeOutcomesError(outcomes []app.NFeEventOutcome, interrupted string) error 
 		}
 	}
 	switch {
+	case interrupted != "" && errors.Is(ctx.Err(), context.Canceled):
+		return fmt.Errorf("erro: envio interrompido (%w), %d de %d evento(s) sem registro", app.ErrOperationCanceled, failed, len(outcomes))
 	case interrupted != "":
 		return fmt.Errorf("erro: envio interrompido, %d de %d evento(s) sem registro", failed, len(outcomes))
 	case failed > 0:

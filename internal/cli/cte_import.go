@@ -27,16 +27,7 @@ func newCTeImportCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 			defer cleanup()
 
 			res, err := application.CTe.ImportXML(cmd.Context(), app.ImportXMLInput{CNPJ: *cnpjFlag, Files: args})
-			if err != nil {
-				return fmt.Errorf("erro ao importar XML: %w", err)
-			}
-			if env.jsonOutput() {
-				if err := printJSON(cmd.OutOrStdout(), newImportOutput(res)); err != nil {
-					return err
-				}
-				return importError(res)
-			}
-			return printImportResult(cmd.OutOrStdout(), res)
+			return reportImport(env, cmd.OutOrStdout(), res, err)
 		},
 	}
 }

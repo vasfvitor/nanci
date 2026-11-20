@@ -47,8 +47,8 @@ func (f *fakeDistribuicao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // newNFeFetchTestRoot is newNFeTestRoot with the mock certificate, its
-// password, and the NF-e distribution pointed at a fake SEFAZ answering
-// response.
+// password, and the NF-e distribution and event services pointed at a fake
+// SEFAZ answering response.
 func newNFeFetchTestRoot(t *testing.T, response string) (*nfeTestRoot, *fakeDistribuicao) {
 	t.Helper()
 	ctx := context.Background()
@@ -87,7 +87,8 @@ func newNFeFetchTestRoot(t *testing.T, response string) (*nfeTestRoot, *fakeDist
 	server := httptest.NewServer(fake)
 	t.Cleanup(server.Close)
 	application.SyncManager.SEFAZEndpoints = &sefaz.Endpoints{
-		Distribuicao: server.URL + "/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
+		Distribuicao:   server.URL + "/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
+		RecepcaoEvento: server.URL + "/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
 	}
 
 	env.root, env.out = newTestRootForApp(application)

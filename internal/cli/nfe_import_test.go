@@ -181,9 +181,10 @@ func TestImport_JSON(t *testing.T) {
 	if err := env.run("cte", "import", "-c", nfeTestCNPJ, filepath.Join("..", "cte", "testdata", "procte.xml"), "--json"); err != nil {
 		t.Fatalf("cte import --json: %v\n%s", err, env.out.String())
 	}
-	decodeJSONOutput(t, env.out, &result)
-	if result["Imported"] != float64(1) || result["Rejected"] != float64(0) {
-		t.Errorf("cte import = %v", result)
+	var cteResult map[string]any // a fresh map: json.Unmarshal merges into an existing one
+	decodeJSONOutput(t, env.out, &cteResult)
+	if cteResult["Imported"] != float64(1) || cteResult["Rejected"] != float64(0) {
+		t.Errorf("cte import = %v", cteResult)
 	}
 
 	// Every file rejected: the result still prints, and the error stays.
@@ -191,8 +192,39 @@ func TestImport_JSON(t *testing.T) {
 	if err == nil || err.Error() != "nenhum arquivo importado" {
 		t.Errorf("err = %v, want nenhum arquivo importado", err)
 	}
-	decodeJSONOutput(t, env.out, &result)
-	if result["Rejected"] != float64(1) {
-		t.Errorf("all rejected = %v", result)
+	var rejected map[string]any
+	decodeJSONOutput(t, env.out, &rejected)
+	if rejected["Rejected"] != float64(1) {
+		t.Errorf("all rejected = %v", rejected)
+	}
+}
+
+// TestReportImport_Cancelled checks that an import cut short prints the
+// files it got through and fails with the canceled code.
+func TestReportImport_Cancelled(t *testing.T) {
+	res := app.ImportXMLResult{
+		Files:    []app.ImportedFile{{Path: "a.xml", Outcome: app.ImportOutcomeImported, Kind: app.ImportKindCompleta}},
+		Imported: 1,
+	}
+	for _, asJSON := range []bool{true, false} {
+		var out bytes.Buffer
+		err := reportImport(CommandEnv{JSON: &asJSON}, &out, res, context.Canceled)
+		if code := app.ErrorCode(err); code != app.ErrorCodeCanceled {
+			t.Errorf("json %t: err = %v, code %q; want %q", asJSON, err, code, app.ErrorCodeCanceled)
+		}
+		want := "a.xml" // the text lines name only rejected files
+		if !asJSON {
+			want = "Importados: 1"
+		}
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("json %t: output = %q, want %q", asJSON, out.String(), want)
+		}
+	}
+
+	// Cancelled before the first file: only the error.
+	var out bytes.Buffer
+	asJSON := true
+	if err := reportImport(CommandEnv{JSON: &asJSON}, &out, app.ImportXMLResult{}, context.Canceled); app.ErrorCode(err) != app.ErrorCodeCanceled || out.Len() != 0 {
+		t.Errorf("nothing imported: err = %v, output %q", err, out.String())
 	}
 }
