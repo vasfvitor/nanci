@@ -9,8 +9,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -197,6 +201,65 @@ func TestCheckForUpdatePassesErrors(t *testing.T) {
 	if got != (desktopapi.UpdateInfo{}) {
 		t.Errorf("result = %#v, want the zero DTO", got)
 	}
+}
+
+// offlineErr is what the endpoint provider returns when the manifest
+// request does not reach the server.
+func offlineErr() error {
+	op := &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}
+	return fmt.Errorf("endpoint: fetch manifest: %w", &url.Error{Op: "Get", URL: "https://github.com/x/nanci-update.json", Err: op})
+}
+
+func TestIsConnectionError(t *testing.T) {
+	get := func(err error) error { return &url.Error{Op: "Get", URL: "https://example.test/m.json", Err: err} }
+	for _, tt := range []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"refused", offlineErr(), true},
+		{"dns", get(&net.DNSError{Err: "no such host", Name: "github.com", IsNotFound: true}), true},
+		{"timeout", get(&net.OpError{Op: "read", Net: "tcp", Err: os.ErrDeadlineExceeded}), true},
+		{"cut short", fmt.Errorf("endpoint: download: %w", io.ErrUnexpectedEOF), true},
+		{"cancelled", get(context.Canceled), false},
+		{"http status", errors.New("endpoint: manifest request failed: HTTP 503"), false},
+		{"other", errCore, false},
+		{"nil", nil, false},
+	} {
+		if got := isConnectionError(tt.err); got != tt.want {
+			t.Errorf("%s: isConnectionError(%v) = %v, want %v", tt.name, tt.err, got, tt.want)
+		}
+	}
+}
+
+func TestCheckForUpdateSaysWhenThereIsNoConnection(t *testing.T) {
+	_, a := newFakeApp(nil)
+	a.updates = &fakeUpdates{checkErr: checkError{err: errors.New("updater: all providers failed"), cause: offlineErr()}}
+
+	got, err := a.CheckForUpdate(context.Background())
+	if !errors.Is(err, errUpdateNoConnection) {
+		t.Fatalf("err = %v, want errUpdateNoConnection", err)
+	}
+	if msg := err.Error(); strings.Contains(msg, "updater:") || strings.Contains(msg, "http") {
+		t.Errorf("message %q shows the technical error", msg)
+	}
+	if got != (desktopapi.UpdateInfo{}) {
+		t.Errorf("result = %#v, want the zero DTO", got)
+	}
+}
+
+func TestInstallUpdateSaysWhenThereIsNoConnection(t *testing.T) {
+	_, a := newFakeApp(nil)
+	a.updates = &fakeUpdates{installErr: offlineErr()}
+
+	if err := a.InstallUpdate(context.Background()); !errors.Is(err, errUpdateNoConnection) {
+		t.Fatalf("err = %v, want errUpdateNoConnection", err)
+	}
+	done, err := a.guard.start(false)
+	if err != nil {
+		t.Fatalf("track after a failed install: %v", err)
+	}
+	done()
 }
 
 func TestInstallUpdateWhenUpdatesAreOff(t *testing.T) {
@@ -479,5 +542,24 @@ func TestUpdaterRefusesATamperedRelease(t *testing.T) {
 				t.Errorf("staged %q, want nothing staged", u.DownloadedPath())
 			}
 		})
+	}
+}
+
+// TestUpdaterCheckWithoutConnection runs the real updater against a server
+// that is gone: the error setupUpdater's engine returns must still reach the
+// network error, which Updater.Check alone flattens to text.
+func TestUpdaterCheckWithoutConnection(t *testing.T) {
+	_, _, key := testKey(t)
+	srv := httptest.NewServer(http.NotFoundHandler())
+	manifest := srv.URL + "/nanci-update.json"
+	srv.Close()
+
+	engine, err := setupUpdater(updater.New(nopHost{}), "1.0.0", key, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = engine.Check(context.Background())
+	if !isConnectionError(err) {
+		t.Fatalf("Check = %v, want a connection error", err)
 	}
 }

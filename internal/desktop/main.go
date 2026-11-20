@@ -132,7 +132,7 @@ func appServices(app *App) []application.Service {
 	}
 }
 
-// logWarn writes to the Wails log file when main could open it.
+// logWarn writes err to log, which may be nil (no log file yet).
 func logWarn(log *slog.Logger, msg string, err error) {
 	if log != nil {
 		log.Warn(msg, "error", err)

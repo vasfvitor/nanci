@@ -60,6 +60,7 @@ type App struct {
 	startupErr error // why startup failed; ready returns it
 	cred       *WailsCredentialProvider
 	logLevel   *slog.LevelVar
+	log        *slog.Logger // the log file and console; nil before initRuntime
 	logWriter  *rotatingFileWriter
 	logPath    string
 	themeFixed atomic.Bool // the theme picked in Configurações is dark or light
@@ -130,6 +131,7 @@ func (a *App) initRuntime(ctx context.Context) (services, func(), error) {
 		return services{}, nil, fmt.Errorf("configurar log: %w", err)
 	}
 	a.logWriter = writer
+	a.log = log
 
 	dataDir, err := app.ResolveRuntimeDataDir("")
 	if err != nil {
