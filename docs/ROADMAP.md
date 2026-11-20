@@ -12,6 +12,10 @@ Esforço: **[P]** menos de uma hora, **[M]** alguns dias, **[G]** semanas.
 - **#12** (criptografia em repouso): `modernc.org/sqlite` não tem SEE/SQLCipher, e os blobs são arquivos simples. Estacionado (07/10/2026) até o driver mudar ou surgir um pedido concreto.
 - **#10** (senha na memória): a lista do que não dá para zerar está no `PENDENCIAS.md`.
 
+## Distribuição
+
+- **Scoop para a linha de comando**: hoje o `nanci-cli-windows-amd64-vX.Y.Z.zip` sai na release e a pessoa põe no PATH e atualiza à mão. Um manifesto num bucket próprio, apontando para esse zip, com `checkver` e `autoupdate`, faria `scoop install` pôr no PATH e `scoop update` atualizar. O winget fica como alternativa: exige um PR por versão no `microsoft/winget-pkgs`. Decidido em 20/11/2026 deixar para depois dos zips. [P]
+
 ## Mais dados fiscais por API
 
 Universo levantado em 07/10/2026 (itens marcados *3P* vêm só de relatos de terceiros). Ordenado por valor para a empresa ou o contador × viabilidade para uma ferramenta desktop com certificado A1, em Go, gratuita.
