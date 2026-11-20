@@ -96,9 +96,9 @@ func TestClient_ErrorLogsAreBoundedAndMasked(t *testing.T) {
 	if !strings.HasSuffix(msg, "(truncated)") {
 		t.Errorf("error message should carry a truncated body, got %d bytes", len(msg))
 	}
-	var apiErr *APIError
+	var apiErr *httpclient.StatusError
 	if !errors.As(err, &apiErr) || len(apiErr.Body) != len(bigBody) {
-		t.Errorf("APIError.Body should keep the full body")
+		t.Errorf("StatusError.Body should keep the full body")
 	}
 }
 

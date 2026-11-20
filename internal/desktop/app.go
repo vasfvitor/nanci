@@ -146,7 +146,7 @@ func (a *App) initRuntime(ctx context.Context) (services, func(), error) {
 
 	docRepo := store.NewDocumentRepository(db)
 
-	coreApp, err := app.NewRuntime(app.Dependencies{
+	coreApp, err := app.New(app.Dependencies{
 		Log:             log,
 		CompanyStore:    company.NewStore(db),
 		CredentialStore: credential.NewStore(db),

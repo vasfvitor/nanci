@@ -83,12 +83,12 @@ func TestBer2Der(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDER, err := ber2der(tt.ber)
+			gotDER, _, err := normalizePKCS12BER(tt.ber)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("ber2der() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("normalizePKCS12BER() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr && !bytes.Equal(gotDER, tt.wantDER) {
-				t.Fatalf("ber2der() = %x, want %x", gotDER, tt.wantDER)
+				t.Fatalf("normalizePKCS12BER() = %x, want %x", gotDER, tt.wantDER)
 			}
 		})
 	}
@@ -109,11 +109,11 @@ func TestBer2DerMalformedInputDoesNotPanic(t *testing.T) {
 		t.Run(strings.ToUpper(fmtHex(input)), func(t *testing.T) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					t.Fatalf("ber2der(%x) panicked: %v", input, recovered)
+					t.Fatalf("normalizePKCS12BER(%x) panicked: %v", input, recovered)
 				}
 			}()
-			if _, err := ber2der(input); err == nil {
-				t.Fatalf("ber2der(%x) returned no error", input)
+			if _, _, err := normalizePKCS12BER(input); err == nil {
+				t.Fatalf("normalizePKCS12BER(%x) returned no error", input)
 			}
 		})
 	}
@@ -125,8 +125,8 @@ func TestBer2DerRejectsExcessiveNesting(t *testing.T) {
 		input = append([]byte{0x30, 0x80}, append(input, 0x00, 0x00)...)
 	}
 
-	if _, err := ber2der(input); err == nil {
-		t.Fatal("ber2der() returned no error for excessive nesting")
+	if _, _, err := normalizePKCS12BER(input); err == nil {
+		t.Fatal("normalizePKCS12BER() returned no error for excessive nesting")
 	}
 }
 

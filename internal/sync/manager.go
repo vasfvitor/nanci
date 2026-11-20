@@ -72,11 +72,6 @@ type documentProvider interface {
 	CountDocumentsByRole(ctx context.Context, companyID dfe.CompanyID) (map[string]int64, error)
 }
 
-// xmlStore reuses files.XMLStore
-type xmlStore interface {
-	files.XMLStore
-}
-
 type syncRunner interface {
 	Sync(ctx context.Context, company *company.Company, credential *credential.Credential, consultationBasis string, mode syncstate.SyncMode, progress syncstate.ProgressFunc) error
 }
@@ -91,7 +86,7 @@ type Manager struct {
 	CredentialProvider credentialProvider
 	DocProvider        documentProvider
 	SyncRepo           *Store
-	XMLStore           xmlStore
+	XMLStore           files.XMLStore
 	// Certificates loads the certificate of each pull.
 	Certificates *CertificateLoader
 	// NFeRepo stores the NF-e distribution; pulls with Source nfe need it.

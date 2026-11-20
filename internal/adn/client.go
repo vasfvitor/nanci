@@ -23,9 +23,6 @@ const (
 	MaxJSONResponseBytes = 20 * 1024 * 1024 // 20 MiB
 )
 
-// APIError is the error returned for a rejected ADN response.
-type APIError = httpclient.StatusError
-
 type responseError struct {
 	Codigo string `json:"Codigo"`
 }
@@ -148,7 +145,7 @@ func (c *Client) request(ctx context.Context, method, path string, dest any) err
 }
 
 // notFound classifies a 404: the ADN "no documents" envelope is
-// ErrNoDocumentsLocated, anything else is an APIError.
+// ErrNoDocumentsLocated, anything else is an *httpclient.StatusError.
 func (c *Client) notFound(ctx context.Context, method, path, u string, body []byte) error {
 	if isNoDocumentsResponse(body) {
 		if c.log != nil {

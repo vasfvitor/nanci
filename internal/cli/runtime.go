@@ -50,7 +50,7 @@ func prodAppFactory(env CommandEnv) AppFactory {
 
 		docRepo := store.NewDocumentRepository(db)
 
-		application, err := app.NewRuntime(app.Dependencies{
+		application, err := app.New(app.Dependencies{
 			Log:             log,
 			CompanyStore:    company.NewStore(db),
 			CredentialStore: credential.NewStore(db),

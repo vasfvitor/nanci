@@ -158,14 +158,6 @@ const (
 	EventTypeUnknown      EventType = "unknown"
 )
 
-func ParseEventType(val string) (EventType, error) {
-	evtType := EventType(val)
-	if !evtType.Valid() {
-		return "", fmt.Errorf("invalid event type %q: %w", val, dfe.ErrInvalidEnum)
-	}
-	return evtType, nil
-}
-
 func (e EventType) Valid() bool {
 	switch e {
 	case EventTypeCancelamento, EventTypeSubstituicao, EventTypeUnknown:

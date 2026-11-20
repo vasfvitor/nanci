@@ -67,19 +67,19 @@ func TestNewRejectsMissingDependencies(t *testing.T) {
 	}
 }
 
-// TestNewRuntimeWiresServices: the services share the dependencies they were
+// TestNewWiresServices: the services share the dependencies they were
 // given, and the optional renderers may be nil.
-func TestNewRuntimeWiresServices(t *testing.T) {
+func TestNewWiresServices(t *testing.T) {
 	t.Parallel()
 	deps := completeDependencies(t)
 
-	application, err := NewRuntime(deps)
+	application, err := New(deps)
 	if err != nil {
-		t.Fatalf("NewRuntime: %v", err)
+		t.Fatalf("New: %v", err)
 	}
 	if application.Companies == nil || application.Credentials == nil || application.Documents == nil ||
 		application.Exports == nil || application.Query == nil || application.NFe == nil || application.CTe == nil {
-		t.Fatalf("NewRuntime left a service nil: %+v", application)
+		t.Fatalf("New left a service nil: %+v", application)
 	}
 	if application.SyncManager == nil || application.SyncManager.CompanyProvider != deps.CompanyStore || application.SyncManager.XMLStore != deps.XMLStore {
 		t.Errorf("sync manager not wired to the given stores: %+v", application.SyncManager)
@@ -91,8 +91,8 @@ func TestNewRuntimeWiresServices(t *testing.T) {
 		t.Errorf("export service = %+v, want the given repository and no renderer", application.Exports)
 	}
 
-	if _, err := NewRuntime(Dependencies{}); err == nil {
-		t.Error("NewRuntime accepted empty dependencies")
+	if _, err := New(Dependencies{}); err == nil {
+		t.Error("New accepted empty dependencies")
 	}
 }
 

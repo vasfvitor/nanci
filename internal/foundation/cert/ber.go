@@ -87,11 +87,6 @@ func normalizePKCS12BER(ber []byte) ([]byte, bool, error) {
 	return der, changed, nil
 }
 
-func ber2der(ber []byte) ([]byte, error) {
-	der, _, err := normalizePKCS12BER(ber)
-	return der, err
-}
-
 func (p *berParser) readObject(offset, depth int) (asn1Object, int, error) {
 	if depth > maxASN1Depth {
 		return nil, 0, errors.New("ber2der: ASN.1 nesting is too deep")

@@ -145,12 +145,6 @@ func LoadRuntimeEnv() error {
 	return nil
 }
 
-// NewRuntime assembles the production app dependencies shared by CLI and desktop entrypoints.
-// Callers are expected to load runtime environment variables before invoking it.
-func NewRuntime(deps Dependencies) (*App, error) {
-	return New(deps)
-}
-
 func ResolveRuntimeDataDir(override string) (string, error) {
 	if override != "" {
 		return override, nil
