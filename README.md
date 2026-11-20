@@ -33,7 +33,7 @@ Várias empresas, cada uma com o seu certificado A1. Exporta NFS-e, NF-e e CT-e 
 
 Baixe o instalador da [última versão](https://github.com/vasfvitor/nanci/releases/latest) e siga o [primeiro uso](https://nanci.abelhaninja.de/docs/instalacao/).
 
-O CLI não vem no instalador. Compile com `go build -o nanci.exe ./cmd/nanci` e veja os [comandos](https://nanci.abelhaninja.de/docs/cli/).
+A linha de comando é um download à parte: `nanci-cli-windows-amd64-<versão>.zip`, na mesma release. Veja como instalar e os [comandos](https://nanci.abelhaninja.de/docs/cli/), ou compile com `go build -o nanci.exe ./cmd/nanci`.
 
 ## Documentação
 

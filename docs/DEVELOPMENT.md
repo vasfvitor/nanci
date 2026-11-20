@@ -98,7 +98,7 @@ wails3 build                    # só o executável: bin/nanci-desktop.exe
 wails3 task windows:package     # executável e instalador NSIS
 ```
 
-O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe` e instala por usuário, sem pedir permissão de administrador. Uma tag `vX.Y.Z` dispara o workflow `.github/workflows/release.yml`, que grava a versão no executável e no instalador e tira as notas da mensagem do commit da tag.
+O instalador sai em `internal/desktop/bin/nanci-desktop-amd64-installer.exe` e instala por usuário, sem pedir permissão de administrador. Uma tag `vX.Y.Z` dispara o workflow `.github/workflows/release.yml`, que grava a versão no executável e no instalador e tira as notas da mensagem do commit da tag. A release publica também dois zips à parte: `nanci-cli-windows-amd64-vX.Y.Z.zip` (o `nanci.exe` e o `cmd/nanci/LEIAME.txt`) e `nanci-skill-vX.Y.Z.zip` (a pasta `.agents/skills/nanci-cli-agente`). A atualização automática troca só o executável do desktop, então a linha de comando não se atualiza sozinha; um `nanci.exe` mais antigo que o banco recusa abri-lo (`store.ErrDatabaseNewer`).
 
 ## Chave de atualização
 

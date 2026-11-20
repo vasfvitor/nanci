@@ -48,7 +48,20 @@ Fontes: https://code.claude.com/docs/en/skills e https://code.claude.com/docs/en
 - O front matter só é lido quando o `---` de abertura está na primeira linha; o aviso de cópia gerada fica logo depois dele.
 - Lê o `AGENTS.md` como instruções do projeto desde a v2.1.277, desde que não haja `CLAUDE.md`, `.claude/CLAUDE.md` nem `CLAUDE.local.md` na pasta atual ou acima. Com um deles presente, lê só o `CLAUDE.md`, a não ser que ele importe `@AGENTS.md`.
 
+## Pastas do usuário
+
+Para quem usa a linha de comando sem o repositório: o skill `nanci-cli-agente` sai num zip da release e vai para a pasta de skills do usuário de cada ferramenta.
+
+- Codex: `$HOME/.agents/skills`, linha USER da tabela de locais ("Any skills checked into the user’s personal folder."). Fonte: https://learn.chatgpt.com/docs/build-skills
+- Gemini CLI: "User skills: Located in `~/.gemini/skills/` or the `~/.agents/skills/` alias." No mesmo nível, o apelido vale. Fonte: https://geminicli.com/docs/cli/skills/
+- Claude Code: "Personal | `~/.claude/skills/<skill-name>/SKILL.md` | All your projects on this machine". Fonte: https://code.claude.com/docs/en/skills
+- Antigravity: `~/.gemini/config/skills/<skill-folder>/`, "Global skills: Available across all projects on your workstation." O CLI do Antigravity também lê `~/.gemini/skills/`. Fonte: https://antigravity.google/docs/skills.md
+
+Então `~/.agents/skills` serve ao Codex e ao Gemini CLI; o Claude Code e o Antigravity têm cada um a sua pasta.
+
 ## Não encontrado
+
+- Nenhuma das quatro páginas diz como fica o `~` no Windows. O site do nanci usa `%USERPROFILE%`, por dedução.
 
 - Se o Antigravity segue pastas de skill que são symlinks.
 - Texto oficial do Antigravity sobre `AGENTS.md` e sua precedência em relação ao `GEMINI.md`.
