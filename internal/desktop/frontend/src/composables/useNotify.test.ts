@@ -29,12 +29,24 @@ describe('useNotify', () => {
       'Erro na sincronização',
       new WailsClientError('senha não informada', 'canceled')
     )
-    notifySyncError('Erro na sincronização', new WailsClientError('em andamento', 'sync_running'))
+    notifySyncError(
+      'Erro na sincronização',
+      new WailsClientError(
+        'sincronização já em andamento para esta empresa (NFS-e) em outro processo do nanci (CLI)',
+        'sync_running'
+      )
+    )
+    notifySyncError('Erro na sincronização', new WailsClientError('', 'sync_running'))
     notifySyncError('Erro na sincronização', { code: 'sefaz_blocked', message: 'bloqueado' })
     notifySyncError('Erro na sincronização', new Error('boom'))
 
     expect(notify.mock.calls.map(([options]) => options)).toEqual([
       { type: 'warning', message: 'Sincronização cancelada.' },
+      {
+        type: 'warning',
+        message:
+          'Sincronização já em andamento para esta empresa (NFS-e) em outro processo do nanci (CLI).',
+      },
       { type: 'warning', message: 'Sincronização já em andamento para esta empresa.' },
       { type: 'warning', message: 'Consultas bloqueadas no momento. Aguarde o horário indicado.' },
       { type: 'negative', message: 'Erro na sincronização: boom' },

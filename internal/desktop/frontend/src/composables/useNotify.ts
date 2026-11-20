@@ -9,6 +9,15 @@ function errorNotice(message: string, error: unknown): QNotifyCreateOptions {
   return { type: 'negative', message: `${message}: ${errorMessage(error)}` }
 }
 
+// asSentence turns a backend message such as "sincronização já em andamento"
+// into "Sincronização já em andamento.", or "" when there is none.
+function asSentence(message: string): string {
+  const text = message.trim()
+  if (!text) return ''
+  const capitalized = text.charAt(0).toUpperCase() + text.slice(1)
+  return capitalized.endsWith('.') ? capitalized : `${capitalized}.`
+}
+
 // copyChave copies an access key. NFS-e keys lose their NFS prefix, which a
 // row left by migration 020 still carries, so the copied value is the key the
 // portal accepts. It needs no component, so a table cell can call it without
@@ -83,7 +92,11 @@ export function useNotify() {
         notifyWarning('Sincronização cancelada.')
         return
       case 'sync_running':
-        notifyWarning('Sincronização já em andamento para esta empresa.')
+        // The backend names the source and, when another process holds it,
+        // whether that is the app or the CLI.
+        notifyWarning(
+          asSentence(errorMessage(error)) || 'Sincronização já em andamento para esta empresa.'
+        )
         return
       case 'sefaz_blocked':
         notifyWarning('Consultas bloqueadas no momento. Aguarde o horário indicado.')
