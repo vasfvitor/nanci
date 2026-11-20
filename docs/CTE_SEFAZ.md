@@ -185,6 +185,10 @@ nanci.exe cte recuperar-nsu --cnpj 12345678000199
 # 8. Redefinir os CT-e da empresa (apaga os documentos dos dois ambientes)
 nanci.exe cte reset --cnpj 12345678000199
 nanci.exe cte reset --cnpj 12345678000199 --confirmar
+
+# 9. Prestação do serviço em desacordo, como tomador (evento 610110)
+nanci.exe cte desacordo --cnpj 12345678000199 --chave <CHAVE> --observacao "Carga entregue avariada no destino"
+nanci.exe cte desacordo --cnpj 12345678000199 --chave <CHAVE> --observacao "Carga entregue avariada no destino" --confirmar
 ```
 
 - `cte status` mostra cursor, bloqueio, consultas da última hora e os totais do ambiente atual por papel principal: tomador, destinatário, remetente e os demais. Quando a última sincronização falhou, mostra a mensagem guardada (`sync_runs.error_message`) em "Última execução falhou: ...", e a linha de situação da página de CT-e termina em "Falhou: ..."; uma sincronização interrompida, como a cancelada pelo usuário, não mostra nada.
@@ -194,6 +198,7 @@ nanci.exe cte reset --cnpj 12345678000199 --confirmar
 - `cte export csv`, `xlsx` e `dacte-zip` aceitam os mesmos filtros e `--incremental` do `zip`; o `--out` padrão é `cte.csv`, `cte.xlsx` e `dactes.zip`. O `dacte-zip` mostra "CT-e sem DACTE: N" quando deixou documentos de fora.
 - `cte export dacte` grava o DACTE da `--chave` em `--out`, por padrão `<chave>.pdf`.
 - `cte reset` sem `--confirmar` mostra quantos documentos, eventos e marcas de exportação seriam removidos e não altera nada.
+- `cte desacordo` sem `--confirmar` mostra o evento, o CT-e, o prazo de 45 dias contado da autorização (com aviso quando passou, sem bloquear: a SEFAZ decide, com a rejeição 787) e a observação, e não pede a senha. Antes de pedir a senha, recusa: observação fora da regra do schema (15 a 255 caracteres, sem aspas curvas nem emoji), empresa que não é exatamente a tomadora, GTV-e, CT-e cancelado ou denegado, e CT-e que já tem um desacordo registrado. Com `--confirmar`, envia à SEFAZ autorizadora da UF da chave, grava o envio em `cte_desacordos` e, se registrado, o evento em `cte_events`; sai com erro quando a SEFAZ não registrou.
 - `cte import` recebe um ou mais arquivos e imprime uma linha por arquivo (importado, atualizado ou rejeitado, com o motivo) e o resumo; só falha quando todos foram rejeitados. Não há busca por chave para CT-e.
 
 ## Aplicativo desktop

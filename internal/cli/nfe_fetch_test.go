@@ -89,6 +89,8 @@ func newNFeFetchTestRoot(t *testing.T, response string) (*nfeTestRoot, *fakeDist
 	application.SyncManager.SEFAZEndpoints = &sefaz.Endpoints{
 		Distribuicao:   server.URL + "/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
 		RecepcaoEvento: server.URL + "/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
+
+		RecepcaoEventoCTe: server.URL + "/CTeRecepcaoEventoV4/CTeRecepcaoEventoV4.asmx",
 	}
 
 	env.root, env.out = newTestRootForApp(application)

@@ -53,7 +53,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 
 ## Simulate first, then `--confirmar`
 
-`nfe ciencia`, `nfe manifestar`, `nfe reset`, `cte reset` and `recuperar-nsu --descartar` only simulate without `--confirmar`: they print the plan as JSON, send nothing, change nothing and ask no password.
+`nfe ciencia`, `nfe manifestar`, `cte desacordo`, `nfe reset`, `cte reset` and `recuperar-nsu --descartar` only simulate without `--confirmar`: they print the plan as JSON, send nothing, change nothing and ask no password.
 
 1. Run without `--confirmar` and show the person the plan in plain words: which notes, number, emitente, value, deadline.
 2. Run with `--confirmar` only after the person agrees to that plan. A manifestação sent to the SEFAZ cannot be cancelled, and a reset deletes the company's documents of that source.
@@ -96,6 +96,8 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 4. Then `nfe pull` to bring the full documents.
 
 **Conclusive manifestação** (one note at a time): `nanci nfe manifestar -c <cnpj> --chave <chave> --tipo confirmacao --json` (or `desconhecimento`, or `nao_realizada` with `--justificativa` of 15 to 255 characters). The plan shows `Numero`, `EmitenteName`, `TotalValue`, `Manifestacao`, the deadlines and `TacitlyConfirmed`. The choice of `--tipo` is always the person's: never pick it from the data. Confirm, then repeat with `--confirmar`.
+
+**Prestação em desacordo** (CT-e, the company as tomador, one at a time): `nanci cte desacordo -c <cnpj> --chave <chave> --observacao "<what was not provided as written>" --json`. The plan shows `Modelo`, `Numero`, `EmitenteName`, `TotalValue`, `Due` and `DaysLeft` (45 days from the authorization; negative means passed, and the SEFAZ will likely answer cStat 787). The observation is the person's words, 15 to 255 characters, no curly quotes or emoji: never write it for them. Confirm, then repeat with `--confirmar` → `{ChaveAcesso, TpEvento, Status, CStat, XMotivo, Protocolo}`; `Status` other than `registrada` or `ja_registrada` exits 1. It goes to the SEFAZ of the chave's UF, not the Ambiente Nacional, and spends no hourly query.
 
 **One NF-e by its chave.** `nanci nfe list -c <cnpj> --chave <chave> --json` first (free). Only if it is not there, `nanci nfe buscar -c <cnpj> --chave <chave> --json` (one query) → `{Outcome: "completa" | "resumo" | "not_found", Message}`; read `Message` for what to do next.
 

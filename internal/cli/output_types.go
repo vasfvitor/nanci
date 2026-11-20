@@ -8,6 +8,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/cte"
 	"github.com/vasfvitor/nanci/internal/nfse"
+	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/sync"
 )
 
@@ -966,5 +967,61 @@ func newCTeResetOutput(r app.CTeResetResult, confirmed bool) cteResetOutput {
 		Documents:        r.Documents,
 		Events:           r.Events,
 		ExportMarks:      r.ExportMarks,
+	}
+}
+
+// cteDesacordoPlanOutput is `cte desacordo` without --confirmar: the event
+// that would be sent and the CT-e it is for. Due and DaysLeft are null when
+// the CT-e has no authorization date. Nothing is sent.
+type cteDesacordoPlanOutput struct {
+	TpEvento     string
+	TpAmb        string
+	ChaveAcesso  string
+	Modelo       string
+	Numero       string
+	Serie        string
+	IssueDate    *time.Time
+	AuthorizedAt *time.Time
+	TotalValue   int64
+	EmitenteCNPJ string
+	EmitenteName string
+	NSeqEvento   int
+	Observacao   string
+	Due          *time.Time
+	DaysLeft     *int
+}
+
+func newCTeDesacordoPlanOutput(p app.CTeDesacordoPlan) cteDesacordoPlanOutput {
+	doc := p.Document
+	return cteDesacordoPlanOutput{
+		TpEvento:     sefaz.TpEventoPrestacaoDesacordo,
+		TpAmb:        p.TpAmb,
+		ChaveAcesso:  string(doc.ChaveAcesso),
+		Modelo:       doc.Modelo,
+		Numero:       doc.Numero,
+		Serie:        doc.Serie,
+		IssueDate:    optionalTime(doc.IssueDate),
+		AuthorizedAt: doc.AuthorizedAt,
+		TotalValue:   doc.TotalValue.Cents(),
+		EmitenteCNPJ: doc.Emitente.CNPJ,
+		EmitenteName: doc.Emitente.Name,
+		NSeqEvento:   p.NSeqEvento,
+		Observacao:   p.Observacao,
+		Due:          optionalTime(p.Due),
+		DaysLeft:     optionalDaysLeft(p.Due, p.DaysLeft),
+	}
+}
+
+// newCTeDesacordoOutcomeOutput is `cte desacordo --confirmar`, in the shape
+// of an NF-e event outcome.
+func newCTeDesacordoOutcomeOutput(o app.CTeDesacordoOutcome) nfeEventOutcomeOutput {
+	return nfeEventOutcomeOutput{
+		ChaveAcesso:  o.ChaveAcesso,
+		TpEvento:     sefaz.TpEventoPrestacaoDesacordo,
+		Status:       o.Status,
+		CStat:        o.CStat,
+		XMotivo:      o.XMotivo,
+		Protocolo:    o.Protocolo,
+		RegisteredAt: o.RegisteredAt,
 	}
 }

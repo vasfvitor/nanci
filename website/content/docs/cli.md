@@ -49,9 +49,10 @@ A senha do certificado é pedida no terminal na primeira vez e depois fica guard
 | `cte import <arquivo>...` | Importa arquivos XML de CT-e e de eventos que a empresa já tem, sem consultar a SEFAZ. |
 | `nfe testar-conexao`, `cte testar-conexao` | Testa o certificado sem gastar consultas. |
 | `nfe reset`, `cte reset` | Apaga as notas da empresa e recomeça a sincronização. |
+| `cte desacordo` | Registra a prestação do serviço em desacordo de um CT-e em que a empresa é tomadora, com `--chave` e `--observacao` (15 a 255 caracteres). Mostra o prazo de 45 dias da autorização. |
 
 {{< callout type="warning" >}}
-`nfe ciencia`, `nfe manifestar`, os `reset` e o `recuperar-nsu --descartar` só simulam. Para executar, repita com `--confirmar`. Uma manifestação enviada não pode ser cancelada.
+`nfe ciencia`, `nfe manifestar`, `cte desacordo`, os `reset` e o `recuperar-nsu --descartar` só simulam. Para executar, repita com `--confirmar`. Uma manifestação ou um desacordo enviado não pode ser cancelado pelo nanci.
 {{< /callout >}}
 
 Cada `nfe buscar` gasta uma das 20 consultas por hora de NF-e da empresa, as mesmas do `nfe pull`. O `recuperar-nsu` gasta uma por NSU e, sem `--limite`, deixa 2 da hora para a sincronização.

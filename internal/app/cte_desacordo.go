@@ -223,7 +223,7 @@ func desacordoBlockReason(comp *company.Company, doc cte.CompanyDocument, protoc
 	case doc.Modelo != "57" && doc.Modelo != "67":
 		return fmt.Sprintf("CT-e %s: a prestação em desacordo vale só para o CT-e (modelo 57) e o CT-e OS (67), não para o modelo %s", chave, doc.Modelo)
 	case cnpj.Clean(doc.Tomador.CNPJ) != cnpj.Clean(comp.CNPJ):
-		return fmt.Sprintf("CT-e %s: a empresa não é a tomadora (o tomador é %s)", chave, tomadorLabel(doc.Tomador))
+		return fmt.Sprintf("CT-e %s: a empresa não é a tomadora (o tomador é %s)", chave, tomadorLabel(doc.Tomador.CNPJ))
 	case doc.Situacao != cte.SituacaoAutorizada:
 		return fmt.Sprintf("CT-e %s %s", chave, doc.Situacao)
 	case protocoloEmVigor != "":
@@ -232,14 +232,12 @@ func desacordoBlockReason(comp *company.Company, doc cte.CompanyDocument, protoc
 	return ""
 }
 
-func tomadorLabel(p cte.Party) string {
-	if p.CNPJ == "" {
+// tomadorLabel is the tomador's CNPJ or CPF for a message.
+func tomadorLabel(doc string) string {
+	if doc == "" {
 		return "desconhecido"
 	}
-	if len(p.CNPJ) == 14 {
-		return cnpj.Format(p.CNPJ)
-	}
-	return p.CNPJ
+	return cnpj.Format(doc)
 }
 
 // desacordoStatus maps the cStat of the answer to the stored status. Only
