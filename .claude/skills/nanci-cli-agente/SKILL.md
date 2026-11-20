@@ -32,7 +32,7 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 | `not_found` | The company, certificate or document does not exist. | Run `nanci company list --json` and check the CNPJ, or the chave de acesso. |
 | `invalid_input` | A malformed chave de acesso, CNPJ or flag value, or a command line the CLI refused (unknown flag, missing required flag, wrong number of arguments). | Fix the argument, with `--help` if needed; nothing was sent. |
 | `canceled` | The run was interrupted. | Run it again if the person still wants it. |
-| `""` (empty) | Any other error. | Read `message` and report it; do not guess a fix. |
+| `""` (empty) | Any other error. | Read `message` and report it; do not guess a fix. If it says the database was updated by a newer version ("versão mais nova do Nanci"), the CLI is older than the app: ask the person to download the CLI of the app's version (`nanci --version` against Sobre o Nanci in the app; https://nanci.abelhaninja.de/docs/cli/). |
 
 ## Password and certificate
 
