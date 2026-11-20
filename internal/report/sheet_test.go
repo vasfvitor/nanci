@@ -144,7 +144,10 @@ func TestWriteXLSXStatusColumnPastZ(t *testing.T) {
 	for _, rule := range rules {
 		criteria = append(criteria, rule.Criteria)
 	}
-	want := []string{`=$AB2="cancelada"`, `=OR($AB2="substituida",$AB2="denegada")`}
+	// The XLSX format stores a conditional format formula without the
+	// leading "=" that Excel shows in its editor; excelize writes Criteria
+	// into <formula> as given.
+	want := []string{`$AB2="cancelada"`, `OR($AB2="substituida",$AB2="denegada")`}
 	if !slices.Equal(criteria, want) {
 		t.Errorf("criteria = %q, want %q", criteria, want)
 	}

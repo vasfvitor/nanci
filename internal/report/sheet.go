@@ -283,12 +283,12 @@ func writeXLSXSheet(f *excelize.File, s Spreadsheet, sheet Sheet, st xlsxStyles)
 	err = f.SetConditionalFormat(name, "A2:"+lastCell, []excelize.ConditionalFormatOptions{
 		{
 			Type:     "formula",
-			Criteria: fmt.Sprintf(`=$%s2="cancelada"`, status),
+			Criteria: fmt.Sprintf(`$%s2="cancelada"`, status),
 			Format:   &st.cancelled,
 		},
 		{
 			Type:     "formula",
-			Criteria: fmt.Sprintf(`=OR($%[1]s2="substituida",$%[1]s2="denegada")`, status),
+			Criteria: fmt.Sprintf(`OR($%[1]s2="substituida",$%[1]s2="denegada")`, status),
 			Format:   &st.faded,
 		},
 	})
