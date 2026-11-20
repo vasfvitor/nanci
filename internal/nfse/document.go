@@ -50,6 +50,9 @@ type CompanyDocument struct {
 	FirstSyncedAt    time.Time
 	LastSyncedAt     time.Time
 	ViewedAt         *time.Time
+	// EventCount is how many events of the NFS-e are stored, read with the
+	// row; the export marks keep it.
+	EventCount int
 }
 
 // CompanyParticipation contains company-scoped role and visibility classification for one document.

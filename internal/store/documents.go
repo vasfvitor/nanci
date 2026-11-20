@@ -37,7 +37,8 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 			d.nfse_number, d.service_description,
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
-			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
+			cd.first_synced_at, cd.last_synced_at, cd.viewed_at,
+			` + nfseEventCountColumn + `
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		WHERE cd.company_id = ? AND d.chave_acesso = ?
@@ -61,6 +62,7 @@ func (s *DocumentRepository) CompanyDocumentByChave(ctx context.Context, company
 		&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 		&firstSeen, &lastSeen,
 		&firstSyncedAt, &lastSyncedAt, &viewedAt,
+		&d.EventCount,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -87,7 +89,8 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			d.nfse_number, d.service_description,
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
-			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
+			cd.first_synced_at, cd.last_synced_at, cd.viewed_at,
+			` + nfseEventCountColumn + `
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 	`
@@ -125,6 +128,7 @@ func (s *DocumentRepository) ListCompanyDocuments(ctx context.Context, companyID
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 			&firstSeen, &lastSeen,
 			&firstSyncedAt, &lastSyncedAt, &viewedAt,
+			&d.EventCount,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
@@ -213,9 +217,14 @@ func (s *DocumentRepository) ListEventsByDocument(ctx context.Context, docID str
 	return events, nil
 }
 
+// nfseEventCountColumn counts the stored events of the NFS-e of the row d.
+const nfseEventCountColumn = "(SELECT COUNT(*) FROM events e WHERE e.chave_acesso = d.chave_acesso)"
+
 // pendingExportCondition keeps the rows never exported with the joined
-// kind, or whose raw hash changed since.
-const pendingExportCondition = " AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash)"
+// kind, or whose raw hash or event count changed since. Counting catches a
+// cancelamento, which changes the status and not the raw hash, as the NF-e
+// and the CT-e do (dfePendingExportCondition).
+const pendingExportCondition = " AND (m.exported_at IS NULL OR m.exported_hash != d.raw_hash OR m.exported_events != " + nfseEventCountColumn + ")"
 
 // buildNFSeFilterSQL returns the WHERE conditions for filter over the
 // aliases cd (company_documents) and d (documents), and their arguments.
@@ -330,7 +339,8 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 			d.nfse_number, d.service_description,
 			cd.relation_id, cd.company_id, cd.document_id, cd.company_role, cd.visibility_reason,
 			cd.first_seen_nsu, cd.last_seen_nsu,
-			cd.first_synced_at, cd.last_synced_at, cd.viewed_at
+			cd.first_synced_at, cd.last_synced_at, cd.viewed_at,
+			` + nfseEventCountColumn + `
 		FROM company_documents cd
 		INNER JOIN documents d ON d.id = cd.document_id
 		LEFT JOIN company_document_export_marks m ON m.company_id = cd.company_id AND m.document_id = cd.document_id AND m.export_kind = ?
@@ -370,6 +380,7 @@ func (s *DocumentRepository) ListPendingExportDocuments(ctx context.Context, com
 			&d.RelationID, &d.CompanyID, &d.DocumentID, &d.CompanyRole, &d.VisibilityReason,
 			&firstSeen, &lastSeen,
 			&firstSyncedAt, &lastSyncedAt, &viewedAt,
+			&d.EventCount,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan document: %w", err)
 		}
@@ -401,11 +412,12 @@ func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyI
 	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO company_document_export_marks (company_id, document_id, export_kind, exported_hash, exported_at)
-		VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+		INSERT INTO company_document_export_marks (company_id, document_id, export_kind, exported_hash, exported_at, exported_events)
+		VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), ?)
 		ON CONFLICT(company_id, document_id, export_kind) DO UPDATE SET
 			exported_hash=excluded.exported_hash,
-			exported_at=excluded.exported_at
+			exported_at=excluded.exported_at,
+			exported_events=excluded.exported_events
 	`)
 	if err != nil {
 		return err
@@ -413,7 +425,7 @@ func (s *DocumentRepository) MarkDocumentsExported(ctx context.Context, companyI
 	defer func() { _ = stmt.Close() }()
 
 	for _, m := range marks {
-		if _, err := stmt.ExecContext(ctx, string(companyID), m.DocumentID, kind, m.Hash); err != nil {
+		if _, err := stmt.ExecContext(ctx, string(companyID), m.DocumentID, kind, m.Hash, m.Events); err != nil {
 			return err
 		}
 	}

@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"slices"
 	"testing"
@@ -22,6 +23,13 @@ const (
 
 // newNFSeFixture stores three NFS-e seen by two companies, comp-a and comp-b.
 func newNFSeFixture(t *testing.T) *store.DocumentRepository {
+	t.Helper()
+	_, repo := newNFSeFixtureDB(t)
+	return repo
+}
+
+// newNFSeFixtureDB is newNFSeFixture with the database, for raw inserts.
+func newNFSeFixtureDB(t *testing.T) (*sql.DB, *store.DocumentRepository) {
 	t.Helper()
 	db := storetest.OpenTestDB(t)
 	ctx := context.Background()
@@ -58,7 +66,7 @@ func newNFSeFixture(t *testing.T) *store.DocumentRepository {
 			}
 		}
 	}
-	return store.NewDocumentRepository(db)
+	return db, store.NewDocumentRepository(db)
 }
 
 func listNFSeChaves(t *testing.T, repo *store.DocumentRepository, companyID dfe.CompanyID, filter nfse.DocumentFilter) []string {
@@ -124,5 +132,56 @@ func TestNFSeFiltersByChaves(t *testing.T) {
 	}
 	if pending, err := repo.ListPendingExportDocuments(ctx, "comp-a", filter, "xml"); err != nil || len(pending) != 1 {
 		t.Errorf("pending after one export = %d, %v; want 1", len(pending), err)
+	}
+}
+
+// TestNFSeEventMakesExportPendingAgain checks that an event stored after the
+// export, such as a cancelamento, which changes the status and not the raw
+// hash, makes the NFS-e pending again, as on the NF-e and the CT-e.
+func TestNFSeEventMakesExportPendingAgain(t *testing.T) {
+	ctx := context.Background()
+	db, repo := newNFSeFixtureDB(t)
+	filter := nfse.DocumentFilter{ChavesAcesso: []string{nfseChaveA}}
+
+	exportAll := func() []nfse.CompanyDocument {
+		t.Helper()
+		pending, err := repo.ListPendingExportDocuments(ctx, "comp-a", filter, "csv")
+		if err != nil {
+			t.Fatal(err)
+		}
+		marks := make([]nfse.DocumentExportMark, 0, len(pending))
+		for _, d := range pending {
+			marks = append(marks, nfse.DocumentExportMark{DocumentID: string(d.DocumentID), Hash: d.RawHash, Events: d.EventCount})
+		}
+		if err := repo.MarkDocumentsExported(ctx, "comp-a", "csv", marks); err != nil {
+			t.Fatal(err)
+		}
+		return pending
+	}
+
+	if got := exportAll(); len(got) != 1 || got[0].EventCount != 0 {
+		t.Fatalf("first export = %+v, want the note without events", got)
+	}
+	if got := exportAll(); len(got) != 0 {
+		t.Fatalf("pending right after the export = %d, want 0", len(got))
+	}
+
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO events (id, document_id, chave_acesso, type, event_at, replacement_chave_acesso,
+			description, raw_xml_path, raw_hash, created_at)
+		VALUES ('ev-1', 'doc-11', ?, 'cancelamento', '2026-06-05T00:00:00Z', '', 'Cancelamento', '', 'hash-ev-1',
+			strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`, nfseChaveA); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := exportAll(); len(got) != 1 || got[0].EventCount != 1 {
+		t.Fatalf("after the cancelamento = %+v, want the note pending again with 1 event", got)
+	}
+	if got := exportAll(); len(got) != 0 {
+		t.Errorf("pending after exporting the event = %d, want 0", len(got))
+	}
+	// The other company's marks are its own.
+	if pending, err := repo.ListPendingExportDocuments(ctx, "comp-b", filter, "csv"); err != nil || len(pending) != 1 {
+		t.Errorf("comp-b pending = %d, %v; want 1", len(pending), err)
 	}
 }

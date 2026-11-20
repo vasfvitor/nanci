@@ -1146,6 +1146,62 @@ func TestMigration026AddsCTeDesacordos(t *testing.T) {
 	}
 }
 
+func TestMigration027CountsNFSeExportedEvents(t *testing.T) {
+	ctx := context.Background()
+	db, provider := migrateTo(t, 26)
+
+	const before = "2026-06-01T09:00:00Z"
+	const exportedAt = "2026-06-01T10:00:00Z"
+	const after = "2026-06-02T10:00:00Z"
+	const chave = "35503082245852546000109000000000000126060000000011"
+	mustExec(t, db, `
+		INSERT INTO companies (id, cnpj, cnpj_root, name, environment, sync_start_policy, created_at, updated_at)
+		VALUES ('comp-1', '45852546000109', '45852546', 'Company', 'producao', 'all', ?, ?)
+	`, before, before)
+	mustExec(t, db, `
+		INSERT INTO documents (id, chave_acesso, issue_date, competence, created_at, updated_at,
+			prestador_cnpj, prestador_name, tomador_cnpj, tomador_name, intermediario_cnpj, intermediario_name,
+			status, layout_version, xml_path, raw_hash, nfse_number, service_description)
+		VALUES ('doc-1', ?, ?, '2026-06', ?, ?, '45852546000109', 'P', '', '', '', '',
+			'normal', '1.0', '', 'hash-doc', '1', 'Serviço')
+	`, chave, before, before, before)
+	insertEvent := `
+		INSERT INTO events (id, document_id, chave_acesso, type, event_at, replacement_chave_acesso,
+			description, raw_xml_path, raw_hash, created_at)
+		VALUES (?, 'doc-1', ?, ?, ?, '', '', '', ?, ?)
+	`
+	mustExec(t, db, insertEvent, "ev-before", chave, "substituicao", before, "hash-ev-1", before)
+	mustExec(t, db, insertEvent, "ev-after", chave, "cancelamento", after, "hash-ev-2", after)
+	mustExec(t, db, `
+		INSERT INTO company_document_export_marks (company_id, document_id, export_kind, exported_hash, exported_at)
+		VALUES ('comp-1', 'doc-1', 'csv', 'hash-doc', ?)
+	`, exportedAt)
+
+	if _, err := provider.UpTo(ctx, 27); err != nil {
+		t.Fatalf("migrate to version 27: %v", err)
+	}
+	// Only the event stored before the mark counts, so the cancelamento that
+	// came after the export makes the note pending once.
+	var exported int
+	if err := db.QueryRowContext(ctx, `SELECT exported_events FROM company_document_export_marks WHERE document_id = 'doc-1'`).Scan(&exported); err != nil {
+		t.Fatal(err)
+	}
+	if exported != 1 {
+		t.Errorf("exported_events = %d, want 1", exported)
+	}
+
+	if _, err := provider.DownTo(ctx, 26); err != nil {
+		t.Fatalf("migrate down to version 26: %v", err)
+	}
+	var columns int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('company_document_export_marks') WHERE name = 'exported_events'`).Scan(&columns); err != nil {
+		t.Fatal(err)
+	}
+	if columns != 0 {
+		t.Errorf("exported_events columns after down = %d, want 0", columns)
+	}
+}
+
 func migrateTo(t *testing.T, version int64) (*sql.DB, *goose.Provider) {
 	t.Helper()
 	ctx := context.Background()

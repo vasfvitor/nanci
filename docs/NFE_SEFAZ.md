@@ -219,7 +219,7 @@ O menu lateral ganha a entrada "NF-e", com as abas **Notas** e **Pendências** e
 
 ## Modelo de dados
 
-Migrações `007` a `026` em `internal/store/migrations_v2/`:
+Migrações `007` a `027` em `internal/store/migrations_v2/`:
 
 - `007`: separa o estado de sincronização por origem (`source` em `sync_state` e `sync_runs`) e cria `company_sync_sources` (carga inicial e bloqueio por origem) e `sync_requests` (orçamento de consultas por hora).
 - `008`: cria as tabelas de NF-e descritas abaixo.
@@ -241,6 +241,7 @@ Migrações `007` a `026` em `internal/store/migrations_v2/`:
 - `024`: reconstrói `sync_nsu_gaps` para aceitar o status `discarded` (lacuna descartada pelo usuário). As linhas existentes ficam como estão; o Down transforma as descartadas em `expired`.
 - `025`: cria `source_locks`, a reserva de cada empresa e origem entre processos do nanci (o aplicativo e a linha de comando): quem consulta ou altera uma origem guarda uma linha com prazo de 1 minuto e a renova enquanto trabalha; outro processo é recusado com "em andamento em outro processo do nanci", e a reserva de um processo que caiu vence sozinha.
 - `026`: cria `cte_desacordos`, o registro de cada prestação do serviço em desacordo que o nanci envia, descrito em [CTE_SEFAZ.md](CTE_SEFAZ.md#modelo-de-dados). Nenhuma linha existente muda.
+- `027`: acrescenta `exported_events` a `company_document_export_marks`, como a `018` fez para a NF-e e o CT-e, e a exportação incremental de NFS-e passa a trazer de volta a nota que recebeu um evento, como um cancelamento, depois da última exportação. As marcas existentes contam só os eventos gravados antes delas, então essas notas aparecem pendentes uma vez. Ver [NFSE_ADN.md](NFSE_ADN.md).
 
 Tabelas de NF-e:
 

@@ -23,6 +23,8 @@ type DocumentExportMark struct {
 	DocumentID string
 	ExportKind string
 	Hash       string
+	// Events is the event count of the exported row (CompanyDocument.EventCount).
+	Events int
 }
 
 type ApplyDocumentParams struct {

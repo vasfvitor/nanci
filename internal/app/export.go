@@ -160,6 +160,7 @@ func (s *ExportService) bulkExport(ctx context.Context, input ExportInput, kind 
 			DocumentID: string(doc.DocumentID),
 			ExportKind: kind,
 			Hash:       doc.RawHash,
+			Events:     doc.EventCount,
 		}
 	}
 
@@ -202,6 +203,7 @@ func (s *ExportService) ExportDANFSe(ctx context.Context, input ExportDANFSeInpu
 		DocumentID: string(doc.DocumentID),
 		ExportKind: nfse.ExportKindDANFSe,
 		Hash:       doc.RawHash,
+		Events:     doc.EventCount,
 	}
 	if err := s.DocumentRepo.MarkDocumentsExported(ctx, company.ID, nfse.ExportKindDANFSe, []nfse.DocumentExportMark{mark}); err != nil {
 		return fmt.Errorf("marcar danfse exportado: %w", err)
@@ -246,6 +248,7 @@ func (s *ExportService) ExportXML(ctx context.Context, input ExportXMLInput) err
 		DocumentID: string(doc.DocumentID),
 		ExportKind: nfse.ExportKindXML,
 		Hash:       doc.RawHash,
+		Events:     doc.EventCount,
 	}
 	if err := s.DocumentRepo.MarkDocumentsExported(ctx, company.ID, nfse.ExportKindXML, []nfse.DocumentExportMark{mark}); err != nil {
 		return fmt.Errorf("marcar xml exportado: %w", err)

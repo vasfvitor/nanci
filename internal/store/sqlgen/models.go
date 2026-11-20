@@ -61,11 +61,12 @@ type CompanyDocument struct {
 }
 
 type CompanyDocumentExportMark struct {
-	CompanyID    string
-	DocumentID   string
-	ExportKind   string
-	ExportedHash string
-	ExportedAt   string
+	CompanyID      string
+	DocumentID     string
+	ExportKind     string
+	ExportedHash   string
+	ExportedAt     string
+	ExportedEvents int64
 }
 
 type CompanyNfeDocument struct {
