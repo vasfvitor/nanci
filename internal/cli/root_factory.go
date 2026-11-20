@@ -44,6 +44,7 @@ distribuição DF-e da SEFAZ.`,
 	root.AddCommand(newListCommand(env))
 	root.AddCommand(newNFeCommand(env))
 	root.AddCommand(newPullCommand(env))
+	root.AddCommand(newResetCommand(env))
 	root.AddCommand(newStatusCommand(env))
 	return root
 }

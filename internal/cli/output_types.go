@@ -922,6 +922,26 @@ func newNFeManifestacaoPlanOutput(p app.NFeManifestacaoPlan) nfeManifestacaoPlan
 
 // nfeResetOutput is `nfe reset`: what was removed with --confirmar
 // (Confirmed true), or what would be removed without it.
+// nfseResetOutput is the plan or the result of `nanci reset`. LastProcessedNSU
+// is the cursor as it stood before the reset; no document is removed.
+type nfseResetOutput struct {
+	CompanyName      string
+	CNPJ             string
+	Environment      string
+	Confirmed        bool
+	LastProcessedNSU int64
+}
+
+func newNFSeResetOutput(s sync.StatusResult, confirmed bool) nfseResetOutput {
+	return nfseResetOutput{
+		CompanyName:      s.CompanyName,
+		CNPJ:             s.CNPJ,
+		Environment:      s.Environment,
+		Confirmed:        confirmed,
+		LastProcessedNSU: s.LastProcessedNSU,
+	}
+}
+
 type nfeResetOutput struct {
 	CompanyName       string
 	CNPJ              string
