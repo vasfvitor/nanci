@@ -14,6 +14,7 @@ weight: 80
 | E2220: nenhum documento localizado | Não é erro: não há notas novas na fila do ADN. |
 | 401 ou 403 | O certificado está vencido ou é de outra empresa. |
 | "empresa sem UF cadastrada" | Informe a UF em **Empresas → Editar**. |
+| "o banco de dados foi atualizado por uma versão mais nova do Nanci" | O `nanci` ou o aplicativo é mais antigo que os dados. Baixe a mesma versão nos dois ([Linha de comando](../cli/#instalar)). |
 | 593 ou 213 | O CNPJ da empresa não tem a mesma raiz do certificado ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=), [NT 2020.001](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=%2BWTd7iuD21s%3D)). |
 | 656: consumo indevido | Consultas demais ([NT 2014.002](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)). Se outro sistema também consulta esse CNPJ na SEFAZ, eles somam. O Nanci espera uma hora. |
 | 596 | A manifestação passou do prazo de 90 dias ([NT 2020.001](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=%2BWTd7iuD21s%3D)). |

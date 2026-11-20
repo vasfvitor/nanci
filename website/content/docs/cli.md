@@ -4,13 +4,20 @@ description: "Os comandos do Nanci para terminal e rotinas agendadas."
 weight: 40
 ---
 
-O `nanci` faz pelo terminal o mesmo que o aplicativo e usa o mesmo banco. O instalador não traz o CLI; compile com [Go](https://go.dev/dl/):
+O `nanci` faz pelo terminal o mesmo que o aplicativo e usa o mesmo banco. Ele não vem no instalador: é um download à parte.
 
-```powershell
-git clone https://github.com/vasfvitor/nanci
-cd nanci
-go build -o nanci.exe ./cmd/nanci
-```
+## Instalar
+
+1. Na [última versão](https://github.com/vasfvitor/nanci/releases/latest), baixe `nanci-cli-windows-amd64-<versão>.zip`, da mesma versão do aplicativo.
+2. Extraia o `nanci.exe` para uma pasta, por exemplo `%LOCALAPPDATA%\Programs\nanci-cli`.
+3. No menu Iniciar, abra **Editar as variáveis de ambiente para sua conta**, escolha **Path**, clique em **Editar**, depois em **Novo**, e cole o caminho da pasta. Não use o comando `setx`: ele corta um Path longo.
+4. Abra um terminal novo e confira com `nanci --version`. A versão deve ser a mesma de **Configurações** › **Sobre o Nanci**.
+
+{{< callout type="warning" >}}
+A atualização automática do aplicativo não atualiza o `nanci`. Quando o aplicativo se atualizar, baixe o `nanci` da mesma versão. Um `nanci` mais antigo que o aplicativo recusa abrir os dados e avisa.
+{{< /callout >}}
+
+Para compilar a partir do código, com [Go](https://go.dev/dl/): `go build -o nanci.exe ./cmd/nanci` no repositório.
 
 As opções de cada comando estão no `--help`, por exemplo `nanci nfe list --help`.
 
@@ -83,3 +90,13 @@ Com `--json`, o comando escreve o resultado como um único JSON no stdout, sem l
 Os avisos de log, quando há, também saem no stderr como uma linha JSON cada, antes do erro. O `code` vem vazio quando o erro não tem um código próprio. Os códigos são `canceled`, `sefaz_blocked`, `sync_running`, `no_requests_left`, `not_found`, `invalid_input`, `wrong_password` e `password_required` (a senha não está salva e não há terminal para pedi-la).
 
 Um agente de IA, como Claude Code, Codex ou Gemini CLI, pode usar o `nanci` pelo terminal com `--json`. A senha do certificado sai do Windows (guardada na primeira vez que você a digita no terminal ou no aplicativo) ou de `NANCI_CERT_PASSWORD`; sem terminal, o `nanci` não pede a senha e avisa como resolver. O que envia evento ou apaga dados só simula sem `--confirmar`, então o agente pode mostrar o plano antes de executar. O aplicativo e o terminal usam o mesmo banco: se um estiver sincronizando uma empresa, o outro recusa a mesma origem com `sync_running` em vez de consultar a SEFAZ ao mesmo tempo.
+
+O skill `nanci-cli-agente` ensina o agente a usar o `nanci`: o `--json`, o que fazer com cada código de erro, o limite de consultas e a regra de simular antes de `--confirmar`. Baixe `nanci-skill-<versão>.zip` da mesma versão e extraia a pasta `nanci-cli-agente` na pasta de skills do seu agente:
+
+| Agente | Pasta |
+|---|---|
+| Codex e Gemini CLI | `%USERPROFILE%\.agents\skills` ([Codex](https://learn.chatgpt.com/docs/build-skills), [Gemini CLI](https://geminicli.com/docs/cli/skills/)) |
+| Claude Code | `%USERPROFILE%\.claude\skills` ([Claude Code](https://code.claude.com/docs/en/skills)) |
+| Antigravity | `%USERPROFILE%\.gemini\config\skills` ([Antigravity](https://antigravity.google/docs/skills.md)) |
+
+As páginas oficiais escrevem `~`; no Windows, é a sua pasta de usuário (`%USERPROFILE%`). Quando baixar um `nanci` novo, troque o skill pelo da mesma versão.
