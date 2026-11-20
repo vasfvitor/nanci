@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/dfe"
 	cnpjpkg "github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
 // newCompanyCommand builds the `company` subcommand tree from the given env.
@@ -112,18 +114,24 @@ func newCompanyAddCmd(env CommandEnv) *cobra.Command {
 	return cmd
 }
 
-// newCompanyUpdateCmd changes the name, environment or UF of a company.
-// Flags left out keep the stored value.
+// newCompanyUpdateCmd changes the name, environment, UF or NFS-e start
+// policy of a company. Flags left out keep the stored value.
 func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 	var (
-		cnpj    string
-		name    string
-		envName string
-		uf      string
+		cnpj            string
+		name            string
+		envName         string
+		uf              string
+		syncStartPolicy string
+		syncStartDate   string
+		last12Months    bool
+		last5Years      bool
 	)
 	cmd := &cobra.Command{
 		Use:   "update",
-		Short: "Atualiza nome, ambiente ou UF de uma empresa",
+		Short: "Atualiza nome, ambiente, UF ou data inicial da NFS-e de uma empresa",
+		Long: "Atualiza os dados da empresa; as flags omitidas mantêm o valor atual. A política e a data inicial " +
+			"da NFS-e só mudam enquanto a sincronização da NFS-e não começou, ou depois de `nanci reset --confirmar`.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var environment dfe.Environment
 			if cmd.Flags().Changed("env") {
@@ -132,6 +140,23 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 					return fmt.Errorf("erro no ambiente: %w", err)
 				}
 				environment = parsed
+			}
+			flags := cmd.Flags()
+			changeStart := flags.Changed("sync-start-policy") || flags.Changed("sync-start-date") || last12Months || last5Years
+			var startPolicy syncstate.SyncStartPolicy
+			var startDate *time.Time
+			if changeStart {
+				rawPolicy := syncStartPolicy
+				// A date alone means since_date.
+				if !flags.Changed("sync-start-policy") && syncStartDate != "" {
+					rawPolicy = string(syncstate.SyncStartPolicySinceDate)
+				}
+				rawPolicy, rawDate := resolveCompanySyncStartFlags(rawPolicy, syncStartDate, last12Months, last5Years)
+				parsedPolicy, parsedDate, err := company.ParseSyncStartPolicyInput(rawPolicy, rawDate)
+				if err != nil {
+					return fmt.Errorf("erro na política de sincronização: %w", err)
+				}
+				startPolicy, startDate = parsedPolicy, parsedDate
 			}
 
 			application, cleanup, err := env.AppFactory(cmd.Context())
@@ -161,8 +186,15 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 			if cmd.Flags().Changed("uf") {
 				input.UF = uf
 			}
+			if changeStart {
+				input.SyncStartPolicy = startPolicy
+				input.SyncStartDate = startDate
+			}
 
 			if err := application.Companies.UpdateCompany(cmd.Context(), input); err != nil {
+				if errors.Is(err, company.ErrSyncStartPolicyLocked) {
+					return fmt.Errorf("erro ao atualizar empresa: %w; rode `nanci reset -c %s --confirmar` antes", err, current.CNPJ)
+				}
 				return fmt.Errorf("erro ao atualizar empresa: %w", err)
 			}
 			if env.jsonOutput() {
@@ -176,6 +208,10 @@ func newCompanyUpdateCmd(env CommandEnv) *cobra.Command {
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Novo nome ou Razão Social")
 	cmd.Flags().StringVarP(&envName, "env", "e", "", "Novo ambiente: producao ou producao_restrita")
 	cmd.Flags().StringVar(&uf, "uf", "", "Sigla da UF da empresa (ex.: SP); vazio remove")
+	cmd.Flags().StringVar(&syncStartPolicy, "sync-start-policy", "", "Nova política inicial da NFS-e: all, since_date ou from_now")
+	cmd.Flags().StringVar(&syncStartDate, "sync-start-date", "", "Nova data de corte YYYY-MM-DD; sozinha, implica since_date")
+	cmd.Flags().BoolVar(&last12Months, "last-12-months", false, "Atalho para importar somente os últimos 12 meses no primeiro sync")
+	cmd.Flags().BoolVar(&last5Years, "last-5-years", false, "Atalho para importar somente os últimos 5 anos no primeiro sync")
 	_ = cmd.MarkFlagRequired("cnpj")
 	return cmd
 }
