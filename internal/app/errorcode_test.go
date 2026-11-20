@@ -26,7 +26,7 @@ func TestErrorCode(t *testing.T) {
 		{fmt.Errorf("carregar certificado: %w", ErrOperationCanceled), ErrorCodeCanceled},
 		{context.Canceled, ErrorCodeCanceled},
 		{&sync.BlockedError{Source: syncstate.SyncSourceNFe, Until: time.Now(), Reason: syncstate.SyncStopReasonCaughtUp}, ErrorCodeSefazBlocked},
-		{fmt.Errorf("%w (NF-e) em outro processo do nanci (CLI)", ErrSyncRunning), ErrorCodeSyncRunning},
+		{fmt.Errorf("%w (NF-e) em outro processo do nanci (CLI)", sync.ErrSyncRunning), ErrorCodeSyncRunning},
 		{fmt.Errorf("%w (2 ficam)", sync.ErrNoRequestsLeft), ErrorCodeNoRequestsLeft},
 		{company.ErrCompanyNotFound, ErrorCodeNotFound},
 		{fmt.Errorf("buscar: %w", nfe.ErrDocumentNotFound), ErrorCodeNotFound},

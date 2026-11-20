@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // TestTerminalCredentialProvider_NoTerminal asserts that without a saved
@@ -26,7 +27,7 @@ func TestTerminalCredentialProvider_NoTerminal(t *testing.T) {
 	}
 	defer func() { _ = out.Close() }()
 
-	_, err = TerminalCredentialProvider{In: in, Out: out}.GetCertPassword(context.Background(), app.CertPasswordRequest{})
+	_, err = TerminalCredentialProvider{In: in, Out: out}.GetCertPassword(context.Background(), sync.CertPasswordRequest{})
 	if !errors.Is(err, errNoPasswordTerminal) {
 		t.Fatalf("err = %v, want errNoPasswordTerminal", err)
 	}
@@ -38,7 +39,7 @@ func TestTerminalCredentialProvider_NoTerminal(t *testing.T) {
 	}
 
 	t.Setenv("NANCI_CERT_PASSWORD", "segredo")
-	pass, err := TerminalCredentialProvider{In: in, Out: out}.GetCertPassword(context.Background(), app.CertPasswordRequest{})
+	pass, err := TerminalCredentialProvider{In: in, Out: out}.GetCertPassword(context.Background(), sync.CertPasswordRequest{})
 	if err != nil || string(pass) != "segredo" {
 		t.Errorf("with NANCI_CERT_PASSWORD: pass = %q, err = %v", pass, err)
 	}

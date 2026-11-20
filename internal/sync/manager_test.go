@@ -81,13 +81,13 @@ func TestPullUsesInjectedXMLStore(t *testing.T) {
 
 	xmlStoreVal := &captureXMLStore{}
 	mgr := &Manager{
-		Log:                slog.New(slog.DiscardHandler),
-		CompanyProvider:    companyStore,
-		CredentialProvider: credentialStore,
-		DocProvider:        dbstore.NewDocumentRepository(db),
-		SyncRepo:           NewStore(db),
-		XMLStore:           xmlStoreVal,
-		Certificates:       &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: providerStub{}},
+		Log:             slog.New(slog.DiscardHandler),
+		CompanyProvider: companyStore,
+		Credentials:     credentialStore,
+		DocProvider:     dbstore.NewDocumentRepository(db),
+		SyncRepo:        NewStore(db),
+		XMLStore:        xmlStoreVal,
+		Certificates:    &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: providerStub{}},
 	}
 
 	originalLoadPKCS12 := loadPKCS12
@@ -228,13 +228,13 @@ func newPullTestManager(t *testing.T, passwords CredentialProvider) (*Manager, *
 	}
 
 	return &Manager{
-		Log:                slog.New(slog.DiscardHandler),
-		CompanyProvider:    companyStore,
-		CredentialProvider: credentialStore,
-		DocProvider:        dbstore.NewDocumentRepository(db),
-		SyncRepo:           NewStore(db),
-		XMLStore:           &captureXMLStore{},
-		Certificates:       &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: passwords},
+		Log:             slog.New(slog.DiscardHandler),
+		CompanyProvider: companyStore,
+		Credentials:     credentialStore,
+		DocProvider:     dbstore.NewDocumentRepository(db),
+		SyncRepo:        NewStore(db),
+		XMLStore:        &captureXMLStore{},
+		Certificates:    &CertificateLoader{Log: slog.New(slog.DiscardHandler), Credentials: credentialStore, Passwords: passwords},
 	}, comp
 }
 

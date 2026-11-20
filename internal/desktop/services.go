@@ -76,7 +76,7 @@ type nfeService interface {
 	Reset(ctx context.Context, cnpj string) (app.NFeResetResult, error)
 	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
 	FetchByChave(ctx context.Context, in app.FetchByChaveInput) (app.FetchByChaveResult, error)
-	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error)
+	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (nsync.RecoverNSUResult, error)
 	DiscardNSU(ctx context.Context, in app.DiscardNSUInput) (int64, error)
 }
 
@@ -96,7 +96,7 @@ type cteService interface {
 	PreviewReset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 	Reset(ctx context.Context, cnpj string) (app.CTeResetResult, error)
 	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
-	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error)
+	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (nsync.RecoverNSUResult, error)
 	DiscardNSU(ctx context.Context, in app.DiscardNSUInput) (int64, error)
 	PlanDesacordo(ctx context.Context, in app.CTeDesacordoInput) (app.CTeDesacordoPlan, error)
 	RegisterDesacordo(ctx context.Context, in app.CTeDesacordoInput) (app.CTeDesacordoOutcome, error)

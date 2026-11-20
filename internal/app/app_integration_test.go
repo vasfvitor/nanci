@@ -20,7 +20,7 @@ import (
 
 type credentialProviderStub struct{}
 
-func (c credentialProviderStub) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) ([]byte, error) {
+func (c credentialProviderStub) GetCertPassword(ctx context.Context, req sync.CertPasswordRequest) ([]byte, error) {
 	return []byte("test"), nil
 }
 

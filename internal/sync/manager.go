@@ -63,7 +63,8 @@ type companyProvider interface {
 	CompanyByCNPJ(ctx context.Context, cnpj string) (*company.Company, error)
 }
 
-type credentialProvider interface {
+// credentialStore reads and updates the credential of a company.
+type credentialStore interface {
 	CredentialByID(ctx context.Context, id dfe.CredentialID) (*credential.Credential, error)
 	UpdateCredential(ctx context.Context, c *credential.Credential) error
 }
@@ -81,12 +82,12 @@ var newSyncRunner = func(repo *Store, src Source, log *slog.Logger) syncRunner {
 }
 
 type Manager struct {
-	Log                *slog.Logger
-	CompanyProvider    companyProvider
-	CredentialProvider credentialProvider
-	DocProvider        documentProvider
-	SyncRepo           *Store
-	XMLStore           files.XMLStore
+	Log             *slog.Logger
+	CompanyProvider companyProvider
+	Credentials     credentialStore
+	DocProvider     documentProvider
+	SyncRepo        *Store
+	XMLStore        files.XMLStore
 	// Certificates loads the certificate of each pull.
 	Certificates *CertificateLoader
 	// NFeRepo stores the NF-e distribution; pulls with Source nfe need it.
@@ -480,7 +481,7 @@ func (m *Manager) Status(ctx context.Context, rawCNPJ string) (StatusResult, err
 	if err != nil {
 		return StatusResult{}, err
 	}
-	credential, err := m.CredentialProvider.CredentialByID(ctx, company.CredentialID)
+	credential, err := m.Credentials.CredentialByID(ctx, company.CredentialID)
 	if err != nil {
 		return StatusResult{}, fmt.Errorf("resolver credencial da empresa %s: %w", company.Name, err)
 	}

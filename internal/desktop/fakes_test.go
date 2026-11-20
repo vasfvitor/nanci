@@ -296,7 +296,7 @@ type fakeNFe struct {
 	reset     app.NFeResetResult
 	imported  app.ImportXMLResult
 	fetched   app.FetchByChaveResult
-	recovered app.RecoverNSUResult
+	recovered nsync.RecoverNSUResult
 	discarded int64
 	err       error
 }
@@ -391,7 +391,7 @@ func (f *fakeNFe) FetchByChave(_ context.Context, in app.FetchByChaveInput) (app
 	return f.fetched, f.err
 }
 
-func (f *fakeNFe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error) {
+func (f *fakeNFe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (nsync.RecoverNSUResult, error) {
 	f.record("RecoverNSU", in)
 	return f.recovered, f.err
 }
@@ -412,7 +412,7 @@ type fakeCTe struct {
 	export     app.CTeExportResult
 	reset      app.CTeResetResult
 	imported   app.ImportXMLResult
-	recovered  app.RecoverNSUResult
+	recovered  nsync.RecoverNSUResult
 	discarded  int64
 	desacordo  app.CTeDesacordoPlan
 	outcome    app.CTeDesacordoOutcome
@@ -504,7 +504,7 @@ func (f *fakeCTe) ImportXML(_ context.Context, in app.ImportXMLInput) (app.Impor
 	return f.imported, f.err
 }
 
-func (f *fakeCTe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error) {
+func (f *fakeCTe) RecoverNSU(_ context.Context, in app.RecoverNSUInput) (nsync.RecoverNSUResult, error) {
 	f.record("RecoverNSU", in)
 	return f.recovered, f.err
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/vasfvitor/nanci/internal/app"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 // checkRegistered runs an emitted event through the check Wails applies on
@@ -58,7 +58,7 @@ func TestEmittedPayloadsMatchRegisteredTypes(t *testing.T) {
 	// A canceled context makes GetCertPassword return right after it emits.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, _ = a.cred.GetCertPassword(ctx, app.CertPasswordRequest{RequestID: "req-1"})
+	_, _ = a.cred.GetCertPassword(ctx, nsync.CertPasswordRequest{RequestID: "req-1"})
 	checkRegistered(t, receive(t, events))
 
 	// The Exportar Logs menu item in main.go emits these with a message.

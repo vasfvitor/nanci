@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 // ErrorPayload is the cause of the error a bound method's promise rejects
@@ -176,7 +177,7 @@ type RecoverNSUResult struct {
 	RequestBudget    int
 }
 
-func RecoverNSUResultFrom(res app.RecoverNSUResult) RecoverNSUResult {
+func RecoverNSUResultFrom(res nsync.RecoverNSUResult) RecoverNSUResult {
 	return RecoverNSUResult{
 		Asked:            res.Asked,
 		Recovered:        res.Recovered,

@@ -14,7 +14,7 @@ import (
 
 // nsuActions are the NF-e or CT-e service methods recuperar-nsu calls.
 type nsuActions struct {
-	recover func(ctx context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error)
+	recover func(ctx context.Context, in app.RecoverNSUInput) (sync.RecoverNSUResult, error)
 	discard func(ctx context.Context, in app.DiscardNSUInput) (int64, error)
 }
 
@@ -102,7 +102,7 @@ func printDiscardNSUResult(out io.Writer, n int64, confirmed bool) {
 
 // printRecoverNSUResult prints the counts of a run; limit is the --limite the
 // user gave, repeated in the hint to continue.
-func printRecoverNSUResult(out io.Writer, res app.RecoverNSUResult, group string, limit int) {
+func printRecoverNSUResult(out io.Writer, res sync.RecoverNSUResult, group string, limit int) {
 	if res.Asked == 0 && res.Expired == 0 && res.Missing == 0 {
 		_, _ = fmt.Fprintln(out, "Nenhum NSU faltando.")
 		return

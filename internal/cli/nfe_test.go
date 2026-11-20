@@ -46,7 +46,7 @@ type refusingPasswords struct {
 	requests int
 }
 
-func (p *refusingPasswords) GetCertPassword(context.Context, app.CertPasswordRequest) ([]byte, error) {
+func (p *refusingPasswords) GetCertPassword(context.Context, sync.CertPasswordRequest) ([]byte, error) {
 	p.requests++
 	return nil, errors.New("senha indisponível no teste")
 }
@@ -437,7 +437,7 @@ func TestNFePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 	}
 
 	err := env.run("nfe", "pull", "-c", nfeTestCNPJ)
-	if !errors.Is(err, app.ErrSourceBlocked) {
+	if !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Fatalf("Execute = %v, want ErrSourceBlocked", err)
 	}
 	want := "Próxima consulta permitida após: " + until.Local().Format("2006-01-02 15:04") + "\n"
@@ -730,7 +730,7 @@ func TestSefazPull_JSONBlockedPrintsNothing(t *testing.T) {
 			}
 
 			err := env.run(string(source), "pull", "-c", nfeTestCNPJ, "--json")
-			if !errors.Is(err, app.ErrSourceBlocked) {
+			if !errors.Is(err, sync.ErrSourceBlocked) {
 				t.Fatalf("Execute = %v, want ErrSourceBlocked", err)
 			}
 			if got := env.out.String(); got != "" {

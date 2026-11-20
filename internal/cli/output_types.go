@@ -783,7 +783,7 @@ type recoverNSUOutput struct {
 	RequestBudget    int
 }
 
-func newRecoverNSUOutput(r app.RecoverNSUResult) recoverNSUOutput {
+func newRecoverNSUOutput(r sync.RecoverNSUResult) recoverNSUOutput {
 	return recoverNSUOutput{
 		CompanyName:      r.CompanyName,
 		CNPJ:             r.CNPJ,

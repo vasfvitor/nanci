@@ -10,6 +10,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/desktop/desktopapi"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 // waitingProvider returns a provider with one pending request, plus the channel
@@ -85,7 +86,7 @@ type passwordResult struct {
 
 // askPassword starts GetCertPassword and waits until it asked the frontend,
 // so the caller can answer through the App.
-func askPassword(t *testing.T, ctx context.Context, a *App, req app.CertPasswordRequest) <-chan passwordResult {
+func askPassword(t *testing.T, ctx context.Context, a *App, req nsync.CertPasswordRequest) <-chan passwordResult {
 	t.Helper()
 	events := &fakeEvents{emitted: make(chan call, 1)}
 	a.cred.events = events
@@ -120,7 +121,7 @@ func waitPassword(t *testing.T, done <-chan passwordResult) passwordResult {
 }
 
 func TestGetCertPassword(t *testing.T) {
-	req := app.CertPasswordRequest{RequestID: "req-1", CompanyName: "Empresa Teste", TargetCNPJ: testCNPJ}
+	req := nsync.CertPasswordRequest{RequestID: "req-1", CompanyName: "Empresa Teste", TargetCNPJ: testCNPJ}
 
 	tests := []struct {
 		name     string
@@ -156,7 +157,7 @@ func TestGetCertPassword(t *testing.T) {
 func TestGetCertPasswordStopsWithContext(t *testing.T) {
 	a := newTestApp(services{})
 	ctx, cancel := context.WithCancel(context.Background())
-	done := askPassword(t, ctx, a, app.CertPasswordRequest{RequestID: "req-1"})
+	done := askPassword(t, ctx, a, nsync.CertPasswordRequest{RequestID: "req-1"})
 
 	cancel()
 	res := waitPassword(t, done)

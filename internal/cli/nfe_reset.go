@@ -9,6 +9,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // newNFeResetCmd removes the company's NF-e and resets its NF-e sync. Without
@@ -45,7 +46,7 @@ func newNFeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 
 			result, err := application.NFe.Reset(cmd.Context(), *cnpjFlag)
 			if err != nil {
-				if errors.Is(err, app.ErrSyncRunning) {
+				if errors.Is(err, sync.ErrSyncRunning) {
 					return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
 				}
 				return fmt.Errorf("erro: %w", err)

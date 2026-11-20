@@ -27,7 +27,7 @@ type LoadedCredential struct {
 // direct query and manifestação share it.
 type CertificateLoader struct {
 	Log         *slog.Logger
-	Credentials credentialProvider
+	Credentials credentialStore
 	Passwords   CredentialProvider
 }
 

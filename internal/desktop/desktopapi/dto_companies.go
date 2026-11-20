@@ -6,9 +6,9 @@ package desktopapi
 import (
 	"time"
 
-	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/company"
 	"github.com/vasfvitor/nanci/internal/credential"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 type CompanySummary struct {
@@ -151,7 +151,7 @@ type CertPasswordRequest struct {
 	Purpose         string // e.g. "Sincronização NFS-e"
 }
 
-func CertPasswordRequestFrom(req app.CertPasswordRequest) CertPasswordRequest {
+func CertPasswordRequestFrom(req nsync.CertPasswordRequest) CertPasswordRequest {
 	return CertPasswordRequest{
 		RequestID:       req.RequestID,
 		CompanyID:       req.CompanyID,

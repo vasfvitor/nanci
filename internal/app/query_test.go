@@ -14,15 +14,16 @@ import (
 	"github.com/vasfvitor/nanci/internal/credential"
 	"github.com/vasfvitor/nanci/internal/foundation/httpclient"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // failingPasswords records each request and refuses it, so a test reaches
 // buildClient without loading the certificate or calling the ADN.
 type failingPasswords struct {
-	requests []CertPasswordRequest
+	requests []sync.CertPasswordRequest
 }
 
-func (p *failingPasswords) GetCertPassword(_ context.Context, req CertPasswordRequest) ([]byte, error) {
+func (p *failingPasswords) GetCertPassword(_ context.Context, req sync.CertPasswordRequest) ([]byte, error) {
 	p.requests = append(p.requests, req)
 	return nil, errors.New("senha recusada")
 }

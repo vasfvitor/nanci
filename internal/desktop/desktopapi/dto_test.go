@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/app"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
 func TestImportXMLResultFrom(t *testing.T) {
@@ -70,7 +71,7 @@ func TestBuildInfoJSON(t *testing.T) {
 }
 
 func TestCertPasswordRequestFrom(t *testing.T) {
-	req := app.CertPasswordRequest{ //nolint:gosec // G101 reads CredentialID as a secret; it is a fixture ID
+	req := nsync.CertPasswordRequest{ //nolint:gosec // G101 reads CredentialID as a secret; it is a fixture ID
 		RequestID:       "req-1",
 		CompanyID:       "company-1",
 		CompanyName:     "Empresa Teste",

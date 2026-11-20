@@ -9,6 +9,7 @@ import (
 	"github.com/zalando/go-keyring"
 
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 const keyringService = "nanci_certs"
@@ -24,7 +25,7 @@ var (
 // If it fails or the stored password is invalid, it falls back to the underlying provider
 // and, upon success, saves the new password to the keyring.
 type KeyringCredentialProvider struct {
-	Fallback CredentialProvider
+	Fallback sync.CredentialProvider
 	// Log receives keyring diagnostics. Nil disables logging.
 	Log *slog.Logger
 }
@@ -34,7 +35,7 @@ type KeyringCredentialProvider struct {
 // The OS keyring API is string-based, so the password crosses that boundary as
 // an unzeroable string. Everywhere else it is a []byte, and the caller owns the
 // returned slice: it should zero it with cert.ZeroBytes once done.
-func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req CertPasswordRequest) ([]byte, error) {
+func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req sync.CertPasswordRequest) ([]byte, error) {
 	log := p.logger()
 
 	// 1. Try to get the password from the OS keyring

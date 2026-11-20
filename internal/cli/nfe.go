@@ -88,7 +88,7 @@ func (e CommandEnv) pullError(out io.Writer, err error) error {
 	if errors.As(err, &blocked) && !e.jsonOutput() {
 		_, _ = fmt.Fprintf(out, "Próxima consulta permitida após: %s\n", formatDateTime(blocked.Until))
 	}
-	if errors.Is(err, app.ErrSyncRunning) {
+	if errors.Is(err, sync.ErrSyncRunning) {
 		return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
 	}
 	return fmt.Errorf("erro: %w", err)

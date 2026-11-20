@@ -28,7 +28,7 @@ const mockPFXPassword = "mockdata"
 
 type mockPasswords struct{}
 
-func (mockPasswords) GetCertPassword(context.Context, app.CertPasswordRequest) ([]byte, error) {
+func (mockPasswords) GetCertPassword(context.Context, sync.CertPasswordRequest) ([]byte, error) {
 	return []byte(mockPFXPassword), nil
 }
 

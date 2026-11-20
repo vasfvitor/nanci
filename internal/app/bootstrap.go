@@ -20,14 +20,6 @@ import (
 
 var ErrOperationCanceled = errors.New("operação cancelada pelo usuário")
 
-// ErrSourceBlocked matches a pull refused because the source asked to wait;
-// errors.As with *sync.BlockedError gives the time and the reason.
-var ErrSourceBlocked = sync.ErrSourceBlocked
-
-// ErrSyncRunning matches a pull refused because the same company and source
-// are already syncing in this process.
-var ErrSyncRunning = sync.ErrSyncRunning
-
 // ErrWrongPassword matches a typed or given certificate password that does
 // not open the certificate.
 var ErrWrongPassword = errors.New("senha inválida para o certificado")
@@ -40,12 +32,6 @@ var ErrInvalidObservacao = errors.New("observação inválida")
 // that the CredentialProvider has no way to ask for, as in the CLI run by a
 // script or an AI agent without a terminal.
 var ErrPasswordRequired = errors.New("a senha do certificado não está salva e não há terminal para pedi-la")
-
-// CertPasswordRequest carries the context needed to ask for a certificate password.
-type CertPasswordRequest = sync.CertPasswordRequest
-
-// CredentialProvider abstracts how certificate passwords are obtained.
-type CredentialProvider = sync.CredentialProvider
 
 // App encapsulates the global dependencies of the application.
 type App struct {
@@ -70,7 +56,7 @@ type Dependencies struct {
 	CTeRepo            *store.CTeRepository
 	XMLStore           files.XMLStore
 	DataDir            string
-	CredentialProvider CredentialProvider
+	CredentialProvider sync.CredentialProvider
 	DANFSeRenderer     danfse.Renderer
 	// DANFERenderer and DACTERenderer render the NF-e and CT-e PDFs; nil
 	// leaves those exports unavailable.
@@ -113,16 +99,16 @@ func New(deps Dependencies) (*App, error) {
 	}
 
 	syncManager := &sync.Manager{
-		Log:                deps.Log,
-		CompanyProvider:    deps.CompanyStore,
-		CredentialProvider: deps.CredentialStore,
-		DocProvider:        deps.DocumentRepo,
-		SyncRepo:           deps.SyncRepo,
-		XMLStore:           deps.XMLStore,
-		Certificates:       certificates,
-		NFeRepo:            deps.NFeRepo,
-		CTeRepo:            deps.CTeRepo,
-		Holder:             deps.Holder,
+		Log:             deps.Log,
+		CompanyProvider: deps.CompanyStore,
+		Credentials:     deps.CredentialStore,
+		DocProvider:     deps.DocumentRepo,
+		SyncRepo:        deps.SyncRepo,
+		XMLStore:        deps.XMLStore,
+		Certificates:    certificates,
+		NFeRepo:         deps.NFeRepo,
+		CTeRepo:         deps.CTeRepo,
+		Holder:          deps.Holder,
 	}
 
 	return &App{

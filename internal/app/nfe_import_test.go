@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/vasfvitor/nanci/internal/nfe"
+	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -215,7 +216,7 @@ func TestImportXMLRefusesDuringAPull(t *testing.T) {
 	}
 
 	_, err = env.app.NFe.ImportXML(ctx, ImportXMLInput{CNPJ: nfeTestCNPJ, Files: []string{nfeFixtureFile(t, "procnfe.xml")}})
-	if !errors.Is(err, ErrSyncRunning) {
+	if !errors.Is(err, sync.ErrSyncRunning) {
 		t.Fatalf("NF-e import during a pull = %v, want ErrSyncRunning", err)
 	}
 	// The CT-e source is free.

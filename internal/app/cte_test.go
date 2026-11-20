@@ -25,6 +25,7 @@ import (
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/sefaz"
 	"github.com/vasfvitor/nanci/internal/store"
+	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -242,7 +243,7 @@ func TestCTePullEndToEnd(t *testing.T) {
 	}
 
 	// Caught up: the next pull waits an hour and asks for no password.
-	if _, err := env.app.CTe.Pull(ctx, nfeTestCNPJ); !errors.Is(err, ErrSourceBlocked) {
+	if _, err := env.app.CTe.Pull(ctx, nfeTestCNPJ); !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Errorf("second Pull = %v, want ErrSourceBlocked", err)
 	}
 	if len(env.passwords.requests) != 1 || len(fake.bodies) != 1 {
@@ -294,7 +295,7 @@ func TestCTeStatusCountsByRole(t *testing.T) {
 		t.Errorf("Status =\n%+v\nwant\n%+v", status, want)
 	}
 
-	if _, err := env.app.CTe.Pull(ctx, nfeTestCNPJ); !errors.Is(err, ErrSourceBlocked) {
+	if _, err := env.app.CTe.Pull(ctx, nfeTestCNPJ); !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Errorf("Pull while blocked = %v, want ErrSourceBlocked", err)
 	}
 	if len(env.passwords.requests) != 0 {

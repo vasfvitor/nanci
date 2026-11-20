@@ -101,7 +101,7 @@ func TestFetchNFeByChave(t *testing.T) {
 
 func TestRecoverNSU(t *testing.T) {
 	until := time.Date(2026, 11, 18, 15, 0, 0, 0, time.UTC)
-	res := app.RecoverNSUResult{
+	res := nsync.RecoverNSUResult{
 		Source:           syncstate.SyncSourceNFe,
 		CNPJ:             testCNPJ,
 		Asked:            5,
@@ -227,7 +227,7 @@ func TestImportAndFetchRejectBeforeCore(t *testing.T) {
 // the code formatError gives them, and that the close guard is released.
 func TestImportAndFetchPassCoreErrors(t *testing.T) {
 	blocked := &nsync.BlockedError{Source: syncstate.SyncSourceNFe, Until: time.Date(2026, 9, 23, 14, 32, 0, 0, time.Local), Reason: syncstate.SyncStopReasonRateBudget}
-	running := fmt.Errorf("%w (NF-e)", app.ErrSyncRunning)
+	running := fmt.Errorf("%w (NF-e)", nsync.ErrSyncRunning)
 	canceled := fmt.Errorf("carregar certificado: %w", app.ErrOperationCanceled)
 
 	runs := map[string]func(a *App) (any, error){

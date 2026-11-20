@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/zalando/go-keyring"
+
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 const mockCertPassword = "mockdata"
@@ -32,7 +34,7 @@ type fallbackStub struct {
 	returned []byte
 }
 
-func (s *fallbackStub) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+func (s *fallbackStub) GetCertPassword(context.Context, sync.CertPasswordRequest) ([]byte, error) {
 	s.calls++
 	s.returned = []byte(s.pass)
 	return s.returned, nil
@@ -55,7 +57,7 @@ func TestKeyringCredentialProvider_UsesStoredPassword(t *testing.T) {
 	)
 	fallback := &fallbackStub{pass: "unused"}
 
-	pass, err := KeyringCredentialProvider{Fallback: fallback}.GetCertPassword(context.Background(), CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
+	pass, err := KeyringCredentialProvider{Fallback: fallback}.GetCertPassword(context.Background(), sync.CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
 	if err != nil {
 		t.Fatalf("GetCertPassword: %v", err)
 	}
@@ -81,7 +83,7 @@ func TestKeyringCredentialProvider_FallsBackWhenStoredPasswordInvalid(t *testing
 	var logBuf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	pass, err := KeyringCredentialProvider{Fallback: fallback, Log: log}.GetCertPassword(context.Background(), CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
+	pass, err := KeyringCredentialProvider{Fallback: fallback, Log: log}.GetCertPassword(context.Background(), sync.CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
 	if err != nil {
 		t.Fatalf("GetCertPassword: %v", err)
 	}
@@ -106,7 +108,7 @@ func TestKeyringCredentialProvider_WarnsWhenSaveFails(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&logBuf, nil))
 
-	pass, err := KeyringCredentialProvider{Fallback: fallback, Log: log}.GetCertPassword(context.Background(), CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
+	pass, err := KeyringCredentialProvider{Fallback: fallback, Log: log}.GetCertPassword(context.Background(), sync.CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
 	if err != nil {
 		t.Fatalf("GetCertPassword: %v", err)
 	}
@@ -128,7 +130,7 @@ func TestKeyringCredentialProvider_RejectsInvalidFallbackPassword(t *testing.T) 
 	)
 	fallback := &fallbackStub{pass: "wrong"}
 
-	_, err := KeyringCredentialProvider{Fallback: fallback}.GetCertPassword(context.Background(), CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
+	_, err := KeyringCredentialProvider{Fallback: fallback}.GetCertPassword(context.Background(), sync.CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
 	if code := ErrorCode(fmt.Errorf("obter senha do certificado: %w", err)); code != ErrorCodeWrongPassword {
 		t.Fatalf("err = %v, code %q; want %q", err, code, ErrorCodeWrongPassword)
 	}

@@ -68,7 +68,7 @@ Any command that sends something to SEFAZ/ADN that cannot be undone, or deletes 
 
 - Without `--confirmar`: call the `Plan*`/`Preview*` use case (`PlanCiencia`, `PlanManifestacao`, `PreviewReset`), print what would happen, and end with "Nada foi enviado. Use --confirmar para ..." or "Nada foi alterado. Use --confirmar para redefinir." The plan path must not ask for the certificate password (the test asserts zero requests).
 - With `--confirmar`: call the `Register*`/`Reset` use case. Flag help: "Envia ... à SEFAZ; sem esta flag nada é enviado" or "Remove de fato; sem esta flag nada é alterado".
-- Precedents: `nfe ciencia` and `nfe manifestar` in `internal/cli/nfe_manifest.go`, `nfe reset` in `nfe_reset.go`, `cte reset` in `cte_reset.go`. Map `app.ErrSyncRunning` to "...; aguarde a sincronização atual terminar".
+- Precedents: `nfe ciencia` and `nfe manifestar` in `internal/cli/nfe_manifest.go`, `nfe reset` in `nfe_reset.go`, `cte reset` in `cte_reset.go`. Map `sync.ErrSyncRunning` to "...; aguarde a sincronização atual terminar".
 
 ## Passwords
 

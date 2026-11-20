@@ -41,10 +41,10 @@ const (
 )
 
 type nfePasswordStub struct {
-	requests []CertPasswordRequest
+	requests []sync.CertPasswordRequest
 }
 
-func (p *nfePasswordStub) GetCertPassword(_ context.Context, req CertPasswordRequest) ([]byte, error) {
+func (p *nfePasswordStub) GetCertPassword(_ context.Context, req sync.CertPasswordRequest) ([]byte, error) {
 	p.requests = append(p.requests, req)
 	return []byte(nfeMockPFXPassword), nil
 }
@@ -375,7 +375,7 @@ func TestNFeStatusCounts(t *testing.T) {
 	}
 
 	_, err = env.app.NFe.Pull(ctx, nfeTestCNPJ)
-	if !errors.Is(err, ErrSourceBlocked) {
+	if !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Errorf("Pull while blocked = %v, want ErrSourceBlocked", err)
 	}
 	if len(env.passwords.requests) != 0 {

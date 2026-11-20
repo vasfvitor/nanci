@@ -280,7 +280,7 @@ func TestCTePull_BlockedPrintsNextAllowedAt(t *testing.T) {
 	}
 
 	err := env.run("cte", "pull", "-c", nfeTestCNPJ)
-	if !errors.Is(err, app.ErrSourceBlocked) {
+	if !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Fatalf("Execute = %v, want ErrSourceBlocked", err)
 	}
 	want := "Próxima consulta permitida após: " + until.Local().Format("2006-01-02 15:04") + "\n"

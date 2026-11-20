@@ -169,10 +169,10 @@ type waitingRecovery struct {
 	started chan struct{}
 }
 
-func (n *waitingRecovery) RecoverNSU(ctx context.Context, _ app.RecoverNSUInput) (app.RecoverNSUResult, error) {
+func (n *waitingRecovery) RecoverNSU(ctx context.Context, _ app.RecoverNSUInput) (nsync.RecoverNSUResult, error) {
 	close(n.started)
 	<-ctx.Done()
-	return app.RecoverNSUResult{}, ctx.Err()
+	return nsync.RecoverNSUResult{}, ctx.Err()
 }
 
 // TestCancelSyncStopsANSURecovery cancels an NF-e NSU recovery with the

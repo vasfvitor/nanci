@@ -292,7 +292,7 @@ func TestPullCTe(t *testing.T) {
 // reacts to.
 func TestSyncErrorsReachFormatError(t *testing.T) {
 	blocked := &nsync.BlockedError{Source: syncstate.SyncSourceNFe, Until: time.Date(2026, 9, 23, 14, 32, 0, 0, time.Local), Reason: syncstate.SyncStopReasonConsumoIndevido}
-	running := fmt.Errorf("%w (NFS-e)", app.ErrSyncRunning)
+	running := fmt.Errorf("%w (NFS-e)", nsync.ErrSyncRunning)
 	canceled := fmt.Errorf("carregar certificado: %w", app.ErrOperationCanceled)
 
 	runs := map[string]func(a *App) (any, error){

@@ -9,6 +9,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/app"
 	"github.com/vasfvitor/nanci/internal/foundation/cnpj"
+	"github.com/vasfvitor/nanci/internal/sync"
 )
 
 // newCTeResetCmd removes the company's CT-e and resets its CT-e sync. Without
@@ -44,7 +45,7 @@ func newCTeResetCmd(env CommandEnv, cnpjFlag *string) *cobra.Command {
 
 			result, err := application.CTe.Reset(cmd.Context(), *cnpjFlag)
 			if err != nil {
-				if errors.Is(err, app.ErrSyncRunning) {
+				if errors.Is(err, sync.ErrSyncRunning) {
 					return fmt.Errorf("erro: %w; aguarde a sincronização atual terminar", err)
 				}
 				return fmt.Errorf("erro: %w", err)

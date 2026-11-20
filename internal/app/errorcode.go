@@ -36,9 +36,9 @@ func ErrorCode(err error) string {
 		return ""
 	case errors.Is(err, ErrOperationCanceled), errors.Is(err, context.Canceled):
 		return ErrorCodeCanceled
-	case errors.Is(err, ErrSourceBlocked):
+	case errors.Is(err, sync.ErrSourceBlocked):
 		return ErrorCodeSefazBlocked
-	case errors.Is(err, ErrSyncRunning):
+	case errors.Is(err, sync.ErrSyncRunning):
 		return ErrorCodeSyncRunning
 	case errors.Is(err, sync.ErrNoRequestsLeft):
 		return ErrorCodeNoRequestsLeft

@@ -26,9 +26,10 @@ import (
 	"github.com/vasfvitor/nanci/internal/foundation/cert"
 	logpkg "github.com/vasfvitor/nanci/internal/foundation/logger"
 	"github.com/vasfvitor/nanci/internal/foundation/paths"
+	nsync "github.com/vasfvitor/nanci/internal/sync"
 )
 
-// WailsCredentialProvider implements app.CredentialProvider using Wails frontend interaction.
+// WailsCredentialProvider implements nsync.CredentialProvider using Wails frontend interaction.
 // It owns the passwordChans map and its mutex; the App delegates Submit/Cancel calls to it.
 type WailsCredentialProvider struct {
 	events        eventEmitter // NewApp sets it to the App's emitter
@@ -44,7 +45,7 @@ func newWailsCredentialProvider() *WailsCredentialProvider {
 
 // GetCertPassword asks the frontend for the certificate password and blocks until one is provided.
 // The caller owns the returned slice and should zero it with cert.ZeroBytes once done.
-func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req app.CertPasswordRequest) ([]byte, error) {
+func (p *WailsCredentialProvider) GetCertPassword(ctx context.Context, req nsync.CertPasswordRequest) ([]byte, error) {
 	ch := make(chan []byte, 1)
 
 	p.mu.Lock()

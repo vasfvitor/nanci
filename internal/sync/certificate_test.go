@@ -28,7 +28,7 @@ func (p *recordingProvider) GetCertPassword(_ context.Context, req CertPasswordR
 func TestLoadForCompanyPersistsInspectionAndZeroesPassword(t *testing.T) {
 	passwords := &recordingProvider{}
 	mgr, comp := newPullTestManager(t, passwords)
-	loader := CertificateLoader{Log: mgr.Log, Credentials: mgr.CredentialProvider, Passwords: passwords}
+	loader := CertificateLoader{Log: mgr.Log, Credentials: mgr.Credentials, Passwords: passwords}
 
 	loaded, err := loader.LoadForCompany(context.Background(), comp, "Consulta direta")
 	if err != nil {
@@ -50,7 +50,7 @@ func TestLoadForCompanyPersistsInspectionAndZeroesPassword(t *testing.T) {
 		t.Errorf("Basis = %q, want exact certificate CNPJ", loaded.Basis)
 	}
 
-	stored, err := mgr.CredentialProvider.CredentialByID(context.Background(), comp.CredentialID)
+	stored, err := mgr.Credentials.CredentialByID(context.Background(), comp.CredentialID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestLoadForCompanyRejectsCertificateOfAnotherRoot(t *testing.T) {
 			NotAfter:      now.Add(24 * time.Hour),
 		}}, nil
 	}
-	loader := CertificateLoader{Log: mgr.Log, Credentials: mgr.CredentialProvider, Passwords: passwords}
+	loader := CertificateLoader{Log: mgr.Log, Credentials: mgr.Credentials, Passwords: passwords}
 
 	_, err := loader.LoadForCompany(context.Background(), comp, "Consulta direta")
 	if !errors.Is(err, company.ErrCredentialMismatch) {

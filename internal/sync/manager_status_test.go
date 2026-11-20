@@ -18,7 +18,7 @@ import (
 // runStatusSource runs src for the company of a newPullTestManager.
 func runStatusSource(t *testing.T, mgr *Manager, comp *company.Company, src Source) {
 	t.Helper()
-	cred, err := mgr.CredentialProvider.CredentialByID(context.Background(), comp.CredentialID)
+	cred, err := mgr.Credentials.CredentialByID(context.Background(), comp.CredentialID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,14 +58,14 @@ func applyStatusDocument(t *testing.T, mgr *Manager, comp *company.Company, n in
 func TestStatusWithoutStateReportsCompanyAndCredential(t *testing.T) {
 	mgr, comp := newPullTestManager(t, &countingProvider{})
 	ctx := context.Background()
-	cred, err := mgr.CredentialProvider.CredentialByID(ctx, comp.CredentialID)
+	cred, err := mgr.Credentials.CredentialByID(ctx, comp.CredentialID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	notAfter := time.Date(2027, 3, 1, 12, 0, 0, 0, time.UTC)
 	cred.OwnerCNPJ = "11222333000181"
 	cred.NotAfter = &notAfter
-	if err := mgr.CredentialProvider.UpdateCredential(ctx, cred); err != nil {
+	if err := mgr.Credentials.UpdateCredential(ctx, cred); err != nil {
 		t.Fatal(err)
 	}
 

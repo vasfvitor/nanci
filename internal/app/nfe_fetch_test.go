@@ -168,7 +168,7 @@ func TestNFeFetchByChaveConsumoIndevido(t *testing.T) {
 		t.Errorf("limits = %+v, want the consumo_indevido block stored", limits)
 	}
 
-	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, ErrSourceBlocked) {
+	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Errorf("second FetchByChave = %v, want ErrSourceBlocked", err)
 	}
 	if len(fake.bodies) != 1 || len(env.passwords.requests) != 1 {
@@ -245,7 +245,7 @@ func TestNFeFetchByChaveRateBudget(t *testing.T) {
 	}
 
 	// The stored block refuses the next fetch before the prompt.
-	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, ErrSourceBlocked) {
+	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, sync.ErrSourceBlocked) {
 		t.Errorf("second FetchByChave = %v, want ErrSourceBlocked", err)
 	}
 	if len(fake.bodies) != 0 || len(env.passwords.requests) != 1 || env.countSyncRequests() != 20 {
@@ -257,7 +257,7 @@ func TestNFeFetchByChaveRateBudget(t *testing.T) {
 // closes the password dialog.
 type cancelledPassword struct{ prompts int }
 
-func (p *cancelledPassword) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+func (p *cancelledPassword) GetCertPassword(context.Context, sync.CertPasswordRequest) ([]byte, error) {
 	p.prompts++
 	return nil, ErrOperationCanceled
 }
@@ -284,7 +284,7 @@ func TestNFeFetchByChaveRefusesBeforeSending(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, ErrSyncRunning) {
+	if _, err := env.fetch(nfeChaveProc); !errors.Is(err, sync.ErrSyncRunning) {
 		t.Errorf("FetchByChave during a pull = %v, want ErrSyncRunning", err)
 	}
 	release()

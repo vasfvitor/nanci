@@ -8,6 +8,7 @@ import (
 
 	"github.com/vasfvitor/nanci/internal/dfe"
 	"github.com/vasfvitor/nanci/internal/store/storetest"
+	"github.com/vasfvitor/nanci/internal/sync"
 	"github.com/vasfvitor/nanci/internal/syncstate"
 )
 
@@ -116,7 +117,7 @@ func TestSefazStatusShowsTheErrorOfAFailedRun(t *testing.T) {
 // failingPassword answers every prompt with err.
 type failingPassword struct{ err error }
 
-func (p failingPassword) GetCertPassword(context.Context, CertPasswordRequest) ([]byte, error) {
+func (p failingPassword) GetCertPassword(context.Context, sync.CertPasswordRequest) ([]byte, error) {
 	return nil, p.err
 }
 
