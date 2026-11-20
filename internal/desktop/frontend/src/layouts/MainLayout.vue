@@ -38,9 +38,9 @@ import { useCloseGuard } from '@/composables/useCloseGuard'
 import { useUpdates } from '@/composables/useUpdates'
 import { useConsoleStore } from '@/stores/console'
 import { useWorkspaceStore } from '@/stores/workspace'
-import AppTitleBar from '../components/AppTitleBar.vue'
-import AppLeftDrawer from '../components/AppLeftDrawer.vue'
-import AppConsoleDrawer from '../components/AppConsoleDrawer.vue'
+import AppTitleBar from '@/components/AppTitleBar.vue'
+import AppLeftDrawer from '@/components/AppLeftDrawer.vue'
+import AppConsoleDrawer from '@/components/AppConsoleDrawer.vue'
 
 const $q = useQuasar()
 const consoleStore = useConsoleStore()
