@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -45,10 +46,20 @@ func (p TerminalCredentialProvider) GetCertPassword(ctx context.Context, req app
 	}
 	// term.ReadPassword already returns []byte; pass it straight through so the
 	// password never becomes an unzeroable string.
-	bytePassword, err := term.ReadPassword(int(p.In.Fd()))
+	fd := int(p.In.Fd())
+	state, stateErr := term.GetState(fd)
+	restore := func() {
+		if stateErr == nil {
+			_ = term.Restore(fd, state)
+		}
+	}
+	bytePassword, err := readPasswordContext(ctx, func() ([]byte, error) { return term.ReadPassword(fd) }, restore)
 	if _, newlineErr := fmt.Fprintln(p.Out); newlineErr != nil && err == nil {
 		cert.ZeroBytes(bytePassword)
 		return nil, fmt.Errorf("falha ao finalizar prompt da senha: %w", newlineErr)
+	}
+	if errors.Is(err, app.ErrOperationCanceled) {
+		return nil, err
 	}
 	if err != nil {
 		cert.ZeroBytes(bytePassword)
@@ -56,4 +67,28 @@ func (p TerminalCredentialProvider) GetCertPassword(ctx context.Context, req app
 	}
 
 	return bytePassword, nil
+}
+
+// readPasswordContext runs read until it returns or ctx ends. term.ReadPassword
+// does not watch ctx, so without this Ctrl+C at the prompt (which cancels ctx
+// in cmd/nanci) would wait for Enter. On cancel it calls restore, to turn the
+// echo back on, and returns app.ErrOperationCanceled; the read is left
+// blocked on stdin until the process exits.
+func readPasswordContext(ctx context.Context, read func() ([]byte, error), restore func()) ([]byte, error) {
+	type result struct {
+		pass []byte
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		pass, err := read()
+		done <- result{pass, err}
+	}()
+	select {
+	case r := <-done:
+		return r.pass, r.err
+	case <-ctx.Done():
+		restore()
+		return nil, app.ErrOperationCanceled
+	}
 }

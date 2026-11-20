@@ -43,3 +43,40 @@ func TestTerminalCredentialProvider_NoTerminal(t *testing.T) {
 		t.Errorf("with NANCI_CERT_PASSWORD: pass = %q, err = %v", pass, err)
 	}
 }
+
+// TestReadPasswordContext_Cancel checks that Ctrl+C at the prompt (a
+// cancelled ctx) ends the read with ErrOperationCanceled and restores the
+// console, while the read itself is still blocked.
+func TestReadPasswordContext_Cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	blocked := make(chan struct{})
+	defer close(blocked)
+	restored := false
+	go cancel()
+	pass, err := readPasswordContext(ctx, func() ([]byte, error) {
+		<-blocked
+		return nil, nil
+	}, func() { restored = true })
+	if !errors.Is(err, app.ErrOperationCanceled) || pass != nil {
+		t.Errorf("pass = %q, err = %v; want ErrOperationCanceled", pass, err)
+	}
+	if !restored {
+		t.Error("console not restored on cancel")
+	}
+	if code := app.ErrorCode(err); code != app.ErrorCodeCanceled {
+		t.Errorf("code = %q, want %q", code, app.ErrorCodeCanceled)
+	}
+}
+
+func TestReadPasswordContext_Read(t *testing.T) {
+	restored := false
+	pass, err := readPasswordContext(context.Background(), func() ([]byte, error) {
+		return []byte("segredo"), nil
+	}, func() { restored = true })
+	if err != nil || string(pass) != "segredo" {
+		t.Errorf("pass = %q, err = %v", pass, err)
+	}
+	if restored {
+		t.Error("restore called without a cancel: term.ReadPassword restores by itself")
+	}
+}

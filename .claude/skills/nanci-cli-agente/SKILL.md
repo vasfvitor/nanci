@@ -39,6 +39,11 @@ Without `--json` the output is Portuguese text for a person. Never parse it.
 - Never ask the person to paste the password into the chat, never write it in a command line or a file, and never guess it. When a command fails with `wrong_password` or `password_required`, ask the person to run that same command once in their own terminal so nanci prompts and saves it, or to open the desktop app, then continue.
 - Registering companies and certificates (`init`, `company add/update/assign-credential`, `credential add/update-path`) is for the person, in the desktop app or their terminal. Run them only when the person asks, with the certificate path they gave you. With `--json` they answer with the record as stored; `credential add` returns the new `ID` that `company assign-credential --credential-id` takes.
 
+## Stopping a command
+
+- `nanci` never waits for input when there is no terminal, as when you run it: a missing password fails at once with `password_required`. A command that runs long is working (a pull walks NSU after NSU), not waiting for you.
+- To stop one, end the process. Ctrl+C or SIGTERM stops it cleanly: what was stored stays, an interrupted import or ciência prints what it got through, and the source is free at once. A process killed without a signal (TerminateProcess, closing its window) leaves its source busy: the next command gets `sync_running` for up to a minute, then runs.
+
 ## Query budget and timing (NF-e and CT-e)
 
 - Each company has 20 SEFAZ queries per hour per source (NF-e and CT-e count separately), shared with the desktop app. `nfe pull`/`cte pull` stop by themselves at the limit (`StopReason: "rate_budget"`) or when they reach the end (`"caught_up"`); running a pull when the SEFAZ does not allow it yet returns `sefaz_blocked` without sending anything. Running pulls hourly is safe.

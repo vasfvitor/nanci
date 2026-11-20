@@ -26,7 +26,7 @@ nanci cte pull --cnpj 12345678000199    # CT-e
 nanci export xlsx --cnpj 12345678000199 --competencia 2026-09 --out setembro.xlsx
 ```
 
-A senha do certificado é pedida no terminal na primeira vez e depois fica guardada no Windows. Em rotinas sem terminal, defina `NANCI_CERT_PASSWORD`.
+A senha do certificado é pedida no terminal na primeira vez e depois fica guardada no Windows. Para desistir no pedido da senha, use Ctrl+C. Em rotinas sem terminal, defina `NANCI_CERT_PASSWORD`.
 
 ## Comandos
 
