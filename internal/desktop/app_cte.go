@@ -252,6 +252,46 @@ func (a *App) PreviewResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {
 	return desktopapi.CTeResetResultFrom(res), nil
 }
 
+// PlanCTeDesacordo checks the prestação do serviço em desacordo of one CT-e
+// and returns what RegisterCTeDesacordo would send. It sends nothing and asks
+// for no password.
+func (a *App) PlanCTeDesacordo(input desktopapi.CTeDesacordoInput) (desktopapi.CTeDesacordoPlan, error) {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
+		return desktopapi.CTeDesacordoPlan{}, err
+	}
+	defer end()
+	plan, err := a.svc.cte.PlanDesacordo(ctx, app.CTeDesacordoInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		Observacao:  input.Observacao,
+	})
+	if err != nil {
+		return desktopapi.CTeDesacordoPlan{}, err
+	}
+	return desktopapi.CTeDesacordoPlanFrom(plan), nil
+}
+
+// RegisterCTeDesacordo sends the prestação do serviço em desacordo to the
+// SEFAZ that authorized the CT-e. A rejection comes back in the result; an
+// error means nothing was sent or the answer could not be recorded.
+func (a *App) RegisterCTeDesacordo(input desktopapi.CTeDesacordoInput) (desktopapi.CTeDesacordoResult, error) {
+	ctx, end, err := a.begin(a.ctx, false)
+	if err != nil {
+		return desktopapi.CTeDesacordoResult{}, err
+	}
+	defer end()
+	outcome, err := a.svc.cte.RegisterDesacordo(ctx, app.CTeDesacordoInput{
+		CNPJ:        input.CNPJ,
+		ChaveAcesso: input.ChaveAcesso,
+		Observacao:  input.Observacao,
+	})
+	if err != nil {
+		return desktopapi.CTeDesacordoResult{}, err
+	}
+	return desktopapi.CTeDesacordoResultFrom(outcome), nil
+}
+
 // ResetCTe removes the company's CT-e and resets its CT-e sync, so the next
 // pull starts over from NSU 0.
 func (a *App) ResetCTe(cnpj string) (desktopapi.CTeResetResult, error) {

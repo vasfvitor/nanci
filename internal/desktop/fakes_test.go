@@ -414,7 +414,19 @@ type fakeCTe struct {
 	imported   app.ImportXMLResult
 	recovered  app.RecoverNSUResult
 	discarded  int64
+	desacordo  app.CTeDesacordoPlan
+	outcome    app.CTeDesacordoOutcome
 	err        error
+}
+
+func (f *fakeCTe) PlanDesacordo(_ context.Context, in app.CTeDesacordoInput) (app.CTeDesacordoPlan, error) {
+	f.record("PlanDesacordo", in)
+	return f.desacordo, f.err
+}
+
+func (f *fakeCTe) RegisterDesacordo(_ context.Context, in app.CTeDesacordoInput) (app.CTeDesacordoOutcome, error) {
+	f.record("RegisterDesacordo", in)
+	return f.outcome, f.err
 }
 
 func (f *fakeCTe) Pull(_ context.Context, cnpj string) (app.CTePullResult, error) {

@@ -49,6 +49,7 @@ import {
   MarkCTeViewed,
   MarkDocumentsViewed,
   MarkNFeViewed,
+  PlanCTeDesacordo,
   PlanNFeCiencia,
   PreviewResetCTe,
   Pull,
@@ -59,6 +60,7 @@ import {
   DiscardNFeNSU,
   RecoverCTeNSU,
   RecoverNFeNSU,
+  RegisterCTeDesacordo,
   RegisterNFeCiencia,
   RegisterNFeManifestacao,
   ResetCTe,
@@ -110,6 +112,7 @@ vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () 
   MarkNFeViewed: vi.fn(),
   OpenDataDirectory: vi.fn(),
   OpenLogsDirectory: vi.fn(),
+  PlanCTeDesacordo: vi.fn(),
   PlanNFeCiencia: vi.fn(),
   PreviewResetCTe: vi.fn(),
   Pull: vi.fn(),
@@ -120,6 +123,7 @@ vi.mock('../../../bindings/github.com/vasfvitor/nanci/internal/desktop/app', () 
   DiscardNFeNSU: vi.fn(),
   RecoverCTeNSU: vi.fn(),
   RecoverNFeNSU: vi.fn(),
+  RegisterCTeDesacordo: vi.fn(),
   RegisterNFeCiencia: vi.fn(),
   RegisterNFeManifestacao: vi.fn(),
   ResetCTe: vi.fn(),
@@ -1161,6 +1165,45 @@ describe('CT-e client calls', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('plans and registers the CT-e prestação em desacordo', async () => {
+    vi.mocked(PlanCTeDesacordo).mockResolvedValue({
+      ChaveAcesso: cteChave,
+      TpAmb: '1',
+      NSeqEvento: 1,
+      Observacao: 'Carga entregue avariada',
+      Due: null,
+      DaysLeft: null,
+      BlockReason: 'CT-e cancelada',
+    } as never)
+    vi.mocked(RegisterCTeDesacordo).mockResolvedValue({
+      ChaveAcesso: cteChave,
+      Status: 'enviada',
+      CStat: '135',
+    } as never)
+    const input = { CNPJ: '123', ChaveAcesso: cteChave, Observacao: 'Carga entregue avariada' }
+
+    await expect(desktopClient.planCTeDesacordo(input)).resolves.toEqual({
+      ChaveAcesso: cteChave,
+      TpAmb: '1',
+      NSeqEvento: 1,
+      Observacao: 'Carga entregue avariada',
+      Due: null,
+      DaysLeft: null,
+      BlockReason: 'CT-e cancelada',
+    })
+    // An unknown status reads as '' and missing fields as empty values.
+    await expect(desktopClient.registerCTeDesacordo(input)).resolves.toEqual({
+      ChaveAcesso: cteChave,
+      Status: '',
+      CStat: '135',
+      XMotivo: '',
+      Protocolo: '',
+      RegisteredAt: null,
+    })
+    expect(PlanCTeDesacordo).toHaveBeenCalledWith(input)
+    expect(RegisterCTeDesacordo).toHaveBeenCalledWith(input)
   })
 
   it('passes the Wails DTOs for CT-e calls', async () => {

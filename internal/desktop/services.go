@@ -98,6 +98,8 @@ type cteService interface {
 	ImportXML(ctx context.Context, in app.ImportXMLInput) (app.ImportXMLResult, error)
 	RecoverNSU(ctx context.Context, in app.RecoverNSUInput) (app.RecoverNSUResult, error)
 	DiscardNSU(ctx context.Context, in app.DiscardNSUInput) (int64, error)
+	PlanDesacordo(ctx context.Context, in app.CTeDesacordoInput) (app.CTeDesacordoPlan, error)
+	RegisterDesacordo(ctx context.Context, in app.CTeDesacordoInput) (app.CTeDesacordoOutcome, error)
 }
 
 // services holds the core services App calls.

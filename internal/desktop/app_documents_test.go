@@ -436,6 +436,42 @@ func TestRegisterNFeManifestacao(t *testing.T) {
 	}
 }
 
+func TestCTeDesacordo(t *testing.T) {
+	f, a := newFakeApp(nil)
+	due := time.Date(2026, 10, 17, 11, 30, 41, 0, time.UTC)
+	f.cte.desacordo = app.CTeDesacordoPlan{
+		TpAmb: "1", NSeqEvento: 1, Observacao: "Carga entregue avariada",
+		Document: cte.CompanyDocument{Document: cte.Document{ChaveAcesso: testChave}},
+		Due:      due, DaysLeft: -3, BlockReason: "",
+	}
+	registeredAt := due.Add(time.Hour)
+	f.cte.outcome = app.CTeDesacordoOutcome{ChaveAcesso: testChave, Status: "registrada", CStat: "135", XMotivo: "Evento registrado", Protocolo: "135260000000123", RegisteredAt: &registeredAt}
+	input := desktopapi.CTeDesacordoInput{CNPJ: testCNPJ, ChaveAcesso: testChave, Observacao: "Carga entregue avariada"}
+
+	plan, err := a.PlanCTeDesacordo(input)
+	if err != nil {
+		t.Fatalf("PlanCTeDesacordo: %v", err)
+	}
+	if plan.ChaveAcesso != testChave || plan.TpAmb != "1" || plan.NSeqEvento != 1 || plan.Observacao != input.Observacao ||
+		plan.Due == nil || !plan.Due.Equal(due) || plan.DaysLeft == nil || *plan.DaysLeft != -3 {
+		t.Errorf("plan = %+v", plan)
+	}
+	if empty := desktopapi.CTeDesacordoPlanFrom(app.CTeDesacordoPlan{}); empty.Due != nil || empty.DaysLeft != nil {
+		t.Errorf("plan without authorization date = %+v, want nil Due and DaysLeft", empty)
+	}
+
+	got, err := a.RegisterCTeDesacordo(input)
+	if err != nil {
+		t.Fatalf("RegisterCTeDesacordo: %v", err)
+	}
+	coreInput := app.CTeDesacordoInput{CNPJ: testCNPJ, ChaveAcesso: testChave, Observacao: "Carga entregue avariada"}
+	assertCalls(t, &f.cte.recorder, call{"PlanDesacordo", []any{coreInput}}, call{"RegisterDesacordo", []any{coreInput}})
+	want := desktopapi.CTeDesacordoResult{ChaveAcesso: testChave, Status: "registrada", CStat: "135", XMotivo: "Evento registrado", Protocolo: "135260000000123", RegisteredAt: &registeredAt}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("result = %+v, want %+v", got, want)
+	}
+}
+
 func TestResetNFe(t *testing.T) {
 	f, a := newFakeApp(nil)
 	f.nfe.reset = app.NFeResetResult{
@@ -516,6 +552,12 @@ func TestDocumentMethodsPassCoreErrors(t *testing.T) {
 		"ListCTeEvents":   func(a *App) (any, error) { return a.ListCTeEvents(desktopapi.CTeKeyInput{CNPJ: testCNPJ}) },
 		"PreviewResetCTe": func(a *App) (any, error) { return a.PreviewResetCTe(testCNPJ) },
 		"ResetCTe":        func(a *App) (any, error) { return a.ResetCTe(testCNPJ) },
+		"PlanCTeDesacordo": func(a *App) (any, error) {
+			return a.PlanCTeDesacordo(desktopapi.CTeDesacordoInput{CNPJ: testCNPJ})
+		},
+		"RegisterCTeDesacordo": func(a *App) (any, error) {
+			return a.RegisterCTeDesacordo(desktopapi.CTeDesacordoInput{CNPJ: testCNPJ})
+		},
 	}
 	for name, run := range runs {
 		t.Run(name, func(t *testing.T) {

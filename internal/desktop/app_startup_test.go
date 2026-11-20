@@ -110,6 +110,12 @@ func coreRuns() map[string]func(a *App) (any, error) {
 			return a.RegisterNFeManifestacao(desktopapi.RegisterNFeManifestacaoInput{CNPJ: testCNPJ})
 		},
 		"ResetCTe": func(a *App) (any, error) { return a.ResetCTe(testCNPJ) },
+		"PlanCTeDesacordo": func(a *App) (any, error) {
+			return a.PlanCTeDesacordo(desktopapi.CTeDesacordoInput{CNPJ: testCNPJ})
+		},
+		"RegisterCTeDesacordo": func(a *App) (any, error) {
+			return a.RegisterCTeDesacordo(desktopapi.CTeDesacordoInput{CNPJ: testCNPJ})
+		},
 		"ResetNFe": func(a *App) (any, error) { return a.ResetNFe(testCNPJ) },
 		"ResetSyncState": func(a *App) (any, error) {
 			return nil, a.ResetSyncState(desktopapi.ResetSyncInput{CompanyCNPJ: testCNPJ})

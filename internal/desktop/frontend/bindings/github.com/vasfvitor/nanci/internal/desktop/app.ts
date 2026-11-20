@@ -229,6 +229,15 @@ export function OpenLogsDirectory(): $CancellablePromise<void> {
 }
 
 /**
+ * PlanCTeDesacordo checks the prestação do serviço em desacordo of one CT-e
+ * and returns what RegisterCTeDesacordo would send. It sends nothing and asks
+ * for no password.
+ */
+export function PlanCTeDesacordo(input: desktopapi$0.CTeDesacordoInput): $CancellablePromise<desktopapi$0.CTeDesacordoPlan> {
+    return $Call.ByID(2170563724, input);
+}
+
+/**
  * PlanNFeCiencia lists which NF-e RegisterNFeCiencia would send and which it would
  * skip. It sends nothing and asks for no password.
  */
@@ -275,6 +284,15 @@ export function RecoverCTeNSU(input: desktopapi$0.RecoverNSUInput): $Cancellable
  */
 export function RecoverNFeNSU(input: desktopapi$0.RecoverNSUInput): $CancellablePromise<desktopapi$0.RecoverNSUResult> {
     return $Call.ByID(3245484176, input);
+}
+
+/**
+ * RegisterCTeDesacordo sends the prestação do serviço em desacordo to the
+ * SEFAZ that authorized the CT-e. A rejection comes back in the result; an
+ * error means nothing was sent or the answer could not be recorded.
+ */
+export function RegisterCTeDesacordo(input: desktopapi$0.CTeDesacordoInput): $CancellablePromise<desktopapi$0.CTeDesacordoResult> {
+    return $Call.ByID(3126233978, input);
 }
 
 /**

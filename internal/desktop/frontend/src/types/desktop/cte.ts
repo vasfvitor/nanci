@@ -212,3 +212,38 @@ export type ExportDACTEInput = {
 export type CTeExportResult = ExportResult & {
   SkippedSemDACTE: number
 }
+
+// CTeDesacordoInput is one prestação do serviço em desacordo (event 610110),
+// sent by the company as tomador.
+export type CTeDesacordoInput = {
+  CNPJ: string
+  ChaveAcesso: string
+  // Observacao is 15 to 255 characters within Latin-1.
+  Observacao: string
+}
+
+// CTeDesacordoPlan is what the event would send. Due is the end of the 45
+// days from the authorization and DaysLeft the days to it (negative once
+// passed); both are null when the CT-e has no authorization date. A passed
+// deadline does not block: SEFAZ decides.
+export type CTeDesacordoPlan = {
+  ChaveAcesso: string
+  TpAmb: string
+  NSeqEvento: number
+  Observacao: string
+  Due: ISODateValue
+  DaysLeft: number | null
+  // BlockReason says why the event cannot be sent, or is ''.
+  BlockReason: string
+}
+
+export type CTeDesacordoOutcome = 'registrada' | 'ja_registrada' | 'rejeitada' | 'nao_enviada'
+
+export type CTeDesacordoResult = {
+  ChaveAcesso: string
+  Status: CTeDesacordoOutcome | ''
+  CStat: string
+  XMotivo: string
+  Protocolo: string
+  RegisteredAt: ISODateValue
+}

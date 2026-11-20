@@ -272,6 +272,14 @@ func TestLongOperationsAreRefusedWhileAnUpdateInstalls(t *testing.T) {
 			_, err := a.RegisterNFeManifestacao(desktopapi.RegisterNFeManifestacaoInput{CNPJ: testCNPJ})
 			return err
 		},
+		"PlanCTeDesacordo": func() error {
+			_, err := a.PlanCTeDesacordo(desktopapi.CTeDesacordoInput{CNPJ: testCNPJ})
+			return err
+		},
+		"RegisterCTeDesacordo": func() error {
+			_, err := a.RegisterCTeDesacordo(desktopapi.CTeDesacordoInput{CNPJ: testCNPJ})
+			return err
+		},
 		"ResetSyncState": func() error {
 			return a.ResetSyncState(desktopapi.ResetSyncInput{CompanyCNPJ: testCNPJ})
 		},

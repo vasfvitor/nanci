@@ -8,10 +8,12 @@ import {
   ListCTe,
   ListCTeEvents,
   MarkCTeViewed,
+  PlanCTeDesacordo,
   PreviewResetCTe,
   PullCTe,
   DiscardCTeNSU,
   RecoverCTeNSU,
+  RegisterCTeDesacordo,
   ResetCTe,
   StatusCTe,
   TestCTeConnection,
@@ -19,6 +21,10 @@ import {
 import type * as desktopapi from '../../../../bindings/github.com/vasfvitor/nanci/internal/desktop/desktopapi/models'
 import type {
   ConnectionTestResult,
+  CTeDesacordoInput,
+  CTeDesacordoOutcome,
+  CTeDesacordoPlan,
+  CTeDesacordoResult,
   CTeEvent,
   CTeEventType,
   CTeModelo,
@@ -43,6 +49,7 @@ import type {
 import {
   callWails,
   asNullableNumber,
+  asString,
   asStringArray,
   asArray,
   asDate,
@@ -314,6 +321,18 @@ export const cteClient = {
     const res = await callWails(() => ResetCTe(cnpj))
     return mapCTeResetResult(res)
   },
+  // planCTeDesacordo checks the prestação em desacordo of one CT-e; it sends
+  // nothing and asks for no password.
+  async planCTeDesacordo(input: CTeDesacordoInput): Promise<CTeDesacordoPlan> {
+    const res = await callWails(() => PlanCTeDesacordo(input))
+    return mapCTeDesacordoPlan(res)
+  },
+  // registerCTeDesacordo sends the prestação em desacordo to the SEFAZ that
+  // authorized the CT-e. A rejection comes back in the result.
+  async registerCTeDesacordo(input: CTeDesacordoInput): Promise<CTeDesacordoResult> {
+    const res = await callWails(() => RegisterCTeDesacordo(input))
+    return mapCTeDesacordoResult(res)
+  },
   async exportCTeXML(
     input: Omit<ExportCTeXMLInput, 'OutPath'> & { BaseName?: string; OutPath?: string }
   ): Promise<ExportResult | null> {
@@ -364,4 +383,34 @@ export const cteClient = {
     )
     return mapCTeExportResult(res)
   },
+}
+
+export function mapCTeDesacordoPlan(item: desktopapi.CTeDesacordoPlan): CTeDesacordoPlan {
+  return {
+    ChaveAcesso: asString(item.ChaveAcesso),
+    TpAmb: asString(item.TpAmb),
+    NSeqEvento: asNullableNumber(item.NSeqEvento) ?? 0,
+    Observacao: asString(item.Observacao),
+    Due: asDate(item.Due),
+    DaysLeft: asNullableNumber(item.DaysLeft),
+    BlockReason: asString(item.BlockReason),
+  }
+}
+
+const desacordoOutcomes: readonly CTeDesacordoOutcome[] = [
+  'registrada',
+  'ja_registrada',
+  'rejeitada',
+  'nao_enviada',
+]
+
+export function mapCTeDesacordoResult(item: desktopapi.CTeDesacordoResult): CTeDesacordoResult {
+  return {
+    ChaveAcesso: asString(item.ChaveAcesso),
+    Status: asEnum(item.Status, desacordoOutcomes),
+    CStat: asString(item.CStat),
+    XMotivo: asString(item.XMotivo),
+    Protocolo: asString(item.Protocolo),
+    RegisteredAt: asDate(item.RegisteredAt),
+  }
 }

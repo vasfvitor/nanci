@@ -20,7 +20,15 @@ export {
   mapNFeStatus,
   mapPullNFeResult,
 } from './nfe'
-export { mapCTeEvent, mapCTeResetResult, mapCTeRow, mapCTeStatus, mapPullCTeResult } from './cte'
+export {
+  mapCTeDesacordoPlan,
+  mapCTeDesacordoResult,
+  mapCTeEvent,
+  mapCTeResetResult,
+  mapCTeRow,
+  mapCTeStatus,
+  mapPullCTeResult,
+} from './cte'
 
 export const desktopClient = {
   ...companiesClient,

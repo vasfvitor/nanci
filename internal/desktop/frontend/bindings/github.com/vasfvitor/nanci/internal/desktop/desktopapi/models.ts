@@ -55,6 +55,64 @@ export interface BuildInfo {
     "webview2Version": string;
 }
 
+/**
+ * CTeDesacordoInput is one prestação do serviço em desacordo (event 610110),
+ * for PlanCTeDesacordo and RegisterCTeDesacordo.
+ */
+export interface CTeDesacordoInput {
+    "CNPJ": string;
+    "ChaveAcesso": string;
+
+    /**
+     * Observacao is 15 to 255 characters within Latin-1.
+     */
+    "Observacao": string;
+}
+
+/**
+ * CTeDesacordoPlan is what RegisterCTeDesacordo would send, for the
+ * confirmation dialog. Due is the end of the 45 days from the authorization
+ * and DaysLeft the calendar days to it (negative once passed); both are nil
+ * when the CT-e has no authorization date. A passed deadline does not block.
+ */
+export interface CTeDesacordoPlan {
+    "ChaveAcesso": string;
+
+    /**
+     * 1 produção, 2 homologação
+     */
+    "TpAmb": string;
+    "NSeqEvento": number;
+    "Observacao": string;
+    "Due": string | null;
+    "DaysLeft": number | null;
+
+    /**
+     * BlockReason says why the event cannot be sent, or is empty.
+     */
+    "BlockReason": string;
+}
+
+/**
+ * CTeDesacordoResult is the answer to one prestação em desacordo.
+ */
+export interface CTeDesacordoResult {
+    "ChaveAcesso": string;
+
+    /**
+     * registrada | ja_registrada | rejeitada | nao_enviada
+     */
+    "Status": string;
+
+    /**
+     * empty when SEFAZ did not answer
+     */
+    "CStat": string;
+    "XMotivo": string;
+    "Protocolo": string;
+    "RegisteredAt": string | null;
+}
+
 export interface CTeEvent {
     "ID": string;
 

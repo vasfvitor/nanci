@@ -303,3 +303,63 @@ func CTeResetResultFrom(res app.CTeResetResult) CTeResetResult {
 		ExportMarks:      res.ExportMarks,
 	}
 }
+
+// CTeDesacordoInput is one prestação do serviço em desacordo (event 610110),
+// for PlanCTeDesacordo and RegisterCTeDesacordo.
+type CTeDesacordoInput struct {
+	CNPJ        string
+	ChaveAcesso string
+	// Observacao is 15 to 255 characters within Latin-1.
+	Observacao string
+}
+
+// CTeDesacordoPlan is what RegisterCTeDesacordo would send, for the
+// confirmation dialog. Due is the end of the 45 days from the authorization
+// and DaysLeft the calendar days to it (negative once passed); both are nil
+// when the CT-e has no authorization date. A passed deadline does not block.
+type CTeDesacordoPlan struct {
+	ChaveAcesso string
+	TpAmb       string // 1 produção, 2 homologação
+	NSeqEvento  int
+	Observacao  string
+	Due         *time.Time
+	DaysLeft    *int
+	// BlockReason says why the event cannot be sent, or is empty.
+	BlockReason string
+}
+
+// CTeDesacordoResult is the answer to one prestação em desacordo.
+type CTeDesacordoResult struct {
+	ChaveAcesso  string
+	Status       string // registrada | ja_registrada | rejeitada | nao_enviada
+	CStat        string // empty when SEFAZ did not answer
+	XMotivo      string
+	Protocolo    string
+	RegisteredAt *time.Time
+}
+
+func CTeDesacordoPlanFrom(plan app.CTeDesacordoPlan) CTeDesacordoPlan {
+	out := CTeDesacordoPlan{
+		ChaveAcesso: string(plan.Document.ChaveAcesso),
+		TpAmb:       plan.TpAmb,
+		NSeqEvento:  plan.NSeqEvento,
+		Observacao:  plan.Observacao,
+		BlockReason: plan.BlockReason,
+	}
+	if !plan.Due.IsZero() {
+		due, daysLeft := plan.Due, plan.DaysLeft
+		out.Due, out.DaysLeft = &due, &daysLeft
+	}
+	return out
+}
+
+func CTeDesacordoResultFrom(o app.CTeDesacordoOutcome) CTeDesacordoResult {
+	return CTeDesacordoResult{
+		ChaveAcesso:  o.ChaveAcesso,
+		Status:       o.Status,
+		CStat:        o.CStat,
+		XMotivo:      o.XMotivo,
+		Protocolo:    o.Protocolo,
+		RegisteredAt: o.RegisteredAt,
+	}
+}
