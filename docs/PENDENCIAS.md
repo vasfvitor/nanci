@@ -5,6 +5,7 @@ Itens ainda sem plano, em ordem aproximada de valor. Ao resolver um item, remova
 ## Funcionalidade
 
 - **Cancelar a prestação do serviço em desacordo (CT-e, evento 610111).** O tomador anula um 610110 registrado informando o protocolo dele (`nProtEvPrestDes`); grupo `evCancPrestDesacordo`, mesmos modelos e mesma autorizadora (MOC CT-e 4.00, 6.6; ver `docs/pesquisa/2026-11-19-cte-desacordo.md`). O envio do 610110 já existe; o cancelamento reaproveitaria `signInfEvento`, a tabela de autorizadoras e `cte_desacordos`.
+- **Arquivar empresa.** Não há como remover uma empresa, no desktop nem na CLI. Arquivar a tira das listas e da sincronização e mantém os dados, inclusive as manifestações e os desacordos enviados, que são registro de auditoria. Precisa de uma coluna nova em `companies` (migration). Excluir de vez foi descartado por ora: nenhuma das cerca de 20 tabelas que apontam para `companies` apaga em cascata, e a exclusão apagaria esse registro.
 
 ## Comportamento conhecido
 
