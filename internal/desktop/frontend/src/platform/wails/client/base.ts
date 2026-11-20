@@ -13,78 +13,7 @@ import type {
   SefazBlockedReason,
   SefazSourceStatus,
 } from '@/types/desktop'
-
-type RawRecord = Record<string, unknown>
-
-// WailsErrorCode lists the codes set by formatError in internal/desktop/errors.go,
-// which takes the core's from app.ErrorCode (internal/app/errorcode.go). Wails v3
-// rejects a bound-method promise with a RuntimeError whose cause is the {code, message}
-// payload marshalError builds.
-const wailsErrorCodes = [
-  'canceled',
-  'sefaz_blocked',
-  'sync_running',
-  'no_requests_left',
-  'not_found',
-  'invalid_input',
-  'wrong_password',
-  'update_busy',
-  'startup_failed',
-] as const
-export type WailsErrorCode = (typeof wailsErrorCodes)[number] | ''
-
-function asErrorCode(value: unknown): WailsErrorCode {
-  return asEnum(value, wailsErrorCodes)
-}
-
-export class WailsClientError extends Error {
-  constructor(
-    message: string,
-    readonly code: WailsErrorCode = '',
-    readonly cause?: unknown
-  ) {
-    super(message)
-    this.name = 'WailsClientError'
-  }
-}
-
-// wailsErrorCode reads the error code from any thrown value, so callers do not
-// depend on the error having gone through the client.
-export function wailsErrorCode(error: unknown): WailsErrorCode {
-  return normalizeError(error).code
-}
-
-// errorMessage is the text to show for any thrown value.
-export function errorMessage(error: unknown): string {
-  return normalizeError(error).message
-}
-
-// canceledMessage matches app.ErrOperationCanceled in Go.
-const canceledMessage = 'operação cancelada pelo usuário'
-
-function normalizeError(error: unknown): WailsClientError {
-  if (error instanceof WailsClientError) return error
-  // The runtime rejects a cancelled call at once with a CancelError, while the
-  // Go method runs until it sees its context end. Its cause is the abort
-  // reason, which is not a payload of formatError.
-  if (error instanceof Error && error.name === 'CancelError') {
-    return new WailsClientError(canceledMessage, 'canceled', error)
-  }
-  if (error instanceof Error) {
-    const cause = error.cause
-    if (cause && typeof cause === 'object' && 'code' in cause) {
-      const payload = asRawRecord(cause)
-      const message = asString(payload['message']) || error.message
-      return new WailsClientError(message, asErrorCode(payload['code']), error)
-    }
-    return new WailsClientError(error.message, '', error)
-  }
-  if (error && typeof error === 'object' && 'message' in error) {
-    const payload = asRawRecord(error)
-    return new WailsClientError(asString(payload['message']), asErrorCode(payload['code']), error)
-  }
-  return new WailsClientError(String(error), '', error)
-}
+import { normalizeError } from '../errors'
 
 // callWails runs a bound-method call and normalizes its error. With a signal,
 // aborting it cancels the call: the promise rejects with the canceled code and
@@ -111,10 +40,6 @@ export function asString(value: unknown) {
 export function asNullableNumber(value: number | null | undefined) {
   if (value === null || value === undefined) return null
   return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
-function asRawRecord(value: unknown): RawRecord {
-  return value && typeof value === 'object' ? (value as RawRecord) : {}
 }
 
 export function asStringArray(value: string[] | null | undefined) {

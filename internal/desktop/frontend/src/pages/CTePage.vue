@@ -308,7 +308,7 @@ import { useNSURecovery } from '@/composables/useNSURecovery'
 import { copyChave, useNotify } from '@/composables/useNotify'
 import { useRouteChaveFocus } from '@/composables/useRouteChaveFocus'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
-import { wailsErrorCode } from '@/platform/wails/client'
+import { wailsErrorCode } from '@/platform/wails/errors'
 import type { CTeExportFormat, CTeResetResult, CTeRow } from '@/types/desktop'
 import { documentColumns } from '@/utils/documentColumns'
 import {

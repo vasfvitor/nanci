@@ -75,7 +75,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
-import { errorMessage } from '@/platform/wails/client'
+import { errorMessage } from '@/platform/wails/errors'
 import AddCredentialDialog from '@/components/AddCredentialDialog.vue'
 import EditCredentialDialog from '@/components/EditCredentialDialog.vue'
 import { useCredentials } from '@/composables/useCredentials'

@@ -124,7 +124,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
-import { errorMessage } from '@/platform/wails/client'
+import { errorMessage } from '@/platform/wails/errors'
 import type { CTeDesacordoPlan, CTeRow } from '@/types/desktop'
 import {
   desacordoDeadlineText,

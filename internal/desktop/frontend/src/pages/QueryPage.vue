@@ -120,7 +120,7 @@
 import { computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
-import { errorMessage, wailsErrorCode } from '@/platform/wails/client'
+import { errorMessage, wailsErrorCode } from '@/platform/wails/errors'
 import { companyOption } from '@/composables/useCompanies'
 import { useNotify } from '@/composables/useNotify'
 import { useQuery } from '@/composables/useQuery'

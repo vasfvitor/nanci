@@ -25,14 +25,13 @@ vi.mock('quasar', () => ({
 }))
 
 vi.mock('@/platform/wails/client', async () => {
-  const base = await vi.importActual<typeof import('@/platform/wails/client/base')>(
-    '@/platform/wails/client/base'
-  )
+  const errors =
+    await vi.importActual<typeof import('@/platform/wails/errors')>('@/platform/wails/errors')
   return {
     desktopClient: { checkForUpdate: vi.fn(), installUpdate: vi.fn(), showInFolder: vi.fn() },
-    errorMessage: base.errorMessage,
-    wailsErrorCode: base.wailsErrorCode,
-    WailsClientError: base.WailsClientError,
+    errorMessage: errors.errorMessage,
+    wailsErrorCode: errors.wailsErrorCode,
+    WailsClientError: errors.WailsClientError,
   }
 })
 

@@ -40,7 +40,7 @@ import { useQuasar } from 'quasar'
 import DraftBanner from '@/components/DraftBanner.vue'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { useCredentials } from '@/composables/useCredentials'
-import { errorMessage } from '@/platform/wails/client'
+import { errorMessage } from '@/platform/wails/errors'
 
 const props = defineProps<{
   modelValue: boolean

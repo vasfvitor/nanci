@@ -4,8 +4,9 @@ import { nfeClient } from './nfe'
 import { nfseClient } from './nfse'
 import { systemClient } from './system'
 
-export { errorMessage, mapImportXMLResult, WailsClientError, wailsErrorCode } from './base'
-export type { WailsErrorCode } from './base'
+export { errorMessage, WailsClientError, wailsErrorCode } from '../errors'
+export type { WailsErrorCode } from '../errors'
+export { mapImportXMLResult } from './base'
 export { mapCompanySummary, mapCredentialSummary } from './companies'
 export { mapDocumentEvent, mapDocumentRow } from './nfse'
 export {
