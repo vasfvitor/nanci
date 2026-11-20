@@ -66,7 +66,7 @@ func (p KeyringCredentialProvider) GetCertPassword(ctx context.Context, req Cert
 	if _, err := cert.LoadPKCS12(req.CertPath, pass); err != nil {
 		cert.ZeroBytes(pass)
 		if errors.Is(err, cert.ErrInvalidPass) {
-			return nil, fmt.Errorf("senha inválida para o certificado")
+			return nil, ErrWrongPassword
 		}
 		return nil, fmt.Errorf("erro ao verificar senha: %w", err)
 	}

@@ -49,7 +49,7 @@ func ErrorCode(err error) string {
 		errors.Is(err, cnpj.ErrInvalidLength), errors.Is(err, cnpj.ErrInvalidFormat),
 		errors.Is(err, cnpj.ErrNonNumericCheckDigit), errors.Is(err, cnpj.ErrInvalidCheckDigits):
 		return ErrorCodeInvalidInput
-	case errors.Is(err, cert.ErrInvalidPass):
+	case errors.Is(err, cert.ErrInvalidPass), errors.Is(err, ErrWrongPassword):
 		return ErrorCodeWrongPassword
 	case errors.Is(err, ErrPasswordRequired):
 		return ErrorCodePasswordRequired

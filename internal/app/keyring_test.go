@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -128,8 +129,8 @@ func TestKeyringCredentialProvider_RejectsInvalidFallbackPassword(t *testing.T) 
 	fallback := &fallbackStub{pass: "wrong"}
 
 	_, err := KeyringCredentialProvider{Fallback: fallback}.GetCertPassword(context.Background(), CertPasswordRequest{CredentialID: "cred-1", CertPath: certPath})
-	if err == nil {
-		t.Fatal("expected error for invalid password")
+	if code := ErrorCode(fmt.Errorf("obter senha do certificado: %w", err)); code != ErrorCodeWrongPassword {
+		t.Fatalf("err = %v, code %q; want %q", err, code, ErrorCodeWrongPassword)
 	}
 	if setCalls != 0 {
 		t.Fatalf("keyring.Set called %d times for an invalid password, want 0", setCalls)
