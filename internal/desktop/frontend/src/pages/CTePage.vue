@@ -155,6 +155,19 @@
                 :disable="exporting || !rowProps.row.HasDACTE"
                 @click="exportDACTE(rowProps.row.ChaveAcesso)"
               />
+              <RowMenuItem
+                label="Prestação em desacordo"
+                :caption="
+                  desacordoInFlightFor(rowProps.row.ChaveAcesso)
+                    ? 'Enviando...'
+                    : (desacordoMenuBlock(rowProps.row) ?? '')
+                "
+                :disable="
+                  desacordoInFlightFor(rowProps.row.ChaveAcesso) ||
+                  desacordoMenuBlock(rowProps.row) !== null
+                "
+                @click="openDesacordo(rowProps.row)"
+              />
             </RowActionsMenu>
 
             <NumeroCell
@@ -288,6 +301,7 @@ import RowActionsMenu from '../components/RowActionsMenu.vue'
 import RowMenuItem from '../components/RowMenuItem.vue'
 import StateBadges from '../components/StateBadges.vue'
 import StateLegend from '../components/StateLegend.vue'
+import { useCTeDesacordoActions } from '@/composables/useCTeDesacordoActions'
 import { useCTeDocuments } from '@/composables/useCTeDocuments'
 import { useDocumentListActions } from '@/composables/useDocumentListActions'
 import { useNSURecovery } from '@/composables/useNSURecovery'
@@ -306,6 +320,7 @@ import {
   cteSituacaoFilterOptions,
   cteTpServLabel,
 } from '@/utils/cteDisplay'
+import { desacordoMenuBlock } from '@/utils/cteDesacordo'
 import { CTE_EXPORT_FORMATS, exportedNoun } from '@/utils/exportFormats'
 import { importSummary } from '@/utils/importDisplay'
 import {
@@ -356,6 +371,8 @@ const {
   syncBlockedUntil,
   blockedText,
 } = cte
+
+const { openDesacordo, isSending: desacordoInFlightFor } = useCTeDesacordoActions()
 
 const showEventsDialog = ref(false)
 const eventsChave = ref('')

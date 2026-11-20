@@ -76,6 +76,10 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
   // statusGate lets only the latest status load fill status.
   const statusGate = latestOnly()
 
+  // desacordoInFlight holds the chaves whose prestação em desacordo is being
+  // sent; the send can outlive the page.
+  const desacordoInFlight = ref(new Set<string>())
+
   return {
     filter,
     listInput,
@@ -84,5 +88,6 @@ export const useCTeDocumentsStore = defineStore('cteDocuments', () => {
     ...list,
     status,
     statusGate,
+    desacordoInFlight,
   }
 })
