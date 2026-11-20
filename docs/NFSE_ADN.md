@@ -6,7 +6,7 @@ Detalhamento técnico sobre como o Nanci consome a infraestrutura nacional do Am
 
 ## Endpoints Consumidos
 
-O Nanci realiza chamadas HTTPS oficiais (com mTLS usando a chave privada do certificado correspondente à empresa) diretamente para os endpoints definidos pela Receita Federal e SERPRO:
+O Nanci realiza chamadas HTTPS oficiais (com mTLS usando a chave privada do certificado correspondente à empresa) diretamente para os endpoints definidos pela Receita Federal e SERPRO. Fonte: [Manual dos Contribuintes, Guia para utilização das APIs do ADN](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/manual-contribuintes-apis-adn-sistema-nacional-nfse.pdf), versão 1.0 de 12/02/2026, conferido em 20/11/2026; o Swagger de produção restrita fica em `https://adn.producaorestrita.nfse.gov.br/contribuintes/docs/index.html`.
 
 ### Consulta por NSU (Distribuição)
 

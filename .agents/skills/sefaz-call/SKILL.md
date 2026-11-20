@@ -29,11 +29,11 @@ description: Use when adding a new call to SEFAZ (NF-e/CT-e Ambiente Nacional or
 
 ### Existing methods to extend, not duplicate
 
-`ConsChNFe` (`distribuicao.go`) backs `NFeService.FetchByChave`, which gives the 618/632/640/641/653/654 `*RejectionError`s their meaning. `ConsNSU` and `ConsCTeNSU` (`cte_distribuicao.go`) exist with no caller, kept for the NSU gap recovery (ROADMAP Fase 2, item 5). Wire them; do not write a second `distDFeInt` builder. A stored item outside the loop goes through the source's `ProcessItem` with `sync.Store.Apply` as the `CommitFunc`, as `FetchByChave` does. Add the method to the narrow interface the caller uses (`sefazClient` in `internal/app/nfe.go`, `nfeFetcher` in `internal/sync/source_nfe.go`) so tests can fake it.
+`ConsChNFe` (`distribuicao.go`) backs `NFeService.FetchByChave`, which gives the 618/632/640/641/653/654 `*RejectionError`s their meaning. `ConsNSU` (`distribuicao.go`) and `ConsCTeNSU` (`cte_distribuicao.go`) back the NSU gap recovery, through `FetchNSU` in `internal/sync/source_nfe.go` and `internal/sync/source_cte.go`, driven by `sync.Manager.RecoverNSU`. Reuse them; do not write a second `distDFeInt` builder. A stored item outside the loop goes through the source's `ProcessItem` with `sync.Store.Apply` as the `CommitFunc`, as `FetchByChave` does. Add the method to the narrow interface the caller uses (`sefazClient` in `internal/app/nfe.go`, `nfeFetcher` in `internal/sync/source_nfe.go`) so tests can fake it.
 
-### UF services (planned 610110)
+### UF services (610110)
 
-`docs/CTE_SEFAZ.md`, "Próximos passos": the prestação do serviço em desacordo goes to the SEFAZ autorizadora of the CT-e (`CTeRecepcaoEventoV4`), not the Ambiente Nacional, routed by the UF in the key (SVRS for most, own endpoints for SP, MT, MS, MG, PR). A UF → URL table per environment belongs in `internal/sefaz`, next to `endpoints.go` and keyed by IBGE code from `internal/foundation/uf`; `Endpoints`/`EndpointsFor` stay for Ambiente Nacional services. It needs an audit table like `nfe_manifestacoes`. Design it when the work starts, with sources.
+The prestação do serviço em desacordo (`docs/CTE_SEFAZ.md`, "Prestação do serviço em desacordo") goes to the SEFAZ autorizadora of the CT-e (`CTeRecepcaoEventoV4`), not the Ambiente Nacional, routed by the UF in the key (SVRS for most, own endpoints for SP, MT, MS, MG, PR). The UF → URL table per environment is `internal/sefaz/cte_endpoints.go` (`CTeRecepcaoEventoURL`, keyed by IBGE code from `internal/foundation/uf`); `Endpoints`/`EndpointsFor` stay for Ambiente Nacional services. `EnviarEventoDesacordo` (`cte_evento.go`) sends it, and every attempt goes to the audit table `cte_desacordos`, as `nfe_manifestacoes` does for the NF-e. A new UF event service follows the same pattern.
 
 ## ADN: `internal/adn`
 

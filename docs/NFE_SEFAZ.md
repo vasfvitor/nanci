@@ -6,13 +6,13 @@ Detalhamento técnico sobre como o Nanci baixa NF-e (modelo 55) pela distribuiç
 
 ## O que é a distribuição de NF-e
 
-A SEFAZ mantém no Ambiente Nacional (AN) o webservice **NFeDistribuicaoDFe**, que entrega a um CNPJ os documentos em que ele aparece. Cada documento recebe um NSU (Número Sequencial Único) próprio daquele CNPJ, e a consulta funciona como uma fila: o Nanci envia o último NSU que já leu (`distNSU/ultNSU`) e recebe até 50 documentos seguintes, com os cursores atualizados (`ultNSU` e `maxNSU`).
+A SEFAZ mantém no Ambiente Nacional (AN) o webservice **NFeDistribuicaoDFe**, que entrega a um CNPJ os documentos em que ele aparece. Cada documento recebe um NSU (Número Sequencial Único) próprio daquele CNPJ, e a consulta funciona como uma fila: o Nanci envia o último NSU que já leu (`distNSU/ultNSU`) e recebe até 50 documentos seguintes, com os cursores atualizados (`ultNSU` e `maxNSU`). Fonte: NT 2014.002 v1.40 ([Portal da NF-e](https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=uWO2d/gTuWg=)), resumida em `docs/pesquisa/2026-10-07-sefaz-dfe.md`.
 
 - **Resumo (`resNFe`)**: dados básicos da nota (chave, emitente, valor, situação). Não é o documento fiscal.
 - **Completa (`procNFe`)**: o XML autorizado da NF-e com o protocolo.
 - **Eventos (`resEvento`, `procEventoNFe`)**: cancelamento, carta de correção e manifestações.
 
-A fila guarda os documentos por cerca de 90 dias. Por isso, ao contrário da NFS-e, a política inicial da empresa (`--sync-start-policy`) **não** se aplica à NF-e: o primeiro pull traz o que a SEFAZ ainda tiver.
+A fila guarda os documentos por até 90 dias depois da recepção no Ambiente Nacional (mesma NT, "Janela de 90 dias" na nota de pesquisa). Por isso, ao contrário da NFS-e, a política inicial da empresa (`--sync-start-policy`) **não** se aplica à NF-e: o primeiro pull traz o que a SEFAZ ainda tiver.
 
 ## O que a empresa recebe, por papel
 
@@ -101,7 +101,7 @@ Só a empresa **destinatária** de uma NF-e **autorizada** pode manifestar. Os q
 | Desconhecimento da Operação | 210220 | Conclusiva. |
 | Operação não Realizada | 210240 | Conclusiva; exige justificativa de 15 a 255 caracteres. |
 
-Manifestações conclusivas são definitivas na SEFAZ e o Nanci não as desfaz.
+A SEFAZ aceita registrar cada evento conclusivo até duas vezes, e vale só o mais recente; essa retificação pode ser feita em até 30 dias da primeira manifestação (cláusula 15ª-C, §§ 2º e 3º, do [Ajuste SINIEF 07/05](https://www.confaz.fazenda.gov.br/legislacao/ajustes/2005/AJ007_05), com o § 2º na redação do Ajuste SINIEF 43/23, em vigor desde 01/08/2024; conferido em 20/11/2026). O Nanci envia uma só manifestação conclusiva por NF-e e não retifica (`nfe.ConclusiveBlockReason`).
 
 - **Ciência em lote.** Pode ser enviada para várias notas de uma vez (`nfe ciencia`), em lotes de até 20 eventos, pedindo a senha do certificado uma vez só. Sem confirmação explícita nada é enviado. Depois de registrada, o XML completo chega num pull seguinte e o resumo é substituído.
 - **Conclusivas nota a nota.** `nfe manifestar` envia um evento por vez. Tipo, justificativa, papel e situação são validados antes de pedir a senha.
@@ -202,7 +202,7 @@ nanci.exe nfe reset --cnpj 12345678000199 --confirmar
 
 - Quando a última sincronização falhou, `nfe status` mostra a mensagem guardada (`sync_runs.error_message`) em "Última execução falhou: ...", e a linha de situação da página de NF-e termina em "Falhou: ...". Uma sincronização interrompida, como a cancelada pelo usuário, não mostra nada.
 - `nfe ciencia` aceita `--chave` (repetível) ou `--todos-resumos`, nunca os dois. `--todos-resumos` seleciona os resumos autorizados em que a empresa é destinatária e que ainda não têm manifestação. A simulação lista as notas elegíveis, as ignoradas com o motivo e os prazos de cada uma.
-- `nfe manifestar` também é simulação sem `--confirmar`. `nao-realizada` continua aceito como sinônimo de `nao_realizada`. Depois de uma manifestação conclusiva, nenhuma outra conclusiva é aceita para a mesma nota.
+- `nfe manifestar` também é simulação sem `--confirmar`. `nao-realizada` continua aceito como sinônimo de `nao_realizada`. Depois de uma manifestação conclusiva, o Nanci não envia outra para a mesma nota, embora a SEFAZ aceite uma retificação (ver "Manifestação do Destinatário").
 - `nfe reset` sem `--confirmar` mostra quantas notas, eventos e marcas de exportação seriam removidos e não altera nada.
 - `nfe export zip` grava `<competencia>/<papel>/<chave>-procNFe.xml` e os eventos completos em `<competencia>/<papel>/eventos/`, no arquivo de `--out` (`-o`, padrão `nfe.zip`). Filtra por `--competencia` (`-m`), `--papel` (`-p`) e `--chave` (repetível). Resumos ficam de fora, a menos que se passe `--incluir-resumos`; `--incremental` exporta só o que ainda não foi exportado, mudou (por exemplo, um resumo que virou completa) ou cuja quantidade de eventos mudou desde a última exportação (por exemplo, depois de um cancelamento); o documento volta com todos os seus eventos completos.
 - `nfe export xml` grava o `procNFe` da `--chave`, ou o `resNFe` de um resumo, em `--out` (`-o`); sem `--out`, o arquivo é `<chave>.xml` na pasta atual.

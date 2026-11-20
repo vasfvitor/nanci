@@ -11,7 +11,7 @@ A SEFAZ mantém no Ambiente Nacional (AN) o webservice **CTeDistribuicaoDFe**, c
 Diferenças em relação à NF-e:
 
 - **Não há resumo.** O XML completo, com o protocolo de autorização, chega direto.
-- **Não há manifestação** para liberar documentos. O único evento que o tomador pode enviar é a prestação do serviço em desacordo, que o Nanci ainda não envia (veja abaixo).
+- **Não há manifestação** para liberar documentos. O único evento que o tomador pode enviar é a prestação do serviço em desacordo (veja abaixo).
 - **Não há consulta por chave.** O serviço só aceita `distNSU` e `consNSU`.
 
 Schemas distribuídos e lidos pelo Nanci:
