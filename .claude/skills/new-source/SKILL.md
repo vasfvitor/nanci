@@ -57,7 +57,7 @@ Frontend (copy the CT-e files):
 20. `pages/<X>Page.vue`: `DocumentPageHeader`, `DocumentFilterBar`, `DocumentTableTop`, `StateLegend` with `<X>_LEGEND`, a `q-table` with class `document-table`, shared cells (`ChaveCell`, `PartyCell`, `NumeroCell`, `StateBadges`, `RowActionsMenu source="<x>"`), `useDocumentListActions`, an events dialog on `EventsDialogFrame`. Tests next to each file; `pnpm run screenshots`.
 
 Docs:
-21. `docs/<X>_SEFAZ.md` (sections as CTE_SEFAZ.md), ARCHITECTURE.md (package list, "Origens"), AGENTS.md package list, README "O que faz" table, `website/content/docs/<x>.md` + `_index.md` table, `website/content/docs/cli.md` commands, hosts in `docs/CERTIFICATES.md` and `website/content/docs/privacidade.md`.
+21. `docs/<X>_SEFAZ.md` (sections as CTE_SEFAZ.md), ARCHITECTURE.md ("Origens"; a package-list line only for a package whose role the name does not say), README "O que faz" table, `website/content/docs/<x>.md` + `_index.md` table, `website/content/docs/cli.md` commands, hosts in `docs/CERTIFICATES.md` and `website/content/docs/privacidade.md`.
 
 ## Decisions already made, do not reopen
 
