@@ -3,6 +3,7 @@ import { useQuasar } from 'quasar'
 import NFeFetchDialog from '@/components/NFeFetchDialog.vue'
 import { useNotify } from '@/composables/useNotify'
 import type { FetchByChaveResult, NFeStatusResult } from '@/types/desktop'
+import { asSentence } from '@/utils/formatters'
 
 export type NFeImportActionsOptions = {
   cnpj: Ref<string>
@@ -10,12 +11,6 @@ export type NFeImportActionsOptions = {
   status: Ref<NFeStatusResult | null>
   // fetchByChave returns null when it did not run.
   fetchByChave: (chaveAcesso: string) => Promise<FetchByChaveResult | null>
-}
-
-// The backend message is a lowercase clause ("a SEFAZ entregou só o
-// resumo: ..."); the notice shows it as a sentence.
-function sentence(message: string) {
-  return message ? `${message.charAt(0).toUpperCase()}${message.slice(1)}.` : ''
 }
 
 // useNFeImportActions holds the "Buscar pela chave" button of the NF-e
@@ -54,10 +49,10 @@ export function useNFeImportActions(options: NFeImportActionsOptions) {
         notifySuccess('NF-e completa salva.')
         return
       case 'resumo':
-        notifyInfo(sentence(result.Message) || 'A SEFAZ entregou só o resumo da NF-e.')
+        notifyInfo(asSentence(result.Message) || 'A SEFAZ entregou só o resumo da NF-e.')
         return
       default:
-        notifyWarning(sentence(result.Message) || 'A SEFAZ não encontrou a NF-e.')
+        notifyWarning(asSentence(result.Message) || 'A SEFAZ não encontrou a NF-e.')
     }
   }
 

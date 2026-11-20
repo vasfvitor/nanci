@@ -99,6 +99,15 @@ export function isChaveDFe(chave: string) {
   return /^[0-9A-Z]{44}$/.test(chave)
 }
 
+// asSentence turns a backend message such as "sincronização já em andamento"
+// into "Sincronização já em andamento.", or "" when there is none.
+export function asSentence(message: string): string {
+  const text = message.trim()
+  if (!text) return ''
+  const capitalized = text.charAt(0).toUpperCase() + text.slice(1)
+  return capitalized.endsWith('.') ? capitalized : `${capitalized}.`
+}
+
 // formatCount puts n before the singular or plural noun: "1 NSU", "2 NSUs".
 export function formatCount(n: number, singular: string, plural: string) {
   return `${n} ${n === 1 ? singular : plural}`

@@ -1,21 +1,13 @@
 import { copyToClipboard, Notify, useQuasar, type QNotifyCreateOptions } from 'quasar'
 import { desktopClient, errorMessage, wailsErrorCode } from '@/platform/wails/client'
 import type { ExportResult } from '@/types/desktop'
+import { asSentence } from '@/utils/formatters'
 
 type NotifyOptions = Omit<QNotifyCreateOptions, 'type' | 'message'>
 
 // errorNotice is the notification of a failed action: "message: cause".
 function errorNotice(message: string, error: unknown): QNotifyCreateOptions {
   return { type: 'negative', message: `${message}: ${errorMessage(error)}` }
-}
-
-// asSentence turns a backend message such as "sincronização já em andamento"
-// into "Sincronização já em andamento.", or "" when there is none.
-function asSentence(message: string): string {
-  const text = message.trim()
-  if (!text) return ''
-  const capitalized = text.charAt(0).toUpperCase() + text.slice(1)
-  return capitalized.endsWith('.') ? capitalized : `${capitalized}.`
 }
 
 // copyChave copies an access key. NFS-e keys lose their NFS prefix, which a

@@ -1,4 +1,5 @@
 import {
+  asSentence,
   formatCents,
   formatChaveAcesso,
   formatChaveDFe,
@@ -133,6 +134,14 @@ describe('formatters', () => {
       'Empresa Mock · 70.860.312/0001-50 · Todas as competências'
     )
     expect(workspaceContextLine(null, '2026-09')).toBe('')
+  })
+
+  it('turns a backend message into a sentence', () => {
+    expect(asSentence('sincronização já em andamento')).toBe('Sincronização já em andamento.')
+    expect(asSentence('  a SEFAZ entregou só o resumo ')).toBe('A SEFAZ entregou só o resumo.')
+    expect(asSentence('NF-e não localizada.')).toBe('NF-e não localizada.')
+    expect(asSentence('   ')).toBe('')
+    expect(asSentence('')).toBe('')
   })
 
   it('formats local HH:MM times', () => {
