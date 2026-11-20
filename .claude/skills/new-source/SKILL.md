@@ -39,7 +39,7 @@ Store:
 
 Protocol and sync:
 11. `internal/sefaz` (if SEFAZ SOAP): endpoint consts and an `Endpoints` field (`endpoints.go`), a `distService` var and `Dist<X>NSU` (`cte_distribuicao.go`), `CheckTLS<X>` (`tls_check.go`), `retdist-<x>-137/138/656.xml` fixtures.
-12. `internal/sync/source_<x>.go` (copy `source_cte.go`): `Kind`, `Policy` (delay var plus `requestsPerHour`), `Fetch` through `distBatch`, `ProcessItem` returning `*ProcessingError` on decode/parse failures, `CheckTpAmb` for every item, events of an unknown chave dropped via `commitSkip` unless the company authored them, `processUnsupported` for unknown schemas. Add `<X>Repo` to `sync.Manager`. Tests: `source_cte_test.go` cases.
+12. `internal/sync/source_<x>.go` (copy `source_cte.go`): `Kind`, `Policy` (delay var plus `requestsPerHour`), `Fetch` through `distBatch`, `ProcessItem` returning `*ProcessingError` on decode/parse failures, `CheckTpAmb` for every item, events of an unknown chave dropped via `commitSkip` unless the company authored them, unknown schemas returned as unsupported (`ItemOutcome.Unsupported`, counted in `internal/sync/loop.go`). Add `<X>Repo` to `sync.Manager`. Tests: `source_cte_test.go` cases.
 
 App and entry points:
 13. `internal/app/<x>.go`, `<x>_export.go`, `<x>_reset.go` (copy `cte*.go`): `<X>Service` with `Pull`, `Status` (`loadSefazSourceStatus`), `ListDocuments`, `MarkViewed`, `ListEvents`, `TestConnection` (`testSefazConnection`), `ExportXMLZip`/`ExportXML` (`writeViaTemp`, then `MarkExported`), `PreviewReset`/`Reset` under `SyncManager.ReserveSource`. ZIP layout in `internal/report/<x>_zip.go` (`eventZipEntry`).
@@ -70,7 +70,7 @@ Docs:
 
 ## What NF-e taught
 
-- tpAmb per document and event, decided only in `sync.checkTpAmb`: the XML wins with a warning, a resumo or invalid value takes the pull's. Lists, status and export filter by the company's current environment (`environmentTpAmb` in `app/nfe.go`).
+- tpAmb per document and event, decided only in `sync.CheckTpAmb`: the XML wins with a warning, a resumo or invalid value takes the pull's. Lists, status and export filter by the company's current environment (`environmentTpAmb` in `app/nfe.go`).
 - Resumo vs completa: `nfe.MergeDocument` never replaces a completa with a resumo; CT-e's masked `autXML` copy never replaces the full one. Decide the merge rule of the new source in its domain `merge.go`.
 - Environment lock removed: sync state, block, initial sync and budget are keyed by environment (`019`) and every row has `tp_amb` (`016`). Do not add a lock back.
 - 3 strikes: `maxItemAttempts = 3` (`sync/loop.go`, `sync_state.failed_nsu`) skips an item that fails to decode or parse three runs in a row, keeping its XML. Only a `*ProcessingError` counts.

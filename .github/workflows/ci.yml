@@ -18,7 +18,7 @@ concurrency:
 # this file: keep it in step when a job changes.
 env:
   # The install steps build the Wails CLI without cgo, which on Linux would
-  # need the GTK 4 and WebKitGTK headers (internal/operatingsystem).
+  # need the GTK 4 and WebKitGTK headers.
   WAILS_VERSION: v3.1.0
   SQLC_VERSION: v1.27.0
 
@@ -55,7 +55,7 @@ jobs:
           mkdir -p internal/desktop/frontend/dist
           echo '<div></div>' > internal/desktop/frontend/dist/index.html
 
-      # Package names from the Wails v3.0.0 doctor (apt): GTK 4 and
+      # Package names from the Wails v3 doctor (apt): GTK 4 and
       # WebKitGTK 6.0 are the default Linux stack.
       - name: Install GTK and WebKitGTK headers
         run: |
