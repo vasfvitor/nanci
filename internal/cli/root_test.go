@@ -34,10 +34,18 @@ func tempCommand(t *testing.T, root *cobra.Command, name string, runE func(cmd *
 
 // newTestRoot builds a fresh root with stub Verbose/Trace booleans and a
 // no-op AppFactory. Tests pass their own subcommands via tempCommand.
+// Stderr is a temp file: NewRootCommand hands it to cobra, and a nil
+// *os.File would drop what is written to it.
 func newTestRoot(t *testing.T) (*cobra.Command, *bool, *bool) {
 	t.Helper()
+	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stderr.Close() })
 	v, tr := false, false
 	root := NewRootCommand(CommandEnv{
+		Stderr: stderr,
 		AppFactory: func(context.Context) (*app.App, func(), error) {
 			return nil, func() {}, nil
 		},
