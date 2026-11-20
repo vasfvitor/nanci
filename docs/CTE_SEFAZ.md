@@ -121,7 +121,7 @@ Eventos de uma chave que a empresa não tem localmente são descartados com um r
 
 ## Prestação do serviço em desacordo
 
-O evento 610110 é a forma de o **tomador** declarar que o serviço de transporte não foi prestado como consta no CT-e. Só o tomador pode enviá-lo, em até 45 dias da autorização (relato de terceiros; ver `docs/pesquisa/2026-10-07-sefaz-dfe.md`), com uma observação, e o envio vai à **SEFAZ autorizadora do CT-e** (serviço de recepção de eventos da UF), não ao Ambiente Nacional. O Nanci mostra o evento quando ele chega pela distribuição, mas não o envia. Veja "Próximos passos".
+O evento 610110 é a forma de o **tomador** declarar que o serviço de transporte não foi prestado como consta no CT-e. Só o tomador pode enviá-lo, para o CT-e (modelo 57) e o CT-e OS (67), em até 45 dias da autorização (Ajuste SINIEF 09/07, cláusula 17ª, § 6º), com uma observação de 15 a 255 caracteres, e o envio vai à **SEFAZ autorizadora do CT-e** (`CTeRecepcaoEventoV4` da UF da chave, SVRS ou SVSP para a maioria), não ao Ambiente Nacional. Layout, endpoints e rejeições, com as fontes: `docs/pesquisa/2026-11-19-cte-desacordo.md`. O Nanci mostra o evento quando ele chega pela distribuição, mas não o envia. Veja "Próximos passos".
 
 ## Ligação com a NF-e
 
@@ -222,7 +222,7 @@ Um CT-e recebido de novo substitui o anterior (não há resumo a preservar), man
 
 ## Próximos passos
 
-- Prestação do serviço em desacordo: tabela UF → SEFAZ autorizadora do CT-e por ambiente (SVRS para a maioria das UF; SP, MT, MS, MG e PR com endpoint próprio), com a UF tirada da chave; generalizar o assinador de `internal/sefaz/xmldsig.go` para o `eventoCTe` 4.00; tabela de auditoria dos envios, como `nfe_manifestacoes`; confirmação explícita no CLI e no aplicativo, com o prazo exibido.
+- Prestação do serviço em desacordo: tabela UF → SEFAZ autorizadora do CT-e por ambiente (SVRS para 18 UF, SVSP para AP, PE e RR; MG, MS, MT, PR, RS e SP com endpoint próprio), com a UF tirada da chave; generalizar o assinador de `internal/sefaz/xmldsig.go` para o `eventoCTe` 4.00; tabela de auditoria dos envios, como `nfe_manifestacoes`; confirmação explícita no CLI e no aplicativo, com o prazo exibido.
 
 ## Atribuição
 
