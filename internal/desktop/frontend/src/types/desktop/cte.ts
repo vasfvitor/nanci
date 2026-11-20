@@ -119,11 +119,6 @@ export type CTeRow = {
   ParseWarnings: string[]
 }
 
-export type CTeKeyInput = {
-  CNPJ: string
-  ChaveAcesso: string
-}
-
 export type CTeEvent = {
   ID: string
   TpEvento: string
@@ -140,10 +135,6 @@ export type CTeEvent = {
   Observacao: string
   Correcao: string
   Registered: boolean
-}
-
-export type PullCTeInput = {
-  CNPJ: string
 }
 
 export type PullCTeResult = {

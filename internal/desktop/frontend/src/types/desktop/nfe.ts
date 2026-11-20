@@ -81,11 +81,6 @@ export type NFeRow = {
   ConclusiveBlockReason: string
 }
 
-export type NFeKeyInput = {
-  CNPJ: string
-  ChaveAcesso: string
-}
-
 export type NFeEvent = {
   ID: string
   TpEvento: string
@@ -108,16 +103,6 @@ export type NFeEvent = {
 export type NFePendingRow = NFeRow & {
   Kind: NFePendingKind | ''
   CienciaOverdue: boolean
-}
-
-export type NFePendingInput = {
-  CNPJ: string
-  DueWithinDays: number
-}
-
-export type RegisterNFeCienciaInput = {
-  CNPJ: string
-  ChavesAcesso: string[]
 }
 
 export type NFeSkipped = {
@@ -164,10 +149,6 @@ export type NFeResetResult = {
   Events: number
   ExportMarks: number
   ManifestacoesKept: number
-}
-
-export type PullNFeInput = {
-  CNPJ: string
 }
 
 export type PullNFeResult = {
